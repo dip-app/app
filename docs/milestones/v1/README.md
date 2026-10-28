@@ -12,7 +12,7 @@ These packets turn the committed [V1 scope](../V1.md) into bounded implementatio
 
 ## Start in parallel without inventing interfaces
 
-Assign one person to each packet and one integrator for shared files. UI foundations can proceed against presentation fixtures. Accounts, discovery, and organizer work can proceed against the versioned contract fixtures after both provider and consumer owners agree on their interfaces. Live end-to-end integration depends on accounts/membership and the integrator's reviewed Firebase access rules.
+Claim and update the [status tracker](STATUS.md), assigning one person to each packet and one integrator for shared files. UI foundations can proceed against presentation fixtures. Accounts, discovery, and organizer work can proceed against the versioned contract fixtures after both provider and consumer owners agree on their interfaces. Live end-to-end integration depends on accounts/membership and the integrator's reviewed Firebase access rules.
 
 The canonical boundaries are [callables](../../contracts/callables.md), [data ownership](../../contracts/data-ownership.md), `contracts/v1/models.schema.json`, and [component specifications](../../design/components.md). Future commands must preserve these schemas and semantics, or propose a reviewed contract change first. No packet may silently expand V1 to match later prototype content.
 

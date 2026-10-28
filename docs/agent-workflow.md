@@ -11,7 +11,7 @@ git fetch origin
 git worktree add ../dip-accounts -b feature/accounts <integration-ref>
 ```
 
-Replace `<integration-ref>` with the team's actual agreed branch or commit; it is not a literal command argument. Use descriptive contributor/task names if two people work in the same feature area. The initial `setup` branch is the shared starting point until the team chooses its integration branch.
+Replace `<integration-ref>` with the team's actual agreed branch or commit; it is not a literal command argument. Use descriptive contributor/task names if two people work in the same feature area. Use `origin/main` as the integration ref unless the task explicitly names a reviewed dependency branch. Check CURRENT_STATE.md and the V1 STATUS.md tracker before claiming work.
 
 Do not run destructive cleanup, reset, or branch deletion against another person's checkout. Do not use one agent's checkout for concurrent independent edits. Before switching or starting work, check status and preserve unrelated modifications. Close and remove an owned worktree only after its work is safely committed or intentionally discarded by its owner.
 

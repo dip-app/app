@@ -17,13 +17,15 @@
     "test:rules": "firebase emulators:exec --project demo-dip --only firestore,storage \"node --import tsx --test gcp/tests/rules/*.test.ts\"",
     "test:swift": "swift test --package-path ui/Packages/DIPContracts && swift test --package-path ui/Packages/DIPDesignSystem",
     "ios:generate": "cd ui && xcodegen generate",
-    "check": "npm run check:generated && python3 scripts/session-log.py check --self-test && npm run test:contracts && npm run build && npm run test:unit",
+    "check": "npm run check:generated && npm run test:sessions && npm run test:docs && npm run test:contracts && npm run build && npm run test:unit",
     "emulators": "firebase emulators:start --project demo-dip",
     "seed": "node gcp/scripts/seed.mjs",
     "demo": "firebase emulators:exec --project demo-dip --only auth,firestore \"node gcp/scripts/seed.mjs\"",
     "session:new": "python3 scripts/session-log.py new",
     "session:check": "python3 scripts/session-log.py check",
-    "test:seed": "firebase emulators:exec --project demo-dip --only auth,firestore \"node gcp/scripts/seed.mjs && node gcp/scripts/seed.mjs\""
+    "test:seed": "firebase emulators:exec --project demo-dip --only auth,firestore \"node gcp/scripts/seed.mjs && node gcp/scripts/seed.mjs\"",
+    "test:docs": "python3 scripts/check-docs.py",
+    "test:sessions": "python3 scripts/session-log.py check --self-test && python3 -m unittest discover -s scripts/tests -p \"test_*.py\""
   },
   "devDependencies": {
     "ajv": "^8.17.1",

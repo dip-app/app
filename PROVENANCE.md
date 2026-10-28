@@ -35,3 +35,7 @@ The schedule supplies release commitments; Firebase Architecture and Models.swif
 - Firebase local functions: https://firebase.google.com/docs/functions/local-emulator — emulator defaults use demo-dip.
 
 Dependency versions are resolved in package-lock.json; external package licenses remain those of their upstream projects. No repository license was invented. See the setup session log for actual validation results and limitations.
+
+## Readiness audit
+
+On October 28, the audit checked current Git/CI state and GitHub repository administration endpoints. main was the default branch with green baseline CI; the authenticated account had ADMIN permission. The main branch-protection endpoint returned HTTP403 indicating unavailable private-repository plan support. docs/setup-constraints.md records this external limit without changing repository visibility or billing. Current-state/context maps and task tracking are derived setup artifacts, not new product requirements. Session validation now compares metadata exactly and is exercised against isolated temporary Git histories.
