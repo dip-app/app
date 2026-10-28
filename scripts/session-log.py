@@ -20,13 +20,15 @@ def validate(path, text):
     if not match:
         raise ValueError(f'Invalid session filename: {path}')
     dt.date.fromisoformat(match[2])
+    metadata = {}
     for key in ('User', 'Date', 'Workstream', 'Agent', 'Status'):
-        value = re.search(rf'^{key}:\s*(\S.+|\S)$', text, re.M)
-        if not value or value[1].strip().lower() in ('todo', 'tbd', 'placeholder'):
-            raise ValueError(f'{path}: missing meaningful {key}')
-    if f'User: {match[1]}' not in text or f'Date: {match[2]}' not in text:
+        values = re.findall(rf'^{key}:[ \t]*(.*)$', text, re.M)
+        if len(values) != 1 or not values[0].strip() or values[0].strip().lower() in ('todo', 'tbd', 'placeholder'):
+            raise ValueError(f'{path}: provide exactly one meaningful {key}')
+        metadata[key] = values[0].strip()
+    if metadata['User'] != match[1] or metadata['Date'] != match[2]:
         raise ValueError(f'{path}: filename and user/date metadata differ')
-    if not re.search(r'^Status: (completed|handoff|blocked)$', text, re.M):
+    if metadata['Status'] not in ('completed', 'handoff', 'blocked'):
         raise ValueError(f'{path}: finish with completed, handoff or blocked status')
     for section in SECTIONS:
         body = re.search(rf'^## {section}\n(.*?)(?=^## |\Z)', text, re.M | re.S)
@@ -68,7 +70,7 @@ def main():
         valid = 'User: tester\nDate: 2026-10-28\nWorkstream: setup\nAgent: Codex\nStatus: completed\n' + ''.join(f'\n## {s}\nMeaningful handoff content.\n' for s in SECTIONS)
         path = 'docs/sessions/SESSION_tester_2026-10-28_001.md'
         validate(path, valid)
-        for invalid in (valid.replace('Status: completed', 'Status: active'), valid.replace('User: tester','User: other'), valid.replace('## Validation','## Missing')):
+        for invalid in (valid.replace('Status: completed', 'Status: active'), valid.replace('User: tester','User: other'), valid.replace('## Validation','## Missing'), valid.replace('User: tester', 'User: tester-extra'), valid.replace('Date: 2026-10-28', 'Date: 2026-10-28-extra'), valid + '\nUser: tester\n'):
             try:
                 validate(path, invalid)
             except ValueError:

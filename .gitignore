@@ -20,3 +20,6 @@ GoogleService-Info.plist
 *service-account*.json
 *.xcconfig
 !*.example.xcconfig
+
+__pycache__/
+*.pyc
