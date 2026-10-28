@@ -59,7 +59,13 @@ jobs:
       - name: Require a new session handoff in the PR/change
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: python3 scripts/session-log.py check --base "$BASE_SHA"
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            python3 scripts/session-log.py check --base "$BASE_SHA"
+          else
+            python3 scripts/session-log.py check --base "$BASE_SHA" --allow-updated
+          fi
 
   functions-runtime:
     runs-on: ubuntu-latest

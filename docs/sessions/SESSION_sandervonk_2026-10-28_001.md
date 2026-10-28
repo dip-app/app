@@ -26,7 +26,8 @@ Created Firebase Functions scaffolding, emulator rules/tests, guarded synthetic 
 - XcodeGen creates the iOS project. Full iOS app SDK resolution, simulator build and device tests were not run; this is setup only.
 - All local Markdown links resolve; five V1 work packets exist.
 - Production Functions dependency audit reports 0 vulnerabilities. Root developer tooling retains 5 moderate advisories; details in docs/maintenance.md. No high/critical advisories remain in the setup lockfile.
-- Session PR gate will be verified against the initial commit before publication; GitHub CI and branch protection are not claimed as configured/passing locally.
+- Initial GitHub CI passed all five jobs on 011e379, including the real session gate, Node22 build, Swift foundations, security rules and repeat seed. Branch protections remain a maintainer handoff.
+- Final review aligned backend module ownership guidance and allowed same-session log updates for push checks; PRs continue requiring a newly added session log.
 
 ## Decisions
 
@@ -34,4 +35,4 @@ Use Firebase callables for privileged V1 commands and Firestore live reads. Prop
 
 ## Handoff
 
-Assign the five V1 packets and actual review owners. Confirm proposed architecture/security contracts, project IDs/region, bundle ID/minimum OS, and design gaps before dependent implementation. Keep rules deny-all until feature-specific policies and adversarial tests land. Product functions, repositories, screens, coverage thresholds and V2 implementations are future work. Configure real CODEOWNERS and GitHub branch protections; checked-in CI alone does not make checks mandatory. This was an empty remote, so setup is the first content branch; establish main from the accepted setup when ready for normal feature PRs. Publication is the final integration step in this session.
+Assign the five V1 packets and actual review owners. Confirm proposed architecture/security contracts, project IDs/region, bundle ID/minimum OS, and design gaps before dependent implementation. Keep rules deny-all until feature-specific policies and adversarial tests land. Product functions, repositories, screens, coverage thresholds and V2 implementations are future work. Configure real CODEOWNERS and GitHub branch protections; checked-in CI alone does not make checks mandatory. This was an empty remote, so setup was the first content branch. The repository owner then authorized merging to main; main is being established from the accepted setup and selected as default. No history is overwritten.

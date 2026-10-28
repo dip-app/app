@@ -3,7 +3,7 @@
 Read the repository's root `AGENTS.md`, feature scope, and `contracts/` before changing this service.
 
 - This branch provides scaffolding. No callable workflow has been implemented or deployed.
-- Keep callable adapters in `functions/src/transport`, use cases in `application`, pure business rules in `domain`, and Firebase or external-service access in `infrastructure`.
+- Feature code lives in `functions/src/modules/<area>/`, with module-local `transport`, `application`, `domain`, and `infrastructure` layers. Work packets own accounts, participation, and organizer modules. Top-level layer folders are only for reviewed cross-cutting helpers; the integrator wires the root export list.
 - `functions/src/index.ts` is the deployment export list. Adding an export makes it deployable; do this deliberately in a feature PR.
 - Never edit `functions/src/generated/` directly. Regenerate from the shared contract source.
 - Derive identity from verified Firebase Auth context. Recheck company membership and authorization on every server command. Admin SDK calls bypass Security Rules.

@@ -45,6 +45,7 @@ def main():
     check = sub.add_parser('check')
     check.add_argument('--base', default='')
     check.add_argument('--self-test', action='store_true')
+    check.add_argument('--allow-updated', action='store_true', help='Push checks may update the same session; PRs must add one')
     args = p.parse_args()
     if args.action == 'new':
         if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9-]*', args.user):
@@ -80,12 +81,13 @@ def main():
         git('rev-parse', '--verify', f'{base}^{{commit}}')
     else:
         base = git('hash-object', '-t', 'tree', '/dev/null')
-    changed = git('diff', '--name-only', '--diff-filter=A', base, 'HEAD', '--', 'docs/sessions/SESSION_*.md').splitlines()
+    change_filter = '--diff-filter=AM' if args.allow_updated else '--diff-filter=A'
+    changed = git('diff', '--name-only', change_filter, base, 'HEAD', '--', 'docs/sessions/SESSION_*.md').splitlines()
     if not changed:
-        raise SystemExit('PR must add at least one session log; one log can cover multiple commits')
+        raise SystemExit('Change must add or update a session log' if args.allow_updated else 'PR must add at least one session log; one log can cover multiple commits')
     for path in changed:
         validate(path, git('show', f'HEAD:{path}'))
-    print(f'Validated {len(changed)} new session log(s) for this change')
+    print(f'Validated {len(changed)} session log(s) for this change')
 
 
 if __name__ == '__main__':
