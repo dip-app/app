@@ -1,0 +1,147 @@
+{
+  "formatVersion": 1,
+  "projectId": "demo-dip",
+  "referenceDate": "2026-10-28T12:00:00Z",
+  "joinCode": "DEMO-2026",
+  "authUsers": [
+    {
+      "uid": "member-demo",
+      "email": "member@example.invalid",
+      "password": "DIP-emulator-only-2026!",
+      "displayName": "Demo Member",
+      "emailVerified": true
+    },
+    {
+      "uid": "admin-demo",
+      "email": "admin@example.invalid",
+      "password": "DIP-emulator-only-2026!",
+      "displayName": "Demo Organizer",
+      "emailVerified": true
+    }
+  ],
+  "firestoreDocuments": [
+    {
+      "path": "companies/company-demo",
+      "model": "Company",
+      "data": {
+        "name": "Demo Company",
+        "logoURL": "",
+        "emailDomain": "example.invalid",
+        "city": "Pittsburgh, PA",
+        "officeLatitude": 40.4406,
+        "officeLongitude": -79.9959,
+        "createdAt": "2026-10-28T12:00:00Z"
+      }
+    },
+    {
+      "path": "companyAccess/4e775cb4fae09efda9407bdbf7d838bf67fce8e44ebaffd03847bb50062c36fb",
+      "model": null,
+      "data": {
+        "companyId": "company-demo"
+      }
+    },
+    {
+      "path": "users/member-demo",
+      "model": "AppUser",
+      "data": {
+        "companyId": "company-demo",
+        "displayName": "Demo Member",
+        "email": "member@example.invalid",
+        "photoURL": "",
+        "avatarId": "avatar-01",
+        "department": "Product",
+        "jobTitle": "Designer",
+        "city": "Pittsburgh, PA",
+        "role": "member",
+        "interestTagIds": ["tag-social"],
+        "travelRadiusMiles": 20,
+        "availability": ["weekday-evenings"],
+        "friendIds": [],
+        "favoritePhotoIds": [],
+        "pointsBalance": 0,
+        "createdAt": "2026-10-28T12:00:00Z"
+      }
+    },
+    {
+      "path": "users/admin-demo",
+      "model": "AppUser",
+      "data": {
+        "companyId": "company-demo",
+        "displayName": "Demo Organizer",
+        "email": "admin@example.invalid",
+        "photoURL": "",
+        "avatarId": "avatar-02",
+        "department": "People Operations",
+        "jobTitle": "Event Organizer",
+        "city": "Pittsburgh, PA",
+        "role": "admin",
+        "interestTagIds": ["tag-social"],
+        "travelRadiusMiles": 20,
+        "availability": ["weekday-evenings"],
+        "friendIds": [],
+        "favoritePhotoIds": [],
+        "pointsBalance": 0,
+        "createdAt": "2026-10-28T12:00:00Z"
+      }
+    },
+    {
+      "path": "tags/tag-social",
+      "model": "Tag",
+      "data": {
+        "name": "Social",
+        "icon": "person.2",
+        "sortOrder": 1
+      }
+    },
+    {
+      "path": "companies/company-demo/events/event-demo",
+      "model": "Event",
+      "data": {
+        "companyId": "company-demo",
+        "title": "Demo coworker meetup",
+        "description": "Synthetic event for local development. Meet coworkers for a relaxed conversation.",
+        "tagIds": ["tag-social"],
+        "coverImageURL": "",
+        "startTime": "2026-11-02T23:00:00Z",
+        "endTime": "2026-11-03T00:00:00Z",
+        "venue": {
+          "name": "Demo Company Lounge",
+          "address": "100 Example Street",
+          "locality": "Pittsburgh, PA",
+          "latitude": 40.4406,
+          "longitude": -79.9959,
+          "fsqPlaceId": null,
+          "phone": null,
+          "website": null
+        },
+        "costCents": 0,
+        "costNote": "Free synthetic event",
+        "capacity": 20,
+        "pointsValue": 0,
+        "isOutdoor": false,
+        "status": "scheduled",
+        "attendeeCount": 1,
+        "createdBy": "admin-demo",
+        "createdAt": "2026-10-28T12:00:00Z",
+        "revision": 1
+      }
+    },
+    {
+      "path": "companies/company-demo/events/event-demo/rsvps/member-demo",
+      "model": "RSVP",
+      "data": {
+        "companyId": "company-demo",
+        "eventId": "event-demo",
+        "userId": "member-demo",
+        "userName": "Demo Member",
+        "userAvatarId": "avatar-01",
+        "userDepartment": "Product",
+        "eventStartTime": "2026-11-02T23:00:00Z",
+        "status": "going",
+        "checkedIn": false,
+        "checkedInAt": null,
+        "createdAt": "2026-10-28T12:00:00Z"
+      }
+    }
+  ]
+}

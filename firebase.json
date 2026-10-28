@@ -1,0 +1,26 @@
+{
+  "functions": [
+    {
+      "source": "gcp/functions",
+      "codebase": "dip",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", ".git", "tests", "**/*.test.ts", "**/*-debug.log"],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    }
+  ],
+  "firestore": {
+    "rules": "gcp/firestore.rules",
+    "indexes": "gcp/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "gcp/storage.rules"
+  },
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 9099 },
+    "functions": { "host": "127.0.0.1", "port": 5001 },
+    "firestore": { "host": "127.0.0.1", "port": 8080 },
+    "storage": { "host": "127.0.0.1", "port": 9199 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
+}

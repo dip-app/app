@@ -1,0 +1,119 @@
+{
+  "setRsvpRequest": {
+    "contractVersion": 1,
+    "companyId": "company-demo",
+    "eventId": "event-demo",
+    "status": "going"
+  },
+  "setRsvpResponse": {
+    "contractVersion": 1,
+    "eventId": "event-demo",
+    "status": "going",
+    "attendeeCount": 1
+  },
+  "joinCompanyRequest": {
+    "contractVersion": 1,
+    "joinCode": "DEMO-2026",
+    "displayName": "Demo Member"
+  },
+  "joinCompanyResponse": {
+    "contractVersion": 1,
+    "companyId": "company-demo",
+    "role": "member"
+  },
+  "event": {
+    "companyId": "company-demo",
+    "title": "Demo coworker meetup",
+    "description": "demo",
+    "tagIds": [],
+    "coverImageURL": "demo",
+    "startTime": "2026-11-01T18:00:00Z",
+    "endTime": "2026-11-01T19:00:00Z",
+    "venue": {
+      "name": "demo",
+      "address": "demo",
+      "locality": "demo",
+      "latitude": 1,
+      "longitude": 1,
+      "fsqPlaceId": "demo",
+      "phone": "demo",
+      "website": "demo"
+    },
+    "costCents": 0,
+    "costNote": "demo",
+    "capacity": 1,
+    "pointsValue": 1,
+    "isOutdoor": false,
+    "status": "scheduled",
+    "attendeeCount": 0,
+    "createdBy": "user-demo",
+    "createdAt": "2026-11-01T18:00:00Z",
+    "revision": 1
+  },
+  "createEventRequest": {
+    "contractVersion": 1,
+    "companyId": "company-demo",
+    "requestId": "11111111-1111-4111-8111-111111111111",
+    "event": {
+      "title": "Demo coworker meetup",
+      "description": "demo",
+      "tagIds": [],
+      "coverImageURL": "demo",
+      "startTime": "2026-11-01T18:00:00Z",
+      "endTime": "2026-11-01T19:00:00Z",
+      "venue": {
+        "name": "demo",
+        "address": "demo",
+        "locality": "demo",
+        "latitude": 1,
+        "longitude": 1,
+        "fsqPlaceId": "demo",
+        "phone": "demo",
+        "website": "demo"
+      },
+      "costCents": 0,
+      "costNote": "demo",
+      "capacity": 1,
+      "isOutdoor": false
+    }
+  },
+  "createEventResponse": {
+    "contractVersion": 1,
+    "eventId": "event-demo",
+    "revision": 1
+  },
+  "updateEventRequest": {
+    "contractVersion": 1,
+    "companyId": "company-demo",
+    "eventId": "event-demo",
+    "expectedRevision": 1,
+    "event": {
+      "title": "Demo coworker meetup",
+      "description": "demo",
+      "tagIds": [],
+      "coverImageURL": "demo",
+      "startTime": "2026-11-01T18:00:00Z",
+      "endTime": "2026-11-01T19:00:00Z",
+      "venue": {
+        "name": "demo",
+        "address": "demo",
+        "locality": "demo",
+        "latitude": 1,
+        "longitude": 1,
+        "fsqPlaceId": "demo",
+        "phone": "demo",
+        "website": "demo"
+      },
+      "costCents": 0,
+      "costNote": "demo",
+      "capacity": 1,
+      "isOutdoor": false
+    },
+    "status": "scheduled"
+  },
+  "updateEventResponse": {
+    "contractVersion": 1,
+    "eventId": "event-demo",
+    "revision": 2
+  }
+}

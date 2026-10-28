@@ -1,0 +1,55 @@
+name: Feature or setup task
+description: Claim a bounded task with an owner, interfaces, and acceptance checks.
+title: "[Area] "
+body:
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Milestone scope
+      options:
+        - V1 committed
+        - V2 committed
+        - V2 stretch
+        - Repository setup
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Human owner and cooperating contributors
+      description: Assign the issue in GitHub too; an agent is not the accountable owner.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Intended outcome and acceptance criteria
+      description: Link docs/milestones/V1.md or V2.md and the matching work packet. Separate setup from implemented behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Allowed folders and shared-file coordination
+      description: Identify owned ui/ feature paths, gcp/ modules/tests, overlapping tasks, and the integrator for shared files.
+    validations:
+      required: true
+  - type: textarea
+    id: interfaces
+    attributes:
+      label: Contracts, design references, and dependencies
+      description: Link docs/contracts/callables.md, data-ownership.md, schemas/fixtures, ui/DesignSystem/tokens.json, docs/design/components.md, and blocking issues.
+    validations:
+      required: true
+  - type: textarea
+    id: sessions
+    attributes:
+      label: Work-session logging
+      description: Follow root SESSION.md. Add one valid docs/sessions log per work session; a session may span several commits. CI requires at least one new valid log per PR, not per commit.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: Include relevant unit/emulator checks and manual/device checks. State coverage scope if applicable.
+    validations:
+      required: true

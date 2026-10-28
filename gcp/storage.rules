@@ -1,0 +1,9 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Setup baseline. Upload/read policies belong to the V2 photo feature.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

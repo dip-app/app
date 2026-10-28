@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Setup baseline. Feature PRs add narrowly scoped rules plus emulator tests.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

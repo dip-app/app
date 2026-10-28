@@ -1,0 +1,7 @@
+# Copy to CODEOWNERS after replacing these placeholders with REAL GitHub users/teams.
+# A commented example creates no review enforcement. Never invent organization teams.
+# /contracts/ @BACKEND_OWNER @IOS_OWNER
+# /ui/DesignSystem/ @DESIGN_OWNER @IOS_OWNER
+# /gcp/ @BACKEND_OWNER
+# /ui/ @IOS_OWNER
+# /package-lock.json @INTEGRATION_OWNER

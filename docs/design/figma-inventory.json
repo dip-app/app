@@ -1,0 +1,119 @@
+{
+  "fileKey": "DCIagJo7uk5IOUGqlKzAjf",
+  "pageId": "0:1",
+  "pageName": "Final",
+  "retrievedOn": "2026-10-28",
+  "scope": "Metadata inventory only; only Home 35:147 had design context and screenshot inspected.",
+  "sections": [
+    {
+      "nodeId": "76:4572",
+      "name": "Profile Page"
+    },
+    {
+      "nodeId": "76:4570",
+      "name": "Homepage"
+    },
+    {
+      "nodeId": "93:6516",
+      "name": "Rewards"
+    },
+    {
+      "nodeId": "76:6031",
+      "name": "Events/Memories"
+    },
+    {
+      "nodeId": "154:2430",
+      "name": "Global Components"
+    }
+  ],
+  "frames": [
+    {
+      "nodeId": "76:4016",
+      "name": "Profile"
+    },
+    {
+      "nodeId": "35:147",
+      "name": "Home"
+    },
+    {
+      "nodeId": "46:1397",
+      "name": "Event Page"
+    },
+    {
+      "nodeId": "160:6357",
+      "name": "Event Page"
+    },
+    {
+      "nodeId": "76:1742",
+      "name": "Event Page (Joined)"
+    },
+    {
+      "nodeId": "76:4932",
+      "name": "Event Page (Participants)"
+    },
+    {
+      "nodeId": "46:1755",
+      "name": "Event Page (Past)"
+    },
+    {
+      "nodeId": "46:1995",
+      "name": "Album Page"
+    },
+    {
+      "nodeId": "76:1884",
+      "name": "Album Select Overlay"
+    },
+    {
+      "nodeId": "76:2021",
+      "name": "Album Select Overlay (Keyboard)"
+    },
+    {
+      "nodeId": "76:7200",
+      "name": "Rewards"
+    },
+    {
+      "nodeId": "76:6032",
+      "name": "Memories (Active)"
+    },
+    {
+      "nodeId": "76:6204",
+      "name": "Memories (Past)"
+    },
+    {
+      "nodeId": "46:637",
+      "name": "Navigation Bar"
+    },
+    {
+      "nodeId": "93:8142",
+      "name": "mdi:ticket"
+    },
+    {
+      "nodeId": "165:2447",
+      "name": "heroicons-outline/ticket"
+    },
+    {
+      "nodeId": "165:2449",
+      "name": "heroicons-solid/ticket"
+    },
+    {
+      "nodeId": "165:2452",
+      "name": "heroicons-outline/ticket"
+    },
+    {
+      "nodeId": "165:2455",
+      "name": "heroicons-solid/ticket"
+    },
+    {
+      "nodeId": "75:1086",
+      "name": "Tags"
+    },
+    {
+      "nodeId": "75:1104",
+      "name": "Tag"
+    },
+    {
+      "nodeId": "172:3359",
+      "name": "🦆 icon &quot;view grid&quot;"
+    }
+  ]
+}

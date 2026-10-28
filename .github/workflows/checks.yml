@@ -1,0 +1,73 @@
+name: Setup checks
+on:
+  pull_request:
+  push:
+    branches: [main, setup]
+permissions:
+  contents: read
+jobs:
+  contracts-and-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: npm ci
+      - run: npm run check
+  security-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run test:rules
+      - run: npm run test:seed
+  swift-foundations:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path ui/Packages/DIPContracts
+      - run: swift test --package-path ui/Packages/DIPDesignSystem
+      - run: brew install xcodegen
+      - run: cd ui && xcodegen generate
+
+  session-handoff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Require a new session handoff in the PR/change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/session-log.py check --base "$BASE_SHA"
+
+  functions-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --workspace @dip/functions --include-workspace-root=false
+      - run: npm run build --workspace @dip/functions
+      - run: npm run test --workspace @dip/functions

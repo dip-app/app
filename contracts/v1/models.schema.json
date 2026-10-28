@@ -1,0 +1,1453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DIP draft contract v1",
+  "description": "Setup proposal derived from Sprint 3. No endpoint is implemented. Firestore Timestamp values map to ISO 8601 UTC on JSON boundaries.",
+  "$defs": {
+    "Company": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "logoURL": {
+          "type": "string"
+        },
+        "emailDomain": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "officeLatitude": {
+          "type": "number"
+        },
+        "officeLongitude": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "name",
+        "logoURL",
+        "emailDomain",
+        "city",
+        "officeLatitude",
+        "officeLongitude",
+        "createdAt"
+      ]
+    },
+    "AppUser": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "photoURL": {
+          "type": "string"
+        },
+        "avatarId": {
+          "type": "string"
+        },
+        "department": {
+          "type": "string"
+        },
+        "jobTitle": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "interestTagIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "travelRadiusMiles": {
+          "type": "integer"
+        },
+        "availability": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "friendIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "favoritePhotoIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pointsBalance": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "displayName",
+        "email",
+        "photoURL",
+        "avatarId",
+        "department",
+        "jobTitle",
+        "city",
+        "role",
+        "interestTagIds",
+        "travelRadiusMiles",
+        "availability",
+        "friendIds",
+        "favoritePhotoIds",
+        "pointsBalance",
+        "createdAt"
+      ]
+    },
+    "AppNotification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "targetType": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "isRead": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "companyId",
+        "type",
+        "title",
+        "body",
+        "targetType",
+        "targetId",
+        "isRead",
+        "createdAt"
+      ]
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "sortOrder": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "icon",
+        "sortOrder"
+      ]
+    },
+    "Partner": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "logoURL": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "website": {
+          "type": "string"
+        },
+        "fsqPlaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "category",
+        "website"
+      ]
+    },
+    "Venue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "locality": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "fsqPlaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "phone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "website": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "address",
+        "locality",
+        "latitude",
+        "longitude"
+      ]
+    },
+    "Event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tagIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverImageURL": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "venue": {
+          "$ref": "#/$defs/Venue"
+        },
+        "costCents": {
+          "type": "integer"
+        },
+        "costNote": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "integer"
+        },
+        "pointsValue": {
+          "type": "integer"
+        },
+        "isOutdoor": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "attendeeCount": {
+          "type": "integer"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "companyId",
+        "title",
+        "description",
+        "tagIds",
+        "coverImageURL",
+        "startTime",
+        "endTime",
+        "venue",
+        "costCents",
+        "costNote",
+        "capacity",
+        "pointsValue",
+        "isOutdoor",
+        "status",
+        "attendeeCount",
+        "createdBy",
+        "createdAt",
+        "revision"
+      ]
+    },
+    "RSVP": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userAvatarId": {
+          "type": "string"
+        },
+        "userDepartment": {
+          "type": "string"
+        },
+        "eventStartTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string"
+        },
+        "checkedIn": {
+          "type": "boolean"
+        },
+        "checkedInAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "eventId",
+        "userId",
+        "userName",
+        "userAvatarId",
+        "userDepartment",
+        "eventStartTime",
+        "status",
+        "checkedIn",
+        "createdAt"
+      ]
+    },
+    "EventMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "authorId": {
+          "type": "string"
+        },
+        "authorName": {
+          "type": "string"
+        },
+        "authorAvatarId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "eventId",
+        "authorId",
+        "authorName",
+        "authorAvatarId",
+        "text",
+        "createdAt"
+      ]
+    },
+    "Challenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tagIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "number"
+        },
+        "goalUnit": {
+          "type": "string"
+        },
+        "coverImageURL": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "pointsReward": {
+          "type": "integer"
+        },
+        "participantCount": {
+          "type": "integer"
+        },
+        "completedCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "companyId",
+        "title",
+        "description",
+        "tagIds",
+        "type",
+        "goal",
+        "goalUnit",
+        "coverImageURL",
+        "startDate",
+        "endDate",
+        "pointsReward",
+        "participantCount",
+        "completedCount"
+      ]
+    },
+    "ChallengeSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "challengeId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userAvatarId": {
+          "type": "string"
+        },
+        "photoURL": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "caption": {
+          "type": "string"
+        },
+        "progress": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "challengeId",
+        "userId",
+        "userName",
+        "userAvatarId",
+        "caption",
+        "progress",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PointTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "userId",
+        "amount",
+        "reason",
+        "sourceId",
+        "createdAt"
+      ]
+    },
+    "Reward": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "partnerId": {
+          "type": "string"
+        },
+        "partnerName": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "discountLabel": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "challengeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pointCost": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "imageURL": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "companyId",
+        "partnerId",
+        "partnerName",
+        "title",
+        "headline",
+        "description",
+        "discountLabel",
+        "color",
+        "expiresAt",
+        "isActive"
+      ]
+    },
+    "Redemption": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "rewardId": {
+          "type": "string"
+        },
+        "rewardTitle": {
+          "type": "string"
+        },
+        "partnerName": {
+          "type": "string"
+        },
+        "pointCost": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "code": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "redeemedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "userId",
+        "rewardId",
+        "rewardTitle",
+        "partnerName",
+        "code",
+        "status",
+        "redeemedAt"
+      ]
+    },
+    "Raffle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "prizesDescription": {
+          "type": "string"
+        },
+        "eventsRequired": {
+          "type": "integer"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "drawDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string"
+        },
+        "entryCount": {
+          "type": "integer"
+        },
+        "winnerIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "companyId",
+        "title",
+        "headline",
+        "prizesDescription",
+        "eventsRequired",
+        "startDate",
+        "endDate",
+        "drawDate",
+        "status",
+        "entryCount",
+        "winnerIds"
+      ]
+    },
+    "RaffleEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "raffleId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "enteredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "raffleId",
+        "userId",
+        "userName",
+        "enteredAt"
+      ]
+    },
+    "EventPhoto": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "eventTitle": {
+          "type": "string"
+        },
+        "eventDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "uploaderId": {
+          "type": "string"
+        },
+        "uploaderName": {
+          "type": "string"
+        },
+        "uploaderAvatarId": {
+          "type": "string"
+        },
+        "storagePath": {
+          "type": "string"
+        },
+        "downloadURL": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "commentCount": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "eventId",
+        "eventTitle",
+        "eventDate",
+        "uploaderId",
+        "uploaderName",
+        "uploaderAvatarId",
+        "storagePath",
+        "downloadURL",
+        "caption",
+        "commentCount",
+        "createdAt"
+      ]
+    },
+    "PhotoComment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "photoId": {
+          "type": "string"
+        },
+        "authorId": {
+          "type": "string"
+        },
+        "authorName": {
+          "type": "string"
+        },
+        "authorAvatarId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "photoId",
+        "authorId",
+        "authorName",
+        "authorAvatarId",
+        "text",
+        "createdAt"
+      ]
+    },
+    "EventInvite": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "eventTitle": {
+          "type": "string"
+        },
+        "eventStartTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fromUserId": {
+          "type": "string"
+        },
+        "fromUserName": {
+          "type": "string"
+        },
+        "toUserId": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "eventId",
+        "eventTitle",
+        "eventStartTime",
+        "fromUserId",
+        "fromUserName",
+        "toUserId",
+        "message",
+        "status",
+        "createdAt"
+      ]
+    },
+    "JoinCompanyRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "joinCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "contractVersion",
+        "joinCode",
+        "displayName"
+      ]
+    },
+    "JoinCompanyResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "admin"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "role"
+      ]
+    },
+    "SetRsvpRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "going",
+            "cancelled"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "status"
+      ]
+    },
+    "SetRsvpResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "going",
+            "cancelled"
+          ]
+        },
+        "attendeeCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "eventId",
+        "status",
+        "attendeeCount"
+      ]
+    },
+    "EventDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000
+        },
+        "tagIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverImageURL": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "venue": {
+          "$ref": "#/$defs/Venue"
+        },
+        "costCents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "costNote": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "isOutdoor": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "tagIds",
+        "coverImageURL",
+        "startTime",
+        "endTime",
+        "venue",
+        "costCents",
+        "costNote",
+        "capacity",
+        "isOutdoor"
+      ]
+    },
+    "CreateEventRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "event": {
+          "$ref": "#/$defs/EventDraft"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "event"
+      ]
+    },
+    "CreateEventResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "eventId",
+        "revision"
+      ]
+    },
+    "UpdateEventRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "event": {
+          "$ref": "#/$defs/EventDraft"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "cancelled"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "expectedRevision",
+        "event",
+        "status"
+      ]
+    },
+    "UpdateEventResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "eventId",
+        "revision"
+      ]
+    },
+    "RecordAttendanceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "userId"
+      ]
+    },
+    "RecordAttendanceResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "pointsAwarded": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "eventId",
+        "userId",
+        "pointsAwarded"
+      ]
+    },
+    "ApproveChallengeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "challengeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "challengeId",
+        "userId"
+      ]
+    },
+    "ApproveChallengeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "submissionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "pointsAwarded": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "submissionId",
+        "pointsAwarded"
+      ]
+    }
+  }
+}

@@ -1,0 +1,278 @@
+import Foundation
+import FirebaseFirestore
+
+// MARK: - Companies (companies/{companyId})
+struct Company: Codable, Identifiable {
+    @DocumentID var id: String?
+    var name: String
+    var logoURL: String
+    var joinCode: String
+    var emailDomain: String
+    var city: String
+    var officeLatitude: Double
+    var officeLongitude: Double
+    var createdAt: Date
+}
+
+// MARK: - Users (users/{uid})
+struct AppUser: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var displayName: String
+    var email: String
+    var photoURL: String
+    var avatarId: String
+    var department: String
+    var jobTitle: String
+    var city: String
+    var role: String
+    var interestTagIds: [String]
+    var travelRadiusMiles: Int
+    var availability: [String]
+    var friendIds: [String]
+    var favoritePhotoIds: [String]
+    var pointsBalance: Int
+    var createdAt: Date
+}
+
+// MARK: - Notifications (users/{uid}/notifications/{id})
+struct AppNotification: Codable, Identifiable {
+    @DocumentID var id: String?
+    var userId: String
+    var companyId: String
+    var type: String
+    var title: String
+    var body: String
+    var targetType: String
+    var targetId: String
+    var isRead: Bool
+    var createdAt: Date
+}
+
+// MARK: - Tags (tags/{tagId})
+struct Tag: Codable, Identifiable {
+    @DocumentID var id: String?
+    var name: String
+    var icon: String
+    var sortOrder: Int
+}
+
+// MARK: - Partners (partners/{partnerId})
+struct Partner: Codable, Identifiable {
+    @DocumentID var id: String?
+    var name: String
+    var category: String
+    var address: String?
+    var logoURL: String?
+    var website: String
+    var fsqPlaceId: String?
+}
+
+// MARK: - Events (companies/{c}/events/{eventId})
+struct Venue: Codable {
+    var name: String
+    var address: String
+    var locality: String
+    var latitude: Double
+    var longitude: Double
+    var fsqPlaceId: String?
+    var phone: String?
+    var website: String?
+}
+
+struct Event: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var title: String
+    var description: String
+    var tagIds: [String]
+    var coverImageURL: String
+    var startTime: Date
+    var endTime: Date
+    var venue: Venue
+    var costCents: Int
+    var costNote: String
+    var capacity: Int
+    var pointsValue: Int
+    var isOutdoor: Bool
+    var status: String
+    var attendeeCount: Int
+    var createdBy: String
+    var createdAt: Date
+}
+
+// MARK: - RSVPs (companies/{c}/events/{eventId}/rsvps/{userId})
+struct RSVP: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var eventId: String
+    var userId: String
+    var userName: String
+    var userAvatarId: String
+    var userDepartment: String
+    var eventStartTime: Date
+    var status: String
+    var checkedIn: Bool
+    var checkedInAt: Date?
+    var createdAt: Date
+}
+
+// MARK: - Messages (companies/{c}/events/{eventId}/messages/{id})
+struct EventMessage: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var eventId: String
+    var authorId: String
+    var authorName: String
+    var authorAvatarId: String
+    var text: String
+    var createdAt: Date
+}
+
+// MARK: - Challenges (companies/{c}/challenges/{id})
+struct Challenge: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var title: String
+    var description: String
+    var tagIds: [String]
+    var type: String
+    var goal: Double
+    var goalUnit: String
+    var coverImageURL: String
+    var startDate: Date
+    var endDate: Date
+    var pointsReward: Int
+    var participantCount: Int
+    var completedCount: Int
+}
+
+// MARK: - Submissions (companies/{c}/submissions/{challengeId}_{userId})
+struct ChallengeSubmission: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var challengeId: String
+    var userId: String
+    var userName: String
+    var userAvatarId: String
+    var photoURL: String?
+    var caption: String
+    var progress: Double
+    var status: String
+    var createdAt: Date
+    var updatedAt: Date
+}
+
+// MARK: - Point transactions (companies/{c}/pointTransactions/{id})
+struct PointTransaction: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var userId: String
+    var amount: Int
+    var reason: String
+    var sourceId: String
+    var createdAt: Date
+}
+
+// MARK: - Rewards (companies/{c}/rewards/{id})
+struct Reward: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var partnerId: String
+    var partnerName: String
+    var title: String
+    var headline: String
+    var description: String
+    var discountLabel: String
+    var color: String
+    var challengeId: String?
+    var pointCost: Int?
+    var imageURL: String?
+    var remaining: Int?
+    var expiresAt: Date
+    var isActive: Bool
+}
+
+// MARK: - Redemptions (companies/{c}/redemptions/{id})
+struct Redemption: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var userId: String
+    var rewardId: String
+    var rewardTitle: String
+    var partnerName: String
+    var pointCost: Int?
+    var code: String
+    var status: String
+    var redeemedAt: Date
+}
+
+// MARK: - Raffles (companies/{c}/raffles/{raffleId})
+struct Raffle: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var title: String
+    var headline: String
+    var prizesDescription: String
+    var eventsRequired: Int
+    var startDate: Date
+    var endDate: Date
+    var drawDate: Date
+    var status: String
+    var entryCount: Int
+    var winnerIds: [String]
+}
+
+// MARK: - Raffle entries (companies/{c}/raffles/{raffleId}/entries/{userId})
+struct RaffleEntry: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var raffleId: String
+    var userId: String
+    var userName: String
+    var enteredAt: Date
+}
+
+// MARK: - Photos (companies/{c}/photos/{photoId})
+struct EventPhoto: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var eventId: String
+    var eventTitle: String
+    var eventDate: Date
+    var uploaderId: String
+    var uploaderName: String
+    var uploaderAvatarId: String
+    var storagePath: String
+    var downloadURL: String
+    var caption: String
+    var commentCount: Int
+    var createdAt: Date
+}
+
+// MARK: - Photo comments (companies/{c}/photos/{photoId}/comments/{id})
+struct PhotoComment: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var photoId: String
+    var authorId: String
+    var authorName: String
+    var authorAvatarId: String
+    var text: String
+    var createdAt: Date
+}
+
+// MARK: - Invites (companies/{c}/invites/{id}) - planned for v2
+struct EventInvite: Codable, Identifiable {
+    @DocumentID var id: String?
+    var companyId: String
+    var eventId: String
+    var eventTitle: String
+    var eventStartTime: Date
+    var fromUserId: String
+    var fromUserName: String
+    var toUserId: String
+    var message: String
+    var status: String
+    var createdAt: Date
+}
