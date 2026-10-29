@@ -4,6 +4,7 @@ final class ComponentInteractionTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testCallbacksAndNativeTabs() {
         let app = XCUIApplication()
+        app.launchArguments.append("--gallery")
         app.launch()
         let card = app.buttons["foundation.event-card"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
@@ -29,6 +30,7 @@ final class ComponentInteractionTests: XCTestCase {
     }
     @MainActor func testProfileAndRetryCallbacksHideUnavailableActions() {
         let app = XCUIApplication()
+        app.launchArguments.append("--gallery")
         app.launch()
         let profile = app.buttons["Open profile for Alex Morgan"]
         XCTAssertTrue(profile.waitForExistence(timeout: 10))
@@ -44,6 +46,7 @@ final class ComponentInteractionTests: XCTestCase {
     @MainActor func testAccessibilityTextKeepsActionsReachable() {
         let app = XCUIApplication()
         app.launchArguments = ["--large-text"]
+        app.launchArguments.append("--gallery")
         app.launch()
         XCTAssertTrue(app.buttons["foundation.event-card"].waitForExistence(timeout: 10))
         let card = app.buttons["foundation.event-card"]

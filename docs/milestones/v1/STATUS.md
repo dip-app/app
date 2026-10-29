@@ -4,7 +4,7 @@ Last updated: October 29, 2026. This is the starting assignment board. Once a pa
 
 | Work packet | Status | Human owner | Issue / branch / PR | Dependency and next action |
 | --- | --- | --- | --- | --- |
-| [01 UI foundations](01-ui-foundations/README.md) | In review | sandervonk | [Issue #2](https://github.com/dip-app/app/issues/2), `feature/ui-foundations` | V1 component candidates and simulator gallery implemented; manual accessibility/design review and asset approvals remain. |
+| [01 UI foundations](01-ui-foundations/README.md) | In review | sandervonk | [Issue #2](https://github.com/dip-app/app/issues/2), [PR #3](https://github.com/dip-app/app/pull/3), `feature/ui-foundations` | Native Home fixture and original resources implemented; same-viewport comparison and geometry/action checks recorded. Manual accessibility/design review remains. |
 | [02 Accounts/profile](02-accounts-profile/README.md) | Ready against fixtures | Unassigned | None yet | Confirm membership contract and project/emulator wiring; provide auth/membership context to the other streams. |
 | [03 Events/participation](03-events-participation/README.md) | Ready against fixtures | Unassigned | None yet | Implement from event/RSVP contracts; live flow needs accounts plus reviewed rules/export integration. |
 | [04 Organizer events](04-organizer-events/README.md) | Ready against fixtures | Unassigned | None yet | Confirm revision and retry contract; live flow needs admin membership plus reviewed rules/exports. |

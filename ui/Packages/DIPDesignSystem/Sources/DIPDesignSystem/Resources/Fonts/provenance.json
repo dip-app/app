@@ -1,0 +1,37 @@
+[
+  {
+    "file": "Figtree[wght].ttf",
+    "source": "https://github.com/google/fonts/tree/main/ofl/figtree",
+    "sha256": "26ad3db9b31ff7dde67a91ff515d022d2f495cd506590699cf264f0bfe6fb714",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
+  },
+  {
+    "file": "FjallaOne-Regular.ttf",
+    "source": "https://github.com/google/fonts/tree/main/ofl/fjallaone",
+    "sha256": "ce3b299625abe3c76f8acd235b57b3e07ac6ee2d550e106a4b4e4d60095ae2ba",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
+  },
+  {
+    "file": "Inter-LightItalic.otf",
+    "source": "https://github.com/rsms/inter/releases/tag/v3.19",
+    "sha256": "9e9b0aa66832affca1f1bed090eb7b49236de1ac7b7e81f8c7c80864de49a974",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
+  },
+  {
+    "file": "Inter-Medium.otf",
+    "source": "https://github.com/rsms/inter/releases/tag/v3.19",
+    "sha256": "99dab2bdcb613c4c8264000a94351d1227f74dc95a86d1249493aeee0c0179c4",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
+  },
+  {
+    "file": "Inter-Regular.otf",
+    "source": "https://github.com/rsms/inter/releases/tag/v3.19",
+    "sha256": "a7e791e8f5a0fb02b65663f7fca73e1d1ca9543f772ad480cbd76f4e3fe3f8cc",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
+  }
+]

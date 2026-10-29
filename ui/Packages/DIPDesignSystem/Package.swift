@@ -6,7 +6,7 @@ let package = Package(
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [.library(name: "DIPDesignSystem", targets: ["DIPDesignSystem"])],
     targets: [
-        .target(name: "DIPDesignSystem"),
+        .target(name: "DIPDesignSystem", resources: [.process("Resources")]),
         .testTarget(name: "DIPDesignSystemTests", dependencies: ["DIPDesignSystem"])
     ]
 )

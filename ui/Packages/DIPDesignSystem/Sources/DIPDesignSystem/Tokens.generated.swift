@@ -44,6 +44,8 @@ public enum DIPTokens {
         public static let challengeAccent = RGBColor(hex: "#FB72E4", red: 251.0 / 255.0, green: 114.0 / 255.0, blue: 228.0 / 255.0)
         /// Source: figma.
         public static let notificationAccent = RGBColor(hex: "#FFCC3E", red: 255.0 / 255.0, green: 204.0 / 255.0, blue: 62.0 / 255.0)
+        /// Source: figma.
+        public static let headerTitle = RGBColor(hex: "#FFFFFF", red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0)
     }
     public enum Spacing {
         public static let compact: Double = 5

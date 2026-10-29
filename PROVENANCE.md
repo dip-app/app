@@ -17,7 +17,7 @@ The schedule supplies release commitments; Firebase Architecture and Models.swif
 
 - File: DCIagJo7uk5IOUGqlKzAjf; Home node 35:147. Read October 28, 2026 through official Figma MCP (session a2fed281-e2da-46e9-aea3-e86f64c82c24). Metadata, design context and screenshot inspected. The Final page metadata inventory was also retrieved (docs/design/figma-inventory.json). Only Home had full design context and screenshot reviewed; other screens/components have not been visually audited.
 - Canonical link: https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/Team-05-High-Fidelity-Prototype--with-links-?node-id=35-147&m=dev
-- Observed token colors, typography names, geometry and component node map are recorded in ui/DesignSystem/tokens.json and docs/design. Proposed accessibility values are labeled proposal. No temporary asset URLs, fonts, screenshot-as-UI, or unverified Code Connect mappings are shipped.
+- Observed token colors, typography names, geometry and component node map are recorded in ui/DesignSystem/tokens.json and docs/design. Proposed accessibility values are labeled proposal. Fonts and individual Home assets are now bundled for the prototype fixture; see [asset provenance](docs/design/asset-provenance.md). Temporary asset URLs, screenshot-as-UI and unverified Code Connect mappings are not shipped.
 
 ## Setup-derived decisions and generated artifacts
 
@@ -42,4 +42,4 @@ On October 28, the audit checked current Git/CI state and GitHub repository admi
 
 ## UI foundations implementation evidence
 
-On October28, Figma MCP session be39ee55-d9c7-4f0a-9060-c6a86dbffcc7 inspected nodes 46:276, 46:1162, 168:2951, 46:668 and 46:1397 for V1 component implementation. Source mapping, system-control/readability adaptations and screenshots are recorded under ui/ComponentPreview/Review. During visual testing, already-loaded reference image inputs were downloaded into a temporary simulator host; raw media, temporary URLs and custom fonts are not shipped as application assets. The components accept images from their consumer and provide explicit fallback states.
+On October28, Figma MCP session be39ee55-d9c7-4f0a-9060-c6a86dbffcc7 inspected nodes 46:276, 46:1162, 168:2951, 46:668 and 46:1397 for V1 component implementation. On October 29, the user required fidelity to the original prototype, superseding the earlier gallery adaptations. Home 35:147 was re-read in the same session. Original individual illustrations, avatars, photos and SVG icons are bundled for local presentation fixtures, with SHA-256 hashes in the package resource manifest. Figtree and Fjalla One come from Google Fonts; Inter 3.19 comes from its upstream release to match the prototype metrics. OFL licenses are bundled. Image rights are not established by the Figma export; see [asset provenance](docs/design/asset-provenance.md). Screenshot comparison evidence is under ui/ComponentPreview/Review. No screenshot is used as the screen implementation.

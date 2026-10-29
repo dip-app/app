@@ -19,6 +19,7 @@ targets:
     sources:
       - App
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
+      - ../DIP/Features/Home/DIPHomeScreen.swift
     dependencies:
       - package: DIPDesignSystem
     settings:

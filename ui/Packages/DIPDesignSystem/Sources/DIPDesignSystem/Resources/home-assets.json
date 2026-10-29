@@ -1,0 +1,112 @@
+[
+  {
+    "name": "AvatarPink",
+    "figmaAsset": "f2be8.png",
+    "sha256": "4a95e405435d7a6c8f0145271f6b4ff44e858b516fc07afbd5bfdbbfa2fdf2d4"
+  },
+  {
+    "name": "AvatarRed",
+    "figmaAsset": "8e242.png",
+    "sha256": "54e8af9194d2ba6295edc0bc488f51ed5b733835cb9305f97d7e8f66589eb328"
+  },
+  {
+    "name": "AvatarTeal",
+    "figmaAsset": "f69a0.png",
+    "sha256": "0bad70556e6c43392551c20078b595c991f5adf94cd92f67831cdf7f07fd4f5c"
+  },
+  {
+    "name": "Image",
+    "figmaAsset": "0702d.png",
+    "sha256": "1ee4d0c989df3affb472594f0fc283883cfb4cee4486719f158ca79fed4688ee"
+  },
+  {
+    "name": "Mascot",
+    "figmaAsset": "94874.png",
+    "sha256": "5c4fc1ce316cfccd68381531a5ba24ad79934c1dc5846347e825b8ed40a9ca05"
+  },
+  {
+    "name": "CoworkerProfilePicture",
+    "figmaAsset": "34f9e.png",
+    "sha256": "0e71290fe08611263fc1cf89f8caae828ed5e92ce77fe2ccb454a62b4926589a"
+  },
+  {
+    "name": "EventCard",
+    "figmaAsset": "0bb58.png",
+    "sha256": "d40d499282ac8917257403b469cce0a5e9a40947ab14503313b34ce6e75a1aae"
+  },
+  {
+    "name": "CoworkerProfilePicture1",
+    "figmaAsset": "f2f2b.png",
+    "sha256": "8bc1acb135661ab67d418ef68a3acf7136f25ed3bac538ff86b686a2fd186560"
+  },
+  {
+    "name": "EventCard1",
+    "figmaAsset": "4ca2f.png",
+    "sha256": "bcc7dad715bfac6539472eddea42a0d4ce78cb53233785a04621cd26d671722c"
+  },
+  {
+    "name": "CoworkerProfilePicture2",
+    "figmaAsset": "b776c.png",
+    "sha256": "86574d4122240e05f555ef1703ee3050383d4c028e7662c6a82fcce82be34ec6"
+  },
+  {
+    "name": "EventCard2",
+    "figmaAsset": "bfcd9.png",
+    "sha256": "7b8f108f0e6d6b7fc896466eac033af7da33c67c84425172e0dba69ac408d7a4"
+  },
+  {
+    "name": "CoworkerProfilePicture3",
+    "figmaAsset": "7cb0e.png",
+    "sha256": "5f9e09644a0ae818cf677e53029ac4b3dcb421a401d286bbd7ed309613ee7e74"
+  },
+  {
+    "name": "CoworkerProfilePicture4",
+    "figmaAsset": "98354.png",
+    "sha256": "62852e66bad95f064eb12bf67648f4d0ada9bd9b0390ca62ef49b70dd7f1165b"
+  },
+  {
+    "name": "CoworkerProfilePicture5",
+    "figmaAsset": "76205.png",
+    "sha256": "2efe9f607d5668623cd556e9cd8564cb8988f8a1be264923e8957b6ff382aff0"
+  },
+  {
+    "name": "CoworkerProfilePicture6",
+    "figmaAsset": "20f6b.png",
+    "sha256": "c59f1dbe12e2784550ea2db2c7833c70db41addf3caeccc7125480ea4a1e4716"
+  },
+  {
+    "name": "CoworkerProfilePicture7",
+    "figmaAsset": "6103e.png",
+    "sha256": "9831b4a4f5a3d483ded9997a68ecdb98b57d5146d6188a4bc2492712e8bcdad2"
+  },
+  {
+    "name": "HeroiconsOutlineBellAlert",
+    "figmaAsset": "17e7b.svg",
+    "sha256": "91e7d462a84b7c12056c935b2848e412dcf04a304c2a387bf6a3c687623d06b6"
+  },
+  {
+    "name": "Separator",
+    "figmaAsset": "20f18.svg",
+    "sha256": "6834d52cd7870cbdd795d8b79b523dfdffe7177a8a595ccb91c50a468128f64e"
+  },
+  {
+    "name": "HeroiconsSolidHome",
+    "figmaAsset": "67210.svg",
+    "sha256": "7c152981f2f70265645f9eb92a68ccfa39a0046d7b090c1641746281d62e7b4e"
+  },
+  {
+    "name": "HeroiconsOutlineTicket",
+    "figmaAsset": "409db.svg",
+    "sha256": "ea34111708ac16a19372bc585cda5dc33b9cabd8fa92b0650c16c74bc07a4499"
+  },
+  {
+    "name": "HeroiconsOutlineSquares2X2",
+    "figmaAsset": "ac182.svg",
+    "sha256": "d5436ece152d957688956be30323eb2a87e6d7a54b3eabffeacc5ff959f38f50"
+  },
+  {
+    "name": "HeroiconsOutlineUserCircle",
+    "figmaAsset": "80f1f.svg",
+    "sha256": "10066754514c01e18892cb53897721b9472acf624865c3cdbcb0adad4a5a2446"
+  }
+]
