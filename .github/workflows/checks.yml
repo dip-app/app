@@ -39,7 +39,9 @@ jobs:
       - run: npm run test:rules
       - run: npm run test:seed
   swift-foundations:
-    runs-on: macos-latest
+    # Avoid the ARM pool that failed to acquire a runner; keep the same Swift/simulator checks.
+    runs-on: macos-15-intel
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ui/Packages/DIPContracts
