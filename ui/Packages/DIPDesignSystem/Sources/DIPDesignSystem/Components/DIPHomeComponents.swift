@@ -8,7 +8,7 @@
         private static let registration: Void = {
             for file in [
                 "Figtree[wght].ttf", "FjallaOne-Regular.ttf", "Inter-Regular.otf", "Inter-Medium.otf",
-                "Inter-LightItalic.otf",
+                "Inter-LightItalic.otf", "Inter-Light.otf", "Inter-Italic.otf",
             ] {
                 let name = (file as NSString).deletingPathExtension
                 let ext = (file as NSString).pathExtension
@@ -212,9 +212,21 @@
         }
     }
     public struct DIPFloatingNavigation: View {
+        let selected: DIPHomeTab
         let onSelect: (DIPHomeTab) -> Void
-        /// Only the Home visual state is implemented; other destinations are activation callbacks.
-        public init(onSelect: @escaping (DIPHomeTab) -> Void) { self.onSelect = onSelect }
+        public init(selected: DIPHomeTab = .home, onSelect: @escaping (DIPHomeTab) -> Void) {
+            self.selected = selected
+            self.onSelect = onSelect
+        }
+        private func asset(for tab: DIPHomeTab) -> String {
+            switch tab {
+            case .home: return selected == .home ? "HeroiconsSolidHome" : "profile_HeroiconsOutlineHome"
+            case .events: return selected == .events ? "events_HeroiconsSolidSquares2X2" : "HeroiconsOutlineSquares2X2"
+            case .profile:
+                return selected == .profile ? "profile_HeroiconsSolidUserCircle" : "HeroiconsOutlineUserCircle"
+            case .rewards: return "HeroiconsOutlineTicket"
+            }
+        }
         public var body: some View {
             HStack(spacing: 0) {
                 ForEach(DIPHomeTab.allCases) { tab in
@@ -222,17 +234,17 @@
                     Button {
                         onSelect(tab)
                     } label: {
-                        DIPReferenceAssets.image(tab.asset).resizable()
+                        DIPReferenceAssets.image(asset(for: tab)).resizable()
                             .frame(width: tab == .events ? 24 : 30, height: tab == .events ? 24 : 30)
                             .frame(width: 80, height: 80)
                             .background {
-                                if tab == .home { Circle().fill(.white).frame(width: 60, height: 60) }
+                                if tab == selected { Circle().fill(.white).frame(width: 60, height: 60) }
                             }
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel(tab.rawValue)
                     .accessibilityIdentifier("home.tab.\(tab.id)")
-                    .accessibilityAddTraits(tab == .home ? .isSelected : [])
+                    .accessibilityAddTraits(tab == selected ? .isSelected : [])
                 }
             }
             .buttonStyle(.plain)

@@ -13,6 +13,7 @@ import numpy as np
 from PIL import Image, ImageChops, ImageDraw
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--name", default="home")
 parser.add_argument("--figma", required=True, type=Path)
 parser.add_argument("--simulator", required=True, type=Path)
 parser.add_argument("--output", type=Path, default=Path(__file__).parent / "Review")
@@ -29,14 +30,14 @@ if scale < 1 or actual.size != (402 * scale, 874 * scale):
     raise SystemExit("Simulator must have a 402x874 logical viewport at an integer pixel scale.")
 actual = actual.resize(reference.size, Image.Resampling.LANCZOS)
 args.output.mkdir(parents=True, exist_ok=True)
-reference.save(args.output / "figma-home.png")
+reference.save(args.output / f"figma-{args.name}.png")
 actual.save(args.output / "reference-standard.png")
 pair = Image.new("RGB", (804, 874), "white")
 pair.paste(reference)
 pair.paste(actual, (402, 0))
-pair.save(args.output / "home-comparison.png")
-Image.blend(reference, actual, 0.5).save(args.output / "home-overlay.png")
-ImageChops.difference(reference, actual).save(args.output / "home-difference.png")
+pair.save(args.output / f"{args.name}-comparison.png")
+Image.blend(reference, actual, 0.5).save(args.output / f"{args.name}-overlay.png")
+ImageChops.difference(reference, actual).save(args.output / f"{args.name}-difference.png")
 # Exclude native OS status/home-indicator chrome and pixels outside Figma's rounded frame.
 mask_image = Image.new("L", (402, 874), 0)
 ImageDraw.Draw(mask_image).rounded_rectangle((0, 0, 401, 873), radius=60, fill=255)
@@ -56,5 +57,5 @@ report = {
     "pixelsWithAnyChannelDifferenceOver10Percent": round(float((pixels.max(axis=1) > 10).mean() * 100), 4),
     "note": "Figma and iOS use different rasterizers. This is not a zero-difference or approval claim."
 }
-(args.output / "home-comparison.json").write_text(json.dumps(report, indent=2) + "\n")
+(args.output / f"{args.name}-comparison.json").write_text(json.dumps(report, indent=2) + "\n")
 print(json.dumps(report, indent=2))

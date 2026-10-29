@@ -4,19 +4,7 @@ import SwiftUI
 /// Deterministic presentation fixture matching Figma Home 35:147.
 /// Counts, avatars and events are prototype content, never authoritative server data.
 struct DIPHomeFixturePreview: View {
-    @State private var destination: String?
-    var body: some View {
-        DIPHomeScreen { destination = $0 }
-            .alert(
-                "Prototype preview",
-                isPresented: Binding(
-                    get: { destination != nil }, set: { if !$0 { destination = nil } })
-            ) {
-                Button("OK") { destination = nil }
-            } message: {
-                Text("\(destination ?? "") is not connected yet.")
-            }
-    }
+    var body: some View { DIPPrototypeApp() }
 }
 
 struct DIPHomeScreen: View {
@@ -99,6 +87,7 @@ struct DIPHomeScreen: View {
                     }
                     .scrollIndicators(.hidden)
                 }
+                .padding(.bottom, 22)
                 DIPFloatingNavigation { if $0 != .home { onSelect($0.rawValue) } }
                     .padding(.horizontal, 20)
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 61)

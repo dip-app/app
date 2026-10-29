@@ -20,4 +20,4 @@ if not args.device:
 derived = args.derived_data or Path(tempfile.mkdtemp(prefix='dip-component-preview-'))
 print(f'Simulator: {args.device}; derived data: {derived}', flush=True)
 subprocess.run(['xcodegen', 'generate', '--spec', str(root / 'project.yml')], check=True)
-subprocess.run(['xcodebuild', '-project', str(root / 'DIPFoundationPreview.xcodeproj'), '-scheme', 'Preview', '-destination', f'platform=iOS Simulator,id={args.device}', '-derivedDataPath', str(derived), '-parallel-testing-enabled', 'NO', 'CODE_SIGNING_ALLOWED=NO', 'test'], check=True)
+subprocess.run(['xcodebuild', '-project', str(root / 'DIPFoundationPreview.xcodeproj'), '-scheme', 'Preview', '-destination', f'platform=iOS Simulator,id={args.device}', '-derivedDataPath', str(derived), '-parallel-testing-enabled', 'NO', '-collect-test-diagnostics', 'never', 'CODE_SIGNING_ALLOWED=NO', 'test'], check=True)

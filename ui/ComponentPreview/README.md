@@ -1,6 +1,6 @@
-# UI foundations preview host
+# Native prototype preview host
 
-This development-only app has no Firebase dependency. Its default destination is the native SwiftUI Home fixture, using matching Figma content and bundled resources. It is a visual implementation fixture, not a completed account, event, challenge or rewards workflow. The DIP app startup also presents this fixture until account/repository integration is implemented.
+This separate development app has no Firebase dependency. It defaults to DIPPrototypeApp at Home and connects Event Details, My Events, Profile, Participants and Album using local fixtures. DIP startup presents the same prototype. The optional developer state gallery remains available with --gallery.
 
 From the repository root, with Xcode, an installed iPhone simulator runtime and XcodeGen:
 
@@ -8,8 +8,30 @@ From the repository root, with Xcode, an installed iPhone simulator runtime and 
 python3 ui/ComponentPreview/verify.py
 ```
 
-Pass `--device UDID` to choose a specific simulator and `--derived-data /tmp/dip-preview-build` to reuse build output. The script's automatic choice is suitable for interaction checks; visual comparison must explicitly select a device matching Home's 402 × 874 point viewport. Open `ui/ComponentPreview/DIPFoundationPreview.xcodeproj`, scheme `Preview`, for manual review.
+Pass --device UDID to select a simulator and --derived-data /tmp/dip-preview-build to reuse output. Automatic selection is suitable for interactions; visual comparison requires a 402 × 874 logical viewport. Open ui/ComponentPreview/DIPFoundationPreview.xcodeproj, scheme Preview, for manual review.
 
-The host uses light appearance. Launch with `--gallery` to inspect the earlier interactive component gallery; `--large-text` requests Accessibility 3 text for applicable review. Gallery callbacks only update local messages and counters. Home interactions are presentation/navigation fixtures and do not mutate Firebase or imply that destination workflows are implemented.
+## Review destinations
 
-The Home revision replaces the earlier gallery screenshot as the primary visual review target. Home geometry/action tests, original font registration checks and same-viewport image comparison have passed; measured raster differences and remaining manual reviews are recorded. Tests and screenshots must be described by the screen and states they actually exercise; gallery tests alone do not validate Home. See [review notes](Review/README.md) and [asset provenance](../../docs/design/asset-provenance.md).
+Set an Xcode scheme launch argument or simulator launch argument:
+
+| Argument | Initial state |
+| --- | --- |
+| --screen=home | Original Home; default |
+| --screen=event | Puppy Yoga before joining |
+| --screen=event-joined | Original Joined state |
+| --screen=events | My Events, Active Events |
+| --screen=memories | My Events, Memories |
+| --screen=profile | Original Profile |
+| --screen=attendees | 17 Participants |
+| --screen=album | Original Album |
+| --gallery | Earlier isolated component/state gallery |
+
+--large-text requests Accessibility 3 for applicable review. It does not imply the exact standard-size reference has a reviewed large-text equivalent. Only light appearance is supplied.
+
+## Interaction boundaries
+
+Navigation, join state, profile edits, chat messages and local photo imports work in the prototype. State is local; these are not Firebase account, authorization, persistence, RSVP, chat or upload implementations. Native ShareLink/system sheets handle sharing. Rewards, notifications and challenge workflows remain explicit notices.
+
+Only Puppy Yoga has supplied detail/Joined frames. Other events use synthetic details in the same template, and all memory links open the provided reference album. Supporting edit/chat/photo-viewer/system-picker UI has no corresponding supplied high-fidelity frame.
+
+All eight simulator tests, asset/font checks and same-viewport comparisons are complete; numerical differences and manual-review limits are recorded. Home's previous evidence remains in Review; expanded state artifacts belong under Review/Screens/<screen>. See [review notes](Review/README.md), [asset provenance](../../docs/design/asset-provenance.md) and the active session before claiming completion.

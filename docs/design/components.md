@@ -1,42 +1,55 @@
 # Component contracts and Figma map
 
-Status: **Home fidelity implementation available for review on feature/ui-foundations / PR #3**. The native Home fixture must match the original Figma, including prototype challenge content and four-icon navigation. The earlier interactive component gallery remains optional through `--gallery`. Live product workflows, including V2 challenge/rewards behavior, are not implemented. Fresh Home comparison and simulator geometry/action verification are recorded in the review notes.
+Status: connected prototype implementation on feature/ui-foundations / [PR #3](https://github.com/dip-app/app/pull/3). Home, Event Details/Joined, My Events/Memories, Profile, Participants and Album use original Figma resources. Expanded visual evidence and all eight simulator checks are recorded in the review notes. The optional --gallery implementation is a state/API laboratory, not the visual target for new screen consumers.
 
-Source: [Team 05 High Fidelity Prototype](https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/Team-05-High-Fidelity-Prototype--with-links-?node-id=35-147&m=dev). File key `DCIagJo7uk5IOUGqlKzAjf`. Home node `35:147` was inspected through Figma MCP on October 28–29, 2026. The prototype includes later-version content; it does not define release scope.
+Source: [Team 05 prototype](https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/Team-05-High-Fidelity-Prototype--with-links-?node-id=35-147&m=dev), file DCIagJo7uk5IOUGqlKzAjf. See [working agreement](README.md), [source provenance](asset-provenance.md) and [review evidence](../../ui/ComponentPreview/Review/README.md).
 
-| Proposed component | Figma node | Inputs and outputs | Required states and constraints |
-| --- | --- | --- | --- |
-| Header presentation | `46:276` Header Bar | title, unread count, loaded avatar, notification/profile callbacks | Home uses white-on-purple title and original notification/profile pill; fixture count 5; meaningful VoiceOver names; no fetching |
-| Home event card | `46:1162` Event Card | original photo, title, locality, attendee images/count, activation callback | Match image-overlay layout, crop, 163 × 205 size and typography; one activation target; accessible metadata. Gallery DIPEventCard remains a separate adapted API pending reconciliation. |
-| `DIPAvatar` / `DIPAvatarGroup` | `168:2951` Coworker Profile Picture | caller-supplied loaded Image, accessible name, size, displayed avatars and overflow count | Missing image fallback; decorative avatars hidden from VoiceOver if nearby text repeats the name; avoid exposing raw URLs |
-| Home navigation | `46:668` Navigation Bar/Home | Home-selected visual state and destination activation callback | Match dark four-icon pill and white Home circle; other selected-state variants are not implemented. original icons with VoiceOver names/selected traits. Gallery DIPTabBar remains a native three-tab API and is not the Home visual target. |
-| Home challenge card | `46:1017` Activity | category, original mascot, participation images/count, activation callback | Include identical Fitness / 128 fixture content for Home comparison. This is presentation only; V2 challenge backend/workflows remain deferred. |
-| `DIPButton` | `46:2091`, `46:1410` Join actions (Event Page `46:1397`) | label, semantic role, loading, enabled, callback | Default, pressed, disabled, loading; minimum 44 pt touch target; no duplicate event Join actions |
-| `DIPStateView` | native ProgressView/ContentUnavailableView proposal | loading / empty / error presentation, optional retry callback | Distinct loading and empty states; retry labels describe the action; no raw backend errors |
+## Shared visual components
 
-These are presentation contracts, separate from transport models. Feature code maps shared contract objects to component inputs. Avoid passing Firestore snapshots or callable clients to components.
+| Component | Figma node | Inputs and behavior |
+| --- | --- | --- |
+| DIPHomeHeader | 46:276 | Title, unread count and notification/profile callbacks. Original white-on-purple text and avatar/count resource fixture; no fetching. |
+| DIPPhotoEventCard | 46:1162 | Title/locality, resource image/avatars, count, width/shade and activation callback; full-photo overlay layout. |
+| DIPFloatingNavigation | Home 46:668; selected variants in My Events/Profile | Selected destination and activation callback; original Home/My Events/Profile selected SVG states, four-icon pill, VoiceOver selected traits. Rewards workflow remains a notice. |
+| DIPChallengeCard | 46:1017 | Category, participation count/avatars and callback; original mascot and Fitness/128 reference fixture; no challenge command. |
+| DIPReferenceAssets | Original individual exports | Bundled image lookup and registered named fonts; temporary URLs never enter feature code. |
+| DIPAvatar / DIPAvatarGroup | 168:2951 | Loaded image/name inputs, size and aggregate count; explicit fallback and decorative-accessibility handling. |
 
-For each implementation PR, add a small contract file or documentation section covering API, state table, VoiceOver, Dynamic Type, asset provenance, previews, and Figma node link. Add a real Code Connect mapping only after that component exists and its variants match the design. No mapping is registered in this setup.
+Presentation contracts differ from transport DTOs. Map domain values at the feature boundary; never pass Firestore snapshots, callable clients or server-owned write authority into these views.
 
-## Ownership and handoff
+## Screen composition and local state
 
-The UI foundations workstream implements and reviews these reusable components under `ui/Packages/DIPDesignSystem`. It owns the component contracts, tokens, accessibility behavior, previews, and tests. Feature owners map their domain/transport data to presentation inputs and own feature layouts in `ui/DIP/Features`. Backend owners do not edit presentation components. Agree on any API change in this specification before dependent agents change consumers.
+| Screen/API | Source frame | Boundary |
+| --- | --- | --- |
+| DIPPrototypeApp | Supplied screen relationships | Owns selected tab, route stack and local joined-event IDs. Direct launch via --screen=...; no Firebase initialization or authorization. |
+| DIPHomeScreen | 35:147 | Original Home, activation callback into prototype root. |
+| DIPEventDetailsScreen | 46:1397 / 76:1742 | Event fixture, initial Joined state, back/attendee/join callbacks. Puppy Yoga has original reference data. Both original Join affordances share the local transition; Joined opens local chat. Native ShareLink shares event text. |
+| DIPMyEventsScreen | 76:6032 / 76:6204 | Active/Memory selection and tab/event/album callbacks. Reference cards/grid remain deterministic; no live RSVP query. |
+| DIPProfileScreen | 76:4016 | Tab/memory callbacks, original curved header/portrait/tags/mosaic. Native edit form changes local preview name, department, city and interests; empty name cannot save. |
+| DIPParticipantsScreen | 76:4932 | Back/chat callbacks and all17 original participant rows; no roster query or user lookup. |
+| DIPAlbumScreen | 46:1995 | Back callback; original album, local photo imports/viewing, native sharing. No cloud upload or photo authorization adapter. |
+| DIPEventChatFixture | Annotation only; no high-fidelity chat frame | Local messages/composer supporting screen; no server, membership check or persistent chat. |
 
-For a new component, the handoff is: claim component files, review the exact Figma node, propose the SwiftUI initializer and state table here, implement it with semantic tokens, and provide previews/tests and consumer migration notes. Consumers may use their own temporary local presentation stubs while implementation is pending, but must not add competing shared components.
+Other events use synthetic detail data in the same Puppy Yoga view template. Every memory entry opens the same supplied reference album. These are explicit fixture boundaries, not proof that all production destinations/data variants are implemented.
 
-## Existing gallery APIs and state handoff
+## State and accessibility handoff
 
-These APIs describe the retained gallery implementation. They are not evidence that Home matches Figma. The October 29 fidelity direction supersedes their visual substitutions for Home; confirm a shared API migration with consumers before treating the fixture as production composition.
+Use identical mock content for standard-size screenshot review. Preserve original typography, photo crops and selected navigation. Supporting native forms/sheets have no supplied exact reference. Manual large text, VoiceOver, contrast, RTL and physical-device review remain open.
 
-| API | Candidate input / behavior |
+Original white-on-purple/yellow accents and duplicate Join affordances are retained for fidelity; do not claim the source usability concerns are resolved. Production integration must reconcile those findings explicitly rather than quietly changing the comparison target.
+
+Feature owners supply loaded/authorized media and asynchronous repository state. Foundation code owns reusable rendering/callback APIs; no backend side effects occur here. Coordinate token, resource, package and API changes with the integrator before dependent agents edit consumers. Verified Code Connect mappings are still absent.
+
+## Retained gallery APIs
+
+The gallery remains accessible with --gallery. DIPHeader, DIPEventCard and DIPTabBar contain earlier system/readability adaptations; do not treat them as the exact Figma screen standard. Review/migrate their APIs before using them in a new visual feature.
+
+| API | Candidate behavior |
 | --- | --- |
-| DIPHeader | title, optional person/loaded avatar, unread count, optional profile/notification callbacks. Absent callbacks hide unavailable actions; accessibility text stacks controls. |
-| DIPEventCard | DIPEventCardContent, DIPEventImage, attendee identities and image resolver, one activation callback. Missing strings get explicit unconfirmed labels; date/location/attendance and joined value are accessible. |
-| DIPAvatar / DIPAvatarGroup | Stable IDs and names plus already-loaded images. Initials/person fallback; deduplicated visible identities and nonnegative overflow; aggregate attendee label. Decorative instances are hidden when redundant. |
-| DIPTabBar | Binding<DIPDestination> plus destination content. Native TabView, labeled Home/My Events/Profile, calendar icon and native selected trait. No V2 reward tab. |
-| DIPButton | title, primary/secondary/destructive emphasis, feature-owned loading/enabled flags and callback. Loading/disabled buttons cannot activate; loading retains the action's accessible name and adds In progress. |
-| DIPStateView | loading/empty/failure state with user-facing strings, optional retry title/callback for failure. No raw backend errors or data loading. |
+| DIPHeader | Optional person/image/count and callbacks; unavailable controls hidden; large-text stacking. |
+| DIPEventCard | DIPEventCardContent, image state, attendee identities/resolver and callback; date/location/attendance/joined metadata. |
+| DIPTabBar | Binding to Home/My Events/Profile and native TabView content; separate from the original custom navigation. |
+| DIPButton | Title, emphasis, loading/enabled flags and callback; disabled/in-flight controls cannot activate. |
+| DIPStateView | Loading/empty/failure presentation and optional retry; no backend requests. |
 
-Shared APIs are in ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Components. Foundation presentation values are independent of Firebase. Home resources and registered custom fonts are under Sources/DIPDesignSystem/Resources; see [asset provenance](asset-provenance.md). System typography in the earlier gallery must not be mistaken for Figma parity. Only light appearance is specified; dark-mode semantics remain pending.
-
-See [fixture usage](../../ui/DIP/Features/Foundation/README.md), [preview host](../../ui/ComponentPreview/README.md) and [visual review notes](../../ui/ComponentPreview/Review/README.md). API compatibility should be confirmed with consuming workstream owners before stabilization. No Code Connect mapping has been registered.
+See [fixture handoff](../../ui/DIP/Features/Foundation/README.md) and [preview instructions](../../ui/ComponentPreview/README.md). Passing local fixture tests does not establish the V1 coverage target or completed product workflows.

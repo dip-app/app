@@ -24,11 +24,11 @@ final class HomeReferenceTests: XCTestCase {
         XCTAssertEqual(home.frame.width, 80, accuracy: 0.5)
         XCTAssertTrue(home.isSelected)
         event.tap()
-        XCTAssertTrue(app.alerts["Prototype preview"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Puppy Yoga is not connected yet."].exists)
-        app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.buttons["event.back"].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts["event.title"].label, "PUPPY YOGA")
+        app.buttons["event.back"].tap()
         app.buttons["home.attendees"].tap()
-        XCTAssertTrue(app.staticTexts["Recent attendees is not connected yet."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["participants.back"].waitForExistence(timeout: 3))
     }
 
     @MainActor func testReferenceNavigationAndHorizontalEventsRemainInteractive() {
@@ -40,12 +40,13 @@ final class HomeReferenceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Notifications is not connected yet."].waitForExistence(timeout: 3))
         app.alerts.buttons["OK"].tap()
         app.buttons["home.tab.My Events"].tap()
-        XCTAssertTrue(app.staticTexts["My Events is not connected yet."].waitForExistence(timeout: 3))
-        app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.buttons["events.card.puppy-yoga"].waitForExistence(timeout: 3))
+        app.buttons["home.tab.Home"].tap()
         app.scrollViews["home.events"].swipeLeft()
         let hike = app.buttons["home.event.EventCard2"]
         XCTAssertTrue(hike.isHittable)
         hike.tap()
-        XCTAssertTrue(app.staticTexts["Hike is not connected yet."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["event.back"].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts["event.title"].label, "HIKE")
     }
 }

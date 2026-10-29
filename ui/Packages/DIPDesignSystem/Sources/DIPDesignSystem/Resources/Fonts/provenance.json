@@ -33,5 +33,19 @@
     "sha256": "a7e791e8f5a0fb02b65663f7fca73e1d1ca9543f772ad480cbd76f4e3fe3f8cc",
     "license": "OFL-1.1",
     "retrieved": "2026-10-29"
+  },
+  {
+    "file": "Inter-Light.otf",
+    "source": "https://github.com/rsms/inter/releases/tag/v3.19",
+    "sha256": "e66f130fbadda71e297a9a78025e2f05e8d225ae9dfcea9f51f6570b68fdd905",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
+  },
+  {
+    "file": "Inter-Italic.otf",
+    "source": "https://github.com/rsms/inter/releases/tag/v3.19",
+    "sha256": "45ecfe6cbadfd4803de6214e02c336a95163a7703973bc8a5ce7ac2d174ecaf7",
+    "license": "OFL-1.1",
+    "retrieved": "2026-10-29"
   }
 ]

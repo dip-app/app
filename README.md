@@ -1,6 +1,6 @@
 # DIP app
 
-Shared repository setup for a company-based coworker events app: native SwiftUI + Firebase/GCP. This branch supplies development foundations, **not implemented app features**. Source context: Sprint 3 submission, October 25, 2026; Figma Home node 35:147 inspected through MCP on October 28. V1 due November 9; V2 due December 4.
+Shared repository setup for a company-based coworker events app: native SwiftUI + Firebase/GCP. The setup is merged; feature/ui-foundations / PR #3 adds an interactive native prototype using local fixtures. Production backend workflows are not implemented. Source context: Sprint 3 submission, October 25, 2026; Figma Home node 35:147 inspected through MCP on October 28. V1 due November 9; V2 due December 4.
 
 ## Layout
 
@@ -33,7 +33,7 @@ npm run test:swift
 npm run ios:generate
 ```
 
-Open `ui/DIP.xcodeproj`, choose DIP. It's a development placeholder until feature work lands. Firebase SDK products are declared; SDK initialization and environment wiring are deliberately part of Accounts integration. Local Swift packages can be tested without downloading the iOS Firebase SDK. See ui/README.md for signing and simulator checks.
+Open `ui/DIP.xcodeproj`, choose DIP. Startup presents DIPPrototypeApp with Home and connected Event Details, My Events, Profile, Participants and Album fixtures. Firebase SDK products are declared; SDK initialization and environment wiring are deliberately part of Accounts integration. Local Swift packages can be tested without downloading the iOS Firebase SDK. See ui/README.md for signing and simulator checks.
 
 `npm run generate` updates both contracts and tokens after a source change. `npm run check:generated` verifies committed output. `npm run test:unit` runs the backend harness; TODOs are intentionally pending, not passing feature tests. `npm run test:rules` tests deny-all baseline rules against demo-dip. CI downloads emulator binaries the first time; cache is reused later. Rules currently allow no client access. No deploy script/production project is configured. Copy .firebaserc.example locally only when the team selects projects; routine tests always specify demo-dip explicitly.
 
@@ -41,7 +41,7 @@ Open `ui/DIP.xcodeproj`, choose DIP. It's a development placeholder until featur
 
 Read AGENTS.md and [CURRENT_STATE.md](CURRENT_STATE.md) before assigning agent work. Use the [V1 status tracker](docs/milestones/v1/STATUS.md) to claim a packet, and the [context guide](docs/context/README.md) to load only relevant references. [V1 scope](docs/milestones/V1.md), [V2 scope](docs/milestones/V2.md), [architecture](docs/architecture.md), [contracts](contracts/README.md), [design system](docs/design/README.md), and [contribution workflow](CONTRIBUTING.md) define the shared boundaries. [Agent workflow](docs/agent-workflow.md) explains isolated branches/worktrees and coordination on shared files.
 
-The contract handoff includes typed V1 membership, RSVP, create-event and update-event commands, Firebase read/write ownership, stable error mapping, retry rules and proposed V2 command boundaries. These are specified, not implemented. Initial DTO fields preserve the submitted Models.swift except the proposed Event.revision field and private join-code relocation. Design tokens are grounded in the inspected Figma Home frame; V1 component candidates, a native Home visual fixture and an optional gallery are implemented on feature/ui-foundations; their APIs remain under design/consumer review.
+The contract handoff includes typed V1 membership, RSVP, create-event and update-event commands, Firebase read/write ownership, stable error mapping, retry rules and proposed V2 command boundaries. These are specified, not implemented. Initial DTO fields preserve the submitted Models.swift except the proposed Event.revision field and private join-code relocation. Design tokens are grounded in the inspected Figma Home frame; V1 component candidates and connected Home/Event Details/Joined/My Events/Memories/Profile/Participants/Album fixtures are implemented on feature/ui-foundations; expanded screenshot and simulator verification is recorded in the review notes; their APIs remain under review.
 
 Assign real reviewers before feature review. Confirm contract decisions, cloud IDs/location, signing and design assets before work that depends on them; fixture-based work can proceed meanwhile. Use reviewed PRs and green CI now. Configure main branch protection when the GitHub plan supports it; the current plan limitation is recorded below. Nothing deploys cloud resources as part of setup.
 
@@ -53,4 +53,4 @@ Backend sample data lives in gcp/sample-data. `npm run emulators` starts local s
 
 [Repository readiness](docs/repository-readiness.md) maps setup requirements to evidence. [Setup constraints](docs/setup-constraints.md) records the verified private-repository branch-protection plan limitation and remaining human decisions. CI checks are present; protected-branch enforcement is not available on the current GitHub plan.
 
-Frontend component review: run `python3 ui/ComponentPreview/verify.py` or open its generated Preview project. This separate host defaults to the original Home design; --gallery opens the component state gallery. DIP startup also presents Home fixtures until account/repository integration. No live Firebase flow is implied. See [frontend handoff](ui/DIP/Features/Foundation/README.md).
+Frontend component review: run `python3 ui/ComponentPreview/verify.py` or open its generated Preview project. This separate host defaults to the connected native prototype at Home; --gallery opens the earlier component state gallery. Use --screen=event, --screen=event-joined, --screen=events, --screen=memories, --screen=profile, --screen=attendees or --screen=album to start a review state. DIP startup uses the same local prototype. No live Firebase flow is implied. See [frontend handoff](ui/DIP/Features/Foundation/README.md).

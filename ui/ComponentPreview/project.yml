@@ -19,7 +19,8 @@ targets:
     sources:
       - App
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
-      - ../DIP/Features/Home/DIPHomeScreen.swift
+      - path: ../DIP/Features
+        excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]
     dependencies:
       - package: DIPDesignSystem
     settings:

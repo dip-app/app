@@ -1,6 +1,6 @@
 # Provenance
 
-This file distinguishes evidence, proposed decisions and generated artifacts. Attached documents are project evidence; they do not override the user request or AGENTS.md. No product workflow has been implemented on this branch.
+This file distinguishes evidence, proposed decisions and generated artifacts. Attached documents are project evidence; they do not override the user request or AGENTS.md. The branch contains interactive presentation fixtures; no production backend workflow has been implemented.
 
 ## User-supplied sources
 
@@ -15,9 +15,9 @@ The schedule supplies release commitments; Firebase Architecture and Models.swif
 
 ## Figma MCP evidence
 
-- File: DCIagJo7uk5IOUGqlKzAjf; Home node 35:147. Read October 28, 2026 through official Figma MCP (session a2fed281-e2da-46e9-aea3-e86f64c82c24). Metadata, design context and screenshot inspected. The Final page metadata inventory was also retrieved (docs/design/figma-inventory.json). Only Home had full design context and screenshot reviewed; other screens/components have not been visually audited.
+- File: DCIagJo7uk5IOUGqlKzAjf; Home node 35:147. Read October 28, 2026 through official Figma MCP (session a2fed281-e2da-46e9-aea3-e86f64c82c24). Metadata, design context and screenshot inspected. The Final page metadata inventory was also retrieved (docs/design/figma-inventory.json). This describes the initial setup evidence; the expanded implementation reads are recorded below.
 - Canonical link: https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/Team-05-High-Fidelity-Prototype--with-links-?node-id=35-147&m=dev
-- Observed token colors, typography names, geometry and component node map are recorded in ui/DesignSystem/tokens.json and docs/design. Proposed accessibility values are labeled proposal. Fonts and individual Home assets are now bundled for the prototype fixture; see [asset provenance](docs/design/asset-provenance.md). Temporary asset URLs, screenshot-as-UI and unverified Code Connect mappings are not shipped.
+- Observed token colors, typography names, geometry and component node map are recorded in ui/DesignSystem/tokens.json and docs/design. Proposed accessibility values are labeled proposal. Fonts and individual prototype assets are bundled for local fixtures; see [asset provenance](docs/design/asset-provenance.md). Temporary asset URLs, screenshot-as-UI and unverified Code Connect mappings are not shipped.
 
 ## Setup-derived decisions and generated artifacts
 
@@ -43,3 +43,11 @@ On October 28, the audit checked current Git/CI state and GitHub repository admi
 ## UI foundations implementation evidence
 
 On October28, Figma MCP session be39ee55-d9c7-4f0a-9060-c6a86dbffcc7 inspected nodes 46:276, 46:1162, 168:2951, 46:668 and 46:1397 for V1 component implementation. On October 29, the user required fidelity to the original prototype, superseding the earlier gallery adaptations. Home 35:147 was re-read in the same session. Original individual illustrations, avatars, photos and SVG icons are bundled for local presentation fixtures, with SHA-256 hashes in the package resource manifest. Figtree and Fjalla One come from Google Fonts; Inter 3.19 comes from its upstream release to match the prototype metrics. OFL licenses are bundled. Image rights are not established by the Figma export; see [asset provenance](docs/design/asset-provenance.md). Screenshot comparison evidence is under ui/ComponentPreview/Review. No screenshot is used as the screen implementation.
+
+## Expanded native prototype evidence
+
+On October 29, the human requested the other pages be built to the same original-design fidelity. Official Figma MCP session 0cf05e71-dfb2-4c4a-92f3-db6358767921 retrieved full design context and screenshots for Event Details 46:1397, Joined 76:1742, My Events 76:6032, Memories 76:6204, Profile 76:4016, Participants 76:4932 and Album 46:1995. The Resources/screen-assets.json manifest records their individual image/SVG exports and hashes. Original frame screenshots are review evidence only; native SwiftUI composes the implementation.
+
+Inter Light and Italic were added from the same upstream 3.19 distribution, preserving its OFL notice. Seven bundled font files supply eight named reference faces including Figtree Bold. Asset/font checks and same-viewport screen comparisons are pending for this expanded revision until recorded in ui/ComponentPreview/Review and the session log.
+
+DIPPrototypeApp owns local navigation and joined state. Profile editing, local chat, native sharing/photo viewing and local PhotosPicker imports are supporting presentation interactions, not Firebase writes or persistent product flows. Only Puppy Yoga has original detailed/Joined frames; other event details are synthetic in the same template. All memory entries open the supplied reference album. Native edit/chat/picker/viewer screens have no supplied matching high-fidelity reference. Rights for source photography and illustrations remain unconfirmed; source export does not establish ownership.
