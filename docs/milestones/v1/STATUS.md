@@ -1,10 +1,10 @@
 # V1 work tracker
 
-Last updated: October 28, 2026. This is the starting assignment board. Once a packet has a GitHub issue/PR, link it here and use that issue for detailed task discussion; do not maintain contradictory status copies. The packet README defines scope and acceptance, not completion.
+Last updated: October 29, 2026. This is the starting assignment board. Once a packet has a GitHub issue/PR, link it here and use that issue for detailed task discussion; do not maintain contradictory status copies. The packet README defines scope and acceptance, not completion.
 
 | Work packet | Status | Human owner | Issue / branch / PR | Dependency and next action |
 | --- | --- | --- | --- | --- |
-| [01 UI foundations](01-ui-foundations/README.md) | Ready to claim | Unassigned | None yet | Start presentation components from token/component specs; obtain approved font/image assets before adopting them. |
+| [01 UI foundations](01-ui-foundations/README.md) | In review | sandervonk | [Issue #2](https://github.com/dip-app/app/issues/2), `feature/ui-foundations` | V1 component candidates and simulator gallery implemented; manual accessibility/design review and asset approvals remain. |
 | [02 Accounts/profile](02-accounts-profile/README.md) | Ready against fixtures | Unassigned | None yet | Confirm membership contract and project/emulator wiring; provide auth/membership context to the other streams. |
 | [03 Events/participation](03-events-participation/README.md) | Ready against fixtures | Unassigned | None yet | Implement from event/RSVP contracts; live flow needs accounts plus reviewed rules/export integration. |
 | [04 Organizer events](04-organizer-events/README.md) | Ready against fixtures | Unassigned | None yet | Confirm revision and retry contract; live flow needs admin membership plus reviewed rules/exports. |

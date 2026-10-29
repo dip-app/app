@@ -8,7 +8,7 @@ Scope: enable multiple contributors and agents to start V1 work. This checklist 
 | Backend boundary and sample data | gcp/, firebase.json, sample-data, guarded seed; test:rules and test:seed | Available; no product endpoints or live cloud configuration |
 | Swift boundary/testing | ui/project.yml and two local packages; test:swift and ios:generate | Foundations available; full app integration/device verification is future feature work |
 | Cross-part contracts | contracts/v1 schema/fixtures and docs/contracts; generation drift, DTO fixtures, build and Swift round-trip | V1 commands specified; implementation absent; V2 handoff explicitly provisional |
-| Design foundations | Semantic token source, package, component APIs and Figma inventory/provenance; generated drift and token tests | Available; component implementation/fonts/dark mode are future work |
+| Design foundations | Semantic token source, package, component APIs and Figma inventory/provenance; generated drift and token tests | V1 component candidates available for review; fonts/dark mode are pending |
 | Scope and independent ownership | V1.md, V2.md, five V1 packets and STATUS.md | Ready to assign; named team owners remain unassigned |
 | Context and task handoff | CURRENT_STATE.md, docs/context, scoped AGENTS.md and contributor/PR templates | Available; keep claims tied to current files/checks |
 | Provenance and decisions | PROVENANCE.md, original model reference and numbered ADRs/template | Available; proposal versus accepted status is explicit |

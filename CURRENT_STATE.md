@@ -4,7 +4,7 @@ Last audited: October 28, 2026. This is a concise handoff, not a replacement for
 
 ## What exists
 
-The setup is on main. `gcp/` has Firebase Functions scaffolding, deny-all rules/indexes, real emulator tests and a guarded synthetic seed. `ui/` has an XcodeGen bootstrap app plus independently tested contract and token packages. No product callable, repository adapter or feature screen is implemented. Shared schemas, V1 command semantics, design tokens/component specifications and the inspected Figma inventory are available for parallel work.
+The setup is on main. `gcp/` has Firebase Functions scaffolding, deny-all rules/indexes, real emulator tests and a guarded synthetic seed. `ui/` has an XcodeGen bootstrap app plus independently tested contract and token packages. No product callable, repository adapter or feature screen is implemented. On feature/ui-foundations, V1 shared SwiftUI presentation components and a standalone interactive gallery are implemented for review; they do not implement data workflows. Shared schemas, V1 command semantics, design tokens/component specifications and the inspected Figma inventory are available for parallel work.
 
 ## Where to start
 

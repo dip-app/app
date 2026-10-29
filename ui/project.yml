@@ -22,7 +22,9 @@ targets:
   DIP:
     type: application
     platform: iOS
-    sources: [DIP]
+    sources:
+      - path: DIP
+        excludes: ["**/*.md"]
     dependencies:
       - package: DIPContracts
       - package: DIPDesignSystem

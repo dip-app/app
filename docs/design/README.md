@@ -1,6 +1,6 @@
 # Design-system setup and working agreement
 
-The repository contains a standalone `DIPDesignSystem` Swift package, a canonical JSON token file, a generator, tests, and component specifications. It intentionally contains no screen implementation and no component implementations. Contributors can build features independently against the component contracts while the shared package evolves through review.
+The repository contains a standalone `DIPDesignSystem` Swift package, a canonical JSON token file, a generator, tests, and component specifications. V1 presentation-component candidates and a development fixture gallery are now implemented on feature/ui-foundations; account/event product screens remain separate feature work. Contributors can build features independently against the component contracts while the shared package evolves through review.
 
 ## Sources and scope
 
