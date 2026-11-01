@@ -12,3 +12,5 @@ Initial decisions:
 - 0004-session-handoffs.md — one session log per work session and PR-level gate (user-requested process).
 
 The architecture overview in ../architecture.md is a navigation summary. These records carry decision status and tradeoffs.
+
+- 0006-account-session-and-profile-access.md — V1 callable throttling, observed Swift sessions and narrow profile rules (proposed). Number 0005 is reserved by the UI repository-boundary PR.

@@ -1,27 +1,11 @@
 # Current development state
 
-Last audited: October 28, 2026. This is a concise handoff, not a replacement for Git status, CI, scope documents or the task tracker. Update it when an integration changes shared boundaries or readiness; do not copy every session here.
+Last audited: November 1, 2026. Read Git/CI and the work tracker alongside this handoff.
 
-## What exists
+PR #4's reviewed company-membership core is merged. This integration branch exports joinCompanyV1 with production App Check and transactional per-UID throttling, adds narrow verified self-profile/company/tag rules, and provides DIPAccounts plus a compiled Firebase Auth/Firestore/Functions adapter. It has not deployed cloud resources or configured a real Firebase project. Other product callables and data paths remain unimplemented/denied.
 
-The setup is on main. `gcp/` has Firebase Functions scaffolding, deny-all rules/indexes, real emulator tests and a guarded synthetic seed. `ui/` has an XcodeGen bootstrap app plus independently tested contract and token packages. No product callable, repository adapter or feature screen is implemented. Shared schemas, V1 command semantics, design tokens/component specifications and the inspected Figma inventory are available for parallel work.
+The app bootstrap on this branch is still a placeholder. Approved native onboarding views must connect to AccountsSession. The separate [UI PR #3](https://github.com/dip-app/app/pull/3) contains the matching prototype, observed mock repository, motion and human-defined photo bubbles; this account MR does not depend on or replace that unmerged branch.
 
-## Where to start
+[Account integration](docs/contracts/accounts-integration.md) defines read/write ownership, profile limits, lifecycle behavior, App Check prerequisites and repeatable tests. [ADR0006](docs/adr/0006-account-session-and-profile-access.md) is proposed for review. Existing schemas/generated DTOs are unchanged. The private project plan still does not enforce main branch protection; green CI is evidence, not a guarantee of protection.
 
-1. Check Git status and read the [context guide](docs/context/README.md).
-2. Claim a work packet in the [V1 status tracker](docs/milestones/v1/STATUS.md); assign its human owner before starting. Use a separate branch/worktree.
-3. Start a session log with `npm run session:new -- --user YOUR-USERNAME --workstream PACKET-ID`. Read the packet, relevant nested AGENTS.md and linked contracts before editing.
-4. Work against fixtures while counterpart implementations are pending. Coordinate changes to contracts, tokens, rules, exports, project settings and lockfiles with the integrator.
-5. Validate, complete the session handoff, update the tracker and open a PR against main.
-
-## Decisions and external constraints
-
-The V1 deadline is November 9; V2 is December 4. See [V1](docs/milestones/V1.md) and [V2](docs/milestones/V2.md); V2 stretch work stays separate. [ADRs 0001–0003](docs/adr/README.md) describe proposed cross-team decisions to confirm before dependent implementation. Session handoffs are an agreed workflow.
-
-Named reviewers, Firebase projects/location, signing identity and approved image/font assets require human/team input. Local work against demo-dip and shared fixtures can proceed without those values. See [setup constraints](docs/setup-constraints.md) for owners, evidence and the point at which each decision is needed.
-
-CI runs contract/seed checks, generated-file checks, documentation links, Functions builds, Swift package tests, emulator rules/seed tests and session-log validation. PRs require a new session log in their diff; pushes can update a current-session log. GitHub's current private-repository plan does not support main branch protection (API returned HTTP403), so CI failure is visible but cannot currently prevent a maintainer bypass. Do not claim protections are enforced.
-
-## Verification boundaries
-
-The published baseline passed all five CI jobs. This audit's final CI is recorded in its session/PR. Passing setup checks does not mean the V1 app is built: feature tests, measured product coverage, Firebase client initialization, full simulator/device flows, cloud deployments and the unimplemented V2 contracts are feature work. See the [readiness checklist](docs/repository-readiness.md) for setup evidence.
+Claim work in [V1 tracker](docs/milestones/v1/STATUS.md), read the relevant packet/nested AGENTS.md, and start a SESSION log. Event/RSVP/organizer owners can consume MembershipContext; only its observed member state carries tenant scope. Next integration work is approved onboarding views, configured Firebase/App Check startup, tenant-scoped event repositories, and physical-device verification. Do not mark all V1 accounts or coverage complete from backend/SDK tests alone.

@@ -4,6 +4,8 @@ options:
   deploymentTarget:
     iOS: "17.0"
 packages:
+  DIPAccounts:
+    path: Packages/DIPAccounts
   DIPContracts:
     path: Packages/DIPContracts
   DIPDesignSystem:
@@ -22,9 +24,12 @@ targets:
   DIP:
     type: application
     platform: iOS
-    sources: [DIP]
+    sources:
+      - path: DIP
+        excludes: ["**/*.md"]
     dependencies:
       - package: DIPContracts
+      - package: DIPAccounts
       - package: DIPDesignSystem
       - package: Firebase
         product: FirebaseAuth
@@ -41,7 +46,9 @@ targets:
   DIPTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [DIPTests]
+    sources:
+      - path: DIPTests
+        excludes: ["**/*.md"]
     dependencies:
       - target: DIP
 schemes:

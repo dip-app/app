@@ -39,3 +39,7 @@ Dependency versions are resolved in package-lock.json; external package licenses
 ## Readiness audit
 
 On October 28, the audit checked current Git/CI state and GitHub repository administration endpoints. main was the default branch with green baseline CI; the authenticated account had ADMIN permission. The main branch-protection endpoint returned HTTP403 indicating unavailable private-repository plan support. docs/setup-constraints.md records this external limit without changing repository visibility or billing. Current-state/context maps and task tracking are derived setup artifacts, not new product requirements. Session validation now compares metadata exactly and is exercised against isolated temporary Git histories.
+
+## November 1 V1 account integration
+
+PR #4 (ariaf7) was independently reviewed with 33 unit and 9 Firestore emulator tests before approval/merge at d131142. Its core is reused unchanged except documented integration hooks. The follow-up adds transactional throttling/App Check export, narrow self-profile rules, Swift account observations/lifecycle guards and CI discovery/full SDK compilation. A boundary-delay limiter bug found in independent review was reproduced, fixed and regression-tested. Profile list limits of10 are explicit persistence-policy proposals after real emulator expression-budget validation, not a claim that the source schedule specified them. No onboarding UI was invented and no cloud resources were deployed.
