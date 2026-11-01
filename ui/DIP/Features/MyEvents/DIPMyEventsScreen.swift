@@ -1,15 +1,22 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
 /// Local presentation of the original upcoming-events and memories reference frames.
 /// Callbacks cross the feature boundary; these fixtures do not read or mutate Firebase.
 struct DIPMyEventsScreen: View {
-    private enum Section {
+    private enum Section: String {
         case active
         case memories
     }
 
     @State private var section: Section
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let activeEvents: [DIPEventSummary]
+    let memoryAlbums: [DIPMemory]
+    let unreadCount: Int
+    let profileAvatar: MediaReference
+    private let showsBottomBar: Bool
     let onSelectTab: (DIPHomeTab) -> Void
     let onEvent: (String) -> Void
     let onAlbum: (String) -> Void
@@ -17,14 +24,24 @@ struct DIPMyEventsScreen: View {
     let onProfile: () -> Void
 
     init(
+        activeEvents: [DIPEventSummary],
+        memories: [DIPMemory],
+        unreadCount: Int,
+        profileAvatar: MediaReference,
         initialMemories: Bool = false,
+        showsBottomBar: Bool = true,
         onSelectTab: @escaping (DIPHomeTab) -> Void,
         onEvent: @escaping (String) -> Void,
         onAlbum: @escaping (String) -> Void,
         onNotifications: @escaping () -> Void,
         onProfile: @escaping () -> Void
     ) {
+        self.activeEvents = activeEvents
+        self.memoryAlbums = memories
+        self.unreadCount = unreadCount
+        self.profileAvatar = profileAvatar
         _section = State(initialValue: initialMemories ? .memories : .active)
+        self.showsBottomBar = showsBottomBar
         self.onSelectTab = onSelectTab
         self.onEvent = onEvent
         self.onAlbum = onAlbum
@@ -38,27 +55,36 @@ struct DIPMyEventsScreen: View {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
                     DIPHomeHeader(
-                        title: "My Events", unreadCount: 5,
+                        title: "My Events", unreadCount: unreadCount,
+                        profileAvatar: { DIPMedia(profileAvatar) },
                         onNotifications: onNotifications, onProfile: onProfile
                     )
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView {
                         VStack(spacing: 18) {
                             sectionPicker
-                            if section == .active {
-                                activeEvents(width: geometry.size.width - 40)
-                            } else {
-                                memories
+                            ZStack(alignment: .topLeading) {
+                                if section == .active {
+                                    activeEvents(width: geometry.size.width - 40)
+                                        .transition(pageTransition(edge: .leading))
+                                } else {
+                                    memories
+                                        .transition(pageTransition(edge: .trailing))
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .clipped()
                         }
                         .padding(.horizontal, 20).padding(.bottom, 120)
                     }
                     .scrollIndicators(.hidden)
                     .accessibilityIdentifier("events.content")
                 }
-                DIPFloatingNavigation(selected: .events, onSelect: onSelectTab)
-                    .padding(.horizontal, 20)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                if showsBottomBar {
+                    DIPFloatingNavigation(selected: .events, onSelect: onSelectTab)
+                        .padding(.horizontal, 20)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                }
             }
             .clipped()
         }
@@ -68,50 +94,65 @@ struct DIPMyEventsScreen: View {
     }
 
     private var sectionPicker: some View {
-        HStack(spacing: 0) {
-            Button {
-                section = .active
-            } label: {
-                Text("Active Events")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                    .foregroundStyle(section == .active ? segmentAccent : .white)
-                    .frame(width: 112, height: 40, alignment: .leading)
-                    .background {
-                        if section == .active {
-                            Capsule().fill(.white).frame(width: 141, height: 40)
-                                .offset(x: -0.5)
-                        }
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(segmentAccent)
+                Capsule().fill(.white)
+                    .frame(width: section == .active ? 141 : 111, height: 40)
+                    .offset(x: section == .active ? 5 : geometry.size.width - 116)
+                    // One persistent marker morphs between both source variants.
+                    // Reduced Motion replaces its position change with a short dissolve.
+                    .id(reduceMotion ? section.rawValue : "selection")
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+                HStack(spacing: 0) {
+                    Button {
+                        selectSection(.active)
+                    } label: {
+                        Text("Active Events")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
+                            .foregroundStyle(section == .active ? segmentAccent : .white)
+                            .frame(width: 112, height: 40, alignment: .leading)
+                            .frame(height: 50)
+                            .contentShape(Rectangle())
                     }
-                    .frame(height: 50)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityIdentifier("events.segment.active")
-            .accessibilityAddTraits(section == .active ? .isSelected : [])
-            Spacer(minLength: 0)
-            Button {
-                section = .memories
-            } label: {
-                Text("Memories")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                    .foregroundStyle(section == .memories ? segmentAccent : .white)
-                    .frame(width: 80, height: 40)
-                    .background {
-                        if section == .memories {
-                            Capsule().fill(.white).frame(width: 111, height: 40)
-                                .offset(x: -0.5)
-                        }
+                    .accessibilityIdentifier("events.segment.active")
+                    .accessibilityAddTraits(section == .active ? .isSelected : [])
+                    Spacer(minLength: 0)
+                    Button {
+                        selectSection(.memories)
+                    } label: {
+                        Text("Memories")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
+                            .foregroundStyle(section == .memories ? segmentAccent : .white)
+                            .frame(width: 80, height: 40)
+                            .frame(height: 50)
+                            .contentShape(Rectangle())
                     }
-                    .frame(height: 50)
-                    .contentShape(Rectangle())
+                    .accessibilityIdentifier("events.segment.memories")
+                    .accessibilityAddTraits(section == .memories ? .isSelected : [])
+                }
+                .padding(.horizontal, 20)
             }
-            .accessibilityIdentifier("events.segment.memories")
-            .accessibilityAddTraits(section == .memories ? .isSelected : [])
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 20)
         .frame(height: 50)
-        .background(segmentAccent, in: Capsule())
+        .buttonStyle(.plain)
         .accessibilityElement(children: .contain)
+    }
+
+    private var sectionAnimation: Animation {
+        // Original prototype: PUSH, SLOW, 0.625061452 seconds in either direction.
+        DIPMotion.section(reduceMotion: reduceMotion)
+    }
+
+    private func selectSection(_ next: Section) {
+        guard next != section else { return }
+        withAnimation(sectionAnimation) { section = next }
+    }
+
+    private func pageTransition(edge: Edge) -> AnyTransition {
+        reduceMotion ? .opacity : .move(edge: edge)
     }
 
     private var segmentAccent: Color {
@@ -120,9 +161,9 @@ struct DIPMyEventsScreen: View {
 
     private func activeEvents(width: CGFloat) -> some View {
         VStack(spacing: 18) {
-            ForEach(ActiveEvent.reference) { event in
+            ForEach(activeEvents) { event in
                 Button {
-                    onEvent(event.title)
+                    onEvent(event.id)
                 } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(event.title.uppercased())
@@ -137,9 +178,9 @@ struct DIPMyEventsScreen: View {
                     .padding(15)
                     .frame(width: width, height: 246, alignment: .bottomLeading)
                     .background {
-                        DIPReferenceAssets.image(event.asset)
+                        DIPMedia(event.image)
                             .resizable().scaledToFill().frame(width: width, height: 246)
-                            .overlay(.black.opacity(event.shade))
+                            .overlay(.black.opacity(event.imageShade))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .contentShape(RoundedRectangle(cornerRadius: 20))
@@ -153,15 +194,15 @@ struct DIPMyEventsScreen: View {
 
     private var memories: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], spacing: 18) {
-            ForEach(Array(Memory.reference.enumerated()), id: \.offset) { index, memory in
+            ForEach(Array(memoryAlbums.enumerated()), id: \.offset) { index, memory in
                 GeometryReader { geometry in
                     Button {
-                        onAlbum(memory.title)
+                        onAlbum(memory.id)
                     } label: {
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(spacing: -4) {
                                 ForEach(Array(memory.avatars.enumerated()), id: \.offset) { _, avatar in
-                                    DIPReferenceAssets.image("events-past_\(avatar)")
+                                    DIPMedia(avatar)
                                         .resizable().frame(width: 22, height: 22)
                                 }
                                 Text("View Album")
@@ -185,18 +226,18 @@ struct DIPMyEventsScreen: View {
                         .frame(width: geometry.size.width, height: 205, alignment: .leading)
                         .background {
                             Group {
-                                if memory.asset == "EventCard3" {
+                                if memory.id == "boat-ride" {
                                     // Original Boat Ride instance uses this explicit image-fill transform.
-                                    DIPReferenceAssets.image("events-past_\(memory.asset)").resizable()
+                                    DIPMedia(memory.image).resizable()
                                         .frame(width: geometry.size.width * 1.6798, height: 205)
                                         .frame(width: geometry.size.width, height: 205).clipped()
                                 } else {
-                                    DIPReferenceAssets.image("events-past_\(memory.asset)")
+                                    DIPMedia(memory.image)
                                         .resizable().scaledToFill()
                                         .frame(width: geometry.size.width, height: 205)
                                 }
                             }
-                            .overlay(.black.opacity(memory.shade))
+                            .overlay(.black.opacity(memory.imageShade))
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                         .contentShape(RoundedRectangle(cornerRadius: 20))
@@ -210,61 +251,4 @@ struct DIPMyEventsScreen: View {
         }
     }
 
-    private struct ActiveEvent: Identifiable {
-        let id: String
-        let title: String
-        let locality: String
-        let asset: String
-        let shade: Double
-
-        static let reference: [Self] = [
-            .init(
-                id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", asset: "events_Rectangle930",
-                shade: 0.2),
-            .init(
-                id: "game-cafe", title: "Game cafe", locality: "Squirrel Hill, PA", asset: "events_Rectangle931",
-                shade: 0.08),
-            .init(
-                id: "mount-diablo-hike", title: "Mount Diablo Hike", locality: "Allegheny, PA",
-                asset: "events_Rectangle932", shade: 0),
-            .init(
-                id: "cooking-class", title: "Cooking class", locality: "Strip District, PA",
-                asset: "events_Rectangle933", shade: 0),
-        ]
-    }
-
-    private struct Memory {
-        let title: String
-        let locality: String
-        let asset: String
-        let avatars: [String]
-        var shade: Double = 0.08
-
-        static let reference: [Self] = [
-            .init(
-                title: "Kayaking 03/01", locality: "Delaware River, NJ", asset: "EventCard",
-                avatars: ["AvatarPink", "AvatarRed", "AvatarTeal"]),
-            .init(
-                title: "Hiking 02/22", locality: "Fall Run Park, PA", asset: "EventCard1",
-                avatars: ["CoworkerProfilePicture", "CoworkerProfilePicture1", "AvatarPink"], shade: 0.2),
-            .init(
-                title: "Rug Tuft 02/15", locality: "Poconos, PA", asset: "EventCard2",
-                avatars: ["CoworkerProfilePicture2", "CoworkerProfilePicture3", "CoworkerProfilePicture4"]),
-            .init(
-                title: "Boat Ride 02/08", locality: "Allegheny, PA", asset: "EventCard3",
-                avatars: ["AvatarRed", "CoworkerProfilePicture2", "AvatarTeal"]),
-            .init(
-                title: "Rage Room 02/01", locality: "Southside, PA", asset: "EventCard4",
-                avatars: ["AvatarPink", "CoworkerProfilePicture1", "CoworkerProfilePicture"]),
-            .init(
-                title: "Paint Sip 01/25", locality: "Lawrenceville, PA", asset: "EventCard5",
-                avatars: ["CoworkerProfilePicture4", "AvatarRed", "CoworkerProfilePicture2"]),
-            .init(
-                title: "Ceramics 01/18", locality: "Strip District, PA", asset: "EventCard6",
-                avatars: ["AvatarPink", "AvatarRed", "AvatarTeal"]),
-            .init(
-                title: "Book Club 01/11", locality: "Bloomfield, PA", asset: "EventCard7",
-                avatars: ["AvatarPink", "AvatarRed", "AvatarTeal"]),
-        ]
-    }
 }

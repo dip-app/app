@@ -1,3 +1,4 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
@@ -8,55 +9,58 @@ struct DIPHomeFixturePreview: View {
 }
 
 struct DIPHomeScreen: View {
+    let home: DIPHomeSnapshot
+    let onEvent: (String) -> Void
+    let onChallenge: (String) -> Void
+    let showsBottomBar: Bool
     let onSelect: (String) -> Void
+    init(
+        home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
+        onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void
+    ) {
+        self.home = home
+        self.onEvent = onEvent
+        self.onChallenge = onChallenge
+        self.showsBottomBar = showsBottomBar
+        self.onSelect = onSelect
+    }
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
                 Color.white
                 VStack(spacing: 0) {
                     DIPHomeHeader(
-                        title: "Home", unreadCount: 5,
+                        title: "Home", unreadCount: home.unreadCount,
+                        profileAvatar: { DIPMedia(home.profileAvatar) },
                         onNotifications: { onSelect("Notifications") }, onProfile: { onSelect("Profile") }
                     )
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 22) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                sectionTitle("This Week’s Challenge", size: 18)
-                                DIPChallengeCard(
-                                    category: "Fitness", participantCount: 128,
-                                    avatars: ["CoworkerProfilePicture", "AvatarRed", "AvatarTeal"]
-                                ) {
-                                    onSelect("Fitness challenge")
+                            if let challenge = home.challenge {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    sectionTitle("This Week’s Challenge", size: 18)
+                                    DIPChallengeCard(
+                                        category: challenge.category, participantCount: challenge.participantCount,
+                                        artwork: { DIPMedia(challenge.artwork) },
+                                        avatarStack: { DIPMediaStack(challenge.avatars) }
+                                    ) { onChallenge(challenge.id) }
                                 }
+                                .padding(.top, 15)
                             }
-                            .padding(.top, 15)
                             VStack(alignment: .leading, spacing: 8) {
                                 sectionTitle("This Week’s Events")
                                 ScrollView(.horizontal) {
                                     HStack(spacing: 10) {
-                                        DIPPhotoEventCard(
-                                            title: "Puppy Yoga", locality: "Lawrenceville, PA",
-                                            imageName: "EventCard",
-                                            avatars: ["AvatarPink", "CoworkerProfilePicture1", "AvatarTeal"],
-                                            attendeeCount: 7
-                                        ) { onSelect("Puppy Yoga") }
-                                        DIPPhotoEventCard(
-                                            title: "Kayaking", locality: "Delaware River, NJ",
-                                            imageName: "EventCard1",
-                                            avatars: [
-                                                "CoworkerProfilePicture2", "AvatarRed", "CoworkerProfilePicture1",
-                                            ],
-                                            attendeeCount: 13, shade: 0.2
-                                        ) { onSelect("Kayaking") }
-                                        DIPPhotoEventCard(
-                                            title: "Hike", locality: "Poconos, PA",
-                                            imageName: "EventCard2",
-                                            avatars: [
-                                                "CoworkerProfilePicture", "CoworkerProfilePicture2", "AvatarTeal",
-                                            ],
-                                            attendeeCount: 10, width: 169, shade: 0.08
-                                        ) { onSelect("Hike") }
+                                        ForEach(home.events) { event in
+                                            DIPPhotoEventCard(
+                                                title: event.title, locality: event.locality,
+                                                identifier: eventIdentifier(event), attendeeCount: event.attendeeCount,
+                                                width: event.id == "hike" ? 169 : 163, shade: event.imageShade,
+                                                artwork: { DIPMedia(event.image).scaledToFill() },
+                                                avatarStack: { DIPMediaStack(event.avatars) }
+                                            ) { onEvent(event.id) }
+                                        }
                                     }
                                     .padding(.horizontal, 20)
                                 }
@@ -67,8 +71,8 @@ struct DIPHomeScreen: View {
                             VStack(alignment: .leading, spacing: 14) {
                                 sectionTitle("Attended Your Recent Events:")
                                 HStack(spacing: 10) {
-                                    ForEach(3...7, id: \.self) { index in
-                                        DIPReferenceAssets.image("CoworkerProfilePicture\(index)")
+                                    ForEach(Array(home.recentAttendeeAvatars.enumerated()), id: \.offset) { _, avatar in
+                                        DIPMedia(avatar)
                                             .resizable().frame(width: 40, height: 40).accessibilityHidden(true)
                                     }
                                     Button {
@@ -88,14 +92,20 @@ struct DIPHomeScreen: View {
                     .scrollIndicators(.hidden)
                 }
                 .padding(.bottom, 22)
-                DIPFloatingNavigation { if $0 != .home { onSelect($0.rawValue) } }
-                    .padding(.horizontal, 20)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                if showsBottomBar {
+                    DIPFloatingNavigation { if $0 != .home { onSelect($0.rawValue) } }
+                        .padding(.horizontal, 20)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                }
             }
             .clipped()
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
+    }
+    private func eventIdentifier(_ event: DIPEventSummary) -> String {
+        if case .asset(let name) = event.image { return name }
+        return event.id
     }
     private func sectionTitle(_ text: String, size: CGFloat = 17) -> some View {
         Text(text).font(DIPReferenceAssets.font("Figtree-Regular", size: size))

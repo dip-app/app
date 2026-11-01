@@ -27,6 +27,7 @@
     public struct DIPHomeHeader: View {
         let title: String
         let unreadCount: Int
+        private let profileAvatar: AnyView
         let onNotifications: () -> Void
         let onProfile: () -> Void
         public init(
@@ -34,6 +35,17 @@
         ) {
             self.title = title
             self.unreadCount = unreadCount
+            self.profileAvatar = AnyView(DIPReferenceAssets.image("Image").resizable())
+            self.onNotifications = onNotifications
+            self.onProfile = onProfile
+        }
+        public init<Avatar: View>(
+            title: String, unreadCount: Int, profileAvatar: () -> Avatar,
+            onNotifications: @escaping () -> Void, onProfile: @escaping () -> Void
+        ) {
+            self.title = title
+            self.unreadCount = unreadCount
+            self.profileAvatar = AnyView(profileAvatar())
             self.onNotifications = onNotifications
             self.onProfile = onProfile
         }
@@ -62,7 +74,7 @@
                         "home.notifications")
                     Rectangle().fill(Color.black.opacity(0.2)).frame(width: 1, height: 14).frame(width: 0)
                     Button(action: onProfile) {
-                        DIPReferenceAssets.image("Image").resizable().frame(width: 40, height: 40)
+                        profileAvatar.frame(width: 40, height: 40)
                     }
                     .accessibilityLabel("Open profile").accessibilityIdentifier("home.profile")
                 }
@@ -76,12 +88,24 @@
     public struct DIPChallengeCard: View {
         let category: String
         let participantCount: Int
-        let avatars: [String]
+        private let avatarStack: AnyView
+        private let artwork: AnyView
         let onSelect: () -> Void
         public init(category: String, participantCount: Int, avatars: [String], onSelect: @escaping () -> Void) {
             self.category = category
             self.participantCount = participantCount
-            self.avatars = avatars
+            self.avatarStack = AnyView(DIPReferenceAvatarStack(names: avatars))
+            self.artwork = AnyView(DIPReferenceAssets.image("Mascot").resizable())
+            self.onSelect = onSelect
+        }
+        public init<Artwork: View, Avatars: View>(
+            category: String, participantCount: Int, artwork: () -> Artwork, avatarStack: () -> Avatars,
+            onSelect: @escaping () -> Void
+        ) {
+            self.category = category
+            self.participantCount = participantCount
+            self.avatarStack = AnyView(avatarStack())
+            self.artwork = AnyView(artwork())
             self.onSelect = onSelect
         }
         public var body: some View {
@@ -89,7 +113,7 @@
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 20).fill(DIPTokens.Color.challengeAccent.swiftUIColor)
                     // Export is the original image fill; replicate its Figma crop within the mascot node.
-                    DIPReferenceAssets.image("Mascot").resizable()
+                    artwork
                         .frame(width: 314.16, height: 231.968)
                         .offset(x: 28.315, y: -17.427)
                         .frame(width: 350, height: 222, alignment: .topLeading).clipped()
@@ -101,7 +125,7 @@
                             .foregroundStyle(.white).frame(height: 50).padding(.leading, 10)
                         HStack(alignment: .top) {
                             HStack(spacing: 10) {
-                                DIPReferenceAvatarStack(names: avatars)
+                                avatarStack
                                 Text("+ \(participantCount) others participating")
                                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                                     .foregroundStyle(.black).frame(height: 22)
@@ -140,8 +164,9 @@
     public struct DIPPhotoEventCard: View {
         let title: String
         let locality: String
-        let imageName: String
-        let avatars: [String]
+        private let identifier: String
+        private let artwork: AnyView
+        private let avatarStack: AnyView
         let attendeeCount: Int
         let width: CGFloat
         let shade: Double
@@ -152,18 +177,34 @@
         ) {
             self.title = title
             self.locality = locality
-            self.imageName = imageName
-            self.avatars = avatars
+            self.identifier = imageName
+            self.artwork = AnyView(DIPReferenceAssets.image(imageName).resizable().scaledToFill())
+            self.avatarStack = AnyView(DIPReferenceAvatarStack(names: avatars))
             self.attendeeCount = attendeeCount
             self.width = width
             self.shade = shade
+            self.onSelect = onSelect
+        }
+        public init<Artwork: View, Avatars: View>(
+            title: String, locality: String, identifier: String, attendeeCount: Int,
+            width: CGFloat = 163, shade: Double = 0.1,
+            artwork: () -> Artwork, avatarStack: () -> Avatars, onSelect: @escaping () -> Void
+        ) {
+            self.title = title
+            self.locality = locality
+            self.identifier = identifier
+            self.attendeeCount = attendeeCount
+            self.width = width
+            self.shade = shade
+            self.artwork = AnyView(artwork())
+            self.avatarStack = AnyView(avatarStack())
             self.onSelect = onSelect
         }
         public var body: some View {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: -4) {
-                        DIPReferenceAvatarStack(names: avatars)
+                        avatarStack
                         Text("\(attendeeCount) Attending")
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                             .foregroundStyle(.black).frame(height: 22).padding(.horizontal, 7)
@@ -184,7 +225,7 @@
                 .padding(5)
                 .frame(width: width, height: 205, alignment: .leading)
                 .background {
-                    DIPReferenceAssets.image(imageName).resizable().scaledToFill()
+                    artwork
                         .overlay(.black.opacity(shade))
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -192,7 +233,7 @@
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(title), \(locality), \(attendeeCount) attending")
-            .accessibilityIdentifier("home.event.\(imageName)")
+            .accessibilityIdentifier("home.event.\(identifier)")
         }
     }
 
@@ -211,45 +252,141 @@
             }
         }
     }
+    /// One persistent bar: the marker travels between tabs and action states fade above it.
     public struct DIPFloatingNavigation: View {
         let selected: DIPHomeTab
+        let action: DIPBottomBarAction?
         let onSelect: (DIPHomeTab) -> Void
+        let onAction: () -> Void
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
         public init(selected: DIPHomeTab = .home, onSelect: @escaping (DIPHomeTab) -> Void) {
-            self.selected = selected
-            self.onSelect = onSelect
+            self.init(selected: selected, action: nil, onSelect: onSelect)
         }
-        private func asset(for tab: DIPHomeTab) -> String {
+
+        public init(
+            selected: DIPHomeTab = .home, action: DIPBottomBarAction?,
+            onSelect: @escaping (DIPHomeTab) -> Void, onAction: @escaping () -> Void = {}
+        ) {
+            self.selected = selected
+            self.action = action
+            self.onSelect = onSelect
+            self.onAction = onAction
+        }
+
+        private var selectedIndex: Int {
+            DIPHomeTab.allCases.firstIndex(of: selected) ?? 0
+        }
+
+        private func asset(for tab: DIPHomeTab, selected: Bool) -> String {
             switch tab {
-            case .home: return selected == .home ? "HeroiconsSolidHome" : "profile_HeroiconsOutlineHome"
-            case .events: return selected == .events ? "events_HeroiconsSolidSquares2X2" : "HeroiconsOutlineSquares2X2"
+            case .home: return selected ? "HeroiconsSolidHome" : "profile_HeroiconsOutlineHome"
+            case .events:
+                return selected ? "events_HeroiconsSolidSquares2X2" : "HeroiconsOutlineSquares2X2"
             case .profile:
-                return selected == .profile ? "profile_HeroiconsSolidUserCircle" : "HeroiconsOutlineUserCircle"
-            case .rewards: return "HeroiconsOutlineTicket"
+                return selected ? "profile_HeroiconsSolidUserCircle" : "HeroiconsOutlineUserCircle"
+            case .rewards:
+                return selected ? "navigation_HeroiconsSolidTicket" : "HeroiconsOutlineTicket"
             }
         }
+
+        private func marker(width: CGFloat) -> some View {
+            Circle().fill(.white)
+                .frame(width: 60, height: 60)
+                .offset(x: 10 + (width - 80) / 3 * CGFloat(selectedIndex), y: 10)
+                .accessibilityHidden(true)
+        }
+
         public var body: some View {
+            GeometryReader { geometry in
+                ZStack(alignment: .topLeading) {
+                    Capsule().fill(DIPTokens.Color.navigationBackground.swiftUIColor)
+                        .accessibilityHidden(true)
+                    if reduceMotion {
+                        marker(width: geometry.size.width)
+                            .id(selected)
+                            .transition(.opacity)
+                    } else {
+                        marker(width: geometry.size.width)
+                            .animation(DIPMotion.navigation(), value: selected)
+                    }
+                    tabItems
+                        .allowsHitTesting(action == nil)
+                        .accessibilityHidden(action != nil)
+                    if let action {
+                        actionOverlay(action)
+                            .transition(.opacity)
+                            .zIndex(1)
+                    }
+                }
+                .frame(width: geometry.size.width, height: 80)
+                .clipShape(Capsule())
+                .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: action)
+                .animation(
+                    reduceMotion ? DIPMotion.navigation(reduceMotion: true) : nil,
+                    value: selected)
+            }
+            .frame(height: 80)
+        }
+
+        private var tabItems: some View {
             HStack(spacing: 0) {
                 ForEach(DIPHomeTab.allCases) { tab in
                     if tab != .home { Spacer(minLength: 0) }
                     Button {
                         onSelect(tab)
                     } label: {
-                        DIPReferenceAssets.image(asset(for: tab)).resizable()
-                            .frame(width: tab == .events ? 24 : 30, height: tab == .events ? 24 : 30)
-                            .frame(width: 80, height: 80)
-                            .background {
-                                if tab == selected { Circle().fill(.white).frame(width: 60, height: 60) }
-                            }
-                            .contentShape(Rectangle())
+                        ZStack {
+                            DIPReferenceAssets.image(asset(for: tab, selected: false)).resizable()
+                                .opacity(selected == tab ? 0 : 1)
+                            DIPReferenceAssets.image(asset(for: tab, selected: true)).resizable()
+                                .opacity(selected == tab ? 1 : 0)
+                        }
+                        .frame(width: tab == .events ? 24 : 30, height: tab == .events ? 24 : 30)
+                        .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: selected)
+                        .accessibilityHidden(true)
+                        .frame(width: 80, height: 80)
+                        .contentShape(Rectangle())
                     }
                     .accessibilityLabel(tab.rawValue)
                     .accessibilityIdentifier("home.tab.\(tab.id)")
                     .accessibilityAddTraits(tab == selected ? .isSelected : [])
+                    .accessibilityHidden(action != nil)
+                    .disabled(action != nil)
                 }
             }
             .buttonStyle(.plain)
             .frame(height: 80)
-            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+        }
+
+        private func actionColor(_ style: DIPBottomBarAction.Style) -> Color {
+            switch style {
+            case .standard: DIPTokens.Color.navigationBackground.swiftUIColor
+            case .accent: DIPTokens.Color.actionPrimary.swiftUIColor
+            case .complete: DIPTokens.Color.actionComplete.swiftUIColor
+            }
+        }
+
+        private func actionOverlay(_ action: DIPBottomBarAction) -> some View {
+            Button(action: onAction) {
+                ZStack {
+                    Capsule().fill(actionColor(action.style))
+                    Text(action.title)
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
+                        .foregroundStyle(.white)
+                        .id(action.title)
+                        .transition(.opacity)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 80)
+                .contentShape(Capsule())
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .disabled(action.style == .complete)
+            .accessibilityLabel(action.title)
+            .accessibilityIdentifier(action.identifier)
+            .accessibilityValue(action.value ?? "")
         }
     }
+
 #endif

@@ -544,5 +544,11 @@
     "screen": "attendees",
     "figmaAsset": "eb84d.svg",
     "sha256": "4a40dcc22397774a15f18812cf4fb381ca3a94da9095d36db7c176b2ee155cfb"
+  },
+  {
+    "name": "navigation_HeroiconsSolidTicket",
+    "screen": "navigation",
+    "figmaAsset": "25414.svg",
+    "sha256": "1e1c4d5d3a6bdb38c8a4ce2192eef9d8606b879d2c7159e461af0909e5a2dcf0"
   }
 ]

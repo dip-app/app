@@ -1,1 +1,1 @@
-Firebase SDK adapters and DTO mappings. Keep Firebase types out of views and domain models.
+The current in-memory implementation lives in the separate DIPMockData target in [DIPCore](../../Packages/DIPCore). Implement the future Firebase DIPRepository adapter and SDK mappings here; inject it at DIPPrototypeApp. Keep Firebase types out of domain models and views. Follow the [repository mapping](../../../docs/contracts/ui-repositories.md), authenticated tenant scope and versioned callable contracts. No Firebase adapter is implemented yet.

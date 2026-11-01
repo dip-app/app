@@ -1,90 +1,54 @@
-# Prototype fidelity review — October 29, 2026
+# Native prototype review — October 29, 2026
 
-[PR #3](https://github.com/dip-app/app/pull/3), branch feature/ui-foundations, [issue #2](https://github.com/dip-app/app/issues/2). DIPPrototypeApp connects the original Home, Event Details/Joined, My Events/Memory grid and Profile, with supporting Participants and Album. Default startup is Home. Interactions use local fixtures; no live account, authorization, RSVP, chat or cloud-upload workflow is implemented.
+[PR #3](https://github.com/dip-app/app/pull/3), branch feature/ui-foundations, [issue #2](https://github.com/dip-app/app/issues/2). The runnable app connects Home, Event Details/Joined, My Events/Memories, Profile, Participants and Album, plus native activity chat and photo discussions. Product values and commands pass through DIPRepository/DIPAppViewModel; DIPMockData is injected only at composition. Firebase is unimplemented.
 
-## References and direct launch
+## Current interaction evidence
 
-Figma file DCIagJo7uk5IOUGqlKzAjf. Every target frame is 402 × 874 points. The expanded-screen MCP session is 0cf05e71-dfb2-4c4a-92f3-db6358767921.
+- [Navigation marker/action transitions](Motion/navigation.gif), [sections](Motion/sections.gif), [page transitions](Motion/pages.gif).
+- [Opaque held press](Motion/opaque-press.gif): the action button darkens without exposing underlying tabs. [Pressed frame](Motion/pressed-state.png).
+- [Activity chat](Conversations/chat.gif): attributed/timestamped messages, native multiline composer, failed send/retry and reopening. [Still](Conversations/chat.png).
+- [Photo comments](Conversations/photo-comments.gif): floating photo, owner attribution, native keyboard-safe composer, four compact avatar-first edge pills, centered expansion/scrolling, retained comments and per-photo isolation. [Still](Conversations/photo-comments.png).
 
-| Launch argument | Original frame | Current verification |
+Both frontend features were explicitly flagged unfinished and only unflagged after tests passed; [status](../../../docs/milestones/v2/FEATURE_STATUS.md) keeps backend work separate. Activity chat is a native design-system composition, because no exact chat frame was supplied. Photo overlay layout derives from inspected Figma76:1884/76:2021; the native close/material treatment remains an explicit asset/rendering fidelity difference. OS keyboards are real native UI.
+
+One persistent bottom component stays outside page transitions. It slides its selection marker, crossfades icons and fades Action/Complete overlays. Cached native page hosts preserve tab state. See [motion contracts](../../../docs/design/motion.md). Native internal page timing is not claimed to reproduce an exact exported curve; Reduced Motion needs manual verification.
+
+## Verification
+
+- Nine UI tests passed for the initial repository integration. Seven final conversation/motion/connected-flow regression tests passed in118.636seconds. The two conversation tests passed again after final error-contrast polish. Across these runs, all13 distinct current UI tests were exercised; this is not a claim that a single local12-test run was made.
+- Tests cover source geometry, carousel gestures, navigation, shared Join state, cached Profile edits, album viewer, fixed bar position, covered tab hit testing, a1.5-second held press, chat/comment failures and safe retries, close/reopen retention and event/photo thread isolation. The photo test explicitly checks the send button is above the keyboard. It caught and drove removal of competing manual keyboard layout.
+- Full DIP simulator build passed. All25 Swift tests passed:1 contracts,9 design-system,10 mock/domain and5 presentation. Independent adapter tests prove command acknowledgements do not fabricate read state. Repository/generated-file/docs/session checks and8 baseline Firebase emulator rules tests passed; existing Functions product TODOs remain unimplemented.
+- Original114 image/SVG resources and7 font files remain bundled, exposing8 named faces. No screenshot is used as app artwork. See [provenance](../../../PROVENANCE.md).
+
+CI's last published green baseline is [afa1470](https://github.com/dip-app/app/actions/runs/40911603057); it predates this change. Current publication CI is reported on the PR, not inferred from this local evidence.
+
+## Original screen comparisons
+
+Figma file DCIagJo7uk5IOUGqlKzAjf. Same402×874-point viewport, stable native captures and exact integer simulator scaling. Each Screens/<screen>/ directory contains its original cropped reference, current native capture, comparison, overlay, difference and numeric report. [Summary](Screens/summary.json) and [overview](Screens/overview.png).
+
+| Launch argument | Original frame | Mean absolute app-region channel difference /255 |
 | --- | --- | --- |
-| --screen=home | Home 35:147 | [Fresh capture and comparison](Screens/home/home-comparison.png) |
-| --screen=event | Event Details 46:1397 | Captured, compared and tested |
-| --screen=event-joined | Joined 76:1742 | Captured, compared and tested |
-| --screen=events | My Events 76:6032 | Captured, compared and tested |
-| --screen=memories | Memories 76:6204 | Captured, compared and tested |
-| --screen=profile | Profile 76:4016 | Captured, compared and tested |
-| --screen=attendees | Participants 76:4932 | Captured, compared and tested |
-| --screen=album | Album 46:1995 | Captured, compared and tested |
+| --screen=home | 35:147 | 2.1574 |
+| --screen=event | 46:1397 | 3.0603 |
+| --screen=event-joined | 76:1742 | 2.9277 |
+| --screen=events | 76:6032 | 1.6675 |
+| --screen=memories | 76:6204 | 2.7476 |
+| --screen=profile | 76:4016 | 3.2476 |
+| --screen=attendees | 76:4932 | 2.1921 |
+| --screen=album | 46:1995 | 5.4312 |
 
-The first Home session be39ee55-d9c7-4f0a-9060-c6a86dbffcc7 also inspected Header 46:276, Event Card 46:1162, Avatar 168:2951 and Navigation 46:668.
+The comparison masks rounded-frame/OS chrome regions; rasterizers and image filters differ. Nonzero scores are not zero-pixel fidelity or human approval. Current overlay/chat screenshots are separate evidence, without an independent pixel comparison to a newly retrieved overlay render.
 
-Expanded evidence belongs in Screens/<screen>/ with figma-<screen>.png, reference-standard.png, <screen>-comparison.png, <screen>-overlay.png, <screen>-difference.png and <screen>-comparison.json. Keep original and native captures separate. Fresh stable captures, geometry/action tests, font registration and full-app checks are complete. [Overview](Screens/overview.png) shows Event Details, My Events and Profile. [Numeric summary](Screens/summary.json) records all eight app-region comparisons. This is not a zero-pixel-difference claim.
+Source MCP sessions: Home be39ee55-d9c7-4f0a-9060-c6a86dbffcc7, expanded screens0cf05e71-dfb2-4c4a-92f3-db6358767921, motion/overlay inspection3e1280af-413b-44c3-aa9f-76a159a5152c. Navigation component46:637 supplies the shared variants; interactive reactions supply0.3-second EASE_OUT page pushes and0.625061452-second SLOW section pushes, without exported spring coefficients.
 
-## Current expanded verification
+## Run and remaining work
 
-Passed all eight simulator tests, the full DIP Simulator build, ten Swift package tests (one contracts plus nine design-system), repository checks and eight baseline rules tests. All113 image/SVG and seven font-file hashes were verified; eight named font faces resolve without fallback.
+Default launch is Home. Use --gallery for isolated foundations; see [host instructions](../README.md). The verified actual DIP app is installed on the development review simulator; tests use a separate device. Local simulator IDs are not portable project settings.
 
-Native NavigationStack/TabView manage state and accessibility while their bars are hidden; the original custom navigation is rendered by each screen. Regression tests cover joining, attendee/back navigation, local chat, active/memories switching, album photo viewer/back, profile validation/save/tab retention, hidden inactive screens and measured layout.
+Open a joined event's Activity Chat, or Album→photo→comment. The mock retains changes across navigation for its adapter lifetime and resets on app restart. It does not implement account authorization, production persistence, cross-device delivery, capacity policy or deployed Firebase functions. The [repository handoff](../../../docs/contracts/ui-repositories.md) defines the adapter replacement path.
 
-| State | Mean absolute channel difference /255 | Pixels with any channel difference >10 |
-| --- | --- | --- |
-| home | 2.1574 | 5.7215% |
-| event | 3.0618 | 6.4919% |
-| event-joined | 2.9221 | 6.0087% |
-| events | 1.6675 | 4.9843% |
-| memories | 2.7476 | 8.0711% |
-| profile | 3.2476 | 9.8513% |
-| attendees | 2.1867 | 5.5891% |
-| album | 5.4332 | 14.4823% |
+Past Event detail, Rewards/challenge/notification workflows, manual VoiceOver/larger-text/RTL/contrast, Reduced Motion, physical-device checks and image release rights remain open. Only Puppy Yoga has supplied detail/Joined references; other event details are synthetic. Memory albums have distinct IDs but initially reuse reference photos. No merge or cloud deployment is part of this delivery.
 
-Measure inside the rounded Figma frame at y50...852. Native text/vector anti-aliasing, image resampling and device chrome produce nonzero differences. Review the actual pairs; an average does not establish all local details match. Original My Events uses a754point scroll viewport; other pages use the measured22point bottom boundary.
+## November1 photo correction
 
-Stable capture avoids comparing a launch fade with the reference:
-
-```sh
-python3 ui/ComponentPreview/capture.py --device YOUR-SIMULATOR-UUID \
-  --output /tmp/dip-captures --reference-status-bar
-```
-
-Build/install the Preview app first. Capture uses the same402x874 viewport, waits for consecutive stable frames and clears its optional status-bar override afterward. Failure sysdiagnose collection is disabled in the runner to avoid lengthy simulator diagnostics; ordinary test results/failure screenshots remain available.
-
-## Existing Home evidence
-
-These files describe the previous Home-only revision, not proof all new destinations match:
-
-- [Figma Home](figma-home.png), [native Home](reference-standard.png).
-- [Side-by-side](home-comparison.png), Figma left and native SwiftUI right.
-- [50% overlay](home-overlay.png), [absolute difference](home-difference.png), [report](home-comparison.json).
-- [Earlier gallery at Accessibility 3](gallery-accessibility.png), a separate state/API review.
-
-Home was cropped at x104,y100 from its 610 × 1082 shadow-inclusive export, preserving the 402 × 874 frame. The actual iPhone 17 Pro / iOS 27 capture was reduced from 1206 × 2622 by exactly3.
-
-Previous measured app region: inside Figma's rounded frame, y50 through852, excluding OS chrome. Mean absolute channel difference was **2.159 / 255**; **5.7171%** of pixels had a channel difference over10. This was not a zero-pixel-difference claim. Remaining differences included text/vector anti-aliasing and image resampling. Local photo/mascot comparisons found zero-position shifts as their best alignment. The former developer gallery reference-standard.png was replaced with actual Home.
-
-The previous revision passed nine design-system tests, one contracts test, three gallery simulator tests, two Home simulator tests, a full DIP simulator build, repository checks and eight emulator baseline tests. Those results are historical; current expanded checks must be recorded separately.
-
-## Reproduce screen comparisons
-
-Use a simulator with a 402 × 874 logical viewport. The interaction runner may use other iPhones; pixel comparison deliberately rejects a different viewport.
-
-```sh
-python3 -m pip install -r ui/ComponentPreview/requirements-review.txt
-python3 ui/ComponentPreview/compare.py \
-  --name profile \
-  --figma /path/to/figma-profile-export.png \
-  --simulator /path/to/simulator-profile-capture.png \
-  --output /tmp/profile-review
-```
-
-The tool accepts a 610 × 1082 export or cropped 402 × 874 frame, records source checksums, converts simulator scale by an exact integer factor and saves pair/overlay/difference/report. A global mean does not establish all local details match.
-
-Native iOS supplies status bar, battery and home indicator. Time formatting, battery appearance, indicator visibility and unmasked screenshot corners differ from the Figma device drawing; these remain visible in full captures and excluded from app-region metrics. No reference screenshot is used as screen implementation. See [asset provenance](../../../docs/design/asset-provenance.md).
-
-## Interaction and scope limits
-
-Home routes to actual Profile, My Events, Puppy Yoga details and attendees. Joining updates local root state, so reopening that event retains Joined during this process. Profile supports a native local edit form; Activity Chat is a local composer/messages sheet. Album supports local PhotosPicker imports, native photo viewing and sharing. There are no Firebase writes or production persistence guarantees.
-
-Only Puppy Yoga has supplied detail/Joined frames; other event details are synthetic content in the same template. Every memory link currently opens the provided reference album. Native edit/chat/photo-picker/viewer UI has no supplied matching high-fidelity frame. Rewards, notifications and challenge workflows remain explicit notices.
-
-Manual VoiceOver, larger text, RTL, contrast and physical-device review remain open. The original duplicate Join affordances remain for fidelity and share local state; a production usability decision is still needed. Light appearance only; image release rights remain unconfirmed.
+The prior below-image thread was rejected by the human. Current [compact view](Conversations/photo-comments.png) and [expanded view](Conversations/photo-comments-expanded.png) implement the human-defined four small avatar-leading pills, slight image overlap, ellipsis preview, centered full text and native scrolling after about four lines. Three conversation tests passed; the visual capture test passed again with screenshots attached. The full actual DIP build and all25 Swift package tests pass. Current original-frame captures remain unchanged for default empty-comment state.

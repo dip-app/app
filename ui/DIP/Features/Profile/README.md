@@ -5,12 +5,11 @@ DIPProfileScreen renders the supplied Figma Profile frame 76:4016 at the origina
 navigation variant; all photography, curves and icon assets come from the source
 frame. Asset names use the profile_ prefix in the design-system resource catalog.
 
-The screen accepts onSelectTab and onMemory callbacks. Memory activation passes
-its original asset name so the preview shell can open an album. The edit action
+The screen accepts a DIPProfile, async onSave(ProfileEdit), onSelectTab and onMemory callbacks. Memory activation passes a stable event ID to open its album. The edit action
 opens a native form for display name, department, city and interest tags, validating
 a nonempty display name before Save.
 
-Edits are local view state and reset when this fixture is recreated. No Firebase
+Only unsaved drafts are view state. Successful edits flow through the repository and remain observed across screen recreation for the adapter lifetime. No Firebase
 adapter, membership/role change, photo upload, account save or persistence is
 implemented. The native edit form is supporting fixture UI; no original Figma edit
 frame was supplied for it.

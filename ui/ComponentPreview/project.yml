@@ -3,6 +3,8 @@ options:
   deploymentTarget:
     iOS: '17.0'
 packages:
+  DIPCore:
+    path: ../Packages/DIPCore
   DIPDesignSystem:
     path: ../Packages/DIPDesignSystem
 settings:
@@ -23,6 +25,12 @@ targets:
         excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]
     dependencies:
       - package: DIPDesignSystem
+      - package: DIPCore
+        product: DIPCore
+      - package: DIPCore
+        product: DIPPresentation
+      - package: DIPCore
+        product: DIPMockData
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.dip-app.FoundationPreview

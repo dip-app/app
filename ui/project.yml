@@ -4,6 +4,8 @@ options:
   deploymentTarget:
     iOS: "17.0"
 packages:
+  DIPCore:
+    path: Packages/DIPCore
   DIPContracts:
     path: Packages/DIPContracts
   DIPDesignSystem:
@@ -28,6 +30,12 @@ targets:
     dependencies:
       - package: DIPContracts
       - package: DIPDesignSystem
+      - package: DIPCore
+        product: DIPCore
+      - package: DIPCore
+        product: DIPPresentation
+      - package: DIPCore
+        product: DIPMockData
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase

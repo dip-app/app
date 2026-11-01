@@ -1,69 +1,33 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
-/// Synthetic presentation values. Only Puppy Yoga has a supplied detail-frame reference.
-struct DIPEventDetailFixture: Identifiable, Equatable {
-    let id: String
-    let title: String
-    let imageName: String
-    let timing: String
-    let description: String
-    let tags: [String]
-
-    static let puppyYoga = DIPEventDetailFixture(
-        id: "puppy-yoga", title: "Puppy Yoga", imageName: "event_Image", timing: "Happening 3/09",
-        description:
-            "Join us for a delightful puppy yoga session where you can stretch, relax, and bond with adorable puppies! Experience the joy of  yoga surrounded by puppies who will bring smiles and laughter to your practice. This session combines gentle yoga poses with the heartwarming presence of our furry friends.",
-        tags: ["Fitness", "Energetic", "Hype"])
-
-    static func named(_ name: String) -> DIPEventDetailFixture {
-        let normalized = name.lowercased().filter { $0.isLetter || $0.isNumber }
-        let row: (String, String, String, [String])
-        switch normalized {
-        case "kayaking", "kayak":
-            row = ("kayaking", "Kayaking", "EventCard1", ["Outdoors", "Adventure", "Fitness"])
-        case "hike", "hiking":
-            row = ("hike", "Hike", "EventCard2", ["Outdoors", "Adventure", "Fitness"])
-        case "gamecafe", "gamecafé":
-            row = ("game-cafe", "Game Cafe", "events_Rectangle931", ["Games", "Social", "Fun"])
-        case "mountdiablohike", "mountdiablo":
-            row = (
-                "mount-diablo-hike", "Mount Diablo Hike", "events_Rectangle932", ["Outdoors", "Adventure", "Fitness"]
-            )
-        case "cookingclass", "cooking":
-            row = ("cooking-class", "Cooking Class", "events_Rectangle933", ["Cooking", "Social", "Fun"])
-        default:
-            return .puppyYoga
-        }
-        return DIPEventDetailFixture(
-            id: row.0, title: row.1, imageName: row.2, timing: "Happening 3/09",
-            description:
-                "Spend time with your coworkers and enjoy \(row.1.lowercased()) together. Meet new people, share a fun experience, and make memories with your team.",
-            tags: row.3)
-    }
-}
-
-/// Figma Event Page 46:1397 and Joined 76:1742, with local-only participation/chat state.
+/// Figma Event Page 46:1397 and Joined 76:1742, with repository-owned participation and chat state.
 struct DIPEventDetailsScreen: View {
-    let event: DIPEventDetailFixture
+    let event: DIPEventDetail
     let onBack: () -> Void
     let onAttendees: () -> Void
-    let onJoined: (Bool) -> Void
-    @State private var joined: Bool
-    @State private var showChat = false
+    let showsBottomBar: Bool
+    let onChat: () -> Void
+    let joined: Bool
+    let onJoin: () -> Void
 
     init(
-        event: DIPEventDetailFixture = .puppyYoga,
-        initiallyJoined: Bool = false,
+        event: DIPEventDetail,
+        joined: Bool,
+        showsBottomBar: Bool = true,
+        onJoin: @escaping () -> Void,
         onBack: @escaping () -> Void,
         onAttendees: @escaping () -> Void,
-        onJoined: @escaping (Bool) -> Void = { _ in }
+        onChat: @escaping () -> Void
     ) {
         self.event = event
+        self.joined = joined
+        self.onJoin = onJoin
+        self.showsBottomBar = showsBottomBar
         self.onBack = onBack
         self.onAttendees = onAttendees
-        self.onJoined = onJoined
-        _joined = State(initialValue: initiallyJoined)
+        self.onChat = onChat
     }
 
     var body: some View {
@@ -86,33 +50,32 @@ struct DIPEventDetailsScreen: View {
                     .scrollIndicators(.hidden)
                 }
                 .padding(.bottom, 22)
-                Button(action: primaryAction) {
-                    Text(joined ? "Activity Chat" : "Join the Activity")
-                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).frame(height: 80)
-                        .background(
-                            joined
-                                ? DIPTokens.Color.actionPrimary.swiftUIColor
-                                : DIPTokens.Color.navigationBackground.swiftUIColor,
-                            in: Capsule()
-                        )
-                        .contentShape(Capsule())
+                if showsBottomBar {
+                    Button(action: primaryAction) {
+                        Text(joined ? "Activity Chat" : "Join the Activity")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).frame(height: 80)
+                            .background(
+                                joined
+                                    ? DIPTokens.Color.actionPrimary.swiftUIColor
+                                    : DIPTokens.Color.navigationBackground.swiftUIColor,
+                                in: Capsule()
+                            )
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("event.primary")
+                    .accessibilityValue(joined ? "Joined" : "Not joined")
+                    .padding(.horizontal, 20)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("event.primary")
-                .accessibilityValue(joined ? "Joined" : "Not joined")
-                .padding(.horizontal, 20)
-                .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
             }
             .clipped()
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
-        .sheet(isPresented: $showChat) {
-            DIPEventChatFixture(eventTitle: event.title)
-        }
     }
 
     private var header: some View {
@@ -136,7 +99,7 @@ struct DIPEventDetailsScreen: View {
     private var hero: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottomTrailing) {
-                DIPReferenceAssets.image(event.imageName).resizable().scaledToFill()
+                DIPMedia(event.image).resizable().scaledToFill()
                     .frame(width: geometry.size.width, height: 264).clipped()
                 HStack(spacing: 10.435) {
                     ForEach(event.tags, id: \.self) { tag in
@@ -180,13 +143,13 @@ struct DIPEventDetailsScreen: View {
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                 .foregroundStyle(.black).frame(height: 22)
             HStack(spacing: 10) {
-                ForEach(0..<4, id: \.self) { index in
-                    DIPReferenceAssets.image(attendeeAsset(index))
+                ForEach(Array(event.attendeeAvatars.enumerated()), id: \.offset) { _, avatar in
+                    DIPMedia(avatar)
                         .resizable().frame(width: 40, height: 40)
                         .accessibilityHidden(true)
                 }
                 Button(action: onAttendees) {
-                    Text(joined ? "+ 13 More" : "+ 12 More")
+                    Text("+ \(event.attendeeOverflowCount) More")
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity).frame(height: 40)
@@ -197,7 +160,7 @@ struct DIPEventDetailsScreen: View {
             }
             HStack(spacing: 10) {
                 Button {
-                    if joined { showChat = true } else { join() }
+                    if joined { onChat() } else { onJoin() }
                 } label: {
                     secondaryLabel(
                         "Join Activity", asset: "event_HeroiconsOutlineChatBubbleOvalLeft",
@@ -219,11 +182,6 @@ struct DIPEventDetailsScreen: View {
         }
     }
 
-    private func attendeeAsset(_ index: Int) -> String {
-        let prefix = joined ? "event-joined_" : "event_"
-        return prefix + "CoworkerProfilePicture" + (index == 0 ? "" : "\(index)")
-    }
-
     private func secondaryLabel(_ title: String, asset: String, background: Color) -> some View {
         HStack(spacing: 0) {
             Text(title)
@@ -239,62 +197,7 @@ struct DIPEventDetailsScreen: View {
         .contentShape(Capsule())
     }
 
-    private func join() {
-        guard !joined else { return }
-        joined = true
-        onJoined(true)
-    }
-
     private func primaryAction() {
-        if joined { showChat = true } else { join() }
-    }
-}
-
-/// Interaction fixture only. The supplied hi-fi explicitly has no chat-screen design.
-struct DIPEventChatFixture: View {
-    let eventTitle: String
-    @Environment(\.dismiss) private var dismiss
-    @State private var draft = ""
-    @State private var messages = ["Looking forward to this activity!"]
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                List {
-                    Section {
-                        ForEach(Array(messages.enumerated()), id: \.offset) { _, message in
-                            Text(message)
-                        }
-                    } header: {
-                        Text(eventTitle)
-                    } footer: {
-                        Text("Preview conversation · Messages stay on this device during this session.")
-                    }
-                }
-                HStack {
-                    TextField("Message", text: $draft)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("event.chat.message")
-                    Button("Send", action: send)
-                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .accessibilityIdentifier("event.chat.send")
-                }
-                .padding()
-            }
-            .navigationTitle("Activity Chat")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-
-    private func send() {
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        messages.append(text)
-        draft = ""
+        if joined { onChat() } else { onJoin() }
     }
 }

@@ -1,30 +1,26 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
 /// Original Participants presentation fixture. Membership and chat data remain outside this view.
 struct DIPParticipantsScreen: View {
+    let showsBottomBar: Bool
     let onBack: () -> Void
     let onChat: () -> Void
 
-    private let people: [(name: String, department: String, avatar: String)] = [
-        ("Elissa Woode", "Human Resources", "CoworkerProfilePicture"),
-        ("Frank White", "Customer Support", "CoworkerProfilePicture1"),
-        ("Linda Carter", "Marketing", "CoworkerProfilePicture2"),
-        ("Michael Johnson", "User Experience Team", "CoworkerProfilePicture3"),
-        ("Samantha Green", "Technical Assistance", "CoworkerProfilePicture4"),
-        ("Robert Garcia", "Quality Assurance", "CoworkerProfilePicture5"),
-        ("Patricia Lee", "Product Development", "CoworkerProfilePicture6"),
-        ("Jessica Martinez", "Project Management", "CoworkerProfilePicture7"),
-        ("Daniel Kim", "Sales", "CoworkerProfilePicture"),
-        ("Sophia Turner", "Data Analysis", "CoworkerProfilePicture1"),
-        ("Kevin Brown", "Content Creation", "CoworkerProfilePicture2"),
-        ("Emily Davis", "Finance", "CoworkerProfilePicture3"),
-        ("Matthew Wilson", "IT Support", "CoworkerProfilePicture4"),
-        ("Ava Thompson", "Business Strategy", "CoworkerProfilePicture5"),
-        ("James Rodriguez", "Research and Development", "CoworkerProfilePicture6"),
-        ("Olivia White", "Social Media Management", "CoworkerProfilePicture7"),
-        ("Liam Harris", "Operations", "CoworkerProfilePicture"),
-    ]
+    let people: [DIPParticipant]
+    let participantCount: Int
+
+    init(
+        people: [DIPParticipant], participantCount: Int, showsBottomBar: Bool = true, onBack: @escaping () -> Void,
+        onChat: @escaping () -> Void
+    ) {
+        self.people = people
+        self.participantCount = participantCount
+        self.showsBottomBar = showsBottomBar
+        self.onBack = onBack
+        self.onChat = onChat
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -59,20 +55,22 @@ struct DIPParticipantsScreen: View {
                     .scrollIndicators(.hidden)
                 }
                 .padding(.bottom, 22)
-                Button(action: onChat) {
-                    Text("Activity Chat")
-                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 24, relativeTo: .title2))
-                        .foregroundStyle(.white)
-                        .frame(height: 22)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 80)
-                        .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
-                        .contentShape(Capsule())
+                if showsBottomBar {
+                    Button(action: onChat) {
+                        Text("Activity Chat")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 24, relativeTo: .title2))
+                            .foregroundStyle(.white)
+                            .frame(height: 22)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 80)
+                            .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 20)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                    .accessibilityIdentifier("participants.chat")
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
-                .accessibilityIdentifier("participants.chat")
             }
             .clipped()
         }
@@ -92,7 +90,7 @@ struct DIPParticipantsScreen: View {
             .accessibilityLabel("Close participants")
             .accessibilityIdentifier("participants.back")
             Spacer(minLength: 10)
-            Text("17 Participants")
+            Text("\(participantCount) Participants")
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 14))
                 .foregroundStyle(.black)
                 .frame(height: 28.696)
@@ -102,9 +100,9 @@ struct DIPParticipantsScreen: View {
         }
     }
 
-    private func personRow(_ person: (name: String, department: String, avatar: String)) -> some View {
+    private func personRow(_ person: DIPParticipant) -> some View {
         HStack(spacing: 16) {
-            DIPReferenceAssets.image("attendees_\(person.avatar)").resizable()
+            DIPMedia(person.avatar).resizable()
                 .frame(width: 50, height: 50)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {

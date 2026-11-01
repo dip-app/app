@@ -1,20 +1,36 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
-/// A native rendering of the supplied Profile reference, with local preview-only edits.
+/// Renders repository-owned profile data. Only form drafts and presentation state are local.
 struct DIPProfileScreen: View {
+    let profile: DIPProfile
+    let showsBottomBar: Bool
     let onSelectTab: (DIPHomeTab) -> Void
     let onMemory: (String) -> Void
+    let onSave: (ProfileEdit) async throws -> Void
 
-    @State private var displayName = "Elissa Woode"
-    @State private var department = "Human Resources"
-    @State private var city = "Pittsburgh, PA"
-    @State private var interests = ["Fitness", "Cooking", "Outdoors", "Carpentry"]
     @State private var isEditing = false
     @State private var draftName = ""
     @State private var draftDepartment = ""
     @State private var draftCity = ""
     @State private var draftInterests: Set<String> = []
+    @State private var isSaving = false
+    @State private var saveError: String?
+
+    init(
+        profile: DIPProfile,
+        showsBottomBar: Bool = true,
+        onSelectTab: @escaping (DIPHomeTab) -> Void,
+        onMemory: @escaping (String) -> Void,
+        onSave: @escaping (ProfileEdit) async throws -> Void
+    ) {
+        self.profile = profile
+        self.showsBottomBar = showsBottomBar
+        self.onSelectTab = onSelectTab
+        self.onMemory = onMemory
+        self.onSave = onSave
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -41,9 +57,11 @@ struct DIPProfileScreen: View {
                 )
                 .frame(height: 60)
                 .allowsHitTesting(false)
-                DIPFloatingNavigation(selected: .profile, onSelect: onSelectTab)
-                    .padding(.horizontal, 20)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                if showsBottomBar {
+                    DIPFloatingNavigation(selected: .profile, onSelect: onSelectTab)
+                        .padding(.horizontal, 20)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                }
             }
             .clipped()
         }
@@ -63,14 +81,14 @@ struct DIPProfileScreen: View {
             profilePhoto(size: width * 0.3212)
                 .offset(x: width * 0.338, y: 18)
             VStack(alignment: .trailing, spacing: -3) {
-                Text(displayName.uppercased())
+                Text(profile.displayName.uppercased())
                     .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
                     .frame(width: 216, height: 50)
                     .accessibilityIdentifier("profile.name")
-                Text(department)
+                Text(profile.department)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                     .frame(height: 22)
-                Text(city)
+                Text(profile.city)
                     .font(DIPReferenceAssets.font("Inter-Italic", size: 14))
                     .frame(width: 214, height: 22, alignment: .trailing)
             }
@@ -78,7 +96,7 @@ struct DIPProfileScreen: View {
             .frame(width: width * 0.6034, alignment: .trailing)
             .offset(x: width * 0.3575, y: 148)
             HStack(spacing: 10.435) {
-                ForEach(interests, id: \.self) { interest in
+                ForEach(profile.interests, id: \.self) { interest in
                     Text(interest)
                         .font(DIPReferenceAssets.font("Inter-Light", size: 12))
                         .foregroundStyle(.black)
@@ -106,7 +124,7 @@ struct DIPProfileScreen: View {
             .offset(x: width - 44)
             .accessibilityLabel("Edit profile")
             .accessibilityIdentifier("profile.edit")
-            DIPReferenceAssets.image("profile_Image1").resizable()
+            DIPMedia(profile.avatar).resizable()
                 .frame(width: width * 0.1117, height: 292 * 0.137)
                 .offset(x: width * 0.5894, y: 292 * 0.0582)
                 .accessibilityHidden(true)
@@ -117,13 +135,13 @@ struct DIPProfileScreen: View {
     }
 
     private func profilePhoto(size: CGFloat) -> some View {
-        DIPReferenceAssets.image("profile_Image").resizable()
+        DIPMedia(profile.photo).resizable()
             .frame(width: size * 1.5096, height: size * 1.0138)
             .offset(x: -size * 0.4574, y: -size * 0.0087)
             .frame(width: size, height: size, alignment: .topLeading)
             .clipShape(Circle())
             .overlay(Circle().strokeBorder(.white, lineWidth: 2))
-            .accessibilityLabel("Elissa Woode's profile photo")
+            .accessibilityLabel("\(profile.displayName)'s profile photo")
     }
 
     private func memories(width: CGFloat) -> some View {
@@ -132,52 +150,51 @@ struct DIPProfileScreen: View {
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                 .foregroundStyle(.black)
                 .frame(height: 22, alignment: .leading)
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    memory(
-                        index: 0, asset: "profile_Rectangle935", date: "03/01", width: 131, height: 126,
-                        rightInset: 13, bottomInset: 12)
-                    memory(
-                        index: 1, asset: "profile_Rectangle931", date: "02/10", width: 222, height: 125,
-                        rightInset: 10, bottomInset: 10.5)
+            if profile.favoriteMemories.isEmpty {
+                Text("No favorite memories yet")
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(0..<((profile.favoriteMemories.count + 1) / 2), id: \.self) { row in
+                        memoryRow(row, width: width)
+                    }
                 }
-                .frame(width: width, alignment: .leading)
-                HStack(spacing: 10) {
-                    memory(
-                        index: 2, asset: "profile_Rectangle932", date: "02/07", width: 222, height: 125,
-                        rightInset: 13, bottomInset: 10.5)
-                    memory(
-                        index: 3, asset: "profile_Rectangle933", date: "02/04", width: 131, height: 126,
-                        rightInset: 12, bottomInset: 11)
-                }
-                .frame(width: width, alignment: .leading)
-                HStack(spacing: 10) {
-                    memory(
-                        index: 4, asset: "profile_Rectangle934", date: "01/07", width: 131, height: 125,
-                        rightInset: 12, bottomInset: 10)
-                    memory(
-                        index: 5, asset: "profile_Rectangle936", date: "12/30", width: 222, height: 125,
-                        rightInset: 10, bottomInset: 10
-                    )
-                    .frame(width: 230, alignment: .leading)
-                }
-                .frame(width: width, alignment: .leading)
             }
         }
     }
 
+    private func memoryRow(_ row: Int, width: CGFloat) -> some View {
+        let left = row * 2
+        let wideLeft = row.isMultiple(of: 2) == false
+        return HStack(spacing: 10) {
+            memory(
+                index: left, width: wideLeft ? 222 : 131, height: row == 0 ? 126 : 125,
+                rightInset: row == 2 ? 12 : 13,
+                bottomInset: row == 0 ? 12 : (wideLeft ? 10.5 : 10))
+            if left + 1 < profile.favoriteMemories.count {
+                memory(
+                    index: left + 1, width: wideLeft ? 131 : 222, height: wideLeft ? 126 : 125,
+                    rightInset: wideLeft ? 12 : 10, bottomInset: wideLeft ? 11 : (row == 0 ? 10.5 : 10)
+                )
+                .frame(width: row == 2 ? 230 : (wideLeft ? 131 : 222), alignment: .leading)
+            }
+        }
+        .frame(width: width, alignment: .leading)
+    }
+
     private func memory(
-        index: Int, asset: String, date: String, width: CGFloat, height: CGFloat,
-        rightInset: CGFloat, bottomInset: CGFloat
+        index: Int, width: CGFloat, height: CGFloat, rightInset: CGFloat, bottomInset: CGFloat
     ) -> some View {
-        Button {
-            onMemory(asset)
+        let memory = profile.favoriteMemories[index]
+        return Button {
+            onMemory(memory.eventID)
         } label: {
-            DIPReferenceAssets.image(asset).resizable().scaledToFill()
+            DIPMedia(memory.image).resizable().scaledToFill()
                 .frame(width: width, height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .overlay(alignment: .bottomTrailing) {
-                    Text(date)
+                    Text(memory.dateLabel)
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 13.435))
                         .foregroundStyle(.black)
                         .frame(height: 13.435)
@@ -188,15 +205,21 @@ struct DIPProfileScreen: View {
                 .contentShape(RoundedRectangle(cornerRadius: 20))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Favorite memory, \(date)")
+        .accessibilityLabel("Favorite memory, \(memory.dateLabel)")
         .accessibilityIdentifier("profile.memory.\(index)")
+        .id(memory.id)
+    }
+
+    private var interestOptions: [String] {
+        profile.availableInterests + profile.interests.filter { !profile.availableInterests.contains($0) }
     }
 
     private func beginEditing() {
-        draftName = displayName
-        draftDepartment = department
-        draftCity = city
-        draftInterests = Set(interests)
+        draftName = profile.displayName
+        draftDepartment = profile.department
+        draftCity = profile.city
+        draftInterests = Set(profile.interests)
+        saveError = nil
         isEditing = true
     }
 
@@ -209,7 +232,7 @@ struct DIPProfileScreen: View {
                     TextField("City", text: $draftCity)
                 }
                 Section("Interests") {
-                    ForEach(["Fitness", "Cooking", "Outdoors", "Carpentry"], id: \.self) { interest in
+                    ForEach(interestOptions, id: \.self) { interest in
                         Toggle(
                             interest,
                             isOn: Binding(
@@ -223,31 +246,51 @@ struct DIPProfileScreen: View {
                                 }))
                     }
                 }
-                Section {
-                    Text("Changes affect this preview only.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                if let saveError {
+                    Section {
+                        Text(saveError)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("profile.edit.error")
+                    }
                 }
             }
+            .disabled(isSaving)
             .navigationTitle("Edit profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { isEditing = false }
+                        .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        displayName = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        department = draftDepartment.trimmingCharacters(in: .whitespacesAndNewlines)
-                        city = draftCity.trimmingCharacters(in: .whitespacesAndNewlines)
-                        interests = ["Fitness", "Cooking", "Outdoors", "Carpentry"].filter {
-                            draftInterests.contains($0)
-                        }
-                        isEditing = false
+                    Button(isSaving ? "Saving…" : "Save") {
+                        Task { await saveProfile() }
                     }
-                    .disabled(draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isSaving || draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("profile.edit.save")
                 }
             }
+            .interactiveDismissDisabled(isSaving)
+        }
+    }
+
+    @MainActor
+    private func saveProfile() async {
+        let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isSaving, !name.isEmpty else { return }
+        let edit = ProfileEdit(
+            displayName: name,
+            department: draftDepartment.trimmingCharacters(in: .whitespacesAndNewlines),
+            city: draftCity.trimmingCharacters(in: .whitespacesAndNewlines),
+            interests: interestOptions.filter { draftInterests.contains($0) })
+        isSaving = true
+        saveError = nil
+        defer { isSaving = false }
+        do {
+            try await onSave(edit)
+            isEditing = false
+        } catch {
+            saveError = "Your profile could not be saved. Try again."
         }
     }
 }

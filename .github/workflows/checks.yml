@@ -46,6 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift test --package-path ui/Packages/DIPContracts
       - run: swift test --package-path ui/Packages/DIPDesignSystem
+      - run: swift test --package-path ui/Packages/DIPCore
       - run: brew install xcodegen
       - run: cd ui && xcodegen generate
       - run: python3 ui/ComponentPreview/verify.py

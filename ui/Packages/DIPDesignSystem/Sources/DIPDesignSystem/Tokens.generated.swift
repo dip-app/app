@@ -48,6 +48,8 @@ public enum DIPTokens {
         public static let headerTitle = RGBColor(hex: "#FFFFFF", red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0)
         /// Source: figma.
         public static let eventsAccent = RGBColor(hex: "#F054A5", red: 240.0 / 255.0, green: 84.0 / 255.0, blue: 165.0 / 255.0)
+        /// Source: figma.
+        public static let actionComplete = RGBColor(hex: "#CCCCCC", red: 204.0 / 255.0, green: 204.0 / 255.0, blue: 204.0 / 255.0)
     }
     public enum Spacing {
         public static let compact: Double = 5

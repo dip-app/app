@@ -6,13 +6,13 @@
   },
   {
     "screen": "event",
-    "meanAbsoluteChannelDifference": 3.0618,
-    "pixelsWithAnyChannelDifferenceOver10Percent": 6.4919
+    "meanAbsoluteChannelDifference": 3.0603,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 6.5201
   },
   {
     "screen": "event-joined",
-    "meanAbsoluteChannelDifference": 2.9221,
-    "pixelsWithAnyChannelDifferenceOver10Percent": 6.0087
+    "meanAbsoluteChannelDifference": 2.9277,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 6.0549
   },
   {
     "screen": "events",
@@ -31,12 +31,12 @@
   },
   {
     "screen": "attendees",
-    "meanAbsoluteChannelDifference": 2.1867,
-    "pixelsWithAnyChannelDifferenceOver10Percent": 5.5891
+    "meanAbsoluteChannelDifference": 2.1921,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 5.6346
   },
   {
     "screen": "album",
-    "meanAbsoluteChannelDifference": 5.4332,
-    "pixelsWithAnyChannelDifferenceOver10Percent": 14.4823
+    "meanAbsoluteChannelDifference": 5.4312,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 14.4938
   }
 ]

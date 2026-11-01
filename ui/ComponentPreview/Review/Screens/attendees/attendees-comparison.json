@@ -4,11 +4,11 @@
     "height": 874
   },
   "simulatorScale": 3,
-  "figmaExportSHA256": "978e711c28ff0356cc6c0313d9e96fad81dc104c4f127a1dc83469190e2ef6a9",
-  "simulatorSHA256": "d4899264850dcb997ab4734226ea0128f39318936edbf6c31e72e8e70c64c7b3",
+  "figmaExportSHA256": "587770f867098b703510e24c12cdc14abcb3f0ec1fb93cf1296a137c7784395c",
+  "simulatorSHA256": "db109cf4f3fd4d540c013e231b11a94d2027fa87c3d1ce2c3bd146deb07e3960",
   "region": "Inside rounded Figma frame, y=50...852; excludes native OS chrome",
   "comparedPixels": 322434,
-  "meanAbsoluteChannelDifference": 2.1867,
-  "pixelsWithAnyChannelDifferenceOver10Percent": 5.5891,
+  "meanAbsoluteChannelDifference": 2.1921,
+  "pixelsWithAnyChannelDifferenceOver10Percent": 5.6346,
   "note": "Figma and iOS use different rasterizers. This is not a zero-difference or approval claim."
 }

@@ -22,7 +22,7 @@ final class ScreenFlowTests: XCTestCase {
         app.buttons["participants.back"].tap()
         XCTAssertEqual(join.label, "Activity Chat")
         join.tap()
-        let field = app.textFields["event.chat.message"]
+        let field = app.descendants(matching: .any)["event.chat.message"]
         XCTAssertTrue(field.waitForExistence(timeout: 3))
         let send = app.buttons["event.chat.send"]
         XCTAssertFalse(send.isEnabled)

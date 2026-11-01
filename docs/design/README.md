@@ -1,6 +1,6 @@
 # Design-system working agreement
 
-The repository contains DIPDesignSystem, canonical JSON tokens, a generator, presentation components and a connected native SwiftUI prototype on [PR #3](https://github.com/dip-app/app/pull/3), branch feature/ui-foundations. The current revision adds Event Details, My Events and Profile to Home, with supporting Participants and Album screens. Eight screen states have fresh same-viewport comparison evidence; all eight simulator tests pass. Native raster differences and remaining manual review are documented.
+The repository contains DIPDesignSystem, canonical JSON tokens, a generator, presentation components and a connected native SwiftUI prototype on [PR #3](https://github.com/dip-app/app/pull/3), branch feature/ui-foundations. The current revision adds Event Details, My Events and Profile to Home, with supporting Participants and Album screens. The pre-motion revision has same-viewport evidence for eight screen states and eight passing simulator tests. The current priority is a persistent, animated bottom component and sliding page/section transitions. The motion revision passed a full app build and nine simulator UI tests, with navigation/section/page clips in ui/ComponentPreview/Review/Motion. Integrated verification of the subsequent repository refactor is pending; earlier static or motion results do not verify that refactor.
 
 ## Reference and acceptance target
 
@@ -15,11 +15,13 @@ The source is [Team 05 High Fidelity Prototype](https://www.figma.com/design/DCI
 | Participants | 76:4932 |
 | Album | 46:1995 |
 
-The October 29 human direction requires original visual fidelity at 402 × 874 points, using matching mock data. Match font faces, text, imagery, crops, colors, spacing, radii and navigation geometry. Earlier system-font, opaque-card and native-tab adaptations in the optional gallery are not the visual standard for these screens.
+The October 29 human direction requires original visual fidelity at 402 × 874 points, using matching mock data. Match font faces, text, imagery, crops, colors, spacing, radii and navigation geometry. Earlier system-font, opaque-card and native-tab adaptations in the optional gallery are not the visual standard for these screens. The latest correction also requires motion fidelity: one persistent bottom component, a sliding marker/crossfading icons, Action/Complete overlay fades, sliding Active/Memory content and side-entering pages. See [motion and composition contracts](motion.md).
 
-DIPPrototypeApp connects the screens and owns local navigation/join state. Join state survives navigation in this process; profile edits and chat messages remain local. Album uses native photo viewing/sharing and local PhotosPicker imports. These interactions do not implement Firebase, authorization, server counts, persistent RSVP, cloud uploads or production chat. Rewards, notifications and challenge workflows remain explicit notices.
+DIPPrototypeApp connects screens, owns navigation and injects DIPRepository. DIPAppViewModel observes snapshots; feature views receive data and callbacks. DIPMockRepository currently owns joined state, profile edits, messages and photo additions for its instance lifetime. Album uses native viewing/sharing and PhotosPicker selection, followed by a repository command. These interactions do not implement Firebase, authorization, server counts, persistent RSVP, cloud uploads or production chat. Rewards, notifications and challenge workflows remain explicit notices.
 
-Only Puppy Yoga has the supplied Event Details reference and Joined variant. Other event names use synthetic details in the same visual template, not additional Figma-audited screens. All memory links currently open the supplied reference album. Native edit/chat/photo-picker surfaces are supporting preview UI without supplied matching high-fidelity frames.
+Only Puppy Yoga has the supplied Event Details reference and Joined variant. Other event names use synthetic details in the same visual template, not additional Figma-audited screens. Memory links use stable memory/event IDs; the mock retains synthetic reference album content. Native edit/chat/photo-picker surfaces are supporting preview UI without supplied matching high-fidelity frames.
+
+The bottom component belongs to DIPPrototypeApp, outside page transitions. Composed feature screens suppress their standalone footer; they do not mount competing navigation bars. Both in-page and bottom Join actions read the same observed snapshot and call the same view-model command; no joined Binding is mutated by the view. This takes priority over adding Past Event or photo-selection pages, which were inspected but remain deferred.
 
 ## Tokens and ownership
 
@@ -31,7 +33,7 @@ python3 scripts/generate-tokens.py --check
 swift test --package-path ui/Packages/DIPDesignSystem
 ```
 
-Tokens distinguish observed Figma values from proposals. Use semantic names for shared roles; keep feature layout local. Coordinate shared token, generated output and component API changes with consuming workstreams. Feature screens map domain values into presentation inputs; Firebase and authorization stay outside the design-system package.
+Tokens distinguish observed Figma values from proposals. Use semantic names for shared roles; keep feature layout local. Coordinate shared token, generated output and component API changes with consuming workstreams. Feature screens render DIPCore read models through shared presentation inputs; DIPMedia supports asset, URL and byte references. The [repository contract](../contracts/ui-repositories.md) and [ADR 0005](../adr/0005-observable-ui-repositories.md) define the interchangeable adapter boundary. Firebase and authorization stay outside the design-system package.
 
 ## Typography and assets
 
