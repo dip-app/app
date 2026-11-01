@@ -154,11 +154,16 @@ final class StaticMembershipContext: MembershipContext {
 
 extension AccountsViewModel {
     /// Preview/demo wiring matching the shared seed (`DEMO-2026` -> company-demo).
-    static func demo() -> AccountsViewModel {
-        let auth = FakeAuthService(accounts: [
-            "member@example.invalid": .init(uid: "member-demo", password: "password", isEmailVerified: true),
-            "new@example.invalid": .init(uid: "new-demo", password: "password", isEmailVerified: true),
-        ])
+    /// All demo passwords are "password". Pass `signedInEmail` to start signed in.
+    static func demo(signedInEmail: String? = nil) -> AccountsViewModel {
+        let auth = FakeAuthService(
+            accounts: [
+                "member@example.invalid": .init(uid: "member-demo", password: "password", isEmailVerified: true),
+                "new@example.invalid": .init(uid: "new-demo", password: "password", isEmailVerified: true),
+                "unverified@example.invalid": .init(uid: "unverified-demo", password: "password", isEmailVerified: false),
+            ],
+            signedInEmail: signedInEmail
+        )
         let memberships = FakeMembershipService(
             auth: auth,
             companiesByCode: ["DEMO-2026": "company-demo"],
