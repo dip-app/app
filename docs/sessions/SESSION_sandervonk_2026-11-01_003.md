@@ -16,11 +16,11 @@ Accounts transport enforces App Check outside the official Functions emulator. F
 
 ## Validation
 
-Node24 npm ci and npm run build passed. Accounts unit tests: 35 passed. Auth/Functions/Firestore emulator tests with node --import tsx --test --test-concurrency=1 gcp/tests/integration/accounts*.test.ts: 11 passed. Isolated ports Auth19099, Functions15001, Firestore18080; FUNCTIONS_EMULATOR_HOST overrides default5001. Initial parallel run failed due to the older adapter suite resetting the shared emulator database; sequential execution resolves that fixture conflict. Production Node22 execution remains CI validation; local Functions emulator used host Node24. Parent integrator runs shared contract, rules and Swift checks.
+Node24 npm ci and npm run build passed. Accounts unit tests: 37 passed (including deterministic delayed-read boundary and clock rollback regressions). Auth/Functions/Firestore emulator tests with node --import tsx --test --test-concurrency=1 gcp/tests/integration/accounts*.test.ts: 11 passed. Isolated ports Auth19099, Functions15001, Firestore18080; FUNCTIONS_EMULATOR_HOST overrides default5001. Initial parallel run failed due to the older adapter suite resetting the shared emulator database; sequential execution resolves that fixture conflict. Production Node22 execution remains CI validation; local Functions emulator used host Node24. Parent integrator runs shared contract, rules and Swift checks.
 
 ## Decisions
 
-One server-only accountRateLimits/{uid} record contains windowStart, attempts and expiresAt; no codes, email addresses or IP data. expiresAt enables optional future TTL configuration but enforcement does not depend on cleanup. Five requests per fixed minute counts valid joins and replays as well as wrong codes. Server clock is injectable and rollover/concurrency are tested. Proposed us-central1 stays pending team location decision before deployment.
+One server-only accountRateLimits/{uid} record contains windowStart, attempts and expiresAt; no codes, email addresses or IP data. expiresAt enables optional future TTL configuration but enforcement does not depend on cleanup. Five requests per fixed minute counts valid joins and replays as well as wrong codes. Following independent review, window selection occurs after the transaction read on each retry; future stored windows fail closed to prevent clock rollback from resetting the budget. Server clock is injectable and rollover/concurrency are tested. Proposed us-central1 stays pending team location decision before deployment.
 
 ## Handoff
 
