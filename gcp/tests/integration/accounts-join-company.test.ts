@@ -12,10 +12,11 @@ import { handleJoinCompany } from "../../functions/src/modules/accounts/transpor
 // Functions runtime verifies real tokens); the email gate is unit-tested.
 //
 // Run: firebase emulators:exec --project demo-dip --only firestore \
-//        "node --import tsx --test gcp/tests/integration/accounts*.test.ts"
+//        "node --import tsx --test gcp/tests/integration/accounts-join-company.test.ts"
 
 const PROJECT = "demo-dip";
-const HOST = "127.0.0.1:8080";
+const HOST = process.env.FIRESTORE_EMULATOR_HOST;
+if (!["127.0.0.1:8080", "127.0.0.1:18080"].includes(HOST ?? "")) throw new Error("Expected a local test emulator.");
 if (process.env.FIRESTORE_EMULATOR_HOST !== HOST || (process.env.GCLOUD_PROJECT ?? PROJECT) !== PROJECT) {
   throw new Error(`Refusing to run: set FIRESTORE_EMULATOR_HOST=${HOST} and project ${PROJECT} (use firebase emulators:exec).`);
 }

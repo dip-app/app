@@ -327,3 +327,29 @@ describe("joinCompanyV1 transport", () => {
     });
   });
 });
+
+test("transport validates identity and payload before consuming rate limit", async () => {
+  const store = seededStore();
+  let consumed = 0;
+  const limiter = { async consume() { consumed++; } };
+  const auth = { uid: "limited", token: { email: "limited@example.invalid", email_verified: true } as never, rawToken: "" };
+  await assert.rejects(handleJoinCompany(store, { data: request() }, limiter));
+  await assert.rejects(handleJoinCompany(store, { auth: { ...auth, token: { email_verified: false } as never }, data: request() }, limiter));
+  await assert.rejects(handleJoinCompany(store, { auth, data: null }, limiter));
+  assert.equal(consumed, 0);
+  assert.equal(store.transactions, 0);
+  await assert.rejects(handleJoinCompany(store, { auth, data: request({ joinCode: "WRONG" }) }, limiter));
+  assert.equal(consumed, 1);
+});
+
+test("rate limit rejection maps generic reason and prevents membership lookup", async () => {
+  const store = seededStore();
+  const auth = { uid: "limited", token: { email: "limited@example.invalid", email_verified: true } as never, rawToken: "" };
+  const limiter = { async consume() { throw new AccountsError("resource-exhausted", "RATE_LIMITED", "Too many requests. Try again later."); } };
+  await assert.rejects(handleJoinCompany(store, { auth, data: request() }, limiter), (error: any) => {
+    assert.equal(error.code, "resource-exhausted");
+    assert.deepEqual(error.details, { reason: "RATE_LIMITED" });
+    return true;
+  });
+  assert.equal(store.transactions, 0);
+});

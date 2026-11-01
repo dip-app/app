@@ -9,9 +9,11 @@ export type AccountsErrorCode =
   | "permission-denied"
   | "not-found"
   | "failed-precondition"
+  | "resource-exhausted"
   | "internal";
 
 export type AccountsErrorReason =
+  | "RATE_LIMITED"
   | "UNAUTHENTICATED"
   | "VALIDATION_FAILED"
   | "EMAIL_NOT_VERIFIED"
