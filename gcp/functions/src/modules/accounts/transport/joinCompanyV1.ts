@@ -16,13 +16,17 @@ export function identityFromRequest(request: Pick<CallableRequest, "auth">): Aut
   return { uid: auth.uid, email, emailVerified: auth.token.email_verified === true };
 }
 
+const GENERIC_INTERNAL_MESSAGE = "Something went wrong. Try again later.";
+
 /** Maps domain failures to callable errors with `{ reason, fields? }` details and no internals. */
 export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof AccountsError) {
     const details = error.fields.length > 0 ? { reason: error.reason, fields: [...error.fields] } : { reason: error.reason };
-    return new HttpsError(error.code, error.message, details);
+    // Internal failures keep their stable reason but never expose server-side detail.
+    const message = error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message;
+    return new HttpsError(error.code, message, details);
   }
-  return new HttpsError("internal", "Something went wrong. Try again later.");
+  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
 }
 
 export async function handleJoinCompany(store: MembershipStore, request: Pick<CallableRequest, "auth" | "data">) {

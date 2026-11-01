@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, test } from "node:test";
 import { joinCompany } from "../../functions/src/modules/accounts/application/joinCompany";
 import type { MembershipStore, MembershipTransaction } from "../../functions/src/modules/accounts/application/ports";
@@ -107,7 +108,7 @@ describe("join code normalization", () => {
   });
 
   test("lookup ID matches the seeded companyAccess document", () => {
-    const fixture = JSON.parse(readFileSync(new URL("../../sample-data/v1.json", import.meta.url), "utf8")) as {
+    const fixture = JSON.parse(readFileSync(join(__dirname, "../../sample-data/v1.json"), "utf8")) as {
       joinCode: string;
       firestoreDocuments: Array<{ path: string; data: Doc }>;
     };
@@ -283,7 +284,7 @@ describe("joinCompanyV1 transport", () => {
       auth: { uid: "u1", token: { email: "a@example.invalid", email_verified: true } as never, rawToken: "" },
     });
     assert.deepEqual(identity, { uid: "u1", email: "a@example.invalid", emailVerified: true });
-    assert.equal(identityFromRequest({ auth: undefined }), null);
+    assert.equal(identityFromRequest({}), null);
     const unverified = identityFromRequest({ auth: { uid: "u2", token: { email: "b@example.invalid" } as never, rawToken: "" } });
     assert.equal(unverified?.emailVerified, false);
   });
@@ -295,6 +296,13 @@ describe("joinCompanyV1 transport", () => {
     assert.deepEqual(mapped.details, { reason: "VALIDATION_FAILED", fields: ["joinCode"] });
     const noFields = toHttpsError(new AccountsError("not-found", "INVALID_JOIN_CODE", "That join code is not valid."));
     assert.deepEqual(noFields.details, { reason: "INVALID_JOIN_CODE" });
+  });
+
+  test("internal domain errors keep their reason but hide server-side detail", () => {
+    const mapped = toHttpsError(new AccountsError("internal", "INVALID_STORED_MEMBERSHIP", "Stored membership has an unknown role."));
+    assert.equal(mapped.code, "internal");
+    assert.equal(mapped.message, "Something went wrong. Try again later.");
+    assert.deepEqual(mapped.details, { reason: "INVALID_STORED_MEMBERSHIP" });
   });
 
   test("unexpected failures become a generic internal error without internals", () => {
@@ -312,7 +320,7 @@ describe("joinCompanyV1 transport", () => {
       companyId: "company-demo",
       role: "member",
     });
-    await assert.rejects(handleJoinCompany(store, { auth: undefined, data: request() }), (error: unknown) => {
+    await assert.rejects(handleJoinCompany(store, { data: request() }), (error: unknown) => {
       assert.ok(isHttpsError(error));
       assert.equal(error.code, "unauthenticated");
       return true;
