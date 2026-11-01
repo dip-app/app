@@ -95,7 +95,7 @@ import DIPContracts
             }
         }
         if error.domain == FirestoreErrorDomain {
-            switch FirestoreErrorCode(rawValue: error.code) {
+            switch FirestoreErrorCode.Code(rawValue: error.code) {
             case .permissionDenied: return .permissionDenied
             case .unauthenticated: return .unauthenticated
             case .unavailable, .deadlineExceeded: return .unavailable
