@@ -35,3 +35,7 @@ Use [callables](../../../contracts/callables.md) for `joinCompanyV1` and its sch
 ## Handoff
 
 Provide discovery and organizer owners an authenticated membership-context protocol, readiness/error states, and a fake implementation. Confirm the role vocabulary (`member`/`admin`) without leaking authorization decisions into UI-only checks. Give the integrator function export names, private seed requirements, profile allowlist/rule patches, and dependency/configuration requests. No Apple/Google sign-in or domain autojoin is required by this packet.
+
+## Integration slice — November 1
+
+PR #4 core is merged. The follow-up [account integration contract](../../../contracts/accounts-integration.md) covers callable export/throttling, verified own-profile rules, Swift session/SDK adapter and CI discovery. Native onboarding screens and deployed project/App Check initialization remain open; this does not mark the whole packet complete.

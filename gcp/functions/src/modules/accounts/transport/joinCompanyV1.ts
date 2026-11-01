@@ -5,6 +5,9 @@ import { logger } from "firebase-functions/v2";
 import { joinCompany } from "../application/joinCompany";
 import type { MembershipStore } from "../application/ports";
 import { AccountsError } from "../domain/errors";
+import { parseJoinCompanyRequest } from "../domain/joinCompanyRequest";
+import { assertCanRequestMembership } from "../domain/membership";
+import { FirestoreJoinRateLimiter } from "../infrastructure/firestoreJoinRateLimiter";
 import type { AuthIdentity } from "../domain/membership";
 import { FirestoreMembershipStore } from "../infrastructure/firestoreMembershipStore";
 
@@ -29,9 +32,15 @@ export function toHttpsError(error: unknown): HttpsError {
   return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
 }
 
-export async function handleJoinCompany(store: MembershipStore, request: Pick<CallableRequest, "auth" | "data">) {
+export async function handleJoinCompany(store: MembershipStore, request: Pick<CallableRequest, "auth" | "data">, limiter?: { consume(uid: string): Promise<void> }) {
   try {
-    return await joinCompany(store, identityFromRequest(request), request.data);
+    const identity = identityFromRequest(request);
+    if (identity) {
+      parseJoinCompanyRequest(request.data);
+      assertCanRequestMembership(identity);
+      await limiter?.consume(identity.uid);
+    }
+    return await joinCompany(store, identity, request.data);
   } catch (error) {
     const httpsError = toHttpsError(error);
     if (httpsError.code === "internal") {
@@ -46,11 +55,12 @@ export async function handleJoinCompany(store: MembershipStore, request: Pick<Ca
   }
 }
 
-/**
- * Callable export. Region follows the proposed contract (us-central1) pending the
- * team's location decision. The integrator wires this into src/index.ts after review.
- */
-export const joinCompanyV1 = onCall({ region: "us-central1" }, (request) => {
+/** Production requires App Check; only the official Functions emulator bypasses it. */
+export const joinCompanyV1 = onCall({
+  region: "us-central1",
+  enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
+}, (request) => {
   if (getApps().length === 0) initializeApp();
-  return handleJoinCompany(new FirestoreMembershipStore(getFirestore()), request);
+  const db = getFirestore();
+  return handleJoinCompany(new FirestoreMembershipStore(db), request, new FirestoreJoinRateLimiter(db));
 });

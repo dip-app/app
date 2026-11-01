@@ -13,7 +13,7 @@ import type { MembershipStore } from "./ports";
  * the endpoint to probe codes. An unknown code and a code pointing at a missing
  * company return the same generic not-found error.
  *
- * Not yet implemented: wrong-code rate limiting (required before rollout).
+ * The deployed transport consumes a per-UID rate limit before invoking this service.
  */
 export async function joinCompany(
   store: MembershipStore,

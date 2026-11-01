@@ -1,12 +1,13 @@
 # DIP app
 
-Shared repository setup for a company-based coworker events app: native SwiftUI + Firebase/GCP. This branch supplies development foundations, **not implemented app features**. Source context: Sprint 3 submission, October 25, 2026; Figma Home node 35:147 inspected through MCP on October 28. V1 due November 9; V2 due December 4.
+Shared repository setup for a company-based coworker events app: native SwiftUI + Firebase/GCP. The account integration adds a tested company-membership callable, narrow profile rules and a Swift session/adapter foundation. The app bootstrap is still a placeholder; onboarding UI and production Firebase setup are not implemented. Source context: Sprint 3 submission, October 25, 2026; Figma Home node 35:147 inspected through MCP on October 28. V1 due November 9; V2 due December 4.
 
 ## Layout
 
 ```text
 ui/                         Swift bootstrap, feature boundaries and local packages
   DesignSystem/             canonical semantic tokens
+  Packages/DIPAccounts/     account state/repository foundation and lifecycle tests
   Packages/DIPContracts/    generated DTOs and shared-fixture tests
   Packages/DIPDesignSystem/ generated tokens and foundation tests
 gcp/                        Functions, rules, indexes, emulators and sample data
@@ -52,3 +53,5 @@ Local tooling/CI uses Node24.12+ because the current Firebase rules-testing SDK 
 Backend sample data lives in gcp/sample-data. `npm run emulators` starts local services; in a second shell set the three documented demo/emulator environment values and run `npm run seed`. `npm run test:seed` runs the guarded seed twice in temporary Auth/Firestore emulators. It checks repeatability and then shuts them down; use the interactive command to keep data available while developing.
 
 [Repository readiness](docs/repository-readiness.md) maps setup requirements to evidence. [Setup constraints](docs/setup-constraints.md) records the verified private-repository branch-protection plan limitation and remaining human decisions. CI checks are present; protected-branch enforcement is not available on the current GitHub plan.
+
+See [V1 account integration](docs/contracts/accounts-integration.md) for current exports, permissions, native-client wiring and repeatable emulator checks. No cloud deployment is performed by repository checks.

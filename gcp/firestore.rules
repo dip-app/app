@@ -1,7 +1,61 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Setup baseline. Feature PRs add narrowly scoped rules plus emulator tests.
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function own(uid) { return verified() && request.auth.uid == uid; }
+    function text(value, maximum) { return value is string && value.size() <= maximum; }
+    function validItem(values, index) {
+      return values.size() <= index ||
+        (values[index] is string && values[index].size() > 0 && values[index].size() <= 120);
+    }
+    // Rules do not provide list iteration. Check every position in the bounded list.
+    function stringList(values) {
+      return values is list && values.size() <= 10
+        && validItem(values, 0)
+        && validItem(values, 1)
+        && validItem(values, 2)
+        && validItem(values, 3)
+        && validItem(values, 4)
+        && validItem(values, 5)
+        && validItem(values, 6)
+        && validItem(values, 7)
+        && validItem(values, 8)
+        && validItem(values, 9);
+    }
+    function validProfile(data) {
+      return data.keys().hasOnly([
+          'companyId', 'displayName', 'email', 'photoURL', 'avatarId', 'department',
+          'jobTitle', 'city', 'role', 'interestTagIds', 'travelRadiusMiles',
+          'availability', 'friendIds', 'favoritePhotoIds', 'pointsBalance', 'createdAt'
+        ])
+        && data.displayName is string && data.displayName.size() <= 80
+        && data.displayName.matches('^[^\\s](.*[^\\s])?$')
+        && text(data.photoURL, 2048) && text(data.avatarId, 120)
+        && text(data.department, 120) && text(data.jobTitle, 120) && text(data.city, 120)
+        && stringList(data.interestTagIds) && stringList(data.availability)
+        && data.travelRadiusMiles is int && data.travelRadiusMiles >= 0
+        && data.travelRadiusMiles <= 500;
+    }
+    match /users/{uid} {
+      // Missing self documents must be observable to enter company onboarding.
+      allow get: if own(uid);
+      allow update: if own(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'avatarId', 'department', 'jobTitle', 'city',
+          'interestTagIds', 'travelRadiusMiles', 'availability'
+        ]) && validProfile(request.resource.data);
+    }
+    match /companies/{companyId} {
+      // Legacy documents with joinCode remain private until migrated by trusted tooling.
+      allow get: if verified()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
+        && !resource.data.keys().hasAny(['joinCode']);
+    }
+    match /tags/{tagId} {
+      allow read: if verified();
+    }
     match /{document=**} {
       allow read, write: if false;
     }

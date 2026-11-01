@@ -21,7 +21,7 @@ The schema currently includes all 18 supplied document structs plus embedded Ven
 | .../events/{eventId}/messages/{id}, .../photos/{photoId}/comments/{id} | Authorized tenant/participants, stretch | Proposed own-author append with strict rules; counters server-only |
 | .../invites/{id} | Sender/recipient only, V2 | Send/respond commands, server-owned acceptance and notifications |
 
-**Current rules deny all reads/writes.** This table is the target access design, not an assertion that access is enabled. Each feature PR must implement and test its permitted subset. Admin SDK bypasses Firestore rules, so every function must perform its own authorization.
+**The accounts integration opens only verified self-profile get/update, scoped public company get and shared tags reads. Other paths remain denied.** See [exact limits and integration status](accounts-integration.md); the remaining table is target access design, not an assertion that all access is enabled. Each feature PR must implement and test its permitted subset. Admin SDK bypasses Firestore rules, so every function must perform its own authorization.
 
 ## Queries and indexes
 

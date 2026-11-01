@@ -4,8 +4,8 @@ Last updated: October 28, 2026. This is the starting assignment board. Once a pa
 
 | Work packet | Status | Human owner | Issue / branch / PR | Dependency and next action |
 | --- | --- | --- | --- | --- |
-| [01 UI foundations](01-ui-foundations/README.md) | Ready to claim | Unassigned | None yet | Start presentation components from token/component specs; obtain approved font/image assets before adopting them. |
-| [02 Accounts/profile](02-accounts-profile/README.md) | In progress | ariaf7 | `feature/accounts-join-company` (issue/PR to be linked) | First slice: `joinCompanyV1` backend domain/service with unit tests against fakes. Swift auth/profile UI, emulator Auth tests and rule requests not started; membership contract (ADR 0002) still to confirm. |
+| [01 UI foundations](01-ui-foundations/README.md) | In review | sandervonk | [PR #3](https://github.com/dip-app/app/pull/3), `feature/ui-foundations` | Prototype, observable mock adapters, motion and four compact photo-comment bubbles are on the UI branch; production integration remains open. |
+| [02 Accounts/profile](02-accounts-profile/README.md) | In progress | ariaf7 (core); sandervonk (integration) | [PR #4 merged](https://github.com/dip-app/app/pull/4); `feature/v1-accounts` | Callable throttling, rules, Swift session/SDK adapter and CI integration ready for review. Onboarding UI, configured startup and device checks remain open. |
 | [03 Events/participation](03-events-participation/README.md) | Ready against fixtures | Unassigned | None yet | Implement from event/RSVP contracts; live flow needs accounts plus reviewed rules/export integration. |
 | [04 Organizer events](04-organizer-events/README.md) | Ready against fixtures | Unassigned | None yet | Confirm revision and retry contract; live flow needs admin membership plus reviewed rules/exports. |
 | [05 Integration](05-integration/README.md) | Ready to claim | Unassigned | None yet | Name the integrator now; coordinate shared files and dependency order while feature owners work. |
