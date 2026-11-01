@@ -8,6 +8,9 @@ import DIPContracts
     var nextFailure: AccountsFailure?
     var joins: [JoinCompanyRequest] = []
     var terminated = false
+    var suspendSignIn = false
+    var suspendSignOut = false
+    var pendingCommand: CheckedContinuation<Void, any Error>?
     func observations() -> AsyncStream<AccountObservation> {
         AsyncStream { continuation in
             self.continuation = continuation
@@ -16,8 +19,14 @@ import DIPContracts
     }
     func checked() throws { if let nextFailure { self.nextFailure = nil; throw nextFailure } }
     func signUp(email: String, password: String) async throws { try checked() }
-    func signIn(email: String, password: String) async throws { try checked() }
-    func signOut() async throws { try checked() }
+    func signIn(email: String, password: String) async throws {
+        if suspendSignIn { try await withCheckedThrowingContinuation { pendingCommand = $0 } }
+        try checked()
+    }
+    func signOut() async throws {
+        if suspendSignOut { try await withCheckedThrowingContinuation { pendingCommand = $0 } }
+        try checked()
+    }
     func sendVerification() async throws { try checked() }
     func refreshIdentity() async throws { try checked() }
     func updateProfile(_ profile: EditableProfile) async throws { try profile.validate(); try checked() }
@@ -115,4 +124,59 @@ private func profile(_ uid: String = "one", company: String = "company", role: S
     edit.interestTagIds = []; edit.availability.append("extra"); #expect(throws: AccountsFailure.invalidInput) { try edit.validate() }
     #expect(throws: AccountsFailure.invalidProfile) { try MembershipContext(uid: "one", profile: profile(company: " ")) }
     #expect(throws: AccountsFailure.invalidProfile) { try MembershipContext(uid: "", profile: profile("")) }
+}
+
+@Test @MainActor func unexpectedStreamCompletionClearsMemberAndRestartSurvivesOldCompletion() async {
+    let fake = FakeRepository(); let session = AccountsSession(repository: fake); session.start()
+    await fake.emit(.identity(.init(uid: "one", isEmailVerified: true)))
+    await fake.emit(.profile(uid: "one", profile()))
+    fake.continuation?.finish()
+    for _ in 0..<20 { await Task.yield() }
+    #expect(session.state == .recoverableError(.unavailable))
+    session.start()
+    let oldContinuation = fake.continuation
+    session.start()
+    oldContinuation?.finish()
+    await fake.emit(.identity(.init(uid: "two", isEmailVerified: true)))
+    await fake.emit(.profile(uid: "two", profile("two")))
+    for _ in 0..<20 { await Task.yield() }
+    #expect(session.state == .member(try! MembershipContext(uid: "two", profile: profile("two"))))
+    session.stop()
+    for _ in 0..<20 { await Task.yield() }
+    #expect(session.state == .signedOut)
+}
+@Test @MainActor func oldCommandFailureCannotOverrideRestartedSession() async {
+    let fake = FakeRepository(); let session = AccountsSession(repository: fake); session.start()
+    fake.suspendSignIn = true
+    let oldCommand = Task { await session.signIn(email: "synthetic@example.test", password: "test") }
+    while fake.pendingCommand == nil { await Task.yield() }
+    #expect(session.isSubmitting)
+    session.stop(); session.start()
+    await fake.emit(.identity(.init(uid: "two", isEmailVerified: true)))
+    await fake.emit(.profile(uid: "two", profile("two")))
+    fake.pendingCommand?.resume(throwing: AccountsFailure.invalidCredentials); fake.pendingCommand = nil
+    await oldCommand.value
+    #expect(session.commandError == nil); #expect(!session.isSubmitting)
+    #expect(session.state == .member(try! MembershipContext(uid: "two", profile: profile("two"))))
+    session.stop()
+}
+@Test @MainActor func oldSignOutSuccessCannotClearNewMemberOrNewSubmission() async {
+    let fake = FakeRepository(); let session = AccountsSession(repository: fake); session.start()
+    fake.suspendSignOut = true
+    let oldCommand = Task { await session.signOut() }
+    while fake.pendingCommand == nil { await Task.yield() }
+    let oldContinuation = fake.pendingCommand; fake.pendingCommand = nil
+    session.stop(); session.start()
+    await fake.emit(.identity(.init(uid: "two", isEmailVerified: true)))
+    await fake.emit(.profile(uid: "two", profile("two")))
+    fake.suspendSignIn = true
+    let newCommand = Task { await session.signIn(email: "synthetic@example.test", password: "test") }
+    while fake.pendingCommand == nil { await Task.yield() }
+    oldContinuation?.resume()
+    await oldCommand.value
+    #expect(session.state == .authenticationPending); #expect(session.isSubmitting)
+    fake.pendingCommand?.resume(); fake.pendingCommand = nil
+    await newCommand.value
+    #expect(session.commandError == nil); #expect(!session.isSubmitting)
+    session.stop()
 }

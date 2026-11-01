@@ -66,16 +66,28 @@ public enum AccountsState: Equatable, Sendable {
     public private(set) var commandError: AccountsFailure?
     private let repository: any AccountsRepository
     private var identity: AccountIdentity?
+    private var generation = 0
     @ObservationIgnored private var observationTask: Task<Void, Never>?
     public init(repository: any AccountsRepository) { self.repository = repository }
     public func start() {
         stop(); state = .authenticationPending
+        let generation = generation
         let stream = repository.observations()
         observationTask = Task { [weak self] in
-            for await event in stream { guard !Task.isCancelled else { break }; self?.receive(event) }
+            for await event in stream {
+                guard !Task.isCancelled, self?.generation == generation else { break }
+                self?.receive(event)
+            }
+            guard !Task.isCancelled, let self, self.generation == generation else { return }
+            self.identity = nil
+            self.state = .recoverableError(.unavailable)
         }
     }
-    public func stop() { observationTask?.cancel(); observationTask = nil; identity = nil; state = .signedOut }
+    public func stop() {
+        generation += 1
+        observationTask?.cancel(); observationTask = nil
+        identity = nil; state = .signedOut; isSubmitting = false; commandError = nil
+    }
     deinit { observationTask?.cancel() }
     private func receive(_ event: AccountObservation) {
         switch event {
@@ -94,27 +106,34 @@ public enum AccountsState: Equatable, Sendable {
             state = .recoverableError(error)
         }
     }
-    private func command(_ body: () async throws -> Void) async {
-        guard !isSubmitting else { return }; isSubmitting = true; commandError = nil
-        defer { isSubmitting = false }
-        do { try await body() } catch { commandError = error as? AccountsFailure ?? .unknown }
+    @discardableResult private func command(_ body: () async throws -> Void) async -> Bool {
+        guard !isSubmitting else { return false }
+        let generation = generation
+        isSubmitting = true; commandError = nil
+        defer { if self.generation == generation { isSubmitting = false } }
+        do { try await body() }
+        catch {
+            guard self.generation == generation else { return false }
+            commandError = error as? AccountsFailure ?? .unknown
+        }
+        return self.generation == generation
     }
     public func signUp(email: String, password: String) async {
         guard !isSubmitting else { return }; identity = nil; state = .authenticationPending
-        await command { try await repository.signUp(email: email, password: password) }
+        guard await command({ try await repository.signUp(email: email, password: password) }) else { return }
         if let commandError { state = .recoverableError(commandError) }
     }
     public func signIn(email: String, password: String) async {
         guard !isSubmitting else { return }; identity = nil; state = .authenticationPending
-        await command { try await repository.signIn(email: email, password: password) }
+        guard await command({ try await repository.signIn(email: email, password: password) }) else { return }
         if let commandError { state = .recoverableError(commandError) }
     }
     public func signOut() async {
         guard !isSubmitting else { return }
         // Clear private state before awaiting any remote work, even when sign-out fails.
         state = .authenticationPending; identity = nil
-        await command { try await repository.signOut(); state = .signedOut }
-        if let commandError { state = .recoverableError(commandError) }
+        guard await command({ try await repository.signOut() }) else { return }
+        if let commandError { state = .recoverableError(commandError) } else { state = .signedOut }
     }
     public func sendVerification() async { await command { try await repository.sendVerification() } }
     public func refreshIdentity() async { await command { try await repository.refreshIdentity() } }

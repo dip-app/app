@@ -116,9 +116,9 @@ import DIPContracts
     init(auth: Auth, firestore: Firestore) { self.auth = auth; self.firestore = firestore }
     func start(_ continuation: AsyncStream<AccountObservation>.Continuation) {
         self.continuation = continuation
-        authHandle = auth.addStateDidChangeListener { [weak self] _, user in
-            let identity = user.map { AccountIdentity(uid: $0.uid, isEmailVerified: $0.isEmailVerified) }
-            Task { @MainActor [weak self] in self?.receive(identity) }
+        authHandle = auth.addStateDidChangeListener { [weak self] _, _ in
+            // Read the latest SDK identity after the actor hop; queued callbacks may be stale.
+            Task { @MainActor [weak self] in self?.refresh() }
         }
     }
     func refresh() { receive(auth.currentUser.map { AccountIdentity(uid: $0.uid, isEmailVerified: $0.isEmailVerified) }) }

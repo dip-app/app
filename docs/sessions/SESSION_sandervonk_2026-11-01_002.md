@@ -14,11 +14,12 @@ Implemented the portable V1 account state/repository foundation and Firebase ada
 
 - New DIPAccounts local package: MainActor repository protocol, Observable session, typed identity/member/error states, safe editable-profile shape and validation.
 - Data/Accounts Firebase adapter: Auth identity listener, verified own-profile Firestore listener, explicit Timestamp mapping, generated joinCompanyV1 request/response handling, verification token refresh, allowlisted updateData and SDK error mapping.
+- Follow-up: unexpected stream termination clears membership, lifecycle generations suppress stale observation/command completions, and Auth callbacks read current SDK identity after entering MainActor.
 - Domain/Accounts integration README and controlled repository tests for membership observation, identity switches, listener failures, invalid profiles, retry, sign-out, lifecycle cleanup and validation limits.
 
 ## Validation
 
-- CLANG_MODULE_CACHE_PATH=/private/tmp/dip-accounts-clang SWIFTPM_MODULECACHE_OVERRIDE=/private/tmp/dip-accounts-module swift test --disable-sandbox --package-path ui/Packages/DIPAccounts: passed six Swift Testing tests.
+- CLANG_MODULE_CACHE_PATH=/private/tmp/dip-accounts-clang SWIFTPM_MODULECACHE_OVERRIDE=/private/tmp/dip-accounts-module swift test --disable-sandbox --package-path ui/Packages/DIPAccounts: passed nine Swift Testing tests after the lifecycle hardening follow-up.
 - git diff --check: passed.
 - Initial default swift test attempt could not write the sandboxed system module cache; rerun above uses temporary cache paths.
 - Firebase SDK simulator build, emulator integration, device flows and coverage measurement remain integrator checks; package tests do not establish end-to-end readiness.
