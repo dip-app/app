@@ -33,3 +33,6 @@ Photo selection/decoding is native UI work; persistence is an asynchronous repos
 Contract DTO generation is unchanged. Domain read models are UI-oriented projections and must not be written directly to Firestore as persistence structs.
 
 Chat/comment command IDs are generated once for a send intent and retained on an unchanged retry. The mock rejects reused IDs with different payloads and scopes photo threads by both event and photo. It derives author identity/name/avatar and timestamps from its adapter context. UI cannot assign another author. A future adapter must implement the same retry guarantee within reviewed transport/rules; the mock does not establish production authorization.
+
+
+Past-event presentation uses `DIPEventDetail.isPast`. A live adapter must derive it from the authoritative Event.endTime and its clock, never from a localized timing string. Memories route to that event's detail; the detail and participant bottom actions open the same event-scoped album. The mock refuses RSVP changes for past events. This projection adds no callable or stored field and does not implement production clock/cutoff enforcement.

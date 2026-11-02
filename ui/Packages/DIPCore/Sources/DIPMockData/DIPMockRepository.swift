@@ -61,6 +61,7 @@ public actor DIPMockRepository: DIPRepository {
     public func setRSVP(eventID: String, going: Bool) async throws {
         try consumeFailure(.rsvp)
         guard let event = snapshot.eventDetails[eventID] else { throw DIPRepositoryError.notFound(eventID) }
+        guard !event.isPast else { throw DIPRepositoryError.invalidInput("This activity has ended") }
         guard event.isJoined != going else { return }
         Self.applyRSVP(eventID: eventID, going: going, to: &snapshot)
         publish()

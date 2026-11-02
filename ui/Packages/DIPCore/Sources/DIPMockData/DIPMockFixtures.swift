@@ -51,6 +51,16 @@ public enum DIPMockFixtures {
         for (id, title, image, tags) in detailRows {
             details[id] = DIPEventDetail(id: id, title: title, image: .asset(image), timing: "Happening 3/09", description: id == "puppy-yoga" ? puppyDescription : "Spend time with your coworkers and enjoy \(title.lowercased()) together. Meet new people, share a fun experience, and make memories with your team.", tags: tags, attendeeCount: 16, attendeeAvatars: attendeeAvatars(eventID: id, going: false) ?? [])
         }
+        for row in memoryRows {
+            details[row.0] = DIPEventDetail(
+                id: row.0, title: row.1.split(separator: " ").dropLast().joined(separator: " "),
+                image: .asset("events-past_" + row.3), timing: row.0 == "kayaking-memory" ? "Friday 3/01" : String(row.1.split(separator: " ").last ?? ""),
+                description: row.0 == "kayaking-memory" ? "Join us for an exciting kayaking trip on Crystal Lake! Paddle through beautiful scenery, spot local wildlife, and enjoy nature's tranquility. Whether you're a beginner or a pro, this adventure offers unforgettable memories!" : "",
+                tags: row.0 == "kayaking-memory" ? ["Fitness", "Water Sport", "Bonding"] : [],
+                attendeeCount: 13,
+                attendeeAvatars: assets((3...7).map { "CoworkerProfilePicture\($0)" }),
+                isPast: true)
+        }
         let people = participants
         let photoAssets = ["Rectangle931", "Rectangle933", "Rectangle934", "Rectangle932", "Rectangle935", "Rectangle936", "Rectangle937", "Rectangle938", "Rectangle939", "Rectangle940", "Rectangle935", "Rectangle941"]
         let photos = photoAssets.enumerated().map { index, asset in
@@ -63,7 +73,7 @@ public enum DIPMockFixtures {
         for id in allIDs {
             let title = details[id]?.title ?? memories.first(where: { $0.eventID == id })?.title ?? "Event"
             albums[id] = DIPAlbum(id: "album-" + id, eventID: id, title: title, photos: photos)
-            participantLists[id] = people
+            participantLists[id] = details[id]?.isPast == true ? Array(people.prefix(13)) : people
             messages[id] = [.init(id: "initial-" + id, authorID: "frank-white", text: "Looking forward to this activity!", authorName: "Frank White", authorAvatar: .asset("attendees_CoworkerProfilePicture1"), createdAt: Date(timeIntervalSince1970: 1_772_971_200))]
         }
         let home = DIPHomeSnapshot(unreadCount: 5, profileAvatar: .asset("Image"), challenge: .init(id: "fitness-challenge", category: "Fitness", participantCount: 128, avatars: assets(["CoworkerProfilePicture", "AvatarRed", "AvatarTeal"]), artwork: .asset("Mascot")), events: homeEvents, recentAttendeeAvatars: assets((3...7).map { "CoworkerProfilePicture\($0)" }))
