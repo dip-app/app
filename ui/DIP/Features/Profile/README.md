@@ -6,8 +6,7 @@ navigation variant; all photography, curves and icon assets come from the source
 frame. Asset names use the profile_ prefix in the design-system resource catalog.
 
 The screen accepts a DIPProfile, async onSave(ProfileEdit), onSelectTab and onMemory callbacks. Memory activation passes a stable event ID to open its album. The edit action
-opens a native form for display name, department, city and interest tags, validating
-a nonempty display name before Save.
+opens a native form for department, city and interest tags. The OAuth display name is read-only under accepted ADR0007.
 
 Only unsaved drafts are view state. Successful edits flow through the repository and remain observed across screen recreation for the adapter lifetime. No Firebase
 adapter, membership/role change, photo upload, account save or persistence is

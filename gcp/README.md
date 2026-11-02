@@ -1,12 +1,12 @@
 # Firebase service setup
 
-This directory is the backend boundary for DIP. It is ready for feature development; it does not implement accounts, events, RSVPs, points, rewards, or any deployed endpoint.
+This directory is the backend boundary for DIP. It is ready for feature development; the account integration implements company membership and narrow profile access, but no cloud endpoint is deployed. Events, RSVPs, points and rewards remain pending.
 
 ## Layout
 
 ```text
 functions/src/
-  index.ts          Deliberate list of deployable exports; initially empty
+  index.ts          Deliberate list of deployable exports; resolveMembershipV1
   transport/        Firebase v2 callable adapters and auth/error translation
   application/      Use cases and transaction orchestration
   domain/           Firebase-independent business rules
@@ -15,7 +15,7 @@ functions/src/
   modules/          Disjoint accounts/participation/organizer feature slices
 functions/tests/unit/
 tests/rules/        Firestore and Storage Emulator Suite tests
-firestore.rules     Deny-all client baseline
+firestore.rules     Verified self-profile/company/tag subset; other paths denied
 storage.rules       Deny-all client baseline
 firestore.indexes.json
 sample-data/        Synthetic V1 fixtures and local account details
@@ -31,6 +31,7 @@ Run from the repository root after `npm ci`:
 ```sh
 npm run build --workspace @dip/functions
 npm run test --workspace @dip/functions
+npm run test:accounts:integration
 npx firebase emulators:exec --project demo-dip --only firestore,storage "node --import tsx --test gcp/tests/rules/*.test.ts"
 ```
 
@@ -40,9 +41,9 @@ The rules suite requires Java supported by the installed Firebase CLI and free p
 npx firebase emulators:start --project demo-dip --only auth,firestore,storage,functions
 ```
 
-No Functions endpoints are currently exported, so the Functions emulator has no product handlers to serve. Copy `.firebaserc.example` to `.firebaserc` only if an alias file is useful locally. Keep `--project demo-dip` explicit in test commands. Choosing real development/staging/production projects and deployment credentials is separate work for a project administrator.
+resolveMembershipV1 is exported and served by the Functions emulator; test it with synthetic Google credentials on the Auth emulator (see tests/integration). Production App Check is enforced; only the official emulator bypasses it. Copy `.firebaserc.example` to `.firebaserc` only if an alias file is useful locally. Keep `--project demo-dip` explicit in test commands. Choosing real development/staging/production projects and deployment credentials is separate work for a project administrator.
 
-For a shared local starting dataset, follow [sample-data/README.md](sample-data/README.md). The seed script requires the exact local Auth and Firestore addresses and the `demo-dip` project. It restores reserved fixture IDs without clearing unrelated emulator data. The public company fixture does not contain a join code; a hashed, private lookup is seeded separately.
+For a shared local starting dataset, follow [sample-data/README.md](sample-data/README.md). The seed script requires the exact local Auth and Firestore addresses and the `demo-dip` project. It restores reserved fixture IDs without clearing unrelated emulator data. Company membership is seeded as a private `companyDomains/{rootDomain}` record; the seed refuses subdomain or personal-domain keys.
 
 ## Test boundaries
 
@@ -70,3 +71,5 @@ Collection-group reads need a matching collection-group authorization rule and t
 Review contract decisions with the iOS owner, select project IDs and region, configure billing and least-privilege deployment access, add feature-specific rules and handlers, and complete emulator integration tests. This setup does not create a GCP project, assign live organizer roles, seed live company join codes, or deploy infrastructure.
 
 Each feature module owns its internal transport/application/domain/infrastructure layers. Use module-local implementations for parallel development; top-level layer folders are only for reviewed cross-cutting helpers. The integration owner wires named exports in index.ts.
+
+The [account integration contract](../docs/contracts/accounts-integration.md) records throttling, narrow permissions, editable-profile limits and the native-client handoff. No product readiness is inferred from the still-pending workflow TODOs.

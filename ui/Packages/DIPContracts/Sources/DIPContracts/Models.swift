@@ -517,19 +517,15 @@ public struct EventInvite: Codable, Equatable, Sendable {
     }
 }
 
-public struct JoinCompanyRequest: Codable, Equatable, Sendable {
+public struct ResolveMembershipRequest: Codable, Equatable, Sendable {
     public var contractVersion: Int
-    public var joinCode: String
-    public var displayName: String
 
-    public init(contractVersion: Int, joinCode: String, displayName: String) {
+    public init(contractVersion: Int) {
         self.contractVersion = contractVersion
-        self.joinCode = joinCode
-        self.displayName = displayName
     }
 }
 
-public struct JoinCompanyResponse: Codable, Equatable, Sendable {
+public struct ResolveMembershipResponse: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var companyId: String
     public var role: String

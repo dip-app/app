@@ -78,12 +78,15 @@ final class RepositoryTests: XCTestCase {
         let stream = await repository.observe()
         var iterator = stream.makeAsyncIterator()
         _ = try await iterator.next()
-        try await repository.updateProfile(.init(displayName: "  New Name  ", department: " Design ", city: " New York ", interests: ["Outdoors", "Fitness", "Fitness"]))
+        try await repository.updateProfile(.init(department: " Design ", city: " New York ", interests: ["Outdoors", "Fitness", "Fitness"]))
         let profileUpdateValue = try await iterator.next()
         let profileUpdate = try XCTUnwrap(profileUpdateValue)
-        XCTAssertEqual(profileUpdate.profile.displayName, "New Name")
+        XCTAssertEqual(profileUpdate.profile.displayName, "Elissa Woode", "OAuth identity is read-only")
+        XCTAssertEqual(profileUpdate.profile.department, "Design")
+        XCTAssertEqual(profileUpdate.profile.city, "New York")
         XCTAssertEqual(profileUpdate.profile.interests, ["Fitness", "Outdoors"])
-        XCTAssertEqual(profileUpdate.participants["puppy-yoga"]?.first?.name, "New Name")
+        XCTAssertEqual(profileUpdate.participants["puppy-yoga"]?.first?.name, "Elissa Woode")
+        XCTAssertEqual(profileUpdate.participants["puppy-yoga"]?.first?.department, "Design")
         try await repository.sendMessage(eventID: "puppy-yoga", messageID: "test-message", text: "  Hello coworkers  ")
         let messageUpdateValue = try await iterator.next()
         let messageUpdate = try XCTUnwrap(messageUpdateValue)
@@ -113,7 +116,7 @@ final class RepositoryTests: XCTestCase {
         let joined = await repository.currentSnapshot()
         XCTAssertEqual(joined.eventDetails["puppy-yoga"]?.isJoined, true)
         await repository.failNext(.profile)
-        await expect(.injectedFailure("Injected failure")) { try await repository.updateProfile(.init(displayName: "New", department: "D", city: "C", interests: [])) }
+        await expect(.injectedFailure("Injected failure")) { try await repository.updateProfile(.init(department: "D", city: "C", interests: [])) }
         let afterProfileFailure = await repository.currentSnapshot()
         XCTAssertEqual(afterProfileFailure, joined)
         await repository.failNext(.message)
@@ -134,8 +137,7 @@ final class RepositoryTests: XCTestCase {
         let initial = await repository.currentSnapshot()
         await expect(.notFound("missing")) { try await repository.setRSVP(eventID: "missing", going: true) }
         await expect(.notFound("missing")) { try await repository.sendMessage(eventID: "missing", messageID: "test-message", text: "Hello") }
-        await expect(.invalidInput("Name is required")) { try await repository.updateProfile(.init(displayName: "   ", department: "D", city: "C", interests: [])) }
-        await expect(.invalidInput("Unknown interest")) { try await repository.updateProfile(.init(displayName: "New", department: "D", city: "C", interests: ["Unknown"])) }
+        await expect(.invalidInput("Unknown interest")) { try await repository.updateProfile(.init(department: "D", city: "C", interests: ["Unknown"])) }
         await expect(.invalidInput("Message is empty")) { try await repository.sendMessage(eventID: "puppy-yoga", messageID: "test-message", text: " \n ") }
         await expect(.invalidInput("Choose a nonempty image smaller than 25 MB")) {
             try await repository.addPhotos(eventID: "kayaking-memory", photos: [.init(id: "valid", data: Data([1])), .init(id: "invalid", data: Data())])

@@ -11,7 +11,6 @@ struct DIPProfileScreen: View {
     let onSave: (ProfileEdit) async throws -> Void
 
     @State private var isEditing = false
-    @State private var draftName = ""
     @State private var draftDepartment = ""
     @State private var draftCity = ""
     @State private var draftInterests: Set<String> = []
@@ -215,7 +214,6 @@ struct DIPProfileScreen: View {
     }
 
     private func beginEditing() {
-        draftName = profile.displayName
         draftDepartment = profile.department
         draftCity = profile.city
         draftInterests = Set(profile.interests)
@@ -227,9 +225,13 @@ struct DIPProfileScreen: View {
         NavigationStack {
             Form {
                 Section("Profile") {
-                    TextField("Name", text: $draftName).accessibilityIdentifier("profile.edit.name")
+                    LabeledContent("Name") {
+                        Text(profile.displayName).accessibilityIdentifier("profile.edit.name")
+                    }
                     TextField("Department", text: $draftDepartment)
+                        .accessibilityIdentifier("profile.edit.department")
                     TextField("City", text: $draftCity)
+                        .accessibilityIdentifier("profile.edit.city")
                 }
                 Section("Interests") {
                     ForEach(interestOptions, id: \.self) { interest in
@@ -266,7 +268,7 @@ struct DIPProfileScreen: View {
                     Button(isSaving ? "Saving…" : "Save") {
                         Task { await saveProfile() }
                     }
-                    .disabled(isSaving || draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isSaving)
                     .accessibilityIdentifier("profile.edit.save")
                 }
             }
@@ -276,10 +278,8 @@ struct DIPProfileScreen: View {
 
     @MainActor
     private func saveProfile() async {
-        let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !isSaving, !name.isEmpty else { return }
+        guard !isSaving else { return }
         let edit = ProfileEdit(
-            displayName: name,
             department: draftDepartment.trimmingCharacters(in: .whitespacesAndNewlines),
             city: draftCity.trimmingCharacters(in: .whitespacesAndNewlines),
             interests: interestOptions.filter { draftInterests.contains($0) })

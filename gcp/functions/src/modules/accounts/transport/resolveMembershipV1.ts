@@ -2,18 +2,26 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
-import { joinCompany } from "../application/joinCompany";
-import type { MembershipStore } from "../application/ports";
+import { resolveMembership } from "../application/resolveMembership";
+import type { MembershipRateLimiter, MembershipStore } from "../application/ports";
 import { AccountsError } from "../domain/errors";
 import type { AuthIdentity } from "../domain/membership";
+import { FirestoreMembershipRateLimiter } from "../infrastructure/firestoreMembershipRateLimiter";
 import { FirestoreMembershipStore } from "../infrastructure/firestoreMembershipStore";
 
 /** Derives identity only from the verified Auth token, never from the payload. */
 export function identityFromRequest(request: Pick<CallableRequest, "auth">): AuthIdentity | null {
   const auth = request.auth;
   if (!auth) return null;
-  const email = typeof auth.token.email === "string" ? auth.token.email : null;
-  return { uid: auth.uid, email, emailVerified: auth.token.email_verified === true };
+  const token = auth.token;
+  const provider: unknown = token.firebase?.sign_in_provider;
+  return {
+    uid: auth.uid,
+    email: typeof token.email === "string" ? token.email : null,
+    emailVerified: token.email_verified === true,
+    signInProvider: typeof provider === "string" ? provider : null,
+    name: typeof token.name === "string" ? token.name : null,
+  };
 }
 
 const GENERIC_INTERNAL_MESSAGE = "Something went wrong. Try again later.";
@@ -29,14 +37,18 @@ export function toHttpsError(error: unknown): HttpsError {
   return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
 }
 
-export async function handleJoinCompany(store: MembershipStore, request: Pick<CallableRequest, "auth" | "data">) {
+export async function handleResolveMembership(
+  store: MembershipStore,
+  request: Pick<CallableRequest, "auth" | "data">,
+  limiter?: MembershipRateLimiter,
+) {
   try {
-    return await joinCompany(store, identityFromRequest(request), request.data);
+    return await resolveMembership(store, identityFromRequest(request), request.data, limiter);
   } catch (error) {
     const httpsError = toHttpsError(error);
     if (httpsError.code === "internal") {
-      // Never log the payload: it contains the join code.
-      logger.error("joinCompanyV1 failed", {
+      // Never log email addresses or tokens.
+      logger.error("resolveMembershipV1 failed", {
         uid: request.auth?.uid ?? null,
         reason: error instanceof AccountsError ? error.reason : "UNEXPECTED",
         error: error instanceof Error ? error.name : "unknown",
@@ -46,11 +58,12 @@ export async function handleJoinCompany(store: MembershipStore, request: Pick<Ca
   }
 }
 
-/**
- * Callable export. Region follows the proposed contract (us-central1) pending the
- * team's location decision. The integrator wires this into src/index.ts after review.
- */
-export const joinCompanyV1 = onCall({ region: "us-central1" }, (request) => {
+/** Production requires App Check; only the official Functions emulator bypasses it. */
+export const resolveMembershipV1 = onCall({
+  region: "us-central1",
+  enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
+}, (request) => {
   if (getApps().length === 0) initializeApp();
-  return handleJoinCompany(new FirestoreMembershipStore(getFirestore()), request);
+  const db = getFirestore();
+  return handleResolveMembership(new FirestoreMembershipStore(db), request, new FirestoreMembershipRateLimiter(db));
 });

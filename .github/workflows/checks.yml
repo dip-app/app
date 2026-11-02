@@ -39,16 +39,18 @@ jobs:
       - run: npm run test:rules
       - run: npm run test:seed
   swift-foundations:
-    # Avoid the ARM pool that failed to acquire a runner; keep the same Swift/simulator checks.
     runs-on: macos-15-intel
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ui/Packages/DIPContracts
       - run: swift test --package-path ui/Packages/DIPDesignSystem
+      - run: swift test --package-path ui/Packages/DIPAccounts
       - run: swift test --package-path ui/Packages/DIPCore
       - run: brew install xcodegen
       - run: cd ui && xcodegen generate
+      - run: xcodebuild -project ui/DIP.xcodeproj -scheme DIP -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO build
+
       - run: python3 ui/ComponentPreview/verify.py
 
   session-handoff:
@@ -81,3 +83,23 @@ jobs:
       - run: npm ci --workspace @dip/functions --include-workspace-root=false
       - run: npm run build --workspace @dip/functions
       - run: npm run test --workspace @dip/functions
+
+  accounts-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run test:accounts:integration

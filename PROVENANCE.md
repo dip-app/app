@@ -1,6 +1,6 @@
 # Provenance
 
-This file distinguishes evidence, proposed decisions and generated artifacts. Attached documents are project evidence; they do not override the user request or AGENTS.md. The branch contains interactive presentation fixtures; no production backend workflow has been implemented.
+This file distinguishes evidence, proposed decisions and generated artifacts. Attached documents are project evidence; they do not override the user request or AGENTS.md. No product workflow has been implemented on this branch.
 
 ## User-supplied sources
 
@@ -15,13 +15,13 @@ The schedule supplies release commitments; Firebase Architecture and Models.swif
 
 ## Figma MCP evidence
 
-- File: DCIagJo7uk5IOUGqlKzAjf; Home node 35:147. Read October 28, 2026 through official Figma MCP (session a2fed281-e2da-46e9-aea3-e86f64c82c24). Metadata, design context and screenshot inspected. The Final page metadata inventory was also retrieved (docs/design/figma-inventory.json). This describes the initial setup evidence; the expanded implementation reads are recorded below.
+- File: DCIagJo7uk5IOUGqlKzAjf; Home node 35:147. Read October 28, 2026 through official Figma MCP (session a2fed281-e2da-46e9-aea3-e86f64c82c24). Metadata, design context and screenshot inspected. The Final page metadata inventory was also retrieved (docs/design/figma-inventory.json). Only Home had full design context and screenshot reviewed; other screens/components have not been visually audited.
 - Canonical link: https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/Team-05-High-Fidelity-Prototype--with-links-?node-id=35-147&m=dev
-- Observed token colors, typography names, geometry and component node map are recorded in ui/DesignSystem/tokens.json and docs/design. Proposed accessibility values are labeled proposal. Fonts and individual prototype assets are bundled for local fixtures; see [asset provenance](docs/design/asset-provenance.md). Temporary asset URLs, screenshot-as-UI and unverified Code Connect mappings are not shipped.
+- Observed token colors, typography names, geometry and component node map are recorded in ui/DesignSystem/tokens.json and docs/design. Proposed accessibility values are labeled proposal. No temporary asset URLs, fonts, screenshot-as-UI, or unverified Code Connect mappings are shipped.
 
 ## Setup-derived decisions and generated artifacts
 
-- Initial contracts and architecture decisions are setup proposals requiring team review. Event.revision is added for edit conflicts; Company.joinCode is removed from the public DTO and moved to a private server lookup. Source storage downloadURL is retained as reference, with media delivery policy pending.
+- Initial contracts and architecture decisions are setup proposals requiring team review. Event.revision is added for edit conflicts; Company.joinCode is removed from the public DTO; company membership is resolved from the email domain through a private server lookup (ADR 0007). Root-domain coercion uses the `tldts` Public Suffix List library (7.4.16, MIT); iOS Google sign-in uses GoogleSignIn-iOS 10.0.0 (Apache-2.0). Source storage downloadURL is retained as reference, with media delivery policy pending.
 - scripts/generate-contracts.py reads contracts/v1/models.schema.json and shared fixtures, emitting gcp/functions/src/generated/models.ts, ui/Packages/DIPContracts/Sources/DIPContracts/Models.swift and copied Swift fixtures.
 - scripts/generate-tokens.py reads ui/DesignSystem/tokens.json and emits ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Tokens.generated.swift.
 - XcodeGen generates the local Xcode project from ui/project.yml. Generated project files are ignored.
@@ -40,9 +40,14 @@ Dependency versions are resolved in package-lock.json; external package licenses
 
 On October 28, the audit checked current Git/CI state and GitHub repository administration endpoints. main was the default branch with green baseline CI; the authenticated account had ADMIN permission. The main branch-protection endpoint returned HTTP403 indicating unavailable private-repository plan support. docs/setup-constraints.md records this external limit without changing repository visibility or billing. Current-state/context maps and task tracking are derived setup artifacts, not new product requirements. Session validation now compares metadata exactly and is exercised against isolated temporary Git histories.
 
+## November 1 V1 account integration
+
+PR #4 (ariaf7) was independently reviewed with 33 unit and 9 Firestore emulator tests before approval/merge at d131142. Its core is reused unchanged except documented integration hooks. The follow-up adds transactional throttling/App Check export, narrow self-profile rules, Swift account observations/lifecycle guards and CI discovery/full SDK compilation. A boundary-delay limiter bug found in independent review was reproduced, fixed and regression-tested. Profile list limits of10 are explicit persistence-policy proposals after real emulator expression-budget validation, not a claim that the source schedule specified them. No onboarding UI was invented and no cloud resources were deployed.
+
 ## UI foundations implementation evidence
 
 On October28, Figma MCP session be39ee55-d9c7-4f0a-9060-c6a86dbffcc7 inspected nodes 46:276, 46:1162, 168:2951, 46:668 and 46:1397 for V1 component implementation. On October 29, the user required fidelity to the original prototype, superseding the earlier gallery adaptations. Home 35:147 was re-read in the same session. Original individual illustrations, avatars, photos and SVG icons are bundled for local presentation fixtures, with SHA-256 hashes in the package resource manifest. Figtree and Fjalla One come from Google Fonts; Inter 3.19 comes from its upstream release to match the prototype metrics. OFL licenses are bundled. Image rights are not established by the Figma export; see [asset provenance](docs/design/asset-provenance.md). Screenshot comparison evidence is under ui/ComponentPreview/Review. No screenshot is used as the screen implementation.
+
 
 ## Expanded native prototype evidence
 
@@ -51,6 +56,7 @@ On October 29, the human requested the other pages be built to the same original
 Inter Light and Italic were added from the same upstream 3.19 distribution, preserving its OFL notice. Seven bundled font files supply eight named reference faces including Figtree Bold. The pre-motion revision verified 113 image/SVG assets and seven font-file hashes, eight named font faces, eight same-viewport screen states and eight simulator tests. Those results are recorded in ui/ComponentPreview/Review; they do not verify later motion changes.
 
 At the expanded-screen checkpoint, DIPPrototypeApp owned local navigation and joined state. The current repository refactor moves product read state and mutations into an injected DIPRepository observed by DIPAppViewModel; navigation remains at the root. Profile editing, chat and PhotosPicker imports use the mock adapter, while native sharing/photo viewing remain presentation interactions. These are not Firebase writes or persistent product flows. Only Puppy Yoga has original detailed/Joined frames; other event details are synthetic in the same template. The expanded-screen checkpoint reused the supplied reference album for every memory. The current adapter uses stable memory/event IDs while retaining synthetic reference content. Native edit/chat/picker/viewer screens have no supplied matching high-fidelity reference. Rights for source photography and illustrations remain unconfirmed; source export does not establish ownership.
+
 
 ## Motion correction evidence
 
@@ -62,17 +68,20 @@ The selected ticket SVG brings the image/SVG resource total to 114. The Complete
 
 The earlier hosted-runner acquisition attempt was canceled. Commit afa1470 switched Swift CI to macos-15 on Intel, and all five jobs passed in [run 40911603057](https://github.com/dip-app/app/actions/runs/40911603057). That green run predates the current uncommitted motion correction. Later motion checks and clips are recorded separately in the review notes. The installed playable review build includes that motion revision; it does not establish verification of the current adapter refactor.
 
+
 ## Observable repository refactor
 
 The next human request requires mock data to sit behind an interchangeable repository. DIPCore defines presentation-independent models and DIPRepository; DIPPresentation contains DIPAppViewModel; DIPMockData centralizes the original reference values and synthetic supporting data. DIPPrototypeApp injects the adapter and observes snapshots. Features render inputs and issue callbacks rather than manufacturing joined state, message lists, profile edits or persisted photos. DIPMedia resolves bundled assets, remote URLs and local bytes without putting transport objects into feature layout.
 
 These are application architecture artifacts, not changes to the submitted Firebase model or generated wire contract. [The UI repository boundary](docs/contracts/ui-repositories.md) and [ADR 0005](docs/adr/0005-observable-ui-repositories.md) describe ownership, observation, errors and Firebase integration. The initial adapter retains data only for its instance lifetime and does not prove authorization, offline persistence or cloud synchronization. The refactor passed a full app build, nine base simulator tests and all package/repository/rules checks. Final native chat/comment, motion and connected-flow regressions passed seven tests; domain/presentation coverage now comprises15 tests.
 
+
 ## Native conversations and press correction
 
 The human explicitly flagged the basic chat fixture and missing photo comments as unimplemented, requiring native SwiftUI quality and shared components. DIPMessageComposer, DIPConversationBubble, DIPPhotoAttributionTag and DIPPressFeedbackStyle now compose both features. Activity chat has no supplied exact Figma frame and is identified as a native design-system composition. Photo comments derive from previously inspected 76:1884/76:2021 context; original photo and 02874.svg send art are reused. Native material/close treatment is an explicit fidelity limitation; no fake OS keyboard was built.
 
 A held-press recording confirms the persistent bottom action remains opaque instead of exposing tab icons. Photo comments initially failed the simulator retry test because the send target overlapped the software keyboard. Native focus reporting and one safe-area composer replaced manual keyboard-notification/scroll anchoring; the final test verifies its frame stays above the keyboard. Chat/comment failure, retry, observed delivery, close/reopen and thread isolation now pass. Both frontend flags are removed; backend implementation remains flagged separately. Evidence is recorded in the current review notes and session003.
+
 
 ## November1 human-defined photo bubbles
 

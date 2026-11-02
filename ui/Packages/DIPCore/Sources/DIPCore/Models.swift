@@ -86,13 +86,13 @@ public struct DIPProfile: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Editable profile metadata; OAuth owns the identity display name.
 public struct ProfileEdit: Equatable, Sendable {
-    public var displayName: String
     public var department: String
     public var city: String
     public var interests: [String]
-    public init(displayName: String, department: String, city: String, interests: [String]) {
-        self.displayName = displayName; self.department = department; self.city = city; self.interests = interests
+    public init(department: String, city: String, interests: [String]) {
+        self.department = department; self.city = city; self.interests = interests
     }
 }
 

@@ -9,13 +9,17 @@ export type AccountsErrorCode =
   | "permission-denied"
   | "not-found"
   | "failed-precondition"
+  | "resource-exhausted"
   | "internal";
 
 export type AccountsErrorReason =
+  | "RATE_LIMITED"
   | "UNAUTHENTICATED"
   | "VALIDATION_FAILED"
   | "EMAIL_NOT_VERIFIED"
-  | "INVALID_JOIN_CODE"
+  | "PROVIDER_NOT_ALLOWED"
+  | "PERSONAL_EMAIL_DOMAIN"
+  | "NO_COMPANY_FOR_DOMAIN"
   | "MEMBERSHIP_CONFLICT"
   | "INVALID_STORED_MEMBERSHIP";
 

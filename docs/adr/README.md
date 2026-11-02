@@ -14,3 +14,6 @@ Initial decisions:
 - 0005-observable-ui-repositories.md — injected mock/backend adapters and observed UI state (proposed).
 
 The architecture overview in ../architecture.md is a navigation summary. These records carry decision status and tradeoffs.
+
+- 0006-account-session-and-profile-access.md — V1 callable throttling, observed Swift sessions and narrow profile rules (proposed). Number 0005 is reserved by the UI repository-boundary PR.
+- 0007-oauth-domain-based-sign-in.md — Google-only OAuth sign-in, server-side company membership from the root email domain, personal domains blocked, OAuth display names, email/password and join codes removed (accepted).

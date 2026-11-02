@@ -68,19 +68,15 @@ public actor DIPMockRepository: DIPRepository {
 
     public func updateProfile(_ edit: ProfileEdit) async throws {
         try consumeFailure(.profile)
-        let name = edit.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { throw DIPRepositoryError.invalidInput("Name is required") }
         guard Set(edit.interests).isSubset(of: Set(snapshot.profile.availableInterests)) else {
             throw DIPRepositoryError.invalidInput("Unknown interest")
         }
-        snapshot.profile.displayName = name
         snapshot.profile.department = edit.department.trimmingCharacters(in: .whitespacesAndNewlines)
         snapshot.profile.city = edit.city.trimmingCharacters(in: .whitespacesAndNewlines)
         snapshot.profile.interests = snapshot.profile.availableInterests.filter(Set(edit.interests).contains)
         for id in Array(snapshot.participants.keys) {
             guard var people = snapshot.participants[id] else { continue }
             for index in people.indices where people[index].id == snapshot.profile.id {
-                people[index].name = snapshot.profile.displayName
                 people[index].department = snapshot.profile.department
             }
             snapshot.participants[id] = people
