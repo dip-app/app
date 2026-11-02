@@ -52,6 +52,9 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertEqual(album.frame.minY, 188, accuracy: 0.5)
         XCTAssertEqual(album.frame.height, 205, accuracy: 0.5)
         album.tap()
+        XCTAssertTrue(app.buttons["event.primary"].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.buttons["event.primary"].label, "View Album")
+        app.buttons["event.primary"].tap()
         XCTAssertTrue(app.buttons["album.back"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["album.add-photos"].exists)
         if app.frame.width == 402 {
@@ -72,6 +75,7 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["album.photo.close"].waitForExistence(timeout: 3))
         app.buttons["album.photo.close"].tap()
         app.buttons["album.back"].tap()
+        app.buttons["event.back"].tap()
         XCTAssertTrue(app.buttons["events.segment.memories"].isSelected)
         app.buttons["events.segment.active"].tap()
         puppy.tap()

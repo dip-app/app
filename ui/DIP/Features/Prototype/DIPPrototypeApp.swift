@@ -31,6 +31,7 @@ struct DIPPrototypeApp: View {
         switch screen {
         case "event", "event-joined": _routes = State(initialValue: [.event("puppy-yoga")])
         case "attendees": _routes = State(initialValue: [.participants("puppy-yoga")])
+        case "past-event": _routes = State(initialValue: [.event("kayaking-memory")])
         case "album": _routes = State(initialValue: [.album("kayaking-memory")])
         default: _routes = State(initialValue: [])
         }
@@ -139,7 +140,7 @@ struct DIPPrototypeApp: View {
                     unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
                     initialMemories: initialMemories, showsBottomBar: false,
                     onSelectTab: selectTab,
-                    onEvent: { routes.append(.event($0)) }, onAlbum: { routes.append(.album($0)) },
+                    onEvent: { routes.append(.event($0)) }, onAlbum: { routes.append(.event($0)) },
                     onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
             case .profile:
                 AnyView(DIPProfileScreen(
@@ -164,11 +165,14 @@ struct DIPPrototypeApp: View {
                     title: model.isLoading ? "Loading…" : "Activity unavailable",
                     style: .complete, identifier: "event.primary")
             }
+            if event.isPast { return DIPBottomBarAction(title: "View Album", identifier: "event.primary") }
             let joined = event.isJoined
             return DIPBottomBarAction(
                 title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
                 identifier: "event.primary", value: joined ? "Joined" : "Not joined")
+        case .participants(let id) where model.snapshot?.eventDetails[id]?.isPast == true:
+            return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
         case .participants:
             return DIPBottomBarAction(title: "Activity Chat", style: .accent, identifier: "participants.chat")
         case .album:
@@ -180,9 +184,12 @@ struct DIPPrototypeApp: View {
     private func performBottomAction() {
         switch routes.last {
         case .event(let id):
-            if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
+            if model.snapshot?.eventDetails[id]?.isPast == true { routes.append(.album(id)) }
+            else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
-        case .participants(let id): openChat(id)
+        case .participants(let id):
+            if model.snapshot?.eventDetails[id]?.isPast == true { routes.append(.album(id)) }
+            else { openChat(id) }
         case .album: albumPickerPresented = true
         case nil: break
         }
@@ -209,7 +216,8 @@ struct DIPPrototypeApp: View {
                     DIPEventDetailsScreen(
                         event: event, joined: event.isJoined, showsBottomBar: false,
                         onJoin: { join(id) }, onBack: pop,
-                        onAttendees: { routes.append(.participants(id)) }, onChat: { openChat(id) })
+                        onAttendees: { routes.append(.participants(id)) }, onChat: { openChat(id) },
+                        photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) })
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .participants(let id):

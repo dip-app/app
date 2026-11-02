@@ -11,6 +11,8 @@ struct DIPEventDetailsScreen: View {
     let onChat: () -> Void
     let joined: Bool
     let onJoin: () -> Void
+    let photos: [DIPPhoto]
+    let onAlbum: () -> Void
 
     init(
         event: DIPEventDetail,
@@ -19,8 +21,12 @@ struct DIPEventDetailsScreen: View {
         onJoin: @escaping () -> Void,
         onBack: @escaping () -> Void,
         onAttendees: @escaping () -> Void,
-        onChat: @escaping () -> Void
+        onChat: @escaping () -> Void,
+        photos: [DIPPhoto] = [],
+        onAlbum: @escaping () -> Void = {}
     ) {
+        self.photos = photos
+        self.onAlbum = onAlbum
         self.event = event
         self.joined = joined
         self.onJoin = onJoin
@@ -42,6 +48,7 @@ struct DIPEventDetailsScreen: View {
                             VStack(alignment: .leading, spacing: 20) {
                                 activityDetails
                                 attendeeDetails
+                                if event.isPast { albumPreview }
                             }
                         }
                         .padding(.horizontal, 20)
@@ -52,7 +59,7 @@ struct DIPEventDetailsScreen: View {
                 .padding(.bottom, 22)
                 if showsBottomBar {
                     Button(action: primaryAction) {
-                        Text(joined ? "Activity Chat" : "Join the Activity")
+                        Text(event.isPast ? "View Album" : joined ? "Activity Chat" : "Join the Activity")
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity).frame(height: 80)
@@ -90,7 +97,8 @@ struct DIPEventDetailsScreen: View {
             Text(event.timing)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .foregroundStyle(.black)
-                .frame(width: 164, height: 50)
+                .padding(.horizontal, event.isPast ? 28 : 0)
+                .frame(width: event.isPast ? nil : 164, height: 50)
                 .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
         }
         .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
@@ -126,12 +134,12 @@ struct DIPEventDetailsScreen: View {
                 .frame(height: 50, alignment: .leading)
                 .accessibilityIdentifier("event.title")
             Text(event.description)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                .font(DIPReferenceAssets.font("Inter-Regular", size: event.isPast ? 15 : 14))
                 // The source uses 18-point lines; Inter 3.19 has a 16.943-point natural line height.
                 .lineSpacing(1.0566566)
                 .frame(width: 328, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: 126, alignment: .topLeading)
+                .frame(minHeight: event.isPast ? 0 : 126, alignment: .topLeading)
         }
         .foregroundStyle(.black)
         .padding(.top, 10)
@@ -139,7 +147,7 @@ struct DIPEventDetailsScreen: View {
 
     private var attendeeDetails: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Who’s Attending")
+            Text(event.isPast ? "Who Attended" : "Who’s Attending")
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                 .foregroundStyle(.black).frame(height: 22)
             HStack(spacing: 10) {
@@ -158,28 +166,56 @@ struct DIPEventDetailsScreen: View {
                 .buttonStyle(.plain).accessibilityLabel("View attendees")
                 .accessibilityIdentifier("event.attendees")
             }
-            HStack(spacing: 10) {
-                Button {
-                    if joined { onChat() } else { onJoin() }
-                } label: {
-                    secondaryLabel(
-                        "Join Activity", asset: "event_HeroiconsOutlineChatBubbleOvalLeft",
-                        background: DIPTokens.Color.actionPrimary.swiftUIColor)
+            if !event.isPast {
+                HStack(spacing: 10) {
+                    Button {
+                        if joined { onChat() } else { onJoin() }
+                    } label: {
+                        secondaryLabel(
+                            "Join Activity", asset: "event_HeroiconsOutlineChatBubbleOvalLeft",
+                            background: DIPTokens.Color.actionPrimary.swiftUIColor)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(joined ? "Open activity chat" : "Join Activity")
+                    .accessibilityValue(joined ? "Joined" : "Not joined")
+                    .accessibilityIdentifier("event.join")
+                    ShareLink(item: "\(event.title) — \(event.timing)") {
+                        secondaryLabel(
+                            "Share Link", asset: "event_HeroiconsMiniLink",
+                            background: Color(red: 240 / 255, green: 84 / 255, blue: 165 / 255))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Share event")
+                    .accessibilityIdentifier("event.share")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(joined ? "Open activity chat" : "Join Activity")
-                .accessibilityValue(joined ? "Joined" : "Not joined")
-                .accessibilityIdentifier("event.join")
-                ShareLink(item: "\(event.title) — \(event.timing)") {
-                    secondaryLabel(
-                        "Share Link", asset: "event_HeroiconsMiniLink",
-                        background: Color(red: 240 / 255, green: 84 / 255, blue: 165 / 255))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Share event")
-                .accessibilityIdentifier("event.share")
             }
         }
+    }
+
+    private var albumPreview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Photo Album")
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
+                .foregroundStyle(.black)
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    ForEach(Array(photos.prefix(8).enumerated()), id: \.element.id) { index, photo in
+                        Button(action: onAlbum) {
+                            DIPMedia(photo.image).resizable().scaledToFill()
+                                .frame(width: 100, height: 134).clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                        }
+                        .buttonStyle(DIPPressFeedbackStyle())
+                        .accessibilityLabel("View photo album, photo \(index + 1)")
+                        .accessibilityIdentifier("event.album.photo.\(index)")
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .scrollIndicators(.hidden)
+            .padding(.horizontal, -20)
+        }
+        .accessibilityIdentifier("event.album.preview")
     }
 
     private func secondaryLabel(_ title: String, asset: String, background: Color) -> some View {
@@ -198,6 +234,6 @@ struct DIPEventDetailsScreen: View {
     }
 
     private func primaryAction() {
-        if joined { onChat() } else { onJoin() }
+        if event.isPast { onAlbum() } else if joined { onChat() } else { onJoin() }
     }
 }

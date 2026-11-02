@@ -5,6 +5,21 @@ import XCTest
 
 @MainActor
 final class RepositoryTests: XCTestCase {
+    func testPastEventsProvideConsistentDetailsAndRejectRSVP() async throws {
+        let fixture = DIPMockFixtures.reference
+        for memory in fixture.memories {
+            let event = try XCTUnwrap(fixture.eventDetails[memory.eventID])
+            XCTAssertTrue(event.isPast)
+            XCTAssertEqual(fixture.participants[event.id]?.count, event.attendeeCount)
+            XCTAssertNotNil(fixture.albums[event.id])
+        }
+        let repository = DIPMockRepository()
+        do {
+            try await repository.setRSVP(eventID: "kayaking-memory", going: true)
+            XCTFail("Past event must not accept an RSVP")
+        } catch { XCTAssertEqual(error as? DIPRepositoryError, .invalidInput("This activity has ended")) }
+    }
+
     func testReferenceSnapshotPreservesExistingPrototype() async throws {
         let repository = DIPMockRepository()
         let stream = await repository.observe()
@@ -35,7 +50,7 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(album.photos[8].attribution?.name, "Alexis Standall")
         for memory in snapshot.memories {
             XCTAssertEqual(snapshot.albums[memory.eventID]?.photos.count, 12)
-            XCTAssertEqual(snapshot.participants[memory.eventID]?.count, 17)
+            XCTAssertEqual(snapshot.participants[memory.eventID]?.count, 13)
             XCTAssertEqual(snapshot.messages[memory.eventID]?.first?.text, "Looking forward to this activity!")
         }
     }
