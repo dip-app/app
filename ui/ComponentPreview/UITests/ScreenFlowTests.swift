@@ -90,7 +90,7 @@ final class ScreenFlowTests: XCTestCase {
         edit.tap()
         let oauthName = app.staticTexts["profile.edit.name"]
         XCTAssertTrue(oauthName.waitForExistence(timeout: 3))
-        XCTAssertEqual(oauthName.label, "Elissa Woode")
+        XCTAssertEqual(oauthName.label, "Name, Elissa Woode")
         XCTAssertFalse(app.textFields["profile.edit.name"].exists)
         let department = app.textFields["profile.edit.department"]
         department.tap()
@@ -105,7 +105,7 @@ final class ScreenFlowTests: XCTestCase {
         app.buttons["profile.edit"].tap()
         XCTAssertTrue(department.waitForExistence(timeout: 3))
         XCTAssertEqual(department.value as? String, "Design")
-        XCTAssertEqual(oauthName.label, "Elissa Woode")
+        XCTAssertEqual(oauthName.label, "Name, Elissa Woode")
         app.buttons["Cancel"].tap()
         app.buttons["profile.memory.0"].tap()
         XCTAssertTrue(app.buttons["album.back"].waitForExistence(timeout: 3))

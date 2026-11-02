@@ -16,7 +16,7 @@ Preserved pending UI/profile ownership corrections and both account/native depen
 
 ## Validation
 
-npm ci and npm run check pass (58 backend unit tests, six explicit product TODOs). All 37 Swift package tests pass. Emulator, app and UI checks are running; final results will be recorded before merge.
+npm ci and npm run check pass (58 backend unit tests, six explicit product TODOs). All 37 Swift package tests pass. 87 rules tests and 11 account emulator integration tests pass. Combined Firebase/Google app builds and all 11 onboarding tests pass; one unrelated product placeholder remains skipped. The first complete UI run passed 12 of 13, exposing a native LabeledContent accessibility-label assertion mismatch; corrected to include the Name label, with the rerun and publication CI pending.
 
 ## Decisions
 
