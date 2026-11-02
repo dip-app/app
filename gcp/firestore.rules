@@ -42,17 +42,18 @@ service cloud.firestore {
       // Missing self documents must be observable to enter company onboarding.
       allow get: if own(uid);
       allow update: if own(uid)
+        // displayName comes from OAuth and is written only by resolveMembershipV1 (ADR 0007).
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'displayName', 'photoURL', 'avatarId', 'department', 'jobTitle', 'city',
+          'photoURL', 'avatarId', 'department', 'jobTitle', 'city',
           'interestTagIds', 'travelRadiusMiles', 'availability'
         ]) && validProfile(request.resource.data);
     }
     match /companies/{companyId} {
-      // Legacy documents with joinCode remain private until migrated by trusted tooling.
       allow get: if verified()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
-        && !resource.data.keys().hasAny(['joinCode']);
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
+    // companyDomains (domain -> company) and accountRateLimits are server-only:
+    // they fall through to the deny-all rule below.
     match /tags/{tagId} {
       allow read: if verified();
     }

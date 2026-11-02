@@ -1,0 +1,8 @@
+// Committed defaults for the DIP app target (ADR 0007).
+// The Google sign-in URL scheme must equal REVERSED_CLIENT_ID from your local
+// GoogleService-Info.plist. Put it in ui/Config/Local.xcconfig (untracked);
+// copy Local.example.xcconfig to start. Without it, Google sign-in cannot
+// return to the app, and the app reports that sign-in is not configured.
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.dip-not-configured
+
+#include? "Local.xcconfig"

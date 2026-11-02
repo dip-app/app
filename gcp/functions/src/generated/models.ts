@@ -258,13 +258,11 @@ export interface EventInvite {
   createdAt: string;
 }
 
-export interface JoinCompanyRequest {
+export interface ResolveMembershipRequest {
   contractVersion: number;
-  joinCode: string;
-  displayName: string;
 }
 
-export interface JoinCompanyResponse {
+export interface ResolveMembershipResponse {
   contractVersion: number;
   companyId: string;
   role: "member" | "admin";

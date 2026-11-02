@@ -6,7 +6,7 @@ This directory is the backend boundary for DIP. It is ready for feature developm
 
 ```text
 functions/src/
-  index.ts          Deliberate list of deployable exports; joinCompanyV1
+  index.ts          Deliberate list of deployable exports; resolveMembershipV1
   transport/        Firebase v2 callable adapters and auth/error translation
   application/      Use cases and transaction orchestration
   domain/           Firebase-independent business rules
@@ -41,9 +41,9 @@ The rules suite requires Java supported by the installed Firebase CLI and free p
 npx firebase emulators:start --project demo-dip --only auth,firestore,storage,functions
 ```
 
-joinCompanyV1 is exported and served by the Functions emulator. Production App Check is enforced; only the official emulator bypasses it. Copy `.firebaserc.example` to `.firebaserc` only if an alias file is useful locally. Keep `--project demo-dip` explicit in test commands. Choosing real development/staging/production projects and deployment credentials is separate work for a project administrator.
+resolveMembershipV1 is exported and served by the Functions emulator; test it with synthetic Google credentials on the Auth emulator (see tests/integration). Production App Check is enforced; only the official emulator bypasses it. Copy `.firebaserc.example` to `.firebaserc` only if an alias file is useful locally. Keep `--project demo-dip` explicit in test commands. Choosing real development/staging/production projects and deployment credentials is separate work for a project administrator.
 
-For a shared local starting dataset, follow [sample-data/README.md](sample-data/README.md). The seed script requires the exact local Auth and Firestore addresses and the `demo-dip` project. It restores reserved fixture IDs without clearing unrelated emulator data. The public company fixture does not contain a join code; a hashed, private lookup is seeded separately.
+For a shared local starting dataset, follow [sample-data/README.md](sample-data/README.md). The seed script requires the exact local Auth and Firestore addresses and the `demo-dip` project. It restores reserved fixture IDs without clearing unrelated emulator data. Company membership is seeded as a private `companyDomains/{rootDomain}` record; the seed refuses subdomain or personal-domain keys.
 
 ## Test boundaries
 

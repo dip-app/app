@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 
 const expectedProject = "demo-dip";
@@ -28,31 +27,40 @@ if (fixture.formatVersion !== 1 || fixture.projectId !== expectedProject) {
   throw new Error("Unsupported seed fixture or project.");
 }
 
-const normalizedCode = fixture.joinCode.trim().toUpperCase();
-const accessPath = "companyAccess/" + createHash("sha256").update(normalizedCode, "utf8").digest("hex");
+// Resolve from the Functions workspace: npm may install Admin there rather than hoist it.
+const workspaceRequire = createRequire(new URL("../functions/package.json", import.meta.url));
+const { getDomain } = workspaceRequire("tldts");
+const personalDomains = new Set(JSON.parse(await readFile(
+  new URL("../functions/src/modules/accounts/domain/personal-email-domains.json", import.meta.url), "utf8")));
+
 const paths = new Set();
 for (const document of fixture.firestoreDocuments) {
-  const allowed = /^(companies\/company-demo(?:\/events\/event-demo(?:\/rsvps\/member-demo)?)?|users\/(?:member-demo|admin-demo)|tags\/tag-social)$/.test(document.path)
-    || document.path === accessPath;
+  const allowed = /^(companies\/company-demo(?:\/events\/event-demo(?:\/rsvps\/member-demo)?)?|users\/(?:member-demo|admin-demo)|tags\/tag-social|companyDomains\/[a-z0-9.-]+)$/.test(document.path);
   if (!allowed || paths.has(document.path) || typeof document.data !== "object" || document.data === null) {
     throw new Error(`Unexpected or duplicate fixture document: ${document.path}`);
   }
-  if (document.path.startsWith("companies/") && Object.hasOwn(document.data, "joinCode")) {
-    throw new Error("Company data must not expose a join code.");
+  if (document.path.startsWith("companyDomains/")) {
+    // ADR 0007: keys are root domains, never personal email providers.
+    const domain = document.path.slice("companyDomains/".length);
+    if (getDomain(domain, { allowPrivateDomains: false }) !== domain || personalDomains.has(domain)) {
+      throw new Error(`companyDomains key must be a non-personal root domain: ${domain}`);
+    }
+    if (Object.keys(document.data).join() !== "companyId" || typeof document.data.companyId !== "string") {
+      throw new Error(`companyDomains/${domain} must contain only a companyId.`);
+    }
   }
   paths.add(document.path);
 }
-if (!paths.has(accessPath)) {
-  throw new Error("The fixture's private companyAccess hash does not match its normalized join code.");
+if (![...paths].some((path) => path.startsWith("companyDomains/"))) {
+  throw new Error("The fixture must map at least one company domain.");
 }
 for (const user of fixture.authUsers) {
-  if (!["member-demo", "admin-demo"].includes(user.uid) || !user.email.endsWith("@example.invalid")) {
-    throw new Error("Only reserved synthetic emulator users may be seeded.");
+  if (!["member-demo", "admin-demo"].includes(user.uid) || !user.email.endsWith("@example.invalid")
+    || user.provider !== "google.com" || typeof user.providerUid !== "string" || Object.hasOwn(user, "password")) {
+    throw new Error("Only reserved synthetic Google emulator users may be seeded.");
   }
 }
 
-// Resolve from the Functions workspace: npm may install Admin there rather than hoist it.
-const workspaceRequire = createRequire(new URL("../functions/package.json", import.meta.url));
 const { initializeApp, deleteApp } = workspaceRequire("firebase-admin/app");
 const { getAuth } = workspaceRequire("firebase-admin/auth");
 const { getFirestore, Timestamp } = workspaceRequire("firebase-admin/firestore");
@@ -100,9 +108,16 @@ try {
     }
   }
   for (const user of fixture.authUsers) {
-    const { uid, ...properties } = user;
-    if (existingUsers.has(uid)) await auth.updateUser(uid, properties);
-    else await auth.createUser(user);
+    const { uid, email, displayName, emailVerified, provider, providerUid } = user;
+    if (existingUsers.has(uid)) {
+      await auth.updateUser(uid, { email, displayName, emailVerified });
+    } else {
+      // Google-provider accounts (ADR 0007). Sign in on the Auth emulator with a
+      // synthetic Google credential whose `sub` is providerUid.
+      const result = await auth.importUsers([{ uid, email, displayName, emailVerified,
+        providerData: [{ providerId: provider, uid: providerUid, email, displayName }] }]);
+      if (result.failureCount > 0) throw new Error(`Could not import synthetic user ${uid}.`);
+    }
   }
   const firestore = getFirestore(app);
   const batch = firestore.batch();

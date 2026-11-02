@@ -21,7 +21,7 @@ The schedule supplies release commitments; Firebase Architecture and Models.swif
 
 ## Setup-derived decisions and generated artifacts
 
-- Initial contracts and architecture decisions are setup proposals requiring team review. Event.revision is added for edit conflicts; Company.joinCode is removed from the public DTO and moved to a private server lookup. Source storage downloadURL is retained as reference, with media delivery policy pending.
+- Initial contracts and architecture decisions are setup proposals requiring team review. Event.revision is added for edit conflicts; Company.joinCode is removed from the public DTO; company membership is resolved from the email domain through a private server lookup (ADR 0007). Root-domain coercion uses the `tldts` Public Suffix List library (7.4.16, MIT); iOS Google sign-in uses GoogleSignIn-iOS 10.0.0 (Apache-2.0). Source storage downloadURL is retained as reference, with media delivery policy pending.
 - scripts/generate-contracts.py reads contracts/v1/models.schema.json and shared fixtures, emitting gcp/functions/src/generated/models.ts, ui/Packages/DIPContracts/Sources/DIPContracts/Models.swift and copied Swift fixtures.
 - scripts/generate-tokens.py reads ui/DesignSystem/tokens.json and emits ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Tokens.generated.swift.
 - XcodeGen generates the local Xcode project from ui/project.yml. Generated project files are ignored.

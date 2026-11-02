@@ -1,8 +1,8 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { FirestoreJoinRateLimiter } from "../../functions/src/modules/accounts/infrastructure/firestoreJoinRateLimiter";
+import { FirestoreMembershipRateLimiter } from "../../functions/src/modules/accounts/infrastructure/firestoreMembershipRateLimiter";
 
-type LimiterDb = ConstructorParameters<typeof FirestoreJoinRateLimiter>[0];
+type LimiterDb = ConstructorParameters<typeof FirestoreMembershipRateLimiter>[0];
 function fakeDb(read: () => Promise<{ windowStart: number; attempts: number }>) {
   const writes: unknown[] = [];
   const db = {
@@ -33,7 +33,7 @@ test("read delayed across minute boundary cannot reset a newer full window", asy
     await gate;
     return { windowStart: 180_000, attempts: 5 };
   });
-  const result = new FirestoreJoinRateLimiter(db, () => now).consume("delayed");
+  const result = new FirestoreMembershipRateLimiter(db, () => now).consume("delayed");
   const rejected = assert.rejects(result, rateLimited);
   await started;
   now = 180_001;
@@ -44,6 +44,6 @@ test("read delayed across minute boundary cannot reset a newer full window", asy
 
 test("server clock rollback cannot replace a future stored window", async () => {
   const { db, writes } = fakeDb(async () => ({ windowStart: 180_000, attempts: 1 }));
-  await assert.rejects(new FirestoreJoinRateLimiter(db, () => 179_999).consume("rollback"), rateLimited);
+  await assert.rejects(new FirestoreMembershipRateLimiter(db, () => 179_999).consume("rollback"), rateLimited);
   assert.deepEqual(writes, []);
 });

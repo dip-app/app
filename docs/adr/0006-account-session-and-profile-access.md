@@ -1,6 +1,6 @@
 # 0006 — Account sessions and narrow profile access
 
-Status: proposed
+Status: proposed; superseded in part by [ADR 0007](0007-oauth-domain-based-sign-in.md) (joinCompanyV1, join codes, email/password and displayName editing replaced by Google sign-in, resolveMembershipV1 and OAuth display names)
 Date: 2026-11-01
 
 ## Context

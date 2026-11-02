@@ -10,7 +10,7 @@ The team needs multiple humans and agents to implement DIP in parallel without d
 
 ## Decision
 
-Use Firebase native callables for membership, RSVP and organizer mutations, with Firestore live reads. Schema-generated Swift and TypeScript DTOs avoid independently invented endpoints. Keep tenant membership and privileged fields server-owned. Move company join codes to private lookup and add Event.revision for concurrent edits.
+Use Firebase native callables for membership, RSVP and organizer mutations, with Firestore live reads. Schema-generated Swift and TypeScript DTOs avoid independently invented endpoints. Keep tenant membership and privileged fields server-owned. Move company join codes to private lookup and add Event.revision for concurrent edits. (Join codes were later replaced by email-domain membership; see [ADR 0007](0007-oauth-domain-based-sign-in.md).)
 
 ## Consequences
 

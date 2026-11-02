@@ -20,11 +20,11 @@ The separate screenshot supplied with the request contains a portfolio narrative
 
 ## Source decisions versus setup recommendations
 
-The submission specifies a Swift app with Firebase Auth, Firestore, Cloud Storage, and Cloud Functions. Company records live under `companies/{companyId}`; users live under `users/{uid}`; tags and partners are shared top-level collections. Privileged points operations are server-owned. Company records, join codes, and organizer roles are manually seeded for V1.
+The submission specifies a Swift app with Firebase Auth, Firestore, Cloud Storage, and Cloud Functions. Company records live under `companies/{companyId}`; users live under `users/{uid}`; tags and partners are shared top-level collections. Privileged points operations are server-owned. Company records, email-domain mappings, and organizer roles are manually seeded for V1.
 
 This repository adds a monorepo layout, generated contract types, tests, agent collaboration guidance, and design-system foundations. Proposed callable boundaries, security refinements, and contract error/retry details are setup decisions for team review, not claims that these appeared verbatim in the submission. The contracts describe intended interfaces; the setup branch does not implement product workflows or deploy endpoints.
 
-Where the architecture and schedule differ, use the revised schedule for release scope. For example, the architecture mentions Apple/Google sign-in and domain-based joining, whereas V1 commits to email/password and company-code access. The broader model set and prototype include later features; do not implement those as part of V1 by implication.
+Where the architecture and schedule differ, use the revised schedule for release scope. The schedule originally committed V1 to email/password and company-code access; the maintainer replaced that with Google sign-in and domain-based membership on November 1, 2026 ([ADR 0007](adr/0007-oauth-domain-based-sign-in.md)). Apple sign-in stays later work. The broader model set and prototype include later features; do not implement those as part of V1 by implication.
 
 ## Findings that should guide implementation
 

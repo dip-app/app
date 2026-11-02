@@ -8,15 +8,14 @@ The reference date is **October 28, 2026**. The event is fixed at **November 2, 
 | --- | --- |
 | Emulator project | `demo-dip` |
 | Company | `company-demo` |
-| Member | `member-demo` / `member@example.invalid` |
-| Organizer | `admin-demo` / `admin@example.invalid` |
-| Password for both local accounts | `DIP-emulator-only-2026!` |
-| Company join code | `DEMO-2026` |
+| Member | `member-demo` / `member@example.invalid` (Google provider, synthetic `sub` `google-member-demo`) |
+| Organizer | `admin-demo` / `admin@example.invalid` (Google provider, synthetic `sub` `google-admin-demo`) |
+| Company domain | `example.invalid` -> `company-demo` |
 | Event | `event-demo`, capacity 20, attendee count 1 |
 
-These credentials are public fixtures for local emulators only. The reserved `.invalid` domain cannot deliver email. Image URL fields are intentionally empty; image selection and fallback behavior belong to the future V1 app implementation. No external API or asset downloads are required to seed.
+These are public fixtures for local emulators only. The reserved `.invalid` domain cannot deliver email. Accounts are Google-provider users (ADR 0007); there are no passwords. On the Auth emulator, sign in as one with a synthetic Google credential whose ID token is unsigned JSON, e.g. `{"sub":"google-member-demo","email":"member@example.invalid","email_verified":true,"name":"Demo Member"}`. Image URL fields are intentionally empty; image selection and fallback behavior belong to the V1 app implementation. No external API or asset downloads are required to seed.
 
-The company document has **no `joinCode` field**. The local seed stores `{ "companyId": "company-demo" }` at `companyAccess/{sha256(trim(uppercase(joinCode)))}`. This server-only lookup follows the proposed membership contract. Neither the public company document nor a client query should expose company-access records. The plaintext code in this fixture is not a production secret.
+The company document has no secret fields. Membership comes from the private `companyDomains/example.invalid` record (`{ "companyId": "company-demo" }`), which `resolveMembershipV1` reads after reducing a verified Google email to its root domain. The seed refuses keys that are not root domains or that are personal email providers.
 
 ## Seed running emulators
 

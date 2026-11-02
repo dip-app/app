@@ -24,10 +24,8 @@ before(async () => {
       legacy: { ...profile, id: "legacy" } })) await store.doc(`users/${uid}`).set(data);
     await store.doc("companies/company-a").set({ name: "Company A" });
     await store.doc("companies/company-b").set({ name: "Company B" });
-    await store.doc("companies/legacy").set({ name: "Legacy", joinCode: "SYNTHETIC" });
-    await store.doc("users/legacy-member").set({ ...profile, companyId: "legacy" });
     await store.doc("tags/wellbeing").set({ name: "Wellbeing" });
-    await store.doc("companyAccess/synthetic").set({ companyId: "company-a" });
+    await store.doc("companyDomains/example.test").set({ companyId: "company-a" });
     await store.doc("accountRateLimits/member").set({ attempts: 1 });
   });
 });
@@ -55,20 +53,20 @@ test("private profiles deny unauthenticated, unverified, other-user and collecti
 });
 
 test("own profile supports only bounded V1 profile updates", async () => {
-  await assertSucceeds(own().update({ displayName: "Updated Member", photoURL: "https://example.test/avatar.png",
+  await assertSucceeds(own().update({ photoURL: "https://example.test/avatar.png",
     avatarId: "avatar-1", department: "Engineering", jobTitle: "Designer", city: "Boston",
     interestTagIds: ["wellbeing"], travelRadiusMiles: 50, availability: ["weekend"] }));
   const saved = (await own().get()).data();
   assert.deepEqual(saved?.interestTagIds, ["wellbeing"]);
   assert.equal(saved?.companyId, "company-a");
   assert.equal(saved?.role, "member");
-  await assertSucceeds(own().update({ displayName: "A", interestTagIds: [], availability: [], travelRadiusMiles: 0 }));
-  await assertSucceeds(own().update({ displayName: "A".repeat(80), travelRadiusMiles: 500,
+  await assertSucceeds(own().update({ interestTagIds: [], availability: [], travelRadiusMiles: 0 }));
+  await assertSucceeds(own().update({ travelRadiusMiles: 500,
     availability: Array(10).fill("x"), interestTagIds: Array(10).fill("x") }));
 });
 
 for (const [field, value] of Object.entries({ companyId: "company-b", role: "admin", email: "other@example.test",
-  pointsBalance: 100, createdAt: Timestamp.fromMillis(2000), id: "member", unknown: true,
+  pointsBalance: 100, createdAt: Timestamp.fromMillis(2000), id: "member", unknown: true, displayName: "Renamed",
   friendIds: ["colleague"], favoritePhotoIds: ["photo"] })) {
   test(`client cannot change server-owned or out-of-scope ${field}`, async () => {
     await assertFails(own().update({ [field]: value }));
@@ -76,10 +74,11 @@ for (const [field, value] of Object.entries({ companyId: "company-b", role: "adm
 }
 
 test("even admins cannot overwrite their own membership or private profile peers", async () => {
-  await assertSucceeds(db("admin").doc("users/admin").update({ displayName: "Admin Profile" }));
+  await assertSucceeds(db("admin").doc("users/admin").update({ jobTitle: "Organizer" }));
+  await assertFails(db("admin").doc("users/admin").update({ displayName: "Admin Profile" }));
   await assertFails(db("admin").doc("users/admin").update({ companyId: "company-b" }));
   await assertFails(db("admin").doc("users/admin").update({ role: "member" }));
-  await assertFails(db("admin").doc("users/member").update({ displayName: "Changed" }));
+  await assertFails(db("admin").doc("users/member").update({ city: "Changed" }));
 });
 
 test("direct create/delete, unverified update and other-user update remain forbidden", async () => {
@@ -91,7 +90,6 @@ test("direct create/delete, unverified update and other-user update remain forbi
 });
 
 const invalid: [string, unknown][] = [
-  ...["", " ", " leading", "trailing ", "\tName", "Name\n", "a".repeat(81), 5, null].map(value => ["displayName", value] as [string, unknown]),
   ...["photoURL", "avatarId", "department", "jobTitle", "city"].flatMap(field => [
     [field, null], [field, 123], [field, "x".repeat(field === "photoURL" ? 2049 : 121)],
   ] as [string, unknown][]),
@@ -107,13 +105,12 @@ for (const [index, [field, value]] of invalid.entries()) {
   test(`profile validation denies invalid ${field} case ${index}`, async () => { await assertFails(own().update({ [field]: value })); });
 }
 
-test("company metadata get requires verified same-company membership and excludes legacy codes", async () => {
+test("company metadata get requires verified same-company membership", async () => {
   await assertSucceeds(db().doc("companies/company-a").get());
   await assertFails(db().doc("companies/company-b").get());
   await assertFails(db("new-member").doc("companies/company-a").get());
   await assertFails(db("member", false).doc("companies/company-a").get());
   await assertFails(environment.unauthenticatedContext().firestore().doc("companies/company-a").get());
-  await assertFails(db("legacy-member").doc("companies/legacy").get());
   await assertFails(db().collection("companies").get());
   await assertFails(db().doc("companies/company-a").update({ name: "Changed" }));
 });
@@ -126,7 +123,7 @@ test("verified catalog reads permit interest selection without catalog writes", 
   await assertFails(db().doc("tags/wellbeing").set({ name: "Changed" }));
 });
 
-for (const path of ["companyAccess/synthetic", "accountRateLimits/member", "companies/company-a/events/event",
+for (const path of ["companyDomains/example.test", "accountRateLimits/member", "companies/company-a/events/event",
   "companies/company-a/events/event/rsvps/member", "users/member/notifications/n", "partners/partner"]) {
   test(`unreviewed and private path ${path} stays denied`, async () => {
     await assertFails(db().doc(path).get());

@@ -1,1 +1,1 @@
-export { joinCompanyV1 } from "./modules/accounts";
+export { resolveMembershipV1 } from "./modules/accounts";
