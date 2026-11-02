@@ -1,32 +1,35 @@
-import DIPDesignSystem
+import DIPAccounts
 import SwiftUI
 
 @main
 struct DIPApp: App {
-    init() { FirebaseBootstrap.configureIfAvailable() }
+    @State private var session: AccountsSession
+
+    init() {
+        FirebaseBootstrap.configureIfAvailable()
+        _session = State(initialValue: AccountsSession(repository: Self.makeRepository()))
+    }
 
     var body: some Scene {
         WindowGroup {
-            launchContent
-                .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }
+            AccountsRootView(session: session) { _ in
+                // Event content currently uses the repository-backed prototype adapter.
+                DIPHomeFixturePreview()
+            }
+            .task { session.start() }
+            .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }
         }
     }
 
-    @ViewBuilder private var launchContent: some View {
+    /// Real Firebase when local configuration exists (ADR 0007). Otherwise Debug builds use
+    /// the in-memory preview repository so the flow can be clicked through, and Release
+    /// builds report that sign-in is not configured.
+    @MainActor private static func makeRepository() -> any AccountsRepository {
+        if let firebase = FirebaseBootstrap.makeAccountsRepository() { return firebase }
         #if DEBUG
-        if FirebaseBootstrap.status == .notConfigured {
-            DIPHomeFixturePreview()
-        } else {
-            accountHandoff
-        }
+        return PreviewAccountsRepository()
         #else
-        accountHandoff
+        return UnconfiguredAccountsRepository()
         #endif
-    }
-
-    private var accountHandoff: some View {
-        DIPStateView(.empty(
-            title: "Welcome to DIP",
-            message: "Sign-in is unavailable in this build."))
     }
 }
