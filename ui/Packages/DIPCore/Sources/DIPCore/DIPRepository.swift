@@ -1,0 +1,18 @@
+import Foundation
+
+/// UI depends only on this protocol. Implementations own state, validation and persistence.
+/// A future Firebase adapter merges only authorized, scoped listeners into this projection.
+public protocol DIPRepository: Sendable {
+    func observe() async -> AsyncThrowingStream<DIPAppSnapshot, Error>
+    func setRSVP(eventID: String, going: Bool) async throws
+    func updateProfile(_ edit: ProfileEdit) async throws
+    func sendMessage(eventID: String, messageID: String, text: String) async throws
+    func addPhotos(eventID: String, photos: [PhotoUpload]) async throws
+    func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws
+}
+
+public enum DIPRepositoryError: Error, Equatable, Sendable {
+    case notFound(String)
+    case invalidInput(String)
+    case injectedFailure(String)
+}
