@@ -1,4 +1,5 @@
 import Foundation
+@preconcurrency import FirebaseAppCheck
 @preconcurrency import FirebaseAuth
 @preconcurrency import FirebaseCore
 @preconcurrency import FirebaseFirestore
@@ -16,6 +17,11 @@ import Foundation
 /// Functions 5001 on 127.0.0.1) when the scheme sets `DIP_USE_EMULATORS=1`.
 /// Never point a development build at production by accident: emulator routing
 /// is opt-in and Release builds ignore it.
+///
+/// App Check (required by resolveMembershipV1 outside the emulator) is installed before
+/// `FirebaseApp.configure()`: Debug builds and the Simulator use the debug provider, which
+/// prints a debug token to the Xcode console once; register it in Firebase console ->
+/// App Check -> Apps -> Manage debug tokens. Release device builds use App Attest.
 enum FirebaseBootstrap {
     enum Status: Equatable {
         case configured(usingEmulators: Bool)
@@ -32,6 +38,7 @@ enum FirebaseBootstrap {
             status = .notConfigured
             return status
         }
+        AppCheck.setAppCheckProviderFactory(DIPAppCheckProviderFactory())
         FirebaseApp.configure()
         var usingEmulators = false
         #if DEBUG
@@ -65,5 +72,24 @@ enum FirebaseBootstrap {
     @MainActor @discardableResult
     static func handle(url: URL) -> Bool {
         GIDSignIn.sharedInstance.handle(url)
+    }
+}
+
+/// App Attest on real devices in Release; the debug provider for Debug and the Simulator,
+/// where App Attest is unavailable. No tokens or secrets live in source.
+///
+/// Release device builds additionally need the App Attest capability, which requires a paid
+/// Apple Developer Program team (free Personal Teams cannot sign it). When the team has one,
+/// add to the DIP target in ui/project.yml:
+///   entitlements: { path: Config/DIP.entitlements,
+///     properties: { com.apple.developer.devicecheck.appattest-environment: production } }
+/// and register App Attest (with the Team ID) in Firebase console -> App Check.
+final class DIPAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> (any AppCheckProvider)? {
+        #if DEBUG || targetEnvironment(simulator)
+        return AppCheckDebugProvider(app: app)
+        #else
+        return AppAttestProvider(app: app)
+        #endif
     }
 }
