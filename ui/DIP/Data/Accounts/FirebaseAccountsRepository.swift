@@ -3,8 +3,11 @@ import CoreFoundation
 import DIPAccounts
 import DIPContracts
 @preconcurrency import FirebaseAuth
+@preconcurrency import FirebaseCore
 @preconcurrency import FirebaseFirestore
 @preconcurrency import FirebaseFunctions
+@preconcurrency import GoogleSignIn
+import UIKit
 
 /// Inject configured SDK instances after emulator routing, before creating listeners.
 /// The Functions instance MUST be Functions.functions(region: FirebaseAccountsRepository.region).
@@ -26,22 +29,24 @@ import DIPContracts
             continuation.onTermination = { _ in Task { @MainActor in lease.cancel() } }
         }
     }
-    func signUp(email: String, password: String) async throws {
-        do { _ = try await auth.createUser(withEmail: email, password: password) }
-        catch { throw Self.failure(error) }
-    }
-    func signIn(email: String, password: String) async throws {
-        do { _ = try await auth.signIn(withEmail: email, password: password) }
-        catch { throw Self.failure(error) }
+    /// ADR 0007: Google is the only V1 sign-in. Uses the iOS client ID from the
+    /// configured FirebaseApp (GoogleService-Info.plist); no ID is embedded in source.
+    func signInWithGoogle() async throws {
+        guard let clientID = FirebaseApp.app()?.options.clientID, !clientID.isEmpty else { throw AccountsFailure.notConfigured }
+        guard let presenter = Self.topViewController() else { throw AccountsFailure.unknown }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        do {
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+            guard let idToken = result.user.idToken?.tokenString else { throw AccountsFailure.unknown }
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: result.user.accessToken.tokenString)
+            _ = try await auth.signIn(with: credential)
+        } catch { throw Self.failure(error) }
     }
     func signOut() async throws {
         // Immediately end Firestore visibility, independently of the Auth callback.
         observation?.clearProfile()
+        GIDSignIn.sharedInstance.signOut()
         do { try auth.signOut() } catch { throw Self.failure(error) }
-    }
-    func sendVerification() async throws {
-        guard let user = auth.currentUser else { throw AccountsFailure.unauthenticated }
-        do { try await user.sendEmailVerification() } catch { throw Self.failure(error) }
     }
     func refreshIdentity() async throws {
         guard let user = auth.currentUser else { throw AccountsFailure.unauthenticated }
@@ -53,12 +58,12 @@ import DIPContracts
             observation?.refresh()
         } catch { throw Self.failure(error) }
     }
-    func joinCompany(_ request: JoinCompanyRequest) async throws -> JoinCompanyResponse {
-        guard auth.currentUser?.isEmailVerified == true else { throw AccountsFailure.permissionDenied }
+    func resolveMembership() async throws -> ResolveMembershipResponse {
+        guard auth.currentUser != nil else { throw AccountsFailure.unauthenticated }
         do {
-            let data = try JSONSerialization.jsonObject(with: JSONEncoder().encode(request))
-            let result = try await functions.httpsCallable("joinCompanyV1").call(data)
-            let response = try JSONDecoder().decode(JoinCompanyResponse.self, from: JSONSerialization.data(withJSONObject: result.data))
+            let data = try JSONSerialization.jsonObject(with: JSONEncoder().encode(ResolveMembershipRequest(contractVersion: 1)))
+            let result = try await functions.httpsCallable("resolveMembershipV1").call(data)
+            let response = try JSONDecoder().decode(ResolveMembershipResponse.self, from: JSONSerialization.data(withJSONObject: result.data))
             guard response.contractVersion == 1, !response.companyId.isEmpty, ["member", "admin"].contains(response.role) else { throw AccountsFailure.invalidProfile }
             return response
         } catch { throw Self.failure(error) }
@@ -72,22 +77,34 @@ import DIPContracts
     nonisolated static func failure(_ error: Error) -> AccountsFailure {
         if let failure = error as? AccountsFailure { return failure }
         let error = error as NSError
+        if error.domain == GIDSignInError.errorDomain {
+            return error.code == GIDSignInError.Code.canceled.rawValue ? .cancelled : .unknown
+        }
         if error.domain == AuthErrorDomain {
             switch AuthErrorCode(rawValue: error.code) {
-            case .wrongPassword, .invalidCredential, .userNotFound: return .invalidCredentials
-            case .emailAlreadyInUse: return .emailAlreadyInUse
-            case .invalidEmail, .weakPassword: return .invalidInput
+            case .webContextCancelled: return .cancelled
             case .networkError: return .unavailable
             case .tooManyRequests: return .rateLimited
+            case .invalidCredential, .userDisabled, .accountExistsWithDifferentCredential: return .permissionDenied
             default: return .unknown
             }
         }
         if error.domain == FunctionsErrorDomain {
+            // resolveMembershipV1 sends a stable `reason` in details (ADR 0007).
+            let details = error.userInfo[FunctionsErrorDetailsKey] as? [String: Any]
+            switch details?["reason"] as? String {
+            case "PERSONAL_EMAIL_DOMAIN": return .personalEmailDomain
+            case "NO_COMPANY_FOR_DOMAIN": return .noCompanyForDomain
+            case "MEMBERSHIP_CONFLICT": return .membershipConflict
+            case "RATE_LIMITED": return .rateLimited
+            case "PROVIDER_NOT_ALLOWED", "EMAIL_NOT_VERIFIED": return .permissionDenied
+            default: break
+            }
             switch FunctionsErrorCode(rawValue: error.code) {
             case .unauthenticated: return .unauthenticated
             case .invalidArgument: return .invalidInput
             case .permissionDenied: return .permissionDenied
-            case .notFound: return .invalidJoinCode
+            case .notFound: return .noCompanyForDomain
             case .failedPrecondition: return .membershipConflict
             case .resourceExhausted: return .rateLimited
             case .unavailable, .deadlineExceeded: return .unavailable
@@ -103,6 +120,17 @@ import DIPContracts
             }
         }
         return .unknown
+    }
+}
+
+extension FirebaseAccountsRepository {
+    /// The foreground window's top-most view controller, to present Google sign-in.
+    static func topViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.first(where: { $0.activationState == .foregroundActive })?.keyWindow ?? scenes.first?.keyWindow
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        return top
     }
 }
 
@@ -170,7 +198,8 @@ enum AccountDocumentMapper {
 private extension EditableProfile {
     func validatedFields() throws -> [String: Any] {
         try validate()
-        return ["displayName": displayName, "photoURL": photoURL, "avatarId": avatarId,
+        // displayName is server-written from OAuth (ADR 0007) and not client-editable.
+        return ["photoURL": photoURL, "avatarId": avatarId,
                 "department": department, "jobTitle": jobTitle, "city": city,
                 "interestTagIds": interestTagIds, "travelRadiusMiles": travelRadiusMiles,
                 "availability": availability]

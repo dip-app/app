@@ -2,7 +2,7 @@
 
 Read the repository's root `AGENTS.md`, feature scope, and `contracts/` before changing this service.
 
-- This branch provides scaffolding. joinCompanyV1 is implemented/exported in the accounts integration and emulator-tested, but no callable has been deployed.
+- This branch provides scaffolding. resolveMembershipV1 (Google sign-in, email-domain membership, ADR 0007) is implemented/exported and emulator-tested, but no callable has been deployed.
 - Feature code lives in `functions/src/modules/<area>/`, with module-local `transport`, `application`, `domain`, and `infrastructure` layers. Work packets own accounts, participation, and organizer modules. Top-level layer folders are only for reviewed cross-cutting helpers; the integrator wires the root export list.
 - `functions/src/index.ts` is the deployment export list. Adding an export makes it deployable; do this deliberately in a feature PR.
 - Never edit `functions/src/generated/` directly. Regenerate from the shared contract source.

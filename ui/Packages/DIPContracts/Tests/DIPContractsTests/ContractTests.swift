@@ -20,8 +20,8 @@ final class ContractTests: XCTestCase {
         let event: Event
         let setRsvpRequest: SetRsvpRequest
         let setRsvpResponse: SetRsvpResponse
-        let joinCompanyRequest: JoinCompanyRequest
-        let joinCompanyResponse: JoinCompanyResponse
+        let resolveMembershipRequest: ResolveMembershipRequest
+        let resolveMembershipResponse: ResolveMembershipResponse
         let createEventRequest: CreateEventRequest
         let createEventResponse: CreateEventResponse
         let updateEventRequest: UpdateEventRequest

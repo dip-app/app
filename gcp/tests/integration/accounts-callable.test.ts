@@ -2,10 +2,9 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { createRequire } from "node:module";
 import { initializeApp, deleteApp } from "firebase/app";
-import { getAuth, connectAuthEmulator, createUserWithEmailAndPassword } from "firebase/auth";
+import { getAuth, connectAuthEmulator, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential, signOut, type Auth } from "firebase/auth";
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
-import { joinCodeLookupId } from "../../functions/src/modules/accounts/domain/joinCode";
-import { FirestoreJoinRateLimiter } from "../../functions/src/modules/accounts/infrastructure/firestoreJoinRateLimiter";
+import { FirestoreMembershipRateLimiter } from "../../functions/src/modules/accounts/infrastructure/firestoreMembershipRateLimiter";
 
 // Run: firebase emulators:exec --project demo-dip --only auth,functions,firestore
 //   "node --import tsx --test --test-concurrency=1 gcp/tests/integration/accounts*.test.ts"
@@ -23,53 +22,66 @@ const adminAuth = req("firebase-admin/auth") as typeof import("firebase-admin/au
 const adminFirestore = req("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
 const app = adminApp.initializeApp({ projectId }, "callable-tests");
 const db = adminFirestore.getFirestore(app);
-const payload = { contractVersion: 1, joinCode: "  team-alpha  ", displayName: "Person" };
+const REQUEST = { contractVersion: 1 };
+/** Auth emulator accepts an unsigned Google ID token: sign in as a synthetic Google user. */
+async function googleSignIn(auth: Auth, email: string, name: string, emailVerified = true) {
+  await signOut(auth);
+  const idToken = JSON.stringify({ sub: `google-${email}`, email, email_verified: emailVerified, name });
+  return (await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))).user;
+}
 async function rejects(p: Promise<unknown>, code: string, reason?: string) {
   await assert.rejects(p, (e: any) => { assert.equal(e.code, `functions/${code}`); if (reason) assert.equal(e.details.reason, reason); return true; });
 }
 
-test("real callable verifies refreshed Auth tokens, creates/replays membership and limits all attempts", async () => {
+test("real callable verifies Google tokens, coerces domains, blocks personal domains and limits attempts", async () => {
   const client = initializeApp({ projectId, apiKey: "demo-key", appId: "demo-app" }, "callable-client");
   const auth = getAuth(client);
   connectAuthEmulator(auth, `http://${authHost}`, { disableWarnings: true });
   const functions = getFunctions(client, "us-central1");
   const [functionsHostname, functionsPort] = functionsHost.split(":");
   connectFunctionsEmulator(functions, functionsHostname, Number(functionsPort));
-  const join = httpsCallable(functions, "joinCompanyV1");
+  const resolve = httpsCallable(functions, "resolveMembershipV1");
+  const stamp = Date.now();
   try {
     await db.collection("companies").doc("callable-alpha").set({ name: "Alpha" });
     await db.collection("companies").doc("callable-beta").set({ name: "Beta" });
-    await db.collection("companyAccess").doc(joinCodeLookupId("TEAM-ALPHA")).set({ companyId: "callable-alpha" });
-    await db.collection("companyAccess").doc(joinCodeLookupId("TEAM-BETA")).set({ companyId: "callable-beta" });
-    await rejects(join(payload), "unauthenticated");
-    const { user } = await createUserWithEmailAndPassword(auth, `callable-${Date.now()}@example.invalid`, "synthetic-password");
-    await rejects(join(payload), "permission-denied", "EMAIL_NOT_VERIFIED");
+    await db.collection("companyDomains").doc("callable-alpha.test").set({ companyId: "callable-alpha" });
+    await db.collection("companyDomains").doc("callable-beta.test").set({ companyId: "callable-beta" });
+    await rejects(resolve(REQUEST), "unauthenticated");
+
+    // Email/password accounts are refused even when verified.
+    const { user: passwordUser } = await createUserWithEmailAndPassword(auth, `pw-${stamp}@callable-alpha.test`, "synthetic-password");
+    await adminAuth.getAuth(app).updateUser(passwordUser.uid, { emailVerified: true });
+    await passwordUser.getIdToken(true);
+    await rejects(resolve(REQUEST), "permission-denied", "PROVIDER_NOT_ALLOWED");
+
+    await googleSignIn(auth, `p-${stamp}@gmail.com`, "Personal");
+    await rejects(resolve(REQUEST), "permission-denied", "PERSONAL_EMAIL_DOMAIN");
+    await googleSignIn(auth, `u-${stamp}@nowhere.test`, "Nobody");
+    await rejects(resolve(REQUEST), "not-found", "NO_COMPANY_FOR_DOMAIN");
+
+    const user = await googleSignIn(auth, `m-${stamp}@eng.callable-alpha.test`, "Synthetic Member");
     assert.equal((await db.collection("accountRateLimits").doc(user.uid).get()).exists, false);
-    await adminAuth.getAuth(app).updateUser(user.uid, { emailVerified: true });
-    await user.reload();
-    await user.getIdToken(true);
-    await rejects(join({ ...payload, contractVersion: 2 }), "invalid-argument");
-    assert.equal((await db.collection("accountRateLimits").doc(user.uid).get()).exists, false);
+    await rejects(resolve({ contractVersion: 1, companyId: "callable-beta" }), "invalid-argument");
     const expected = { contractVersion: 1, companyId: "callable-alpha", role: "member" };
-    assert.deepEqual((await join(payload)).data, expected);
-    assert.deepEqual((await join(payload)).data, expected);
+    assert.deepEqual((await resolve(REQUEST)).data, expected);
+    assert.deepEqual((await resolve(REQUEST)).data, expected);
     const profile = (await db.collection("users").doc(user.uid).get()).data()!;
     assert.equal(profile.role, "member"); assert.equal(profile.pointsBalance, 0);
-    assert.equal(profile.email, user.email); assert.equal(profile.travelRadiusMiles, 20);
+    assert.equal(profile.email, user.email); assert.equal(profile.displayName, "Synthetic Member");
+    assert.equal(profile.travelRadiusMiles, 20);
     for (const key of ["photoURL", "avatarId", "department", "jobTitle", "city"]) assert.equal(profile[key], "");
     for (const key of ["interestTagIds", "availability", "friendIds", "favoritePhotoIds"]) assert.deepEqual(profile[key], []);
     assert.ok(profile.createdAt instanceof adminFirestore.Timestamp);
-    await rejects(join({ ...payload, joinCode: "TEAM-BETA" }), "failed-precondition", "MEMBERSHIP_CONFLICT");
-    await rejects(join({ ...payload, joinCode: "WRONG-CODE" }), "not-found", "INVALID_JOIN_CODE");
-    await rejects(join({ ...payload, joinCode: "ALSO-WRONG" }), "not-found", "INVALID_JOIN_CODE");
-    await rejects(join(payload), "resource-exhausted", "RATE_LIMITED");
+    // Two successes above count toward the budget; three more requests use it up.
+    await resolve(REQUEST); await resolve(REQUEST); await resolve(REQUEST);
+    await rejects(resolve(REQUEST), "resource-exhausted", "RATE_LIMITED");
     assert.equal((await db.collection("accountRateLimits").doc(user.uid).get()).get("attempts"), 5);
-    // An empty fixed window admits at most five concurrent wrong-code requests.
+    // An empty fixed window admits at most five concurrent requests.
     await db.collection("accountRateLimits").doc(user.uid).delete();
-    const results = await Promise.allSettled(Array.from({ length: 10 }, () => join({ ...payload, joinCode: "WRONG-CODE" })));
-    const codes = results.map((r: any) => r.reason?.code);
-    assert.equal(codes.filter((c) => c === "functions/not-found").length, 5);
-    assert.equal(codes.filter((c) => c === "functions/resource-exhausted").length, 5);
+    const results = await Promise.allSettled(Array.from({ length: 10 }, () => resolve(REQUEST)));
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 5);
+    assert.equal(results.filter((r: any) => r.reason?.code === "functions/resource-exhausted").length, 5);
   } finally { await deleteApp(client); await adminApp.deleteApp(app); }
 });
 
@@ -77,7 +89,7 @@ test("limiter uses injected server clock, bounded records and atomic concurrent 
   const clockApp = adminApp.initializeApp({ projectId }, "limiter-clock");
   const clockDb = adminFirestore.getFirestore(clockApp);
   let now = 120_001;
-  const limiter = new FirestoreJoinRateLimiter(clockDb, () => now);
+  const limiter = new FirestoreMembershipRateLimiter(clockDb, () => now);
   const uid = `clock-${Date.now()}`;
   try {
     const results = await Promise.allSettled(Array.from({ length: 10 }, () => limiter.consume(uid)));

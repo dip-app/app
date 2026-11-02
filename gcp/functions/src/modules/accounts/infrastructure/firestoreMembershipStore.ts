@@ -13,8 +13,8 @@ export class FirestoreMembershipStore implements MembershipStore {
     return this.db.runTransaction(async (transaction) => {
       const db = this.db;
       const tx: MembershipTransaction = {
-        async resolveCompanyId(lookupId) {
-          const snap = await transaction.get(db.collection("companyAccess").doc(lookupId));
+        async companyIdForDomain(rootDomain) {
+          const snap = await transaction.get(db.collection("companyDomains").doc(rootDomain));
           const companyId: unknown = snap.get("companyId");
           return snap.exists && typeof companyId === "string" && companyId.length > 0 ? companyId : null;
         },
@@ -24,21 +24,23 @@ export class FirestoreMembershipStore implements MembershipStore {
         async getMembership(uid) {
           const snap = await transaction.get(db.collection("users").doc(uid));
           if (!snap.exists) return null;
-          const companyId: unknown = snap.get("companyId");
-          const role: unknown = snap.get("role");
-          const membership: StoredMembership = {
-            companyId: typeof companyId === "string" ? companyId : "",
-            role: typeof role === "string" ? role : "",
+          const field = (name: string) => {
+            const value: unknown = snap.get(name);
+            return typeof value === "string" ? value : "";
           };
+          const membership: StoredMembership = { companyId: field("companyId"), role: field("role"), displayName: field("displayName") };
           return membership;
         },
         createMember(uid, profile) {
           // create() fails if a concurrent request already wrote the profile;
-          // the transaction then retries and replays the stored membership.
+          // the transaction then retries and returns the stored membership.
           transaction.create(db.collection("users").doc(uid), {
             ...profile,
             createdAt: FieldValue.serverTimestamp(),
           });
+        },
+        updateDisplayName(uid, displayName) {
+          transaction.update(db.collection("users").doc(uid), { displayName });
         },
       };
       return work(tx);

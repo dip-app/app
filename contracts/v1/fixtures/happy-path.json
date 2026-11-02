@@ -11,12 +11,10 @@
     "status": "going",
     "attendeeCount": 1
   },
-  "joinCompanyRequest": {
-    "contractVersion": 1,
-    "joinCode": "DEMO-2026",
-    "displayName": "Demo Member"
+  "resolveMembershipRequest": {
+    "contractVersion": 1
   },
-  "joinCompanyResponse": {
+  "resolveMembershipResponse": {
     "contractVersion": 1,
     "companyId": "company-demo",
     "role": "member"

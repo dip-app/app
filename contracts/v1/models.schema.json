@@ -1015,32 +1015,20 @@
         "createdAt"
       ]
     },
-    "JoinCompanyRequest": {
+    "ResolveMembershipRequest": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "contractVersion": {
           "type": "integer",
           "const": 1
-        },
-        "joinCode": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
-        },
-        "displayName": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 80
         }
       },
       "required": [
-        "contractVersion",
-        "joinCode",
-        "displayName"
+        "contractVersion"
       ]
     },
-    "JoinCompanyResponse": {
+    "ResolveMembershipResponse": {
       "type": "object",
       "additionalProperties": false,
       "properties": {

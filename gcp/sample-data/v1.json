@@ -2,21 +2,22 @@
   "formatVersion": 1,
   "projectId": "demo-dip",
   "referenceDate": "2026-10-28T12:00:00Z",
-  "joinCode": "DEMO-2026",
   "authUsers": [
     {
       "uid": "member-demo",
       "email": "member@example.invalid",
-      "password": "DIP-emulator-only-2026!",
       "displayName": "Demo Member",
-      "emailVerified": true
+      "emailVerified": true,
+      "provider": "google.com",
+      "providerUid": "google-member-demo"
     },
     {
       "uid": "admin-demo",
       "email": "admin@example.invalid",
-      "password": "DIP-emulator-only-2026!",
       "displayName": "Demo Organizer",
-      "emailVerified": true
+      "emailVerified": true,
+      "provider": "google.com",
+      "providerUid": "google-admin-demo"
     }
   ],
   "firestoreDocuments": [
@@ -34,7 +35,7 @@
       }
     },
     {
-      "path": "companyAccess/4e775cb4fae09efda9407bdbf7d838bf67fce8e44ebaffd03847bb50062c36fb",
+      "path": "companyDomains/example.invalid",
       "model": null,
       "data": {
         "companyId": "company-demo"
@@ -53,9 +54,13 @@
         "jobTitle": "Designer",
         "city": "Pittsburgh, PA",
         "role": "member",
-        "interestTagIds": ["tag-social"],
+        "interestTagIds": [
+          "tag-social"
+        ],
         "travelRadiusMiles": 20,
-        "availability": ["weekday-evenings"],
+        "availability": [
+          "weekday-evenings"
+        ],
         "friendIds": [],
         "favoritePhotoIds": [],
         "pointsBalance": 0,
@@ -75,9 +80,13 @@
         "jobTitle": "Event Organizer",
         "city": "Pittsburgh, PA",
         "role": "admin",
-        "interestTagIds": ["tag-social"],
+        "interestTagIds": [
+          "tag-social"
+        ],
         "travelRadiusMiles": 20,
-        "availability": ["weekday-evenings"],
+        "availability": [
+          "weekday-evenings"
+        ],
         "friendIds": [],
         "favoritePhotoIds": [],
         "pointsBalance": 0,
@@ -100,7 +109,9 @@
         "companyId": "company-demo",
         "title": "Demo coworker meetup",
         "description": "Synthetic event for local development. Meet coworkers for a relaxed conversation.",
-        "tagIds": ["tag-social"],
+        "tagIds": [
+          "tag-social"
+        ],
         "coverImageURL": "",
         "startTime": "2026-11-02T23:00:00Z",
         "endTime": "2026-11-03T00:00:00Z",
