@@ -7,7 +7,7 @@ import Foundation
 /// and mimics resolveMembershipV1's domain rules closely enough to click through
 /// onboarding. It is not evidence about Firebase behavior.
 @MainActor
-final class PreviewAccountsRepository: AccountsRepository {
+final class PreviewAccountsRepository: AccountsRepository, InterestCatalogRepository {
     static let companiesByDomain = ["example.invalid": "company-demo"]
     static let personalDomains: Set<String> = ["gmail.com", "icloud.com", "outlook.com", "yahoo.com"]
 
@@ -71,8 +71,30 @@ final class PreviewAccountsRepository: AccountsRepository {
         return .init(contractVersion: 1, companyId: companyId, role: profile.role)
     }
 
-    func updateProfile(_ profile: EditableProfile) async throws {
+    func updateProfile(uid: String, _ profile: EditableProfile) async throws {
+        guard let email = signedInEmail, Self.uid(for: email) == uid, let stored = profiles[uid] else {
+            throw AccountsFailure.unauthenticated
+        }
         try profile.validate()
+        try await pause()
+        profiles[uid] = profile.applied(to: stored)
+        publish()
+    }
+
+    /// Synthetic catalog shaped like `tags/{tagId}`; ids are not real Firestore ids.
+    static let interestCatalog: [InterestTag] = [
+        .init(id: "tag-fitness", name: "Fitness", icon: "🏋️", sortOrder: 1),
+        .init(id: "tag-outdoors", name: "Outdoors", icon: "🥾", sortOrder: 2),
+        .init(id: "tag-social", name: "Social", icon: "🎉", sortOrder: 3),
+        .init(id: "tag-food", name: "Food & Drink", icon: "🍜", sortOrder: 4),
+        .init(id: "tag-arts", name: "Arts", icon: "🎨", sortOrder: 5),
+        .init(id: "tag-wellness", name: "Wellness", icon: "🧘", sortOrder: 6),
+    ]
+
+    func interestTags() async throws -> [InterestTag] {
+        guard signedInEmail != nil else { throw AccountsFailure.unauthenticated }
+        try await pause()
+        return Self.interestCatalog
     }
 
     private func publish() {
