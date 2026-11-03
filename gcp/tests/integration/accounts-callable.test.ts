@@ -23,6 +23,14 @@ const adminFirestore = req("firebase-admin/firestore") as typeof import("firebas
 const app = adminApp.initializeApp({ projectId }, "callable-tests");
 const db = adminFirestore.getFirestore(app);
 const REQUEST = { contractVersion: 1 };
+/**
+ * The limiter uses fixed one-minute windows, so a burst that straddles a minute boundary
+ * legitimately gets a fresh budget mid-burst. Budget assertions start early in a window.
+ */
+async function awaitFreshRateWindow(neededMs = 15_000) {
+  const intoWindow = Date.now() % 60_000;
+  if (intoWindow > 60_000 - neededMs) await new Promise((resolve) => setTimeout(resolve, 60_000 - intoWindow + 250));
+}
 /** Auth emulator accepts an unsigned Google ID token: sign in as a synthetic Google user. */
 async function googleSignIn(auth: Auth, email: string, name: string, emailVerified = true) {
   await signOut(auth);
@@ -60,6 +68,7 @@ test("real callable verifies Google tokens, coerces domains, blocks personal dom
     await googleSignIn(auth, `u-${stamp}@nowhere.test`, "Nobody");
     await rejects(resolve(REQUEST), "not-found", "NO_COMPANY_FOR_DOMAIN");
 
+    await awaitFreshRateWindow();
     const user = await googleSignIn(auth, `m-${stamp}@eng.callable-alpha.test`, "Synthetic Member");
     assert.equal((await db.collection("accountRateLimits").doc(user.uid).get()).exists, false);
     await rejects(resolve({ contractVersion: 1, companyId: "callable-beta" }), "invalid-argument");
@@ -79,6 +88,7 @@ test("real callable verifies Google tokens, coerces domains, blocks personal dom
     assert.equal((await db.collection("accountRateLimits").doc(user.uid).get()).get("attempts"), 5);
     // An empty fixed window admits at most five concurrent requests.
     await db.collection("accountRateLimits").doc(user.uid).delete();
+    await awaitFreshRateWindow();
     const results = await Promise.allSettled(Array.from({ length: 10 }, () => resolve(REQUEST)));
     assert.equal(results.filter((r) => r.status === "fulfilled").length, 5);
     assert.equal(results.filter((r: any) => r.reason?.code === "functions/resource-exhausted").length, 5);
