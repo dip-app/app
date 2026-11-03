@@ -1,4 +1,4 @@
-import { getApps, initializeApp } from "firebase-admin/app";
+import { getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
@@ -58,12 +58,21 @@ export async function handleResolveMembership(
   }
 }
 
+/**
+ * The default Admin app, created on first use. Not `getApps().length === 0`: in production
+ * firebase-functions creates its own named app ("__FIREBASE_FUNCTIONS_SDK__") while verifying
+ * the callable's Auth/App Check tokens, so the list is non-empty before this handler runs and
+ * `getFirestore()` would then find no default app.
+ */
+export function defaultAdminApp(): App {
+  return getApps().find((app) => app.name === "[DEFAULT]") ?? initializeApp();
+}
+
 /** Production requires App Check; only the official Functions emulator bypasses it. */
 export const resolveMembershipV1 = onCall({
   region: "us-central1",
   enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
 }, (request) => {
-  if (getApps().length === 0) initializeApp();
-  const db = getFirestore();
+  const db = getFirestore(defaultAdminApp());
   return handleResolveMembership(new FirestoreMembershipStore(db), request, new FirestoreMembershipRateLimiter(db));
 });
