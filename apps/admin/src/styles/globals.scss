@@ -125,7 +125,8 @@ button { cursor: pointer; border: 0; background: none; }
 
 // ---------- Login
 .login { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; padding: 16px; }
-.hero-card { background: $pink; border-radius: $radius-panel; display: grid; place-items: center; min-height: 360px; }
+.hero-card { background: $pink; border-radius: $radius-panel; display: grid; place-items: center; aspect-ratio: 11 / 6; align-self: center; padding: 6%; }
+.hero-card svg { width: 100%; height: auto; }
 .login-copy { align-self: center; padding: clamp(24px, 5vw, 72px); display: grid; gap: 20px; max-width: 640px;
   h1 { font-family: var(--font-fjalla), Impact, sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(40px, 5vw, 64px); line-height: 1.02; }
   p { font-family: var(--font-figtree), sans-serif; font-size: 20px; }
@@ -142,7 +143,6 @@ button { cursor: pointer; border: 0; background: none; }
   .content { padding: 20px 4px 56px; }
   .subtitle { flex-basis: 100%; }
   .login { grid-template-columns: 1fr; }
-  .hero-card { min-height: 220px; }
 }
 @media (max-width: 480px) { .title-pill { font-size: 22px; padding: 0 24px; min-height: 48px; } .tab { padding: 0 14px; font-size: 15px; } .content { padding-top: 8px; } .page-header { margin-bottom: 20px; } }
 
