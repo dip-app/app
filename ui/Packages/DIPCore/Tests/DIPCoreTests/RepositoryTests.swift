@@ -42,6 +42,31 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(cleared.profile.interests.isEmpty)
     }
 
+    func testAccountDetailsChangeOnlyWhenProvidedAndInvalidRadiusMutatesNothing() async throws {
+        var seed = DIPMockFixtures.reference
+        seed.profile.jobTitle = "Designer"; seed.profile.availability = ["weekends"]; seed.profile.travelRadiusMiles = 20
+        let repository = DIPMockRepository(initialSnapshot: seed)
+        let profile = seed.profile
+        // The interest picker sends no details: they must stay as stored.
+        try await repository.updateProfile(.init(department: profile.department, city: profile.city, interestTagIDs: []))
+        var saved = await repository.currentSnapshot()
+        XCTAssertEqual(saved.profile.jobTitle, "Designer")
+        XCTAssertEqual(saved.profile.availability, ["weekends"])
+        XCTAssertEqual(saved.profile.travelRadiusMiles, 20)
+        try await repository.updateProfile(.init(department: profile.department, city: profile.city, interestTagIDs: [],
+            jobTitle: " Lead ", availability: ["weekday-evenings"], travelRadiusMiles: 50))
+        saved = await repository.currentSnapshot()
+        XCTAssertEqual(saved.profile.jobTitle, "Lead")
+        XCTAssertEqual(saved.profile.availability, ["weekday-evenings"])
+        XCTAssertEqual(saved.profile.travelRadiusMiles, 50)
+        let before = await repository.currentSnapshot()
+        await expect(.invalidInput("Choose a travel radius up to 500 miles")) {
+            try await repository.updateProfile(.init(department: "Changed", city: "Changed", interestTagIDs: [], travelRadiusMiles: 501))
+        }
+        let after = await repository.currentSnapshot()
+        XCTAssertEqual(after, before)
+    }
+
     func testInterestRenamesKeepIDsAndMissingSelectionsAreNotSilentlyLost() async throws {
         var seed = DIPMockFixtures.reference
         let index = try XCTUnwrap(seed.profile.interestCatalog.firstIndex { $0.id == "tag-fitness" })

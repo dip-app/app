@@ -97,10 +97,18 @@ public struct DIPProfile: Identifiable, Equatable, Sendable {
     public var photo: MediaReference
     public var avatar: MediaReference
     public var favoriteMemories: [DIPFavoriteMemory]
-    public init(id: String, displayName: String, department: String, city: String, interestTagIDs: [String], interestCatalog: [DIPInterest], photo: MediaReference, avatar: MediaReference, favoriteMemories: [DIPFavoriteMemory]) {
+    /// Account-backed details. Fixture profiles leave `travelRadiusMiles` nil, and screens
+    /// then hide job title, availability and radius entirely.
+    public var jobTitle: String
+    /// Stable availability ids (e.g. "weekends"); labels belong to presentation.
+    public var availability: [String]
+    public var travelRadiusMiles: Int?
+    public var hasAccountDetails: Bool { travelRadiusMiles != nil }
+    public init(id: String, displayName: String, department: String, city: String, interestTagIDs: [String], interestCatalog: [DIPInterest], photo: MediaReference, avatar: MediaReference, favoriteMemories: [DIPFavoriteMemory], jobTitle: String = "", availability: [String] = [], travelRadiusMiles: Int? = nil) {
         self.id = id; self.displayName = displayName; self.department = department; self.city = city
         self.interestTagIDs = interestTagIDs; self.interestCatalog = interestCatalog; self.photo = photo
         self.avatar = avatar; self.favoriteMemories = favoriteMemories
+        self.jobTitle = jobTitle; self.availability = availability; self.travelRadiusMiles = travelRadiusMiles
     }
 }
 
@@ -109,8 +117,15 @@ public struct ProfileEdit: Equatable, Sendable {
     public var department: String
     public var city: String
     public var interestTagIDs: [String]
-    public init(department: String, city: String, interestTagIDs: [String]) {
+    /// nil leaves the stored value unchanged (the interest picker, for example, saves
+    /// interests only and must not clear job title, availability or radius).
+    public var jobTitle: String?
+    public var availability: [String]?
+    public var travelRadiusMiles: Int?
+    public init(department: String, city: String, interestTagIDs: [String], jobTitle: String? = nil,
+                availability: [String]? = nil, travelRadiusMiles: Int? = nil) {
         self.department = department; self.city = city; self.interestTagIDs = interestTagIDs
+        self.jobTitle = jobTitle; self.availability = availability; self.travelRadiusMiles = travelRadiusMiles
     }
 }
 

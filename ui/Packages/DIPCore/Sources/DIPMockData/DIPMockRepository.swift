@@ -70,11 +70,17 @@ public actor DIPMockRepository: DIPRepository {
     public func updateProfile(_ edit: ProfileEdit) async throws {
         try consumeFailure(.profile)
         guard Set(edit.interestTagIDs).count <= 10 else { throw DIPRepositoryError.invalidInput("Choose up to 10 interests") }
+        if let radius = edit.travelRadiusMiles, !(0...500).contains(radius) {
+            throw DIPRepositoryError.invalidInput("Choose a travel radius up to 500 miles")
+        }
         guard Set(edit.interestTagIDs).isSubset(of: Set(snapshot.profile.interestCatalog.map(\.id)).union(snapshot.profile.interestTagIDs)) else {
             throw DIPRepositoryError.invalidInput("Unknown interest")
         }
         snapshot.profile.department = edit.department.trimmingCharacters(in: .whitespacesAndNewlines)
         snapshot.profile.city = edit.city.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let jobTitle = edit.jobTitle { snapshot.profile.jobTitle = jobTitle.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if let availability = edit.availability { snapshot.profile.availability = availability }
+        if let radius = edit.travelRadiusMiles { snapshot.profile.travelRadiusMiles = radius }
         let catalogIDs = snapshot.profile.interestCatalog.map(\.id)
         let retainedIDs = snapshot.profile.interestTagIDs.filter { !catalogIDs.contains($0) }
         snapshot.profile.interestTagIDs = (catalogIDs + retainedIDs).filter(Set(edit.interestTagIDs).contains)

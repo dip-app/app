@@ -6,7 +6,7 @@ navigation variant; all photography, curves and icon assets come from the source
 frame. Asset names use the profile_ prefix in the design-system resource catalog.
 
 The screen accepts a DIPProfile, async onSave(ProfileEdit), onSelectTab and onMemory callbacks. Memory activation passes a stable event ID to open its album. The edit action
-opens a native form for department, city and interest tags. The OAuth display name is read-only under accepted ADR0007.
+opens a native form for department, city and interest tags; account-backed profiles also edit job title, availability (`AvailabilityOption` ids) and travel radius, and show them in an About section. Fixture profiles carry no account details, so their layout and reference captures are unchanged. Commands leave omitted details untouched (nil in `ProfileEdit`). The OAuth display name is read-only under accepted ADR0007.
 
 Only unsaved drafts are view state. Successful edits flow through the repository and remain observed across screen recreation for the adapter lifetime. In the signed-in app, DIPMemberHome bridges account-owned profile/catalog data and UID-bound saves through the same AccountsRepository instance used by AccountsSession. Membership observation remains the displayed source after acknowledgement. Event/social content and standalone fixture-profile hosts remain mock-backed; this does not implement membership/role changes or photo uploads. The native edit form is supporting fixture UI; no original Figma edit
 frame was supplied for it.
