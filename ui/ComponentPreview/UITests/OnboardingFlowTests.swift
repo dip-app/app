@@ -20,7 +20,15 @@ final class OnboardingFlowTests: XCTestCase {
         let app = launch("welcome")
         let google = app.buttons["onboarding.google"]
         XCTAssertTrue(google.isHittable)
-        XCTAssertGreaterThanOrEqual(google.frame.height, 44)
+        XCTAssertEqual(google.frame.height, 80, accuracy: 0.5)
+        XCTAssertEqual(google.frame.minY, app.frame.height - 101, accuracy: 0.5)
+        XCTAssertEqual(google.frame.minX, 20, accuracy: 0.5)
+        XCTAssertEqual(google.frame.width, app.frame.width - 40, accuracy: 0.5)
+        XCTAssertFalse(app.staticTexts["DIP"].exists)
+        XCTAssertFalse(app.buttons["home.tab.Home"].exists)
+        let guidance = app.staticTexts["onboarding.work-account-guidance"]
+        XCTAssertTrue(guidance.exists)
+        XCTAssertLessThanOrEqual(guidance.frame.maxY, google.frame.minY)
         capture(app, "login-welcome")
         google.tap()
         XCTAssertTrue(app.buttons["home.tab.Home"].waitForExistence(timeout: 10))
@@ -97,6 +105,22 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["home.tab.Profile"].waitForExistence(timeout: 10))
         app.buttons["home.tab.Profile"].tap()
         XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testLargestTextKeepsSharedLoginActionReadable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--onboarding=welcome", "--largest-text"]
+        app.launch()
+        let google = app.buttons["onboarding.google"]
+        XCTAssertTrue(google.waitForExistence(timeout: 10))
+        XCTAssertTrue(google.isHittable)
+        XCTAssertEqual(google.frame.height, 80, accuracy: 0.5)
+        XCTAssertEqual(google.frame.minY, app.frame.height - 101, accuracy: 0.5)
+        XCTAssertFalse(app.buttons["home.tab.Home"].exists)
+        XCTAssertFalse(app.staticTexts["DIP"].exists)
+        let guidance = app.staticTexts["onboarding.work-account-guidance"]
+        XCTAssertLessThanOrEqual(guidance.frame.maxY, google.frame.minY)
+        capture(app, "login-largest-text")
     }
 
 }

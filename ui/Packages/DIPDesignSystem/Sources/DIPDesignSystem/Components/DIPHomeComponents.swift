@@ -256,6 +256,7 @@
     public struct DIPFloatingNavigation: View {
         let selected: DIPHomeTab
         let action: DIPBottomBarAction?
+        let showsTabs: Bool
         let onSelect: (DIPHomeTab) -> Void
         let onAction: () -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -265,11 +266,12 @@
         }
 
         public init(
-            selected: DIPHomeTab = .home, action: DIPBottomBarAction?,
+            selected: DIPHomeTab = .home, action: DIPBottomBarAction?, showsTabs: Bool = true,
             onSelect: @escaping (DIPHomeTab) -> Void, onAction: @escaping () -> Void = {}
         ) {
             self.selected = selected
             self.action = action
+            self.showsTabs = showsTabs
             self.onSelect = onSelect
             self.onAction = onAction
         }
@@ -302,17 +304,19 @@
                 ZStack(alignment: .topLeading) {
                     Capsule().fill(DIPTokens.Color.navigationBackground.swiftUIColor)
                         .accessibilityHidden(true)
-                    if reduceMotion {
-                        marker(width: geometry.size.width)
-                            .id(selected)
-                            .transition(.opacity)
-                    } else {
-                        marker(width: geometry.size.width)
-                            .animation(DIPMotion.navigation(), value: selected)
+                    if showsTabs {
+                        if reduceMotion {
+                            marker(width: geometry.size.width)
+                                .id(selected)
+                                .transition(.opacity)
+                        } else {
+                            marker(width: geometry.size.width)
+                                .animation(DIPMotion.navigation(), value: selected)
+                        }
+                        tabItems
+                            .allowsHitTesting(action == nil)
+                            .accessibilityHidden(action != nil)
                     }
-                    tabItems
-                        .allowsHitTesting(action == nil)
-                        .accessibilityHidden(action != nil)
                     if let action {
                         actionOverlay(action)
                             .transition(.opacity)
@@ -374,6 +378,8 @@
                     Text(action.title)
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
                         .foregroundStyle(.white)
+                        .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.4)
+                        .padding(.horizontal, 16)
                         .id(action.title)
                         .transition(.opacity)
                 }
