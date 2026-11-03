@@ -13,10 +13,12 @@ struct AccountsNoticeView: View {
                                                  face: illustration.face, cardFill: illustration.card))
         } actions: {
             OnboardingButton(notice.primary.title, isLoading: session.isSubmitting) { perform(notice.primary.action) }
+                .accessibilityIdentifier("onboarding.primary")
             if let secondary = notice.secondary {
                 OnboardingButton(secondary.title, emphasis: .secondary, isEnabled: !session.isSubmitting) {
                     perform(secondary.action)
                 }
+                .accessibilityIdentifier("onboarding.secondary")
             }
         }
     }

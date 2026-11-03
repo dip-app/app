@@ -5,7 +5,8 @@ import SwiftUI
 /// Deterministic presentation fixture matching Figma Home 35:147.
 /// Counts, avatars and events are prototype content, never authoritative server data.
 struct DIPHomeFixturePreview: View {
-    var body: some View { DIPPrototypeApp() }
+    var onSignOut: (() async -> Void)? = nil
+    var body: some View { DIPPrototypeApp(onSignOut: onSignOut) }
 }
 
 struct DIPHomeScreen: View {

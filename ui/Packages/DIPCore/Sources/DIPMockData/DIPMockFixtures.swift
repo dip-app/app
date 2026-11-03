@@ -4,6 +4,32 @@ import Foundation
 /// Exact existing prototype content, centralized behind the mock boundary.
 /// IDs distinguish events; the shared reference album is intentionally reused by the prototype.
 public enum DIPMockFixtures {
+    /// Synthetic preview catalog. IDs are fixed independently of display names.
+    public static let interestCatalog: [DIPInterest] = [
+        ("tag-fitness", "Fitness"), ("tag-cooking", "Cooking"), ("tag-outdoors", "Outdoors"),
+        ("tag-carpentry", "Carpentry"), ("tag-art", "Art"), ("tag-board-games", "Board Games"),
+        ("tag-books", "Books"), ("tag-cycling", "Cycling"), ("tag-dancing", "Dancing"),
+        ("tag-gardening", "Gardening"), ("tag-music", "Music"), ("tag-photography", "Photography"),
+        ("tag-volunteering", "Volunteering")
+    ].enumerated().map { index, item in DIPInterest(id: item.0, name: item.1, sortOrder: index) }
+
+    public static var emptySocialReview: DIPAppSnapshot {
+        var snapshot = reference
+        for id in snapshot.messages.keys { snapshot.messages[id] = [] }
+        snapshot.photoComments = [:]
+        return snapshot
+    }
+
+    public static var chatHistoryReview: DIPAppSnapshot {
+        var snapshot = reference
+        snapshot.messages["puppy-yoga"] = (0..<35).map { index in
+            DIPMessage(id: "history-\(index)", authorID: "frank-white", text: "Planning message \(index + 1): let's meet by the entrance before the activity.",
+                authorName: "Frank White", authorAvatar: .asset("attendees_CoworkerProfilePicture1"),
+                createdAt: Date(timeIntervalSince1970: 1_772_971_200 + Double(index * 60)))
+        }
+        return snapshot
+    }
+
     public static var reference: DIPAppSnapshot {
         let homeEvents: [DIPEventSummary] = [
             .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("EventCard"), avatars: assets(["AvatarPink", "CoworkerProfilePicture1", "AvatarTeal"]), attendeeCount: 7, imageShade: 0.1),
@@ -37,7 +63,7 @@ public enum DIPMockFixtures {
             .init(id: "favorite-4", eventID: "ceramics", image: .asset("profile_Rectangle934"), dateLabel: "01/07"),
             .init(id: "favorite-5", eventID: "book-club", image: .asset("profile_Rectangle936"), dateLabel: "12/30")
         ]
-        let profile = DIPProfile(id: "elissa-woode", displayName: "Elissa Woode", department: "Human Resources", city: "Pittsburgh, PA", interests: ["Fitness", "Cooking", "Outdoors", "Carpentry"], availableInterests: ["Fitness", "Cooking", "Outdoors", "Carpentry"], photo: .asset("profile_Image"), avatar: .asset("profile_Image1"), favoriteMemories: favorites)
+        let profile = DIPProfile(id: "elissa-woode", displayName: "Elissa Woode", department: "Human Resources", city: "Pittsburgh, PA", interestTagIDs: ["tag-fitness", "tag-cooking", "tag-outdoors", "tag-carpentry"], interestCatalog: interestCatalog, photo: .asset("profile_Image"), avatar: .asset("profile_Image1"), favoriteMemories: favorites)
         let puppyDescription = "Join us for a delightful puppy yoga session where you can stretch, relax, and bond with adorable puppies! Experience the joy of  yoga surrounded by puppies who will bring smiles and laughter to your practice. This session combines gentle yoga poses with the heartwarming presence of our furry friends."
         let detailRows: [(String, String, String, [String])] = [
             ("puppy-yoga", "Puppy Yoga", "event_Image", ["Fitness", "Energetic", "Hype"]),

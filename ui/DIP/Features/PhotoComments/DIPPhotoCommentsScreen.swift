@@ -16,6 +16,8 @@ struct DIPPhotoCommentsScreen: View {
     @State private var sendError: String?
     @State private var composerFocused = false
     @State private var selectedCommentID: String?
+    @State private var commentPage = 0
+    @State private var olderPageEnd: String?
 
     private struct SendIntent {
         let id: String
@@ -50,7 +52,15 @@ struct DIPPhotoCommentsScreen: View {
     }
 
     private var visibleComments: [DIPPhotoComment] {
-        Array(comments.suffix(4))
+        let end = olderPageEnd.flatMap { id in comments.firstIndex { $0.id == id }.map { $0 + 1 } }
+            ?? max(0, comments.count - commentPage * 4)
+        return Array(comments[max(0, end - 4)..<end])
+    }
+
+    private func changeCommentPage(by offset: Int) {
+        commentPage = min(max(0, commentPage + offset), max(0, (comments.count - 1) / 4))
+        olderPageEnd = commentPage == 0 ? nil : comments.dropLast(commentPage * 4).last?.id
+        selectedCommentID = nil
     }
 
     private var closeButton: some View {
@@ -76,6 +86,13 @@ struct DIPPhotoCommentsScreen: View {
                 .accessibilityIdentifier("photo.comments.image")
                 .contentShape(RoundedRectangle(cornerRadius: 20))
                 .onTapGesture { selectedCommentID = nil }
+                .gesture(DragGesture(minimumDistance: 30).onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    changeCommentPage(by: value.translation.width < 0 ? 1 : -1)
+                })
+                .accessibilityHint("Swipe left for earlier comments or right for newer comments")
+                .accessibilityAction(named: Text("Earlier comments")) { changeCommentPage(by: 1) }
+                .accessibilityAction(named: Text("Newer comments")) { changeCommentPage(by: -1) }
                 .padding(.top, photoTop)
             if let attribution = photo.attribution {
                 DIPPhotoAttributionTag(name: attribution.name) {
@@ -107,6 +124,7 @@ struct DIPPhotoCommentsScreen: View {
                     .onTapGesture { } // Keep taps inside the bubble from collapsing it.
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("photo.comments.expanded.\(comment.id)")
+                    .accessibilityAction(named: Text("Collapse comment")) { selectedCommentID = nil }
                     .position(x: width / 2, y: photoTop + 131)
                     .zIndex(1)
                 } else {
@@ -120,10 +138,12 @@ struct DIPPhotoCommentsScreen: View {
                         .frame(
                             width: 134, height: 32,
                             alignment: index.isMultiple(of: 2) ? .leading : .trailing)
-                        .contentShape(Capsule())
+                        .frame(height: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(comment.authorName): \(comment.text)")
+                    .accessibilityHint("Expand comment")
                     .accessibilityIdentifier("photo.comments.comment.\(comment.id)")
                     .position(
                         x: index.isMultiple(of: 2) ? 73 : width - 73,
@@ -147,6 +167,7 @@ struct DIPPhotoCommentsScreen: View {
             onFocusChange: { composerFocused = $0 }
         )
         .frame(width: max(0, width - 52))
+        .onChange(of: draft) { _, _ in sendError = nil }
     }
 
     private func send() {
@@ -165,6 +186,8 @@ struct DIPPhotoCommentsScreen: View {
                 // Only repository observation adds comments; preserve text entered during the request.
                 if draft.trimmingCharacters(in: .whitespacesAndNewlines) == intent.text { draft = "" }
                 retryIntent = nil
+                commentPage = 0
+                olderPageEnd = nil
             } catch {
                 // The same ID/text pair survives failure; editing starts a new intent on the next send.
                 sendError = "Your comment could not be sent. Try again."

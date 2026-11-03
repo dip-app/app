@@ -21,8 +21,10 @@ struct DIPPrototypeApp: View {
     @State private var showChat = false
     @State private var chatEventID = "puppy-yoga"
     private let initialMemories: Bool
+    private let onSignOut: (() async -> Void)?
 
-    init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil) {
+    init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil) {
+        self.onSignOut = onSignOut
         let argument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--screen=") }
         let screen = initialScreen ?? argument.map { String($0.dropFirst("--screen=".count)) } ?? "home"
         _selectedTab = State(
@@ -36,7 +38,11 @@ struct DIPPrototypeApp: View {
         default: _routes = State(initialValue: [])
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
-            initialSnapshot: ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
+            initialSnapshot: ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+                ? DIPMockFixtures.emptySocialReview
+                : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
+                ? DIPMockFixtures.chatHistoryReview
+                : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
                 ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference,
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures())))
@@ -45,6 +51,7 @@ struct DIPPrototypeApp: View {
     /// Deterministic failure paths for local preview/UI testing only.
     private static func previewFailures() -> [DIPMockOperation: String] {
         var failures: [DIPMockOperation: String] = [:]
+        if ProcessInfo.processInfo.arguments.contains("--fail-profile-once") { failures[.profile] = "Preview failure" }
         if ProcessInfo.processInfo.arguments.contains("--fail-chat-once") { failures[.message] = "Preview failure" }
         if ProcessInfo.processInfo.arguments.contains("--fail-comment-once") { failures[.comment] = "Preview failure" }
         return failures
@@ -146,15 +153,17 @@ struct DIPPrototypeApp: View {
                 AnyView(DIPProfileScreen(
                     profile: snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
                     onMemory: { routes.append(.album($0)) },
-                    onSave: { try await model.updateProfile($0) }))
+                    onSave: { try await model.updateProfile($0) }, onSignOut: onSignOut))
             case .rewards: AnyView(EmptyView())
             }
         }
     }
 
     private var isRSVPPending: Bool {
-        if case .event(let id) = routes.last { return model.pendingCommands.contains("rsvp:\(id)") }
-        return false
+        switch routes.last {
+        case .event(let id), .participants(let id): return model.pendingCommands.contains("rsvp:\(id)")
+        default: return false
+        }
     }
 
     private var bottomAction: DIPBottomBarAction? {
@@ -173,8 +182,11 @@ struct DIPPrototypeApp: View {
                 identifier: "event.primary", value: joined ? "Joined" : "Not joined")
         case .participants(let id) where model.snapshot?.eventDetails[id]?.isPast == true:
             return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
-        case .participants:
-            return DIPBottomBarAction(title: "Activity Chat", style: .accent, identifier: "participants.chat")
+        case .participants(let id):
+            let joined = model.snapshot?.eventDetails[id]?.isJoined == true
+            return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
+                style: joined ? .accent : .standard,
+                identifier: joined ? "participants.chat" : "participants.join")
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
         case nil: return nil
@@ -189,13 +201,15 @@ struct DIPPrototypeApp: View {
             else { join(id) }
         case .participants(let id):
             if model.snapshot?.eventDetails[id]?.isPast == true { routes.append(.album(id)) }
-            else { openChat(id) }
+            else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
+            else { join(id) }
         case .album: albumPickerPresented = true
         case nil: break
         }
     }
 
     private func openChat(_ eventID: String) {
+        guard let event = model.snapshot?.eventDetails[eventID], event.isJoined, !event.isPast else { return }
         chatEventID = eventID
         showChat = true
     }

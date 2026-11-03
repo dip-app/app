@@ -16,3 +16,9 @@ frame was supplied for it.
 Reference visual checks must use the initial identical fixtures. Review Home's
 comparison instructions in ui/ComponentPreview/Review before changing typography,
 photo transforms, mosaic geometry, navigation or the original mock content.
+
+## Catalog interests and account exit
+
+Profile's Add interests entry opens a searchable, native multi-select sheet. Explicit Save persists through the repository callback; an inner picker in Edit profile stages changes until the outer Save. Cancel isolates that picker draft. Choices are limited to ten, errors retain selection for retry, and display labels may change without changing selected IDs. See [the existing V1 mapping](../../../../docs/contracts/profile-interests.md). The preview catalog is synthetic; the live aggregate profile/tag adapter remains pending.
+
+Selected interests scroll within the original hero; large text uses an adaptive header and memory widths follow the viewport. The optional Sign out callback is supplied by the actual account composition root, delegates to AccountsSession, and returns to the Google entry flow. Standalone fixture hosts without an account session do not show a fake sign-out action.

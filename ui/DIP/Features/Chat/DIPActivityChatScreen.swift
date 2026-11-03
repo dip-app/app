@@ -13,6 +13,9 @@ struct DIPActivityChatScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var draft = ""
+    @State private var followsLatest = true
+    @State private var composerFocused = false
+    @State private var composerHeight: CGFloat = 0
     @State private var isSending = false
     @State private var sendError: String?
     @State private var retryIntent: SendIntent?
@@ -36,6 +39,7 @@ struct DIPActivityChatScreen: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { scroll in
+                GeometryReader { viewport in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         if messages.isEmpty {
@@ -49,16 +53,39 @@ struct DIPActivityChatScreen: View {
                             }
                         }
                         Color.clear.frame(height: 1).id(Self.bottomAnchor)
+                            .background(GeometryReader { geometry in
+                                Color.clear.preference(key: ChatBottomPosition.self,
+                                    value: geometry.frame(in: .named("chat-scroll")).maxY)
+                            })
                     }
                     .padding(20)
+                }
+                .coordinateSpace(name: "chat-scroll")
+                .onPreferenceChange(ChatBottomPosition.self) { bottom in
+                    followsLatest = bottom >= 0 && bottom <= max(0, viewport.size.height - composerHeight) + 80
+                }
+                .onPreferenceChange(ChatComposerHeight.self) { composerHeight = $0 }
+                .onChange(of: viewport.size.height) { _, _ in
+                    if composerFocused { scrollToBottom(scroll) }
+                }
+                .onChange(of: composerFocused) { _, focused in
+                    if focused { scrollToBottom(scroll) }
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .accessibilityIdentifier("event.chat.messages")
                 .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
                 .safeAreaInset(edge: .bottom, spacing: 0) { composer }
-                .onAppear { scroll.scrollTo(Self.bottomAnchor, anchor: .bottom) }
-                .onChange(of: messages.map(\.id)) { _, _ in
-                    scrollToBottom(scroll)
+                .task {
+                    await Task.yield()
+                    scroll.scrollTo(Self.bottomAnchor, anchor: .bottom)
+                }
+                .onChange(of: messages.map(\.id)) { previous, _ in
+                    if DIPConversationScrollPolicy.shouldFollow(
+                        isNearBottom: followsLatest, previousIDs: previous,
+                        messages: messages, currentUserID: currentUserID) {
+                        scrollToBottom(scroll)
+                    }
+                }
                 }
             }
             .navigationTitle("Activity Chat")
@@ -124,11 +151,15 @@ struct DIPActivityChatScreen: View {
     private var composer: some View {
         DIPMessageComposer(
             text: $draft, placeholder: "Message", isSending: isSending,
-            errorMessage: sendError, identifierPrefix: "event.chat", onSend: send
+            errorMessage: sendError, identifierPrefix: "event.chat", onSend: send,
+            onFocusChange: { composerFocused = $0 }
         )
         .onChange(of: draft) { _, _ in sendError = nil }
         .padding(.horizontal, 20).padding(.vertical, 12)
         .background(.bar)
+        .background(GeometryReader { geometry in
+            Color.clear.preference(key: ChatComposerHeight.self, value: geometry.size.height)
+        })
     }
 
     private func scrollToBottom(_ scroll: ScrollViewProxy) {
@@ -158,4 +189,14 @@ struct DIPActivityChatScreen: View {
             }
         }
     }
+}
+
+private struct ChatBottomPosition: PreferenceKey {
+    static let defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+private struct ChatComposerHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

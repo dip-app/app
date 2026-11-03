@@ -86,3 +86,8 @@ A held-press recording confirms the persistent bottom action remains opaque inst
 ## November1 human-defined photo bubbles
 
 The human rejected the invented below-image thread and specified compact bubbles slightly overlapping image edges, avatar first, only a few preview words plus ellipsis, four visible at once, and tap-to-center full text with scrolling after about four lines. This direct instruction is the authority for the current interaction; it is not attributed to Figma. Native screenshots replace the rejected panel evidence. Three conversation tests plus a repeated visual/geometry capture test passed; full app build passed with a fresh package cache.
+
+
+## November 2 profile/social completion
+
+The expanded interest catalog in DIPMockFixtures is synthetic preview content with fixed IDs, not production seed data or a new taxonomy authority. Its projection follows the existing Tag/AppUser schemas; see docs/contracts/profile-interests.md. The user requested Add interests, profile improvements and sign-out. Account illustrations are preserved from the merged onboarding implementation; native picker/recovery UI is authored SwiftUI composition, not a new Figma export. Photo-comment edge/corner-placement redesign and the weekly challenge page are recorded as deferred user feedback, not implemented or visually approved by interaction tests.

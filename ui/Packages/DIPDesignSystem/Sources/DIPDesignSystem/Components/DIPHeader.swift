@@ -43,7 +43,7 @@
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
         private var titlePill: some View {
-            Text(title).font(.title3.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            Text(title).font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .title3)).fixedSize(horizontal: false, vertical: true)
                 .foregroundStyle(DIPComponentTheme.onAccent)
                 .padding(.horizontal, DIPTokens.Spacing.contentInset).padding(.vertical, 14)
                 .background(DIPComponentTheme.accent, in: Capsule())

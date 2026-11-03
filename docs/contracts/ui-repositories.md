@@ -36,3 +36,5 @@ Chat/comment command IDs are generated once for a send intent and retained on an
 
 
 Past-event presentation uses `DIPEventDetail.isPast`. A live adapter must derive it from the authoritative Event.endTime and its clock, never from a localized timing string. Memories route to that event's detail; the detail and participant bottom actions open the same event-scoped album. The mock refuses RSVP changes for past events. This projection adds no callable or stored field and does not implement production clock/cutoff enforcement.
+
+Profile selection now uses opaque tag IDs throughout `DIPProfile` and `ProfileEdit`; see [interest mapping and readiness](profile-interests.md). Display labels are not command IDs. Missing catalog IDs remain removable/retainable instead of silently disappearing.

@@ -69,12 +69,15 @@ public actor DIPMockRepository: DIPRepository {
 
     public func updateProfile(_ edit: ProfileEdit) async throws {
         try consumeFailure(.profile)
-        guard Set(edit.interests).isSubset(of: Set(snapshot.profile.availableInterests)) else {
+        guard Set(edit.interestTagIDs).count <= 10 else { throw DIPRepositoryError.invalidInput("Choose up to 10 interests") }
+        guard Set(edit.interestTagIDs).isSubset(of: Set(snapshot.profile.interestCatalog.map(\.id)).union(snapshot.profile.interestTagIDs)) else {
             throw DIPRepositoryError.invalidInput("Unknown interest")
         }
         snapshot.profile.department = edit.department.trimmingCharacters(in: .whitespacesAndNewlines)
         snapshot.profile.city = edit.city.trimmingCharacters(in: .whitespacesAndNewlines)
-        snapshot.profile.interests = snapshot.profile.availableInterests.filter(Set(edit.interests).contains)
+        let catalogIDs = snapshot.profile.interestCatalog.map(\.id)
+        let retainedIDs = snapshot.profile.interestTagIDs.filter { !catalogIDs.contains($0) }
+        snapshot.profile.interestTagIDs = (catalogIDs + retainedIDs).filter(Set(edit.interestTagIDs).contains)
         for id in Array(snapshot.participants.keys) {
             guard var people = snapshot.participants[id] else { continue }
             for index in people.indices where people[index].id == snapshot.profile.id {
@@ -90,6 +93,9 @@ public actor DIPMockRepository: DIPRepository {
         guard snapshot.messages[eventID] != nil,
               snapshot.eventDetails[eventID] != nil || snapshot.albums[eventID] != nil else {
             throw DIPRepositoryError.notFound(eventID)
+        }
+        guard let event = snapshot.eventDetails[eventID], event.isJoined, !event.isPast else {
+            throw DIPRepositoryError.invalidInput("Join this activity before sending a message")
         }
         let trimmed = try validatedText(text, identity: messageID, kind: "Message")
         if let existing = snapshot.messages[eventID]?.first(where: { $0.id == messageID }) {
@@ -133,7 +139,8 @@ public actor DIPMockRepository: DIPRepository {
                 throw DIPRepositoryError.invalidInput("Photo identity already exists")
             }
             if !album.photos.contains(where: { $0.id == photo.id }) {
-                album.photos.append(.init(id: photo.id, image: .data(photo.data), isImported: true))
+                album.photos.append(.init(id: photo.id, image: .data(photo.data),
+                    attribution: .init(name: snapshot.profile.displayName, avatar: snapshot.profile.avatar), isImported: true))
             }
         }
         guard snapshot.albums[eventID] != album else { return }

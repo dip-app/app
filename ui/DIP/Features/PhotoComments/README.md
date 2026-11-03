@@ -9,3 +9,11 @@ The album passes an observed photo/thread/current-user projection and an asynchr
 Native keyboard avoidance keeps a single composer outside scrolling photo/thread content. No keyboard image, OS chrome replica or keyboard-height notification choreography belongs here. Parent flows verify the send control remains above the keyboard, failure/retry, close/reopen and photo isolation before frontend status is unflagged.
 
 These are in-memory local features; authorization, production persistence and cross-device delivery remain future Firebase adapter/rules work. See [repository contract](../../../../docs/contracts/ui-repositories.md) and [feature status](../../../../docs/milestones/v2/FEATURE_STATUS.md).
+
+## Deferred design work: comment placement
+
+User feedback, November 2, 2026: placing the comment bubbles only at fixed photo edges/corners looks bad. Revisit their distribution and relationship to the photo; the current four-corner arrangement is not the desired final layout. The attached example showed comments crowding corners/edges around a kayaking photo.
+
+This is a later design task, not an instruction to invent a replacement in the current implementation. Explore and review a better placement system with the user before changing it. Preserve compact avatar-first previews, access to full text, readable photo content and usable touch targets while evaluating alternatives. Keep this open even if the current interaction tests pass; those tests verify behavior, not approval of the placement design.
+
+November 2 interaction improvements: compact artwork stays 32 points tall but the button hit area is 44 points; expanded comments expose a named Collapse comment accessibility action. Swipe left/right across the photo, or use named Earlier/Newer comments accessibility actions, to browse groups of at most four. Incoming comments preserve an older-page anchor; a successful own send returns to the latest group. Editing clears a stale send error. These behavior changes do not resolve the deferred placement design criticism above.

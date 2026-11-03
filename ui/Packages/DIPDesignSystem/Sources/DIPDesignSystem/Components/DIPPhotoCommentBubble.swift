@@ -8,6 +8,7 @@ public struct DIPPhotoCommentBubble: View {
     private let authorName: String
     private let avatar: AnyView
     private let isExpanded: Bool
+    @ScaledMetric(relativeTo: .body) private var expandedTextHeight: CGFloat = 84
 
     public init<Avatar: View>(text: String, authorName: String = "", isExpanded: Bool = false, avatar: () -> Avatar) {
         self.text = text
@@ -33,7 +34,7 @@ public struct DIPPhotoCommentBubble: View {
                             .scrollIndicators(.visible)
                             .accessibilityIdentifier("photo.comments.expanded-text")
                     }
-                    .frame(maxHeight: 84)
+                    .frame(maxHeight: min(190, expandedTextHeight))
                 }
                 .padding(12).frame(width: 280, alignment: .leading)
                 .background(.white, in: RoundedRectangle(cornerRadius: 20))

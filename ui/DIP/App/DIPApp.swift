@@ -14,7 +14,7 @@ struct DIPApp: App {
         WindowGroup {
             AccountsRootView(session: session) { _ in
                 // Event content currently uses the repository-backed prototype adapter.
-                DIPHomeFixturePreview()
+                DIPHomeFixturePreview(onSignOut: { await session.signOut() })
             }
             .task { session.start() }
             .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }
