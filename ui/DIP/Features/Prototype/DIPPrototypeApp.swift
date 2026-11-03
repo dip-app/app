@@ -53,6 +53,8 @@ struct DIPPrototypeApp: View {
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
+                : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
+                ? DIPMockFixtures.chatGroupingReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")

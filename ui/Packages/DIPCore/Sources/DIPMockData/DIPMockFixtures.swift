@@ -20,6 +20,25 @@ public enum DIPMockFixtures {
         return snapshot
     }
 
+    public static var chatGroupingReview: DIPAppSnapshot {
+        var snapshot = reference
+        let rows: [(String, String, TimeInterval)] = [
+            ("frank-white", "Let's meet at the entrance.", 0),
+            ("frank-white", "I'll bring the yoga mats.", 20),
+            ("frank-white", "See you soon!", 40),
+            (snapshot.profile.id, "Sounds good!", 60),
+            (snapshot.profile.id, "I'll be there in ten minutes.", 80),
+            ("frank-white", "We're all set for the activity.", 600)
+        ]
+        snapshot.messages["puppy-yoga"] = rows.enumerated().map { index, row in
+            DIPMessage(id: "group-\(index)", authorID: row.0, text: row.1,
+                authorName: row.0 == snapshot.profile.id ? snapshot.profile.displayName : "Frank White",
+                authorAvatar: row.0 == snapshot.profile.id ? snapshot.profile.avatar : .asset("attendees_CoworkerProfilePicture1"),
+                createdAt: Date(timeIntervalSince1970: 1_793_700_000 + row.2))
+        }
+        return snapshot
+    }
+
     public static var chatHistoryReview: DIPAppSnapshot {
         var snapshot = reference
         snapshot.messages["puppy-yoga"] = (0..<35).map { index in

@@ -24,7 +24,9 @@ final class ConversationFlowTests: XCTestCase {
         app.buttons["Done"].tap()
         primary.tap()
         XCTAssertTrue(app.staticTexts["See you at puppy yoga!"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "See you at puppy yoga!")).count, 1)
+        let deliveredRows = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "event.chat.message.", "See you at puppy yoga!"))
+        XCTAssertEqual(deliveredRows.count, 1, "Retry must render exactly one observed message row")
     }
 
     @MainActor func testPhotoCommentRetryReopeningAndThreadIsolation() {
@@ -198,6 +200,28 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertLessThanOrEqual(send.frame.maxY, app.keyboards.firstMatch.frame.minY + 0.5)
         let capture = XCTAttachment(screenshot: app.screenshot())
         capture.name = "event-chat-software-keyboard"; capture.lifetime = .keepAlways; add(capture)
+    }
+
+    @MainActor func testConsecutiveMessagesShareMetadata() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=event-joined", "--chat-grouping-fixtures"]
+        app.launch()
+        XCTAssertTrue(app.buttons["event.primary"].waitForExistence(timeout: 10))
+        app.buttons["event.primary"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["event.chat.message.group-5"].waitForExistence(timeout: 5))
+        let groups = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "event.chat.group."))
+        XCTAssertEqual(groups.count, 3)
+        let first = app.descendants(matching: .any)["event.chat.message.group-0"]
+        let middle = app.descendants(matching: .any)["event.chat.message.group-1"]
+        let last = app.descendants(matching: .any)["event.chat.message.group-2"]
+        XCTAssertLessThan(middle.frame.height, first.frame.height)
+        XCTAssertLessThan(middle.frame.height, last.frame.height)
+        XCTAssertTrue((middle.value as? String)?.contains("Frank White") == true)
+        for index in 0..<6 {
+            XCTAssertTrue(app.descendants(matching: .any)["event.chat.message.group-\(index)"].exists)
+        }
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "event-chat-grouped"; capture.lifetime = .keepAlways; add(capture)
     }
 
 }

@@ -130,24 +130,37 @@ public struct DIPMessageComposer: View {
 
 /// Value-only message presentation; repository identities and SDK types remain outside the library.
 public struct DIPConversationBubble: View {
+    private let showsAuthor: Bool
+    private let showsTimestamp: Bool
+    private let showsAvatar: Bool
     private let authorName: String
     private let text: String
     private let timestamp: Date
     private let isOwn: Bool
     private let avatar: AnyView
     public init<Avatar: View>(
-        authorName: String, text: String, timestamp: Date, isOwn: Bool, avatar: () -> Avatar
+        authorName: String, text: String, timestamp: Date, isOwn: Bool, showsAuthor: Bool = true, showsTimestamp: Bool = true, showsAvatar: Bool = true, avatar: () -> Avatar
     ) {
+        self.showsAuthor = showsAuthor; self.showsTimestamp = showsTimestamp; self.showsAvatar = showsAvatar
         self.authorName = authorName; self.text = text; self.timestamp = timestamp
         self.isOwn = isOwn; self.avatar = AnyView(avatar())
     }
     public var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if isOwn { Spacer(minLength: 36) }
-            else { avatar.frame(width: 32, height: 32).clipShape(Circle()).accessibilityHidden(true) }
+            else {
+                Group {
+                    if showsAvatar { avatar.clipShape(Circle()) }
+                    else { Color.clear }
+                }
+                .frame(width: 32, height: 32).accessibilityHidden(true)
+            }
             VStack(alignment: isOwn ? .trailing : .leading, spacing: 5) {
-                Text(isOwn ? "You" : authorName)
-                    .font(DIPReferenceAssets.font("Figtree-Bold", size: 13))
+                if showsAuthor {
+                    Text(isOwn ? "You" : authorName)
+                        .font(DIPReferenceAssets.font("Figtree-Bold", size: 13))
+                        .accessibilityHidden(true)
+                }
                 Text(text)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
@@ -156,12 +169,16 @@ public struct DIPConversationBubble: View {
                                       : DIPTokens.Color.surfaceMuted.swiftUIColor,
                                 in: RoundedRectangle(cornerRadius: 20))
                     .textSelection(.enabled)
-                Text(timestamp, style: .time).font(.caption2).foregroundStyle(.secondary)
+                if showsTimestamp {
+                    Text(timestamp, style: .time).font(.caption2).foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
             }
             if !isOwn { Spacer(minLength: 36) }
         }
         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
         .accessibilityElement(children: .combine)
+        .accessibilityValue("\(isOwn ? "You" : authorName), \(timestamp.formatted(date: .abbreviated, time: .shortened))")
     }
 }
 

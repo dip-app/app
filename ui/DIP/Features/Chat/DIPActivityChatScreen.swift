@@ -45,11 +45,19 @@ struct DIPActivityChatScreen: View {
                         if messages.isEmpty {
                             emptyConversation
                         } else {
-                            ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                                if startsNewDay(at: index) {
-                                    dateSeparator(message.createdAt)
+                            let groups = DIPConversationGrouping.groups(messages)
+                            ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                                if index == 0 || !Calendar.current.isDate(
+                                    groups[index - 1].messages[0].createdAt, inSameDayAs: group.messages[0].createdAt) {
+                                    dateSeparator(group.messages[0].createdAt)
                                 }
-                                messageRow(message)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ForEach(Array(group.messages.enumerated()), id: \.element.id) { index, message in
+                                        messageRow(message, first: index == 0, last: index == group.messages.count - 1)
+                                    }
+                                }
+                                .accessibilityElement(children: .contain)
+                                .accessibilityIdentifier("event.chat.group.\(group.id)")
                             }
                         }
                         Color.clear.frame(height: 1).id(Self.bottomAnchor)
@@ -135,14 +143,11 @@ struct DIPActivityChatScreen: View {
             .frame(maxWidth: .infinity)
     }
 
-    private func startsNewDay(at index: Int) -> Bool {
-        index == 0 || !Calendar.current.isDate(messages[index - 1].createdAt, inSameDayAs: messages[index].createdAt)
-    }
-
-    private func messageRow(_ message: DIPMessage) -> some View {
+    private func messageRow(_ message: DIPMessage, first: Bool, last: Bool) -> some View {
         DIPConversationBubble(
             authorName: message.authorName, text: message.text, timestamp: message.createdAt,
             isOwn: message.authorID == currentUserID,
+            showsAuthor: first, showsTimestamp: last, showsAvatar: last,
             avatar: { DIPMedia(message.authorAvatar).scaledToFill() }
         )
         .accessibilityIdentifier("event.chat.message.\(message.id)")

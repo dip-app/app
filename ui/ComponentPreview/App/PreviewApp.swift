@@ -15,7 +15,8 @@ struct PreviewApp: App {
             }
             .environment(
                 \.dynamicTypeSize,
-                ProcessInfo.processInfo.arguments.contains("--large-text") ? .accessibility3 : .large)
+                ProcessInfo.processInfo.arguments.contains("--largest-text") ? .accessibility5
+                    : ProcessInfo.processInfo.arguments.contains("--large-text") ? .accessibility3 : .large)
         }
     }
 }
