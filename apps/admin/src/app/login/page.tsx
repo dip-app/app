@@ -14,13 +14,12 @@ export default function Login() {
 
   return (
     <main className="login">
-      <div className="hero-card"><Faces size={120} /></div>
+      <div className="hero-card"><Faces width={760} /></div>
       <section className="login-copy">
         <h1>Organize your team’s activities</h1>
         <p>Create events, set the details and keep them up to date for everyone in your company.</p>
         <div className="login-actions">
-          <button className="big-pill dark" onClick={() => void signIn("admin")}>Continue as organizer</button>
-          <button className="big-pill gray" onClick={() => void signIn("member")}>Continue as member (no access)</button>
+          <button className="big-pill dark" onClick={() => void signIn("admin")}>Sign in as organizer</button>
         </div>
         <p className="note">
           Preview mode: data stays in this browser. Production sign-in is Google with your work account; organizer access is
