@@ -16,7 +16,7 @@ struct DIPApp: App {
     var body: some Scene {
         WindowGroup {
             AccountsRootView(session: session) { context in
-                DIPMemberHome(context: context, repository: repository, onSignOut: { await session.signOut() })
+                DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), onSignOut: { await session.signOut() })
                     .id(context.uid)
             }
             .task { session.start() }

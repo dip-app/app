@@ -30,6 +30,13 @@ enum FirebaseBootstrap {
 
     @MainActor private(set) static var status: Status = .notConfigured
 
+    /// The signed-in Google account's photo, enlarged for the profile page. Empty when unavailable.
+    @MainActor static func oauthPhotoURL() -> String {
+        guard FirebaseApp.app() != nil, let url = Auth.auth().currentUser?.photoURL else { return "" }
+        // Google serves a 96px thumbnail by default; ask for a sharper one.
+        return url.absoluteString.replacingOccurrences(of: "=s96-c", with: "=s400-c")
+    }
+
     /// Call once at launch, before creating any repository or listener.
     @MainActor @discardableResult
     static func configureIfAvailable(bundle: Bundle = .main, environment: [String: String] = ProcessInfo.processInfo.environment) -> Status {

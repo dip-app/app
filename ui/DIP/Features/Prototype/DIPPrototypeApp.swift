@@ -149,16 +149,19 @@ struct DIPPrototypeApp: View {
     }
 
     private func tabPages(_ snapshot: DIPAppSnapshot) -> some View {
-        DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
+        let lists = DIPEventLists(snapshot: snapshot, now: Date())
+        var home = snapshot.home
+        home.events = lists.discovery
+        return DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
             switch tab {
             case .home:
                 AnyView(DIPHomeScreen(
-                    home: snapshot.home, showsBottomBar: false,
+                    home: home, showsBottomBar: false,
                     onEvent: { routes.append(.event($0)) },
                     onChallenge: { _ in notice = "Fitness challenge" }, onSelect: homeSelection))
             case .events:
                 AnyView(DIPMyEventsScreen(
-                    activeEvents: snapshot.activeEvents, memories: snapshot.memories,
+                    activeEvents: lists.upcoming, memories: lists.past,
                     unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
                     initialMemories: initialMemories, showsBottomBar: false,
                     onSelectTab: selectTab,
@@ -195,6 +198,14 @@ struct DIPPrototypeApp: View {
             }
             if event.isPast { return DIPBottomBarAction(title: "View Album", identifier: "event.primary") }
             let joined = event.isJoined
+            if let metadata = event.metadata {
+                switch metadata.state(now: Date(), attendeeCount: event.attendeeCount, isJoined: joined) {
+                case .cancelled: return DIPBottomBarAction(title: "Activity cancelled", style: .complete, identifier: "event.primary")
+                case .full: return DIPBottomBarAction(title: "Activity full", style: .complete, identifier: "event.primary")
+                case .started where !joined: return DIPBottomBarAction(title: "Activity started", style: .complete, identifier: "event.primary")
+                default: break
+                }
+            }
             return DIPBottomBarAction(
                 title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
@@ -233,11 +244,13 @@ struct DIPPrototypeApp: View {
         showChat = true
     }
 
-    private func join(_ eventID: String) {
+    private func join(_ eventID: String) { changeRSVP(eventID, going: true) }
+
+    private func changeRSVP(_ eventID: String, going: Bool) {
         guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return }
         Task {
-            do { try await model.setRSVP(eventID: eventID, going: true) }
-            catch { rsvpError = "Couldn’t join this activity. Please try again." }
+            do { try await model.setRSVP(eventID: eventID, going: going) }
+            catch { rsvpError = (error as? DIPRepositoryError).map { String(describing: $0) } ?? "Couldn’t change your RSVP. Please try again." }
         }
     }
 
@@ -250,7 +263,8 @@ struct DIPPrototypeApp: View {
                         event: event, joined: event.isJoined, showsBottomBar: false,
                         onJoin: { join(id) }, onBack: pop,
                         onAttendees: { routes.append(.participants(id)) }, onChat: { openChat(id) },
-                        photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) })
+                        photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
+                        onLeave: { changeRSVP(id, going: false) })
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .participants(let id):

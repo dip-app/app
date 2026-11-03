@@ -13,6 +13,8 @@ struct DIPEventDetailsScreen: View {
     let onJoin: () -> Void
     let photos: [DIPPhoto]
     let onAlbum: () -> Void
+    let onLeave: () -> Void
+    @State private var confirmingLeave = false
 
     init(
         event: DIPEventDetail,
@@ -23,8 +25,10 @@ struct DIPEventDetailsScreen: View {
         onAttendees: @escaping () -> Void,
         onChat: @escaping () -> Void,
         photos: [DIPPhoto] = [],
-        onAlbum: @escaping () -> Void = {}
+        onAlbum: @escaping () -> Void = {},
+        onLeave: @escaping () -> Void = {}
     ) {
+        self.onLeave = onLeave
         self.photos = photos
         self.onAlbum = onAlbum
         self.event = event
@@ -47,6 +51,7 @@ struct DIPEventDetailsScreen: View {
                             hero
                             VStack(alignment: .leading, spacing: 20) {
                                 activityDetails
+                                if let metadata = event.metadata { eventMetadata(metadata) }
                                 attendeeDetails
                                 if event.isPast { albumPreview }
                             }
@@ -59,7 +64,7 @@ struct DIPEventDetailsScreen: View {
                 .padding(.bottom, 22)
                 if showsBottomBar {
                     Button(action: primaryAction) {
-                        Text(event.isPast ? "View Album" : joined ? "Activity Chat" : "Join the Activity")
+                        Text(primaryTitle)
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity).frame(height: 80)
@@ -72,6 +77,7 @@ struct DIPEventDetailsScreen: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .disabled(!primaryEnabled)
                     .accessibilityIdentifier("event.primary")
                     .accessibilityValue(joined ? "Joined" : "Not joined")
                     .padding(.horizontal, 20)
@@ -83,6 +89,12 @@ struct DIPEventDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        .confirmationDialog("Leave this activity?", isPresented: $confirmingLeave, titleVisibility: .visible) {
+            Button("Leave activity", role: .destructive, action: onLeave)
+            Button("Keep my place", role: .cancel) {}
+        } message: {
+            Text("Your place will be released. You can join again before the activity starts if space is available.")
+        }
     }
 
     private var header: some View {
@@ -131,13 +143,14 @@ struct DIPEventDetailsScreen: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(event.title.uppercased())
                 .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
-                .frame(height: 50, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("event.title")
             Text(event.description)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: event.isPast ? 15 : 14))
                 // The source uses 18-point lines; Inter 3.19 has a 16.943-point natural line height.
                 .lineSpacing(1.0566566)
-                .frame(width: 328, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: event.isPast ? 0 : 126, alignment: .topLeading)
         }
@@ -150,43 +163,57 @@ struct DIPEventDetailsScreen: View {
             Text(event.isPast ? "Who Attended" : "Who’s Attending")
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                 .foregroundStyle(.black).frame(height: 22)
-            HStack(spacing: 10) {
-                ForEach(Array(event.attendeeAvatars.enumerated()), id: \.offset) { _, avatar in
-                    DIPMedia(avatar)
-                        .resizable().frame(width: 40, height: 40)
-                        .accessibilityHidden(true)
-                }
-                Button(action: onAttendees) {
-                    Text("+ \(event.attendeeOverflowCount) More")
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).frame(height: 40)
-                        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                }
-                .buttonStyle(.plain).accessibilityLabel("View attendees")
-                .accessibilityIdentifier("event.attendees")
-            }
-            if !event.isPast {
+            if event.attendeeCount == 0 {
+                Text("No one has joined yet. Be the first to make plans.")
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("event.attendees.empty")
+            } else {
                 HStack(spacing: 10) {
-                    Button {
-                        if joined { onChat() } else { onJoin() }
-                    } label: {
-                        secondaryLabel(
-                            "Join Activity", asset: "event_HeroiconsOutlineChatBubbleOvalLeft",
-                            background: DIPTokens.Color.actionPrimary.swiftUIColor)
+                    ForEach(Array(event.attendeeAvatars.prefix(4).enumerated()), id: \.offset) { _, avatar in
+                        DIPMedia(avatar)
+                            .resizable().frame(width: 40, height: 40)
+                            .accessibilityHidden(true)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(joined ? "Open activity chat" : "Join Activity")
-                    .accessibilityValue(joined ? "Joined" : "Not joined")
-                    .accessibilityIdentifier("event.join")
-                    ShareLink(item: "\(event.title) — \(event.timing)") {
-                        secondaryLabel(
-                            "Share Link", asset: "event_HeroiconsMiniLink",
-                            background: Color(red: 240 / 255, green: 84 / 255, blue: 165 / 255))
+                    Button(action: onAttendees) {
+                        Text("View attendees · \(event.attendeeCount)")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Share event")
-                    .accessibilityIdentifier("event.share")
+                    .buttonStyle(DIPPressFeedbackStyle()).accessibilityLabel("View \(event.attendeeCount) attendees")
+                    .accessibilityIdentifier("event.attendees")
+                }
+            }
+            if joined && !event.isPast {
+                Label("You’re going", systemImage: "checkmark.circle.fill")
+                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .body))
+                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .accessibilityIdentifier("event.joined")
+            }
+            HStack(spacing: 10) {
+                ShareLink(item: event.metadata?.shareText(title: event.title) ?? "\(event.title) — \(event.timing)") {
+                    secondaryLabel(
+                        "Share event", asset: "event_HeroiconsMiniLink",
+                        background: Color(red: 240 / 255, green: 84 / 255, blue: 165 / 255))
+                }
+                .buttonStyle(DIPPressFeedbackStyle())
+                .accessibilityLabel("Share event")
+                .accessibilityIdentifier("event.share")
+                if joined && !event.isPast && (event.metadata?.canCancel(now: Date()) ?? true) {
+                    Button { confirmingLeave = true } label: {
+                        Text("Leave activity")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(DIPPressFeedbackStyle())
+                    .accessibilityIdentifier("event.leave")
                 }
             }
         }
@@ -233,7 +260,89 @@ struct DIPEventDetailsScreen: View {
         .contentShape(Capsule())
     }
 
+
+    private func eventMetadata(_ metadata: DIPEventMetadata) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if metadata.status == .cancelled {
+                Label("Activity cancelled", systemImage: "calendar.badge.exclamationmark")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("event.cancelled")
+            }
+            metadataRow("calendar", title: "When") {
+                Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
+                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))")
+                if !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime) {
+                    Text("Ends \(metadata.endTime.formatted(date: .abbreviated, time: .omitted))")
+                }
+                Text(durationLabel(metadata))
+                    .foregroundStyle(.secondary)
+            }
+            metadataRow("mappin.and.ellipse", title: "Where") {
+                Text(metadata.venueName)
+                Text(metadata.address).foregroundStyle(.secondary)
+                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+            }
+            metadataRow("ticket", title: "Price") {
+                Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
+                if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
+            }
+            metadataRow("person.2", title: "Places") {
+                Text("\(event.attendeeCount) going · \(metadata.capacity) places")
+                if event.attendeeCount >= metadata.capacity && !joined {
+                    Text("This activity is full").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityIdentifier("event.metadata")
+    }
+
+    private func metadataRow<Content: View>(_ symbol: String, title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol)
+                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .frame(width: 24).padding(.top, 2)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(DIPReferenceAssets.font("Figtree-Bold", size: 16, relativeTo: .headline))
+                content().font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func durationLabel(_ metadata: DIPEventMetadata) -> String {
+        let minutes = max(0, Int(metadata.endTime.timeIntervalSince(metadata.startTime) / 60))
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        if hours == 0 { return "\(minutes) min" }
+        return remainder == 0 ? "\(hours) hr" : "\(hours) hr \(remainder) min"
+    }
+
+    private var primaryTitle: String {
+        if event.metadata?.status == .cancelled { return "Activity cancelled" }
+        if event.isPast { return "View Album" }
+        if joined { return "Activity Chat" }
+        if let metadata = event.metadata {
+            if metadata.startTime <= Date() { return "Activity started" }
+            if event.attendeeCount >= metadata.capacity { return "Activity full" }
+        }
+        return "Join the Activity"
+    }
+
+    private var primaryEnabled: Bool {
+        guard event.metadata?.status != .cancelled else { return false }
+        if event.isPast || joined { return true }
+        guard let metadata = event.metadata else { return true }
+        return metadata.startTime > Date() && event.attendeeCount < metadata.capacity
+    }
+
     private func primaryAction() {
+        guard primaryEnabled else { return }
         if event.isPast { onAlbum() } else if joined { onChat() } else { onJoin() }
     }
 }
