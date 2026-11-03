@@ -1,16 +1,31 @@
-# Design-system setup and working agreement
+# Design-system working agreement
 
-The repository contains a standalone `DIPDesignSystem` Swift package, a canonical JSON token file, a generator, tests, and component specifications. It intentionally contains no screen implementation and no component implementations. Contributors can build features independently against the component contracts while the shared package evolves through review.
+The repository contains DIPDesignSystem, canonical JSON tokens, a generator, presentation components and a connected native SwiftUI prototype on [PR #3](https://github.com/dip-app/app/pull/3), branch feature/ui-foundations. The current revision adds Event Details, My Events and Profile to Home, with supporting Participants and Album screens. The pre-motion revision has same-viewport evidence for eight screen states and eight passing simulator tests. The current priority is a persistent, animated bottom component and sliding page/section transitions. The motion revision passed a full app build and nine simulator UI tests, with navigation/section/page clips in ui/ComponentPreview/Review/Motion. Integrated verification of the subsequent repository refactor is pending; earlier static or motion results do not verify that refactor.
 
-## Sources and scope
+## Reference and acceptance target
 
-The Home frame (`35:147`) in Figma file `DCIagJo7uk5IOUGqlKzAjf` was read through Figma MCP on October 28, 2026. Reference colors are purple `#7B88FA`, challenge pink `#FB72E4`, dark ink/navigation `#1E212B`, white `#FFFFFF`, muted surface `#ECECEC`, and notification yellow `#FFCC3E`. The Figma frame uses Figtree, Fjalla One, and Inter. Reference geometry includes 20 pt content inset, 20 pt event-card radius, 25 pt header-pill radius, 40 pt navigation radius, and 44 pt minimum interaction target as an accessibility proposal rather than a measurement from the prototype.
+The source is [Team 05 High Fidelity Prototype](https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/Team-05-High-Fidelity-Prototype--with-links-?node-id=35-147&m=dev), file DCIagJo7uk5IOUGqlKzAjf. The inspected reference frames are:
 
-`ui/DesignSystem/tokens.json` records origin per token. `figma` means observed in the imported Home reference, `proposal` means a setup recommendation that needs design review. This distinction matters: a copied prototype value is evidence, not proof it is accessible or suitable for every screen.
+| Screen/state | Node |
+| --- | --- |
+| Home | 35:147 |
+| Event Details / Joined | 46:1397 / 76:1742 |
+| My Events / Memories | 76:6032 / 76:6204 |
+| Profile | 76:4016 |
+| Participants | 76:4932 |
+| Album | 46:1995 |
 
-## Token ownership and consumption
+The October 29 human direction requires original visual fidelity at 402 × 874 points, using matching mock data. Match font faces, text, imagery, crops, colors, spacing, radii and navigation geometry. Earlier system-font, opaque-card and native-tab adaptations in the optional gallery are not the visual standard for these screens. The latest correction also requires motion fidelity: one persistent bottom component, a sliding marker/crossfading icons, Action/Complete overlay fades, sliding Active/Memory content and side-entering pages. See [motion and composition contracts](motion.md).
 
-Edit canonical tokens first, then run:
+DIPPrototypeApp connects screens, owns navigation and injects DIPRepository. DIPAppViewModel observes snapshots; feature views receive data and callbacks. DIPMockRepository currently owns joined state, profile edits, messages and photo additions for its instance lifetime. Album uses native viewing/sharing and PhotosPicker selection, followed by a repository command. These interactions do not implement Firebase, authorization, server counts, persistent RSVP, cloud uploads or production chat. Rewards, notifications and challenge workflows remain explicit notices.
+
+Only Puppy Yoga has the supplied Event Details reference and Joined variant. Other event names use synthetic details in the same visual template, not additional Figma-audited screens. Memory links use stable memory/event IDs; the mock retains synthetic reference album content. Native edit/chat/photo-picker surfaces are supporting preview UI without supplied matching high-fidelity frames.
+
+The bottom component belongs to DIPPrototypeApp, outside page transitions. Composed feature screens suppress their standalone footer; they do not mount competing navigation bars. Both in-page and bottom Join actions read the same observed snapshot and call the same view-model command; no joined Binding is mutated by the view. This takes priority over adding Past Event or photo-selection pages, which were inspected but remain deferred.
+
+## Tokens and ownership
+
+Edit ui/DesignSystem/tokens.json, then regenerate:
 
 ```sh
 python3 scripts/generate-tokens.py
@@ -18,28 +33,20 @@ python3 scripts/generate-tokens.py --check
 swift test --package-path ui/Packages/DIPDesignSystem
 ```
 
-The generator checks alias references, color syntax, numeric ranges, names, and typography declarations. It produces Foundation-only Swift constants so unit tests do not require a simulator or Firebase. Future SwiftUI components should use semantic names such as `DIPTokens.Color.textPrimary`, not primitive brand colors or inline hex values. Keep the conversion to SwiftUI `Color` in the design-system package when that work starts.
-
-Primitive names describe values; semantic names describe purpose. A feature requiring a new value should first check whether an existing semantic role is appropriate. Add a shared semantic role only when more than one use or an explicit design requirement justifies it. Keep feature layout concerns local.
+Tokens distinguish observed Figma values from proposals. Use semantic names for shared roles; keep feature layout local. Coordinate shared token, generated output and component API changes with consuming workstreams. Feature screens render DIPCore read models through shared presentation inputs; DIPMedia supports asset, URL and byte references. The [repository contract](../contracts/ui-repositories.md) and [ADR 0005](../adr/0005-observable-ui-repositories.md) define the interchangeable adapter boundary. Firebase and authorization stay outside the design-system package.
 
 ## Typography and assets
 
-Font family names in the manifest are design references, not installed fonts. Obtain the correct font files, verify their licenses and attribution requirements, add them to the appropriate bundle, register them in the app, and validate Dynamic Type before adopting custom fonts. Until then, implementation should use system typography with semantic text styles; do not silently map a family name to an unavailable font.
+Original resources are bundled under ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Resources. Home and screen manifests record source asset names and checksums. Register actual bundled fonts; family names alone do not prove they are available. Seven font files supply eight tested named faces, including Figtree Bold, Inter Light and Inter Italic. Preserve OFL notices and [asset provenance](asset-provenance.md).
 
-Download approved static illustrations/icons from Figma when implementing the associated component and record their source, license, dimensions, intended slot, and export date. Do not use expiring MCP URLs in source. Do not use the Home screenshot as a screen implementation asset. No font or image assets are bundled in this setup.
+Temporary MCP URLs are not runtime dependencies. No reference screenshot is an implementation asset. Exporting third-party images from a supplied prototype does not establish release rights; those remain prototype review fixtures pending confirmation.
 
-## Accessibility and modes
+## Visual verification and accessibility
 
-Only the **light** mode is specified. Dark-mode colors have not been designed or approved. The token manifest records `darkModeStatus: pending-design-review`; a future dark mode must introduce tested semantic values rather than invert primitive colors automatically. The initial app can explicitly use light appearance until design approval, if the team chooses that policy.
+Compare each requested native state at 402 × 874 against its original frame. Confirm export bounds before cropping the Figma shadow and convert simulator scale by an exact integer factor. Save the reference, actual capture, pair, overlay, difference and metrics. Separate app-content differences from OS/device-shell chrome and never equate an average score with zero differences. Expanded evidence belongs under ui/ComponentPreview/Review/Screens; [review notes](../../ui/ComponentPreview/Review/README.md) record current validation.
 
-The prototype's white text on purple and yellow notifications on white need contrast review. The setup proposes dark ink for `textOnAccent`, preserving the prototype purple as the background while giving small text a stronger contrast. This proposal is not a claim that the prototype was changed. Tests verify the semantic text/background pairs currently provided, not every possible color pairing. Challenge pink and yellow are accent/decorative colors and must not be used as small text on white without checking contrast.
+Only light appearance is specified. Home and expanded-screen Dynamic Type, VoiceOver, touch targets, RTL, contrast and physical-device review remain separate work. Preserve the requested standard-size visual target instead of silently substituting another design. The prototype's duplicate Join affordances and low-contrast accents remain explicit usability/accessibility decisions for integration review.
 
-Component acceptance criteria: minimum 44 pt target, readable Dynamic Type without clipped labels, semantic VoiceOver labels, selected/validation states distinguishable beyond color, reduced-motion respect, and sufficient contrast for the specific context. Add previews for long text, loading, empty, error, disabled, and large text when components are implemented. Snapshot testing can be introduced with those components; setup does not manufacture screen snapshots or claim visual parity.
+## Contributor handoff
 
-## Parallel contributor workflow
-
-The UI foundations workstream owns `ui/DesignSystem/tokens.json`, its generator, and reusable presentation components, previews, and tests in `ui/Packages/DIPDesignSystem`. Assign one owner per shared component or token change. Feature workstreams own their feature screens and view models and consume foundation APIs; they request API changes in a focused foundations PR. Data adapters and Firebase imports belong outside this package. Specify component inputs and callbacks before two agents work on consumers and producers simultaneously. Include the relevant Figma node, affected semantic tokens, accessibility evidence, and API compatibility notes in the PR.
-
-The component map is in [components.md](components.md). It records proposed APIs and actual inspected node IDs. It is not Code Connect. Once SwiftUI components exist, inspect their Figma variants and add verified SwiftUI Code Connect mappings in a separate change.
-
-See [Figma inventory](figma-inventory.json) for the Final page section/screen IDs retrieved through MCP. This metadata index is not a visual audit of every screen.
+UI foundations owns shared components, tokens, resource provenance and preview fixtures. Feature owners own data mapping, formatting and production workflows. Agree on shared APIs before changing consumers. The [component map](components.md) records the current boundary; the [Figma inventory](figma-inventory.json) is a metadata index, not proof every frame was visually audited. No verified Code Connect mapping is registered.

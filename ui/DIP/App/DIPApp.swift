@@ -12,9 +12,9 @@ struct DIPApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AccountsRootView(session: session) { context in
-                // Replaced by the events home screen when packets 03/04 land.
-                SignedInPlaceholderView(session: session, context: context)
+            AccountsRootView(session: session) { _ in
+                // Event content currently uses the repository-backed prototype adapter.
+                DIPHomeFixturePreview()
             }
             .task { session.start() }
             .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }

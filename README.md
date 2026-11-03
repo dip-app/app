@@ -1,6 +1,6 @@
 # DIP app
 
-Shared repository setup for a company-based coworker events app: native SwiftUI + Firebase/GCP. The account integration adds a tested company-membership callable, narrow profile rules and a Swift session/adapter foundation. The app bootstrap is still a placeholder; onboarding UI and production Firebase setup are not implemented. Source context: Sprint 3 submission, October 25, 2026; Figma Home node 35:147 inspected through MCP on October 28. V1 due November 9; V2 due December 4.
+Shared repository setup for a company-based coworker events app: native SwiftUI + Firebase/GCP. The account integration adds a tested company-membership callable, narrow profile rules and a Swift session/adapter foundation. The native prototype and shared component library are integrated; the account entry gate and live tenant event adapters remain integration work. Source context: Sprint 3 submission, October 25, 2026; Figma Home node 35:147 inspected through MCP on October 28. V1 due November 9; V2 due December 4.
 
 ## Layout
 
@@ -55,3 +55,5 @@ Backend sample data lives in gcp/sample-data. `npm run emulators` starts local s
 [Repository readiness](docs/repository-readiness.md) maps setup requirements to evidence. [Setup constraints](docs/setup-constraints.md) records the verified private-repository branch-protection plan limitation and remaining human decisions. CI checks are present; protected-branch enforcement is not available on the current GitHub plan.
 
 See [V1 account integration](docs/contracts/accounts-integration.md) for current exports, permissions, native-client wiring and repeatable emulator checks. No cloud deployment is performed by repository checks.
+
+The [native UI review](ui/ComponentPreview/Review/README.md) records original-frame comparisons, observable mock adapters and the human-defined photo bubbles. See [current state](CURRENT_STATE.md) before connecting configured account data.

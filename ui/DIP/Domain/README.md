@@ -1,1 +1,1 @@
-Domain policies and repository protocols; no Firebase or SwiftUI imports.
+Domain read models and repository protocols live in the independently tested [DIPCore package](../../Packages/DIPCore/Sources/DIPCore). They import neither Firebase nor SwiftUI. See the [repository contract](../../../docs/contracts/ui-repositories.md).

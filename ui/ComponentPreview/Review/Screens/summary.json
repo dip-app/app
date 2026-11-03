@@ -1,0 +1,42 @@
+[
+  {
+    "screen": "home",
+    "meanAbsoluteChannelDifference": 2.1574,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 5.7215
+  },
+  {
+    "screen": "event",
+    "meanAbsoluteChannelDifference": 3.0603,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 6.5201
+  },
+  {
+    "screen": "event-joined",
+    "meanAbsoluteChannelDifference": 2.9277,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 6.0549
+  },
+  {
+    "screen": "events",
+    "meanAbsoluteChannelDifference": 1.6675,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 4.9843
+  },
+  {
+    "screen": "memories",
+    "meanAbsoluteChannelDifference": 2.7476,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 8.0711
+  },
+  {
+    "screen": "profile",
+    "meanAbsoluteChannelDifference": 3.2476,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 9.8513
+  },
+  {
+    "screen": "attendees",
+    "meanAbsoluteChannelDifference": 2.1921,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 5.6346
+  },
+  {
+    "screen": "album",
+    "meanAbsoluteChannelDifference": 5.4312,
+    "pixelsWithAnyChannelDifferenceOver10Percent": 14.4938
+  }
+]
