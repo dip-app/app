@@ -1,4 +1,5 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
+import { logger } from "firebase-functions/v2";
 import type { MembershipStore, MembershipTransaction } from "../application/ports";
 import type { StoredMembership } from "../domain/membership";
 
@@ -16,10 +17,17 @@ export class FirestoreMembershipStore implements MembershipStore {
         async companyIdForDomain(rootDomain) {
           const snap = await transaction.get(db.collection("companyDomains").doc(rootDomain));
           const companyId: unknown = snap.get("companyId");
-          return snap.exists && typeof companyId === "string" && companyId.length > 0 ? companyId : null;
+          if (snap.exists && typeof companyId === "string" && companyId.length > 0) return companyId;
+          // Server-side only: the caller always gets one NO_COMPANY_FOR_DOMAIN. Company
+          // domains are not personal data; never log the email or uid here.
+          logger.warn(snap.exists ? "companyDomains mapping is malformed" : "companyDomains mapping not found",
+            { rootDomain, companyIdType: snap.exists ? typeof companyId : undefined });
+          return null;
         },
         async companyExists(companyId) {
-          return (await transaction.get(db.collection("companies").doc(companyId))).exists;
+          const exists = (await transaction.get(db.collection("companies").doc(companyId))).exists;
+          if (!exists) logger.warn("companyDomains mapping points to a missing company", { companyId });
+          return exists;
         },
         async getMembership(uid) {
           const snap = await transaction.get(db.collection("users").doc(uid));
