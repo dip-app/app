@@ -19,6 +19,7 @@
 ## Validation
 
 - Checks run and results:
+- Swift/iOS changes: local `npm run test:swift` and Xcode build/⌘U results (macOS CI runs only after merge to `main`):
 - Checks not run and reason:
 - Manual/device verification, if relevant:
 - Coverage result and measured scope, if relevant:

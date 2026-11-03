@@ -3,6 +3,7 @@ on:
   pull_request:
   push:
     branches: [main, setup]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -39,6 +40,11 @@ jobs:
       - run: npm run test:rules
       - run: npm run test:seed
   swift-foundations:
+    # macOS runners queue for a long time and use Actions minutes ~10x faster than Linux,
+    # so this job skips on pull requests (a skipped job still satisfies required checks).
+    # It runs after every push to main/setup and from Actions -> Setup checks -> Run workflow.
+    # Pull requests must report local `npm run test:swift` and an Xcode build instead.
+    if: github.event_name != 'pull_request'
     runs-on: macos-15-intel
     timeout-minutes: 30
     steps:
