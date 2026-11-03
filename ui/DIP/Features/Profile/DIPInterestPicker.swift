@@ -13,6 +13,7 @@ struct DIPInterestPicker: View {
     @State private var saveError: String?
     @FocusState private var searchFocused: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(options: [DIPInterest], selection: Set<String>, onSave: @escaping ([String]) async throws -> Void) {
         var seen = Set<String>()
@@ -45,17 +46,23 @@ struct DIPInterestPicker: View {
                     Text("\(selection.count) of \(Self.maximumSelection) selected")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
                         .accessibilityIdentifier("profile.interests.count")
-                    Text("Choose the things you enjoy. You can change these anytime.")
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                        .foregroundStyle(.secondary)
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Text("Choose the things you enjoy. You can change these anytime.")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 if filtered.isEmpty {
-                    Group {
-                        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            ContentUnavailableView("No interests yet", systemImage: "tag",
-                                description: Text("Your company's interests will appear here."))
-                        } else { ContentUnavailableView.search(text: query) }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "No interests yet" : "No matching interests")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .headline))
+                        Text(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "Your company's interests will appear here." : "Try a different search.")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(.vertical, 8)
                     .accessibilityIdentifier("profile.interests.empty")
                 } else {
                     Section("Interests") {

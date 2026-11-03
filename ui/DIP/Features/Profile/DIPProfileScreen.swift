@@ -103,11 +103,12 @@ struct DIPProfileScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
-        .sheet(isPresented: $isEditing) { editForm }
+        .sheet(isPresented: $isEditing) { editForm.environment(\.dynamicTypeSize, dynamicTypeSize) }
         .sheet(isPresented: $isChoosingInterests) {
             DIPInterestPicker(options: interestOptions, selection: Set(profile.interestTagIDs)) { interests in
                 try await onSave(.init(department: profile.department, city: profile.city, interestTagIDs: interests))
             }
+            .environment(\.dynamicTypeSize, dynamicTypeSize)
         }
     }
 
@@ -387,6 +388,7 @@ struct DIPProfileScreen: View {
             DIPInterestPicker(options: interestOptions, selection: draftInterests) { interests in
                 draftInterests = Set(interests)
             }
+            .environment(\.dynamicTypeSize, dynamicTypeSize)
         }
     }
 
