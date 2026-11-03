@@ -70,4 +70,33 @@ final class OnboardingFlowTests: XCTestCase {
         retry.tap()
         XCTAssertTrue(app.buttons["onboarding.google"].waitForExistence(timeout: 5))
     }
+    @MainActor func testInterestChangesUseAccountRepositoryAndSurviveSignOut() {
+        let app = launch("welcome")
+        app.buttons["onboarding.google"].tap()
+        XCTAssertTrue(app.buttons["home.tab.Profile"].waitForExistence(timeout: 10))
+        app.buttons["home.tab.Profile"].tap()
+        let addInterest = app.buttons["profile.interests.add"]
+        XCTAssertTrue(addInterest.waitForExistence(timeout: 5))
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: addInterest)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
+        let name = app.staticTexts["profile.name"].label
+        addInterest.tap()
+        let fitness = app.buttons["profile.interests.option.tag-fitness"]
+        XCTAssertTrue(fitness.waitForExistence(timeout: 5))
+        XCTAssertEqual(fitness.value as? String, "Not selected")
+        fitness.tap(); app.buttons["profile.interests.save"].tap()
+        XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["profile.name"].label, name)
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "profile-account-backed"; capture.lifetime = .keepAlways; add(capture)
+        let signOut = app.buttons["profile.signout"]
+        if !signOut.isHittable { app.swipeUp() }
+        signOut.tap()
+        XCTAssertTrue(app.buttons["onboarding.google"].waitForExistence(timeout: 5))
+        app.buttons["onboarding.google"].tap()
+        XCTAssertTrue(app.buttons["home.tab.Profile"].waitForExistence(timeout: 10))
+        app.buttons["home.tab.Profile"].tap()
+        XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+    }
+
 }

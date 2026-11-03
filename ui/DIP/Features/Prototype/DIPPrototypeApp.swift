@@ -22,8 +22,21 @@ struct DIPPrototypeApp: View {
     @State private var chatEventID = "puppy-yoga"
     private let initialMemories: Bool
     private let onSignOut: (() async -> Void)?
+    private let accountProfile: DIPProfile?
+    private let interestCatalogLoading: Bool
+    private let interestCatalogError: String?
+    private let onRetryInterestCatalog: (() -> Void)?
+    private let onProfileSave: ((ProfileEdit) async throws -> Void)?
 
-    init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil) {
+    init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil,
+         accountProfile: DIPProfile? = nil, interestCatalogLoading: Bool = false,
+         interestCatalogError: String? = nil, onRetryInterestCatalog: (() -> Void)? = nil,
+         onProfileSave: ((ProfileEdit) async throws -> Void)? = nil) {
+        self.accountProfile = accountProfile
+        self.interestCatalogLoading = interestCatalogLoading
+        self.interestCatalogError = interestCatalogError
+        self.onRetryInterestCatalog = onRetryInterestCatalog
+        self.onProfileSave = onProfileSave
         self.onSignOut = onSignOut
         let argument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--screen=") }
         let screen = initialScreen ?? argument.map { String($0.dropFirst("--screen=".count)) } ?? "home"
@@ -151,9 +164,13 @@ struct DIPPrototypeApp: View {
                     onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
             case .profile:
                 AnyView(DIPProfileScreen(
-                    profile: snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
+                    profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
                     onMemory: { routes.append(.album($0)) },
-                    onSave: { try await model.updateProfile($0) }, onSignOut: onSignOut))
+                    onSave: { edit in
+                        if let onProfileSave { try await onProfileSave(edit) }
+                        else { try await model.updateProfile(edit) }
+                    }, onSignOut: onSignOut, interestCatalogLoading: interestCatalogLoading,
+                    interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog))
             case .rewards: AnyView(EmptyView())
             }
         }
@@ -244,7 +261,7 @@ struct DIPPrototypeApp: View {
                 if let album = snapshot.albums[id] {
                     DIPAlbumScreen(
                         album: album, commentsByPhoto: snapshot.photoComments[id] ?? [:],
-                        currentUser: snapshot.profile, showsBottomBar: false,
+                        currentUser: accountProfile ?? snapshot.profile, showsBottomBar: false,
                         isPickerPresented: $albumPickerPresented, onBack: pop,
                         onAddPhotos: { try await model.addPhotos(eventID: id, photos: $0) },
                         onAddComment: { try await model.addPhotoComment(

@@ -16,7 +16,7 @@ Preserve the prior session's implementation. Integrate merged account profile da
 
 ## Validation
 
-Prior final real app build and 11 onboarding tests succeeded, with one explicit placeholder skip. Repository, 87 rules and 20 core tests passed. Two profile tests require investigation: Profile-tab event synthesis timed out, and the native search-empty title assertion failed. This session's integration checks are pending.
+Prior final real app build and 11 onboarding tests succeeded, with one explicit placeholder skip. Repository, 87 rules and 20 core tests passed. Two profile tests require investigation: Profile-tab event synthesis timed out, and the native search-empty title assertion failed. Integrated checks pass: npm run check (58 backend unit tests, six explicit product TODOs), all 87 rules tests, all 54 Swift package tests, real SDK app build and 20 app tests (one placeholder skipped), plus all eight account/profile simulator tests. Final social/account-persistence UI run and fresh visual rubric are in progress.
 
 ## Decisions
 

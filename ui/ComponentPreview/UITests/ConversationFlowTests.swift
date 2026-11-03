@@ -147,7 +147,7 @@ final class ConversationFlowTests: XCTestCase {
             XCTAssertLessThanOrEqual(send.frame.maxY, app.keyboards.firstMatch.frame.minY + 0.5)
         }
         let keyboard = XCTAttachment(screenshot: app.screenshot())
-        keyboard.name = "event-chat-keyboard"; keyboard.lifetime = .keepAlways; add(keyboard)
+        keyboard.name = app.keyboards.firstMatch.exists ? "event-chat-keyboard" : "event-chat-focused"; keyboard.lifetime = .keepAlways; add(keyboard)
         send.tap()
         XCTAssertTrue(app.staticTexts["See you at the entrance!"].waitForExistence(timeout: 5))
     }
@@ -181,6 +181,23 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["photo.comments.comment.review-2"].exists)
         image.swipeRight()
         XCTAssertTrue(app.buttons["photo.comments.comment.review-2"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testSoftwareKeyboardKeepsComposerVisible() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=event-joined"]
+        app.launch()
+        XCTAssertTrue(app.buttons["event.primary"].waitForExistence(timeout: 10))
+        app.buttons["event.primary"].tap()
+        let field = app.descendants(matching: .any)["event.chat.message"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap()
+        guard app.keyboards.firstMatch.waitForExistence(timeout: 3) else {
+            throw XCTSkip("Software keyboard unavailable; physical keyboard input is not avoidance evidence")
+        }
+        let send = app.buttons["event.chat.send"]
+        XCTAssertLessThanOrEqual(send.frame.maxY, app.keyboards.firstMatch.frame.minY + 0.5)
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "event-chat-software-keyboard"; capture.lifetime = .keepAlways; add(capture)
     }
 
 }

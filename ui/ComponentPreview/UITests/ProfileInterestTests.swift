@@ -34,7 +34,10 @@ final class ProfileInterestTests: XCTestCase {
         XCTAssertTrue(app.buttons["profile.edit"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["5 selected"].exists)
         app.buttons["home.tab.Home"].tap()
+        let homeVisible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: app.buttons["home.challenge"])
+        XCTAssertEqual(XCTWaiter.wait(for: [homeVisible], timeout: 5), .completed)
         app.buttons["home.tab.Profile"].tap()
+        XCTAssertTrue(app.buttons["profile.interests.add"].waitForExistence(timeout: 5))
         app.buttons["profile.interests.add"].tap()
         XCTAssertEqual(app.buttons["profile.interests.option.tag-fitness"].value as? String, "Selected")
         search(app, "Photo")
@@ -60,7 +63,10 @@ final class ProfileInterestTests: XCTestCase {
         let app = launch()
         app.buttons["profile.interests.add"].tap()
         search(app, "zzzznointerest")
-        XCTAssertTrue(app.staticTexts["No Results"].waitForExistence(timeout: 5))
+        let empty = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier == %@ OR label BEGINSWITH[c] %@", "profile.interests.empty", "No results")).firstMatch
+        XCTAssertTrue(empty.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "profile.interests.option.")).count, 0)
         capture(app, "profile-interest-no-results")
         app.buttons["profile.interests.cancel"].tap()
         XCTAssertTrue(app.staticTexts["4 selected"].waitForExistence(timeout: 5))

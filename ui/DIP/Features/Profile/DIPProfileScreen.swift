@@ -10,6 +10,9 @@ struct DIPProfileScreen: View {
     let onMemory: (String) -> Void
     let onSave: (ProfileEdit) async throws -> Void
     let onSignOut: (() async -> Void)?
+    let interestCatalogLoading: Bool
+    let interestCatalogError: String?
+    let onRetryInterestCatalog: (() -> Void)?
     @State private var isSigningOut = false
 
     @State private var isEditing = false
@@ -28,8 +31,13 @@ struct DIPProfileScreen: View {
         onSelectTab: @escaping (DIPHomeTab) -> Void,
         onMemory: @escaping (String) -> Void,
         onSave: @escaping (ProfileEdit) async throws -> Void,
-        onSignOut: (() async -> Void)? = nil
+        onSignOut: (() async -> Void)? = nil,
+        interestCatalogLoading: Bool = false, interestCatalogError: String? = nil,
+        onRetryInterestCatalog: (() -> Void)? = nil
     ) {
+        self.interestCatalogLoading = interestCatalogLoading
+        self.interestCatalogError = interestCatalogError
+        self.onRetryInterestCatalog = onRetryInterestCatalog
         self.onSignOut = onSignOut
         self.profile = profile
         self.showsBottomBar = showsBottomBar
@@ -46,6 +54,16 @@ struct DIPProfileScreen: View {
                     VStack(alignment: .leading, spacing: 22) {
                         if dynamicTypeSize.isAccessibilitySize { accessibleHeader }
                         else { profileHeader(width: geometry.size.width - 40) }
+                        if interestCatalogLoading {
+                            ProgressView("Loading interests…").accessibilityIdentifier("profile.interests.loading")
+                        }
+                        if let interestCatalogError {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(interestCatalogError).font(.footnote)
+                                Button("Retry interests") { onRetryInterestCatalog?() }
+                                    .accessibilityIdentifier("profile.interests.catalog.retry")
+                            }
+                        }
                         interestsEntry
                         memories(width: geometry.size.width - 40)
                         if let onSignOut {
@@ -93,26 +111,44 @@ struct DIPProfileScreen: View {
         }
     }
 
-    private var interestsEntry: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Interests")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
-                Text(profile.interests.isEmpty ? "Add something you enjoy" : "\(profile.interests.count) selected")
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .caption))
-                    .foregroundStyle(.secondary)
+    @ViewBuilder private var interestsEntry: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                interestsHeading
+                addInterestsButton.frame(maxWidth: .infinity)
             }
-            Spacer(minLength: 0)
-            Button { isChoosingInterests = true } label: {
-                Label("Add interests", systemImage: "plus")
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
-                    .padding(.horizontal, 16).frame(minHeight: 44)
-                    .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
+        } else {
+            HStack(spacing: 16) {
+                interestsHeading
+                Spacer(minLength: 0)
+                addInterestsButton
             }
-            .buttonStyle(DIPPressFeedbackStyle())
-            .accessibilityIdentifier("profile.interests.add")
         }
+    }
+
+    private var interestsHeading: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Interests")
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
+            Text(profile.interests.isEmpty ? "Add something you enjoy" : "\(profile.interests.count) selected")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .caption))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var addInterestsButton: some View {
+        Button { isChoosingInterests = true } label: {
+            Label("Add interests", systemImage: "plus")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
+                .padding(.horizontal, 16).frame(minHeight: 44)
+                .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 8 : 0)
+                .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .accessibilityIdentifier("profile.interests.add")
+        .disabled(interestCatalogLoading || interestCatalogError != nil)
     }
 
     private var accessibleHeader: some View {
@@ -201,10 +237,17 @@ struct DIPProfileScreen: View {
     }
 
     private func profilePhoto(size: CGFloat) -> some View {
-        DIPMedia(profile.photo).resizable()
-            .frame(width: size * 1.5096, height: size * 1.0138)
-            .offset(x: -size * 0.4574, y: -size * 0.0087)
-            .frame(width: size, height: size, alignment: .topLeading)
+        Group {
+            if profile.photo == .asset("profile_Image") {
+                DIPMedia(profile.photo).resizable()
+                    .frame(width: size * 1.5096, height: size * 1.0138)
+                    .offset(x: -size * 0.4574, y: -size * 0.0087)
+                    .frame(width: size, height: size, alignment: .topLeading)
+            } else {
+                DIPMedia(profile.photo).resizable().scaledToFill()
+                    .frame(width: size, height: size).clipped()
+            }
+        }
             .clipShape(Circle())
             .overlay(Circle().strokeBorder(.white, lineWidth: 2))
             .accessibilityLabel("\(profile.displayName)'s profile photo")
@@ -312,6 +355,7 @@ struct DIPProfileScreen: View {
                         LabeledContent("Choose interests", value: "\(draftInterests.count) selected")
                     }
                     .accessibilityIdentifier("profile.edit.interests")
+                    .disabled(interestCatalogLoading || interestCatalogError != nil)
                 }
                 if let saveError {
                     Section {

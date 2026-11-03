@@ -11,6 +11,7 @@ struct DIPInterestPicker: View {
     @State private var query = ""
     @State private var isSaving = false
     @State private var saveError: String?
+    @FocusState private var searchFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     init(options: [DIPInterest], selection: Set<String>, onSave: @escaping ([String]) async throws -> Void) {
@@ -34,6 +35,7 @@ struct DIPInterestPicker: View {
                         TextField("Search interests", text: $query)
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 16))
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .focused($searchFocused)
                             .submitLabel(.search)
                             .accessibilityIdentifier("profile.interests.search")
                     }
@@ -87,18 +89,23 @@ struct DIPInterestPicker: View {
                         }
                     }
                 }
+
+            }
+            .disabled(isSaving)
+            .safeAreaInset(edge: .top, spacing: 0) {
                 if let saveError {
-                    Section {
+                    VStack(alignment: .leading, spacing: 8) {
                         Label(saveError, systemImage: "exclamationmark.circle")
-                            .foregroundStyle(.red)
+                            .font(.footnote).foregroundStyle(.red)
                             .accessibilityIdentifier("profile.interests.error")
                         Button("Try again") { Task { await save() } }
                             .disabled(isSaving)
                             .accessibilityIdentifier("profile.interests.retry")
                     }
+                    .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
                 }
             }
-            .disabled(isSaving)
             .navigationTitle("Your interests")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -120,6 +127,7 @@ struct DIPInterestPicker: View {
 
     @MainActor private func save() async {
         guard !isSaving, selection.count <= Self.maximumSelection else { return }
+        searchFocused = false
         isSaving = true
         saveError = nil
         defer { isSaving = false }
@@ -127,7 +135,7 @@ struct DIPInterestPicker: View {
             try await onSave(options.map(\.id).filter(selection.contains))
             dismiss()
         } catch {
-            saveError = "Your interests couldn't be saved. Your choices are kept—try again."
+            saveError = "Couldn’t save your interests. Your choices are kept. Try again."
         }
     }
 }
