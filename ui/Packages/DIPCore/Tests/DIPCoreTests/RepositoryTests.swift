@@ -20,6 +20,44 @@ final class RepositoryTests: XCTestCase {
         } catch { XCTAssertEqual(error as? DIPRepositoryError, .invalidInput("This activity has ended")) }
     }
 
+    func testInterestsUseCatalogLimitAndPreserveOtherProfileFields() async throws {
+        let repository = DIPMockRepository()
+        let initial = await repository.currentSnapshot()
+        let profile = initial.profile
+        let eleven = Array(profile.interestCatalog.map(\.id).prefix(11))
+        await expect(.invalidInput("Choose up to 10 interests")) {
+            try await repository.updateProfile(.init(department: profile.department, city: profile.city, interestTagIDs: eleven))
+        }
+        let unchanged = await repository.currentSnapshot()
+        XCTAssertEqual(unchanged, initial)
+        try await repository.updateProfile(.init(department: profile.department, city: profile.city,
+            interestTagIDs: Array(profile.interestCatalog.map(\.id).prefix(10))))
+        let saved = await repository.currentSnapshot()
+        XCTAssertEqual(saved.profile.interests.count, 10)
+        XCTAssertEqual(saved.profile.department, profile.department)
+        XCTAssertEqual(saved.profile.city, profile.city)
+        XCTAssertEqual(saved.profile.displayName, profile.displayName)
+        try await repository.updateProfile(.init(department: profile.department, city: profile.city, interestTagIDs: []))
+        let cleared = await repository.currentSnapshot()
+        XCTAssertTrue(cleared.profile.interests.isEmpty)
+    }
+
+    func testInterestRenamesKeepIDsAndMissingSelectionsAreNotSilentlyLost() async throws {
+        var seed = DIPMockFixtures.reference
+        let index = try XCTUnwrap(seed.profile.interestCatalog.firstIndex { $0.id == "tag-fitness" })
+        seed.profile.interestCatalog[index].name = "Movement"
+        seed.profile.interestTagIDs.append("tag-retired")
+        let repository = DIPMockRepository(initialSnapshot: seed)
+        try await repository.updateProfile(.init(department: seed.profile.department, city: seed.profile.city,
+            interestTagIDs: ["tag-fitness", "tag-retired"]))
+        let saved = await repository.currentSnapshot()
+        XCTAssertEqual(saved.profile.interestTagIDs, ["tag-fitness", "tag-retired"])
+        XCTAssertEqual(saved.profile.interests, ["Movement", "Unavailable interest"])
+        await expect(.invalidInput("Unknown interest")) {
+            try await repository.updateProfile(.init(department: "", city: "", interestTagIDs: ["Movement"]))
+        }
+    }
+
     func testReferenceSnapshotPreservesExistingPrototype() async throws {
         let repository = DIPMockRepository()
         let stream = await repository.observe()
@@ -89,11 +127,11 @@ final class RepositoryTests: XCTestCase {
     }
 
     func testProfileMessageAndPhotoCommandsPublishOneSharedState() async throws {
-        let repository = DIPMockRepository()
+        let repository = DIPMockRepository(initiallyJoinedEventIDs: ["puppy-yoga"])
         let stream = await repository.observe()
         var iterator = stream.makeAsyncIterator()
         _ = try await iterator.next()
-        try await repository.updateProfile(.init(department: " Design ", city: " New York ", interests: ["Outdoors", "Fitness", "Fitness"]))
+        try await repository.updateProfile(.init(department: " Design ", city: " New York ", interestTagIDs: ["tag-outdoors", "tag-fitness", "tag-fitness"]))
         let profileUpdateValue = try await iterator.next()
         let profileUpdate = try XCTUnwrap(profileUpdateValue)
         XCTAssertEqual(profileUpdate.profile.displayName, "Elissa Woode", "OAuth identity is read-only")
@@ -131,7 +169,7 @@ final class RepositoryTests: XCTestCase {
         let joined = await repository.currentSnapshot()
         XCTAssertEqual(joined.eventDetails["puppy-yoga"]?.isJoined, true)
         await repository.failNext(.profile)
-        await expect(.injectedFailure("Injected failure")) { try await repository.updateProfile(.init(department: "D", city: "C", interests: [])) }
+        await expect(.injectedFailure("Injected failure")) { try await repository.updateProfile(.init(department: "D", city: "C", interestTagIDs: [])) }
         let afterProfileFailure = await repository.currentSnapshot()
         XCTAssertEqual(afterProfileFailure, joined)
         await repository.failNext(.message)
@@ -148,11 +186,11 @@ final class RepositoryTests: XCTestCase {
     }
 
     func testValidationRejectsUnknownEventsAndAtomicInvalidPhotoBatch() async throws {
-        let repository = DIPMockRepository()
+        let repository = DIPMockRepository(initiallyJoinedEventIDs: ["puppy-yoga"])
         let initial = await repository.currentSnapshot()
         await expect(.notFound("missing")) { try await repository.setRSVP(eventID: "missing", going: true) }
         await expect(.notFound("missing")) { try await repository.sendMessage(eventID: "missing", messageID: "test-message", text: "Hello") }
-        await expect(.invalidInput("Unknown interest")) { try await repository.updateProfile(.init(department: "D", city: "C", interests: ["Unknown"])) }
+        await expect(.invalidInput("Unknown interest")) { try await repository.updateProfile(.init(department: "D", city: "C", interestTagIDs: ["Unknown"])) }
         await expect(.invalidInput("Message is empty")) { try await repository.sendMessage(eventID: "puppy-yoga", messageID: "test-message", text: " \n ") }
         await expect(.invalidInput("Choose a nonempty image smaller than 25 MB")) {
             try await repository.addPhotos(eventID: "kayaking-memory", photos: [.init(id: "valid", data: Data([1])), .init(id: "invalid", data: Data())])

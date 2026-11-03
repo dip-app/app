@@ -3,6 +3,7 @@
 
     public struct DIPButton: View {
         public enum Emphasis: Sendable { case primary, secondary, destructive }
+        @Environment(\.isEnabled) private var inheritedEnabled
         private let title: String
         private let emphasis: Emphasis
         private let isLoading: Bool
@@ -23,18 +24,23 @@
             Button(role: emphasis == .destructive ? .destructive : nil, action: action) {
                 HStack(spacing: DIPTokens.Spacing.related) {
                     if isLoading { ProgressView().tint(foreground).accessibilityHidden(true) }
-                    Text(title).font(.body.weight(.semibold)).multilineTextAlignment(.center)
+                    Text(title).font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body)).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, minHeight: DIPTokens.Spacing.minimumTouchTarget)
                 .padding(.horizontal, DIPTokens.Spacing.contentInset)
                 .padding(.vertical, DIPTokens.Spacing.compact)
                 .contentShape(Capsule())
+                .foregroundStyle(foreground)
+                .background(background, in: Capsule())
             }
-            .buttonStyle(PillStyle(background: background, foreground: foreground))
+            .buttonStyle(DIPPressFeedbackStyle())
+            .opacity(effectiveEnabled ? 1 : 0.55)
             .disabled(!isEnabled || isLoading)
             .accessibilityLabel(Text(title))
-            .accessibilityValue(Text(isLoading ? "In progress" : (!isEnabled ? "Unavailable" : "")))
+            .accessibilityValue(Text(isLoading ? "In progress" : (!effectiveEnabled ? "Unavailable" : "")))
         }
+        private var effectiveEnabled: Bool { inheritedEnabled && isEnabled && !isLoading }
+
         private var background: Color {
             switch emphasis {
             case .primary: DIPComponentTheme.accent
@@ -46,15 +52,5 @@
             emphasis == .destructive ? DIPComponentTheme.inverse : DIPComponentTheme.onAccent
         }
 
-        private struct PillStyle: ButtonStyle {
-            @Environment(\.isEnabled) private var isEnabled
-            let background: Color
-            let foreground: Color
-            func makeBody(configuration: Configuration) -> some View {
-                configuration.label.foregroundStyle(foreground)
-                    .background(background, in: Capsule())
-                    .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.55)
-            }
-        }
     }
 #endif

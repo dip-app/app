@@ -1,10 +1,7 @@
 import DIPDesignSystem
 import SwiftUI
 
-// Feature-local copies of the shared UI-foundations look (PR #3, `feature/ui-foundations`):
-// `OnboardingButton` mirrors `DIPButton`, `OnboardingTitlePill` mirrors `DIPHeader`'s title
-// pill, and `OnboardingStatusView` mirrors `DIPStateView`'s states. They use only shared
-// tokens. When PR #3 merges, swap them for the shared components; call sites keep their shape.
+// Account layout and illustrations compose the shared component library.
 
 enum OnboardingTheme {
     static let surface = Color(token: DIPTokens.Color.surfaceDefault)
@@ -20,8 +17,6 @@ enum OnboardingTheme {
 enum OnboardingMetrics {
     /// Comfortable reading width on large phones/iPad; screens stay full-width below it.
     static let readingWidth: CGFloat = 560
-    /// Vertical padding of the title pill, copied from `DIPHeader`.
-    static let pillVerticalInset: CGFloat = 14
     /// Gap between the header pill and the first content block.
     static let headerGap: CGFloat = DIPTokens.Spacing.sectionGap * 2
 }
@@ -32,69 +27,8 @@ extension Color {
     }
 }
 
-/// Mirrors `DIPButton(_:emphasis:isLoading:isEnabled:action:)`.
-struct OnboardingButton: View {
-    enum Emphasis { case primary, secondary }
-    private let title: String
-    private let emphasis: Emphasis
-    private let isLoading: Bool
-    private let isEnabled: Bool
-    private let action: () -> Void
-
-    init(
-        _ title: String, emphasis: Emphasis = .primary, isLoading: Bool = false, isEnabled: Bool = true,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.emphasis = emphasis
-        self.isLoading = isLoading
-        self.isEnabled = isEnabled
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DIPTokens.Spacing.related) {
-                if isLoading { ProgressView().tint(OnboardingTheme.onAccent).accessibilityHidden(true) }
-                Text(title).font(.body.weight(.semibold)).multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, minHeight: DIPTokens.Spacing.minimumTouchTarget)
-            .padding(.horizontal, DIPTokens.Spacing.contentInset)
-            .padding(.vertical, DIPTokens.Spacing.compact)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(PillStyle(
-            background: emphasis == .primary ? OnboardingTheme.accent : OnboardingTheme.muted,
-            foreground: OnboardingTheme.onAccent))
-        .disabled(!isEnabled || isLoading)
-        .accessibilityLabel(Text(title))
-        .accessibilityValue(Text(isLoading ? "In progress" : (!isEnabled ? "Unavailable" : "")))
-    }
-
-    private struct PillStyle: ButtonStyle {
-        @Environment(\.isEnabled) private var isEnabled
-        let background: Color
-        let foreground: Color
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label.foregroundStyle(foreground)
-                .background(background, in: Capsule())
-                .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.55)
-        }
-    }
-}
-
-/// Mirrors the title pill in `DIPHeader`.
-struct OnboardingTitlePill: View {
-    let title: String
-    var body: some View {
-        Text(title).font(.title3.weight(.medium)).fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(OnboardingTheme.onAccent)
-            .padding(.horizontal, DIPTokens.Spacing.contentInset)
-            .padding(.vertical, OnboardingMetrics.pillVerticalInset)
-            .background(OnboardingTheme.accent, in: Capsule())
-            .accessibilityAddTraits(.isHeader)
-    }
-}
+/// Shared button semantics, loading state and press treatment across account screens.
+typealias OnboardingButton = DIPButton
 
 /// Onboarding layout: title pill, content directly below it, actions pinned to the bottom.
 /// Scrolls when Dynamic Type makes it taller than the screen.
@@ -104,41 +38,44 @@ struct OnboardingScreen<Content: View, Actions: View>: View {
     @ViewBuilder let actions: () -> Actions
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    OnboardingTitlePill(title: pill)
-                    content().padding(.top, OnboardingMetrics.headerGap)
-                    Spacer(minLength: DIPTokens.Spacing.sectionGap)
-                    VStack(spacing: DIPTokens.Spacing.related) { actions() }
-                }
-                .padding(DIPTokens.Spacing.contentInset)
-                .frame(maxWidth: OnboardingMetrics.readingWidth, minHeight: proxy.size.height, alignment: .topLeading)
-                .frame(maxWidth: .infinity)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                DIPHeader(title: pill)
+                content().padding(.top, OnboardingMetrics.headerGap)
             }
+            .padding(DIPTokens.Spacing.contentInset)
+            .frame(maxWidth: OnboardingMetrics.readingWidth, alignment: .topLeading)
+            .frame(maxWidth: .infinity)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: DIPTokens.Spacing.related) { actions() }
+                .padding(DIPTokens.Spacing.contentInset)
+                .frame(maxWidth: OnboardingMetrics.readingWidth)
+                .frame(maxWidth: .infinity)
+                .background(OnboardingTheme.surface)
         }
         .background(OnboardingTheme.surface.ignoresSafeArea())
         .foregroundStyle(OnboardingTheme.ink)
         .tint(OnboardingTheme.ink)
+        .preferredColorScheme(.light)
     }
 }
 
-/// Screen title in the app's display style: a condensed system stand-in for the 40 pt
-/// Fjalla One reference (not bundled on this branch), scaled with Dynamic Type.
+/// Uses the bundled display face, scaled with Dynamic Type.
 struct OnboardingTitle: View {
     let text: String
-    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 40
     var body: some View {
         Text(text)
-            .font(.system(size: size, weight: .bold).width(.condensed))
+            .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
             .textCase(.uppercase)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("onboarding.title")
     }
 }
 
-/// Mirrors `DIPStateView.State` (`loading`, `empty`, `failure`) with the onboarding illustration.
+/// Account-specific status composition keeps the established onboarding illustration.
 struct OnboardingStatusView: View {
     enum State {
         case loading(message: String)
@@ -153,7 +90,7 @@ struct OnboardingStatusView: View {
             switch state {
             case .loading(let message):
                 if !dynamicTypeSize.isAccessibilitySize { OnboardingFaceGroup(size: 64) }
-                ProgressView { Text(message).font(.title3.weight(.medium)).multilineTextAlignment(.leading) }
+                ProgressView { Text(message).font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .title3)).multilineTextAlignment(.leading) }
                     .tint(OnboardingTheme.ink)
                     .accessibilityLabel(Text(message))
             case .empty(let title, let message, let face, let cardFill),
@@ -161,7 +98,7 @@ struct OnboardingStatusView: View {
                 if !dynamicTypeSize.isAccessibilitySize { OnboardingFaceCard(face: face, fill: cardFill) }
                 VStack(alignment: .leading, spacing: DIPTokens.Spacing.related) {
                     OnboardingTitle(text: title)
-                    Text(message).font(.body).fixedSize(horizontal: false, vertical: true)
+                    Text(message).font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body)).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

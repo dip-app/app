@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class SocialCommandTests: XCTestCase {
     func testMessagesHaveAttributionAndStableRetryIdentityAcrossObservers() async throws {
-        let repository = DIPMockRepository(initialFailures: [.message: "offline"])
+        let repository = DIPMockRepository(initiallyJoinedEventIDs: ["puppy-yoga", "kayaking"], initialFailures: [.message: "offline"])
         let streamA = await repository.observe(), streamB = await repository.observe()
         var first = streamA.makeAsyncIterator(), second = streamB.makeAsyncIterator()
         let initialValue = try await first.next()
@@ -95,7 +95,7 @@ final class SocialCommandTests: XCTestCase {
     }
 
     func testSocialValidationRejectsInvalidParentsIdentitiesAndTextWithoutMutation() async throws {
-        let repository = DIPMockRepository()
+        let repository = DIPMockRepository(initiallyJoinedEventIDs: ["puppy-yoga"])
         let initial = await repository.currentSnapshot()
         await expect(.notFound("missing")) {
             try await repository.sendMessage(eventID: "missing", messageID: "message", text: "Hello")
@@ -133,6 +133,23 @@ final class SocialCommandTests: XCTestCase {
         let boundary = await repository.currentSnapshot()
         XCTAssertEqual(boundary.messages["puppy-yoga"]?.last?.text.count, 2_000)
         XCTAssertEqual(boundary.photoComments["kayaking-memory"]?["0"]?.last?.text.count, 2_000)
+    }
+
+    func testMessagesRequireObservedParticipationAndImportsKeepAttribution() async throws {
+        let repository = DIPMockRepository()
+        await expect(.invalidInput("Join this activity before sending a message")) {
+            try await repository.sendMessage(eventID: "puppy-yoga", messageID: "not-joined", text: "Hello")
+        }
+        try await repository.setRSVP(eventID: "puppy-yoga", going: true)
+        try await repository.sendMessage(eventID: "puppy-yoga", messageID: "joined", text: "Hello")
+        try await repository.setRSVP(eventID: "puppy-yoga", going: false)
+        await expect(.invalidInput("Join this activity before sending a message")) {
+            try await repository.sendMessage(eventID: "puppy-yoga", messageID: "left", text: "Hello")
+        }
+        try await repository.addPhotos(eventID: "kayaking-memory", photos: [.init(id: "import", data: Data([1]))])
+        let snapshot = await repository.currentSnapshot()
+        XCTAssertEqual(snapshot.albums["kayaking-memory"]?.photos.last?.attribution,
+                       .init(name: snapshot.profile.displayName, avatar: snapshot.profile.avatar))
     }
 
     private func expect(_ expected: DIPRepositoryError, _ operation: () async throws -> Void) async {

@@ -14,7 +14,7 @@ struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: DIPTokens.Spacing.related) {
                     OnboardingTitle(text: "Meet your team outside work")
                     Text("Find company events, see who's going, and join in one tap.")
-                        .font(.body)
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -22,8 +22,9 @@ struct WelcomeView: View {
             OnboardingButton("Continue with Google", isLoading: session.isSubmitting) {
                 Task { await session.signInWithGoogle() }
             }
+            .accessibilityIdentifier("onboarding.google")
             Text("Use your work Google account. We match you to your company by your email's domain.")
-                .font(.footnote)
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .fixedSize(horizontal: false, vertical: true)

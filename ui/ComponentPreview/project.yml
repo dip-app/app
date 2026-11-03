@@ -3,6 +3,10 @@ options:
   deploymentTarget:
     iOS: '17.0'
 packages:
+  DIPAccounts:
+    path: ../Packages/DIPAccounts
+  DIPContracts:
+    path: ../Packages/DIPContracts
   DIPCore:
     path: ../Packages/DIPCore
   DIPDesignSystem:
@@ -20,10 +24,13 @@ targets:
     platform: iOS
     sources:
       - App
+      - ../DIP/Data/Accounts/PreviewAccountsRepository.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features
-        excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift", "Accounts/**"]
+        excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]
     dependencies:
+      - package: DIPAccounts
+      - package: DIPContracts
       - package: DIPDesignSystem
       - package: DIPCore
         product: DIPCore

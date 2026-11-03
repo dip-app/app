@@ -1,12 +1,12 @@
 # V1 work tracker
 
-Last updated: November 2, 2026. This is the starting assignment board. Once a packet has a GitHub issue/PR, link it here and use that issue for detailed task discussion; do not maintain contradictory status copies. The packet README defines scope and acceptance, not completion.
+Last updated: November 3, 2026. This is the starting assignment board. Once a packet has a GitHub issue/PR, link it here and use that issue for detailed task discussion; do not maintain contradictory status copies. The packet README defines scope and acceptance, not completion.
 
 | Work packet | Status | Human owner | Issue / branch / PR | Dependency and next action |
 | --- | --- | --- | --- | --- |
-| [01 UI foundations](01-ui-foundations/README.md) | In review | sandervonk | [PR #3](https://github.com/dip-app/app/pull/3) | Native prototype, observable mock boundary and four photo-comment pills verified; reconciling current OAuth main before merge. |
-| [02 Accounts/profile](02-accounts-profile/README.md) | In progress | ariaf7 (core); sandervonk (integration) | PRs #4, #6, #9, #10 merged | Per ADR 0007: Google sign-in and email-domain membership (`resolveMembershipV1`), email/password and join codes removed, Google onboarding merged and connects to Home in PR #3. Real-project configuration, App Check, session hardening and device checks remain open. |
-| [03 Events/participation](03-events-participation/README.md) | In progress | sandervonk | `feature/past-event-ui` | Past-event detail and memory navigation; implement from event/RSVP contracts; live flow needs accounts plus reviewed rules/export integration. |
+| [01 UI foundations](01-ui-foundations/README.md) | In review | sandervonk | [PR #18](https://github.com/dip-app/app/pull/18); #3 merged | Native prototype and repository boundary merged. Profile/social completion and reviewed captures are in PR #18; comment placement redesign is deferred. |
+| [02 Accounts/profile](02-accounts-profile/README.md) | In progress | ariaf7 (core); sandervonk (integration) | PRs #4, #6, #9, #10, #11, #13 merged; [#18](https://github.com/dip-app/app/pull/18) in review | Per ADR 0007: Google sign-in and email-domain membership (`resolveMembershipV1`), email/password and join codes removed, Google onboarding merged and connects to Home in PR #3. Profile/catalog/sign-out wiring and component polish are on `feature/profile-social-polish` (PR #18); App Check and account data layers are merged. Real-project configuration, session hardening and device checks remain open. |
+| [03 Events/participation](03-events-participation/README.md) | In progress | sandervonk | [PR #12](https://github.com/dip-app/app/pull/12) merged | Past-event detail and memory navigation are fixture-backed; implement from event/RSVP contracts; live flow needs accounts plus reviewed rules/export integration. |
 | [04 Organizer events](04-organizer-events/README.md) | Ready against fixtures | Unassigned | None yet | Confirm revision and retry contract; live flow needs admin membership plus reviewed rules/exports. |
 | [05 Integration](05-integration/README.md) | Ready to claim | Unassigned | None yet | Name the integrator now; coordinate shared files and dependency order while feature owners work. |
 

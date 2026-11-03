@@ -69,30 +69,48 @@ public struct DIPFavoriteMemory: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Shared catalog projection of tags/{tagId}; id comes from snapshot metadata.
+public struct DIPInterest: Identifiable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var icon: String
+    public var sortOrder: Int
+    public init(id: String, name: String, icon: String = "tag", sortOrder: Int = 0) {
+        self.id = id; self.name = name; self.icon = icon; self.sortOrder = sortOrder
+    }
+}
+
 public struct DIPProfile: Identifiable, Equatable, Sendable {
     public var id: String
     public var displayName: String
     public var department: String
     public var city: String
-    public var interests: [String]
-    public var availableInterests: [String]
+    public var interestTagIDs: [String]
+    public var interestCatalog: [DIPInterest]
+    public var selectedInterests: [DIPInterest] {
+        var seen = Set<String>()
+        return interestTagIDs.filter { seen.insert($0).inserted }.map { id in
+            interestCatalog.first { $0.id == id } ?? DIPInterest(id: id, name: "Unavailable interest", sortOrder: Int.max)
+        }
+    }
+    public var interests: [String] { selectedInterests.map(\.name) }
     public var photo: MediaReference
     public var avatar: MediaReference
     public var favoriteMemories: [DIPFavoriteMemory]
-    public init(id: String, displayName: String, department: String, city: String, interests: [String], availableInterests: [String], photo: MediaReference, avatar: MediaReference, favoriteMemories: [DIPFavoriteMemory]) {
+    public init(id: String, displayName: String, department: String, city: String, interestTagIDs: [String], interestCatalog: [DIPInterest], photo: MediaReference, avatar: MediaReference, favoriteMemories: [DIPFavoriteMemory]) {
         self.id = id; self.displayName = displayName; self.department = department; self.city = city
-        self.interests = interests; self.availableInterests = availableInterests; self.photo = photo
+        self.interestTagIDs = interestTagIDs; self.interestCatalog = interestCatalog; self.photo = photo
         self.avatar = avatar; self.favoriteMemories = favoriteMemories
     }
 }
 
-/// Editable profile metadata; OAuth owns the identity display name.
+/// Editable metadata uses stable tag IDs, never localized display names.
 public struct ProfileEdit: Equatable, Sendable {
     public var department: String
     public var city: String
-    public var interests: [String]
-    public init(department: String, city: String, interests: [String]) {
-        self.department = department; self.city = city; self.interests = interests
+    public var interestTagIDs: [String]
+    public init(department: String, city: String, interestTagIDs: [String]) {
+        self.department = department; self.city = city; self.interestTagIDs = interestTagIDs
     }
 }
 
