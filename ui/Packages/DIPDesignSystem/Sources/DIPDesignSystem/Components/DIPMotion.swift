@@ -14,6 +14,9 @@
                 : .easeOut(duration: navigationDuration)
         }
 
+        /// The navigation marker settles like a physical selector rather than easing linearly.
+        public static let marker: Animation = .spring(response: 0.38, dampingFraction: 0.82)
+
         public static func section(reduceMotion: Bool = false) -> Animation {
             reduceMotion
                 ? .linear(duration: reducedMotionDuration)

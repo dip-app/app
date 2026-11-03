@@ -260,6 +260,8 @@
         let onSelect: (DIPHomeTab) -> Void
         let onAction: () -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        /// Marker position while a finger is dragging it; nil when it rests on the selected tab.
+        @State private var dragMarkerX: CGFloat?
 
         public init(selected: DIPHomeTab = .home, onSelect: @escaping (DIPHomeTab) -> Void) {
             self.init(selected: selected, action: nil, onSelect: onSelect)
@@ -292,11 +294,33 @@
             }
         }
 
+        private func restingMarkerX(width: CGFloat) -> CGFloat {
+            10 + (width - 80) / 3 * CGFloat(selectedIndex)
+        }
+
         private func marker(width: CGFloat) -> some View {
-            Circle().fill(.white)
+            let x = dragMarkerX ?? restingMarkerX(width: width)
+            return Circle().fill(.white)
                 .frame(width: 60, height: 60)
-                .offset(x: 10 + (width - 80) / 3 * CGFloat(selectedIndex), y: 10)
+                .offset(x: x, y: 10)
+                // Follows the finger exactly while dragging, then settles with a spring.
+                .animation(dragMarkerX == nil ? DIPMotion.marker : nil, value: x)
                 .accessibilityHidden(true)
+        }
+
+        /// Dragging the marker selects each tab it crosses; releasing settles on the selected tab.
+        private func dragGesture(width: CGFloat) -> some Gesture {
+            let step = (width - 80) / 3
+            return DragGesture(minimumDistance: 6)
+                .onChanged { value in
+                    let x = min(max(value.location.x - 40, 10), 10 + 3 * step)
+                    dragMarkerX = x
+                    let tabs = DIPHomeTab.allCases
+                    let index = min(max(Int(((x - 10) / step).rounded()), 0), tabs.count - 1)
+                    // Rewards is not connected, so a drag passes over it instead of opening it.
+                    if tabs[index] != selected, tabs[index] != .rewards { onSelect(tabs[index]) }
+                }
+                .onEnded { _ in dragMarkerX = nil }
         }
 
         public var body: some View {
@@ -311,7 +335,6 @@
                                 .transition(.opacity)
                         } else {
                             marker(width: geometry.size.width)
-                                .animation(DIPMotion.navigation(), value: selected)
                         }
                         tabItems
                             .allowsHitTesting(action == nil)
@@ -325,6 +348,10 @@
                 }
                 .frame(width: geometry.size.width, height: 80)
                 .clipShape(Capsule())
+                .contentShape(Capsule())
+                .simultaneousGesture(
+                    dragGesture(width: geometry.size.width),
+                    including: action == nil && !reduceMotion && showsTabs ? .all : .none)
                 .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: action)
                 .animation(
                     reduceMotion ? DIPMotion.navigation(reduceMotion: true) : nil,
