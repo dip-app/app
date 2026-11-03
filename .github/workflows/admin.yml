@@ -1,0 +1,58 @@
+name: Admin portal
+on:
+  pull_request:
+    paths: ['apps/admin/**', 'firebase.json', '.github/workflows/admin.yml']
+  push:
+    branches: [main]
+    paths: ['apps/admin/**', 'firebase.json', '.github/workflows/admin.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/admin/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-out
+          path: apps/admin/out
+  deploy:
+    # Deploys to Firebase Hosting (site team05-dip) only from main, and only once the
+    # FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP repository secret exists.
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      HAS_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.HAS_SECRET == 'true'
+      - uses: actions/download-artifact@v4
+        if: env.HAS_SECRET == 'true'
+        with:
+          name: admin-out
+          path: apps/admin/out
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: env.HAS_SECRET == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP }}
+          projectId: team05-dip
+          channelId: live
+      - name: Skipped
+        if: env.HAS_SECRET != 'true'
+        run: echo "FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP is not set; skipping the Hosting deploy."

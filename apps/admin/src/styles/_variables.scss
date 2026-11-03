@@ -8,3 +8,9 @@ $yellow: #ffcc3e;
 $events-pink: #f054a5;
 $radius-card: 20px;
 $radius-pill: 25px;
+
+// Nested shapes are concentric: inner radius = outer radius - the padding between them.
+@function inner-radius($outer, $padding) { @return max($outer - $padding, 4px); }
+$radius-panel: 28px; // a card that holds an inset photo
+$panel-padding: 12px;
+$radius-inset: inner-radius($radius-panel, $panel-padding); // 16px

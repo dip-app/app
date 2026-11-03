@@ -9,12 +9,27 @@ import {
 } from "@/lib/contract";
 import { centsToDollars, dollarsToCents, isoToLocalInput, localInputToIso } from "@/lib/datetime";
 import { useApp } from "./AppProvider";
+import { Cover } from "./Cover";
+import { Toggle } from "./Toggle";
+import { EventPreview } from "./EventPreview";
 
 interface Props {
   /** Present when editing. */
   event?: AdminEvent;
   /** Called when the user asks to discard local edits and reload the latest saved event. */
   onReload?: () => void;
+}
+
+const FIELD_IDS: Record<string, string> = {
+  title: "title", description: "description", coverImageURL: "cover-first", startTime: "start", endTime: "end",
+  "venue.name": "vname", "venue.locality": "vloc", "venue.address": "vaddr", "venue.latitude": "lat",
+  "venue.longitude": "lng", costCents: "price", capacity: "capacity",
+};
+
+/** Moves focus to the first invalid control, in page order, so keyboard and screen reader users land on it. */
+function focusFirstInvalid(found: FieldErrors) {
+  const first = Object.keys(FIELD_IDS).find((key) => found[key]);
+  if (first) document.getElementById(FIELD_IDS[first])?.focus();
 }
 
 export function EventForm({ event, onReload }: Props) {
@@ -43,7 +58,10 @@ export function EventForm({ event, onReload }: Props) {
     if (Number.isNaN(cents)) found.costCents = "Enter a price like 12.50, or leave blank for free.";
     setErrors(found);
     setFailure(null);
-    if (Object.keys(found).length) return;
+    if (Object.keys(found).length) {
+      focusFirstInvalid(found);
+      return;
+    }
     setSaving(true);
     try {
       if (event) await api.updateEvent(event.id, event.revision, candidate, status);
@@ -62,25 +80,31 @@ export function EventForm({ event, onReload }: Props) {
   const invalid = (key: string) => (errors[key] ? true : undefined);
 
   return (
+    <div className="form-layout">
     <form className="form" onSubmit={submit} noValidate>
+      {Object.keys(errors).length > 0 && !failure && (
+        <div className="banner error" role="alert">
+          <span>Fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} to continue.</span>
+        </div>
+      )}
       {failure && (
         <div className="banner error" role="alert">
           <span>{failure.message}</span>
           {failure.code === "aborted" && onReload && (
-            <button type="button" className="btn ghost" onClick={onReload}>Reload latest</button>
+            <button type="button" className="pill-btn gray" onClick={onReload}>Reload latest</button>
           )}
         </div>
       )}
-      <div className="panel">
+      <div className="section wide">
         <div className="field">
           <label htmlFor="title">Title</label>
-          <input id="title" value={draft.title} maxLength={LIMITS.titleMax} aria-invalid={invalid("title")} onChange={(e) => set("title", e.target.value)} />
-          {err("title") && <span className="error">{err("title")}</span>}
+          <input id="title" aria-describedby={err("title") ? "title-error" : undefined} value={draft.title} maxLength={LIMITS.titleMax} aria-invalid={invalid("title")} onChange={(e) => set("title", e.target.value)} />
+          {err("title") && <span className="error" id="title-error">{err("title")}</span>}
         </div>
         <div className="field">
           <label htmlFor="description">Description</label>
-          <textarea id="description" value={draft.description} maxLength={LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
-          {err("description") && <span className="error">{err("description")}</span>}
+          <textarea id="description" aria-describedby={err("description") ? "description-error" : undefined} value={draft.description} maxLength={LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
+          {err("description") && <span className="error" id="description-error">{err("description")}</span>}
         </div>
         <fieldset className="field">
           <legend>Tags</legend>
@@ -98,76 +122,73 @@ export function EventForm({ event, onReload }: Props) {
           <span className="hint">Pick from the default catalog. Photo uploads aren’t part of V1.</span>
           <div className="covers">
             {COVERS.map((cover) => (
-              <button key={cover.id} type="button" className="cover-option" aria-pressed={draft.coverImageURL === cover.url} onClick={() => set("coverImageURL", cover.url)}>
-                <div className="swatch" style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }} />
+              <button key={cover.id} id={cover.id === COVERS[0].id ? "cover-first" : undefined} type="button" className="cover-option" aria-pressed={draft.coverImageURL === cover.url} onClick={() => set("coverImageURL", cover.url)}>
+                <Cover url={cover.url} className="swatch" eager />
                 <span>{cover.label}</span>
               </button>
             ))}
           </div>
-          {err("coverImageURL") && <span className="error">{err("coverImageURL")}</span>}
+          {err("coverImageURL") && <span className="error" id="cover-error">{err("coverImageURL")}</span>}
         </fieldset>
       </div>
 
-      <div className="panel">
+      <div className="section">
         <h2>When</h2>
         <div className="row">
           <div className="field">
             <label htmlFor="start">Starts</label>
-            <input id="start" type="datetime-local" value={isoToLocalInput(draft.startTime)} aria-invalid={invalid("startTime")} onChange={(e) => set("startTime", localInputToIso(e.target.value))} />
-            {err("startTime") && <span className="error">{err("startTime")}</span>}
+            <input id="start" aria-describedby={err("startTime") ? "start-error" : undefined} type="datetime-local" value={isoToLocalInput(draft.startTime)} aria-invalid={invalid("startTime")} onChange={(e) => set("startTime", localInputToIso(e.target.value))} />
+            {err("startTime") && <span className="error" id="start-error">{err("startTime")}</span>}
           </div>
           <div className="field">
             <label htmlFor="end">Ends</label>
-            <input id="end" type="datetime-local" value={isoToLocalInput(draft.endTime)} aria-invalid={invalid("endTime")} onChange={(e) => set("endTime", localInputToIso(e.target.value))} />
-            {err("endTime") && <span className="error">{err("endTime")}</span>}
+            <input id="end" aria-describedby={err("endTime") ? "end-error" : undefined} type="datetime-local" value={isoToLocalInput(draft.endTime)} aria-invalid={invalid("endTime")} onChange={(e) => set("endTime", localInputToIso(e.target.value))} />
+            {err("endTime") && <span className="error" id="end-error">{err("endTime")}</span>}
           </div>
         </div>
         <span className="hint">Times are entered in your local time zone and stored in UTC.</span>
       </div>
 
-      <div className="panel">
+      <div className="section">
         <h2>Where</h2>
         <div className="row">
           <div className="field"><label htmlFor="vname">Venue name</label>
-            <input id="vname" value={draft.venue.name} aria-invalid={invalid("venue.name")} onChange={(e) => setVenue("name", e.target.value)} />
-            {err("venue.name") && <span className="error">{err("venue.name")}</span>}</div>
+            <input id="vname" aria-describedby={err("venue.name") ? "vname-error" : undefined} value={draft.venue.name} aria-invalid={invalid("venue.name")} onChange={(e) => setVenue("name", e.target.value)} />
+            {err("venue.name") && <span className="error" id="vname-error">{err("venue.name")}</span>}</div>
           <div className="field"><label htmlFor="vloc">City / area</label>
-            <input id="vloc" value={draft.venue.locality} aria-invalid={invalid("venue.locality")} onChange={(e) => setVenue("locality", e.target.value)} />
-            {err("venue.locality") && <span className="error">{err("venue.locality")}</span>}</div>
+            <input id="vloc" aria-describedby={err("venue.locality") ? "vloc-error" : undefined} value={draft.venue.locality} aria-invalid={invalid("venue.locality")} onChange={(e) => setVenue("locality", e.target.value)} />
+            {err("venue.locality") && <span className="error" id="vloc-error">{err("venue.locality")}</span>}</div>
         </div>
         <div className="field"><label htmlFor="vaddr">Street address</label>
-          <input id="vaddr" value={draft.venue.address} aria-invalid={invalid("venue.address")} onChange={(e) => setVenue("address", e.target.value)} />
-          {err("venue.address") && <span className="error">{err("venue.address")}</span>}</div>
+          <input id="vaddr" aria-describedby={err("venue.address") ? "vaddr-error" : undefined} value={draft.venue.address} aria-invalid={invalid("venue.address")} onChange={(e) => setVenue("address", e.target.value)} />
+          {err("venue.address") && <span className="error" id="vaddr-error">{err("venue.address")}</span>}</div>
         <div className="row">
           <div className="field"><label htmlFor="lat">Latitude</label>
-            <input id="lat" type="number" step="any" value={draft.venue.latitude} aria-invalid={invalid("venue.latitude")} onChange={(e) => setVenue("latitude", e.target.valueAsNumber)} />
-            {err("venue.latitude") && <span className="error">{err("venue.latitude")}</span>}</div>
+            <input id="lat" aria-describedby={err("venue.latitude") ? "lat-error" : undefined} type="number" step="any" value={draft.venue.latitude} aria-invalid={invalid("venue.latitude")} onChange={(e) => setVenue("latitude", e.target.valueAsNumber)} />
+            {err("venue.latitude") && <span className="error" id="lat-error">{err("venue.latitude")}</span>}</div>
           <div className="field"><label htmlFor="lng">Longitude</label>
-            <input id="lng" type="number" step="any" value={draft.venue.longitude} aria-invalid={invalid("venue.longitude")} onChange={(e) => setVenue("longitude", e.target.valueAsNumber)} />
-            {err("venue.longitude") && <span className="error">{err("venue.longitude")}</span>}</div>
+            <input id="lng" aria-describedby={err("venue.longitude") ? "lng-error" : undefined} type="number" step="any" value={draft.venue.longitude} aria-invalid={invalid("venue.longitude")} onChange={(e) => setVenue("longitude", e.target.valueAsNumber)} />
+            {err("venue.longitude") && <span className="error" id="lng-error">{err("venue.longitude")}</span>}</div>
         </div>
-        <label className="chip" style={{ width: "fit-content" }}>
-          <input type="checkbox" checked={draft.isOutdoor} onChange={(e) => set("isOutdoor", e.target.checked)} style={{ width: "auto", minHeight: 0, marginRight: 8 }} />
-          Outdoor event
-        </label>
+        <Toggle checked={draft.isOutdoor} onChange={(next) => set("isOutdoor", next)} label="Outdoor event" hint="Shown to members so they can plan for the weather." />
       </div>
 
-      <div className="panel">
-        <h2>Cost & spots</h2>
+      <div className="section">
+        <h2>Cost &amp; spots</h2>
         <div className="row">
           <div className="field"><label htmlFor="price">Price (USD)</label>
-            <input id="price" inputMode="decimal" placeholder="Free" value={price} aria-invalid={invalid("costCents")} onChange={(e) => setPrice(e.target.value)} />
-            {err("costCents") && <span className="error">{err("costCents")}</span>}</div>
+            <input id="price" aria-describedby={err("costCents") ? "price-error" : undefined} inputMode="decimal" placeholder="Free" value={price} aria-invalid={invalid("costCents")} onChange={(e) => setPrice(e.target.value)} />
+            {err("costCents") && <span className="error" id="price-error">{err("costCents")}</span>}</div>
           <div className="field"><label htmlFor="capacity">Capacity</label>
-            <input id="capacity" type="number" min={LIMITS.capacityMin} max={LIMITS.capacityMax} value={Number.isNaN(draft.capacity) ? "" : draft.capacity} aria-invalid={invalid("capacity")} onChange={(e) => set("capacity", e.target.valueAsNumber)} />
-            {err("capacity") && <span className="error">{err("capacity")}</span>}</div>
+            <input id="capacity" aria-describedby={err("capacity") ? "capacity-error" : undefined} type="number" min={LIMITS.capacityMin} max={LIMITS.capacityMax} value={Number.isNaN(draft.capacity) ? "" : draft.capacity} aria-invalid={invalid("capacity")} onChange={(e) => set("capacity", e.target.valueAsNumber)} />
+            {err("capacity") && <span className="error" id="capacity-error">{err("capacity")}</span>}</div>
         </div>
         <div className="field"><label htmlFor="note">Price note (optional)</label>
           <input id="note" value={draft.costNote} onChange={(e) => set("costNote", e.target.value)} /></div>
       </div>
 
       {editing && (
-        <div className="panel">
+        <div className="section">
           <h2>Status</h2>
           <div className="field">
             <label htmlFor="status">Event status</label>
@@ -181,9 +202,11 @@ export function EventForm({ event, onReload }: Props) {
       )}
 
       <div className="actions">
-        <button className="btn dark" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create event"}</button>
-        <button className="btn ghost" type="button" disabled={saving} onClick={() => router.push("/events/")}>Cancel</button>
+        <button className="big-pill dark" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create event"}</button>
+        <button className="big-pill gray" type="button" disabled={saving} onClick={() => router.push("/events/")}>Cancel</button>
       </div>
     </form>
+    <EventPreview draft={draft} price={price} />
+    </div>
   );
 }
