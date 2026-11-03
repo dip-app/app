@@ -35,24 +35,13 @@ export default function EventsPage() {
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
 
   return (
-    <Shell>
-      <div className="page-head">
-        <div>
-          <h1>Events</h1>
-          <p>Everything your company can see in the DIP app.</p>
-        </div>
-        {session?.role === "admin" && (
-          <Link className="btn" href="/events/new/">
-            New event
-          </Link>
-        )}
-      </div>
+    <Shell title="Events" subtitle="Everything your company can see in the DIP app." action={session?.role === "admin" ? <Link className="pill-btn purple" href="/events/new/">New event</Link> : undefined}>
       {error ? (
         <div className="banner error" role="alert">
           <span>{error.message}</span>
         </div>
       ) : events === null ? (
-        <p role="status">Loading…</p>
+        <div className="skeleton-list" role="status" aria-label="Loading events"><div className="skeleton" /><div className="skeleton" /></div>
       ) : (
         <>
           <div className="tabs" role="group" aria-label="Filter events">

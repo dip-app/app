@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useApp } from "@/components/AppProvider";
+import { Faces } from "@/components/Faces";
 
 export default function Login() {
   const { session, signIn } = useApp();
@@ -13,22 +14,19 @@ export default function Login() {
 
   return (
     <main className="login">
-      <div className="box">
-        <h1>DIP Admin</h1>
-        <p>Create and manage your company’s activities.</p>
-        <div className="persona">
-          <button className="btn" onClick={() => void signIn("admin")}>
-            Continue as organizer <span aria-hidden>→</span>
-          </button>
-          <button className="btn ghost" style={{ color: "white", borderColor: "#4a4f63" }} onClick={() => void signIn("member")}>
-            Continue as member (no access) <span aria-hidden>→</span>
-          </button>
+      <div className="hero-card"><Faces size={120} /></div>
+      <section className="login-copy">
+        <h1>Organize your team’s activities</h1>
+        <p>Create events, set the details and keep them up to date for everyone in your company.</p>
+        <div className="login-actions">
+          <button className="big-pill dark" onClick={() => void signIn("admin")}>Continue as organizer</button>
+          <button className="big-pill gray" onClick={() => void signIn("member")}>Continue as member (no access)</button>
         </div>
         <p className="note">
-          Preview mode: data is kept in this browser only. Production sign-in is Google with your work account;
-          organizer access is assigned manually and checked by the backend on every request.
+          Preview mode: data stays in this browser. Production sign-in is Google with your work account; organizer access is
+          assigned manually and checked by the backend on every request.
         </p>
-      </div>
+      </section>
     </main>
   );
 }
