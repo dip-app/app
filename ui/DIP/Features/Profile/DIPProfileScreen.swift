@@ -197,7 +197,7 @@ struct DIPProfileScreen: View {
             .offset(x: width * 0.3575, y: 148)
             ScrollView(.horizontal) {
             HStack(spacing: 10.435) {
-                ForEach(profile.selectedInterests) { interest in
+                ForEach(Self.headerInterests(profile, catalogReady: catalogReady)) { interest in
                     Text(interest.name)
                         .font(DIPReferenceAssets.font("Inter-Light", size: 12))
                         .foregroundStyle(.black)
@@ -319,6 +319,15 @@ struct DIPProfileScreen: View {
         .accessibilityLabel("Favorite memory, \(memory.dateLabel)")
         .accessibilityIdentifier("profile.memory.\(index)")
         .id(memory.id)
+    }
+
+    private var catalogReady: Bool { !interestCatalogLoading && interestCatalogError == nil }
+
+    /// Header pills. Stored interest ids are named from the catalog, so until it has loaded
+    /// (or after it failed) no pills are shown, rather than labelling every saved interest
+    /// "Unavailable interest" as if it had been removed. The stored ids are untouched.
+    nonisolated static func headerInterests(_ profile: DIPProfile, catalogReady: Bool) -> [DIPInterest] {
+        catalogReady ? profile.selectedInterests : []
     }
 
     private var interestOptions: [DIPInterest] {

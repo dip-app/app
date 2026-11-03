@@ -38,6 +38,20 @@ final class MemberProfileBridgeTests: XCTestCase {
         XCTAssertEqual(profile.photo, .remote(try XCTUnwrap(URL(string: context.profile.photoURL))))
     }
 
+    func testHeaderHidesInterestPillsUntilTheCatalogCanNameThem() throws {
+        let context = try MembershipContext(uid: "member-1", profile: stored())
+        // Catalog loading or failed: no catalog yet, so nothing may be labelled unavailable.
+        let unloaded = MemberProfileBridge.profile(context: context, tags: [])
+        XCTAssertTrue(DIPProfileScreen.headerInterests(unloaded, catalogReady: false).isEmpty)
+        XCTAssertEqual(unloaded.interestTagIDs, context.profile.interestTagIds, "stored selection is kept")
+        // Loaded: known ids are named, ids missing from a loaded catalog really are unavailable.
+        let loaded = MemberProfileBridge.profile(context: context, tags: [
+            .init(id: "tag-fitness", name: "Movement", icon: "🏋️", sortOrder: 1),
+        ])
+        XCTAssertEqual(DIPProfileScreen.headerInterests(loaded, catalogReady: true).map(\.name),
+                       ["Movement", "Unavailable interest", "Unavailable interest"])
+    }
+
     func testEmptyOrInvalidPortraitUsesNeutralAvatarInsteadOfAnotherPerson() throws {
         for photoURL in ["", "not-a-url", "file:///private/photo.jpg", "https:missing-host"] {
             let context = try MembershipContext(uid: "member-1", profile: stored(photoURL: photoURL))
