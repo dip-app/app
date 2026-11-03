@@ -148,6 +148,7 @@ final class MemberProfileBridgeTests: XCTestCase {
             availability: [], friendIds: [], favoritePhotoIds: [], pointsBalance: 0, createdAt: Date())))
         let profile = MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: "https://lh3.example.com/a=s400-c")
         XCTAssertEqual(profile.photo, .remote(URL(string: "https://lh3.example.com/a=s400-c")!))
+        XCTAssertEqual(profile.avatar, .asset("AvatarTeal"), "Small avatars never use the real photo")
     }
 
     func testProfileCommandPreservesOtherEditableAndServerOwnedValues() {

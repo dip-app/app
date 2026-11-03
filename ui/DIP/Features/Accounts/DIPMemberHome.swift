@@ -75,12 +75,14 @@ enum MemberProfileBridge {
             .sorted { ($0.sortOrder, $0.name, $0.id) < ($1.sortOrder, $1.name, $1.id) }
             .map { DIPInterest(id: $0.id, name: $0.name, icon: $0.icon, sortOrder: $0.sortOrder) }
         // A stored portrait wins, then the OAuth photo. Absent both, use a neutral bundled character, never another person's fixture photo.
-        let avatar = portrait(stored.photoURL) ?? portrait(oauthPhotoURL) ?? .asset("AvatarTeal")
+        // Only the large profile photo shows a real picture. Small avatars stay bundled characters.
+        let photo = portrait(stored.photoURL) ?? portrait(oauthPhotoURL) ?? .asset("AvatarTeal")
+        let avatar = MediaReference.asset("AvatarTeal")
         return DIPProfile(
             id: context.uid, displayName: stored.displayName,
             department: stored.department, city: stored.city,
             interestTagIDs: stored.interestTagIds, interestCatalog: interests,
-            photo: avatar, avatar: avatar, favoriteMemories: [],
+            photo: photo, avatar: avatar, favoriteMemories: [],
             jobTitle: stored.jobTitle, availability: stored.availability,
             travelRadiusMiles: stored.travelRadiusMiles
         )
