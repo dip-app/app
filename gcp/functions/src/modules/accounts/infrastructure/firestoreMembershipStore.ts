@@ -15,19 +15,23 @@ export class FirestoreMembershipStore implements MembershipStore {
       const db = this.db;
       const tx: MembershipTransaction = {
         async companyIdForDomain(rootDomain) {
-          const snap = await transaction.get(db.collection("companyDomains").doc(rootDomain));
-          const companyId: unknown = snap.get("companyId");
-          if (snap.exists && typeof companyId === "string" && companyId.length > 0) return companyId;
+          // companies.emailDomain holds one lowercase registrable root domain. Equality
+          // on a single field uses the automatic single-field index (no composite index).
+          // limit(2) detects a duplicate without reading every match.
+          const snap = await transaction.get(
+            db.collection("companies").where("emailDomain", "==", rootDomain).limit(2));
           // Server-side only: the caller always gets one NO_COMPANY_FOR_DOMAIN. Company
           // domains are not personal data; never log the email or uid here.
-          logger.warn(snap.exists ? "companyDomains mapping is malformed" : "companyDomains mapping not found",
-            { rootDomain, companyIdType: snap.exists ? typeof companyId : undefined });
-          return null;
-        },
-        async companyExists(companyId) {
-          const exists = (await transaction.get(db.collection("companies").doc(companyId))).exists;
-          if (!exists) logger.warn("companyDomains mapping points to a missing company", { companyId });
-          return exists;
+          if (snap.size === 0) {
+            logger.warn("no company has this emailDomain", { rootDomain });
+            return null;
+          }
+          if (snap.size > 1) {
+            // Uniqueness is not enforceable by Firestore; fail closed rather than pick one.
+            logger.error("more than one company has this emailDomain", { rootDomain });
+            return null;
+          }
+          return snap.docs[0]!.id;
         },
         async getMembership(uid) {
           const snap = await transaction.get(db.collection("users").doc(uid));

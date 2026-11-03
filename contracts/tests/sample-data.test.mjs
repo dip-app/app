@@ -10,7 +10,7 @@ const ajv = new Ajv({strict:true});
 addFormats(ajv);
 test('synthetic public seed documents satisfy the shared DTOs', () => {
   for (const doc of fixture.firestoreDocuments) {
-    const name = doc.path.startsWith('companyDomains/') ? null : doc.path.includes('/rsvps/') ? 'RSVP' : doc.path.includes('/events/') ? 'Event' : doc.path.startsWith('users/') ? 'AppUser' : doc.path.startsWith('tags/') ? 'Tag' : 'Company';
+    const name = doc.path.includes('/rsvps/') ? 'RSVP' : doc.path.includes('/events/') ? 'Event' : doc.path.startsWith('users/') ? 'AppUser' : doc.path.startsWith('tags/') ? 'Tag' : 'Company';
     if (!name) continue;
     const validate = ajv.compile({...schema, $ref:`#/$defs/${name}`});
     assert.equal(validate(doc.data), true, `${doc.path}: ${JSON.stringify(validate.errors)}`);

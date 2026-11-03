@@ -8,7 +8,7 @@ The schema currently includes all 18 supplied document structs plus embedded Ven
 |---|---|---|
 | Firebase Auth | current user and verified email | Google sign-in only in V1 (ADR 0007); no email/password. Apple later |
 | users/{uid} | Self only in V1; no company-wide list of private profiles | Own allowlisted profile fields only (photoURL, avatarId, department, jobTitle, city, interestTagIds, travelRadiusMiles, availability). companyId, role, email, displayName (from OAuth, ADR 0007), pointsBalance, createdAt are server-owned. Other employees appear through minimal RSVP snapshots; public directory needs a separate projection. |
-| companies/{companyId} | Own-company public metadata only | Server/admin tooling only. `emailDomain` is descriptive; the private `companyDomains` lookup decides membership. Never store secrets in this readable document. |
+| companies/{companyId} | Own-company public metadata only | Server/admin tooling only. `emailDomain` is the authoritative sign-in lookup key (one lowercase registrable root domain, unique per company); `resolveMembershipV1` queries it with the Admin SDK. Never store secrets in this readable document. |
 | tags/{tagId}, partners/{partnerId} | Authenticated shared catalog; partners later | Trusted seed/admin tooling only |
 | companies/{c}/events/{eventId} | Tenant-scoped feed and details | Create/update callable; counts, revision, author/audit and points server-owned |
 | .../events/{eventId}/rsvps/{uid} | Same-company attendee list; own joined events | setRsvp callable only; attendance later admin callable |
@@ -35,7 +35,7 @@ Planned V2 object path `companies/{c}/events/{eventId}/{photoId}.jpg` matches th
 
 ## Internal server data proposals
 
-- `companyDomains/{rootDomain}` -> `{ companyId }` maps a registrable root email domain to its company (ADR 0007); deny all client access. Keys must already be root domains (Public Suffix List) and never personal providers; trusted seed/admin tooling validates both. One domain maps to at most one company, and every subdomain of a mapped root joins it.
+- `companies.emailDomain` maps a registrable root email domain to its company (ADR 0007). Clients cannot list or query `companies` or write `emailDomain` (rules deny both). Trusted seed/admin tooling must store a lowercase Public Suffix List root domain that is not a personal provider. Uniqueness is not enforceable by Firestore or rules, so it is enforced by process and fail-closed: the seed and `scripts/migrate-company-domains.mjs` refuse duplicates, and the resolver treats a domain claimed by two companies (or a non-root, non-string or differently cased value, which never matches) as NO_COMPANY_FOR_DOMAIN and logs an error. Every subdomain of a mapped root joins that company. The equality query uses the single-field index declared in `gcp/firestore.indexes.json`; no composite index is needed.
 - `accountRateLimits/{uid}` holds the fixed-window membership-resolution budget; server-only.
 - `companies/{c}/commandReceipts/{uid_requestId}` holds deduplication metadata/payload hash and created event ID; deny clients. Retain for at least the supported client retry lifetime; choose retention before implementation.
 - Event.revision (integer >=1) is an intentional addition to the supplied model for concurrent organizer editing. Existing event seeds need revision=1. Never deploy a schema migration implicitly.

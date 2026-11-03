@@ -42,7 +42,7 @@ PR #4 core is merged. The follow-up [account integration contract](../../../cont
 
 ## Domain-based OAuth — November 1
 
-Per [ADR 0007](../../../adr/0007-oauth-domain-based-sign-in.md), `joinCompanyV1`, join codes, email/password and verification-email flows are removed. `resolveMembershipV1`, the private `companyDomains` lookup, OAuth display names, Google sign-in in `DIPAccounts`/`FirebaseAccountsRepository` and the Firebase attach points (`FirebaseBootstrap`, `ui/Config`) replace them. The redesigned onboarding screens follow in a separate PR.
+Per [ADR 0007](../../../adr/0007-oauth-domain-based-sign-in.md), `joinCompanyV1`, join codes, email/password and verification-email flows are removed. `resolveMembershipV1`, the `companies.emailDomain` lookup, OAuth display names, Google sign-in in `DIPAccounts`/`FirebaseAccountsRepository` and the Firebase attach points (`FirebaseBootstrap`, `ui/Config`) replace them. The redesigned onboarding screens follow in a separate PR.
 
 ## Profile data layer — November 2
 
@@ -66,11 +66,11 @@ V1-01 and V1-02 are implemented and verified end to end against the real Firebas
 
 - Local, uncommitted: `ui/DIP/Support/GoogleService-Info.plist` and `ui/Config/Local.xcconfig` (`GOOGLE_REVERSED_CLIENT_ID`, optional `DEVELOPMENT_TEAM` for devices). See `ui/README.md`.
 - Each Simulator or device needs its own App Check debug token (printed in the Xcode console) registered in Firebase → App Check → Manage debug tokens, before its first sign-in with a new account.
-- Sign-in needs a `companyDomains/{rootDomain}` document with a string `companyId` naming an existing `companies` document. Type collection and document IDs by hand: a pasted trailing space created a look-alike `companyDomains ` collection once. Mapping misses are logged by the function ("companyDomains mapping not found" etc.).
+- Sign-in needs a `companies` document whose `emailDomain` is exactly the lowercase root domain (e.g. `cmu.edu`) and that no other company uses. The separate `companyDomains` collection is removed; migrate live data with `scripts/migrate-company-domains.mjs`. Misses are logged by the function ("no company has this emailDomain"; duplicates log "more than one company has this emailDomain").
 
 ### Open after V1 scope
 
-- Remove the `cmu.edu` test mapping before real users; it maps that whole domain to the demo company.
+- Remove the `cmu.edu` test mapping before real users: the demo company's `emailDomain` is `cmu.edu` after migration, which maps that whole domain to the demo company.
 - App Attest for Release builds needs a paid Apple Developer team and the entitlement noted in `FirebaseBootstrap`.
 - Firestore reads are not App Check–enforced (only the callable is); revisit with the integrator.
 

@@ -20,6 +20,9 @@ class FakeStore implements MembershipStore {
   transactions = 0;
   reads: string[] = [];
   private clock = 0;
+  private collectionVersion(prefix: string) {
+    return [...this.docs].filter(([p]) => p.startsWith(`${prefix}/`)).reduce((n, [, e]) => n + e.version, 0);
+  }
   seed(path: string, data: Doc) { this.docs.set(path, { data: structuredClone(data), version: ++this.clock }); }
   get(path: string): Doc | undefined { return this.docs.get(path)?.data; }
 
@@ -37,10 +40,16 @@ class FakeStore implements MembershipStore {
       };
       const tx: MembershipTransaction = {
         companyIdForDomain: async (domain) => {
-          const data = await read(`companyDomains/${domain}`);
-          return typeof data?.companyId === "string" ? data.companyId : null;
+          // Mirrors the Firestore adapter: exactly one company with this emailDomain, else null.
+          await tick();
+          const matches = [...this.docs].filter(([path, entry]) =>
+            /^companies\/[^/]+$/.test(path) && entry.data.emailDomain === domain);
+          for (const [path] of matches) { this.reads.push(path); seen.set(path, this.docs.get(path)!.version); }
+          this.reads.push(`companies?emailDomain=${domain}`);
+          // A write to any company changes what a query could match: track the collection.
+          seen.set("companies?", this.collectionVersion("companies"));
+          return matches.length === 1 ? matches[0]![0].split("/")[1]! : null;
         },
-        companyExists: async (id) => (await read(`companies/${id}`)) !== undefined,
         getMembership: async (uid) => {
           const data = await read(`users/${uid}`);
           return data ? { companyId: String(data.companyId), role: String(data.role), displayName: String(data.displayName ?? "") } : null;
@@ -50,7 +59,9 @@ class FakeStore implements MembershipStore {
       };
       const result = await work(tx);
       await tick();
-      const stale = [...seen].some(([path, version]) => (this.docs.get(path)?.version ?? 0) !== version);
+      const stale = [...seen].some(([path, version]) => path === "companies?"
+        ? this.collectionVersion("companies") !== version
+        : (this.docs.get(path)?.version ?? 0) !== version);
       if (stale || writes.some(([path, , kind]) => kind === "create" && this.docs.has(path))) continue;
       for (const [path, data, kind] of writes) this.seed(path, kind === "update" ? { ...this.get(path), ...data } : data);
       return result;
@@ -61,11 +72,10 @@ class FakeStore implements MembershipStore {
 
 function seededStore() {
   const store = new FakeStore();
-  store.seed("companies/company-alpha", { name: "Alpha" });
-  store.seed("companies/company-beta", { name: "Beta" });
-  store.seed("companyDomains/alpha.test", { companyId: "company-alpha" });
-  store.seed("companyDomains/beta.co.uk", { companyId: "company-beta" });
-  store.seed("companyDomains/orphan.test", { companyId: "company-deleted" });
+  store.seed("companies/company-alpha", { name: "Alpha", emailDomain: "alpha.test" });
+  store.seed("companies/company-beta", { name: "Beta", emailDomain: "beta.co.uk" });
+  store.seed("companies/company-dupe-1", { name: "Dupe 1", emailDomain: "dupe.test" });
+  store.seed("companies/company-dupe-2", { name: "Dupe 2", emailDomain: "dupe.test" });
   return store;
 }
 const google = (overrides: Partial<AuthIdentity> = {}): AuthIdentity => ({
@@ -121,11 +131,11 @@ describe("personal email domains", () => {
   test("the list contains only lowercase root domains", () => {
     for (const domain of PERSONAL_EMAIL_DOMAINS) assert.equal(rootDomainOfEmail(`x@${domain}`), domain);
   });
-  test("the shared seed never maps a personal domain and only maps root domains", () => {
+  test("the shared seed never uses a personal domain and only root domains as company emailDomain", () => {
     const fixture = JSON.parse(readFileSync(join(__dirname, "../../sample-data/v1.json"), "utf8")) as {
       firestoreDocuments: Array<{ path: string; data: Doc }>;
     };
-    const domains = fixture.firestoreDocuments.filter((d) => d.path.startsWith("companyDomains/")).map((d) => d.path.split("/")[1]!);
+    const domains = fixture.firestoreDocuments.filter((d) => /^companies\/[^/]+$/.test(d.path)).map((d) => String(d.data.emailDomain));
     assert.ok(domains.length > 0);
     for (const domain of domains) {
       assert.equal(rootDomainOfEmail(`x@${domain}`), domain);
@@ -197,16 +207,16 @@ describe("resolveMembershipV1 domain resolution", () => {
     assert.equal(store.docs.size, before);
   });
 
-  test("a mapping to a missing company is the same error", async () => {
+  test("two companies claiming one emailDomain fail closed with the same error", async () => {
     const store = seededStore();
-    await rejects(resolveMembership(store, google({ email: "pat@orphan.test" }), REQUEST), "not-found", "NO_COMPANY_FOR_DOMAIN");
+    await rejects(resolveMembership(store, google({ email: "pat@dupe.test" }), REQUEST), "not-found", "NO_COMPANY_FOR_DOMAIN");
     assert.equal(store.get("users/user-1"), undefined);
   });
 
   test("subdomain and case are coerced to the mapped root", async () => {
     const store = seededStore();
     assert.deepEqual(await resolveMembership(store, google({ email: "Pat@Eng.ALPHA.test" }), REQUEST), member());
-    assert.ok(store.reads.includes("companyDomains/alpha.test"));
+    assert.ok(store.reads.includes("companies?emailDomain=alpha.test"));
   });
 
   test("multi-part public suffixes resolve to the registrable root", async () => {
@@ -214,11 +224,11 @@ describe("resolveMembershipV1 domain resolution", () => {
     assert.deepEqual(await resolveMembership(store, google({ email: "pat@london.beta.co.uk" }), REQUEST), member("company-beta"));
   });
 
-  test("a subdomain record is never consulted", async () => {
+  test("a company whose emailDomain is a subdomain is never matched", async () => {
     const store = seededStore();
-    store.seed("companyDomains/eng.gamma.test", { companyId: "company-alpha" });
+    store.seed("companies/company-gamma", { name: "Gamma", emailDomain: "eng.gamma.test" });
     await rejects(resolveMembership(store, google({ email: "pat@eng.gamma.test" }), REQUEST), "not-found", "NO_COMPANY_FOR_DOMAIN");
-    assert.ok(store.reads.includes("companyDomains/gamma.test"));
+    assert.ok(store.reads.includes("companies?emailDomain=gamma.test"));
   });
 });
 

@@ -15,7 +15,7 @@ The reference date is **October 28, 2026**. The event is fixed at **November 2, 
 
 These are public fixtures for local emulators only. The reserved `.invalid` domain cannot deliver email. Accounts are Google-provider users (ADR 0007); there are no passwords. On the Auth emulator, sign in as one with a synthetic Google credential whose ID token is unsigned JSON, e.g. `{"sub":"google-member-demo","email":"member@example.invalid","email_verified":true,"name":"Demo Member"}`. Image URL fields are intentionally empty; image selection and fallback behavior belong to the V1 app implementation. No external API or asset downloads are required to seed.
 
-The company document has no secret fields. Membership comes from the private `companyDomains/example.invalid` record (`{ "companyId": "company-demo" }`), which `resolveMembershipV1` reads after reducing a verified Google email to its root domain. The seed refuses keys that are not root domains or that are personal email providers.
+The company document has no secret fields. Membership comes from the company's `emailDomain` (`example.invalid`), which `resolveMembershipV1` queries after reducing a verified Google email to its root domain. The seed refuses values that are not root domains, that are personal email providers, or that two companies share.
 
 ## Seed running emulators
 

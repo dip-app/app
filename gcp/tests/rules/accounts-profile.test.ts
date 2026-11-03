@@ -22,10 +22,9 @@ before(async () => {
     for (const [uid, data] of Object.entries({ member: profile, colleague: profile,
       outsider: { ...profile, companyId: "company-b" }, admin: { ...profile, role: "admin" },
       legacy: { ...profile, id: "legacy" } })) await store.doc(`users/${uid}`).set(data);
-    await store.doc("companies/company-a").set({ name: "Company A" });
+    await store.doc("companies/company-a").set({ name: "Company A", emailDomain: "example.test" });
     await store.doc("companies/company-b").set({ name: "Company B" });
     await store.doc("tags/wellbeing").set({ name: "Wellbeing" });
-    await store.doc("companyDomains/example.test").set({ companyId: "company-a" });
     await store.doc("accountRateLimits/member").set({ attempts: 1 });
   });
 });
@@ -113,6 +112,10 @@ test("company metadata get requires verified same-company membership", async () 
   await assertFails(environment.unauthenticatedContext().firestore().doc("companies/company-a").get());
   await assertFails(db().collection("companies").get());
   await assertFails(db().doc("companies/company-a").update({ name: "Changed" }));
+  // emailDomain decides membership server-side: clients cannot change it or look companies up by it.
+  await assertFails(db().doc("companies/company-a").update({ emailDomain: "attacker.test" }));
+  await assertFails(db().collection("companies").where("emailDomain", "==", "example.test").get());
+  await assertFails(environment.unauthenticatedContext().firestore().collection("companies").where("emailDomain", "==", "example.test").get());
 });
 
 test("verified catalog reads permit interest selection without catalog writes", async () => {
@@ -123,7 +126,7 @@ test("verified catalog reads permit interest selection without catalog writes", 
   await assertFails(db().doc("tags/wellbeing").set({ name: "Changed" }));
 });
 
-for (const path of ["companyDomains/example.test", "accountRateLimits/member", "companies/company-a/events/event",
+for (const path of ["accountRateLimits/member", "companies/company-a/events/event",
   "companies/company-a/events/event/rsvps/member", "users/member/notifications/n", "partners/partner"]) {
   test(`unreviewed and private path ${path} stays denied`, async () => {
     await assertFails(db().doc(path).get());
