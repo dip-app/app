@@ -46,7 +46,9 @@ public enum AccountObservation: Sendable {
     func refreshIdentity() async throws
     /// Calls resolveMembershipV1: the server derives the company from the verified email domain.
     func resolveMembership() async throws -> ResolveMembershipResponse
-    func updateProfile(_ profile: EditableProfile) async throws
+    /// Writes the allowlisted fields of `uid`'s own profile. Adapters MUST refuse when the
+    /// signed-in user is not `uid`, so a stale editor can never write into another account.
+    func updateProfile(uid: String, _ profile: EditableProfile) async throws
 }
 /// Exactly the V1 client-owned fields. Display name comes from OAuth and is
 /// server-written (ADR 0007); membership, email, balances and audit fields are server-owned.
@@ -184,7 +186,10 @@ public enum AccountsState: Equatable, Sendable {
         if commandError == nil, case .resolvingCompany = state { beginResolving(identity) }
     }
     public func refreshIdentity() async { await command { try await repository.refreshIdentity() } }
-    public func updateProfile(_ profile: EditableProfile) async { await command { try await repository.updateProfile(profile) } }
+    public func updateProfile(_ profile: EditableProfile) async {
+        guard case .member(let context) = state else { commandError = .unauthenticated; return }
+        await command { try await repository.updateProfile(uid: context.uid, profile) }
+    }
 }
 
 extension EditableProfile {

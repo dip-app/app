@@ -68,8 +68,8 @@ import UIKit
             return response
         } catch { throw Self.failure(error) }
     }
-    func updateProfile(_ profile: EditableProfile) async throws {
-        guard let user = auth.currentUser, user.isEmailVerified else { throw AccountsFailure.unauthenticated }
+    func updateProfile(uid: String, _ profile: EditableProfile) async throws {
+        guard let user = auth.currentUser, user.isEmailVerified, user.uid == uid else { throw AccountsFailure.unauthenticated }
         let fields = try profile.validatedFields()
         do { try await firestore.collection("users").document(user.uid).updateData(fields) }
         catch { throw Self.failure(error) }
@@ -120,6 +120,30 @@ import UIKit
             }
         }
         return .unknown
+    }
+}
+
+extension FirebaseAccountsRepository: InterestCatalogRepository {
+    /// Reads the shared `tags` catalog (verified users only). Malformed documents are
+    /// skipped rather than failing the whole catalog; InterestCatalog sorts the result.
+    func interestTags() async throws -> [InterestTag] {
+        guard let user = auth.currentUser, user.isEmailVerified else { throw AccountsFailure.unauthenticated }
+        do {
+            let snapshot = try await firestore.collection("tags").getDocuments()
+            return snapshot.documents.compactMap { TagDocumentMapper.decode(id: $0.documentID, fields: $0.data()) }
+        } catch { throw Self.failure(error) }
+    }
+}
+
+/// Maps `tags/{tagId}` (contracts `Tag`: name, icon, sortOrder) without Codable.
+enum TagDocumentMapper {
+    static func decode(id: String, fields: [String: Any]) -> InterestTag? {
+        guard !id.isEmpty, let name = fields["name"] as? String, let icon = fields["icon"] as? String,
+              let order = fields["sortOrder"] as? NSNumber, CFGetTypeID(order) != CFBooleanGetTypeID(),
+              let sortOrder = Int(exactly: order.doubleValue) else { return nil }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return InterestTag(id: id, name: trimmed, icon: icon, sortOrder: sortOrder)
     }
 }
 

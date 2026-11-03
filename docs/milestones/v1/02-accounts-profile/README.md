@@ -43,3 +43,7 @@ PR #4 core is merged. The follow-up [account integration contract](../../../cont
 ## Domain-based OAuth — November 1
 
 Per [ADR 0007](../../../adr/0007-oauth-domain-based-sign-in.md), `joinCompanyV1`, join codes, email/password and verification-email flows are removed. `resolveMembershipV1`, the private `companyDomains` lookup, OAuth display names, Google sign-in in `DIPAccounts`/`FirebaseAccountsRepository` and the Firebase attach points (`FirebaseBootstrap`, `ui/Config`) replace them. The redesigned onboarding screens follow in a separate PR.
+
+## Profile data layer — November 2
+
+`DIPAccounts` adds `ProfileEditor` (per-member draft of the allowlisted fields, normalization, local validation, save through `updateProfile(uid:_:)`, live updates that never overwrite unsaved edits), `InterestCatalog` over the new `InterestCatalogRepository` (`tags` reads) and the V1 `AvailabilityOption` ids. `updateProfile` now names the uid it writes and adapters refuse any other signed-in account. The Firebase, preview and unconfigured repositories implement both protocols. The Profile screen itself (connecting the PR #3 `DIPProfileScreen` and removing its display-name field) is still open.

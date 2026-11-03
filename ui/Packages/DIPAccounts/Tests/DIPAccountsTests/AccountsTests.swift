@@ -30,7 +30,7 @@ import DIPContracts
         try checked()
     }
     func refreshIdentity() async throws { try checked() }
-    func updateProfile(_ profile: EditableProfile) async throws { try profile.validate(); try checked() }
+    func updateProfile(uid: String, _ profile: EditableProfile) async throws { try profile.validate(); try checked() }
     func resolveMembership() async throws -> ResolveMembershipResponse {
         resolves += 1
         if let resolveFailure { throw resolveFailure }
