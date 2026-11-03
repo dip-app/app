@@ -437,11 +437,9 @@ struct DIPProfileScreen: View {
                         .textContentType(.addressCity)
                 }
                 Section("Interests") {
-                    Button { isChoosingDraftInterests = true } label: {
-                        LabeledContent("Choose interests", value: "\(draftInterests.count) selected")
-                    }
-                    .accessibilityIdentifier("profile.edit.interests")
-                    .disabled(interestCatalogLoading || interestCatalogError != nil)
+                    DraftInterestsRow(selection: $draftInterests) { isChoosingDraftInterests = true }
+                        .accessibilityIdentifier("profile.edit.interests")
+                        .disabled(interestCatalogLoading || interestCatalogError != nil)
                 }
                 if profile.hasAccountDetails {
                     Section("When you're free") {
@@ -521,6 +519,19 @@ struct DIPProfileScreen: View {
             isEditing = false
         } catch {
             saveError = "Your profile could not be saved. Try again."
+        }
+    }
+}
+
+/// The sheet's interest count reads the draft through a binding. Read directly from the
+/// presenting view's state, the sheet kept showing the value from before Edit was tapped
+/// ("0 selected" while the profile had interests); saving was unaffected.
+private struct DraftInterestsRow: View {
+    @Binding var selection: Set<String>
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            LabeledContent("Choose interests", value: "\(selection.count) selected")
         }
     }
 }
