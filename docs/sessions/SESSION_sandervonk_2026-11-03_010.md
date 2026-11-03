@@ -30,3 +30,7 @@ Restyled the admin portal to match the running iOS app and set up Firebase Hosti
 ## Handoff
 
 Add the FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP secret (or run `firebase init hosting:github`) to enable automatic deploys; implement the organizer callables and a Firebase adapter behind AdminApi; replace placeholder photos with the approved catalog.
+
+## Late fix
+
+The portal's `src/lib/*` was never committed in the earlier admin PR: the root `.gitignore` excludes every `**/lib/`. The new CI job caught it (typecheck: cannot find '@/lib/...'). Added `!apps/admin/src/lib/` to `.gitignore` and committed the five files. Until this PR merges, `main` has an admin app that does not compile from a fresh clone.

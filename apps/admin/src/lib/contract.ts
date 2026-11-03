@@ -1,0 +1,148 @@
+// Mirrors contracts/v1/models.schema.json (Event, EventDraft, Venue) and docs/contracts/callables.md.
+// Replace with the generated types once the organizer callables exist.
+
+export type EventStatus = "scheduled" | "cancelled";
+
+export interface Venue {
+  name: string;
+  address: string;
+  locality: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface EventDraft {
+  title: string;
+  description: string;
+  tagIds: string[];
+  coverImageURL: string;
+  startTime: string; // RFC 3339 UTC
+  endTime: string;
+  venue: Venue;
+  costCents: number;
+  costNote: string;
+  capacity: number;
+  isOutdoor: boolean;
+}
+
+export interface AdminEvent extends EventDraft {
+  id: string;
+  companyId: string;
+  status: EventStatus;
+  attendeeCount: number;
+  pointsValue: number;
+  createdBy: string;
+  createdAt: string;
+  revision: number;
+}
+
+export type ApiErrorCode =
+  | "unauthenticated"
+  | "permission-denied"
+  | "invalid-argument"
+  | "not-found"
+  | "aborted"
+  | "failed-precondition";
+
+/** Mirrors the callable error mapping in docs/contracts/callables.md. */
+export class ApiError extends Error {
+  constructor(
+    readonly code: ApiErrorCode,
+    message: string,
+    readonly fields: FieldErrors = {},
+  ) {
+    super(message);
+  }
+}
+
+export type FieldErrors = Partial<Record<string, string>>;
+
+export const LIMITS = {
+  titleMax: 120,
+  descriptionMax: 5000,
+  capacityMin: 1,
+  capacityMax: 10000,
+} as const;
+
+export function emptyDraft(): EventDraft {
+  return {
+    title: "",
+    description: "",
+    tagIds: [],
+    coverImageURL: "",
+    startTime: "",
+    endTime: "",
+    venue: { name: "", address: "", locality: "", latitude: 0, longitude: 0 },
+    costCents: 0,
+    costNote: "",
+    capacity: 20,
+    isOutdoor: false,
+  };
+}
+
+/**
+ * Client-side mirror of the server rules so errors show before submitting. The server stays the
+ * authority: UI visibility and this validation are never the authorization boundary.
+ */
+export function validateDraft(
+  draft: EventDraft,
+  options: { requireFuture: boolean; now?: Date; minCapacity?: number },
+): FieldErrors {
+  const errors: FieldErrors = {};
+  const title = draft.title.trim();
+  if (title.length < 1 || title.length > LIMITS.titleMax) {
+    errors.title = `Title must be 1–${LIMITS.titleMax} characters.`;
+  }
+  const description = draft.description.trim();
+  if (description.length < 1 || description.length > LIMITS.descriptionMax) {
+    errors.description = `Description must be 1–${LIMITS.descriptionMax} characters.`;
+  }
+  const start = Date.parse(draft.startTime);
+  const end = Date.parse(draft.endTime);
+  if (Number.isNaN(start)) errors.startTime = "Choose a start time.";
+  if (Number.isNaN(end)) errors.endTime = "Choose an end time.";
+  if (!errors.startTime && !errors.endTime && end <= start) errors.endTime = "End must be after start.";
+  if (!errors.startTime && options.requireFuture && start <= (options.now ?? new Date()).getTime()) {
+    errors.startTime = "New events must start in the future.";
+  }
+  if (!draft.venue.name.trim()) errors["venue.name"] = "Add the venue name.";
+  if (!draft.venue.address.trim()) errors["venue.address"] = "Add the street address.";
+  if (!draft.venue.locality.trim()) errors["venue.locality"] = "Add the city or area.";
+  if (!(draft.venue.latitude >= -90 && draft.venue.latitude <= 90)) errors["venue.latitude"] = "Latitude is −90 to 90.";
+  if (!(draft.venue.longitude >= -180 && draft.venue.longitude <= 180)) errors["venue.longitude"] = "Longitude is −180 to 180.";
+  if (!Number.isInteger(draft.costCents) || draft.costCents < 0) errors.costCents = "Price must be zero or more.";
+  const minCapacity = Math.max(LIMITS.capacityMin, options.minCapacity ?? 0);
+  if (!Number.isInteger(draft.capacity) || draft.capacity < minCapacity || draft.capacity > LIMITS.capacityMax) {
+    errors.capacity =
+      minCapacity > LIMITS.capacityMin
+        ? `Capacity can’t be below the ${minCapacity} people already going (max ${LIMITS.capacityMax}).`
+        : `Capacity must be ${LIMITS.capacityMin}–${LIMITS.capacityMax}.`;
+  }
+  if (!draft.coverImageURL) errors.coverImageURL = "Pick a cover image.";
+  return errors;
+}
+
+export function normalizeDraft(draft: EventDraft): EventDraft {
+  return {
+    ...draft,
+    title: draft.title.trim(),
+    description: draft.description.trim(),
+    costNote: draft.costNote.trim(),
+    venue: {
+      ...draft.venue,
+      name: draft.venue.name.trim(),
+      address: draft.venue.address.trim(),
+      locality: draft.venue.locality.trim(),
+    },
+  };
+}
+
+export function formatPrice(costCents: number): string {
+  return costCents === 0 ? "Free" : (costCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+/** Classification uses timestamps and status, never labels. */
+export function classify(event: AdminEvent, now: Date = new Date()): "upcoming" | "past" | "cancelled" {
+  if (event.status === "cancelled") return "cancelled";
+  return Date.parse(event.endTime) <= now.getTime() ? "past" : "upcoming";
+}
