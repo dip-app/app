@@ -44,6 +44,11 @@ public final class DIPAppViewModel {
             try await repository.setRSVP(eventID: eventID, going: going)
         }
     }
+    public func setChallengeJoined(challengeID: String, joined: Bool) async throws {
+        try await perform("challenge:\(challengeID)") { [repository] in
+            try await repository.setChallengeJoined(challengeID: challengeID, joined: joined)
+        }
+    }
     public func updateProfile(_ edit: ProfileEdit) async throws {
         try await perform("profile") { [repository] in try await repository.updateProfile(edit) }
     }

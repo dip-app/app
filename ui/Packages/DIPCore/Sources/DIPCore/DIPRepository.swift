@@ -5,6 +5,7 @@ import Foundation
 public protocol DIPRepository: Sendable {
     func observe() async -> AsyncThrowingStream<DIPAppSnapshot, Error>
     func setRSVP(eventID: String, going: Bool) async throws
+    func setChallengeJoined(challengeID: String, joined: Bool) async throws
     func updateProfile(_ edit: ProfileEdit) async throws
     func sendMessage(eventID: String, messageID: String, text: String) async throws
     func addPhotos(eventID: String, photos: [PhotoUpload]) async throws
@@ -15,4 +16,11 @@ public enum DIPRepositoryError: Error, Equatable, Sendable {
     case notFound(String)
     case invalidInput(String)
     case injectedFailure(String)
+}
+
+public extension DIPRepository {
+    /// Adapters without challenge support refuse instead of pretending to join.
+    func setChallengeJoined(challengeID: String, joined: Bool) async throws {
+        throw DIPRepositoryError.invalidInput("Challenges aren’t available yet")
+    }
 }

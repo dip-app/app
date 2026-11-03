@@ -149,7 +149,12 @@ public enum DIPMockFixtures {
             messages[id] = [.init(id: "initial-" + id, authorID: "frank-white", text: "Looking forward to this activity!", authorName: "Frank White", authorAvatar: .asset("attendees_CoworkerProfilePicture1"), createdAt: Date(timeIntervalSince1970: 1_772_971_200))]
         }
         let home = DIPHomeSnapshot(unreadCount: 5, profileAvatar: .asset("Image"), challenge: .init(id: "fitness-challenge", category: "Fitness", participantCount: 128, avatars: assets(["CoworkerProfilePicture", "AvatarRed", "AvatarTeal"]), artwork: .asset("Mascot")), events: homeEvents, recentAttendeeAvatars: assets((3...7).map { "CoworkerProfilePicture\($0)" }))
-        return DIPAppSnapshot(home: home, activeEvents: active, memories: memories, profile: profile, eventDetails: details, participants: participantLists, albums: albums, messages: messages)
+        let running = DIPChallengeDetail(
+            id: "fitness-challenge", title: "Running", image: .asset("Mascot"), timing: "Happening 3/09",
+            description: "Join our running challenge and push your limits while having fun with your coworkers! Whether you’re a seasoned runner or just starting out, this event is for everyone. Track your miles, set personal goals, and compete with teammates to earn rewards and recognition. It’s a great way to stay active, bond with colleagues, and challenge yourself. Lace up your sneakers and hit the track together—one step at a time!",
+            tags: ["Fitness", "Weekly Activity"], completedCount: 16,
+            completedAvatars: attendeeAvatars(eventID: "puppy-yoga", going: false) ?? [])
+        return DIPAppSnapshot(home: home, activeEvents: active, memories: memories, profile: profile, eventDetails: details, participants: participantLists, albums: albums, messages: messages, challengeDetails: ["fitness-challenge": running])
     }
 
     /// Opt-in interaction-review data; original frame fixtures remain unchanged.

@@ -98,45 +98,11 @@ struct DIPEventDetailsScreen: View {
     }
 
     private var header: some View {
-        HStack {
-            Button(action: onBack) {
-                DIPReferenceAssets.image("event_BackButton").resizable()
-                    .frame(width: 50, height: 50)
-            }
-            .buttonStyle(.plain).accessibilityLabel("Back")
-            .accessibilityIdentifier("event.back")
-            Spacer(minLength: 10)
-            Text(event.timing)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                .foregroundStyle(.black)
-                .padding(.horizontal, event.isPast ? 28 : 0)
-                .frame(width: event.isPast ? nil : 164, height: 50)
-                .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
-        }
-        .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
+        DIPDetailHeader(timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack)
     }
 
     private var hero: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .bottomTrailing) {
-                DIPMedia(event.image).resizable().scaledToFill()
-                    .frame(width: geometry.size.width, height: 264).clipped()
-                HStack(spacing: 10.435) {
-                    ForEach(event.tags, id: \.self) { tag in
-                        Text(tag)
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 13.043)
-                            .frame(height: 30)
-                            .background(.white, in: Capsule())
-                    }
-                }
-                .padding(10)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-        }
-        .frame(height: 264)
-        .accessibilityIdentifier("event.hero")
+        DIPDetailHero(image: event.image, tags: event.tags, identifierPrefix: "event")
     }
 
     private var activityDetails: some View {
@@ -160,63 +126,26 @@ struct DIPEventDetailsScreen: View {
 
     private var attendeeDetails: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(event.isPast ? "Who Attended" : "Who’s Attending")
-                .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                .foregroundStyle(.black).frame(height: 22)
-            if event.attendeeCount == 0 {
-                Text("No one has joined yet. Be the first to make plans.")
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("event.attendees.empty")
-            } else {
-                HStack(spacing: 10) {
-                    ForEach(Array(event.attendeeAvatars.prefix(4).enumerated()), id: \.offset) { _, avatar in
-                        DIPMedia(avatar)
-                            .resizable().frame(width: 40, height: 40)
-                            .accessibilityHidden(true)
-                    }
-                    Button(action: onAttendees) {
-                        Text("View attendees · \(event.attendeeCount)")
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 14).padding(.vertical, 12)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                    }
-                    .buttonStyle(DIPPressFeedbackStyle()).accessibilityLabel("View \(event.attendeeCount) attendees")
-                    .accessibilityIdentifier("event.attendees")
-                }
-            }
-            if joined && !event.isPast {
-                Label("You’re going", systemImage: "checkmark.circle.fill")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .body))
-                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                    .accessibilityIdentifier("event.joined")
-            }
-            HStack(spacing: 10) {
-                ShareLink(item: event.metadata?.shareText(title: event.title) ?? "\(event.title) — \(event.timing)") {
-                    secondaryLabel(
-                        "Share event", asset: "event_HeroiconsMiniLink",
-                        background: Color(red: 240 / 255, green: 84 / 255, blue: 165 / 255))
-                }
-                .buttonStyle(DIPPressFeedbackStyle())
-                .accessibilityLabel("Share event")
-                .accessibilityIdentifier("event.share")
-                if joined && !event.isPast && (event.metadata?.canCancel(now: Date()) ?? true) {
-                    Button { confirmingLeave = true } label: {
-                        Text("Leave activity")
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 16)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                            .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(DIPPressFeedbackStyle())
-                    .accessibilityIdentifier("event.leave")
-                }
-            }
+            DIPDetailPeopleRow(
+                title: event.isPast ? "Who Attended" : "Who’s Attending",
+                avatars: event.attendeeAvatars, total: event.attendeeCount,
+                emptyText: "No one has joined yet. Be the first to make plans.",
+                identifierPrefix: "event", onMore: onAttendees)
+            DIPDetailActionRow(
+                showsParticipation: !event.isPast,
+                isParticipating: joined, canChange: canChangeParticipation,
+                joinTitle: "Join Activity", leaveTitle: "Leave Activity",
+                shareItem: event.metadata?.shareText(title: event.title) ?? "\(event.title) — \(event.timing)",
+                shareTitle: "Share Event", identifierPrefix: "event",
+                onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
+    }
+
+    private var canChangeParticipation: Bool {
+        guard let metadata = event.metadata else { return true }
+        guard metadata.status == .scheduled else { return false }
+        if joined { return metadata.canCancel(now: Date()) }
+        return metadata.startTime > Date() && event.attendeeCount < metadata.capacity
     }
 
     private var albumPreview: some View {
@@ -244,22 +173,6 @@ struct DIPEventDetailsScreen: View {
         }
         .accessibilityIdentifier("event.album.preview")
     }
-
-    private func secondaryLabel(_ title: String, asset: String, background: Color) -> some View {
-        HStack(spacing: 0) {
-            Text(title)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity).frame(height: 29)
-            DIPReferenceAssets.image(asset).resizable().frame(width: 20, height: 20)
-                .frame(width: 40, height: 40)
-                .background(.white, in: Circle())
-        }
-        .padding(5).frame(height: 50)
-        .background(background, in: Capsule())
-        .contentShape(Capsule())
-    }
-
 
     private func eventMetadata(_ metadata: DIPEventMetadata) -> some View {
         VStack(alignment: .leading, spacing: 16) {
