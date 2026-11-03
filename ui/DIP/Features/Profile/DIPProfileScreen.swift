@@ -1,3 +1,4 @@
+import DIPAccounts
 import DIPCore
 import DIPDesignSystem
 import SwiftUI
@@ -22,6 +23,9 @@ struct DIPProfileScreen: View {
     @State private var draftDepartment = ""
     @State private var draftCity = ""
     @State private var draftInterests: Set<String> = []
+    @State private var draftJobTitle = ""
+    @State private var draftAvailability: [String] = []
+    @State private var draftRadius = 20
     @State private var isSaving = false
     @State private var saveError: String?
 
@@ -65,6 +69,7 @@ struct DIPProfileScreen: View {
                             }
                         }
                         interestsEntry
+                        accountDetails
                         memories(width: geometry.size.width - 40)
                         if let onSignOut {
                             DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .destructive,
@@ -330,6 +335,61 @@ struct DIPProfileScreen: View {
         catalogReady ? profile.selectedInterests : []
     }
 
+    /// Job title, availability and travel radius, for account-backed profiles only.
+    @ViewBuilder private var accountDetails: some View {
+        if profile.hasAccountDetails {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("About")
+                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
+                    .accessibilityAddTraits(.isHeader)
+                detail("Job title", profile.jobTitle.isEmpty ? nil : profile.jobTitle, id: "jobTitle")
+                let free = Self.availabilityLabels(profile.availability)
+                detail("When you're free", free.isEmpty ? nil : free.joined(separator: ", "), id: "availability")
+                detail("How far you'll travel", profile.travelRadiusMiles.map { Self.radiusLabel($0) }, id: "radius")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("profile.details")
+        }
+    }
+
+    private func detail(_ title: String, _ value: String?, id: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .caption))
+                .foregroundStyle(.secondary)
+            Text(value ?? "Not added yet")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body))
+                .foregroundStyle(value == nil ? Color.secondary : Color.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("profile.details.\(id)")
+    }
+
+    /// Labels for known availability ids, in option order. Unknown stored ids are kept on
+    /// save but not shown, since there is no label for them.
+    nonisolated static func availabilityLabels(_ ids: [String]) -> [String] {
+        AvailabilityOption.all.filter { ids.contains($0.id) }.map(\.label)
+    }
+
+    /// Saved order: known options in option order, then unknown stored ids unchanged.
+    nonisolated static func orderedAvailability(_ ids: [String]) -> [String] {
+        let known = AvailabilityOption.all.map(\.id)
+        return known.filter { ids.contains($0) } + ids.filter { !known.contains($0) }
+    }
+
+    nonisolated static let standardRadii = [5, 10, 20, 50, 100]
+
+    /// Standard choices plus the stored value, so an unusual saved radius is never lost.
+    nonisolated static func radiusChoices(including current: Int) -> [Int] {
+        Array(Set(standardRadii + [current])).sorted()
+    }
+
+    nonisolated static func radiusLabel(_ miles: Int) -> String {
+        miles == 1 ? "Within 1 mile" : "Within \(miles) miles"
+    }
+
     private var interestOptions: [DIPInterest] {
         let known = Set(profile.interestCatalog.map(\.id))
         let missing = profile.interestTagIDs.filter { !known.contains($0) }.map {
@@ -344,8 +404,19 @@ struct DIPProfileScreen: View {
         draftDepartment = profile.department
         draftCity = profile.city
         draftInterests = Set(profile.interestTagIDs)
+        draftJobTitle = profile.jobTitle
+        draftAvailability = profile.availability
+        draftRadius = profile.travelRadiusMiles ?? 20
         saveError = nil
         isEditing = true
+    }
+
+    private func labeledField(_ title: String, text: Binding<String>, id: String) -> some View {
+        LabeledContent(title) {
+            TextField(title, text: text)
+                .multilineTextAlignment(.trailing)
+                .accessibilityIdentifier(id)
+        }
     }
 
     private var editForm: some View {
@@ -355,10 +426,15 @@ struct DIPProfileScreen: View {
                     LabeledContent("Name") {
                         Text(profile.displayName).accessibilityIdentifier("profile.edit.name")
                     }
-                    TextField("Department", text: $draftDepartment)
-                        .accessibilityIdentifier("profile.edit.department")
-                    TextField("City", text: $draftCity)
-                        .accessibilityIdentifier("profile.edit.city")
+                    // Visible labels: a filled field otherwise loses its placeholder, and
+                    // "Cool cat" vs "SWE" can't be told apart.
+                    if profile.hasAccountDetails {
+                        labeledField("Job title", text: $draftJobTitle, id: "profile.edit.jobTitle")
+                            .textContentType(.jobTitle)
+                    }
+                    labeledField("Department", text: $draftDepartment, id: "profile.edit.department")
+                    labeledField("City", text: $draftCity, id: "profile.edit.city")
+                        .textContentType(.addressCity)
                 }
                 Section("Interests") {
                     Button { isChoosingDraftInterests = true } label: {
@@ -366,6 +442,31 @@ struct DIPProfileScreen: View {
                     }
                     .accessibilityIdentifier("profile.edit.interests")
                     .disabled(interestCatalogLoading || interestCatalogError != nil)
+                }
+                if profile.hasAccountDetails {
+                    Section("When you're free") {
+                        ForEach(AvailabilityOption.all) { option in
+                            Toggle(option.label, isOn: Binding(
+                                get: { draftAvailability.contains(option.id) },
+                                set: { isOn in
+                                    if isOn, !draftAvailability.contains(option.id),
+                                       draftAvailability.count < EditableProfile.maximumListCount {
+                                        draftAvailability.append(option.id)
+                                    } else if !isOn {
+                                        draftAvailability.removeAll { $0 == option.id }
+                                    }
+                                }))
+                            .accessibilityIdentifier("profile.edit.availability.\(option.id)")
+                        }
+                    }
+                    Section("How far you'll travel") {
+                        Picker("Travel radius", selection: $draftRadius) {
+                            ForEach(Self.radiusChoices(including: draftRadius), id: \.self) { miles in
+                                Text(Self.radiusLabel(miles)).tag(miles)
+                            }
+                        }
+                        .accessibilityIdentifier("profile.edit.radius")
+                    }
                 }
                 if let saveError {
                     Section {
@@ -407,7 +508,11 @@ struct DIPProfileScreen: View {
         let edit = ProfileEdit(
             department: draftDepartment.trimmingCharacters(in: .whitespacesAndNewlines),
             city: draftCity.trimmingCharacters(in: .whitespacesAndNewlines),
-            interestTagIDs: interestOptions.map(\.id).filter { draftInterests.contains($0) })
+            interestTagIDs: interestOptions.map(\.id).filter { draftInterests.contains($0) },
+            // Fixture profiles have no account details; nil leaves them untouched.
+            jobTitle: profile.hasAccountDetails ? draftJobTitle.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+            availability: profile.hasAccountDetails ? Self.orderedAvailability(draftAvailability) : nil,
+            travelRadiusMiles: profile.hasAccountDetails ? draftRadius : nil)
         isSaving = true
         saveError = nil
         defer { isSaving = false }

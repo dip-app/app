@@ -57,11 +57,7 @@ struct DIPMemberHome: View {
     }
 
     private func saveProfile(_ edit: ProfileEdit) async throws {
-        guard editor.uid == context.uid else { throw AccountsFailure.unauthenticated }
-        guard !editor.isSaving else { throw AccountsFailure.unavailable }
-        editor.receive(context)
-        editor.draft = MemberProfileBridge.edits(edit, preserving: context.profile)
-        guard await editor.save() else { throw editor.saveError ?? AccountsFailure.unknown }
+        try await MemberProfileBridge.save(edit, editor: editor, uid: context.uid)
         // ProfileEditor acknowledges the command; membership observation remains the displayed source.
     }
 }
@@ -80,8 +76,20 @@ enum MemberProfileBridge {
             id: context.uid, displayName: stored.displayName,
             department: stored.department, city: stored.city,
             interestTagIDs: stored.interestTagIds, interestCatalog: interests,
-            photo: avatar, avatar: avatar, favoriteMemories: []
+            photo: avatar, avatar: avatar, favoriteMemories: [],
+            jobTitle: stored.jobTitle, availability: stored.availability,
+            travelRadiusMiles: stored.travelRadiusMiles
         )
+    }
+
+    /// Saves one profile command through the uid-bound editor. Unchanged fields come from
+    /// `editor.profile`, which already includes this editor's acknowledged saves, so a second
+    /// save made before the membership listener catches up cannot revert the first.
+    @MainActor static func save(_ edit: ProfileEdit, editor: ProfileEditor, uid: String) async throws {
+        guard editor.uid == uid else { throw AccountsFailure.unauthenticated }
+        guard !editor.isSaving else { throw AccountsFailure.unavailable }
+        editor.draft = edits(edit, preserving: editor.profile)
+        guard await editor.save() else { throw editor.saveError ?? AccountsFailure.unknown }
     }
 
     static func seed(context: MembershipContext) -> DIPAppSnapshot {
@@ -96,6 +104,9 @@ enum MemberProfileBridge {
         result.department = edit.department
         result.city = edit.city
         result.interestTagIds = edit.interestTagIDs
+        if let jobTitle = edit.jobTitle { result.jobTitle = jobTitle }
+        if let availability = edit.availability { result.availability = availability }
+        if let radius = edit.travelRadiusMiles { result.travelRadiusMiles = radius }
         return result
     }
 
