@@ -63,6 +63,10 @@ public actor DIPMockRepository: DIPRepository {
         guard let event = snapshot.eventDetails[eventID] else { throw DIPRepositoryError.notFound(eventID) }
         guard !event.isPast else { throw DIPRepositoryError.invalidInput("This activity has ended") }
         guard event.isJoined != going else { return }
+        if let metadata = event.metadata {
+            guard metadata.canCancel(now: Date()) else { throw DIPRepositoryError.invalidInput("RSVP changes close when the activity starts") }
+            if going && event.attendeeCount >= metadata.capacity { throw DIPRepositoryError.invalidInput("This activity is full") }
+        }
         Self.applyRSVP(eventID: eventID, going: going, to: &snapshot)
         publish()
     }

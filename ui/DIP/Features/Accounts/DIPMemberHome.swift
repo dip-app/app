@@ -10,6 +10,8 @@ import SwiftUI
 @MainActor
 struct DIPMemberHome: View {
     let context: MembershipContext
+    /// Photo from the signed-in OAuth identity, used while the stored profile has none.
+    let oauthPhotoURL: String
     let onSignOut: () async -> Void
     @State private var editor: ProfileEditor
     @State private var catalog: InterestCatalog
@@ -18,21 +20,23 @@ struct DIPMemberHome: View {
     init(
         context: MembershipContext,
         repository: any AccountsRepository & InterestCatalogRepository,
+        oauthPhotoURL: String = "",
         onSignOut: @escaping () async -> Void
     ) {
         self.context = context
+        self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
         _editor = State(initialValue: ProfileEditor(context: context, repository: repository))
         _catalog = State(initialValue: InterestCatalog(repository: repository))
         _prototypeRepository = State(initialValue: DIPMockRepository(
-            initialSnapshot: MemberProfileBridge.seed(context: context)))
+            initialSnapshot: MemberProfileBridge.seed(context: context, oauthPhotoURL: oauthPhotoURL)))
     }
 
     var body: some View {
         DIPPrototypeApp(
             repository: prototypeRepository,
             onSignOut: onSignOut,
-            accountProfile: MemberProfileBridge.profile(context: context, tags: catalog.tags),
+            accountProfile: MemberProfileBridge.profile(context: context, tags: catalog.tags, oauthPhotoURL: oauthPhotoURL),
             interestCatalogLoading: catalogIsLoading,
             interestCatalogError: catalogError,
             onRetryInterestCatalog: { Task { await catalog.load() } },
@@ -64,14 +68,14 @@ struct DIPMemberHome: View {
 
 /// Pure mapping between the existing account wire model and value-only presentation.
 enum MemberProfileBridge {
-    static func profile(context: MembershipContext, tags: [InterestTag]) -> DIPProfile {
+    static func profile(context: MembershipContext, tags: [InterestTag], oauthPhotoURL: String = "") -> DIPProfile {
         let stored = context.profile
         var seen = Set<String>()
         let interests = tags.filter { seen.insert($0.id).inserted }
             .sorted { ($0.sortOrder, $0.name, $0.id) < ($1.sortOrder, $1.name, $1.id) }
             .map { DIPInterest(id: $0.id, name: $0.name, icon: $0.icon, sortOrder: $0.sortOrder) }
-        // An absent portrait uses a neutral bundled character, never another person's fixture photo.
-        let avatar = portrait(stored.photoURL) ?? .asset("AvatarTeal")
+        // A stored portrait wins, then the OAuth photo. Absent both, use a neutral bundled character, never another person's fixture photo.
+        let avatar = portrait(stored.photoURL) ?? portrait(oauthPhotoURL) ?? .asset("AvatarTeal")
         return DIPProfile(
             id: context.uid, displayName: stored.displayName,
             department: stored.department, city: stored.city,
@@ -92,9 +96,9 @@ enum MemberProfileBridge {
         guard await editor.save() else { throw editor.saveError ?? AccountsFailure.unknown }
     }
 
-    static func seed(context: MembershipContext) -> DIPAppSnapshot {
+    static func seed(context: MembershipContext, oauthPhotoURL: String = "") -> DIPAppSnapshot {
         var snapshot = DIPMockFixtures.reference
-        snapshot.profile = profile(context: context, tags: [])
+        snapshot.profile = profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL)
         snapshot.home.profileAvatar = snapshot.profile.avatar
         return snapshot
     }

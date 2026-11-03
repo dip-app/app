@@ -141,6 +141,15 @@ final class MemberProfileBridgeTests: XCTestCase {
         }
     }
 
+    func testOAuthPhotoFillsMissingStoredPortrait() throws {
+        let context = try XCTUnwrap(try? MembershipContext(uid: "u", profile: AppUser(
+            id: "u", companyId: "c", displayName: "A", email: "a@x.com", photoURL: "", avatarId: "",
+            department: "", jobTitle: "", city: "", role: "member", interestTagIds: [], travelRadiusMiles: 0,
+            availability: [], friendIds: [], favoritePhotoIds: [], pointsBalance: 0, createdAt: Date())))
+        let profile = MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: "https://lh3.example.com/a=s400-c")
+        XCTAssertEqual(profile.photo, .remote(URL(string: "https://lh3.example.com/a=s400-c")!))
+    }
+
     func testProfileCommandPreservesOtherEditableAndServerOwnedValues() {
         let original = stored()
         let requested = ProfileEdit(department: "Design", city: "Boston", interestTagIDs: ["retired-1", "tag-social"])

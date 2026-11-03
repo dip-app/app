@@ -13,6 +13,33 @@ public enum DIPMockFixtures {
         ("tag-volunteering", "Volunteering")
     ].enumerated().map { index, item in DIPInterest(id: item.0, name: item.1, sortOrder: index) }
 
+    /// Coherent, opt-in V1 development data. These venues and dates are synthetic;
+    /// the original frame-comparison fixtures remain unchanged.
+    public static func v1Events(now: Date = Date()) -> DIPAppSnapshot {
+        var snapshot = reference
+        let joinedIDs = Set(snapshot.activeEvents.map(\.id) + snapshot.memories.map(\.eventID))
+        let orderedIDs = snapshot.eventDetails.keys.sorted()
+        for (index, id) in orderedIDs.enumerated() {
+            guard var event = snapshot.eventDetails[id] else { continue }
+            let start = now.addingTimeInterval(Double(event.isPast ? -(index + 1) : index + 1) * 86_400)
+            let locality = snapshot.home.events.first { $0.id == id }?.locality
+                ?? snapshot.activeEvents.first { $0.id == id }?.locality
+                ?? snapshot.memories.first { $0.eventID == id }?.locality ?? "Pittsburgh, PA"
+            event.metadata = .init(
+                startTime: start, endTime: start.addingTimeInterval(5_400),
+                venueName: "Team activity venue", address: "100 Example Street", locality: locality,
+                costCents: index.isMultiple(of: 2) ? 0 : 2_000, costNote: "", capacity: 30)
+            event.isJoined = joinedIDs.contains(id)
+            event.timing = start.formatted(date: .abbreviated, time: .shortened)
+            snapshot.eventDetails[id] = event
+        }
+        let lists = DIPEventLists(snapshot: snapshot, now: now)
+        snapshot.home.events = lists.discovery
+        snapshot.activeEvents = lists.upcoming
+        snapshot.memories = lists.past
+        return snapshot
+    }
+
     public static var emptySocialReview: DIPAppSnapshot {
         var snapshot = reference
         for id in snapshot.messages.keys { snapshot.messages[id] = [] }

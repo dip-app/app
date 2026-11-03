@@ -130,6 +130,7 @@ public struct ProfileEdit: Equatable, Sendable {
 }
 
 public struct DIPEventDetail: Identifiable, Equatable, Sendable {
+    public var metadata: DIPEventMetadata?
     /// Presentation projection of an event whose end time has passed.
     public var isPast: Bool
     public var id: String
@@ -142,7 +143,8 @@ public struct DIPEventDetail: Identifiable, Equatable, Sendable {
     public var attendeeCount: Int
     public var attendeeAvatars: [MediaReference]
     public var attendeeOverflowCount: Int { max(0, attendeeCount - attendeeAvatars.count) }
-    public init(id: String, title: String, image: MediaReference, timing: String, description: String, tags: [String], isJoined: Bool = false, attendeeCount: Int = 0, attendeeAvatars: [MediaReference], isPast: Bool = false) {
+    public init(id: String, title: String, image: MediaReference, timing: String, description: String, tags: [String], isJoined: Bool = false, attendeeCount: Int = 0, attendeeAvatars: [MediaReference], isPast: Bool = false, metadata: DIPEventMetadata? = nil) {
+        self.metadata = metadata
         self.isPast = isPast
         self.id = id; self.title = title; self.image = image; self.timing = timing; self.description = description
         self.tags = tags; self.isJoined = isJoined; self.attendeeCount = attendeeCount
