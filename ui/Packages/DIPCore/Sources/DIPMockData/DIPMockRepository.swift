@@ -71,6 +71,14 @@ public actor DIPMockRepository: DIPRepository {
         publish()
     }
 
+    public func setChallengeJoined(challengeID: String, joined: Bool) async throws {
+        guard var challenge = snapshot.challengeDetails[challengeID] else { throw DIPRepositoryError.notFound(challengeID) }
+        guard challenge.isJoined != joined else { return }
+        challenge.isJoined = joined
+        snapshot.challengeDetails[challengeID] = challenge
+        publish()
+    }
+
     public func updateProfile(_ edit: ProfileEdit) async throws {
         try consumeFailure(.profile)
         guard Set(edit.interestTagIDs).count <= 10 else { throw DIPRepositoryError.invalidInput("Choose up to 10 interests") }

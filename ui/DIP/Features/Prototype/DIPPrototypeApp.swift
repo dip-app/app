@@ -11,6 +11,7 @@ struct DIPPrototypeApp: View {
         case event(String)
         case participants(String)
         case album(String)
+        case challenge(String)
     }
     @State private var selectedTab: DIPHomeTab
     @State private var routes: [Route]
@@ -48,6 +49,7 @@ struct DIPPrototypeApp: View {
         case "attendees": _routes = State(initialValue: [.participants("puppy-yoga")])
         case "past-event": _routes = State(initialValue: [.event("kayaking-memory")])
         case "album": _routes = State(initialValue: [.album("kayaking-memory")])
+        case "challenge": _routes = State(initialValue: [.challenge("fitness-challenge")])
         default: _routes = State(initialValue: [])
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
@@ -158,7 +160,7 @@ struct DIPPrototypeApp: View {
                 AnyView(DIPHomeScreen(
                     home: home, showsBottomBar: false,
                     onEvent: { routes.append(.event($0)) },
-                    onChallenge: { _ in notice = "Fitness challenge" }, onSelect: homeSelection))
+                    onChallenge: { routes.append(.challenge($0)) }, onSelect: homeSelection))
             case .events:
                 AnyView(DIPMyEventsScreen(
                     activeEvents: lists.upcoming, memories: lists.past,
@@ -184,6 +186,7 @@ struct DIPPrototypeApp: View {
     private var isRSVPPending: Bool {
         switch routes.last {
         case .event(let id), .participants(let id): return model.pendingCommands.contains("rsvp:\(id)")
+        case .challenge(let id): return model.pendingCommands.contains("challenge:\(id)")
         default: return false
         }
     }
@@ -219,6 +222,8 @@ struct DIPPrototypeApp: View {
                 identifier: joined ? "participants.chat" : "participants.join")
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
+        case .challenge:
+            return DIPBottomBarAction(title: "Add Your Entry", identifier: "challenge.primary")
         case nil: return nil
         }
     }
@@ -234,6 +239,7 @@ struct DIPPrototypeApp: View {
             else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
         case .album: albumPickerPresented = true
+        case .challenge: notice = "Challenge entries"
         case nil: break
         }
     }
@@ -242,6 +248,14 @@ struct DIPPrototypeApp: View {
         guard let event = model.snapshot?.eventDetails[eventID], event.isJoined, !event.isPast else { return }
         chatEventID = eventID
         showChat = true
+    }
+
+    private func changeChallenge(_ id: String, joined: Bool) {
+        guard !model.pendingCommands.contains("challenge:\(id)") else { return }
+        Task {
+            do { try await model.setChallengeJoined(challengeID: id, joined: joined) }
+            catch { rsvpError = (error as? DIPRepositoryError).map { String(describing: $0) } ?? "Couldn’t update the challenge. Please try again." }
+        }
     }
 
     private func join(_ eventID: String) { changeRSVP(eventID, going: true) }
@@ -265,6 +279,14 @@ struct DIPPrototypeApp: View {
                         onAttendees: { routes.append(.participants(id)) }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
                         onLeave: { changeRSVP(id, going: false) })
+                    .disabled(isRSVPPending)
+                } else { missingResource }
+            case .challenge(let id):
+                if let challenge = snapshot.challengeDetails[id] {
+                    DIPChallengeDetailsScreen(
+                        challenge: challenge, onBack: pop, onCompleted: { notice = "Completed list" },
+                        onJoin: { changeChallenge(id, joined: true) },
+                        onLeave: { changeChallenge(id, joined: false) })
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .participants(let id):

@@ -33,6 +33,23 @@ public struct DIPChallengeSummary: Equatable, Sendable {
     }
 }
 
+/// Detail projection of a weekly challenge, mirroring the event page.
+public struct DIPChallengeDetail: Identifiable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var image: MediaReference
+    public var timing: String
+    public var description: String
+    public var tags: [String]
+    public var isJoined: Bool
+    public var completedCount: Int
+    public var completedAvatars: [MediaReference]
+    public init(id: String, title: String, image: MediaReference, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = []) {
+        self.id = id; self.title = title; self.image = image; self.timing = timing; self.description = description
+        self.tags = tags; self.isJoined = isJoined; self.completedCount = completedCount; self.completedAvatars = completedAvatars
+    }
+}
+
 public struct DIPHomeSnapshot: Equatable, Sendable {
     public var unreadCount: Int
     public var profileAvatar: MediaReference
@@ -233,7 +250,9 @@ public struct DIPAppSnapshot: Equatable, Sendable {
     public var albums: [String: DIPAlbum]
     public var messages: [String: [DIPMessage]]
     public var photoComments: [String: [String: [DIPPhotoComment]]]
-    public init(home: DIPHomeSnapshot, activeEvents: [DIPEventSummary], memories: [DIPMemory], profile: DIPProfile, eventDetails: [String: DIPEventDetail], participants: [String: [DIPParticipant]], albums: [String: DIPAlbum], messages: [String: [DIPMessage]], photoComments: [String: [String: [DIPPhotoComment]]] = [:]) {
+    public var challengeDetails: [String: DIPChallengeDetail]
+    public init(home: DIPHomeSnapshot, activeEvents: [DIPEventSummary], memories: [DIPMemory], profile: DIPProfile, eventDetails: [String: DIPEventDetail], participants: [String: [DIPParticipant]], albums: [String: DIPAlbum], messages: [String: [DIPMessage]], photoComments: [String: [String: [DIPPhotoComment]]] = [:], challengeDetails: [String: DIPChallengeDetail] = [:]) {
+        self.challengeDetails = challengeDetails
         self.home = home; self.activeEvents = activeEvents; self.memories = memories; self.profile = profile
         self.eventDetails = eventDetails; self.participants = participants; self.albums = albums; self.messages = messages; self.photoComments = photoComments
     }
