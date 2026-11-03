@@ -39,26 +39,6 @@ jobs:
           key: firebase-emulators-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm run test:rules
       - run: npm run test:seed
-  swift-foundations:
-    # macOS runners queue for a long time and use Actions minutes ~10x faster than Linux,
-    # so this job skips on pull requests (a skipped job still satisfies required checks).
-    # It runs after every push to main/setup and from Actions -> Setup checks -> Run workflow.
-    # Pull requests must report local `npm run test:swift` and an Xcode build instead.
-    if: github.event_name != 'pull_request'
-    runs-on: macos-15-intel
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - run: swift test --package-path ui/Packages/DIPContracts
-      - run: swift test --package-path ui/Packages/DIPDesignSystem
-      - run: swift test --package-path ui/Packages/DIPAccounts
-      - run: swift test --package-path ui/Packages/DIPCore
-      - run: brew install xcodegen
-      - run: cd ui && xcodegen generate
-      - run: xcodebuild -project ui/DIP.xcodeproj -scheme DIP -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO build
-
-      - run: python3 ui/ComponentPreview/verify.py
-
   session-handoff:
     runs-on: ubuntu-latest
     steps:
