@@ -1,0 +1,47 @@
+name: Swift checks
+# Runs after merges to main/setup that touch Swift inputs, and on demand
+# (Actions -> Swift checks -> Run workflow). Pull requests report local
+# `npm run test:swift` and an Xcode build instead: macOS runners queue for a long
+# time and use Actions minutes ~10x faster than Linux (see SESSION_ariaf7_2026-11-02_003).
+on:
+  push:
+    branches: [main, setup]
+    paths:
+      - "ui/**"
+      - "contracts/**"
+      - "scripts/generate-contracts.py"
+      - "scripts/generate-tokens.py"
+      - ".github/workflows/swift.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+# A newer merge supersedes an older run still in progress on the same branch.
+concurrency:
+  group: swift-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  swift-foundations:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      # Compiled packages (Firebase, Google Sign-In, local packages) are reused between
+      # runs. Each run saves under its own key; restore-keys picks the newest match.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ui/Packages/*/.build
+            ${{ runner.temp }}/dip-derived-app
+            ${{ runner.temp }}/dip-derived-preview
+          key: swift-build-${{ runner.os }}-${{ hashFiles('ui/project.yml', 'ui/ComponentPreview/project.yml', 'ui/Packages/*/Package.swift') }}-${{ github.sha }}
+          restore-keys: |
+            swift-build-${{ runner.os }}-${{ hashFiles('ui/project.yml', 'ui/ComponentPreview/project.yml', 'ui/Packages/*/Package.swift') }}-
+            swift-build-${{ runner.os }}-
+      - run: swift test --package-path ui/Packages/DIPContracts
+      - run: swift test --package-path ui/Packages/DIPDesignSystem
+      - run: swift test --package-path ui/Packages/DIPAccounts
+      - run: swift test --package-path ui/Packages/DIPCore
+      - run: brew install xcodegen
+      - run: cd ui && xcodegen generate
+      - run: xcodebuild -project ui/DIP.xcodeproj -scheme DIP -destination "generic/platform=iOS Simulator" -derivedDataPath "$RUNNER_TEMP/dip-derived-app" CODE_SIGNING_ALLOWED=NO build
+      - run: python3 ui/ComponentPreview/verify.py --derived-data "$RUNNER_TEMP/dip-derived-preview"
