@@ -35,13 +35,6 @@
       }
     },
     {
-      "path": "companyDomains/example.invalid",
-      "model": null,
-      "data": {
-        "companyId": "company-demo"
-      }
-    },
-    {
       "path": "users/member-demo",
       "model": "AppUser",
       "data": {

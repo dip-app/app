@@ -4,7 +4,7 @@ This slice connects Google sign-in and email-domain company membership ([ADR 000
 
 ## Backend and client ownership
 
-`resolveMembershipV1` is exported in Functions source in proposed region `us-central1`. Firebase Auth handles Google sign-in; there is no email/password, verification-email or join-code flow. The callable derives UID, email, verification, sign-in provider and name from the Auth token and accepts only `{ contractVersion: 1 }`. It requires provider `google.com` and a verified email, reduces the email domain to its registrable root with the Public Suffix List (`tldts`), refuses personal email providers, resolves the private `companyDomains/{root}` lookup and creates/replays membership transactionally. It never accepts a caller-assigned company, role, name or balance.
+`resolveMembershipV1` is exported in Functions source in proposed region `us-central1`. Firebase Auth handles Google sign-in; there is no email/password, verification-email or join-code flow. The callable derives UID, email, verification, sign-in provider and name from the Auth token and accepts only `{ contractVersion: 1 }`. It requires provider `google.com` and a verified email, reduces the email domain to its registrable root with the Public Suffix List (`tldts`), refuses personal email providers, looks up the one company whose `companies.emailDomain` equals the root and creates/replays membership transactionally. It never accepts a caller-assigned company, role, name or balance.
 
 Production callable requests require App Check. Only the official Functions-emulator environment disables enforcement. The app installs its provider in `FirebaseBootstrap` before `FirebaseApp.configure()`: the App Check debug provider in Debug and Simulator builds (register the debug token it prints in Firebase console -> App Check -> Manage debug tokens; tokens are local and never committed) and App Attest in Release device builds. The team has no paid Apple Developer Program membership yet, so the App Attest entitlement is not configured (free Personal Teams cannot sign it); Debug builds run from Xcode on a personal iPhone use the debug provider and their own registered debug token. Before TestFlight/App Store, add the App Attest entitlement (see `FirebaseBootstrap`) and register App Attest with the Team ID. Confirm the region/data-location decision before deployment.
 
@@ -16,7 +16,7 @@ Verified callers can get/listen to their own user document, including a missing 
 
 The direct-write policy bounds profile text to 120 characters, photoURL to 2048, radius to an integer 0..500, and each interests/availability list to 10 nonempty strings of at most 120 characters. The stored displayName must still be a trimmed string of at most 80 characters, which the server guarantees. Rules validate every list element; the 10-item bound keeps a maximal valid update within Firestore's expression budget. Swift EditableProfile mirrors these checks.
 
-A same-company public document can be fetched only through immutable membership. The private `companyDomains` lookup and limiter records are denied to every client, including company admins. Verified callers may read the shared tags catalog. Event, RSVP, organizer, photo/chat and other feature paths remain denied until their own reviewed tests/rules arrive.
+A same-company public document can be fetched only through immutable membership. Clients cannot list or query `companies` (so they cannot look domains up) or write `emailDomain`, and limiter records are denied to every client, including company admins. Verified callers may read the shared tags catalog. Event, RSVP, organizer, photo/chat and other feature paths remain denied until their own reviewed tests/rules arrive.
 
 ## Swift composition
 
@@ -31,7 +31,7 @@ Call stop() when disposing the session; call signOut() for an explicit sign-out.
 ## Repeatable checks and next handoff
 
 - `npm run check` runs the accounts unit tests under gcp/tests/unit (root-domain coercion, personal domains, OAuth names, eligibility ordering, membership semantics, transport) in both Node 24 and the Node 22 Functions-runtime CI job.
-- `npm run test:rules` runs the baseline/account rule tests, including client denial of displayName and `companyDomains`.
+- `npm run test:rules` runs the baseline/account rule tests, including client denial of displayName writes, `emailDomain` writes and company queries.
 - `npm run test:accounts:integration` builds exports and runs Auth+Functions+Firestore emulator tests with synthetic Google credentials: real callable transport, provider/personal/unmapped rejection, subdomain coercion, defaults/replay/OAuth name, conflicts and concurrent throttling.
 - `npm run test:swift` includes DIPAccounts; the full generated app build compiles the SDK adapter, GoogleSignIn and FirebaseBootstrap in CI.
 

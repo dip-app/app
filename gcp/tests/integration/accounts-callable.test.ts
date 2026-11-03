@@ -51,10 +51,8 @@ test("real callable verifies Google tokens, coerces domains, blocks personal dom
   const resolve = httpsCallable(functions, "resolveMembershipV1");
   const stamp = Date.now();
   try {
-    await db.collection("companies").doc("callable-alpha").set({ name: "Alpha" });
-    await db.collection("companies").doc("callable-beta").set({ name: "Beta" });
-    await db.collection("companyDomains").doc("callable-alpha.test").set({ companyId: "callable-alpha" });
-    await db.collection("companyDomains").doc("callable-beta.test").set({ companyId: "callable-beta" });
+    await db.collection("companies").doc("callable-alpha").set({ name: "Alpha", emailDomain: "callable-alpha.test" });
+    await db.collection("companies").doc("callable-beta").set({ name: "Beta", emailDomain: "callable-beta.test" });
     await rejects(resolve(REQUEST), "unauthenticated");
 
     // Email/password accounts are refused even when verified.

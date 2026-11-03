@@ -52,8 +52,10 @@ service cloud.firestore {
       allow get: if verified()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
-    // companyDomains (domain -> company) and accountRateLimits are server-only:
-    // they fall through to the deny-all rule below.
+    // Company lookup by companies.emailDomain happens only in resolveMembershipV1
+    // (Admin SDK); clients may get their own company document but never list/query
+    // companies or write emailDomain. accountRateLimits is server-only as well:
+    // both fall through to the deny-all rules.
     match /tags/{tagId} {
       allow read: if verified();
     }

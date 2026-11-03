@@ -34,25 +34,26 @@ const personalDomains = new Set(JSON.parse(await readFile(
   new URL("../functions/src/modules/accounts/domain/personal-email-domains.json", import.meta.url), "utf8")));
 
 const paths = new Set();
+const companyDomains = new Set();
 for (const document of fixture.firestoreDocuments) {
-  const allowed = /^(companies\/company-demo(?:\/events\/event-demo(?:\/rsvps\/member-demo)?)?|users\/(?:member-demo|admin-demo)|tags\/tag-social|companyDomains\/[a-z0-9.-]+)$/.test(document.path);
+  const allowed = /^(companies\/company-demo(?:\/events\/event-demo(?:\/rsvps\/member-demo)?)?|users\/(?:member-demo|admin-demo)|tags\/tag-social)$/.test(document.path);
   if (!allowed || paths.has(document.path) || typeof document.data !== "object" || document.data === null) {
     throw new Error(`Unexpected or duplicate fixture document: ${document.path}`);
   }
-  if (document.path.startsWith("companyDomains/")) {
-    // ADR 0007: keys are root domains, never personal email providers.
-    const domain = document.path.slice("companyDomains/".length);
-    if (getDomain(domain, { allowPrivateDomains: false }) !== domain || personalDomains.has(domain)) {
-      throw new Error(`companyDomains key must be a non-personal root domain: ${domain}`);
+  if (/^companies\/[^/]+$/.test(document.path)) {
+    // ADR 0007: companies.emailDomain is the authoritative lookup key. It must be a
+    // non-personal registrable root domain and unique across seeded companies.
+    const domain = document.data.emailDomain;
+    if (typeof domain !== "string" || getDomain(domain, { allowPrivateDomains: false }) !== domain || personalDomains.has(domain)) {
+      throw new Error(`${document.path} emailDomain must be a non-personal root domain: ${domain}`);
     }
-    if (Object.keys(document.data).join() !== "companyId" || typeof document.data.companyId !== "string") {
-      throw new Error(`companyDomains/${domain} must contain only a companyId.`);
-    }
+    if (companyDomains.has(domain)) throw new Error(`emailDomain ${domain} is used by more than one seeded company.`);
+    companyDomains.add(domain);
   }
   paths.add(document.path);
 }
-if (![...paths].some((path) => path.startsWith("companyDomains/"))) {
-  throw new Error("The fixture must map at least one company domain.");
+if (companyDomains.size === 0) {
+  throw new Error("The fixture must include at least one company with an emailDomain.");
 }
 for (const user of fixture.authUsers) {
   if (!["member-demo", "admin-demo"].includes(user.uid) || !user.email.endsWith("@example.invalid")

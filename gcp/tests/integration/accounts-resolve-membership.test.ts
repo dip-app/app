@@ -66,8 +66,6 @@ beforeEach(async () => {
   const company = { logoURL: "", city: "Pittsburgh, PA", officeLatitude: 40.44, officeLongitude: -79.99, createdAt };
   await db.doc("companies/company-alpha").set({ name: "Alpha", emailDomain: "alpha.test", ...company });
   await db.doc("companies/company-beta").set({ name: "Beta", emailDomain: "beta.co.uk", ...company });
-  await db.doc("companyDomains/alpha.test").set({ companyId: "company-alpha" });
-  await db.doc("companyDomains/beta.co.uk").set({ companyId: "company-beta" });
 });
 
 describe("resolveMembershipV1 against the Firestore emulator", () => {
@@ -107,10 +105,13 @@ describe("resolveMembershipV1 against the Firestore emulator", () => {
     assert.equal((await db.doc("users/u-beta").get()).get("companyId"), "company-beta");
   });
 
-  test("unmapped, orphaned and malformed mappings are one NO_COMPANY_FOR_DOMAIN with no writes", async () => {
-    await db.doc("companyDomains/orphan.test").set({ companyId: "company-deleted" });
-    await db.doc("companyDomains/broken.test").set({ companyId: 42 });
-    for (const domain of ["unknown.test", "orphan.test", "broken.test"]) {
+  test("unmapped, duplicate, non-string and non-root emailDomains are one NO_COMPANY_FOR_DOMAIN with no writes", async () => {
+    const company = { logoURL: "", city: "", officeLatitude: 0, officeLongitude: 0 };
+    await db.doc("companies/company-dupe-1").set({ name: "Dupe 1", emailDomain: "dupe.test", ...company });
+    await db.doc("companies/company-dupe-2").set({ name: "Dupe 2", emailDomain: "dupe.test", ...company });
+    await db.doc("companies/company-broken").set({ name: "Broken", emailDomain: 42, ...company });
+    await db.doc("companies/company-sub").set({ name: "Sub", emailDomain: "eng.sub.test", ...company });
+    for (const domain of ["unknown.test", "dupe.test", "broken.test", "eng.sub.test"]) {
       await rejectsWith(resolve("u-none", { email: `x@${domain}` }), "not-found", "NO_COMPANY_FOR_DOMAIN");
     }
     assert.equal((await db.doc("users/u-none").get()).exists, false);

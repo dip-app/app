@@ -43,7 +43,7 @@ npx firebase emulators:start --project demo-dip --only auth,firestore,storage,fu
 
 resolveMembershipV1 is exported and served by the Functions emulator; test it with synthetic Google credentials on the Auth emulator (see tests/integration). Production App Check is enforced; only the official emulator bypasses it. Copy `.firebaserc.example` to `.firebaserc` only if an alias file is useful locally. Keep `--project demo-dip` explicit in test commands. Choosing real development/staging/production projects and deployment credentials is separate work for a project administrator.
 
-For a shared local starting dataset, follow [sample-data/README.md](sample-data/README.md). The seed script requires the exact local Auth and Firestore addresses and the `demo-dip` project. It restores reserved fixture IDs without clearing unrelated emulator data. Company membership is seeded as a private `companyDomains/{rootDomain}` record; the seed refuses subdomain or personal-domain keys.
+For a shared local starting dataset, follow [sample-data/README.md](sample-data/README.md). The seed script requires the exact local Auth and Firestore addresses and the `demo-dip` project. It restores reserved fixture IDs without clearing unrelated emulator data. Company membership is seeded through each company's `emailDomain`; the seed refuses subdomain, personal-domain or duplicate values.
 
 ## Test boundaries
 

@@ -27,7 +27,7 @@ export async function resolveMembership(
 
   return store.runTransaction(async (tx) => {
     const companyId = await tx.companyIdForDomain(eligible.rootDomain);
-    if (!companyId || !(await tx.companyExists(companyId))) {
+    if (!companyId) {
       throw new AccountsError("not-found", "NO_COMPANY_FOR_DOMAIN", "Your company isn't on DIP yet.");
     }
     const existing = await tx.getMembership(eligible.uid);
