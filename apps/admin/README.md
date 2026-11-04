@@ -73,3 +73,7 @@ Open Firebase console, Hosting, release history for `team05-dip`, and roll back 
 
 - The root `.gitignore` excludes every `**/lib/` (compiled backend output). `apps/admin/src/lib/` is re-included with `!apps/admin/src/lib/`; if you add another `lib` folder in the portal, check `git status` shows it.
 - `devIndicators` is off in `next.config.ts`; the dev server needs a restart after config changes.
+
+## Production backend status
+
+`createEventV1`, `updateEventV1` and the event read rules are deployed to `team05-dip`. The portal is still in mock mode; connecting it needs a Firebase adapter behind `AdminApi`, real Google sign-in, and at least one user whose `users/{uid}.role` is `admin`. Roles are assigned by trusted tooling, not by clients (for example with the Admin SDK or the Firebase console).
