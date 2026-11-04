@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import { COVERS, TAGS } from "@/lib/catalog";
+import { useEffect, useRef, useState } from "react"; // tags load from the shared catalog
+import { COVERS, type Tag } from "@/lib/catalog";
 import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
   emptyDraft, normalizeDraft, validateDraft,
@@ -44,6 +44,12 @@ export function EventForm({ event, onReload }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api.listTags().then((list) => !cancelled && setTags(list), () => !cancelled && setTags([]));
+    return () => { cancelled = true; };
+  }, [api]);
   // One key per create attempt, kept across retries so a lost response can never create two events.
   const requestId = useRef(crypto.randomUUID());
 
@@ -56,7 +62,11 @@ export function EventForm({ event, onReload }: Props) {
     if (saving) return;
     const cents = dollarsToCents(price);
     const candidate: EventDraft = normalizeDraft({ ...draft, costCents: cents });
-    const found = validateDraft(candidate, { requireFuture: !editing, minCapacity: event?.attendeeCount });
+    const found = validateDraft(candidate, {
+      requireFuture: !editing, minCapacity: event?.attendeeCount,
+      // The server owns tag existence; the client checks it only against a catalog it managed to load.
+      knownTagIds: tags.length ? tags.map((tag) => tag.id) : candidate.tagIds,
+    });
     if (Number.isNaN(cents)) found.costCents = "Enter a price like 12.50, or leave blank for free.";
     setErrors(found);
     setFailure(null);
@@ -118,7 +128,8 @@ export function EventForm({ event, onReload }: Props) {
         <fieldset className="field">
           <legend>Tags</legend>
           <div className="chips">
-            {TAGS.map((tag) => (
+            {tags.length === 0 && <span className="hint">Loading tags…</span>}
+            {tags.map((tag) => (
               <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
                 onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((t) => t !== tag.id) : [...draft.tagIds, tag.id])}>
                 {tag.name}

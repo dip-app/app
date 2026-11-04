@@ -128,18 +128,29 @@ export function validateDraft(
   return errors;
 }
 
+/**
+ * The wire payload: exactly the EventDraft fields, trimmed. Callers often hold a full event (id, status,
+ * revision...); the server rejects unknown keys, so the projection is explicit.
+ */
 export function normalizeDraft(draft: EventDraft): EventDraft {
   return {
-    ...draft,
     title: draft.title.trim(),
     description: draft.description.trim(),
-    costNote: draft.costNote.trim(),
+    tagIds: [...draft.tagIds],
+    coverImageURL: draft.coverImageURL,
+    startTime: draft.startTime,
+    endTime: draft.endTime,
     venue: {
-      ...draft.venue,
       name: draft.venue.name.trim(),
       address: draft.venue.address.trim(),
       locality: draft.venue.locality.trim(),
+      latitude: draft.venue.latitude,
+      longitude: draft.venue.longitude,
     },
+    costCents: draft.costCents,
+    costNote: draft.costNote.trim(),
+    capacity: draft.capacity,
+    isOutdoor: draft.isOutdoor,
   };
 }
 

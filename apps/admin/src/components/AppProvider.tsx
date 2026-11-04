@@ -2,12 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
+import { createFirebaseApi, readLiveConfig } from "@/lib/firebaseAdapter";
 
 interface AppState {
   api: AdminApi;
   session: Session | null;
   ready: boolean;
-  signIn: (persona: PersonaId) => Promise<void>;
+  signIn: (persona?: PersonaId) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -21,7 +22,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const created = createMockApi(browserStore());
+    // Build-time config picks the backend: Firebase when the web app is configured, otherwise the local mock.
+    const live = readLiveConfig();
+    const created = live ? createFirebaseApi(live) : createMockApi(browserStore());
     setApi(created);
     void created.session().then((stored) => {
       setSession(stored);
@@ -29,7 +32,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const signIn = useCallback(async (persona: PersonaId) => {
+  const signIn = useCallback(async (persona?: PersonaId) => {
     if (api) setSession(await api.signIn(persona));
   }, [api]);
   const signOut = useCallback(async () => {
