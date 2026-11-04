@@ -12,8 +12,12 @@ describe.skipIf(!live)("Firebase adapter against the Auth, Firestore and Functio
   it("signs in, loads tags, creates and edits events, and maps server answers", async () => {
     const { createFirebaseApi } = await import("../firebaseAdapter");
     const req = createRequire(resolve(process.cwd(), "../../gcp/functions/package.json"));
-    const adminApp = req("firebase-admin/app") as typeof import("firebase-admin/app");
-    const adminFirestore = req("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+    // firebase-admin lives in gcp/functions and is only installed where the emulator suite runs, so the
+    // test describes the few calls it needs instead of importing its types.
+    interface DocRef { set(data: object): Promise<unknown>; update(data: object): Promise<unknown>; collection(name: string): CollectionRef }
+    interface CollectionRef { doc(id: string): DocRef }
+    const adminApp = req("firebase-admin/app") as { initializeApp(options: object, name: string): unknown };
+    const adminFirestore = req("firebase-admin/firestore") as { getFirestore(app: unknown): { collection(name: string): CollectionRef } };
     const db = adminFirestore.getFirestore(adminApp.initializeApp({ projectId: "demo-dip" }, "adapter-test"));
 
     const stamp = Date.now();
