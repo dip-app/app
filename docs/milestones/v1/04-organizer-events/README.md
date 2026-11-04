@@ -38,20 +38,20 @@ Do not touch other owners' paths. Shared callable exports, app composition, rule
 
 Provide discovery a compatible created/updated Event fixture and the precise revision/time synchronization behavior. Provide the integrator exports, private receipt retention/seed/migration requirements, required permissions, routing, and configuration changes. Report unresolved receipt lifetime, image catalog, or seed revision decisions explicitly. Points, challenges, rewards, and approval tools remain V2 work.
 
-## Admin portal status against the acceptance tests (November 3)
+## Status against the acceptance tests (November 3)
 
-`apps/admin` ([README](../../../../apps/admin/README.md), deployed preview at https://team05-dip.web.app) is a web organizer portal running against a **mock** `AdminApi`. It exercises the contract's behavior but is **not** server enforcement, so none of these count as V1-05 backend evidence until the callables exist.
+Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`) with unit tests (`gcp/tests/unit/organizer-events.test.ts`), rules tests (`gcp/tests/rules/organizer-events.test.ts`) and an emulator callable test (`gcp/tests/integration/organizer-callable.test.ts`, `npm run test:organizer:integration`). Not deployed. Frontend: `apps/admin` ([README](../../../../apps/admin/README.md), preview at https://team05-dip.web.app) still runs on a **mock** `AdminApi` and is not connected to the callables.
 
-| Acceptance test | Portal (mock) | Still needs |
-| --- | --- | --- |
-| Valid create/edit; required fields; limits; integer cents; capacity bounds; UTC order; future start on create | Covered by `apps/admin` unit tests and the form | Server validation in `createEventV1`/`updateEventV1` with its own tests |
-| Valid tags and coordinates | Tags are catalog IDs checked for existence; coordinates bounded | Same-company tag lookup on the server |
-| Approved default-image selection | Category covers from a placeholder catalog (`catalog://default/...`) | Design-approved catalog and server URL policy |
-| Signed-out, member, other-company admin rejection | Mock rejects all three; UI shows "No organizer access" for non-organizers | Server authorization from trusted membership; Firestore rules tests |
-| Create retry with the same `requestId`; changed payload fails | One key per create attempt, reused on retry; mock dedupes | Transactional receipt record, simultaneous-replay test |
-| Server-assigned fields (company, author, attendeeCount 0, pointsValue 0, scheduled, revision 1) | Mock assigns them | Server implementation |
-| `expectedRevision` conflicts; capacity not below attendees; cancel without delete | Mock aborts stale edits; UI offers "Reload latest" | Transactional implementation |
-| Ambiguous update timeout recovery | UI says to reload the saved revision before saving again | Backend `aborted` semantics under real timeouts |
-| Event time vs RSVP `eventStartTime` synchronization | Not modelled | Strategy agreed with participation, plus tests |
+| Acceptance test | Evidence |
+| --- | --- |
+| Valid create/edit; required fields; limits; integer cents; capacity bounds; UTC order; future start on create; tags and coordinates; approved image | Server: unit tests (validation) and emulator test. Portal: mirrored client validation. Cover catalog is a placeholder until design approves it |
+| Signed-out, member, other-company admin rejection | Server: unit + emulator tests (`UNAUTHENTICATED`, `NOT_ORGANIZER`, `COMPANY_MISMATCH`); rules tests deny cross-company reads and all client writes. Portal shows "No organizer access" (convenience only) |
+| Create retry with the same `requestId`; changed payload fails; simultaneous replay creates one event | Unit test and emulator test (five concurrent identical requests produce one event) |
+| Server-assigned fields (company, author, attendeeCount 0, pointsValue 0, scheduled, revision 1) | Unit and emulator tests |
+| `expectedRevision` conflicts return `aborted` without overwriting | Unit and emulator tests |
+| Capacity not below active attendees; cancel/restore without deletion | Unit and emulator tests |
+| Ambiguous update timeout recovery | Portal reloads the saved revision before another save; server `aborted` semantics tested |
+| Event time vs RSVP `eventStartTime` synchronization | **Open.** Time changes are refused while people are going (`TIME_CHANGE_BLOCKED`); strategy still to be agreed with participation |
+| Relevant schema, domain/UI, backend and emulator tests | Run: `npm run test:unit`, `npm run test:rules`, `npm run test:organizer:integration` |
 
-Not started: `createEventV1`/`updateEventV1`, admin event read rules and emulator tests, a Firebase adapter behind `AdminApi`, real Google sign-in and the organizer role check, and the physical-device/another-laptop evidence in V1-11.
+Not done: deploying the callables and rules, a Firebase adapter behind the portal's `AdminApi`, real Google sign-in with organizer assignment tooling, the approved image catalog, `ui/DIP/Features/Organizer` (the native iOS organizer screens), and the V1-11 device evidence.

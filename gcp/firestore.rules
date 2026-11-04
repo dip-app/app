@@ -38,6 +38,15 @@ service cloud.firestore {
         && data.travelRadiusMiles is int && data.travelRadiusMiles >= 0
         && data.travelRadiusMiles <= 500;
     }
+    function memberCompany() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
+    }
+    function sameCompany(companyId) { return verified() && memberCompany() == companyId; }
+    // Organizers are manually assigned (role "admin" on the server-owned membership document).
+    function organizer(companyId) {
+      return sameCompany(companyId)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
     match /users/{uid} {
       // Missing self documents must be observable to enter company onboarding.
       allow get: if own(uid);
@@ -51,6 +60,14 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow get: if verified()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+    // Events: same-company members read scheduled events (list queries must filter status == 'scheduled');
+    // organizers also read cancelled ones. Clients never write events: createEventV1/updateEventV1 do, and
+    // companies/{c}/commandReceipts plus everything below an event stay server-only.
+    match /companies/{companyId}/events/{eventId} {
+      allow get: if sameCompany(companyId) && (resource.data.status == 'scheduled' || organizer(companyId));
+      allow list: if organizer(companyId)
+        || (sameCompany(companyId) && resource.data.status == 'scheduled');
     }
     // Company lookup by companies.emailDomain happens only in resolveMembershipV1
     // (Admin SDK); clients may get their own company document but never list/query
