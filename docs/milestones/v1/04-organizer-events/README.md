@@ -40,7 +40,7 @@ Provide discovery a compatible created/updated Event fixture and the precise rev
 
 ## Status against the acceptance tests (November 3)
 
-Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`) with unit tests (`gcp/tests/unit/organizer-events.test.ts`), rules tests (`gcp/tests/rules/organizer-events.test.ts`) and an emulator callable test (`gcp/tests/integration/organizer-callable.test.ts`, `npm run test:organizer:integration`). Deployed to `team05-dip` on November 3, 2026 (rules and functions; unauthenticated calls verified to be refused). Frontend: `apps/admin` ([README](../../../../apps/admin/README.md), preview at https://team05-dip.web.app) has two `AdminApi` implementations: the local **mock** (what is hosted today) and a Firebase adapter for the callables, emulator-tested end to end in CI (`npm run test:admin:live`) but not yet configured in production.
+Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`) with unit tests (`gcp/tests/unit/organizer-events.test.ts`), rules tests (`gcp/tests/rules/organizer-events.test.ts`) and an emulator callable test (`gcp/tests/integration/organizer-callable.test.ts`, `npm run test:organizer:integration`). Deployed to `team05-dip` on November 3, 2026 (rules and functions; unauthenticated calls verified to be refused). Frontend: `apps/admin` ([README](../../../../apps/admin/README.md), preview at https://team05-dip.web.app) has two `AdminApi` implementations: the local **mock** and a Firebase adapter for the callables, emulator-tested end to end in CI (`npm run test:admin:live`). The hosted portal has run the adapter in live mode since November 4, 2026 (web app, App Check key and first organizer configured; see the portal README).
 
 | Acceptance test | Evidence |
 | --- | --- |
@@ -54,4 +54,4 @@ Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`)
 | Event time vs RSVP `eventStartTime` synchronization | **Decided (issue #14):** any RSVP record, including cancelled, locks start and end (`TIME_CHANGE_BLOCKED`); unit and emulator tests cover cancelled-only RSVPs. A relaxed strategy is future work |
 | Relevant schema, domain/UI, backend and emulator tests | Run: `npm run test:unit`, `npm run test:rules`, `npm run test:organizer:integration` |
 
-Not done: production configuration of the portal (web app, App Check key) and assigning the first organizer, the approved image catalog, `ui/DIP/Features/Organizer` (the native iOS organizer screens), and the V1-11 device evidence.
+Not done: a real production sign-in with create/edit evidence, further organizer assignments as needed, the approved image catalog, `ui/DIP/Features/Organizer` (the native iOS organizer screens), and the V1-11 device evidence.
