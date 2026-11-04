@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { type AdminEvent, classify, formatPrice } from "@/lib/contract";
+import { type AdminEvent, classify, formatDuration, formatPrice, formatWhen } from "@/lib/contract";
 import { Cover } from "./Cover";
 
 /** Large photo on the left, details on the right, on a solid neutral card. */
 export function EventCard({ event }: { event: AdminEvent }) {
   const kind = classify(event);
   const full = kind === "upcoming" && event.attendeeCount >= event.capacity;
-  const when = new Date(event.startTime).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const when = formatWhen(event.startTime, event.endTime);
+  const duration = formatDuration(event.startTime, event.endTime);
   const label = kind === "cancelled" ? "Cancelled" : kind === "past" ? "Past" : full ? "Full" : "Upcoming";
   return (
     <div className="card-cell">
@@ -23,8 +24,8 @@ export function EventCard({ event }: { event: AdminEvent }) {
         <h2>{event.title}</h2>
         <p className="blurb">{event.description}</p>
         <dl>
-          <div><dt>When</dt><dd>{when}</dd></div>
-          <div><dt>Where</dt><dd><span className="line">{event.venue.name}</span><span className="line muted">{event.venue.locality}</span></dd></div>
+          <div><dt>When</dt><dd><span className="line">{when}</span><span className="line muted">{duration}</span></dd></div>
+          <div><dt>Where</dt><dd><span className="line">{event.venue.name}</span><span className="line muted">{event.venue.address}, {event.venue.locality}</span></dd></div>
           <div><dt>Price</dt><dd>{formatPrice(event.costCents)}</dd></div>
           <div><dt>Going</dt><dd>{event.attendeeCount} of {event.capacity}</dd></div>
         </dl>

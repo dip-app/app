@@ -13,6 +13,8 @@ Organizer portal for V1-05, built from the `sandervonk/nextjs-template` setup (N
 
 There are no organizer callables yet (`createEventV1`, `updateEventV1` are specified in `docs/contracts/callables.md`, not implemented). `src/lib/api.ts` defines the `AdminApi` interface and a localStorage-backed mock that enforces the same rules (authorization, requestId dedupe, revision conflicts, server-assigned fields). Swap in a Firebase adapter (Google sign-in, the two callables, admin event reads under reviewed rules) without touching the UI. Visibility in the UI is never the authorization boundary.
 
+V1 mapping: see the [acceptance-test status table](../../docs/milestones/v1/04-organizer-events/README.md#admin-portal-status-against-the-acceptance-tests-november-3). Non-organizers see a "No organizer access" screen; tags are catalog IDs (not labels); cards and the live preview show date, start-end time, duration, address and price.
+
 Open items: the default-image catalog (`src/lib/catalog.ts` holds placeholders until design approves it), RSVP start-time synchronization when times change, and the live Firebase adapter.
 
 ## Run

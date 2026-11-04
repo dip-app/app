@@ -35,10 +35,11 @@ export interface AdminApi {
   updateEvent(eventId: string, expectedRevision: number, draft: EventDraft, status: EventStatus): Promise<CommandResult>;
 }
 
-export type PersonaId = "admin" | "member";
+export type PersonaId = "admin" | "member" | "otherAdmin";
 
 export const PERSONAS: Record<PersonaId, Session> = {
   admin: { uid: "uid-admin", name: "Alex Admin", email: "alex@acme.com", companyId: "acme", role: "admin" },
+  otherAdmin: { uid: "uid-other-admin", name: "Gale Globex", email: "gale@globex.com", companyId: "globex", role: "admin" },
   member: { uid: "uid-member", name: "Pat Member", email: "pat@acme.com", companyId: "acme", role: "member" },
 };
 
@@ -60,7 +61,8 @@ interface Persisted {
   session: Session | null;
 }
 
-const KEY = "dip-admin-mock-v1";
+// v2: events store tag IDs (catalog records) instead of labels.
+const KEY = "dip-admin-mock-v2";
 
 function iso(offsetDays: number, hour: number, minutes = 0): string {
   const d = new Date();
@@ -86,7 +88,7 @@ function seed(): Persisted {
       {
         ...base, id: "puppy-yoga", title: "Puppy Yoga",
         description: "Stretch, relax and bond with adorable puppies.",
-        coverImageURL: "catalog://default/fitness", tagIds: ["Fitness", "Energetic"],
+        coverImageURL: "catalog://default/fitness", tagIds: ["tag-fitness", "tag-energetic"],
         startTime: iso(6, 22), endTime: iso(6, 23, 30),
         venue: { name: "Lawrenceville Studio", address: "3200 Butler St", locality: "Lawrenceville, PA", latitude: 40.4655, longitude: -79.9606 },
         costCents: 1500, costNote: "Includes mat rental", capacity: 24, attendeeCount: 16, status: "scheduled",
@@ -94,7 +96,7 @@ function seed(): Persisted {
       {
         ...base, id: "kayaking", title: "Kayaking",
         description: "Paddle the Delaware River with coworkers.", isOutdoor: true,
-        coverImageURL: "catalog://default/outdoors", tagIds: ["Outdoors"],
+        coverImageURL: "catalog://default/outdoors", tagIds: ["tag-outdoors"],
         startTime: iso(13, 14), endTime: iso(13, 18),
         venue: { name: "River Landing", address: "1 Riverside Dr", locality: "Delaware River, NJ", latitude: 40.22, longitude: -74.76 },
         costCents: 0, costNote: "", capacity: 12, attendeeCount: 12, status: "scheduled",
@@ -102,7 +104,7 @@ function seed(): Persisted {
       {
         ...base, id: "game-cafe", title: "Game Café Night",
         description: "Board games and snacks after work.",
-        coverImageURL: "catalog://default/games", tagIds: ["Games", "Social"],
+        coverImageURL: "catalog://default/games", tagIds: ["tag-games", "tag-social"],
         startTime: iso(-14, 23), endTime: iso(-14, 25 - 1),
         venue: { name: "Meeple & Co", address: "55 Murray Ave", locality: "Squirrel Hill, PA", latitude: 40.4371, longitude: -79.9226 },
         costCents: 500, costNote: "", capacity: 30, attendeeCount: 21, status: "scheduled",
@@ -110,7 +112,7 @@ function seed(): Persisted {
       {
         ...base, id: "cooking", title: "Cooking Class",
         description: "Cook a three-course meal together.",
-        coverImageURL: "catalog://default/cooking", tagIds: ["Cooking"],
+        coverImageURL: "catalog://default/cooking", tagIds: ["tag-cooking"],
         startTime: iso(20, 22), endTime: iso(20, 24 - 1),
         venue: { name: "Test Kitchen", address: "900 Penn Ave", locality: "Pittsburgh, PA", latitude: 40.4443, longitude: -79.9937 },
         costCents: 2500, costNote: "Ingredients included", capacity: 16, attendeeCount: 3, status: "cancelled",

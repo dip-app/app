@@ -1,6 +1,8 @@
 // Mirrors contracts/v1/models.schema.json (Event, EventDraft, Venue) and docs/contracts/callables.md.
 // Replace with the generated types once the organizer callables exist.
 
+import { TAG_IDS } from "./catalog";
+
 export type EventStatus = "scheduled" | "cancelled";
 
 export interface Venue {
@@ -86,7 +88,7 @@ export function emptyDraft(): EventDraft {
  */
 export function validateDraft(
   draft: EventDraft,
-  options: { requireFuture: boolean; now?: Date; minCapacity?: number },
+  options: { requireFuture: boolean; now?: Date; minCapacity?: number; knownTagIds?: string[] },
 ): FieldErrors {
   const errors: FieldErrors = {};
   const title = draft.title.trim();
@@ -118,6 +120,10 @@ export function validateDraft(
         ? `Capacity can’t be below the ${minCapacity} people already going (max ${LIMITS.capacityMax}).`
         : `Capacity must be ${LIMITS.capacityMin}–${LIMITS.capacityMax}.`;
   }
+  const known = options.knownTagIds ?? TAG_IDS;
+  if (draft.tagIds.some((id) => !known.includes(id)) || new Set(draft.tagIds).size !== draft.tagIds.length) {
+    errors.tagIds = "Choose tags from the list.";
+  }
   if (!draft.coverImageURL) errors.coverImageURL = "Pick a cover image.";
   return errors;
 }
@@ -145,4 +151,27 @@ export function formatPrice(costCents: number): string {
 export function classify(event: AdminEvent, now: Date = new Date()): "upcoming" | "past" | "cancelled" {
   if (event.status === "cancelled") return "cancelled";
   return Date.parse(event.endTime) <= now.getTime() ? "past" : "upcoming";
+}
+
+/** "2 hr 30 min", "45 min"; empty when the times are not both valid. */
+export function formatDuration(startIso: string, endIso: string): string {
+  const minutes = Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60000);
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
+}
+
+/** "Mon, Nov 16 · 9:00 – 11:00 AM": date plus start and end, so date, time and length read at a glance. */
+export function formatWhen(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (Number.isNaN(start.getTime())) return "";
+  const day = start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const from = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (Number.isNaN(end.getTime())) return `${day} · ${from}`;
+  const to = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const sameDay = start.toDateString() === end.toDateString();
+  return sameDay ? `${day} · ${from} – ${to}` : `${day} ${from} – ${end.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} ${to}`;
 }
