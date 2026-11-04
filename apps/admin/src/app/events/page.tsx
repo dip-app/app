@@ -19,6 +19,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<AdminEvent[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [filter, setFilter] = useState<Filter>("upcoming");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!session) return;
@@ -30,15 +31,21 @@ export default function EventsPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, session]);
+  }, [api, session, attempt]);
 
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
 
   return (
     <Shell title="Events" subtitle="Everything your company can see in the DIP app." action={session?.role === "admin" ? <Link className="pill-btn purple" href="/events/new/">New event</Link> : undefined}>
-      {error ? (
+      {error?.code === "permission-denied" ? (
+        <div className="empty" role="alert">
+          <h2>No organizer access</h2>
+          <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
+        </div>
+      ) : error ? (
         <div className="banner error" role="alert">
           <span>{error.message}</span>
+          <button className="pill-btn" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
         </div>
       ) : events === null ? (
         <div className="skeleton-list" role="status" aria-label="Loading events"><div className="skeleton" /><div className="skeleton" /></div>

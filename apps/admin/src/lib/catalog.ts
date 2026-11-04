@@ -19,4 +19,17 @@ export function coverFor(url: string): CoverOption | undefined {
   return COVERS.find((cover) => cover.url === url);
 }
 
-export const TAGS = ["Fitness", "Energetic", "Hype", "Outdoors", "Social", "Cooking", "Games", "Chill"];
+/** Mirrors tags/{tagId}: events store IDs, never labels. The portal reads the same catalog the app uses. */
+export interface Tag { id: string; name: string; }
+
+export const TAGS: Tag[] = [
+  { id: "tag-fitness", name: "Fitness" }, { id: "tag-energetic", name: "Energetic" }, { id: "tag-hype", name: "Hype" },
+  { id: "tag-outdoors", name: "Outdoors" }, { id: "tag-social", name: "Social" }, { id: "tag-cooking", name: "Cooking" },
+  { id: "tag-games", name: "Games" }, { id: "tag-chill", name: "Chill" },
+];
+
+export const TAG_IDS = TAGS.map((tag) => tag.id);
+
+export function tagName(id: string): string {
+  return TAGS.find((tag) => tag.id === id)?.name ?? id;
+}

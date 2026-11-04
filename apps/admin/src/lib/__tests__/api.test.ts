@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type KeyValueStore, createMockApi } from "../api";
-import { ApiError, type EventDraft, emptyDraft, validateDraft } from "../contract";
+import { ApiError, type EventDraft, emptyDraft, formatDuration, formatWhen, validateDraft } from "../contract";
 import { dollarsToCents } from "../datetime";
 
 const NOW = new Date("2026-11-03T12:00:00Z");
@@ -24,7 +24,7 @@ function validDraft(overrides: Partial<EventDraft> = {}): EventDraft {
   };
 }
 
-async function signedIn(persona: "admin" | "member" = "admin") {
+async function signedIn(persona: "admin" | "member" | "otherAdmin" = "admin") {
   const api = createMockApi(memoryStore(), () => NOW);
   await api.signIn(persona);
   return api;
@@ -111,5 +111,44 @@ describe("updateEvent", () => {
     expect(await code(api.updateEvent(full.id, full.revision, { ...full, capacity: 5 }, "scheduled"))).toBe("invalid-argument");
     await api.updateEvent(full.id, full.revision, full, "cancelled");
     expect((await api.getEvent(full.id)).status).toBe("cancelled");
+  });
+});
+
+describe("tags", () => {
+  it("accepts catalog tag IDs and rejects unknown or duplicate tags", async () => {
+    expect(validateDraft(validDraft({ tagIds: ["tag-fitness", "tag-games"] }), { requireFuture: true, now: NOW })).toEqual({});
+    expect(validateDraft(validDraft({ tagIds: ["Fitness"] }), { requireFuture: true, now: NOW }).tagIds).toBeDefined();
+    expect(validateDraft(validDraft({ tagIds: ["tag-fitness", "tag-fitness"] }), { requireFuture: true, now: NOW }).tagIds).toBeDefined();
+    const api = await signedIn();
+    expect(await code(api.createEvent(crypto.randomUUID(), validDraft({ tagIds: ["nope"] })))).toBe("invalid-argument");
+  });
+});
+
+describe("tenant isolation and member writes", () => {
+  it("keeps another company's organizer out of this company's events", async () => {
+    const api = await signedIn("otherAdmin");
+    expect(await api.listEvents()).toEqual([]);
+    expect(await code(api.getEvent("puppy-yoga"))).toBe("not-found");
+    const own = createMockApi(memoryStore(), () => NOW);
+    await own.signIn("admin");
+    const target = (await own.listEvents()).find((e) => e.id === "puppy-yoga")!;
+    await api.signIn("otherAdmin");
+    expect(await code(api.updateEvent(target.id, target.revision, target, "scheduled"))).toBe("not-found");
+  });
+  it("rejects member updates as well as creates", async () => {
+    const api = await signedIn("member");
+    const draft = validDraft();
+    expect(await code(api.updateEvent("puppy-yoga", 1, draft, "scheduled"))).toBe("permission-denied");
+    expect(await code(api.getEvent("puppy-yoga"))).toBe("permission-denied");
+  });
+});
+
+describe("date, time and duration display", () => {
+  it("formats duration and the when line", () => {
+    expect(formatDuration("2026-11-10T22:00:00.000Z", "2026-11-10T23:30:00.000Z")).toBe("1 hr 30 min");
+    expect(formatDuration("2026-11-10T22:00:00.000Z", "2026-11-10T22:45:00.000Z")).toBe("45 min");
+    expect(formatDuration("2026-11-10T22:00:00.000Z", "2026-11-11T00:00:00.000Z")).toBe("2 hr");
+    expect(formatDuration("bad", "worse")).toBe("");
+    expect(formatWhen("2026-11-10T22:00:00.000Z", "2026-11-10T23:30:00.000Z")).toContain(" – ");
   });
 });

@@ -68,7 +68,14 @@ export function EventForm({ event, onReload }: Props) {
       else await api.createEvent(requestId.current, candidate);
       router.push("/events/");
     } catch (error) {
-      const apiError = error instanceof ApiError ? error : new ApiError("failed-precondition", "Couldn’t save. Your changes are still here, so you can try again.");
+      // A lost response is ambiguous: the server may have applied the edit. Creates are safe to retry (same
+      // requestId); edits must reload the saved revision before saving again, per the callable contract.
+      const apiError = error instanceof ApiError ? error : new ApiError(
+        editing ? "aborted" : "failed-precondition",
+        editing
+          ? "We couldn’t confirm whether your changes were saved. Reload the latest version to check before saving again."
+          : "Couldn’t create the event. Your draft is kept; trying again is safe and won’t create a duplicate.",
+      );
       setFailure(apiError);
       if (apiError.fields) setErrors(apiError.fields);
     } finally {
@@ -110,12 +117,13 @@ export function EventForm({ event, onReload }: Props) {
           <legend>Tags</legend>
           <div className="chips">
             {TAGS.map((tag) => (
-              <button key={tag} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag)}
-                onClick={() => set("tagIds", draft.tagIds.includes(tag) ? draft.tagIds.filter((t) => t !== tag) : [...draft.tagIds, tag])}>
-                {tag}
+              <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
+                onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((t) => t !== tag.id) : [...draft.tagIds, tag.id])}>
+                {tag.name}
               </button>
             ))}
           </div>
+          {err("tagIds") && <span className="error" id="tags-error">{err("tagIds")}</span>}
         </fieldset>
         <fieldset className="field">
           <legend>Cover image</legend>

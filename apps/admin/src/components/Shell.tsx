@@ -50,6 +50,12 @@ export function Shell({ title, subtitle, action, children }: Props) {
         </div>
       </aside>
       <main className="content">
+        {session.role !== "admin" ? (
+          <div className="empty" role="alert">
+            <h2>No organizer access</h2>
+            <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
+          </div>
+        ) : (<>
         <header className="page-header">
           <div className="titles">
             <h1 className="title-pill">{title}</h1>
@@ -58,6 +64,7 @@ export function Shell({ title, subtitle, action, children }: Props) {
           {action && <div className="header-action">{action}</div>}
         </header>
         {children}
+        </>)}
       </main>
     </div>
   );
