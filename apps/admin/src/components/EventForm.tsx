@@ -36,6 +36,8 @@ export function EventForm({ event, onReload }: Props) {
   const { api } = useApp();
   const router = useRouter();
   const editing = Boolean(event);
+  // Mirrors the server rule: once anyone has responded, start and end are locked.
+  const timesLocked = editing && (event?.attendeeCount ?? 0) > 0;
   const [draft, setDraft] = useState<EventDraft>(() => (event ? structuredClone(event) : emptyDraft()));
   const [status, setStatus] = useState<EventStatus>(event?.status ?? "scheduled");
   const [price, setPrice] = useState(() => (event ? centsToDollars(event.costCents) : ""));
@@ -145,16 +147,20 @@ export function EventForm({ event, onReload }: Props) {
         <div className="row">
           <div className="field">
             <label htmlFor="start">Starts</label>
-            <input id="start" aria-describedby={err("startTime") ? "start-error" : undefined} type="datetime-local" value={isoToLocalInput(draft.startTime)} aria-invalid={invalid("startTime")} onChange={(e) => set("startTime", localInputToIso(e.target.value))} />
+            <input id="start" aria-describedby={err("startTime") ? "start-error" : undefined} type="datetime-local" disabled={timesLocked} value={isoToLocalInput(draft.startTime)} aria-invalid={invalid("startTime")} onChange={(e) => set("startTime", localInputToIso(e.target.value))} />
             {err("startTime") && <span className="error" id="start-error">{err("startTime")}</span>}
           </div>
           <div className="field">
             <label htmlFor="end">Ends</label>
-            <input id="end" aria-describedby={err("endTime") ? "end-error" : undefined} type="datetime-local" value={isoToLocalInput(draft.endTime)} aria-invalid={invalid("endTime")} onChange={(e) => set("endTime", localInputToIso(e.target.value))} />
+            <input id="end" aria-describedby={err("endTime") ? "end-error" : undefined} type="datetime-local" disabled={timesLocked} value={isoToLocalInput(draft.endTime)} aria-invalid={invalid("endTime")} onChange={(e) => set("endTime", localInputToIso(e.target.value))} />
             {err("endTime") && <span className="error" id="end-error">{err("endTime")}</span>}
           </div>
         </div>
-        <span className="hint">Times are entered in your local time zone and stored in UTC.</span>
+        <span className="hint">
+          {timesLocked
+            ? "Times are locked because people have responded. Cancel and recreate the event to change them."
+            : "Times are entered in your local time zone and stored in UTC."}
+        </span>
       </div>
 
       <div className="section">
