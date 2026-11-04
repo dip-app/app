@@ -64,4 +64,4 @@ jobs:
           channelId: live
       - name: Skipped
         if: env.HAS_SECRET != 'true'
-        run: echo "Skipping the Hosting deploy: FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP and the NEXT_PUBLIC_FIREBASE_* repository variables must all be set."
+        run: echo "Skipping the Hosting deploy because FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP and the NEXT_PUBLIC_FIREBASE_* repository variables are not all set."
