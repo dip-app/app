@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 .hintrc
 *.DS_Store
+
+# keep the committed template
+!.env.example

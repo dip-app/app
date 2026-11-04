@@ -1,3 +1,4 @@
+import { type Tag, TAGS } from "./catalog";
 import {
   ApiError,
   type AdminEvent,
@@ -21,13 +22,18 @@ export interface CommandResult {
 }
 
 /**
- * Everything the portal needs from the backend. The mock below enforces the same rules as the
- * specified callables; a Firebase adapter (Auth + createEventV1/updateEventV1 + admin reads)
- * implements this interface later without touching the UI.
+ * Everything the portal needs from the backend. `createMockApi` below enforces the same rules as the
+ * callables for the local preview; `createFirebaseApi` (firebaseAdapter.ts) talks to Auth, Firestore and
+ * createEventV1/updateEventV1. The UI only depends on this interface.
  */
 export interface AdminApi {
+  /** "mock" keeps data in this browser; "live" uses Firebase. */
+  readonly mode: "mock" | "live";
   session(): Promise<Session | null>;
-  signIn(persona: PersonaId): Promise<Session>;
+  /** Mock mode picks a preview persona; live mode opens Google sign-in and ignores the argument. */
+  signIn(persona?: PersonaId): Promise<Session>;
+  /** The shared tags catalog (`tags/{tagId}`); events store tag IDs. */
+  listTags(): Promise<Tag[]>;
   signOut(): Promise<void>;
   listEvents(): Promise<AdminEvent[]>;
   getEvent(eventId: string): Promise<AdminEvent>;
@@ -150,10 +156,14 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
   }
 
   return {
+    mode: "mock",
     async session() {
       return load().session;
     },
-    async signIn(persona) {
+    async listTags() {
+      return TAGS;
+    },
+    async signIn(persona = "admin") {
       const data = load();
       data.session = PERSONAS[persona];
       save(data);

@@ -9,13 +9,22 @@ Organizer portal for V1-05, built from the `sandervonk/nextjs-template` setup (N
 - Create and edit an event with every `EventDraft` field, validated like the contract: title/description limits, UTC time order, future start on create, venue and coordinate bounds, integer price, capacity bounds, cover from the default catalog.
 - Create keeps one `requestId` across retries; edit sends `expectedRevision` and offers "Reload latest" on a conflict; capacity cannot drop below people already going; events can be cancelled and restored, never deleted.
 
-## Mock mode (current)
+## Mock mode and live mode
 
-The organizer callables (`createEventV1`, `updateEventV1`) now exist in `gcp/functions` and are emulator-tested, but they are **not deployed** and the portal is **not connected** to them yet. `src/lib/api.ts` defines the `AdminApi` interface and a localStorage-backed mock that enforces the same rules (authorization, requestId dedupe, revision conflicts, server-assigned fields). Swap in a Firebase adapter (Google sign-in, the two callables, admin event reads under reviewed rules) without touching the UI. Visibility in the UI is never the authorization boundary.
+`src/lib/api.ts` defines the `AdminApi` interface the UI depends on, with two implementations chosen at build time:
 
-V1 mapping: see the [acceptance-test status table](../../docs/milestones/v1/04-organizer-events/README.md#status-against-the-acceptance-tests-november-3). Non-organizers see a "No organizer access" screen; tags are catalog IDs (not labels); cards and the live preview show date, start-end time, duration, address and price.
+- **Mock (default):** `createMockApi` keeps data in the browser and enforces the same rules as the callables (authorization, requestId dedupe, revision conflicts, time lock, server-assigned fields). This is what the hosted preview serves until live mode is configured.
+- **Live:** `createFirebaseApi` (`src/lib/firebaseAdapter.ts`) uses Google sign-in, `resolveMembershipV1` on first sign-in, Firestore reads (the event feed, the `tags` catalog) and the `createEventV1`/`updateEventV1` callables. It is selected when `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `NEXT_PUBLIC_FIREBASE_APP_ID` are set (see `.env.example`). Authorization is enforced by the backend; the portal's "No organizer access" screen is only a convenience.
 
-Open items: the default-image catalog (`src/lib/catalog.ts` holds placeholders until design approves it), RSVP start-time synchronization when times change, and the live Firebase adapter.
+Setting up live mode (once per Firebase project):
+
+1. Register a web app: `firebase apps:create web "DIP Admin" --project team05-dip`, then `firebase apps:sdkconfig web <appId> --project team05-dip` for the config values.
+2. Google sign-in is already enabled for the project; `<project>.web.app` is an authorized domain by default.
+3. Production callables enforce App Check, so the web app needs a reCAPTCHA Enterprise key registered in App Check (`NEXT_PUBLIC_APPCHECK_SITE_KEY`). For local work use `NEXT_PUBLIC_APPCHECK_DEBUG_TOKEN=true` and register the printed token, or run against the emulators with `NEXT_PUBLIC_FIREBASE_EMULATOR_HOST=127.0.0.1`.
+4. Assign organizers with trusted tooling after their first sign-in: set `users/{uid}.role` to `"admin"` (Admin SDK or the Firebase console). Clients cannot write roles.
+5. Build with the variables set (`.env.local` or the environment) and deploy as described below.
+
+Tests: `npm test` runs the unit tests. `npm run test:admin:live` (repo root) runs the adapter end to end against the Auth, Firestore and Functions emulators; it is part of CI.
 
 ## Run
 
@@ -76,4 +85,4 @@ Open Firebase console, Hosting, release history for `team05-dip`, and roll back 
 
 ## Production backend status
 
-`createEventV1`, `updateEventV1` and the event read rules are deployed to `team05-dip`. The portal is still in mock mode; connecting it needs a Firebase adapter behind `AdminApi`, real Google sign-in, and at least one user whose `users/{uid}.role` is `admin`. Roles are assigned by trusted tooling, not by clients (for example with the Admin SDK or the Firebase console).
+`createEventV1`, `updateEventV1` and the event read rules are deployed to `team05-dip`. The hosted portal is still the mock preview until the web app, App Check key and an organizer account exist (steps above).
