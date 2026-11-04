@@ -51,7 +51,7 @@ Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`)
 | `expectedRevision` conflicts return `aborted` without overwriting | Unit and emulator tests |
 | Capacity not below active attendees; cancel/restore without deletion | Unit and emulator tests |
 | Ambiguous update timeout recovery | Portal reloads the saved revision before another save; server `aborted` semantics tested |
-| Event time vs RSVP `eventStartTime` synchronization | **Open.** Time changes are refused while people are going (`TIME_CHANGE_BLOCKED`); strategy still to be agreed with participation |
+| Event time vs RSVP `eventStartTime` synchronization | **Decided (issue #14):** any RSVP record, including cancelled, locks start and end (`TIME_CHANGE_BLOCKED`); unit and emulator tests cover cancelled-only RSVPs. A relaxed strategy is future work |
 | Relevant schema, domain/UI, backend and emulator tests | Run: `npm run test:unit`, `npm run test:rules`, `npm run test:organizer:integration` |
 
 Not done: assigning the first organizer, a Firebase adapter behind the portal's `AdminApi`, real Google sign-in with organizer assignment tooling, the approved image catalog, `ui/DIP/Features/Organizer` (the native iOS organizer screens), and the V1-11 device evidence.

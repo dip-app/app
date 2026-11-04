@@ -19,6 +19,8 @@ class FakeStore implements OrganizerStore {
   tags = new Set(["tag-fitness", "tag-games"]);
   events = new Map<string, StoredEvent & { draft?: ParsedDraft; createdBy?: string }>();
   receipts = new Map<string, CommandReceipt>();
+  /** Event paths (`company/event`) that have at least one RSVP record, active or cancelled. */
+  rsvps = new Set<string>();
   writes: string[] = [];
   async runTransaction<T>(work: (tx: OrganizerTransaction) => Promise<T>): Promise<T> {
     const staged: Array<() => void> = [];
@@ -26,10 +28,11 @@ class FakeStore implements OrganizerStore {
       getMembership: async (uid) => this.members.get(uid) ?? null,
       getEvent: async (company, id) => this.events.get(`${company}/${id}`) ?? null,
       getReceipt: async (company, uid, requestId) => this.receipts.get(`${company}/${uid}_${requestId}`) ?? null,
+      hasAnyRsvp: async (company, id) => this.rsvps.has(`${company}/${id}`),
       missingTagIds: async (ids) => ids.filter((id) => !this.tags.has(id)),
-      createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, startTime: draft.startTime, status: "scheduled", draft, createdBy: uid }); }); },
+      createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, startTime: draft.startTime, endTime: draft.endTime, status: "scheduled", draft, createdBy: uid }); }); },
       createReceipt: (company, uid, requestId, receipt) => { staged.push(() => this.receipts.set(`${company}/${uid}_${requestId}`, receipt)); },
-      updateEvent: (company, id, draft, status, next) => { staged.push(() => { this.writes.push(`update ${id}`); const cur = this.events.get(`${company}/${id}`)!; this.events.set(`${company}/${id}`, { ...cur, draft, status, revision: next, startTime: draft.startTime }); }); },
+      updateEvent: (company, id, draft, status, next) => { staged.push(() => { this.writes.push(`update ${id}`); const cur = this.events.get(`${company}/${id}`)!; this.events.set(`${company}/${id}`, { ...cur, draft, status, revision: next, startTime: draft.startTime, endTime: draft.endTime }); }); },
     };
     const result = await work(tx);
     staged.forEach((apply) => apply()); // nothing is applied when work throws
@@ -184,15 +187,29 @@ describe("updateEvent", () => {
     assert.equal((await failure(updateEvent(store, null, updateRequest()))).code, "unauthenticated");
     assert.equal((await failure(updateEvent(store, admin, updateRequest({ eventId: "missing" })))).reason, "EVENT_NOT_FOUND");
   });
-  test("capacity cannot drop below attendees; times are locked while people are going", async () => {
+  test("capacity cannot drop below attendees", async () => {
     const store = await seeded();
     store.events.get("acme/evt-1")!.attendeeCount = 8;
     const capacity = await failure(updateEvent(store, admin, updateRequest({}, draftJson({ capacity: 5 }))));
     assert.equal(capacity.reason, "CAPACITY_BELOW_ATTENDEES");
-    const time = await failure(updateEvent(store, admin, updateRequest({}, draftJson({ startTime: "2026-11-11T22:00:00Z", endTime: "2026-11-11T23:00:00Z" }))));
-    assert.equal(time.reason, "TIME_CHANGE_BLOCKED");
-    // Same start time, bigger capacity and a new end time are fine.
-    await updateEvent(store, admin, updateRequest({}, draftJson({ capacity: 8, endTime: "2026-11-11T00:30:00Z" })));
+    await updateEvent(store, admin, updateRequest({}, draftJson({ capacity: 8 })));
+  });
+  test("any RSVP record, even a cancelled one, locks both start and end times", async () => {
+    const store = await seeded();
+    store.rsvps.add("acme/evt-1"); // attendeeCount stays 0: the only RSVP is cancelled
+    const start = await failure(updateEvent(store, admin, updateRequest({}, draftJson({ startTime: "2026-11-11T22:00:00Z", endTime: "2026-11-11T23:30:00Z" }))));
+    assert.equal(start.reason, "TIME_CHANGE_BLOCKED");
+    assert.deepEqual([...start.fields], ["startTime", "endTime"]);
+    const end = await failure(updateEvent(store, admin, updateRequest({}, draftJson({ endTime: "2026-11-10T23:45:00Z" }))));
+    assert.equal(end.reason, "TIME_CHANGE_BLOCKED");
+    // Everything else stays editable, and unchanged times are fine.
+    await updateEvent(store, admin, updateRequest({}, draftJson({ title: "Renamed", capacity: 12, costCents: 0 })));
+    assert.equal(store.events.get("acme/evt-1")!.draft!.title, "Renamed");
+  });
+  test("without any RSVP record the times can change", async () => {
+    const store = await seeded();
+    await updateEvent(store, admin, updateRequest({}, draftJson({ startTime: "2026-11-11T22:00:00Z", endTime: "2026-11-11T23:30:00Z" })));
+    assert.equal(store.events.get("acme/evt-1")!.startTime.toISOString(), "2026-11-11T22:00:00.000Z");
   });
   test("events cancel and restore without deletion", async () => {
     const store = await seeded();

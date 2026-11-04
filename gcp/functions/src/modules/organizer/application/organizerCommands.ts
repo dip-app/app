@@ -74,8 +74,9 @@ export async function createEvent(
 /**
  * updateEventV1: full-draft replacement guarded by expectedRevision. Capacity may not fall below the
  * active attendeeCount. Start-time changes are refused while anyone is going, because the denormalized
- * RSVP eventStartTime snapshots cannot be updated in one transaction (up to 10,000 RSVPs) and the
- * synchronization strategy is not agreed yet (docs/contracts/data-ownership.md).
+ * RSVP eventStartTime snapshots cannot be updated in one transaction (up to 10,000 RSVPs). V1 decision
+ * (issue #14): any RSVP record, including cancelled ones, locks both the start and end time; every other
+ * validated field and the cancelled status stay editable.
  */
 export async function updateEvent(
   store: OrganizerStore,
@@ -95,9 +96,11 @@ export async function updateEvent(
       throw new OrganizerError("failed-precondition", "CAPACITY_BELOW_ATTENDEES",
         "Capacity can't be lower than the number of people already going.", ["capacity"]);
     }
-    if (current.attendeeCount > 0 && request.event.startTime.getTime() !== current.startTime.getTime()) {
+    const timesChanged = request.event.startTime.getTime() !== current.startTime.getTime()
+      || request.event.endTime.getTime() !== current.endTime.getTime();
+    if (timesChanged && await tx.hasAnyRsvp(request.companyId, request.eventId)) {
       throw new OrganizerError("failed-precondition", "TIME_CHANGE_BLOCKED",
-        "The start time can't be changed while people are going. Cancel and recreate the event instead.", ["startTime"]);
+        "The times can't be changed once anyone has responded. Cancel and recreate the event instead.", ["startTime", "endTime"]);
     }
     await requireKnownTags(tx, request.event.tagIds);
     const nextRevision = current.revision + 1;

@@ -121,15 +121,24 @@ test("organizer callables enforce authorization, idempotency, revisions and capa
     await rejects(update(edit(2, draft(keep))), "permission-denied", "NOT_ORGANIZER");
     await googleSignIn(auth, `admin-${stamp}@org-alpha-${stamp}.test`, "Alex Organizer");
 
-    // Capacity cannot fall below attendees; start time is locked while people are going.
+    // Times may change while no RSVP record exists, but that bumps the revision; use a throwaway shift and restore.
+    const shifted = { startTime: new Date(Date.parse(startTime) + 86_400_000).toISOString(), endTime: new Date(Date.parse(keep.endTime) + 86_400_000).toISOString() };
+    assert.equal(((await update(edit(2, draft(shifted)))).data as { revision: number }).revision, 3);
+    assert.equal(((await update(edit(3, draft(keep)))).data as { revision: number }).revision, 4);
+
+    // Capacity cannot fall below attendees.
     await eventRef.update({ attendeeCount: 8 });
-    await rejects(update(edit(2, draft({ ...keep, capacity: 5 }))), "failed-precondition", "CAPACITY_BELOW_ATTENDEES");
-    await rejects(update(edit(2, draft({ capacity: 10, startTime: new Date(Date.parse(startTime) + 86_400_000).toISOString(), endTime: new Date(Date.parse(keep.endTime) + 86_400_000).toISOString() }))), "failed-precondition", "TIME_CHANGE_BLOCKED");
+    await rejects(update(edit(4, draft({ ...keep, capacity: 5 }))), "failed-precondition", "CAPACITY_BELOW_ATTENDEES");
+
+    // Any RSVP record, even a cancelled one, locks both times (issue #14); other fields stay editable.
+    await eventRef.collection("rsvps").doc("someone").set({ status: "cancelled", userId: "someone", eventId: created.eventId, companyId: companyA });
+    await rejects(update(edit(4, draft({ capacity: 10, ...shifted }))), "failed-precondition", "TIME_CHANGE_BLOCKED");
+    await rejects(update(edit(4, draft({ capacity: 10, startTime, endTime: shifted.endTime }))), "failed-precondition", "TIME_CHANGE_BLOCKED");
 
     // Cancel and restore; nothing is ever deleted.
-    assert.equal(((await update(edit(2, draft({ ...keep, capacity: 8 }), "cancelled"))).data as { revision: number }).revision, 3);
+    assert.equal(((await update(edit(4, draft({ ...keep, capacity: 8 }), "cancelled"))).data as { revision: number }).revision, 5);
     assert.equal((await eventRef.get()).get("status"), "cancelled");
-    assert.equal(((await update(edit(3, draft({ ...keep, capacity: 8 }), "scheduled"))).data as { revision: number }).revision, 4);
+    assert.equal(((await update(edit(5, draft({ ...keep, capacity: 8 }), "scheduled"))).data as { revision: number }).revision, 6);
     assert.equal((await eventRef.get()).exists, true);
 
     // The deduplication receipt is private server data.

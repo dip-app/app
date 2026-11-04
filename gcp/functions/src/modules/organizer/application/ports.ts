@@ -10,6 +10,7 @@ export interface StoredEvent {
   revision: number;
   attendeeCount: number;
   startTime: Date;
+  endTime: Date;
   status: string;
 }
 
@@ -27,6 +28,8 @@ export interface OrganizerTransaction {
   getMembership(uid: string): Promise<StoredOrganizer | null>;
   getEvent(companyId: string, eventId: string): Promise<StoredEvent | null>;
   getReceipt(companyId: string, uid: string, requestId: string): Promise<CommandReceipt | null>;
+  /** True when any RSVP record exists for the event, including cancelled ones (they keep a start-time snapshot). */
+  hasAnyRsvp(companyId: string, eventId: string): Promise<boolean>;
   /** Tag IDs that do not exist in the shared tags catalog. */
   missingTagIds(tagIds: readonly string[]): Promise<string[]>;
   /** Creates the event, revision 1, with server-owned fields; fails if it exists. */

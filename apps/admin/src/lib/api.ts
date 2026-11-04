@@ -216,6 +216,13 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
       if (current.revision !== expectedRevision) {
         throw new ApiError("aborted", "Someone else changed this event. Reload to see their changes.");
       }
+      const timesChanged = draft.startTime !== current.startTime || draft.endTime !== current.endTime;
+      if (timesChanged && current.attendeeCount > 0) {
+        // Mirrors the server: once anyone has responded, both times are locked (issue #14).
+        throw new ApiError("failed-precondition", "The times can’t be changed once anyone has responded. Cancel and recreate the event instead.", {
+          startTime: "Locked: people have responded.", endTime: "Locked: people have responded.",
+        });
+      }
       const errors = validateDraft(draft, { requireFuture: false, minCapacity: current.attendeeCount });
       if (Object.keys(errors).length) throw new ApiError("invalid-argument", "Check the highlighted fields.", errors);
       data.events[index] = { ...current, ...normalizeDraft(draft), status, revision: current.revision + 1 };

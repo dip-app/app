@@ -58,18 +58,23 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           const revision: unknown = snap.get("revision");
           const attendeeCount: unknown = snap.get("attendeeCount");
           const startTime: unknown = snap.get("startTime");
+          const endTime: unknown = snap.get("endTime");
           const status: unknown = snap.get("status");
-          if (!Number.isInteger(revision) || !Number.isInteger(attendeeCount) || !(startTime instanceof Timestamp) || typeof status !== "string") {
+          if (!Number.isInteger(revision) || !Number.isInteger(attendeeCount) || !(startTime instanceof Timestamp) || !(endTime instanceof Timestamp) || typeof status !== "string") {
             // Server-side detail stays in logs; the caller sees a generic internal error.
             throw new OrganizerError("internal", "INVALID_STORED_EVENT", "Stored event is invalid.");
           }
-          return { revision: revision as number, attendeeCount: attendeeCount as number, startTime: startTime.toDate(), status };
+          return { revision: revision as number, attendeeCount: attendeeCount as number, startTime: startTime.toDate(), endTime: endTime.toDate(), status };
         },
         async getReceipt(companyId, uid, requestId) {
           const snap = await transaction.get(receipts(companyId).doc(`${uid}_${requestId}`));
           if (!snap.exists) return null;
           const receipt: CommandReceipt = { hash: String(snap.get("hash")), eventId: String(snap.get("eventId")), revision: Number(snap.get("revision")) };
           return receipt;
+        },
+        async hasAnyRsvp(companyId, eventId) {
+          const snap = await transaction.get(events(companyId).doc(eventId).collection("rsvps").limit(1));
+          return !snap.empty;
         },
         async missingTagIds(tagIds) {
           if (tagIds.length === 0) return [];

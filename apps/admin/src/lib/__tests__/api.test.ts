@@ -152,3 +152,22 @@ describe("date, time and duration display", () => {
     expect(formatWhen("2026-11-10T22:00:00.000Z", "2026-11-10T23:30:00.000Z")).toContain(" – ");
   });
 });
+
+describe("time lock once people have responded", () => {
+  it("refuses time changes when attendees exist but allows everything else", async () => {
+    const api = await signedIn();
+    const full = (await api.listEvents()).find((e) => e.id === "puppy-yoga")!; // 16 going in the seed
+    const shifted = { ...full, startTime: new Date(Date.parse(full.startTime) + 3_600_000).toISOString(), endTime: new Date(Date.parse(full.endTime) + 3_600_000).toISOString() };
+    expect(await code(api.updateEvent(full.id, full.revision, shifted, "scheduled"))).toBe("failed-precondition");
+    await api.updateEvent(full.id, full.revision, { ...full, title: "Puppy Yoga!", costCents: 0 }, "scheduled");
+    expect((await api.getEvent(full.id)).title).toBe("Puppy Yoga!");
+  });
+  it("allows time changes before anyone responds", async () => {
+    const api = await signedIn();
+    const { eventId } = await api.createEvent(crypto.randomUUID(), validDraft());
+    const created = await api.getEvent(eventId);
+    const shifted = { ...created, startTime: "2026-11-12T22:00:00.000Z", endTime: "2026-11-12T23:00:00.000Z" };
+    await api.updateEvent(eventId, created.revision, shifted, "scheduled");
+    expect((await api.getEvent(eventId)).startTime).toBe("2026-11-12T22:00:00.000Z");
+  });
+});
