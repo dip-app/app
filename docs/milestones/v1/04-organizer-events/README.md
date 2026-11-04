@@ -40,7 +40,7 @@ Provide discovery a compatible created/updated Event fixture and the precise rev
 
 ## Status against the acceptance tests (November 3)
 
-Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`) with unit tests (`gcp/tests/unit/organizer-events.test.ts`), rules tests (`gcp/tests/rules/organizer-events.test.ts`) and an emulator callable test (`gcp/tests/integration/organizer-callable.test.ts`, `npm run test:organizer:integration`). Not deployed. Frontend: `apps/admin` ([README](../../../../apps/admin/README.md), preview at https://team05-dip.web.app) still runs on a **mock** `AdminApi` and is not connected to the callables.
+Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`) with unit tests (`gcp/tests/unit/organizer-events.test.ts`), rules tests (`gcp/tests/rules/organizer-events.test.ts`) and an emulator callable test (`gcp/tests/integration/organizer-callable.test.ts`, `npm run test:organizer:integration`). Deployed to `team05-dip` on November 3, 2026 (rules and functions; unauthenticated calls verified to be refused). Frontend: `apps/admin` ([README](../../../../apps/admin/README.md), preview at https://team05-dip.web.app) still runs on a **mock** `AdminApi` and is not connected to the callables.
 
 | Acceptance test | Evidence |
 | --- | --- |
@@ -54,4 +54,4 @@ Backend: `createEventV1`/`updateEventV1` (`gcp/functions/src/modules/organizer`)
 | Event time vs RSVP `eventStartTime` synchronization | **Open.** Time changes are refused while people are going (`TIME_CHANGE_BLOCKED`); strategy still to be agreed with participation |
 | Relevant schema, domain/UI, backend and emulator tests | Run: `npm run test:unit`, `npm run test:rules`, `npm run test:organizer:integration` |
 
-Not done: deploying the callables and rules, a Firebase adapter behind the portal's `AdminApi`, real Google sign-in with organizer assignment tooling, the approved image catalog, `ui/DIP/Features/Organizer` (the native iOS organizer screens), and the V1-11 device evidence.
+Not done: assigning the first organizer, a Firebase adapter behind the portal's `AdminApi`, real Google sign-in with organizer assignment tooling, the approved image catalog, `ui/DIP/Features/Organizer` (the native iOS organizer screens), and the V1-11 device evidence.
