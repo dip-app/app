@@ -10,7 +10,9 @@ Status: handoff
 
 Configured production for the admin portal's live mode and deployed it: registered the web app, registered an App Check reCAPTCHA Enterprise key, assigned the first organizer and published a live-mode build. Made CI deploys live-config-aware so they cannot replace it with the mock.
 
-## Changes (production, all done from the CLI with explicit user approval in chat)
+## Changes
+
+Production changes were all made from the CLI with explicit user approval in chat.
 
 - Firebase web app "DIP Admin" created in team05-dip (app ID 1:28423377357:web:a19e30f455328ae322b484).
 - recaptchaenterprise API enabled; reCAPTCHA Enterprise key "DIP Admin web" created for team05-dip.web.app, team05-dip.firebaseapp.com and localhost, and registered with App Check for the web app (token TTL 3600s).
