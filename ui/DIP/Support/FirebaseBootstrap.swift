@@ -1,4 +1,5 @@
 import Foundation
+import DIPAccounts
 @preconcurrency import FirebaseAppCheck
 @preconcurrency import FirebaseAuth
 @preconcurrency import FirebaseCore
@@ -73,6 +74,12 @@ enum FirebaseBootstrap {
             firestore: Firestore.firestore(),
             functions: Functions.functions(region: FirebaseAccountsRepository.region)
         )
+    }
+
+    /// Member events share the configured account SDKs and emulator routing.
+    @MainActor static func makeMemberEventsRepository(context: MembershipContext) -> MemberEventsRepository? {
+        guard case .configured = status else { return nil }
+        return FirebaseEventReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
     }
 
     /// Completes the Google sign-in redirect. Wire to `.onOpenURL` in the app.
