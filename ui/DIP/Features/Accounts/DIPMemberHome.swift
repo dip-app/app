@@ -15,14 +15,19 @@ struct DIPMemberHome: View {
     let onSignOut: () async -> Void
     @State private var editor: ProfileEditor
     @State private var catalog: InterestCatalog
+    private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
+    @State private var liveEvents: MemberEventAppRepository?
+    @State private var eventConfigurationError = false
     @State private var prototypeRepository: DIPMockRepository
 
     init(
         context: MembershipContext,
         repository: any AccountsRepository & InterestCatalogRepository,
         oauthPhotoURL: String = "",
+        eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
         onSignOut: @escaping () async -> Void
     ) {
+        self.eventReadFactory = eventReadFactory
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
@@ -33,17 +38,39 @@ struct DIPMemberHome: View {
     }
 
     var body: some View {
-        DIPPrototypeApp(
-            repository: prototypeRepository,
-            onSignOut: onSignOut,
-            accountProfile: MemberProfileBridge.profile(context: context, tags: catalog.tags, oauthPhotoURL: oauthPhotoURL),
-            interestCatalogLoading: catalogIsLoading,
-            interestCatalogError: catalogError,
-            onRetryInterestCatalog: { Task { await catalog.load() } },
-            onProfileSave: saveProfile
-        )
-        .task { await catalog.load() }
+        Group {
+            if eventReadFactory != nil {
+                if let liveEvents { prototype(repository: liveEvents, live: true) }
+                else if eventConfigurationError {
+                    ContentUnavailableView("Events unavailable", systemImage: "calendar.badge.exclamationmark",
+                                           description: Text("Please sign out and try again."))
+                } else { ProgressView("Loading your company events…") }
+            } else { prototype(repository: prototypeRepository, live: false) }
+        }
+        .task {
+            if liveEvents == nil, let eventReadFactory {
+                if let reads = eventReadFactory(context) {
+                    liveEvents = MemberEventAppRepository(reads: reads,
+                        profile: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL))
+                } else { eventConfigurationError = true }
+            }
+            await catalog.load()
+            liveEvents?.updateTagLabels(Dictionary(catalog.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first }))
+        }
+        .onDisappear { liveEvents?.stop(); liveEvents = nil }
         .onChange(of: context.profile) { _, _ in editor.receive(context) }
+    }
+
+    private func prototype(repository: any DIPRepository, live: Bool) -> some View {
+        DIPPrototypeApp(
+            repository: repository, onSignOut: onSignOut,
+            accountProfile: MemberProfileBridge.profile(context: context, tags: catalog.tags, oauthPhotoURL: oauthPhotoURL),
+            interestCatalogLoading: catalogIsLoading, interestCatalogError: catalogError,
+            onRetryInterestCatalog: { Task { await catalog.load() } }, onProfileSave: saveProfile,
+            eventReadsOnly: live, onEventOpened: live ? { liveEvents?.selectDetail($0) } : nil,
+            onLoadMoreEvents: live && (liveEvents?.hasMore == true) ? { Task { await liveEvents?.loadMore() } } : nil,
+            loadingMoreEvents: liveEvents?.isLoadingMore == true, eventPaginationError: liveEvents?.paginationError,
+            onRefreshEvents: live ? { await liveEvents?.refresh() } : nil)
     }
 
     private var catalogIsLoading: Bool {

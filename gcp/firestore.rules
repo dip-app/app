@@ -56,6 +56,20 @@ service cloud.firestore {
     // (Admin SDK); clients may get their own company document but never list/query
     // companies or write emailDomain. accountRateLimits is server-only as well:
     // both fall through to the deny-all rules.
+    function eventMember(companyId) {
+      return verified()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+    match /companies/{companyId}/events/{eventId} {
+      // Missing documents must remain observable for deletion/unavailable detail states.
+      allow get: if eventMember(companyId) &&
+        (!exists(/databases/$(database)/documents/companies/$(companyId)/events/$(eventId))
+          || resource.data.companyId == companyId);
+      allow list: if eventMember(companyId)
+        && request.query.limit != null && request.query.limit <= 100
+        && resource.data.companyId == companyId;
+      // Counts, revisions, RSVP rows and event mutations remain callable-owned/denied.
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }

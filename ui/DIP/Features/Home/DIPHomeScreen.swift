@@ -15,10 +15,19 @@ struct DIPHomeScreen: View {
     let onChallenge: (String) -> Void
     let showsBottomBar: Bool
     let onSelect: (String) -> Void
+    let eventSectionTitle: String
+    let onRefresh: (() async -> Void)?
+    let onLoadMore: (() -> Void)?
+    let loadingMore: Bool
+    let paginationError: String?
     init(
         home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
-        onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void
+        onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void,
+        onLoadMore: (() -> Void)? = nil, loadingMore: Bool = false, paginationError: String? = nil,
+        eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil
     ) {
+        self.eventSectionTitle = eventSectionTitle; self.onRefresh = onRefresh
+        self.onLoadMore = onLoadMore; self.loadingMore = loadingMore; self.paginationError = paginationError
         self.home = home
         self.onEvent = onEvent
         self.onChallenge = onChallenge
@@ -50,7 +59,13 @@ struct DIPHomeScreen: View {
                                 .padding(.top, 15)
                             }
                             VStack(alignment: .leading, spacing: 8) {
-                                sectionTitle("This Week’s Events")
+                                sectionTitle(eventSectionTitle)
+                                if home.events.isEmpty { Text("No upcoming events yet.").accessibilityIdentifier("home.events.empty") }
+                                if let paginationError { Text(paginationError).font(.footnote).foregroundStyle(.secondary) }
+                                if let onLoadMore {
+                                    Button(loadingMore ? "Loading more…" : "Load more events", action: onLoadMore)
+                                        .disabled(loadingMore).accessibilityIdentifier("home.events.more")
+                                }
                                 ScrollView(.horizontal) {
                                     HStack(spacing: 10) {
                                         ForEach(home.events) { event in
@@ -91,6 +106,7 @@ struct DIPHomeScreen: View {
                         .padding(.horizontal, 20).padding(.bottom, 120)
                     }
                     .scrollIndicators(.hidden)
+                    .modifier(MemberEventRefresh(action: onRefresh))
                 }
                 .padding(.bottom, 22)
                 if showsBottomBar {
@@ -111,5 +127,12 @@ struct DIPHomeScreen: View {
     private func sectionTitle(_ text: String, size: CGFloat = 17) -> some View {
         Text(text).font(DIPReferenceAssets.font("Figtree-Regular", size: size))
             .foregroundStyle(.black).frame(height: 22, alignment: .leading)
+    }
+}
+
+private struct MemberEventRefresh: ViewModifier {
+    let action: (() async -> Void)?
+    @ViewBuilder func body(content: Content) -> some View {
+        if let action { content.refreshable { await action() } } else { content }
     }
 }

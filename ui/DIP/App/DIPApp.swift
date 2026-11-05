@@ -4,10 +4,12 @@ import SwiftUI
 @main
 struct DIPApp: App {
     @State private var session: AccountsSession
+    private let makeEventReads: ((MembershipContext) -> MemberEventsRepository?)?
     private let repository: any AccountsRepository & InterestCatalogRepository
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
+        makeEventReads = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeMemberEventsRepository(context: $0) }
         let repository = Self.makeRepository()
         self.repository = repository
         _session = State(initialValue: AccountsSession(repository: repository))
@@ -16,8 +18,8 @@ struct DIPApp: App {
     var body: some Scene {
         WindowGroup {
             AccountsRootView(session: session) { context in
-                DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), onSignOut: { await session.signOut() })
-                    .id(context.uid)
+                DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, onSignOut: { await session.signOut() })
+                    .id(EventReadScope(uid: context.uid, companyID: context.companyID))
             }
             .task { session.start() }
             .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }

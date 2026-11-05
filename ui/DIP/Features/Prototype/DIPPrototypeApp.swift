@@ -27,12 +27,25 @@ struct DIPPrototypeApp: View {
     private let interestCatalogLoading: Bool
     private let interestCatalogError: String?
     private let onRetryInterestCatalog: (() -> Void)?
+    private let eventReadsOnly: Bool
+    private let onEventOpened: ((String?) -> Void)?
+    private let onRefreshEvents: (() async -> Void)?
+    private let onLoadMoreEvents: (() -> Void)?
+    private let loadingMoreEvents: Bool
+    private let eventPaginationError: String?
     private let onProfileSave: ((ProfileEdit) async throws -> Void)?
 
     init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil,
          accountProfile: DIPProfile? = nil, interestCatalogLoading: Bool = false,
          interestCatalogError: String? = nil, onRetryInterestCatalog: (() -> Void)? = nil,
-         onProfileSave: ((ProfileEdit) async throws -> Void)? = nil) {
+         onProfileSave: ((ProfileEdit) async throws -> Void)? = nil,
+         eventReadsOnly: Bool = false, onEventOpened: ((String?) -> Void)? = nil,
+         onLoadMoreEvents: (() -> Void)? = nil, loadingMoreEvents: Bool = false,
+         eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil) {
+        self.onRefreshEvents = onRefreshEvents
+        self.eventReadsOnly = eventReadsOnly; self.onEventOpened = onEventOpened
+        self.onLoadMoreEvents = onLoadMoreEvents; self.loadingMoreEvents = loadingMoreEvents
+        self.eventPaginationError = eventPaginationError
         self.accountProfile = accountProfile
         self.interestCatalogLoading = interestCatalogLoading
         self.interestCatalogError = interestCatalogError
@@ -104,7 +117,7 @@ struct DIPPrototypeApp: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .alert(
-            "Prototype preview",
+            "Not available yet",
             isPresented: Binding(
                 get: { notice != nil }, set: { if !$0 { notice = nil } })
         ) {
@@ -118,6 +131,9 @@ struct DIPPrototypeApp: View {
                 messages: model.snapshot?.messages[chatEventID] ?? [],
                 currentUserID: model.snapshot?.profile.id ?? "",
                 onSend: { try await model.sendMessage(eventID: chatEventID, messageID: $0, text: $1) })
+        }
+        .onChange(of: routes, initial: true) { _, path in
+            if case .event(let id) = path.last { onEventOpened?(id) } else { onEventOpened?(nil) }
         }
         .task(id: observationID) { await model.observe() }
         .alert("Couldn’t save", isPresented: Binding(
@@ -162,13 +178,16 @@ struct DIPPrototypeApp: View {
                     onEvent: { routes.append(.event($0)) },
                     onChallenge: { routes.append(.challenge($0)) }, onSelect: homeSelection))
             case .events:
-                AnyView(DIPMyEventsScreen(
+                if eventReadsOnly {
+                    AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
+                        description: Text("You can browse company events from Home.")))
+                } else { AnyView(DIPMyEventsScreen(
                     activeEvents: lists.upcoming, memories: lists.past,
                     unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
                     initialMemories: initialMemories, showsBottomBar: false,
                     onSelectTab: selectTab,
                     onEvent: { routes.append(.event($0)) }, onAlbum: { routes.append(.event($0)) },
-                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
+                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) })) }
             case .profile:
                 AnyView(DIPProfileScreen(
                     profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
@@ -258,9 +277,13 @@ struct DIPPrototypeApp: View {
         }
     }
 
-    private func join(_ eventID: String) { changeRSVP(eventID, going: true) }
+    private func join(_ eventID: String) {
+        guard !eventReadsOnly else { notice = "RSVP"; return }
+        changeRSVP(eventID, going: true)
+    }
 
     private func changeRSVP(_ eventID: String, going: Bool) {
+        guard !eventReadsOnly else { notice = "RSVP"; return }
         guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return }
         Task {
             do { try await model.setRSVP(eventID: eventID, going: going) }
@@ -276,7 +299,7 @@ struct DIPPrototypeApp: View {
                     DIPEventDetailsScreen(
                         event: event, joined: event.isJoined, showsBottomBar: false,
                         onJoin: { join(id) }, onBack: pop,
-                        onAttendees: { routes.append(.participants(id)) }, onChat: { openChat(id) },
+                        onAttendees: { if eventReadsOnly { notice = "Attendee lists" } else { routes.append(.participants(id)) } }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
                         onLeave: { changeRSVP(id, going: false) })
                     .disabled(isRSVPPending)
@@ -331,7 +354,7 @@ struct DIPPrototypeApp: View {
         case "Profile": selectTab(.profile)
         case "My Events": selectTab(.events)
         case "Home": selectTab(.home)
-        case "Recent attendees": routes.append(.participants("puppy-yoga"))
+        case "Recent attendees": if eventReadsOnly { notice = "Attendee lists" } else { routes.append(.participants("puppy-yoga")) }
         default: notice = selection
         }
     }

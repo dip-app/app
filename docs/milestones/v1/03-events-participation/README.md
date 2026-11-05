@@ -37,3 +37,32 @@ Use [callables](../../../contracts/callables.md) for `setRsvpV1`, capacity, canc
 ## Handoff
 
 Give the integrator the participation export, required queries/indexes/rule changes, routes, and membership/component dependencies. Coordinate RSVP.eventStartTime consistency with organizer editing; do not independently change that strategy. Give organizer tests a reusable synthetic event/RSVP fixture and clear attendance-count expectations. Surface pending UI assets or permission dependencies before declaring the flow complete.
+
+## Member event-read subtask — drek2991, issue #30
+
+Owned separately on feature/drek2991-event-reads in app-participation-drek2991: ui/DIP/Domain/Events/**, ui/DIP/Data/Events/** and ui/DIPTests/Events/**. This does not transfer the whole packet. Sander retains frontend/admin-web work; OmerGursoy04 already implemented the RSVP backend on feature/omergursoy04-rsvp. No competing RSVP command or admin implementation is added here.
+
+MemberEventsRepository provides an account/company-scoped, read-only upcoming feed, single detail fetch and detail observation, with stable startTime/document-ID ordering and query-bound cursors. FirebaseEventReadSource consumes injected, already-configured Auth/Firestore instances. It validates membership changes and removes listeners on invalidation/source release. EventDocumentMapper converts Timestamps and numeric fields explicitly and injects the snapshot ID; existing DIPCore.DIPEventMetadata handles presentation. These are data adapters, not a new screen or a live feed integration claim.
+
+### Consumer and integration handoff
+
+- Construct FirebaseEventReadSource.repository(context:auth:firestore:) from observed MembershipContext. Scope all rendered/cache state to UID and companyID. Clear rendered event data and invalidate the repository on sign-out or membership changes; install a new repository for the next membership. In-flight results from an invalidated identity are rejected. The SDK source also monitors Auth and the own-profile company field. Never reuse a repository/cursor from another account.
+- For feed pagination, create EventFeedQuery once with a fixed startsAtOrAfter and pageSize (default 20, maximum 100). Keep that same query for following pages. The source constrains companies/{companyID}/events by status == scheduled and startTime >= lower bound, orders startTime then document ID, and uses the matching ordered cursor values. A full last page can return a cursor whose next page is empty. Refreshing starts a new query/cursor chain.
+- The integration follow-up below supersedes the initial data-only scope: same-company event get/list permissions now have local denial/query tests. Deployed permissions remain unchanged until a separately authorized release. Before production use, review the rule changes and deploy them through that release workflow. Review the existing status/startTime feed index and document-ID tie-break ordering against the actual Firestore query; do not infer index readiness merely from successful SDK compilation. No private coworker-profile query is used.
+- detail(eventID) returns nil for a missing document, while malformed or foreign-tenant data throws. observeDetail yields observed changes/deletion and finishes on error or invalidation. Caller cancellation removes that detail listener. Keep the last good UI snapshot only while the same membership is active; clear it when that membership ends.
+- Map the returned Event through MemberEventsRepository.metadata to reuse existing structured dates, location, cost, state and share text. Sander's existing UI/projection should consume this; no duplicate formatting or screen layout is introduced. Feed is upcoming/scheduled only; cancelled/past detail records remain readable through the detail boundary when permissions permit.
+- This subtask does not implement attendee reads, My Events collection-group queries, RSVP commands, app composition or deployment. Coordinate those with their owners. UI may continue using fixtures until the shared rule/index and consumer integration gates pass.
+
+## Member read integration follow-up — issue #30
+
+The owner authorized connecting the read layer to the existing configured-member app. DIPApp/FirebaseBootstrap now inject the account SDKs into the read factory; DIPMemberHome creates a membership-scoped MemberEventAppRepository and keys the host by UID/company. This bridges real event pages and selected-detail observation into the existing DIPPrototypeApp navigation without fixture event/social state. Home supports pagination/retry and pull-to-refresh; previews keep their existing fixtures. Core UI components and Figma geometry are preserved. Configured My Events/RSVP/attendees remain explicitly unavailable pending their owners' integrations. No RSVP command, admin endpoint or admin portal was changed.
+
+The event query now includes companyId == scope.companyID. Same-company verified users can get an event (including observe deletion/missing), and list queries require that tenant constraint and an explicit limit <=100. Direct writes, RSVP rows, receipts and cross-company reads stay denied. The event index source adds companyId before status/startTime; its normal document-ID suffix matches the explicit ordered cursor. Review/deploy rules and indexes through the authorized release workflow; no deployment occurred here.
+
+Validation includes a local Auth/Firestore-to-real-iOS-adapter test: synthetic verified member sign-in, paginated feed, the actual app snapshot projection, a Firestore detail update through observation, and rejection after sign-out. The test is guarded by an emulator-only synthetic seed; normal unit runs skip it when that seed is absent. To run it deliberately, use Node24/JDK21 and:
+
+```sh
+firebase emulators:exec --project demo-dip --only auth,firestore 'node gcp/tests/integration/events-read-seed.mjs && xcodebuild -project ui/DIP.xcodeproj -scheme DIP -destination "platform=iOS Simulator,id=<AVAILABLE-SIMULATOR-UUID>" -only-testing:DIPTests/LiveMemberEventReadTests CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test'
+```
+
+Local ad-hoc Simulator signing is needed for Firebase Auth's existing keychain entitlement; it does not select a developer team or change credentials. Do not point this seed at real services: it requires the exact local demo-dip Auth/Firestore environment. The SDK-free preview host also supports `--member-events` for company-feed/detail UI navigation tests; that preview is not live-service evidence.
