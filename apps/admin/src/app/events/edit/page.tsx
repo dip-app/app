@@ -28,9 +28,8 @@ function Editor() {
 
   return (
     <>
-      <div className="page-head"><div><h1>Edit event</h1>{event && <p>{event.title} · revision {event.revision}</p>}</div></div>
-      {error ? <div className="banner error" role="alert">{error.message}</div>
-        : !event ? <p role="status">Loading…</p>
+            {error ? <div className="banner error" role="alert">{error.message}</div>
+        : !event ? <div className="skeleton-list" role="status" aria-label="Loading event"><div className="skeleton" /></div>
         : <EventForm key={`${event.id}-${event.revision}`} event={event} onReload={reload} />}
     </>
   );
@@ -38,8 +37,8 @@ function Editor() {
 
 export default function EditEventPage() {
   return (
-    <Shell>
-      <Suspense fallback={<p role="status">Loading…</p>}><Editor /></Suspense>
+    <Shell title="Edit Event" subtitle="Changes appear in the app as soon as you save.">
+      <Suspense fallback={<div className="skeleton-list" role="status" aria-label="Loading event"><div className="skeleton" /></div>}><Editor /></Suspense>
     </Shell>
   );
 }

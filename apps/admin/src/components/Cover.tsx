@@ -1,13 +1,11 @@
 import { coverFor } from "@/lib/catalog";
 
-export function Cover({ url, className }: { url: string; className?: string }) {
+/** Event photo from the default catalog. Decorative when the title is shown beside it. */
+export function Cover({ url, className, alt = "", eager = false }: { url: string; className?: string; alt?: string; eager?: boolean }) {
   const cover = coverFor(url);
+  if (!cover && !url) return <div className={className} aria-hidden style={{ background: "#CCCCCC" }} />;
   return (
-    <div
-      className={className}
-      role="img"
-      aria-label={cover ? `${cover.label} cover` : "No cover"}
-      style={{ background: cover ? `linear-gradient(135deg, ${cover.from}, ${cover.to})` : "#ececec" }}
-    />
+    // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
+    <img className={className} src={cover?.image ?? "/img/events/fitness.jpg"} alt={alt} loading={eager ? "eager" : "lazy"} />
   );
 }

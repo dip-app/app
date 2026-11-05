@@ -10,6 +10,14 @@
       ]
     },
     {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startTime", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "rsvps",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

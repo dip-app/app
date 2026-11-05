@@ -33,9 +33,10 @@ test('verified company member reads ordered bounded feed and cursor pages', asyn
   const second = await assertSucceeds(feed().startAfter(start, 'b').limit(2).get());
   assert.deepEqual(second.docs.map(d => d.id), ['c']);
 });
-test('same-company member/admin can read cancelled detail and observe missing documents', async () => {
+test('cancelled detail remains organizer-only; same-company missing documents are observable', async () => {
   for (const uid of ['event-reader', 'event-admin']) {
-    await assertSucceeds(client(uid).doc(`companies/${company}/events/cancelled`).get());
+    const cancelled = client(uid).doc(`companies/${company}/events/cancelled`).get();
+    if (uid === 'event-admin') await assertSucceeds(cancelled); else await assertFails(cancelled);
     const missing = await assertSucceeds(client(uid).doc(`companies/${company}/events/missing`).get());
     assert.equal(missing.exists, false);
   }

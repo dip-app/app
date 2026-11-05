@@ -5,8 +5,8 @@ import DIPMockData
 import Foundation
 import SwiftUI
 
-/// Account-owned profile/catalog data alongside the explicitly mocked event experience.
-/// The app keys this host by uid so editors and fixture state cannot cross accounts.
+/// Account-owned profile/catalog data with injected company event reads.
+/// The app keys this host by UID/company so state cannot cross membership scopes.
 @MainActor
 struct DIPMemberHome: View {
     let context: MembershipContext

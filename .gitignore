@@ -1,5 +1,6 @@
 node_modules/
 **/lib/
+!apps/admin/src/lib/
 **/.build/
 **/.swiftpm/
 **/*.xcodeproj/

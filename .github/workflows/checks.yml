@@ -89,3 +89,6 @@ jobs:
           path: ~/.cache/firebase/emulators
           key: firebase-emulators-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm run test:accounts:integration
+      - run: npm run test:organizer:integration
+      - run: npm ci --prefix apps/admin
+      - run: npm run test:admin:live

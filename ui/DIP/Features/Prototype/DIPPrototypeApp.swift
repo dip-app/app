@@ -176,7 +176,11 @@ struct DIPPrototypeApp: View {
                 AnyView(DIPHomeScreen(
                     home: home, showsBottomBar: false,
                     onEvent: { routes.append(.event($0)) },
-                    onChallenge: { routes.append(.challenge($0)) }, onSelect: homeSelection))
+                    onChallenge: { routes.append(.challenge($0)) }, onSelect: homeSelection,
+                    onLoadMore: onLoadMoreEvents, loadingMore: loadingMoreEvents,
+                    paginationError: eventPaginationError,
+                    eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
+                    onRefresh: onRefreshEvents))
             case .events:
                 if eventReadsOnly {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
