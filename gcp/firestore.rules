@@ -77,6 +77,26 @@ service cloud.firestore {
           && resource.data.companyId == companyId && resource.data.status == 'scheduled');
       // Client mutations, RSVP rows and private command receipts remain denied.
     }
+    // RSVP rows are written only by setRsvpV1 (Admin SDK). Members get their own row in any
+    // state (including a missing row, so a listener can observe "not joined yet") and see
+    // same-company "going" rows, whose trusted snapshots (userName, userAvatarId,
+    // userDepartment) form the attendee list. Lists are bounded.
+    match /companies/{companyId}/events/{eventId}/rsvps/{userId} {
+      allow get: if sameCompany(companyId)
+        && ((userId == request.auth.uid && (resource == null || resource.data.companyId == companyId))
+          || (resource != null && resource.data.companyId == companyId && resource.data.status == 'going'));
+      allow list: if sameCompany(companyId)
+        && request.query.limit != null && request.query.limit <= 100
+        && resource.data.companyId == companyId && resource.data.status == 'going';
+    }
+    // My Events: a collection-group query over the caller's own "going" RSVPs in their company.
+    match /{path=**}/rsvps/{rsvpId} {
+      allow list: if verified()
+        && request.query.limit != null && request.query.limit <= 100
+        && resource.data.userId == request.auth.uid
+        && resource.data.companyId == memberCompany()
+        && resource.data.status == 'going';
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }

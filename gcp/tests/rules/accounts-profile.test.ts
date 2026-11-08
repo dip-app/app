@@ -127,7 +127,7 @@ test("verified catalog reads permit interest selection without catalog writes", 
 });
 
 for (const path of ["accountRateLimits/member",
-  "companies/company-a/events/event/rsvps/member", "users/member/notifications/n", "partners/partner"]) {
+  "companies/company-a/events/event/rsvps/someone-else", "users/member/notifications/n", "partners/partner"]) {
   test(`unreviewed and private path ${path} stays denied`, async () => {
     await assertFails(db().doc(path).get());
     await assertFails(db().doc(path).set({ value: true }));
