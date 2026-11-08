@@ -61,18 +61,22 @@ service cloud.firestore {
       allow get: if verified()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
-    // Events: same-company members read scheduled events (list queries must filter status == 'scheduled');
-    // organizers also read cancelled ones. Clients never write events: createEventV1/updateEventV1 do, and
-    // companies/{c}/commandReceipts plus everything below an event stay server-only.
-    match /companies/{companyId}/events/{eventId} {
-      allow get: if sameCompany(companyId) && (resource.data.status == 'scheduled' || organizer(companyId));
-      allow list: if organizer(companyId)
-        || (sameCompany(companyId) && resource.data.status == 'scheduled');
-    }
     // Company lookup by companies.emailDomain happens only in resolveMembershipV1
     // (Admin SDK); clients may get their own company document but never list/query
     // companies or write emailDomain. accountRateLimits is server-only as well:
     // both fall through to the deny-all rules.
+    // Preserve organizer portal reads; member queries are bounded and tenant-constrained.
+    match /companies/{companyId}/events/{eventId} {
+      allow get: if sameCompany(companyId) &&
+        (!exists(/databases/$(database)/documents/companies/$(companyId)/events/$(eventId))
+          || (resource.data.companyId == companyId
+            && (resource.data.status == 'scheduled' || organizer(companyId))));
+      allow list: if organizer(companyId)
+        || (sameCompany(companyId)
+          && request.query.limit != null && request.query.limit <= 100
+          && resource.data.companyId == companyId && resource.data.status == 'scheduled');
+      // Client mutations, RSVP rows and private command receipts remain denied.
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }
