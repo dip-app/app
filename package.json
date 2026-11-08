@@ -14,6 +14,8 @@
     "build": "npm run build --workspace @dip/functions",
     "test:contracts": "node --test contracts/tests/*.test.mjs",
     "test:unit": "npm run test --workspace @dip/functions",
+    "coverage:functions": "npm run coverage --workspace @dip/functions",
+    "coverage:ios": "bash scripts/coverage-ios.sh",
     "test:rules": "firebase emulators:exec --project demo-dip --only firestore,storage \"node --import tsx --test gcp/tests/rules/*.test.ts\"",
     "test:swift": "swift test --package-path ui/Packages/DIPContracts && swift test --package-path ui/Packages/DIPDesignSystem && swift test --package-path ui/Packages/DIPAccounts && swift test --package-path ui/Packages/DIPCore",
     "ios:generate": "cd ui && xcodegen generate",

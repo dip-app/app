@@ -71,7 +71,7 @@ struct DIPHomeScreen: View {
                                         ForEach(home.events) { event in
                                             DIPPhotoEventCard(
                                                 title: event.title, locality: event.locality,
-                                                identifier: eventIdentifier(event), attendeeCount: event.attendeeCount,
+                                                identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
                                                 width: event.id == "hike" ? 169 : 163, shade: event.imageShade,
                                                 artwork: { DIPMedia(event.image).scaledToFill() },
                                                 avatarStack: { DIPMediaStack(event.avatars) }
@@ -120,8 +120,10 @@ struct DIPHomeScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
     }
-    private func eventIdentifier(_ event: DIPEventSummary) -> String {
-        if case .asset(let name) = event.image { return name }
+    /// Fixture cards keep their design-reference asset names as identifiers. Category cover
+    /// images (V1-08, `cover_*`) are shared by many events, so those cards use the stable event ID.
+    nonisolated static func eventIdentifier(_ event: DIPEventSummary) -> String {
+        if case .asset(let name) = event.image, !name.hasPrefix("cover_") { return name }
         return event.id
     }
     private func sectionTitle(_ text: String, size: CGFloat = 17) -> some View {
