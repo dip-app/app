@@ -27,7 +27,7 @@ Started V1-08 on top of #42's branch: category-based default event images.
 - `npm run test:swift` (Linux Swift 6.0.3 toolchain): all four packages pass, including EventCoverTests.
 - `npm run check`: 78 pass, 0 fail, 6 todo.
 - Local Mac: `npm run ios:generate` and `xcodebuild build -scheme DIP` (iPhone 17 Pro Simulator, CODE_SIGNING_ALLOWED=NO) succeeded with the V1-08 images.
-- Simulator (iPhone 17 Pro, Preview scheme with --member-events): Home cards show distinct category images for catalog://default/cooking and /games. Preview fixture now sets those covers. The date line over the lighter photo was low contrast; fixed with a card scrim and re-screenshotted (readable). V1-09: sharing already exists (ShareLink on the event page, EventMetadata.shareText with title, date/time, duration, location, price; two existing unit tests); the physical share-sheet check is still manual. Detail hero not tapped through (uses the same DIPMedia path).
+- Simulator (iPhone 17 Pro, Preview scheme with --member-events): Home cards show distinct category images for catalog://default/cooking and /games. Preview fixture now sets those covers. The date line over the lighter photo was low contrast; fixed with a card scrim and re-screenshotted (readable). V1-09: sharing already exists (ShareLink on the event page, EventMetadata.shareText with title, date/time, duration, location, price; two existing unit tests); the physical share-sheet check is still manual. Detail page opened from the card in the Simulator: the hero shows the category image (cooking) with title, date, place and one Join action.
 - Not run: Xcode app/UI tests.
 
 ## Decisions
@@ -37,6 +37,6 @@ Started V1-08 on top of #42's branch: category-based default event images.
 
 ## Handoff
 
-- Confirm the tag-to-category mapping; check the detail hero on a device; physical share-sheet check (V1-09).
+- Confirm the tag-to-category mapping; physical share-sheet check (V1-09).
 - Open the V1-08 PR from `main-aaj4vf` when ready.
 - Remaining: production organizer create/edit test, V1-09 sharing, V1-10 usability pass; RSVP end to end (Omer's backend branch).
