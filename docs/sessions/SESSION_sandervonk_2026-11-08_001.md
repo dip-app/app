@@ -17,6 +17,8 @@ Started V1-08 on top of #42's branch: category-based default event images.
 - ui/Packages/DIPCore/Sources/DIPCore/EventCover.swift: `DIPEventCover` resolves an event image from the approved `catalog://default/<category>` URL (mirrors APPROVED_COVER_URLS in eventDraft.ts), then the first tag with a known category, then a fixed fallback (outdoors).
 - ui/Packages/DIPCore/Tests/DIPCoreTests/EventCoverTests.swift: 5 tests covering catalog precedence, round-trip, parity with server URLs, tag fallback and the default.
 - ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Resources/EventCovers.xcassets: cover_fitness/outdoors/hiking/games/cooking, the same prototype photos the admin portal uses (release rights still unconfirmed, docs/design/README.md).
+- ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Components/DIPHomeComponents.swift: bottom scrim on the event card so white title/locality stay readable on light category photos (V1-10).
+- ui/ComponentPreview/App/MemberEventsPreview.swift: preview events use different catalog covers.
 - ui/DIP/Data/Events/MemberEventAppRepository.swift: live event details use the category image instead of the empty placeholder.
 
 ## Validation
@@ -25,7 +27,7 @@ Started V1-08 on top of #42's branch: category-based default event images.
 - `npm run test:swift` (Linux Swift 6.0.3 toolchain): all four packages pass, including EventCoverTests.
 - `npm run check`: 78 pass, 0 fail, 6 todo.
 - Local Mac: `npm run ios:generate` and `xcodebuild build -scheme DIP` (iPhone 17 Pro Simulator, CODE_SIGNING_ALLOWED=NO) succeeded with the V1-08 images.
-- Simulator (iPhone 17 Pro, Preview scheme with --member-events): Home cards show distinct category images for catalog://default/cooking and /games. Preview fixture now sets those covers. The date line over the lighter photo is low contrast (V1-10 follow-up). Detail hero not tapped through (uses the same DIPMedia path).
+- Simulator (iPhone 17 Pro, Preview scheme with --member-events): Home cards show distinct category images for catalog://default/cooking and /games. Preview fixture now sets those covers. The date line over the lighter photo was low contrast; fixed with a card scrim and re-screenshotted (readable). V1-09: sharing already exists (ShareLink on the event page, EventMetadata.shareText with title, date/time, duration, location, price; two existing unit tests); the physical share-sheet check is still manual. Detail hero not tapped through (uses the same DIPMedia path).
 - Not run: Xcode app/UI tests.
 
 ## Decisions
@@ -35,6 +37,6 @@ Started V1-08 on top of #42's branch: category-based default event images.
 
 ## Handoff
 
-- Confirm the tag-to-category mapping; check the detail hero on a device; fix card text contrast over light photos (V1-10).
+- Confirm the tag-to-category mapping; check the detail hero on a device; physical share-sheet check (V1-09).
 - Open the V1-08 PR from `main-aaj4vf` when ready.
 - Remaining: production organizer create/edit test, V1-09 sharing, V1-10 usability pass; RSVP end to end (Omer's backend branch).
