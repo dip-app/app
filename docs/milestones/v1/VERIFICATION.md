@@ -14,8 +14,8 @@ Evidence for [V1](../V1.md) acceptance, collected November 8, 2026 against the r
 | V1-06 | RSVP and cancellation | #37 → #43 (setRsvpV1, OmerGursoy04), #45 | `participation` unit tests (join, repeat, cancel, rejoin, capacity, closed), concurrent last-seat emulator test, client-write denial rules tests | Nov 8: Join, Leave, rejoin, relaunch keeps state on iPhone (ariaf7) |
 | V1-07 | My Events | #45 | `MemberParticipationTests` (joined upcoming/past, joined past event fetched by ID), `participation-read` My Events rules tests | Nov 8: joined event listed in My Events, removed after Leave (ariaf7) |
 | V1-08 | Default event imagery | e43fd2c (sandervonk) | `EventCoverTests` | Nov 8: category images on cards and details on iPhone (ariaf7) |
-| V1-09 | Standard event sharing | `ShareLink` in event details | — | _Pending: iPhone share sheet shows title, date/time and place_ |
-| V1-10 | Integration and usability | all of the above | UI flow tests in `ui/ComponentPreview/UITests` | _Pending: walkthrough Home → event → Join → My Events → Profile; loading/empty/error states; active tab_ |
+| V1-09 | Standard event sharing | `ShareLink` in event details | `EventListsTests` (metadata/share text contains date and location) | Nov 8: iPhone share sheet from event details; shared text is title, date/time range, duration, venue and address, price with cost note. No invitation is created and no in-app link is promised (ariaf7) |
+| V1-10 | Integration and usability | all of the above | UI flow tests in `ui/ComponentPreview/UITests` (incl. `MemberEventsFlowTests`) | Nov 8: iPhone walkthrough Home → event → Join (joined confirmation) → My Events → Profile → back, with the active tab marked in the bottom bar; readable RSVP error messages seen during setup (ariaf7). Note for review: the event page shows a "Join Activity" chat button beside Share as well as the bottom "Join the Activity" action |
 | V1-11 | Verification | this record | see Coverage | _Pending: fresh-clone build on a second laptop (sandervonk)_ |
 
 ## Coverage

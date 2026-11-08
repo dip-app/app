@@ -31,7 +31,7 @@ Use [callables](../../../contracts/callables.md) for `setRsvpV1`, capacity, canc
 - [x] Verify no direct client RSVP/count/attendance write succeeds; no client-supplied role, UID, count, or user snapshot is trusted by the server. — rules tests in `participation-read.test.ts` and `events-read.test.ts`; `setRsvp` derives identity and snapshots server-side (#43, #45).
 - [x] Verify joined/cancelled state persists across navigation, listener refresh, and app reload. Dispose listeners when membership or account changes. — RSVP listener drives state; listeners stop on sign-out (`MemberParticipationTests`); iPhone relaunch check Nov 8 ([verification](../VERIFICATION.md)).
 - [x] Verify My Events queries constrain companyId, userId, and going status; test corresponding collection-group rules/indexes after integrator wiring. — collection-group rule and `participation-read` tests; uses the deployed `rsvps` index (#45).
-- [ ] Verify standard iOS sharing supplies useful event information without creating an invite or promising in-app link opening. Use one Join action and explicit joined feedback.
+- [x] Verify standard iOS sharing supplies useful event information without creating an invite or promising in-app link opening. Use one Join action and explicit joined feedback. — iPhone check Nov 8 ([verification](../VERIFICATION.md)).
 - [ ] Run relevant domain/UI, backend, concurrency/emulator, and contract tests. Record manual physical-device share-sheet checks separately.
 
 ## Handoff
