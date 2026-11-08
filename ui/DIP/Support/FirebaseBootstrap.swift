@@ -82,6 +82,13 @@ enum FirebaseBootstrap {
         return FirebaseEventReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
     }
 
+    /// RSVP (setRsvpV1) and participation reads share the configured SDKs and emulator routing.
+    @MainActor static func makeParticipationSource() -> (any ParticipationSource)? {
+        guard case .configured = status else { return nil }
+        return FirebaseParticipationSource(firestore: Firestore.firestore(),
+                                           functions: Functions.functions(region: FirebaseAccountsRepository.region))
+    }
+
     /// Completes the Google sign-in redirect. Wire to `.onOpenURL` in the app.
     @MainActor @discardableResult
     static func handle(url: URL) -> Bool {

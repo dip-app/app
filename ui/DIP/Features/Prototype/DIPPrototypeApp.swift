@@ -28,6 +28,9 @@ struct DIPPrototypeApp: View {
     private let interestCatalogError: String?
     private let onRetryInterestCatalog: (() -> Void)?
     private let eventReadsOnly: Bool
+    /// Live events with working RSVP, attendees and My Events (setRsvpV1 + RSVP reads).
+    private let liveParticipation: Bool
+    private var participationUnavailable: Bool { eventReadsOnly && !liveParticipation }
     private let onEventOpened: ((String?) -> Void)?
     private let onRefreshEvents: (() async -> Void)?
     private let onLoadMoreEvents: (() -> Void)?
@@ -39,11 +42,11 @@ struct DIPPrototypeApp: View {
          accountProfile: DIPProfile? = nil, interestCatalogLoading: Bool = false,
          interestCatalogError: String? = nil, onRetryInterestCatalog: (() -> Void)? = nil,
          onProfileSave: ((ProfileEdit) async throws -> Void)? = nil,
-         eventReadsOnly: Bool = false, onEventOpened: ((String?) -> Void)? = nil,
+         eventReadsOnly: Bool = false, liveParticipation: Bool = false, onEventOpened: ((String?) -> Void)? = nil,
          onLoadMoreEvents: (() -> Void)? = nil, loadingMoreEvents: Bool = false,
          eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil) {
         self.onRefreshEvents = onRefreshEvents
-        self.eventReadsOnly = eventReadsOnly; self.onEventOpened = onEventOpened
+        self.eventReadsOnly = eventReadsOnly; self.liveParticipation = liveParticipation; self.onEventOpened = onEventOpened
         self.onLoadMoreEvents = onLoadMoreEvents; self.loadingMoreEvents = loadingMoreEvents
         self.eventPaginationError = eventPaginationError
         self.accountProfile = accountProfile
@@ -182,7 +185,7 @@ struct DIPPrototypeApp: View {
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
                     onRefresh: onRefreshEvents))
             case .events:
-                if eventReadsOnly {
+                if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
                         description: Text("You can browse company events from Home.")))
                 } else { AnyView(DIPMyEventsScreen(
@@ -282,16 +285,25 @@ struct DIPPrototypeApp: View {
     }
 
     private func join(_ eventID: String) {
-        guard !eventReadsOnly else { notice = "RSVP"; return }
+        guard !participationUnavailable else { notice = "RSVP"; return }
         changeRSVP(eventID, going: true)
     }
 
+    /// Readable RSVP failure text (the live adapter sends user-facing invalidInput messages).
+    nonisolated static func rsvpMessage(_ error: Error) -> String {
+        switch error as? DIPRepositoryError {
+        case .invalidInput(let message)?, .injectedFailure(let message)?: message
+        case .notFound?: "This event no longer exists."
+        case nil: "Couldn’t change your RSVP. Please try again."
+        }
+    }
+
     private func changeRSVP(_ eventID: String, going: Bool) {
-        guard !eventReadsOnly else { notice = "RSVP"; return }
+        guard !participationUnavailable else { notice = "RSVP"; return }
         guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return }
         Task {
             do { try await model.setRSVP(eventID: eventID, going: going) }
-            catch { rsvpError = (error as? DIPRepositoryError).map { String(describing: $0) } ?? "Couldn’t change your RSVP. Please try again." }
+            catch { rsvpError = Self.rsvpMessage(error) }
         }
     }
 
@@ -303,7 +315,7 @@ struct DIPPrototypeApp: View {
                     DIPEventDetailsScreen(
                         event: event, joined: event.isJoined, showsBottomBar: false,
                         onJoin: { join(id) }, onBack: pop,
-                        onAttendees: { if eventReadsOnly { notice = "Attendee lists" } else { routes.append(.participants(id)) } }, onChat: { openChat(id) },
+                        onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { routes.append(.participants(id)) } }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
                         onLeave: { changeRSVP(id, going: false) })
                     .disabled(isRSVPPending)

@@ -16,6 +16,7 @@ struct DIPMemberHome: View {
     @State private var editor: ProfileEditor
     @State private var catalog: InterestCatalog
     private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
+    private let participationFactory: (() -> (any ParticipationSource)?)?
     @State private var liveEvents: MemberEventAppRepository?
     @State private var eventConfigurationError = false
     @State private var prototypeRepository: DIPMockRepository
@@ -25,9 +26,11 @@ struct DIPMemberHome: View {
         repository: any AccountsRepository & InterestCatalogRepository,
         oauthPhotoURL: String = "",
         eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
+        participationFactory: (() -> (any ParticipationSource)?)? = nil,
         onSignOut: @escaping () async -> Void
     ) {
         self.eventReadFactory = eventReadFactory
+        self.participationFactory = participationFactory
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
@@ -51,7 +54,8 @@ struct DIPMemberHome: View {
             if liveEvents == nil, let eventReadFactory {
                 if let reads = eventReadFactory(context) {
                     liveEvents = MemberEventAppRepository(reads: reads,
-                        profile: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL))
+                        profile: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL),
+                        participation: participationFactory?())
                 } else { eventConfigurationError = true }
             }
             await catalog.load()
@@ -67,7 +71,7 @@ struct DIPMemberHome: View {
             accountProfile: MemberProfileBridge.profile(context: context, tags: catalog.tags, oauthPhotoURL: oauthPhotoURL),
             interestCatalogLoading: catalogIsLoading, interestCatalogError: catalogError,
             onRetryInterestCatalog: { Task { await catalog.load() } }, onProfileSave: saveProfile,
-            eventReadsOnly: live, onEventOpened: live ? { liveEvents?.selectDetail($0) } : nil,
+            eventReadsOnly: live, liveParticipation: live && liveEvents?.supportsParticipation == true, onEventOpened: live ? { liveEvents?.selectDetail($0) } : nil,
             onLoadMoreEvents: live && (liveEvents?.hasMore == true) ? { Task { await liveEvents?.loadMore() } } : nil,
             loadingMoreEvents: liveEvents?.isLoadingMore == true, eventPaginationError: liveEvents?.paginationError,
             onRefreshEvents: live ? { await liveEvents?.refresh() } : nil)
