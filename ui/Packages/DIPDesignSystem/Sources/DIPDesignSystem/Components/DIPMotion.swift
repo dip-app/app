@@ -17,6 +17,13 @@
         /// The navigation marker settles like a physical selector rather than easing linearly.
         public static let marker: Animation = .spring(response: 0.38, dampingFraction: 0.82)
 
+        /// The icon circle on an action state pops in with a little overshoot (opacity only with Reduce Motion).
+        public static func affordance(reduceMotion: Bool = false) -> Animation {
+            reduceMotion
+                ? .linear(duration: reducedMotionDuration)
+                : .spring(response: 0.45, dampingFraction: 0.68)
+        }
+
         public static func section(reduceMotion: Bool = false) -> Animation {
             reduceMotion
                 ? .linear(duration: reducedMotionDuration)
@@ -34,14 +41,18 @@
         public let style: Style
         public let identifier: String
         public let value: String?
+        /// Optional design-system image shown in a white circle at the trailing edge of the action.
+        public let icon: String?
 
         public init(
-            title: String, style: Style = .standard, identifier: String, value: String? = nil
+            title: String, style: Style = .standard, identifier: String, value: String? = nil,
+            icon: String? = nil
         ) {
             self.title = title
             self.style = style
             self.identifier = identifier
             self.value = value
+            self.icon = icon
         }
     }
 #endif

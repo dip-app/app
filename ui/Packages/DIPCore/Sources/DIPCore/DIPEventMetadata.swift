@@ -87,4 +87,18 @@ public struct DIPEventMetadata: Equatable, Sendable {
         lines.append(priceText(locale: locale) + (note.isEmpty ? "" : " — \(note)"))
         return lines.joined(separator: "\n")
     }
+
+    /// Apple Maps search for the venue (opens Maps or the web page); nil when there is no usable address.
+    public var mapsURL: URL? {
+        let place = [address, locality].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }.joined(separator: ", ")
+        let name = venueName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !place.isEmpty || !name.isEmpty else { return nil }
+        var components = URLComponents(string: "https://maps.apple.com/")
+        var items: [URLQueryItem] = []
+        if !name.isEmpty { items.append(URLQueryItem(name: "q", value: name)) }
+        if !place.isEmpty { items.append(URLQueryItem(name: "address", value: place)) }
+        components?.queryItems = items
+        return components?.url
+    }
 }

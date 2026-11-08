@@ -51,8 +51,8 @@ struct DIPEventDetailsScreen: View {
                             hero
                             VStack(alignment: .leading, spacing: 20) {
                                 activityDetails
-                                if let metadata = event.metadata { eventMetadata(metadata) }
                                 attendeeDetails
+                                if let metadata = event.metadata { eventMetadata(metadata) }
                                 if event.isPast { albumPreview }
                             }
                         }
@@ -64,17 +64,31 @@ struct DIPEventDetailsScreen: View {
                 .padding(.bottom, 22)
                 if showsBottomBar {
                     Button(action: primaryAction) {
-                        Text(primaryTitle)
-                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity).frame(height: 80)
-                            .background(
-                                joined
-                                    ? DIPTokens.Color.actionPrimary.swiftUIColor
-                                    : DIPTokens.Color.navigationBackground.swiftUIColor,
-                                in: Capsule()
-                            )
-                            .contentShape(Capsule())
+                        HStack(spacing: 0) {
+                            Text(primaryTitle)
+                                .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                            if showsChatAffordance {
+                                // Joined: the bar becomes the chat entry, with an icon circle that pops in.
+                                DIPReferenceAssets.image("event_HeroiconsOutlineChatBubbleOvalLeft").resizable()
+                                    .frame(width: 30, height: 30)
+                                    .frame(width: 64, height: 64)
+                                    .background(.white, in: Circle())
+                                    .transition(.scale(scale: 0.3).combined(with: .opacity))
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .padding(.horizontal, showsChatAffordance ? 8 : 0)
+                        .frame(maxWidth: .infinity).frame(height: 80)
+                        .background(
+                            joined
+                                ? DIPTokens.Color.actionPrimary.swiftUIColor
+                                : DIPTokens.Color.navigationBackground.swiftUIColor,
+                            in: Capsule()
+                        )
+                        .contentShape(Capsule())
+                        .animation(.spring(response: 0.5, dampingFraction: 0.72), value: joined)
                     }
                     .buttonStyle(.plain)
                     .disabled(!primaryEnabled)
@@ -118,7 +132,6 @@ struct DIPEventDetailsScreen: View {
                 .lineSpacing(1.0566566)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: event.isPast ? 0 : 126, alignment: .topLeading)
         }
         .foregroundStyle(.black)
         .padding(.top, 10)
@@ -130,9 +143,12 @@ struct DIPEventDetailsScreen: View {
                 title: event.isPast ? "Who Attended" : "Who’s Attending",
                 avatars: event.attendeeAvatars, total: event.attendeeCount,
                 emptyText: "No one has joined yet. Be the first to make plans.",
+                capacity: event.isPast ? nil : event.metadata?.capacity,
                 identifierPrefix: "event", onMore: onAttendees)
             DIPDetailActionRow(
                 showsParticipation: !event.isPast,
+                // The bottom bar (own or the shell's) is the one Join action; this slot is Directions before joining, Leave after.
+                joinInRow: false, directionsURL: event.metadata?.mapsURL,
                 isParticipating: joined, canChange: canChangeParticipation,
                 joinTitle: "Join Activity", leaveTitle: "Leave Activity",
                 shareItem: event.metadata?.shareText(title: event.title) ?? "\(event.title) — \(event.timing)",
@@ -200,12 +216,6 @@ struct DIPEventDetailsScreen: View {
                 Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
                 if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
             }
-            metadataRow("person.2", title: "Places") {
-                Text("\(event.attendeeCount) going · \(metadata.capacity) places")
-                if event.attendeeCount >= metadata.capacity && !joined {
-                    Text("This activity is full").foregroundStyle(.secondary)
-                }
-            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -246,6 +256,8 @@ struct DIPEventDetailsScreen: View {
         }
         return "Join the Activity"
     }
+
+    private var showsChatAffordance: Bool { joined && !event.isPast && event.metadata?.status != .cancelled }
 
     private var primaryEnabled: Bool {
         guard event.metadata?.status != .cancelled else { return false }

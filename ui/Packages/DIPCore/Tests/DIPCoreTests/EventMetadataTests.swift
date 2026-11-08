@@ -22,6 +22,16 @@ final class EventMetadataTests: XCTestCase {
         XCTAssertFalse(event.canCancel(now: event.endTime))
     }
 
+    func testMapsURLSearchesVenueAndAddress() throws {
+        let url = try XCTUnwrap(metadata().mapsURL)
+        let items = Dictionary(uniqueKeysWithValues: try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems).map { ($0.name, $0.value ?? "") })
+        XCTAssertEqual(url.host, "maps.apple.com")
+        XCTAssertEqual(items["q"], "Riverside Park")
+        XCTAssertEqual(items["address"], "10 River Road, Boston")
+        var blank = metadata(); blank.venueName = " "; blank.address = ""; blank.locality = ""
+        XCTAssertNil(blank.mapsURL)
+    }
+
     func testJoinedMemberKeepsJoinedStateAtCapacity() {
         let event = metadata()
         let now = start.addingTimeInterval(-10)
