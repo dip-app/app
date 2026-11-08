@@ -25,6 +25,8 @@ targets:
     sources:
       - App
       - ../DIP/Data/Accounts/PreviewAccountsRepository.swift
+      - ../DIP/Domain/Events
+      - ../DIP/Data/Events/MemberEventAppRepository.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features
         excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]

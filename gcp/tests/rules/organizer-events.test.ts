@@ -47,7 +47,7 @@ test("signed-out and unverified callers cannot read events", async () => {
 test("same-company members read scheduled events only", async () => {
   await assertSucceeds(events("member").doc("scheduled").get());
   await assertFails(events("member").doc("cancelled").get());
-  await assertSucceeds(events("member").where("status", "==", "scheduled").get());
+  await assertSucceeds(events("member").where("companyId", "==", "company-a").where("status", "==", "scheduled").limit(20).get());
   // An unfiltered list could return cancelled events, so rules refuse it for members.
   await assertFails(events("member").get());
 });
