@@ -28,7 +28,8 @@ Started V1-08 on top of #42's branch: category-based default event images.
 - `npm run check`: 78 pass, 0 fail, 6 todo.
 - Local Mac: `npm run ios:generate` and `xcodebuild build -scheme DIP` (iPhone 17 Pro Simulator, CODE_SIGNING_ALLOWED=NO) succeeded with the V1-08 images.
 - Simulator (iPhone 17 Pro, Preview scheme with --member-events): Home cards show distinct category images for catalog://default/cooking and /games. Preview fixture now sets those covers. The date line over the lighter photo was low contrast; fixed with a card scrim and re-screenshotted (readable). V1-09: sharing already exists (ShareLink on the event page, EventMetadata.shareText with title, date/time, duration, location, price; two existing unit tests); the physical share-sheet check is still manual. Detail page opened from the card in the Simulator: the hero shows the category image (cooking) with title, date, place and one Join action.
-- Not run: Xcode app/UI tests.
+- Production organizer test (team05-dip.web.app, signed in by the owner): created "Lunch & Learn: Cooking Basics" with the Cooking catalog cover, Nov 19 12:00-13:30, capacity 12; the event appeared under Upcoming (1) with the cooking image. Edited capacity to 15 and saved; the list showed "0 of 15". The event remains scheduled in production so the member feed has a real event.
+- Not run: Xcode app/UI tests; member app against production data (needs a member sign-in).
 
 ## Decisions
 
@@ -39,4 +40,5 @@ Started V1-08 on top of #42's branch: category-based default event images.
 
 - Confirm the tag-to-category mapping; physical share-sheet check (V1-09).
 - Open the V1-08 PR from `main-aaj4vf` when ready.
-- Remaining: production organizer create/edit test, V1-09 sharing, V1-10 usability pass; RSVP end to end (Omer's backend branch).
+- Live tag catalog has more tags (Water Sport, Bonding, Weekly Activity, Carpentry, Volunteering, Creative) than the tag fallback in `DIPEventCover` knows; events with a catalog cover are unaffected, tag-only events fall back to outdoors.
+- Remaining: RSVP end to end (Aria; Omer's backend branch), member-app check against production data, physical-device share sheet.
