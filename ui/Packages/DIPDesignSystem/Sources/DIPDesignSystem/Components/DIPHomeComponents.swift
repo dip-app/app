@@ -203,14 +203,17 @@
         public var body: some View {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: -4) {
-                        avatarStack
-                        Text("\(attendeeCount) Attending")
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                            .foregroundStyle(.black).frame(height: 22).padding(.horizontal, 7)
-                            .background(.white, in: Capsule())
+                    // Nobody has joined yet: no "0 Attending" tag (and no empty avatar stack).
+                    if attendeeCount > 0 {
+                        HStack(spacing: -4) {
+                            avatarStack
+                            Text("\(attendeeCount) Attending")
+                                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                                .foregroundStyle(.black).frame(height: 22).padding(.horizontal, 7)
+                                .background(.white, in: Capsule())
+                        }
+                        .fixedSize()
                     }
-                    .fixedSize()
                     Spacer(minLength: 0)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(title.uppercased())
@@ -237,7 +240,9 @@
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(title), \(locality), \(attendeeCount) attending")
+            .accessibilityLabel(attendeeCount > 0
+                ? "\(title), \(locality), \(attendeeCount) attending"
+                : "\(title), \(locality)")
             .accessibilityIdentifier("home.event.\(identifier)")
         }
     }
@@ -407,13 +412,27 @@
             Button(action: onAction) {
                 ZStack {
                     Capsule().fill(actionColor(action.style))
-                    Text(action.title)
-                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.4)
-                        .padding(.horizontal, 16)
-                        .id(action.title)
-                        .transition(.opacity)
+                    HStack(spacing: 0) {
+                        Text(action.title)
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.4)
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity)
+                            .id(action.title)
+                            .transition(.opacity)
+                        if let icon = action.icon {
+                            // The affirmative state's affordance: a white circle that pops in at the trailing edge.
+                            DIPReferenceAssets.image(icon).resizable()
+                                .frame(width: 30, height: 30)
+                                .frame(width: 64, height: 64)
+                                .background(.white, in: Circle())
+                                .padding(.trailing, 8)
+                                .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .animation(DIPMotion.affordance(reduceMotion: reduceMotion), value: action.icon)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 80)

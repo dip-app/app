@@ -238,14 +238,16 @@ struct DIPPrototypeApp: View {
             return DIPBottomBarAction(
                 title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
-                identifier: "event.primary", value: joined ? "Joined" : "Not joined")
+                identifier: "event.primary", value: joined ? "Joined" : "Not joined",
+                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
         case .participants(let id) where model.snapshot?.eventDetails[id]?.isPast == true:
             return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
         case .participants(let id):
             let joined = model.snapshot?.eventDetails[id]?.isJoined == true
             return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
-                identifier: joined ? "participants.chat" : "participants.join")
+                identifier: joined ? "participants.chat" : "participants.join",
+                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
         case .challenge:

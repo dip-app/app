@@ -74,6 +74,8 @@ struct DIPDetailPeopleRow: View {
     let avatars: [MediaReference]
     let total: Int
     let emptyText: String
+    /// When set, the header shows how full the event is ("2 of 15", or "Full"), so capacity needs no row of its own.
+    var capacity: Int? = nil
     let identifierPrefix: String
     let onMore: () -> Void
 
@@ -82,9 +84,20 @@ struct DIPDetailPeopleRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                .foregroundStyle(.black).frame(height: 22)
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
+                    .foregroundStyle(.black)
+                if let capacity {
+                    Spacer(minLength: 8)
+                    Text(total >= capacity ? "Full" : "\(total) of \(capacity)")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(total >= capacity ? "Full, \(capacity) places" : "\(total) of \(capacity) places taken")
+                        .accessibilityIdentifier("\(identifierPrefix).capacity")
+                }
+            }
+            .frame(height: 22)
             if total == 0 {
                 Text(emptyText)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
@@ -114,8 +127,13 @@ struct DIPDetailPeopleRow: View {
 }
 
 /// Join (or Leave) beside Share, as in the design. Joining and leaving use the same slot.
+/// When the page already has its own primary Join (the event page's bottom bar), pass `joinInRow: false`:
+/// the slot then shows Leave once joined and Directions before, so there is one clear Join action.
 struct DIPDetailActionRow: View {
     var showsParticipation = true
+    var joinInRow = true
+    var directionsURL: URL? = nil
+    var directionsTitle = "Directions"
     let isParticipating: Bool
     let canChange: Bool
     let joinTitle: String
@@ -130,13 +148,25 @@ struct DIPDetailActionRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if showsParticipation {
+            if showsParticipation && !joinInRow && !isParticipating {
+                if let directionsURL {
+                    Link(destination: directionsURL) {
+                        label(directionsTitle, systemImage: "mappin.and.ellipse",
+                              background: DIPTokens.Color.actionPrimary.swiftUIColor)
+                    }
+                    .buttonStyle(DIPPressFeedbackStyle())
+                    .accessibilityLabel(directionsTitle)
+                    .accessibilityIdentifier("\(identifierPrefix).directions")
+                }
+            } else if showsParticipation {
             Button(action: isParticipating ? onLeave : onJoin) {
-                label(isParticipating ? leaveTitle : joinTitle,
-                      asset: "event_HeroiconsOutlineChatBubbleOvalLeft",
-                      background: isParticipating
-                          ? DIPTokens.Color.navigationBackground.swiftUIColor
-                          : DIPTokens.Color.actionPrimary.swiftUIColor)
+                if isParticipating {
+                    // Leaving is a plain text button; the icon circle is reserved for the affirmative actions.
+                    textLabel(leaveTitle, background: DIPTokens.Color.navigationBackground.swiftUIColor)
+                } else {
+                    label(joinTitle, asset: "event_HeroiconsOutlineChatBubbleOvalLeft",
+                          background: DIPTokens.Color.actionPrimary.swiftUIColor)
+                }
             }
             .buttonStyle(DIPPressFeedbackStyle())
             .disabled(!canChange)
@@ -152,14 +182,35 @@ struct DIPDetailActionRow: View {
         }
     }
 
+    private func textLabel(_ title: String, background: Color) -> some View {
+        Text(title)
+            .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+            .foregroundStyle(.white)
+            .lineLimit(1).minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity).frame(height: 40)
+            .padding(5).frame(height: 50)
+            .background(background, in: Capsule())
+            .contentShape(Capsule())
+    }
+
     private func label(_ title: String, asset: String, background: Color) -> some View {
+        label(title, background: background) { DIPReferenceAssets.image(asset).resizable() }
+    }
+
+    private func label(_ title: String, systemImage: String, background: Color) -> some View {
+        label(title, background: background) {
+            Image(systemName: systemImage).resizable().scaledToFit().foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+        }
+    }
+
+    private func label<Icon: View>(_ title: String, background: Color, @ViewBuilder icon: () -> Icon) -> some View {
         HStack(spacing: 0) {
             Text(title)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .foregroundStyle(.white)
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity).frame(height: 29)
-            DIPReferenceAssets.image(asset).resizable().frame(width: 20, height: 20)
+            icon().frame(width: 20, height: 20)
                 .frame(width: 40, height: 40)
                 .background(.white, in: Circle())
         }
