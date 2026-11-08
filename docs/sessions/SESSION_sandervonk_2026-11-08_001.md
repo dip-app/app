@@ -25,7 +25,8 @@ Started V1-08 on top of #42's branch: category-based default event images.
 - `npm run test:swift` (Linux Swift 6.0.3 toolchain): all four packages pass, including EventCoverTests.
 - `npm run check`: 78 pass, 0 fail, 6 todo.
 - Local Mac: `npm run ios:generate` and `xcodebuild build -scheme DIP` (iPhone 17 Pro Simulator, CODE_SIGNING_ALLOWED=NO) succeeded with the V1-08 images.
-- Not run: Simulator visual check of cards/details; Xcode app/UI tests.
+- Simulator (iPhone 17 Pro, Preview scheme with --member-events): Home cards show distinct category images for catalog://default/cooking and /games. Preview fixture now sets those covers. The date line over the lighter photo is low contrast (V1-10 follow-up). Detail hero not tapped through (uses the same DIPMedia path).
+- Not run: Xcode app/UI tests.
 
 ## Decisions
 
@@ -34,6 +35,6 @@ Started V1-08 on top of #42's branch: category-based default event images.
 
 ## Handoff
 
-- Simulator check that category images appear on Home cards and event details; confirm the tag-to-category mapping.
+- Confirm the tag-to-category mapping; check the detail hero on a device; fix card text contrast over light photos (V1-10).
 - Open the V1-08 PR from `main-aaj4vf` when ready.
 - Remaining: production organizer create/edit test, V1-09 sharing, V1-10 usability pass; RSVP end to end (Omer's backend branch).
