@@ -115,6 +115,13 @@ import DIPCore
         repository.stop()
     }
 
+    func testHomeCardsWithCategoryCoversUseTheirEventIDs() {
+        let live = DIPEventSummary(id: "company-event-1", title: "Lunch", locality: "", image: .asset("cover_cooking"))
+        let fixture = DIPEventSummary(id: "puppy-yoga", title: "Puppy Yoga", locality: "", image: .asset("EventCard"))
+        XCTAssertEqual(DIPHomeScreen.eventIdentifier(live), "company-event-1")
+        XCTAssertEqual(DIPHomeScreen.eventIdentifier(fixture), "EventCard", "design-reference fixtures keep their identifiers")
+    }
+
     // MARK: Firebase adapter mapping
 
     func testAttendeeRowsAreFilteredToWellFormedGoingRowsAndSorted() {
