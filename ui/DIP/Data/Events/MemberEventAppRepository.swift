@@ -124,8 +124,9 @@ import DIPAccounts
         badgeDate.setLocalizedDateFormatFromTemplate("MMMdjm")
         for (id, event) in joinedRecords.merging(records, uniquingKeysWith: { _, feed in feed }) {
             guard let metadata = try? MemberEventsRepository.metadata(event) else { continue }
-            // No approved image catalog is currently available: display the neutral media placeholder.
-            details[id] = DIPEventDetail(id: id, title: event.title, image: .data(Data()),
+            // V1-08: category-based default image from the approved catalog URL (falls back to tags).
+            details[id] = DIPEventDetail(id: id, title: event.title,
+                image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds),
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
                 isJoined: joinedIDs.contains(id),
                 attendeeCount: event.attendeeCount, attendeeAvatars: (participants[id] ?? []).prefix(5).map(\.avatar),

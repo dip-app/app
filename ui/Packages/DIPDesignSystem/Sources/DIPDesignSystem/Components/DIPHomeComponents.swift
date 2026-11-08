@@ -227,6 +227,11 @@
                 .background {
                     artwork
                         .overlay(.black.opacity(shade))
+                        // Keeps the white title/locality readable on light category photos (V1-10).
+                        .overlay(alignment: .bottom) {
+                            LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 90)
+                        }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .contentShape(RoundedRectangle(cornerRadius: 20))
