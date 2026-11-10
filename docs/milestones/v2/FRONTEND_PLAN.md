@@ -4,37 +4,38 @@ Drafted and last updated November 10, 2026 for the frontend area. V2 is due **De
 
 ## Status board
 
-Updated November 10, 2026. "Merged" means merged to `main`; nothing here is a deployed workflow unless it says so.
+Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed means deployed to the `team05-dip` Firebase project. Open and draft PRs below are unmerged and need review; a draft is not a claim that the feature works.
 
 | Item | What | Status | PR / branch | Owner area |
 | --- | --- | --- | --- | --- |
-| Rewards icon | Rewards tab icon is a gift (Heroicons outline/solid) | Done, merged | PR #48 | iOS |
+| Rewards icon | Rewards tab icon is a gift | Done, merged | PR #48 | iOS |
 | Event Join | One clear Join action; Directions/Leave row; chat icon on the joined bar | Done, merged | PR #47 | iOS |
 | V1-08 imagery | Event and catalog imagery | Done, merged | PR #44 | iOS |
+| Frontend plan | This plan | Done, merged | PR #50 | Plan steward |
 | Device build | App builds and runs on a phone with a personal bundle ID | Works (local only; paid-team bundle ID is F8) | none | iOS |
-| F0 | Cleanup and dead ends | Not started (Rewards tab icon done) | to be created | iOS |
-| F1-F5 | Interest filter, points display, challenges, invitations, live albums | Not started | to be created | iOS |
-| Weekly theme T1 | Backend, contract, seed script, rules/indexes, `createChallengeV1`/`updateChallengeV1` | In progress | `feature/weekly-theme-backend` | Backend |
-| Weekly theme T2 | iOS Home card live and read-only detail | In progress | `feature/weekly-theme-ios` | iOS |
-| Weekly theme T3 | Admin portal "Weekly themes" list/create/edit | In progress | `feature/weekly-theme-admin` | Admin portal |
-| Weekly theme production | Deploy rules/indexes/functions after review, then run seed script for the two demo companies | Not started (after T1-T3 review) | none | Orchestrator |
-| Empty states T4 | Reusable `DIPEmptyState` and its uses | In progress | `feature/empty-states-ios` | iOS |
-| Onboarding spec | Spec v3 written and audited (scores 7.5 to 8.7, round 3 pending) | Pending team approval | docs/milestones/v2/ONBOARDING_SPEC.md (PR #49) | Design / iOS |
-| Onboarding P0 | Core logic (DIPCore flow, record store, demo timeline) | Open, not merged: waiting for team approval | PR #49 `feature/onboarding-p0-core` | iOS |
-| Onboarding P1 | Sign-in stage | In progress | `feature/onboarding-p1-stage` | iOS |
-| Onboarding P3 | Demo stage and B1 scene | In progress, stacked on #49 | `feature/onboarding-p3-demo` | iOS |
-| Onboarding P4 | Embedded interests | In progress | `feature/onboarding-p4-interests` | iOS |
+| Weekly theme T1 | Contract (additive), `createChallengeV1`/`updateChallengeV1`, same-company read rules, seed script | Done, merged. Rules and both callables deployed to `team05-dip` | PR #53 | Backend |
+| Weekly theme production | Seeded: Fitness theme documents `weekly-fitness-20261109` and `weekly-fitness-20261116` for Arianne AI (`pNVpp3OusRvgfUV8hv5R`) and Globex (`zFKQd6KU14LqKr4a7yTb`) | Done in production | none | Orchestrator |
+| Weekly theme T2 | iOS Home card live and read-only detail | Draft. Its dependency (#53 deployed) is now met; needs simulator verification | PR #57 | iOS |
+| Weekly theme T3 | Admin portal "Weekly themes" list/create/edit | Open. Mock mode verified; live emulator test was skipped until #53, which is now merged | PR #52 | Admin portal |
+| Empty states T4 | Reusable `DIPEmptyState` and its uses | Draft; simulator tests pending | PR #51 | iOS |
+| Chat/push/settings/history/reminders backend (C1) | Chat rules, push functions, subscription preferences, change log trigger, reminders | Open, nothing deployed. Needs APNs key and paid team for real pushes. Open questions: level semantics, chat closing 24 h after the event end, organizer chat access, trigger region check | PR #54 | Backend |
+| Onboarding P0 + spec | Core logic and ONBOARDING_SPEC v4 | Open, waiting for team approval of onboarding | PR #49 | iOS / Design |
+| Onboarding P1 | Sign-in stage | Draft. Unit tests passed; the locked UI test run did not finish | PR #55 | iOS |
+| Onboarding P3 | DemoStage and scene B1 | Draft, stacked on #49. 74 DIPTests pass; UI tests unfinished | PR #56 | iOS |
+| Onboarding P4 | Embedded interest picker | Draft. Not built or tested (disk filled) | PR #58 | iOS |
 | Onboarding P2, B2-B5 | Tour shell (after P1); scenes B2-B5 (after P3) | Not started | to be created | iOS |
-| Activity chat (V2-S01) | Selected: build live chat now (item A below). Must be recorded as selected in its own issue | Decided; not started | issue to be created | iOS / Backend |
-| C1 Backend slice | Chat rules, push functions, subscription preferences, change log trigger, reminders (items A, B, C, D) | Not started (subagent starting) | to be created | Backend |
-| C2 iOS slice | Chat live, bell menu (items A, C) | Not started | to be created | iOS |
-| C3 iOS slice | Push registration, permission priming, settings UI, history UI, add to calendar (items B, C, D, E) | Not started; after the current iOS agents finish | to be created | iOS |
-| Push notifications (B) | FCM/APNs end to end | Not started; needs the paid Apple Developer team to device-test | see C1/C3 | Backend / iOS |
-| Notification settings (C) | Per-event All/Changes/Reminders/None | Not started; semantics proposed, owner confirmation needed | see C1/C2/C3 | Backend / iOS |
-| Event change history (D) | `changeLog` trigger and history list | Not started | see C1/C3 | Backend / iOS |
-| Add to calendar (E) | EventKit button on the event header | Not started | see C3 | iOS |
-| A1-A4 | Admin attendance, review, points, challenge form | Not started (A4 now covered by T3) | to be created | Admin portal |
+| C2 iOS slice | Activity chat live adapter (V2-S01, selected; record it in its own issue) and bell menu (items A, C) | Not started | to be created | iOS |
+| C3 iOS slice | Push registration, permission priming, settings UI, history UI, add to calendar (items B, C, D, E) | Not started | to be created | iOS |
+| Push notifications (B) | FCM/APNs end to end | Not started; device test needs the paid Apple Developer team | see C1/C3 | Backend / iOS |
+| Shake to report | Implementation | Not started (design done, see Design status) | none | iOS |
+| TestFlight | Release build | Not started; needs the paid team (F8) | none | All |
+| F0-F5 | Cleanup, interest filter, points, challenges submissions, invitations, live albums | Not started | to be created | iOS |
+| A1-A3 | Admin attendance, review, points | Not started (A4 is covered by weekly themes) | to be created | Admin portal |
 | F6-F8 | Accessibility, tests, release | Not started | none | All |
+
+**Design status.** Onboarding spec v4 passed audit (9.18). The Figma draft file "DIP - Onboarding motion reference" (key `nAcWMM3OBnEtrGQj5vCEtk`) has the complete v4 frame set (24 primary frames plus variants) and a "Shake to report" page of 10 frames. The owner will copy these into the main design file by hand.
+
+**Infra lessons.** Simulator work must be serialized with the `/tmp/dip-sim-lock` mkdir lock so agents do not drive the same simulator at once. A full disk and Mac sleep interrupted agents (P4 was never built because the disk filled); check free disk before starting build-heavy work and keep the Mac awake during long runs.
 
 ## How to work through this list
 
@@ -189,17 +190,17 @@ Depends on the new paid Apple Developer account and a few decisions.
 
 The design for this item is in docs/milestones/v2/ONBOARDING_SPEC.md (PR #49, pending team approval): one Welcome screen before sign-in, a short tour after membership resolves (Discover & Join, People & Invites, Challenges, Memories, Interests) and a handoff into Home. It needs team approval because V2 does not list onboarding as committed or stretch scope, and it needs no contract, rules or backend change. The spec replaces **O1** (welcome tour) and folds **O2** (pick your interests) into its B5 step. **O3** (a one-line permission explainer before the first photo-picker use) stays with F3/F5 and is shown just in time.
 
-**Design status.** Spec v3 is written and audited (audit scores 7.5, then 8.7; round 3 pending). The Figma draft file is "DIP - Onboarding motion reference" (key `nAcWMM3OBnEtrGQj5vCEtk`): 24 round-1 frames drawn, v3 adds more. The owner will copy the frames into the main design file by hand.
+**Design status.** Spec v4 passed audit (9.18; earlier rounds 7.5 and 8.7). The Figma draft file is "DIP - Onboarding motion reference" (key `nAcWMM3OBnEtrGQj5vCEtk`) with the complete v4 frame set (24 primary frames plus variants). The owner will copy the frames into the main design file by hand.
 
 **Build phases** (names follow the spec, section 5; P0 is the pure DIPCore flow, later phases switch on as their features land):
 
 | Phase | What | Status | PR / branch |
 | --- | --- | --- | --- |
-| P0 | Core logic: flow, record store, demo timeline | Open PR, not merged (waiting for team approval) | #49 `feature/onboarding-p0-core` |
-| P1 | Sign-in stage | In progress | `feature/onboarding-p1-stage` |
+| P0 | Core logic: flow, record store, demo timeline | Open PR, not merged (waiting for team approval) | #49 |
+| P1 | Sign-in stage | Draft; UI test run unfinished | #55 |
 | P2 | Tour shell | Next, after P1 | to be created |
-| P3 | Demo stage and scene B1 | In progress, stacked on #49 | `feature/onboarding-p3-demo` |
-| P4 | Embedded interests (B5 step) | In progress | `feature/onboarding-p4-interests` |
+| P3 | Demo stage and scene B1 | Draft, stacked on #49 | #56 |
+| P4 | Embedded interests (B5 step) | Draft; not built or tested | #58 |
 | B2-B5 | Remaining demo scenes | Next, after P3 | to be created |
 
 ## A — Admin portal V2 screens (web, `apps/admin`)
@@ -250,7 +251,7 @@ Decided: build live chat now (the earlier "hide the entry" option is dropped). T
 
 Not started and not scheduled.
 
-- **Shake to report a bug.** A designed screen or sheet opened by shaking the device: category, description, an attached screenshot with simple markup, diagnostics (app version and build, iOS version, device; anonymous), a privacy note, and submit, success and failure states. Where reports go is undecided: a Firestore collection written by a callable, or a GitHub issue created by a backend function. The design agent is producing a spec and a Figma frame; implementation is a later frontend task.
+- **Shake to report a bug.** A designed screen or sheet opened by shaking the device: category, description, an attached screenshot with simple markup, diagnostics (app version and build, iOS version, device; anonymous), a privacy note, and submit, success and failure states. Where reports go is undecided: a Firestore collection written by a callable, or a GitHub issue created by a backend function. The design exists as a "Shake to report" page of 10 frames in the onboarding Figma draft file; implementation is a later frontend task, not started.
 - **Notifications, Rewards, raffle, venue/weather.** Stretch, not selected (see below).
 - **TestFlight and release.** Needs the new paid Apple Developer team; steps are in F8.
 - **Figma updates (design owner).** Update the main-file navigation bar and the onboarding frames to the gift Rewards icon.
