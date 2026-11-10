@@ -68,6 +68,9 @@ final class OnboardingFlowTests: XCTestCase {
     func testAnnouncementCopyMatchesSpec() {
         XCTAssertEqual(flow(at: .people).announcement(for: .people), "Step 2 of 5, Who's going")
         XCTAssertEqual(flow(at: .arrival).announcement(for: .arrival), "You're in")
+        XCTAssertEqual(flow(at: .interests).announcement(for: .interests), "Step 5 of 5, Interests")
+        XCTAssertEqual(all.map(\.pillTitle),
+                       ["You're in", "Find events", "Who's going", "Challenges", "Memories", "Interests"])
     }
 
     func testNextOnLastStepStartsFinishedHandoff() {

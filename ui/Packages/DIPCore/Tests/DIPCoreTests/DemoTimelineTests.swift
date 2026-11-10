@@ -162,14 +162,21 @@ final class DemoTimelineTests: XCTestCase {
     // MARK: Spring settle rule (spec §3.0 Timing rule, §6 Spring timing)
 
     func testSettleTimesMatchTheMotionTokens() {
-        // Reference: SwiftUI `Spring(response:dampingRatio:).settlingDuration` on macOS 27 SDK.
-        let reference: [(AnimationSpec, Double)] = [
-            (OnboardingAnimation.stage, 0.946), (OnboardingAnimation.expand, 0.868),
-            (OnboardingAnimation.hop, 0.867), (OnboardingAnimation.affordance, 0.975),
-            (OnboardingAnimation.marker, 0.707),
+        // Reference: SwiftUI `Spring(response:dampingRatio:).settlingDuration`, the binding values in
+        // spec v4 §3.0 / §5. The engine's envelope estimate must never exceed them, so a script that
+        // passes the app-level SwiftUI XCTest always passes `validate()`, and stays within 10%.
+        let reference: [(String, AnimationSpec, Double)] = [
+            ("stage", OnboardingAnimation.stage, 0.946), ("expand", OnboardingAnimation.expand, 0.868),
+            ("hop", OnboardingAnimation.hop, 0.867),
+            ("reveal", .spring(response: 0.60, dampingFraction: 0.88), 1.002),
+            ("affordance", OnboardingAnimation.affordance, 0.975), ("marker", OnboardingAnimation.marker, 0.707),
+            // DIPMotion.section is `.smooth(duration: 0.625)`, i.e. a critically damped spring.
+            ("section", .spring(response: 0.625, dampingFraction: 1.0), 1.000),
         ]
-        for (spec, expected) in reference {
-            XCTAssertEqual(spec.settleTime.secondsValue, expected, accuracy: expected * 0.05, "\(spec)")
+        for (name, spec, swiftUI) in reference {
+            let engine = spec.settleTime.secondsValue
+            XCTAssertLessThanOrEqual(engine, swiftUI, name)
+            XCTAssertGreaterThanOrEqual(engine, swiftUI * 0.9, name)
         }
         XCTAssertEqual(OnboardingAnimation.copyOut.settleTime, ms(180))
         XCTAssertEqual(OnboardingAnimation.bar.settleTime, ms(300))
@@ -184,8 +191,8 @@ final class DemoTimelineTests: XCTestCase {
     }
 
     func testTimingRuleFlagsATargetingBeatThatStartsBeforeTheSpringSettles() {
-        // The spec's B1 table starts "tap Join" at 3.75 s, but `expand` from 2.90 s settles
-        // ≈ 0.85–0.87 s later, so the ghost would aim at a still-moving hero.
+        // Spec v2's B1 table started "tap Join" at 3.75 s, but `expand` from 2.90 s settles
+        // ≈ 0.85–0.87 s later, so the ghost would aim at a still-moving hero (v4 moves it to 3.82 s).
         let issues = joinScript(joinAt: ms(3_750)).validate()
         XCTAssertEqual(issues.count, 1)
         guard case .startsBeforeSettle(let beat, let element, let earlier, let earliestStart)? = issues.first else {
