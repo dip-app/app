@@ -32,6 +32,8 @@ Code, unit tests and the Preview build are done. Simulator screenshots and the n
 - `swift test --package-path ui/Packages/DIPDesignSystem`: 13 tests, 0 failures (4 new).
 - `swift test --package-path ui/Packages/DIPCore`: 44 tests, 0 failures (4 new).
 - `xcodegen generate` (ui/ComponentPreview); `xcodebuild -scheme Preview build` on iPhone 17 Pro / iOS 27.0 simulator: BUILD SUCCEEDED with all feature edits. (The UI test file was added after this build. It needs project regeneration and a test run.)
+- After the coordinator restarted CoreSimulatorService: `xcodegen generate` (ui/ComponentPreview) and `xcodebuild build-for-testing -scheme Preview` (including `EmptyStateFlowTests`): TEST BUILD SUCCEEDED, so the new UI tests compile.
+- Simulator UI tests and captures were then queued behind the shared `/tmp/dip-sim-lock`, which another session held. The owner asked to finalize and merge before the lock came free, so **`EmptyStateFlowTests` were never executed and no simulator screenshots were captured**. The lock was never acquired by this session and was left untouched.
 - Component visuals were rendered off-simulator with a temporary `ImageRenderer` test, which was deleted and not committed. Card and compact styles render as intended at standard size. macOS has no Dynamic Type, so those renders do not show the large-text layout.
 - Not run: `npm run check` (no `node_modules` in this worktree, and `npm ci` was deferred under the machine load and low disk), `npm run test:rules` (no rules change), main `ui/` DIP app build (it compiles the same `Features` sources as Preview), simulator screenshots, `EmptyStateFlowTests`.
 
@@ -44,7 +46,7 @@ Code, unit tests and the Preview build are done. Simulator screenshots and the n
 
 ## Handoff
 
-1. When CoreSimulator responds again, run on a dedicated simulator (this session created `iPhone 17 Pro (T4 empty states)`, D73A4AFF-FD1A-4607-8239-3B7C40F688E0. It is local only; delete it when done): `cd ui/ComponentPreview && xcodegen generate`, then `xcodebuild test -scheme Preview -only-testing:PreviewUITests/EmptyStateFlowTests` and the full `PreviewUITests` suite to confirm populated screens are unchanged.
+1. Take `/tmp/dip-sim-lock`, then run on a dedicated simulator (this session created `iPhone 17 Pro (T4 empty states)`, D73A4AFF-FD1A-4607-8239-3B7C40F688E0. It is local only; delete it when done): `cd ui/ComponentPreview && xcodegen generate`, then `xcodebuild test -scheme Preview -only-testing:PreviewUITests/EmptyStateFlowTests` and the full `PreviewUITests` suite to confirm populated screens are unchanged.
 2. Capture review images for each `--empty-state=` fixture (standard and `--large-text`) into `ui/ComponentPreview/Review/Screens/<screen>/`.
 3. Run `npm ci && npm run check` before merge.
 4. Live data: once real event/RSVP projections land, these states appear automatically for empty lists. Error/retry states remain separate work.
