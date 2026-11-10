@@ -73,6 +73,8 @@ struct DIPDetailPeopleRow: View {
     let title: String
     let avatars: [MediaReference]
     let total: Int
+    /// Shown, with `emptyText` beneath it, when `total` is 0.
+    var emptyTitle: String = "Be the first"
     let emptyText: String
     /// When set, the header shows how full the event is ("2 of 15", or "Full"), so capacity needs no row of its own.
     var capacity: Int? = nil
@@ -99,10 +101,9 @@ struct DIPDetailPeopleRow: View {
             }
             .frame(height: 22)
             if total == 0 {
-                Text(emptyText)
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("\(identifierPrefix).attendees.empty")
+                DIPEmptyState(
+                    screen: "\(identifierPrefix)-attendees", title: emptyTitle, message: emptyText,
+                    style: .compact, faces: 2)
             } else {
                 HStack(spacing: 10) {
                     ForEach(Array(shown.enumerated()), id: \.offset) { _, avatar in

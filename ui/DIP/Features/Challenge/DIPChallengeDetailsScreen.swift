@@ -40,7 +40,8 @@ struct DIPChallengeDetailsScreen: View {
                                 DIPDetailPeopleRow(
                                     title: "People that completed", avatars: challenge.completedAvatars,
                                     total: challenge.completedCount,
-                                    emptyText: "No one has completed this yet. Be the first.",
+                                    emptyTitle: "Be the first to finish",
+                                    emptyText: "People who complete this challenge will show up here.",
                                     identifierPrefix: "challenge", onMore: onCompleted)
                                 DIPDetailActionRow(
                                     isParticipating: challenge.isJoined, canChange: true,

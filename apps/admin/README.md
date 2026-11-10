@@ -8,6 +8,10 @@ Organizer portal for V1-05, built from the `sandervonk/nextjs-template` setup (N
 - Events list filtered by Upcoming / Past / Cancelled, classified from timestamps and status.
 - Create and edit an event with every `EventDraft` field, validated like the contract: title/description limits, UTC time order, future start on create, venue and coordinate bounds, integer price, capacity bounds, cover from the default catalog.
 - Create keeps one `requestId` across retries; edit sends `expectedRevision` and offers "Reload latest" on a conflict; capacity cannot drop below people already going; events can be cancelled and restored, never deleted.
+- **Weekly themes** (`/themes/`): the "This Week's Challenge" card on the app's Home. A theme is a `Challenge` document with `type: "weekly"` and `coverImageURL = catalog://theme/<key>`, which picks a bundled illustration and accent colour (`src/lib/themes.ts`, images in `public/img/themes/`; first and only theme: Fitness). The list has Current / Upcoming / Past tabs. Create and edit cover the theme, title, description, tags, goal and unit, points reward, and the weeks.
+  - Weeks run Monday 00:00 to Sunday 23:59:59 **Eastern Time** (`src/lib/weeks.ts`), for one or two weeks, so the portal, the seed script and the app agree on "this week" whatever the organizer's own time zone. The pickers are dropdowns of Mondays and Sundays (`<input type="week">` isn't supported in Safari or Firefox), mark weeks that already have a theme as taken, and default a new theme to the first free week from next Monday.
+  - One theme per week per company: overlaps are caught before saving and, if someone else got there first, the server's `CHALLENGE_WINDOW_OVERLAP` answer (with `details.conflict`) is shown against the conflicting theme's week. A new theme can start in the week already under way but not in a week that has ended. Once anyone has joined or completed, the start is locked and the end can't move into the past (`WINDOW_CHANGE_BLOCKED`). Counts are server-owned and never sent.
+  - Same retry rules as events: one `requestId` per create attempt (a replay returns the same theme), `expectedRevision` on edit with "Reload latest" on a conflict.
 
 ## Mock mode and live mode
 
@@ -24,7 +28,9 @@ Setting up live mode (once per Firebase project):
 4. Assign organizers with trusted tooling after their first sign-in: set `users/{uid}.role` to `"admin"` (Admin SDK or the Firebase console). Clients cannot write roles.
 5. Build with the variables set (`.env.local` or the environment) and deploy as described below.
 
-Tests: `npm test` runs the unit tests. `npm run test:admin:live` (repo root) runs the adapter end to end against the Auth, Firestore and Functions emulators; it is part of CI.
+Weekly themes in live mode read `companies/{companyId}/challenges` (type `weekly`) and write only through `createChallengeV1` / `updateChallengeV1` (request `{ contractVersion: 1, companyId, requestId | challengeId + expectedRevision, draft }`). Those callables and the challenge read rules come from the weekly theme backend work (`feature/weekly-theme-backend`); until they are deployed, the live portal's Weekly themes screen fails with the backend's answer, and the mock is the way to try it. Error mapping keeps the server's `details.reason` on `ApiError.reason` and an overlap's `details.conflict` on `ApiError.conflict`.
+
+Tests: `npm test` runs the unit tests. `npm run test:admin:live` (repo root) runs the adapter end to end against the Auth, Firestore and Functions emulators; it is part of CI. The weekly theme part of that suite skips itself until `gcp/functions/src/index.ts` exports `createChallengeV1`.
 
 ## Run
 

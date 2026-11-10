@@ -161,6 +161,12 @@ struct DIPMyEventsScreen: View {
 
     private func activeEvents(width: CGFloat) -> some View {
         VStack(spacing: 18) {
+            if activeEvents.isEmpty {
+                DIPEmptyState(
+                    screen: "my-events-active", title: "No upcoming events",
+                    message: "Events you join will show up here.",
+                    actionTitle: "Find an event", action: { onSelectTab(.home) })
+            }
             ForEach(activeEvents) { event in
                 Button {
                     onEvent(event.id)
@@ -192,7 +198,12 @@ struct DIPMyEventsScreen: View {
         }
     }
 
-    private var memories: some View {
+    @ViewBuilder private var memories: some View {
+        if memoryAlbums.isEmpty {
+            DIPEmptyState(
+                screen: "my-events-memories", title: "No memories yet",
+                message: "Events you’ve attended will show up here.", faces: 4)
+        }
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], spacing: 18) {
             ForEach(Array(memoryAlbums.enumerated()), id: \.offset) { index, memory in
                 GeometryReader { geometry in

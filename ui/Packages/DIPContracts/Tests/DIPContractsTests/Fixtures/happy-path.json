@@ -113,5 +113,121 @@
     "contractVersion": 1,
     "eventId": "event-demo",
     "revision": 2
+  },
+  "challenge": {
+    "id": "weekly-fitness-20261109",
+    "companyId": "company-demo",
+    "title": "Fitness",
+    "description": "Get moving with coworkers this week: try a class, a walk or a workout together and log it.",
+    "tagIds": [
+      "tag-fitness"
+    ],
+    "type": "weekly",
+    "goal": 3,
+    "goalUnit": "workouts",
+    "coverImageURL": "catalog://theme/fitness",
+    "startDate": "2026-11-09T05:00:00Z",
+    "endDate": "2026-11-16T04:59:59Z",
+    "pointsReward": 50,
+    "participantCount": 0,
+    "completedCount": 0,
+    "createdBy": "admin-demo",
+    "createdAt": "2026-11-08T15:00:00Z",
+    "updatedAt": "2026-11-08T15:00:00Z",
+    "revision": 1
+  },
+  "createChallengeRequest": {
+    "contractVersion": 1,
+    "companyId": "company-demo",
+    "requestId": "7d444840-9dc0-41f4-9d0c-4d1f4b3a9f10",
+    "draft": {
+      "title": "Fitness",
+      "description": "Get moving with coworkers this week: try a class, a walk or a workout together and log it.",
+      "tagIds": [
+        "tag-fitness"
+      ],
+      "type": "weekly",
+      "goal": 3,
+      "goalUnit": "workouts",
+      "coverImageURL": "catalog://theme/fitness",
+      "startDate": "2026-11-09T05:00:00Z",
+      "endDate": "2026-11-16T04:59:59Z",
+      "pointsReward": 50
+    }
+  },
+  "createChallengeResponse": {
+    "contractVersion": 1,
+    "challengeId": "weekly-fitness-20261109",
+    "revision": 1,
+    "challenge": {
+      "id": "weekly-fitness-20261109",
+      "companyId": "company-demo",
+      "title": "Fitness",
+      "description": "Get moving with coworkers this week: try a class, a walk or a workout together and log it.",
+      "tagIds": [
+        "tag-fitness"
+      ],
+      "type": "weekly",
+      "goal": 3,
+      "goalUnit": "workouts",
+      "coverImageURL": "catalog://theme/fitness",
+      "startDate": "2026-11-09T05:00:00Z",
+      "endDate": "2026-11-16T04:59:59Z",
+      "pointsReward": 50,
+      "participantCount": 0,
+      "completedCount": 0,
+      "createdBy": "admin-demo",
+      "createdAt": "2026-11-08T15:00:00Z",
+      "updatedAt": "2026-11-08T15:00:00Z",
+      "revision": 1
+    },
+    "replayed": false
+  },
+  "updateChallengeRequest": {
+    "contractVersion": 1,
+    "companyId": "company-demo",
+    "challengeId": "weekly-fitness-20261109",
+    "expectedRevision": 1,
+    "draft": {
+      "title": "Fitness",
+      "description": "Get moving with coworkers this week: try a class, a walk or a workout together and log it.",
+      "tagIds": [
+        "tag-fitness"
+      ],
+      "type": "weekly",
+      "goal": 3,
+      "goalUnit": "workouts",
+      "coverImageURL": "catalog://theme/fitness",
+      "startDate": "2026-11-09T05:00:00Z",
+      "endDate": "2026-11-16T04:59:59Z",
+      "pointsReward": 75
+    }
+  },
+  "updateChallengeResponse": {
+    "contractVersion": 1,
+    "challengeId": "weekly-fitness-20261109",
+    "revision": 2,
+    "challenge": {
+      "id": "weekly-fitness-20261109",
+      "companyId": "company-demo",
+      "title": "Fitness",
+      "description": "Get moving with coworkers this week: try a class, a walk or a workout together and log it.",
+      "tagIds": [
+        "tag-fitness"
+      ],
+      "type": "weekly",
+      "goal": 3,
+      "goalUnit": "workouts",
+      "coverImageURL": "catalog://theme/fitness",
+      "startDate": "2026-11-09T05:00:00Z",
+      "endDate": "2026-11-16T04:59:59Z",
+      "pointsReward": 75,
+      "participantCount": 0,
+      "completedCount": 0,
+      "createdBy": "admin-demo",
+      "createdAt": "2026-11-08T15:00:00Z",
+      "updatedAt": "2026-11-08T16:00:00Z",
+      "revision": 2
+    }
   }
 }

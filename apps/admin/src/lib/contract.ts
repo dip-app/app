@@ -52,9 +52,19 @@ export class ApiError extends Error {
     readonly code: ApiErrorCode,
     message: string,
     readonly fields: FieldErrors = {},
+    /** Stable machine reason from HttpsError `details.reason` (e.g. CHALLENGE_WINDOW_OVERLAP), when the server sent one. */
+    readonly reason?: string,
+    /** CHALLENGE_WINDOW_OVERLAP only: the same-company theme whose window is in the way (`details.conflict`). */
+    readonly conflict?: WindowConflict,
   ) {
     super(message);
   }
+}
+
+export interface WindowConflict {
+  challengeId: string;
+  startDate: string;
+  endDate: string;
 }
 
 export type FieldErrors = Partial<Record<string, string>>;
