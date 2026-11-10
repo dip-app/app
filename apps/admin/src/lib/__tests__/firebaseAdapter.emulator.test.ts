@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GoogleAuthProvider, signInWithCredential, signOut } from "firebase/auth";
+import { THEME_REASONS, type ThemeDraft } from "../challenge";
 import { ApiError, type EventDraft } from "../contract";
+import { addDays, nextMonday, weekEndIso, weekStartIso } from "../weeks";
 
 // Run: firebase emulators:exec --project demo-dip --only auth,functions,firestore \
 //        "LIVE_EMULATORS=1 npm --prefix apps/admin test"   (root script: npm run test:admin:live)
@@ -101,3 +104,82 @@ describe.skipIf(!live)("Firebase adapter against the Auth, Firestore and Functio
     expect(await api.session()).toBeNull();
   }, 60_000);
 });
+
+// Weekly themes need T1's createChallengeV1/updateChallengeV1 (feature/weekly-theme-backend). Until that
+// branch is merged the functions source doesn't export them, and this suite skips itself instead of failing CI.
+const challengeCallables = (() => {
+  try {
+    return readFileSync(resolve(process.cwd(), "../../gcp/functions/src/index.ts"), "utf8").includes("createChallengeV1");
+  } catch {
+    return false;
+  }
+})();
+
+describe.skipIf(!live || !challengeCallables)("Weekly themes against the emulators (needs createChallengeV1)", () => {
+  it("lists, creates (with replay), edits and maps theme errors", async () => {
+    const { createFirebaseApi } = await import("../firebaseAdapter");
+    const req = createRequire(resolve(process.cwd(), "../../gcp/functions/package.json"));
+    interface DocRef { set(data: object): Promise<unknown>; update(data: object): Promise<unknown> }
+    interface CollectionRef { doc(id: string): DocRef }
+    const adminApp = req("firebase-admin/app") as { initializeApp(options: object, name: string): unknown };
+    const adminFirestore = req("firebase-admin/firestore") as { getFirestore(app: unknown): { collection(name: string): CollectionRef } };
+    const db = adminFirestore.getFirestore(adminApp.initializeApp({ projectId: "demo-dip" }, "theme-adapter-test"));
+
+    const stamp = Date.now();
+    const domain = `themes-${stamp}.test`;
+    const companyId = `themes-co-${stamp}`;
+    await db.collection("companies").doc(companyId).set({ name: "Themes Co", emailDomain: domain });
+    await db.collection("tags").doc("theme-tag").set({ name: "Theme Tag", icon: "x", sortOrder: 1 });
+
+    let nextEmail = "";
+    const api = createFirebaseApi(
+      { firebase: { apiKey: "demo-key", projectId: "demo-dip", appId: "demo-app" }, emulatorHost: "127.0.0.1" },
+      {
+        signInWithGoogle: async (auth) => {
+          await signOut(auth);
+          const idToken = JSON.stringify({ sub: `google-${nextEmail}`, email: nextEmail, email_verified: true, name: nextEmail.split("@")[0] });
+          await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+        },
+      },
+    );
+
+    nextEmail = `member@${domain}`;
+    await api.signIn();
+    await expect(api.createTheme(crypto.randomUUID(), themeDraft(nextMonday()))).rejects.toMatchObject({ code: "permission-denied" });
+
+    nextEmail = `organizer@${domain}`;
+    const organizer = await api.signIn();
+    await db.collection("users").doc(organizer.uid).update({ role: "admin" });
+    expect(await api.session()).toMatchObject({ companyId, role: "admin" });
+    expect(await api.listThemes()).toEqual([]);
+
+    const draft = themeDraft(nextMonday());
+    const requestId = crypto.randomUUID();
+    const created = await api.createTheme(requestId, draft);
+    expect(created).toMatchObject({ revision: 1, replayed: false });
+    expect(await api.createTheme(requestId, draft)).toMatchObject({ challengeId: created.challengeId, revision: 1, replayed: true });
+
+    const stored = await api.getTheme(created.challengeId);
+    expect(stored).toMatchObject({ companyId, title: "Fitness", startDate: draft.startDate, endDate: draft.endDate, participantCount: 0, revision: 1 });
+    expect((await api.listThemes()).map((theme) => theme.id)).toEqual([created.challengeId]);
+
+    // Same weeks again: the server names the reason so the form can point at the conflicting week.
+    const overlap = await api.createTheme(crypto.randomUUID(), draft).catch((error: unknown) => error);
+    expect(overlap).toBeInstanceOf(ApiError);
+    expect((overlap as ApiError).reason).toBe(THEME_REASONS.overlap);
+
+    // Edits send the full theme (id, counts...); only draft fields reach the wire.
+    expect((await api.updateTheme(created.challengeId, 1, { ...stored, title: "Fitness week" })).revision).toBe(2);
+    await expect(api.updateTheme(created.challengeId, 1, stored)).rejects.toMatchObject({ code: "aborted" });
+    await expect(api.getTheme("missing-theme")).rejects.toMatchObject({ code: "not-found" });
+
+    await api.signOut();
+  }, 60_000);
+});
+
+function themeDraft(monday: string): ThemeDraft {
+  return {
+    title: "Fitness", description: "Move together.", tagIds: ["theme-tag"], type: "weekly", goal: 3, goalUnit: "workouts",
+    coverImageURL: "catalog://theme/fitness", startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)), pointsReward: 50,
+  };
+}

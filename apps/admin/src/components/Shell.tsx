@@ -40,6 +40,13 @@ export function Shell({ title, subtitle, action, children }: Props) {
             </svg>
             Events
           </Link>
+          <Link href="/themes/" className="nav-item" aria-current={pathname.startsWith("/themes") ? "page" : undefined}>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" />
+              <path d="m12 12.6.95 1.95 2.15.3-1.55 1.5.37 2.13L12 17.47l-1.92 1.01.37-2.13-1.55-1.5 2.15-.3Z" />
+            </svg>
+            Weekly themes
+          </Link>
         </nav>
         <div className="account">
           <div className="who">

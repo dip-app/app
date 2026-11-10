@@ -4,13 +4,17 @@ import {
 } from "firebase/auth";
 import {
   type DocumentData, type Firestore, Timestamp, collection, connectFirestoreEmulator, doc, getDoc, getDocs,
-  getFirestore, orderBy, query,
+  getFirestore, limit, orderBy, query,
 } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 import type { AdminApi, CommandResult, Session } from "./api";
 import type { Tag } from "./catalog";
 import {
-  ApiError, type AdminEvent, type ApiErrorCode, type EventDraft, type EventStatus, type FieldErrors, normalizeDraft,
+  THEME_REASONS, type ThemeCommandResult, type ThemeDraft, type WeeklyTheme, normalizeThemeDraft,
+} from "./challenge";
+import {
+  ApiError, type AdminEvent, type ApiErrorCode, type EventDraft, type EventStatus, type FieldErrors, type WindowConflict,
+  normalizeDraft,
 } from "./contract";
 
 export interface LiveConfig {
@@ -61,16 +65,50 @@ export function apiErrorFrom(error: unknown): unknown {
   const code = raw.replace(/^functions\//, "").replace(/^firestore\//, "");
   if (!API_CODES.includes(code as ApiErrorCode)) return error;
   const message = String((error as { message?: unknown }).message ?? "Request failed.");
-  const details = (error as { details?: { fields?: unknown } }).details;
+  const details = (error as { details?: { fields?: unknown; reason?: unknown; conflict?: unknown } }).details;
   const fields: FieldErrors = {};
   if (Array.isArray(details?.fields)) {
-    for (const field of details.fields) if (typeof field === "string") fields[field] = message;
+    // Field names are draft-relative ("title", "venue.name"); a "draft."/"event." prefix is tolerated.
+    for (const field of details.fields) if (typeof field === "string") fields[field.replace(/^(draft|event)\./, "")] = message;
   }
-  return new ApiError(code as ApiErrorCode, message, fields);
+  // The stable reason (e.g. CHALLENGE_WINDOW_OVERLAP) lets screens react precisely; unknown reasons fall back to the code.
+  const reason = typeof details?.reason === "string" ? details.reason : undefined;
+  const given = details?.conflict as Partial<WindowConflict> | undefined;
+  const conflict = given && typeof given.challengeId === "string" && typeof given.startDate === "string" && typeof given.endDate === "string"
+    ? { challengeId: given.challengeId, startDate: given.startDate, endDate: given.endDate }
+    : undefined;
+  return new ApiError(code as ApiErrorCode, message, fields, reason, conflict);
 }
 
 function iso(value: unknown): string {
-  return value instanceof Timestamp ? value.toDate().toISOString() : "";
+  if (value instanceof Timestamp) return value.toDate().toISOString();
+  // Tolerate RFC 3339 strings (fixtures, older seeds); Timestamps are the stored form.
+  if (typeof value === "string" && !Number.isNaN(Date.parse(value))) return new Date(value).toISOString();
+  return "";
+}
+
+/** Maps a `challenges` document (Firestore Timestamps) to the portal's theme shape (ISO strings). */
+export function themeFromDoc(id: string, data: DocumentData): WeeklyTheme {
+  return {
+    id,
+    companyId: String(data.companyId ?? ""),
+    title: String(data.title ?? ""),
+    description: String(data.description ?? ""),
+    tagIds: Array.isArray(data.tagIds) ? data.tagIds.filter((t: unknown): t is string => typeof t === "string") : [],
+    type: "weekly",
+    goal: Number(data.goal ?? 0),
+    goalUnit: String(data.goalUnit ?? ""),
+    coverImageURL: String(data.coverImageURL ?? ""),
+    startDate: iso(data.startDate),
+    endDate: iso(data.endDate),
+    pointsReward: Number(data.pointsReward ?? 0),
+    participantCount: Number(data.participantCount ?? 0),
+    completedCount: Number(data.completedCount ?? 0),
+    createdBy: String(data.createdBy ?? ""),
+    createdAt: iso(data.createdAt),
+    updatedAt: iso(data.updatedAt),
+    revision: Number(data.revision ?? 1),
+  };
 }
 
 /** Maps an `events` document (Firestore Timestamps) to the portal's event shape (ISO strings). */
@@ -137,6 +175,9 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
   const resolveMembership = httpsCallable(functions, "resolveMembershipV1");
   const createCallable = httpsCallable<unknown, CommandResult & { contractVersion: number }>(functions, "createEventV1");
   const updateCallable = httpsCallable<unknown, CommandResult & { contractVersion: number }>(functions, "updateEventV1");
+  // T1 responses: create {contractVersion, challengeId, revision, challenge, replayed}; update has no `replayed`.
+  const createThemeCallable = httpsCallable<unknown, ThemeCommandResult & { contractVersion: number }>(functions, "createChallengeV1");
+  const updateThemeCallable = httpsCallable<unknown, ThemeCommandResult & { contractVersion: number }>(functions, "updateChallengeV1");
 
   async function loadSession(): Promise<Session | null> {
     await auth.authStateReady();
@@ -217,6 +258,28 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
       const session = await organizer();
       const result = await updateCallable({ contractVersion: 1, companyId: session.companyId, eventId, expectedRevision, event: normalizeDraft(draft), status });
       return { eventId: result.data.eventId, revision: result.data.revision };
+    }),
+    listThemes: () => run(async () => {
+      const session = await organizer();
+      // Themes are `challenges` of type weekly; filtered here so later challenge types need no new index.
+      const snap = await getDocs(query(collection(db, "companies", session.companyId, "challenges"), orderBy("startDate", "desc"), limit(200)));
+      return snap.docs.filter((d) => d.get("type") === "weekly").map((d) => themeFromDoc(d.id, d.data()));
+    }),
+    getTheme: (challengeId: string) => run(async () => {
+      const session = await organizer();
+      const snap = await getDoc(doc(db, "companies", session.companyId, "challenges", challengeId));
+      if (!snap.exists()) throw new ApiError("not-found", "That weekly theme doesn’t exist.", {}, THEME_REASONS.notFound);
+      return themeFromDoc(snap.id, snap.data());
+    }),
+    createTheme: (requestId: string, draft: ThemeDraft) => run(async () => {
+      const session = await organizer();
+      const result = await createThemeCallable({ contractVersion: 1, companyId: session.companyId, requestId, draft: normalizeThemeDraft(draft) });
+      return { challengeId: result.data.challengeId, revision: result.data.revision, replayed: result.data.replayed === true };
+    }),
+    updateTheme: (challengeId: string, expectedRevision: number, draft: ThemeDraft) => run(async () => {
+      const session = await organizer();
+      const result = await updateThemeCallable({ contractVersion: 1, companyId: session.companyId, challengeId, expectedRevision, draft: normalizeThemeDraft(draft) });
+      return { challengeId: result.data.challengeId, revision: result.data.revision };
     }),
   };
 }
