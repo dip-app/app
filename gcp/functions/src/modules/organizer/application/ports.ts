@@ -36,8 +36,8 @@ export interface OrganizerTransaction {
   createEvent(companyId: string, eventId: string, uid: string, draft: ParsedDraft): void;
   /** Creates the private deduplication receipt; fails if it exists. */
   createReceipt(companyId: string, uid: string, requestId: string, receipt: CommandReceipt): void;
-  /** Full-draft replacement; increments revision to `nextRevision`. */
-  updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled", nextRevision: number): void;
+  /** Full-draft replacement; increments revision to `nextRevision` and records `updatedBy` (the editor UID, for the change log). */
+  updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled", nextRevision: number, updatedBy: string): void;
 }
 
 export interface OrganizerStore {

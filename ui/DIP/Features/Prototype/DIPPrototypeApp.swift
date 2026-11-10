@@ -7,12 +7,7 @@ import SwiftUI
 /// Composition root: only this host chooses the repository implementation.
 /// Navigation/picker state stays here; product state comes exclusively from repository observation.
 struct DIPPrototypeApp: View {
-    private enum Route: Hashable {
-        case event(String)
-        case participants(String)
-        case album(String)
-        case challenge(String)
-    }
+    private typealias Route = EventBarAction.Route
     @State private var selectedTab: DIPHomeTab
     @State private var routes: [Route]
     @State private var model: DIPAppViewModel
@@ -69,16 +64,23 @@ struct DIPPrototypeApp: View {
         default: _routes = State(initialValue: [])
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
-            initialSnapshot: ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+            initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
+                ?? (ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
                 ? DIPMockFixtures.chatGroupingReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference,
+                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures())))
+    }
+
+    /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
+    private static func emptyStateFixture() -> DIPEmptyStateFixture? {
+        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--empty-state=") }
+            .flatMap { DIPEmptyStateFixture(rawValue: String($0.dropFirst("--empty-state=".count))) }
     }
 
     /// Deterministic failure paths for local preview/UI testing only.
@@ -91,6 +93,8 @@ struct DIPPrototypeApp: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
+    @Environment(\.weeklyChallengeFeed) private var challengeFeed
     @State private var albumPickerPresented = false
 
     var body: some View {
@@ -183,7 +187,8 @@ struct DIPPrototypeApp: View {
                     onLoadMore: onLoadMoreEvents, loadingMore: loadingMoreEvents,
                     paginationError: eventPaginationError,
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
-                    onRefresh: onRefreshEvents))
+                    onRefresh: homeRefresh, challengeState: challengeFeed?.state,
+                    onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } }))
             case .events:
                 if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
@@ -218,42 +223,7 @@ struct DIPPrototypeApp: View {
     }
 
     private var bottomAction: DIPBottomBarAction? {
-        switch routes.last {
-        case .event(let id):
-            guard let event = model.snapshot?.eventDetails[id] else {
-                return DIPBottomBarAction(
-                    title: model.isLoading ? "Loading…" : "Activity unavailable",
-                    style: .complete, identifier: "event.primary")
-            }
-            if event.isPast { return DIPBottomBarAction(title: "View Album", identifier: "event.primary") }
-            let joined = event.isJoined
-            if let metadata = event.metadata {
-                switch metadata.state(now: Date(), attendeeCount: event.attendeeCount, isJoined: joined) {
-                case .cancelled: return DIPBottomBarAction(title: "Activity cancelled", style: .complete, identifier: "event.primary")
-                case .full: return DIPBottomBarAction(title: "Activity full", style: .complete, identifier: "event.primary")
-                case .started where !joined: return DIPBottomBarAction(title: "Activity started", style: .complete, identifier: "event.primary")
-                default: break
-                }
-            }
-            return DIPBottomBarAction(
-                title: joined ? "Activity Chat" : "Join the Activity",
-                style: joined ? .accent : .standard,
-                identifier: "event.primary", value: joined ? "Joined" : "Not joined",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
-        case .participants(let id) where model.snapshot?.eventDetails[id]?.isPast == true:
-            return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
-        case .participants(let id):
-            let joined = model.snapshot?.eventDetails[id]?.isJoined == true
-            return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
-                style: joined ? .accent : .standard,
-                identifier: joined ? "participants.chat" : "participants.join",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
-        case .album:
-            return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
-        case .challenge:
-            return DIPBottomBarAction(title: "Add Your Entry", identifier: "challenge.primary")
-        case nil: return nil
-        }
+        EventBarAction.resolve(route: routes.last, snapshot: model.snapshot, isLoading: model.isLoading)
     }
 
     private func performBottomAction() {
@@ -267,8 +237,7 @@ struct DIPPrototypeApp: View {
             else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
         case .album: albumPickerPresented = true
-        case .challenge: notice = "Challenge entries"
-        case nil: break
+        case .challenge, nil: break
         }
     }
 
@@ -278,11 +247,12 @@ struct DIPPrototypeApp: View {
         showChat = true
     }
 
-    private func changeChallenge(_ id: String, joined: Bool) {
-        guard !model.pendingCommands.contains("challenge:\(id)") else { return }
-        Task {
-            do { try await model.setChallengeJoined(challengeID: id, joined: joined) }
-            catch { rsvpError = (error as? DIPRepositoryError).map { String(describing: $0) } ?? "Couldn’t update the challenge. Please try again." }
+    /// Pull-to-refresh reloads the weekly theme alongside events.
+    private var homeRefresh: (() async -> Void)? {
+        guard challengeFeed != nil || onRefreshEvents != nil else { return nil }
+        return { [challengeFeed, onRefreshEvents] in
+            await challengeFeed?.load()
+            await onRefreshEvents?()
         }
     }
 
@@ -323,12 +293,8 @@ struct DIPPrototypeApp: View {
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .challenge(let id):
-                if let challenge = snapshot.challengeDetails[id] {
-                    DIPChallengeDetailsScreen(
-                        challenge: challenge, onBack: pop, onCompleted: { notice = "Completed list" },
-                        onJoin: { changeChallenge(id, joined: true) },
-                        onLeave: { changeChallenge(id, joined: false) })
-                    .disabled(isRSVPPending)
+                if let challenge = challengeFeed?.detail(id) ?? snapshot.challengeDetails[id] {
+                    DIPChallengeDetailsScreen(challenge: challenge, onBack: pop)
                 } else { missingResource }
             case .participants(let id):
                 if let people = snapshot.participants[id] {

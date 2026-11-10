@@ -25,12 +25,15 @@ Set an Xcode scheme launch argument or simulator launch argument:
 | --screen=attendees | 17 Participants |
 | --screen=album | Original Album |
 | --gallery | Earlier isolated component/state gallery |
+| --home-theme=live | Home with the weekly theme read through WeeklyChallengeFeed and a fake source (Fitness, 128) |
+| --home-theme-count=0, 1 or 128 | With --home-theme=live: participant-count variants |
+| --home-theme=none / error / loading / offline / unknown | No theme this week (empty card), failed read with in-place retry (first read fails), skeleton, cached card marked stale, unknown catalog key (title-only fallback) |
 
 --large-text requests Accessibility 3 for applicable review. It does not imply the exact standard-size reference has a reviewed large-text equivalent. Only light appearance is supplied.
 
 ## Interaction boundaries
 
-Navigation is local UI state. Join/profile/message/photo data passes through the injected DIPRepository and is retained for the life of its mock adapter; these are not Firebase account, authorization, persistence, RSVP, chat or upload implementations. Native ShareLink/system sheets handle sharing. Rewards, notifications and challenge workflows remain explicit notices.
+Navigation is local UI state. Join/profile/message/photo data passes through the injected DIPRepository and is retained for the life of its mock adapter; these are not Firebase account, authorization, persistence, RSVP, chat or upload implementations. Native ShareLink/system sheets handle sharing. Rewards and notifications remain explicit notices. The weekly challenge opens a read-only detail; submissions are V2.
 
 Only Puppy Yoga has supplied detail/Joined frames. Other events use synthetic details in the same template, and memory IDs select explicitly keyed albums seeded with the provided reference photos. Supporting edit/chat/photo-viewer/system-picker UI has no corresponding supplied high-fidelity frame.
 

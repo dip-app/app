@@ -85,67 +85,97 @@
         }
     }
 
+    /// Home "This Week's Challenge" card (Figma 46:1017). Theme artwork and accent are inputs
+    /// (resolved from the weekly-theme catalog by the app); the geometry is the original mascot crop.
     public struct DIPChallengeCard: View {
         let category: String
-        let participantCount: Int
-        private let avatarStack: AnyView
-        private let artwork: AnyView
+        let participationText: String
+        let accessibilityText: String
+        let accent: Color
+        let titleColor: Color
+        private let avatarStack: AnyView?
+        private let artwork: AnyView?
         let onSelect: () -> Void
+        @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
         public init(category: String, participantCount: Int, avatars: [String], onSelect: @escaping () -> Void) {
-            self.category = category
-            self.participantCount = participantCount
-            self.avatarStack = AnyView(DIPReferenceAvatarStack(names: avatars))
-            self.artwork = AnyView(DIPReferenceAssets.image("Mascot").resizable())
-            self.onSelect = onSelect
+            self.init(category: category, participationText: "+ \(participantCount) others participating",
+                      accessibilityLabel: "This week’s challenge: \(category), \(participantCount) others participating",
+                      accent: DIPTokens.Color.challengeAccent.swiftUIColor, titleColor: .white,
+                      artwork: DIPReferenceAssets.image("Mascot").resizable(),
+                      avatarStack: avatars.isEmpty ? nil : AnyView(DIPReferenceAvatarStack(names: avatars)), onSelect: onSelect)
         }
         public init<Artwork: View, Avatars: View>(
             category: String, participantCount: Int, artwork: () -> Artwork, avatarStack: () -> Avatars,
             onSelect: @escaping () -> Void
         ) {
+            self.init(category: category, participationText: "+ \(participantCount) others participating",
+                      accessibilityLabel: "This week’s challenge: \(category), \(participantCount) others participating",
+                      accent: DIPTokens.Color.challengeAccent.swiftUIColor, titleColor: .white,
+                      artwork: artwork(), avatarStack: AnyView(avatarStack()), onSelect: onSelect)
+        }
+        /// Theme-driven card. Pass nil `artwork` for a title-only (unknown theme) card and nil
+        /// `avatarStack` when no participant faces exist: the pill then shows text only.
+        public init<Artwork: View>(
+            category: String, participationText: String, accessibilityLabel: String, accent: Color, titleColor: Color,
+            artwork: Artwork?, avatarStack: AnyView?, onSelect: @escaping () -> Void
+        ) {
             self.category = category
-            self.participantCount = participantCount
-            self.avatarStack = AnyView(avatarStack())
-            self.artwork = AnyView(artwork())
+            self.participationText = participationText
+            self.accessibilityText = accessibilityLabel
+            self.accent = accent
+            self.titleColor = titleColor
+            self.artwork = artwork.map { AnyView($0) }
+            self.avatarStack = avatarStack
             self.onSelect = onSelect
         }
         public var body: some View {
+            let large = dynamicTypeSize.isAccessibilitySize
             Button(action: onSelect) {
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 20).fill(DIPTokens.Color.challengeAccent.swiftUIColor)
-                    // Export is the original image fill; replicate its Figma crop within the mascot node.
-                    artwork
-                        .frame(width: 314.16, height: 231.968)
-                        .offset(x: 28.315, y: -17.427)
-                        .frame(width: 350, height: 222, alignment: .topLeading).clipped()
-                        .offset(y: -19)
+                    RoundedRectangle(cornerRadius: 20).fill(accent)
+                    if let artwork {
+                        // Export is the original image fill; replicate its Figma crop within the mascot node.
+                        artwork
+                            .frame(width: 314.16, height: 231.968)
+                            .offset(x: 28.315, y: -17.427)
+                            .frame(width: 350, height: 222, alignment: .topLeading).clipped()
+                            .offset(y: -19)
+                            .accessibilityHidden(true)
+                    }
                     VStack(alignment: .leading, spacing: 0) {
                         Spacer(minLength: 0)
                         Text(category.uppercased())
                             .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
-                            .foregroundStyle(.white).frame(height: 50).padding(.leading, 10)
-                        HStack(alignment: .top) {
+                            .foregroundStyle(titleColor).lineLimit(large ? 2 : 1).minimumScaleFactor(0.5)
+                            .frame(minHeight: 50).frame(height: large ? nil : 50).padding(.leading, 10)
+                        HStack(alignment: large ? .bottom : .top) {
                             HStack(spacing: 10) {
-                                avatarStack
-                                Text("+ \(participantCount) others participating")
+                                if let avatarStack { avatarStack }
+                                Text(participationText)
                                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                    .foregroundStyle(.black).frame(height: 22)
+                                    .foregroundStyle(.black).frame(minHeight: 22)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            .padding(.leading, 4).padding(.trailing, 12).padding(.vertical, 4)
+                            .padding(.leading, avatarStack == nil ? 12 : 4).padding(.trailing, 12).padding(.vertical, 4)
                             .background(.white, in: Capsule())
                             Spacer(minLength: 0)
                             Text("→").font(DIPReferenceAssets.font("Inter-Medium", size: 20))
                                 .rotationEffect(.degrees(-45))
                                 .foregroundStyle(.black).frame(width: 30, height: 30)
                                 .background(.white, in: Circle())
+                                .accessibilityHidden(true)
                         }
                     }
                     .padding(5)
                 }
-                .frame(height: 225)
+                .frame(minHeight: 225)
+                .frame(height: large ? nil : 225)
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("This Week’s Challenge, \(category), \(participantCount) others participating")
+            .accessibilityLabel(accessibilityText)
+            .accessibilityHint("Opens the challenge details")
             .accessibilityIdentifier("home.challenge")
         }
     }
@@ -267,11 +297,22 @@
         let selected: DIPHomeTab
         let action: DIPBottomBarAction?
         let showsTabs: Bool
+        /// The tabs shown, in order. Defaults to every tab; onboarding demos pass `[.home, .events, .profile]`.
+        let tabs: [DIPHomeTab]
         let onSelect: (DIPHomeTab) -> Void
         let onAction: () -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         /// Marker position while a finger is dragging it; nil when it rests on the selected tab.
         @State private var dragMarkerX: CGFloat?
+
+        /// Root placement shared by every host of the one bar: centred `barCenterInset` above the
+        /// screen's bottom edge (safe area ignored), `horizontalInset` from each side. Height is 80,
+        /// so the bar's bottom edge sits `standardInsets.bottom` (21) above the screen edge.
+        public static let barCenterInset: CGFloat = 61
+        public static let horizontalInset: CGFloat = 20
+        public static let height: CGFloat = 80
+        public static let standardInsets = EdgeInsets(
+            top: 0, leading: horizontalInset, bottom: barCenterInset - height / 2, trailing: horizontalInset)
 
         public init(selected: DIPHomeTab = .home, onSelect: @escaping (DIPHomeTab) -> Void) {
             self.init(selected: selected, action: nil, onSelect: onSelect)
@@ -279,17 +320,19 @@
 
         public init(
             selected: DIPHomeTab = .home, action: DIPBottomBarAction?, showsTabs: Bool = true,
+            tabs: [DIPHomeTab] = DIPHomeTab.allCases,
             onSelect: @escaping (DIPHomeTab) -> Void, onAction: @escaping () -> Void = {}
         ) {
             self.selected = selected
             self.action = action
             self.showsTabs = showsTabs
+            self.tabs = tabs.isEmpty ? DIPHomeTab.allCases : tabs
             self.onSelect = onSelect
             self.onAction = onAction
         }
 
         private var selectedIndex: Int {
-            DIPHomeTab.allCases.firstIndex(of: selected) ?? 0
+            tabs.firstIndex(of: selected) ?? 0
         }
 
         private func asset(for tab: DIPHomeTab, selected: Bool) -> String {
@@ -305,7 +348,12 @@
         }
 
         private func restingMarkerX(width: CGFloat) -> CGFloat {
-            10 + (width - 80) / 3 * CGFloat(selectedIndex)
+            10 + slotStep(width: width) * CGFloat(selectedIndex)
+        }
+
+        /// Distance between adjacent tab slots (the first and last slots sit 40 pt from the ends).
+        private func slotStep(width: CGFloat) -> CGFloat {
+            (width - 80) / CGFloat(max(1, tabs.count - 1))
         }
 
         private func marker(width: CGFloat) -> some View {
@@ -320,12 +368,12 @@
 
         /// Dragging the marker selects each tab it crosses; releasing settles on the selected tab.
         private func dragGesture(width: CGFloat) -> some Gesture {
-            let step = (width - 80) / 3
+            let step = slotStep(width: width)
+            let tabs = self.tabs
             return DragGesture(minimumDistance: 6)
                 .onChanged { value in
-                    let x = min(max(value.location.x - 40, 10), 10 + 3 * step)
+                    let x = min(max(value.location.x - 40, 10), 10 + CGFloat(tabs.count - 1) * step)
                     dragMarkerX = x
-                    let tabs = DIPHomeTab.allCases
                     let index = min(max(Int(((x - 10) / step).rounded()), 0), tabs.count - 1)
                     // Rewards is not connected, so a drag passes over it instead of opening it.
                     if tabs[index] != selected, tabs[index] != .rewards { onSelect(tabs[index]) }
@@ -372,8 +420,8 @@
 
         private var tabItems: some View {
             HStack(spacing: 0) {
-                ForEach(DIPHomeTab.allCases) { tab in
-                    if tab != .home { Spacer(minLength: 0) }
+                ForEach(tabs) { tab in
+                    if tab != tabs.first { Spacer(minLength: 0) }
                     Button {
                         onSelect(tab)
                     } label: {
@@ -412,6 +460,11 @@
             Button(action: onAction) {
                 ZStack {
                     Capsule().fill(actionColor(action.style))
+                    if action.showsProgress && !reduceMotion {
+                        DIPProgressBand()
+                            .transition(.opacity)
+                            .accessibilityHidden(true)
+                    }
                     HStack(spacing: 0) {
                         Text(action.title)
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
@@ -430,9 +483,19 @@
                                 .padding(.trailing, 8)
                                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                 .accessibilityHidden(true)
+                        } else if action.showsProgress && reduceMotion {
+                            // Reduce Motion: no travelling band; a static spinner in the icon circle.
+                            ProgressView()
+                                .tint(DIPTokens.Color.navigationBackground.swiftUIColor)
+                                .frame(width: 64, height: 64)
+                                .background(.white, in: Circle())
+                                .padding(.trailing, 8)
+                                .transition(.opacity)
+                                .accessibilityHidden(true)
                         }
                     }
                     .animation(DIPMotion.affordance(reduceMotion: reduceMotion), value: action.icon)
+                    .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: action.showsProgress)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 80)
@@ -443,6 +506,31 @@
             .accessibilityLabel(action.title)
             .accessibilityIdentifier(action.identifier)
             .accessibilityValue(action.value ?? "")
+        }
+    }
+
+    /// A white 25% band, 80 pt wide, sweeping left to right across its container every 1.4 s.
+    /// One gradient layer moved by an offset; it exists only while progress is shown.
+    struct DIPProgressBand: View {
+        static let bandWidth: CGFloat = 80
+        static let period = 1.4
+        @State private var sweeping = false
+
+        var body: some View {
+            GeometryReader { geometry in
+                LinearGradient(
+                    colors: [.white.opacity(0), .white.opacity(0.25), .white.opacity(0)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: Self.bandWidth, height: geometry.size.height)
+                .offset(x: sweeping ? geometry.size.width : -Self.bandWidth)
+            }
+            .allowsHitTesting(false)
+            .onAppear {
+                withAnimation(.linear(duration: Self.period).repeatForever(autoreverses: false)) {
+                    sweeping = true
+                }
+            }
         }
     }
 

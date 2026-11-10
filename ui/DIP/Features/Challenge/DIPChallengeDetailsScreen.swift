@@ -2,54 +2,55 @@ import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
-/// Figma Event Page (challenge) 160:6357: the event page layout with "People that completed"
-/// and an "Add Your Entry" action. Participation state is repository-owned.
+/// Read-only weekly-theme page, built on the event page layout (Figma 160:6357): window pill,
+/// theme illustration on its accent, title, description, goal and reward, and how entries will
+/// work. Submitting an entry is F3/V2, so the page shows a quiet "Submissions open soon" note
+/// instead of an entry action, and the completed list stays hidden until it exists.
 struct DIPChallengeDetailsScreen: View {
     let challenge: DIPChallengeDetail
     let onBack: () -> Void
-    let onCompleted: () -> Void
-    let onJoin: () -> Void
-    let onLeave: () -> Void
-    @State private var confirmingLeave = false
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.white
             VStack(spacing: 0) {
-                DIPDetailHeader(timing: challenge.timing, identifierPrefix: "challenge", onBack: onBack)
+                DIPDetailHeader(timing: challenge.timing, widePill: true, identifierPrefix: "challenge", onBack: onBack)
+                    .accessibilityElement(children: .contain)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        DIPDetailHero(image: challenge.image, tags: challenge.tags, identifierPrefix: "challenge",
-                                      artworkBackground: Color(red: 250 / 255, green: 114 / 255, blue: 230 / 255))
+                        hero
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text(challenge.title.uppercased())
                                     .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityAddTraits(.isHeader)
                                     .accessibilityIdentifier("challenge.title")
                                 Text(challenge.description)
                                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                                     .lineSpacing(1.0566566)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityIdentifier("challenge.description")
                             }
-                            .foregroundStyle(.black)
                             .padding(.top, 10)
-                            VStack(alignment: .leading, spacing: 10) {
-                                DIPDetailPeopleRow(
-                                    title: "People that completed", avatars: challenge.completedAvatars,
-                                    total: challenge.completedCount,
-                                    emptyText: "No one has completed this yet. Be the first.",
-                                    identifierPrefix: "challenge", onMore: onCompleted)
-                                DIPDetailActionRow(
-                                    isParticipating: challenge.isJoined, canChange: true,
-                                    joinTitle: "Join Challenge", leaveTitle: "Leave Challenge",
-                                    shareItem: "\(challenge.title) — \(challenge.timing)",
-                                    shareTitle: "Share Challenge", identifierPrefix: "challenge",
-                                    onJoin: onJoin, onLeave: { confirmingLeave = true })
+                            facts
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("How it works")
+                                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
+                                    .accessibilityAddTraits(.isHeader)
+                                Text(DIPChallengeText.howItWorks)
+                                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityIdentifier("challenge.how")
                             }
+                            Label(DIPChallengeText.submissionsSoon, systemImage: "clock")
+                                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.65))
+                                .accessibilityIdentifier("challenge.submissions")
                         }
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 130)
@@ -61,9 +62,46 @@ struct DIPChallengeDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
-        .confirmationDialog("Leave this challenge?", isPresented: $confirmingLeave, titleVisibility: .visible) {
-            Button("Leave Challenge", role: .destructive, action: onLeave)
-            Button("Stay in", role: .cancel) {}
+    }
+
+    @ViewBuilder private var hero: some View {
+        if let image = challenge.image {
+            DIPDetailHero(image: image, tags: challenge.tags, identifierPrefix: "challenge", artworkBackground: challenge.accent.fill)
+                .accessibilityHidden(true)
+        } else {
+            // Unknown theme: accent only, never a photo or a placeholder face.
+            RoundedRectangle(cornerRadius: DIPTokens.Radius.card).fill(challenge.accent.fill)
+                .frame(height: 120)
+                .accessibilityHidden(true)
+                .accessibilityIdentifier("challenge.hero")
         }
+    }
+
+    @ViewBuilder private var facts: some View {
+        let items = [("Goal", challenge.goalText, "challenge.goal", "target"),
+                     ("Reward", challenge.rewardText, "challenge.reward", "star")]
+            .compactMap { item in item.1.map { (item.0, $0, item.2, item.3) } }
+        if !items.isEmpty {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { ForEach(items, id: \.2) { fact($0) } }
+                VStack(alignment: .leading, spacing: 10) { ForEach(items, id: \.2) { fact($0) } }
+            }
+        }
+    }
+
+    private func fact(_ item: (String, String, String, String)) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: item.3).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(item.0).font(DIPReferenceAssets.font("Inter-Regular", size: 12, relativeTo: .caption)).opacity(0.7)
+                Text(item.1).font(DIPReferenceAssets.font("Inter-Medium", size: 16, relativeTo: .body))
+            }
+        }
+        .padding(.horizontal, 14).frame(minHeight: 50, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(challenge.accent.fill.opacity(0.16), in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.0): \(item.1)")
+        .accessibilityIdentifier(item.2)
     }
 }

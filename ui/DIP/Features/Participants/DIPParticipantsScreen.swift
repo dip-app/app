@@ -33,6 +33,12 @@ struct DIPParticipantsScreen: View {
                         .padding(.bottom, 10)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 4) {
+                            if people.isEmpty {
+                                DIPEmptyState(
+                                    screen: "participants", title: "No one has joined yet",
+                                    message: "Coworkers who join this event will show up here.")
+                                    .padding(.top, 8)
+                            }
                             ForEach(Array(people.enumerated()), id: \.offset) { index, person in
                                 VStack(spacing: 4) {
                                     personRow(person)

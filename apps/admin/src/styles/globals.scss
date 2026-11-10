@@ -75,6 +75,31 @@ button { cursor: pointer; border: 0; background: none; }
   &.cancelled h2 { text-decoration: line-through; text-decoration-thickness: 3px; }
 }
 @container (max-width: 560px) { .event-card { grid-template-columns: 1fr; .photo { min-height: 0; aspect-ratio: 4 / 3; } .details { padding: 0 8px 8px; } } }
+// ---------- Weekly themes: bundled illustration on the theme accent (never a photo)
+.theme-art { display: grid; place-items: center; overflow: hidden;
+  img { width: 82%; height: auto; max-height: 86%; object-fit: contain; display: block; }
+  .fallback { font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-size: 28px; padding: 12px; text-align: center; overflow-wrap: anywhere; } }
+.theme-card {
+  position: relative; background: $gray; border-radius: $radius-panel; padding: $panel-padding; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: stretch; height: 100%;
+  .art { width: 100%; height: 100%; min-height: 280px; border-radius: $radius-inset; }
+  .details { display: grid; align-content: center; justify-items: start; gap: 14px; padding: 6px 12px 6px 0; min-width: 0; }
+  h2 { font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-weight: 400; font-size: clamp(34px, 3.6vw, 52px); line-height: 1.04; letter-spacing: .01em; overflow-wrap: anywhere; }
+  dl { display: grid; gap: 8px; width: 100%; }
+  dl div { display: grid; grid-template-columns: 64px 1fr; gap: 10px; }
+  dt { color: var(--muted); font-family: var(--font-figtree), sans-serif; font-size: 16px; font-weight: 500; }
+  .edit-icon { position: absolute; top: $panel-padding + 8px; right: $panel-padding + 8px; width: 48px; height: 48px; border-radius: 50%; background: $ink; color: $white; display: grid; place-items: center; transition: transform .12s ease; &:active { transform: scale(.94); } &:focus-visible { outline-color: $ink; box-shadow: 0 0 0 3px $white; } }
+  &.past .art { filter: grayscale(1); opacity: .85; }
+}
+@container (max-width: 560px) { .theme-card { grid-template-columns: 1fr; .art { min-height: 0; aspect-ratio: 4 / 3; } .details { padding: 0 8px 8px; } } }
+.theme-option .swatch { height: 120px; width: 100%; border-radius: inner-radius($radius-card, 8px); }
+// The app's Home card: pink, radius 20, illustration, uppercase title, white participants pill, arrow circle.
+.app-theme-card { position: relative; border-radius: $radius-card; background: $pink; aspect-ratio: 362 / 220; overflow: hidden;
+  .art { position: absolute; inset: 0; background: transparent !important; place-items: center end; img { width: 62%; margin-right: 4%; } }
+  h2 { position: absolute; left: 20px; top: 16px; font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-weight: 400; font-size: 34px; line-height: 1; max-width: 55%; overflow-wrap: anywhere; }
+  .participants { position: absolute; left: 16px; bottom: 16px; background: $white; border-radius: 999px; padding: 8px 14px; font-family: var(--font-figtree), sans-serif; font-size: 14px; }
+  .arrow { position: absolute; right: 16px; bottom: 16px; width: 44px; height: 44px; border-radius: 50%; background: $white; display: grid; place-items: center; } }
+.preview-facts { display: grid; gap: 8px; margin-top: 16px; padding: 0 8px; div { display: grid; grid-template-columns: 64px 1fr; gap: 12px; } dt { color: var(--muted); font-family: var(--font-figtree), sans-serif; } }
+
 .empty { background: $gray; border-radius: $radius-card; padding: 64px 24px; text-align: center; h2 { font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-size: 34px; font-weight: 400; margin-bottom: 6px; } p { color: var(--muted); } }
 
 // ---------- Forms
