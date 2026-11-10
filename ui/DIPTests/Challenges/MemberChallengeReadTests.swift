@@ -52,9 +52,11 @@ enum ChallengeFixture {
     func testFutureOnlyAndEmptyResultsMeanNoThemeThisWeek() async throws {
         let source = StubChallengeSource()
         source.server = .success([ChallengeFixture.record("next", start: ChallengeFixture.start.addingTimeInterval(ChallengeFixture.week))])
-        XCTAssertNil(try await repository(source).current(now: now).challenge)
+        let future = try await repository(source).current(now: now)
+        XCTAssertNil(future.challenge)
         source.server = .success([])
-        XCTAssertNil(try await repository(source).current(now: now).challenge)
+        let empty = try await repository(source).current(now: now)
+        XCTAssertNil(empty.challenge)
     }
 
     func testRecordsViolatingTenantBoundOrderOrLimitFailClosed() async {
