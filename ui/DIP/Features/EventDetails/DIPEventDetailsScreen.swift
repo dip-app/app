@@ -142,7 +142,8 @@ struct DIPEventDetailsScreen: View {
             DIPDetailPeopleRow(
                 title: event.isPast ? "Who Attended" : "Who’s Attending",
                 avatars: event.attendeeAvatars, total: event.attendeeCount,
-                emptyText: "No one has joined yet. Be the first to make plans.",
+                emptyTitle: event.isPast ? "No attendance recorded" : "Be the first to join",
+                emptyText: event.isPast ? "No one checked in to this event." : "Coworkers who join will show up here.",
                 capacity: event.isPast ? nil : event.metadata?.capacity,
                 identifierPrefix: "event", onMore: onAttendees)
             DIPDetailActionRow(

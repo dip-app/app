@@ -51,11 +51,14 @@ struct DIPAlbumScreen: View {
                     ScrollView {
                         VStack(spacing: 9) {
                             if album.photos.isEmpty {
-                                Text("No photos yet")
-                                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 40)
+                                DIPEmptyState(
+                                    screen: "album", title: "No photos yet",
+                                    message: "Photos from this event will show up here.",
+                                    // Standalone, the page's own bottom picker is the add action; composed,
+                                    // this opens the shell's picker through the shared binding.
+                                    actionTitle: showsBottomBar ? nil : "Add photos",
+                                    action: showsBottomBar ? nil : { isPickerPresented = true })
+                                    .padding(.top, 8)
                             } else {
                                 mosaic(width: width)
                                 if album.photos.count > 12 {

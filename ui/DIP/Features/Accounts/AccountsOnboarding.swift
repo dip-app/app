@@ -1,19 +1,21 @@
 import DIPAccounts
 import Foundation
 
-/// Which onboarding screen to show for an `AccountsSession` state. Pure for unit tests.
+/// Which onboarding state to show for an `AccountsSession` state. Pure for unit tests.
+/// A0 `.pending` and A2 `.resolving` are separate so they can look different on the Stage.
 enum AccountsRoute: Equatable {
-    case progress(String)
+    case pending
     case welcome
+    case resolving
     case noCompany(AccountsFailure)
     case problem(AccountsFailure)
     case member(MembershipContext)
 
     init(_ state: AccountsState) {
         switch state {
-        case .authenticationPending: self = .progress("Just a moment…")
+        case .authenticationPending: self = .pending
         case .signedOut: self = .welcome
-        case .resolvingCompany: self = .progress("Finding your company…")
+        case .resolvingCompany: self = .resolving
         case .noCompany(_, let reason): self = .noCompany(reason)
         case .recoverableError(let failure): self = .problem(failure)
         case .member(let context): self = .member(context)
@@ -44,11 +46,11 @@ struct AccountsNotice: Equatable {
         switch reason {
         case .personalEmailDomain:
             return .init(title: "Use your work account", tone: .blocked,
-                         message: "DIP finds your company from your work email. Gmail and iCloud accounts can't join.",
+                         message: "DIP finds your company from your work email, so personal Gmail and iCloud accounts can't join.",
                          primary: (differentAccount, .signOut), secondary: nil)
         case .noCompanyForDomain:
             return .init(title: "Your company isn't here yet", tone: .notFound,
-                         message: "We couldn't find a company for your work email. Ask your organizer to add it.",
+                         message: "We couldn't find your company yet. Ask your organizer to add your email domain, then try again.",
                          primary: ("Try again", .retryMembership), secondary: (differentAccount, .signOut))
         case .membershipConflict:
             return .init(title: "This account belongs to another company", tone: .blocked,

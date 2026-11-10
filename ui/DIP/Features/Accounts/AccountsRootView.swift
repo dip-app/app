@@ -8,12 +8,11 @@ struct AccountsRootView<MemberContent: View>: View {
     @ViewBuilder let memberContent: (MembershipContext) -> MemberContent
 
     var body: some View {
-        switch AccountsRoute(session.state) {
-        case .progress(let message): AccountsProgressView(message: message)
-        case .welcome: WelcomeView(session: session)
-        case .noCompany(let reason): AccountsNoticeView(session: session, notice: .noCompany(reason))
-        case .problem(let failure): AccountsNoticeView(session: session, notice: .problem(failure))
-        case .member(let context): memberContent(context)
+        // One long-lived Stage for every non-member route, so A0–A4 morph instead of swapping views.
+        if case .member(let context) = AccountsRoute(session.state) {
+            memberContent(context)
+        } else {
+            AccountsStageView(session: session)
         }
     }
 }

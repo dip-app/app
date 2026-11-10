@@ -297,11 +297,22 @@
         let selected: DIPHomeTab
         let action: DIPBottomBarAction?
         let showsTabs: Bool
+        /// The tabs shown, in order. Defaults to every tab; onboarding demos pass `[.home, .events, .profile]`.
+        let tabs: [DIPHomeTab]
         let onSelect: (DIPHomeTab) -> Void
         let onAction: () -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         /// Marker position while a finger is dragging it; nil when it rests on the selected tab.
         @State private var dragMarkerX: CGFloat?
+
+        /// Root placement shared by every host of the one bar: centred `barCenterInset` above the
+        /// screen's bottom edge (safe area ignored), `horizontalInset` from each side. Height is 80,
+        /// so the bar's bottom edge sits `standardInsets.bottom` (21) above the screen edge.
+        public static let barCenterInset: CGFloat = 61
+        public static let horizontalInset: CGFloat = 20
+        public static let height: CGFloat = 80
+        public static let standardInsets = EdgeInsets(
+            top: 0, leading: horizontalInset, bottom: barCenterInset - height / 2, trailing: horizontalInset)
 
         public init(selected: DIPHomeTab = .home, onSelect: @escaping (DIPHomeTab) -> Void) {
             self.init(selected: selected, action: nil, onSelect: onSelect)
@@ -309,17 +320,19 @@
 
         public init(
             selected: DIPHomeTab = .home, action: DIPBottomBarAction?, showsTabs: Bool = true,
+            tabs: [DIPHomeTab] = DIPHomeTab.allCases,
             onSelect: @escaping (DIPHomeTab) -> Void, onAction: @escaping () -> Void = {}
         ) {
             self.selected = selected
             self.action = action
             self.showsTabs = showsTabs
+            self.tabs = tabs.isEmpty ? DIPHomeTab.allCases : tabs
             self.onSelect = onSelect
             self.onAction = onAction
         }
 
         private var selectedIndex: Int {
-            DIPHomeTab.allCases.firstIndex(of: selected) ?? 0
+            tabs.firstIndex(of: selected) ?? 0
         }
 
         private func asset(for tab: DIPHomeTab, selected: Bool) -> String {
@@ -335,7 +348,12 @@
         }
 
         private func restingMarkerX(width: CGFloat) -> CGFloat {
-            10 + (width - 80) / 3 * CGFloat(selectedIndex)
+            10 + slotStep(width: width) * CGFloat(selectedIndex)
+        }
+
+        /// Distance between adjacent tab slots (the first and last slots sit 40 pt from the ends).
+        private func slotStep(width: CGFloat) -> CGFloat {
+            (width - 80) / CGFloat(max(1, tabs.count - 1))
         }
 
         private func marker(width: CGFloat) -> some View {
@@ -350,12 +368,12 @@
 
         /// Dragging the marker selects each tab it crosses; releasing settles on the selected tab.
         private func dragGesture(width: CGFloat) -> some Gesture {
-            let step = (width - 80) / 3
+            let step = slotStep(width: width)
+            let tabs = self.tabs
             return DragGesture(minimumDistance: 6)
                 .onChanged { value in
-                    let x = min(max(value.location.x - 40, 10), 10 + 3 * step)
+                    let x = min(max(value.location.x - 40, 10), 10 + CGFloat(tabs.count - 1) * step)
                     dragMarkerX = x
-                    let tabs = DIPHomeTab.allCases
                     let index = min(max(Int(((x - 10) / step).rounded()), 0), tabs.count - 1)
                     // Rewards is not connected, so a drag passes over it instead of opening it.
                     if tabs[index] != selected, tabs[index] != .rewards { onSelect(tabs[index]) }
@@ -402,8 +420,8 @@
 
         private var tabItems: some View {
             HStack(spacing: 0) {
-                ForEach(DIPHomeTab.allCases) { tab in
-                    if tab != .home { Spacer(minLength: 0) }
+                ForEach(tabs) { tab in
+                    if tab != tabs.first { Spacer(minLength: 0) }
                     Button {
                         onSelect(tab)
                     } label: {
@@ -442,6 +460,11 @@
             Button(action: onAction) {
                 ZStack {
                     Capsule().fill(actionColor(action.style))
+                    if action.showsProgress && !reduceMotion {
+                        DIPProgressBand()
+                            .transition(.opacity)
+                            .accessibilityHidden(true)
+                    }
                     HStack(spacing: 0) {
                         Text(action.title)
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
@@ -460,9 +483,19 @@
                                 .padding(.trailing, 8)
                                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                 .accessibilityHidden(true)
+                        } else if action.showsProgress && reduceMotion {
+                            // Reduce Motion: no travelling band; a static spinner in the icon circle.
+                            ProgressView()
+                                .tint(DIPTokens.Color.navigationBackground.swiftUIColor)
+                                .frame(width: 64, height: 64)
+                                .background(.white, in: Circle())
+                                .padding(.trailing, 8)
+                                .transition(.opacity)
+                                .accessibilityHidden(true)
                         }
                     }
                     .animation(DIPMotion.affordance(reduceMotion: reduceMotion), value: action.icon)
+                    .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: action.showsProgress)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 80)
@@ -473,6 +506,31 @@
             .accessibilityLabel(action.title)
             .accessibilityIdentifier(action.identifier)
             .accessibilityValue(action.value ?? "")
+        }
+    }
+
+    /// A white 25% band, 80 pt wide, sweeping left to right across its container every 1.4 s.
+    /// One gradient layer moved by an offset; it exists only while progress is shown.
+    struct DIPProgressBand: View {
+        static let bandWidth: CGFloat = 80
+        static let period = 1.4
+        @State private var sweeping = false
+
+        var body: some View {
+            GeometryReader { geometry in
+                LinearGradient(
+                    colors: [.white.opacity(0), .white.opacity(0.25), .white.opacity(0)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: Self.bandWidth, height: geometry.size.height)
+                .offset(x: sweeping ? geometry.size.width : -Self.bandWidth)
+            }
+            .allowsHitTesting(false)
+            .onAppear {
+                withAnimation(.linear(duration: Self.period).repeatForever(autoreverses: false)) {
+                    sweeping = true
+                }
+            }
         }
     }
 

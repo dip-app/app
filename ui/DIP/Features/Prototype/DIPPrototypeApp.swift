@@ -7,12 +7,7 @@ import SwiftUI
 /// Composition root: only this host chooses the repository implementation.
 /// Navigation/picker state stays here; product state comes exclusively from repository observation.
 struct DIPPrototypeApp: View {
-    private enum Route: Hashable {
-        case event(String)
-        case participants(String)
-        case album(String)
-        case challenge(String)
-    }
+    private typealias Route = EventBarAction.Route
     @State private var selectedTab: DIPHomeTab
     @State private var routes: [Route]
     @State private var model: DIPAppViewModel
@@ -69,16 +64,23 @@ struct DIPPrototypeApp: View {
         default: _routes = State(initialValue: [])
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
-            initialSnapshot: ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+            initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
+                ?? (ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
                 ? DIPMockFixtures.chatGroupingReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference,
+                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures())))
+    }
+
+    /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
+    private static func emptyStateFixture() -> DIPEmptyStateFixture? {
+        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--empty-state=") }
+            .flatMap { DIPEmptyStateFixture(rawValue: String($0.dropFirst("--empty-state=".count))) }
     }
 
     /// Deterministic failure paths for local preview/UI testing only.
@@ -221,41 +223,7 @@ struct DIPPrototypeApp: View {
     }
 
     private var bottomAction: DIPBottomBarAction? {
-        switch routes.last {
-        case .event(let id):
-            guard let event = model.snapshot?.eventDetails[id] else {
-                return DIPBottomBarAction(
-                    title: model.isLoading ? "Loading…" : "Activity unavailable",
-                    style: .complete, identifier: "event.primary")
-            }
-            if event.isPast { return DIPBottomBarAction(title: "View Album", identifier: "event.primary") }
-            let joined = event.isJoined
-            if let metadata = event.metadata {
-                switch metadata.state(now: Date(), attendeeCount: event.attendeeCount, isJoined: joined) {
-                case .cancelled: return DIPBottomBarAction(title: "Activity cancelled", style: .complete, identifier: "event.primary")
-                case .full: return DIPBottomBarAction(title: "Activity full", style: .complete, identifier: "event.primary")
-                case .started where !joined: return DIPBottomBarAction(title: "Activity started", style: .complete, identifier: "event.primary")
-                default: break
-                }
-            }
-            return DIPBottomBarAction(
-                title: joined ? "Activity Chat" : "Join the Activity",
-                style: joined ? .accent : .standard,
-                identifier: "event.primary", value: joined ? "Joined" : "Not joined",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
-        case .participants(let id) where model.snapshot?.eventDetails[id]?.isPast == true:
-            return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
-        case .participants(let id):
-            let joined = model.snapshot?.eventDetails[id]?.isJoined == true
-            return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
-                style: joined ? .accent : .standard,
-                identifier: joined ? "participants.chat" : "participants.join",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
-        case .album:
-            return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
-        // Read-only until submissions ship (F3/V2): the page has no entry action, so the tabs stay.
-        case .challenge, nil: return nil
-        }
+        EventBarAction.resolve(route: routes.last, snapshot: model.snapshot, isLoading: model.isLoading)
     }
 
     private func performBottomAction() {

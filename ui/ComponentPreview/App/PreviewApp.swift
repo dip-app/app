@@ -7,6 +7,9 @@ struct PreviewApp: App {
             Group {
                 if let theme = HomeThemePreview.launchMode() {
                     HomeThemePreview(mode: theme.mode, count: theme.count)
+                } else if let demo = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--onboarding-demo=") }) {
+                    let sceneID = String(demo.dropFirst("--onboarding-demo=".count))
+                    OnboardingDemoPreview(sceneID: sceneID, configuration: OnboardingDemoPreview.configuration(sceneID: sceneID))
                 } else if ProcessInfo.processInfo.arguments.contains("--member-events") {
                     MemberEventsPreview()
                 } else if let account = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--onboarding=") }) {
