@@ -8,7 +8,7 @@ Status: handoff
 
 ## Summary
 
-Workstream T2 of the weekly-theme spec (sections 1, 2, 6): the iOS Home "This Week's Challenge" card now reads the current weekly theme (a `Challenge`) for the member's company and opens a read-only detail. Built against the spec and a fake source while T1 builds the backend (rules, callables, seed) on `feature/weekly-theme-backend`. The live Firestore adapter follows the spec query but has not run against T1's rules or seeded production data. Sequence 012 was chosen deliberately so parallel workstream logs for the same date do not collide.
+Workstream T2 of the weekly-theme spec (sections 1, 2, 6): the iOS Home "This Week's Challenge" card now reads the current weekly theme (a `Challenge`) for the member's company and opens a read-only detail. Built against the spec and a fake source. T1 (#53) has since merged and deployed the rules and seeded Fitness in production (per the coordinator); this session did not run the live adapter against them. Work was stopped mid-verification at the coordinator's request. Sequence 012 was chosen deliberately so parallel workstream logs for the same date do not collide.
 
 ## Changes
 
@@ -27,11 +27,19 @@ Workstream T2 of the weekly-theme spec (sections 1, 2, 6): the iOS Home "This We
 - Preview host: `HomeThemePreview` + `--home-theme=live|none|error|loading|offline|unknown`, `--home-theme-count=0|1|128`; `project.yml` adds `../DIP/Domain/Challenges`.
 - Tests: `DIPCoreTests/WeeklyThemeTests.swift`, `DIPTests/Challenges/*`, `ComponentPreview/UITests/HomeThemeTests.swift`.
 - Docs: `docs/design/components.md` card row, `ui/ComponentPreview/README.md` launch arguments.
-- Screenshots: `ui/ComponentPreview/Review/Screens/WeeklyTheme/`.
+- Screenshots: not captured (see Validation).
 
 ## Validation
 
-See the PR description for the exact command results of this session (swift test for four packages, project generation, Preview and DIP simulator builds, DIPTests, Preview UI tests). All UI and app tests ran against fakes; no emulator or production read was performed.
+- `swift test` per package: DIPContracts 1 passed, DIPDesignSystem 9 passed, DIPAccounts 0 XCTest cases (suite passed), DIPCore 50 passed (incl. new WeeklyThemeTests: catalog known/unknown, selection, past/future windows, timezone boundaries, projection, card state).
+- `npm ci` + `npm run check`: passed (87 pass, 0 fail, 6 todo). `npm run session:check -- --base 3f622b7`: 1 log validated.
+- `npm run ios:generate` + `xcodegen generate` (ComponentPreview): ok.
+- `xcodebuild build-for-testing` DIP scheme and Preview scheme, iPhone 17 Pro simulator, own derived data: both TEST BUILD SUCCEEDED (after fixing an `await` inside XCTAssertNil in DIPTests).
+- Preview UI tests (partial run; the coordinator ordered a stop mid-run): HomeReferenceTests 2/2 passed; HomeThemeTests passed: live card geometry + read-only detail, largest text, loading skeleton footprint, empty card, offline stale. FAILED: `testErrorRetriesInPlaceAndKeepsOtherHomeContent` at HomeThemeTests.swift:65 (`home.event.EventCard` isHittable in the error state); not diagnosed. Not run: testParticipantCountVariants, testUnknownThemeFallsBackToTitleOnlyCard, testReferenceFixtureCardOpensReadOnlyDetailWithoutNotice, MemberEventsFlowTests, MotionInteractionTests, ScreenFlowTests, ProfileInterestTests.
+- DIPTests (mapper, repository state machine incl. sign-out/account change, feed card states): compiled, NOT executed (the simulator run was stopped before this step).
+- Simulator screenshots: NOT captured (`ui/ComponentPreview/Review/Screens/WeeklyTheme/` does not exist); the capture script was prepared but not run.
+- Earlier attempts failed for infrastructure reasons only (machine load ~1000, test runner never connected; a dedicated simulator I created was deleted per coordinator instruction).
+- Everything was verified only against fakes. The live Firestore path (T1 #53 merged and deployed, Fitness seeded in production per coordinator) was not exercised by this session.
 
 ## Decisions
 
@@ -48,4 +56,4 @@ See the PR description for the exact command results of this session (swift test
 - Live path depends on T1: rules allowing same-company bounded `list` on `companies/{companyId}/challenges` with the query `endDate >= now orderBy endDate limit 5` (no `companyId` equality filter). If T1's list rule requires `resource.data.companyId == companyId` (as the events rule does), the iOS query must add `whereField("companyId", isEqualTo:)` and a composite index (companyId ASC, endDate ASC) is needed.
 - Production seeding (orchestrator) must create the Fitness theme; until then a configured member sees the empty card (or an error card if rules are not deployed).
 - Participant avatars are not in v1; the pill shows text only. Submissions (F3/V2) will replace the "Submissions open soon" note.
-- Not done: emulator end-to-end read test for challenges (needs T1 rules/seed); physical-device and manual VoiceOver review.
+- Not done: the failing error-state UI test, the unrun UI/DIP tests and screenshots listed under Validation; emulator end-to-end read test for challenges (needs T1 rules/seed); physical-device and manual VoiceOver review.
