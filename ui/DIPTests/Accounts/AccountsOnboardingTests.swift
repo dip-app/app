@@ -18,9 +18,10 @@ final class AccountsOnboardingTests: XCTestCase {
     func testRoutesEverySessionState() throws {
         let identity = AccountIdentity(uid: "u1", isEmailVerified: true)
         let context = try MembershipContext(uid: "u1", profile: profile())
-        XCTAssertEqual(AccountsRoute(.authenticationPending), .progress("Just a moment…"))
+        XCTAssertEqual(AccountsRoute(.authenticationPending), .pending)
         XCTAssertEqual(AccountsRoute(.signedOut), .welcome)
-        XCTAssertEqual(AccountsRoute(.resolvingCompany(identity)), .progress("Finding your company…"))
+        XCTAssertEqual(AccountsRoute(.resolvingCompany(identity)), .resolving)
+        XCTAssertNotEqual(AccountsRoute.pending, .resolving)
         XCTAssertEqual(AccountsRoute(.noCompany(identity, .personalEmailDomain)), .noCompany(.personalEmailDomain))
         XCTAssertEqual(AccountsRoute(.recoverableError(.unavailable)), .problem(.unavailable))
         XCTAssertEqual(AccountsRoute(.member(context)), .member(context))
@@ -40,7 +41,8 @@ final class AccountsOnboardingTests: XCTestCase {
     func testPersonalAccountExplainsWorkAccountAndOffersAnotherAccount() {
         let notice = AccountsNotice.noCompany(.personalEmailDomain)
         XCTAssertEqual(notice.title, "Use your work account")
-        XCTAssertTrue(notice.message.contains("Gmail"))
+        XCTAssertEqual(notice.message,
+                       "DIP finds your company from your work email, so personal Gmail and iCloud accounts can't join.")
         XCTAssertEqual(notice.primary.action, .signOut)
         XCTAssertNil(notice.secondary)
     }
@@ -48,6 +50,8 @@ final class AccountsOnboardingTests: XCTestCase {
     func testUnmappedCompanyOffersRetryThenAnotherAccount() {
         let notice = AccountsNotice.noCompany(.noCompanyForDomain)
         XCTAssertEqual(notice.title, "Your company isn't here yet")
+        XCTAssertEqual(notice.message,
+                       "We couldn't find your company yet. Ask your organizer to add your email domain, then try again.")
         XCTAssertEqual(notice.primary.action, .retryMembership)
         XCTAssertEqual(notice.secondary?.action, .signOut)
     }

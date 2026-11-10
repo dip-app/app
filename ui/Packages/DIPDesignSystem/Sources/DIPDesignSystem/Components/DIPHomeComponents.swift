@@ -273,6 +273,15 @@
         /// Marker position while a finger is dragging it; nil when it rests on the selected tab.
         @State private var dragMarkerX: CGFloat?
 
+        /// Root placement shared by every host of the one bar: centred `barCenterInset` above the
+        /// screen's bottom edge (safe area ignored), `horizontalInset` from each side. Height is 80,
+        /// so the bar's bottom edge sits `standardInsets.bottom` (21) above the screen edge.
+        public static let barCenterInset: CGFloat = 61
+        public static let horizontalInset: CGFloat = 20
+        public static let height: CGFloat = 80
+        public static let standardInsets = EdgeInsets(
+            top: 0, leading: horizontalInset, bottom: barCenterInset - height / 2, trailing: horizontalInset)
+
         public init(selected: DIPHomeTab = .home, onSelect: @escaping (DIPHomeTab) -> Void) {
             self.init(selected: selected, action: nil, onSelect: onSelect)
         }
@@ -412,6 +421,11 @@
             Button(action: onAction) {
                 ZStack {
                     Capsule().fill(actionColor(action.style))
+                    if action.showsProgress && !reduceMotion {
+                        DIPProgressBand()
+                            .transition(.opacity)
+                            .accessibilityHidden(true)
+                    }
                     HStack(spacing: 0) {
                         Text(action.title)
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
@@ -430,9 +444,19 @@
                                 .padding(.trailing, 8)
                                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                 .accessibilityHidden(true)
+                        } else if action.showsProgress && reduceMotion {
+                            // Reduce Motion: no travelling band; a static spinner in the icon circle.
+                            ProgressView()
+                                .tint(DIPTokens.Color.navigationBackground.swiftUIColor)
+                                .frame(width: 64, height: 64)
+                                .background(.white, in: Circle())
+                                .padding(.trailing, 8)
+                                .transition(.opacity)
+                                .accessibilityHidden(true)
                         }
                     }
                     .animation(DIPMotion.affordance(reduceMotion: reduceMotion), value: action.icon)
+                    .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: action.showsProgress)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 80)
@@ -443,6 +467,31 @@
             .accessibilityLabel(action.title)
             .accessibilityIdentifier(action.identifier)
             .accessibilityValue(action.value ?? "")
+        }
+    }
+
+    /// A white 25% band, 80 pt wide, sweeping left to right across its container every 1.4 s.
+    /// One gradient layer moved by an offset; it exists only while progress is shown.
+    struct DIPProgressBand: View {
+        static let bandWidth: CGFloat = 80
+        static let period = 1.4
+        @State private var sweeping = false
+
+        var body: some View {
+            GeometryReader { geometry in
+                LinearGradient(
+                    colors: [.white.opacity(0), .white.opacity(0.25), .white.opacity(0)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: Self.bandWidth, height: geometry.size.height)
+                .offset(x: sweeping ? geometry.size.width : -Self.bandWidth)
+            }
+            .allowsHitTesting(false)
+            .onAppear {
+                withAnimation(.linear(duration: Self.period).repeatForever(autoreverses: false)) {
+                    sweeping = true
+                }
+            }
         }
     }
 
