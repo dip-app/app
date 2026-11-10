@@ -82,6 +82,12 @@ enum FirebaseBootstrap {
         return FirebaseEventReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
     }
 
+    /// Weekly-theme (challenge) reads for the member Home share the configured SDKs and emulator routing.
+    @MainActor static func makeMemberChallengesRepository(context: MembershipContext) -> MemberChallengesRepository? {
+        guard case .configured = status else { return nil }
+        return FirebaseChallengeReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
+    }
+
     /// RSVP (setRsvpV1) and participation reads share the configured SDKs and emulator routing.
     @MainActor static func makeParticipationSource() -> (any ParticipationSource)? {
         guard case .configured = status else { return nil }

@@ -35,9 +35,8 @@ enum EventBarAction {
                 icon: joined ? chatIcon : nil)
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
-        case .challenge:
-            return DIPBottomBarAction(title: "Add Your Entry", identifier: "challenge.primary")
-        case nil:
+        // Read-only until submissions ship (F3/V2): the page has no entry action, so the tabs stay.
+        case .challenge, nil:
             return nil
         }
     }

@@ -20,12 +20,18 @@ struct DIPHomeScreen: View {
     let onLoadMore: (() -> Void)?
     let loadingMore: Bool
     let paginationError: String?
+    /// nil hides the section (fixtures without a challenge); live Home always passes a state.
+    let challengeState: DIPChallengeCardState?
+    let onRetryChallenge: (() -> Void)?
     init(
         home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
         onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void,
         onLoadMore: (() -> Void)? = nil, loadingMore: Bool = false, paginationError: String? = nil,
-        eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil
+        eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil,
+        challengeState: DIPChallengeCardState? = nil, onRetryChallenge: (() -> Void)? = nil
     ) {
+        self.challengeState = challengeState ?? home.challenge.map { .current($0, stale: false) }
+        self.onRetryChallenge = onRetryChallenge
         self.eventSectionTitle = eventSectionTitle; self.onRefresh = onRefresh
         self.onLoadMore = onLoadMore; self.loadingMore = loadingMore; self.paginationError = paginationError
         self.home = home
@@ -47,16 +53,10 @@ struct DIPHomeScreen: View {
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 22) {
-                            if let challenge = home.challenge {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    sectionTitle("This Week’s Challenge", size: 18)
-                                    DIPChallengeCard(
-                                        category: challenge.category, participantCount: challenge.participantCount,
-                                        artwork: { DIPMedia(challenge.artwork) },
-                                        avatarStack: { DIPMediaStack(challenge.avatars) }
-                                    ) { onChallenge(challenge.id) }
-                                }
-                                .padding(.top, 15)
+                            if let challengeState {
+                                DIPHomeChallengeSection(state: challengeState, onOpen: onChallenge, onRetry: onRetryChallenge)
+                                    .padding(.top, 15)
+                                    .animation(.easeInOut(duration: DIPMotion.reducedMotionDuration), value: challengeState)
                             }
                             VStack(alignment: .leading, spacing: 8) {
                                 sectionTitle(eventSectionTitle)

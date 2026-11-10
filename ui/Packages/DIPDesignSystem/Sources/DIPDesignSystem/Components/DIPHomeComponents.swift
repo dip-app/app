@@ -85,67 +85,97 @@
         }
     }
 
+    /// Home "This Week's Challenge" card (Figma 46:1017). Theme artwork and accent are inputs
+    /// (resolved from the weekly-theme catalog by the app); the geometry is the original mascot crop.
     public struct DIPChallengeCard: View {
         let category: String
-        let participantCount: Int
-        private let avatarStack: AnyView
-        private let artwork: AnyView
+        let participationText: String
+        let accessibilityText: String
+        let accent: Color
+        let titleColor: Color
+        private let avatarStack: AnyView?
+        private let artwork: AnyView?
         let onSelect: () -> Void
+        @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
         public init(category: String, participantCount: Int, avatars: [String], onSelect: @escaping () -> Void) {
-            self.category = category
-            self.participantCount = participantCount
-            self.avatarStack = AnyView(DIPReferenceAvatarStack(names: avatars))
-            self.artwork = AnyView(DIPReferenceAssets.image("Mascot").resizable())
-            self.onSelect = onSelect
+            self.init(category: category, participationText: "+ \(participantCount) others participating",
+                      accessibilityLabel: "This week’s challenge: \(category), \(participantCount) others participating",
+                      accent: DIPTokens.Color.challengeAccent.swiftUIColor, titleColor: .white,
+                      artwork: DIPReferenceAssets.image("Mascot").resizable(),
+                      avatarStack: avatars.isEmpty ? nil : AnyView(DIPReferenceAvatarStack(names: avatars)), onSelect: onSelect)
         }
         public init<Artwork: View, Avatars: View>(
             category: String, participantCount: Int, artwork: () -> Artwork, avatarStack: () -> Avatars,
             onSelect: @escaping () -> Void
         ) {
+            self.init(category: category, participationText: "+ \(participantCount) others participating",
+                      accessibilityLabel: "This week’s challenge: \(category), \(participantCount) others participating",
+                      accent: DIPTokens.Color.challengeAccent.swiftUIColor, titleColor: .white,
+                      artwork: artwork(), avatarStack: AnyView(avatarStack()), onSelect: onSelect)
+        }
+        /// Theme-driven card. Pass nil `artwork` for a title-only (unknown theme) card and nil
+        /// `avatarStack` when no participant faces exist: the pill then shows text only.
+        public init<Artwork: View>(
+            category: String, participationText: String, accessibilityLabel: String, accent: Color, titleColor: Color,
+            artwork: Artwork?, avatarStack: AnyView?, onSelect: @escaping () -> Void
+        ) {
             self.category = category
-            self.participantCount = participantCount
-            self.avatarStack = AnyView(avatarStack())
-            self.artwork = AnyView(artwork())
+            self.participationText = participationText
+            self.accessibilityText = accessibilityLabel
+            self.accent = accent
+            self.titleColor = titleColor
+            self.artwork = artwork.map { AnyView($0) }
+            self.avatarStack = avatarStack
             self.onSelect = onSelect
         }
         public var body: some View {
+            let large = dynamicTypeSize.isAccessibilitySize
             Button(action: onSelect) {
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 20).fill(DIPTokens.Color.challengeAccent.swiftUIColor)
-                    // Export is the original image fill; replicate its Figma crop within the mascot node.
-                    artwork
-                        .frame(width: 314.16, height: 231.968)
-                        .offset(x: 28.315, y: -17.427)
-                        .frame(width: 350, height: 222, alignment: .topLeading).clipped()
-                        .offset(y: -19)
+                    RoundedRectangle(cornerRadius: 20).fill(accent)
+                    if let artwork {
+                        // Export is the original image fill; replicate its Figma crop within the mascot node.
+                        artwork
+                            .frame(width: 314.16, height: 231.968)
+                            .offset(x: 28.315, y: -17.427)
+                            .frame(width: 350, height: 222, alignment: .topLeading).clipped()
+                            .offset(y: -19)
+                            .accessibilityHidden(true)
+                    }
                     VStack(alignment: .leading, spacing: 0) {
                         Spacer(minLength: 0)
                         Text(category.uppercased())
                             .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
-                            .foregroundStyle(.white).frame(height: 50).padding(.leading, 10)
-                        HStack(alignment: .top) {
+                            .foregroundStyle(titleColor).lineLimit(large ? 2 : 1).minimumScaleFactor(0.5)
+                            .frame(minHeight: 50).frame(height: large ? nil : 50).padding(.leading, 10)
+                        HStack(alignment: large ? .bottom : .top) {
                             HStack(spacing: 10) {
-                                avatarStack
-                                Text("+ \(participantCount) others participating")
+                                if let avatarStack { avatarStack }
+                                Text(participationText)
                                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                    .foregroundStyle(.black).frame(height: 22)
+                                    .foregroundStyle(.black).frame(minHeight: 22)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            .padding(.leading, 4).padding(.trailing, 12).padding(.vertical, 4)
+                            .padding(.leading, avatarStack == nil ? 12 : 4).padding(.trailing, 12).padding(.vertical, 4)
                             .background(.white, in: Capsule())
                             Spacer(minLength: 0)
                             Text("→").font(DIPReferenceAssets.font("Inter-Medium", size: 20))
                                 .rotationEffect(.degrees(-45))
                                 .foregroundStyle(.black).frame(width: 30, height: 30)
                                 .background(.white, in: Circle())
+                                .accessibilityHidden(true)
                         }
                     }
                     .padding(5)
                 }
-                .frame(height: 225)
+                .frame(minHeight: 225)
+                .frame(height: large ? nil : 225)
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("This Week’s Challenge, \(category), \(participantCount) others participating")
+            .accessibilityLabel(accessibilityText)
+            .accessibilityHint("Opens the challenge details")
             .accessibilityIdentifier("home.challenge")
         }
     }

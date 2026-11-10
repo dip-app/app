@@ -43,9 +43,7 @@ final class EventBarActionTests: XCTestCase {
                 icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
-        case .challenge:
-            return DIPBottomBarAction(title: "Add Your Entry", identifier: "challenge.primary")
-        case nil: return nil
+        case .challenge, nil: return nil
         }
     }
 
@@ -125,7 +123,7 @@ final class EventBarActionTests: XCTestCase {
         XCTAssertEqual(resolve(.participants("joined"))?.identifier, "participants.chat")
         XCTAssertEqual(resolve(.participants("past"))?.identifier, "participants.album")
         XCTAssertEqual(resolve(.album("x"))?.title, "Add Photos")
-        XCTAssertEqual(resolve(.challenge("x"))?.title, "Add Your Entry")
+        XCTAssertNil(resolve(.challenge("x")))
     }
 
     func testForEventMatchesTheEventRoute() {

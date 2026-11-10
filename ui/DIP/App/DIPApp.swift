@@ -6,12 +6,14 @@ struct DIPApp: App {
     @State private var session: AccountsSession
     private let makeEventReads: ((MembershipContext) -> MemberEventsRepository?)?
     private let makeParticipation: (() -> (any ParticipationSource)?)?
+    private let makeChallengeReads: ((MembershipContext) -> MemberChallengesRepository?)?
     private let repository: any AccountsRepository & InterestCatalogRepository
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
         makeEventReads = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeMemberEventsRepository(context: $0) }
         makeParticipation = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeParticipationSource() }
+        makeChallengeReads = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeMemberChallengesRepository(context: $0) }
         let repository = Self.makeRepository()
         self.repository = repository
         _session = State(initialValue: AccountsSession(repository: repository))
@@ -20,12 +22,21 @@ struct DIPApp: App {
     var body: some Scene {
         WindowGroup {
             AccountsRootView(session: session) { context in
-                DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, onSignOut: { await session.signOut() })
+                memberHome(context)
                     .id(EventReadScope(uid: context.uid, companyID: context.companyID))
             }
             .task { session.start() }
             .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }
         }
+    }
+
+    /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed
+    /// by the same scope ID); unconfigured builds keep the fixture challenge card.
+    @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
+        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, onSignOut: { await session.signOut() })
+        if let makeChallengeReads {
+            WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
+        } else { home }
     }
 
     /// Real Firebase when local configuration exists (ADR 0007). Otherwise Debug builds use
