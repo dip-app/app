@@ -256,7 +256,7 @@
         var asset: String {
             switch self {
             case .home: "HeroiconsSolidHome"
-            case .rewards: "HeroiconsOutlineTicket"
+            case .rewards: "HeroiconsOutlineGift"
             case .events: "HeroiconsOutlineSquares2X2"
             case .profile: "HeroiconsOutlineUserCircle"
             }
@@ -300,7 +300,7 @@
             case .profile:
                 return selected ? "profile_HeroiconsSolidUserCircle" : "HeroiconsOutlineUserCircle"
             case .rewards:
-                return selected ? "navigation_HeroiconsSolidTicket" : "HeroiconsOutlineTicket"
+                return selected ? "navigation_HeroiconsSolidGift" : "HeroiconsOutlineGift"
             }
         }
 
