@@ -380,8 +380,12 @@ public struct Challenge: Codable, Equatable, Sendable {
     public var pointsReward: Int
     public var participantCount: Int
     public var completedCount: Int
+    public var createdBy: String?
+    public var createdAt: Date?
+    public var updatedAt: Date?
+    public var revision: Int?
 
-    public init(id: String? = nil, companyId: String, title: String, description: String, tagIds: [String], type: String, goal: Double, goalUnit: String, coverImageURL: String, startDate: Date, endDate: Date, pointsReward: Int, participantCount: Int, completedCount: Int) {
+    public init(id: String? = nil, companyId: String, title: String, description: String, tagIds: [String], type: String, goal: Double, goalUnit: String, coverImageURL: String, startDate: Date, endDate: Date, pointsReward: Int, participantCount: Int, completedCount: Int, createdBy: String? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, revision: Int? = nil) {
         self.id = id
         self.companyId = companyId
         self.title = title
@@ -396,6 +400,10 @@ public struct Challenge: Codable, Equatable, Sendable {
         self.pointsReward = pointsReward
         self.participantCount = participantCount
         self.completedCount = completedCount
+        self.createdBy = createdBy
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.revision = revision
     }
 }
 
@@ -770,6 +778,92 @@ public struct UpdateEventResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.eventId = eventId
         self.revision = revision
+    }
+}
+
+public struct ChallengeDraft: Codable, Equatable, Sendable {
+    public var title: String
+    public var description: String
+    public var tagIds: [String]
+    public var type: String
+    public var goal: Double
+    public var goalUnit: String
+    public var coverImageURL: String
+    public var startDate: Date
+    public var endDate: Date
+    public var pointsReward: Int
+
+    public init(title: String, description: String, tagIds: [String], type: String, goal: Double, goalUnit: String, coverImageURL: String, startDate: Date, endDate: Date, pointsReward: Int) {
+        self.title = title
+        self.description = description
+        self.tagIds = tagIds
+        self.type = type
+        self.goal = goal
+        self.goalUnit = goalUnit
+        self.coverImageURL = coverImageURL
+        self.startDate = startDate
+        self.endDate = endDate
+        self.pointsReward = pointsReward
+    }
+}
+
+public struct CreateChallengeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var draft: ChallengeDraft
+
+    public init(contractVersion: Int, companyId: String, requestId: String, draft: ChallengeDraft) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.draft = draft
+    }
+}
+
+public struct CreateChallengeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var challengeId: String
+    public var revision: Int
+    public var challenge: Challenge
+    public var replayed: Bool
+
+    public init(contractVersion: Int, challengeId: String, revision: Int, challenge: Challenge, replayed: Bool) {
+        self.contractVersion = contractVersion
+        self.challengeId = challengeId
+        self.revision = revision
+        self.challenge = challenge
+        self.replayed = replayed
+    }
+}
+
+public struct UpdateChallengeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var challengeId: String
+    public var expectedRevision: Int
+    public var draft: ChallengeDraft
+
+    public init(contractVersion: Int, companyId: String, challengeId: String, expectedRevision: Int, draft: ChallengeDraft) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.challengeId = challengeId
+        self.expectedRevision = expectedRevision
+        self.draft = draft
+    }
+}
+
+public struct UpdateChallengeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var challengeId: String
+    public var revision: Int
+    public var challenge: Challenge
+
+    public init(contractVersion: Int, challengeId: String, revision: Int, challenge: Challenge) {
+        self.contractVersion = contractVersion
+        self.challengeId = challengeId
+        self.revision = revision
+        self.challenge = challenge
     }
 }
 

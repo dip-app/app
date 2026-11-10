@@ -18,7 +18,7 @@ November 2 follow-up: **photo-comment placement needs redesign**. The user rejec
 
 ## Queued frontend work
 
-- **Weekly activity/challenge page** — user request, November 2, 2026. The Home “This Week’s Challenge” / Fitness card currently opens a “not connected yet” prototype alert. Build the actual weekly activity detail page and its implied actions from the existing challenge design/spec; replace that alert with navigation. Inspect the cached Running/weekly-challenge design context or fresh Figma context before implementing. Define read/command boundaries and mock states from the challenge contracts; do not represent it as an implemented live workflow. Added to the list at the user's request, not part of the current profile/social verification round.
+- **Weekly activity/challenge page** — user request, November 2, 2026. The Home “This Week’s Challenge” / Fitness card currently opens a “not connected yet” prototype alert. Build the actual weekly activity detail page and its implied actions from the existing challenge design/spec; replace that alert with navigation. Inspect the cached Running/weekly-challenge design context or fresh Figma context before implementing. Define read/command boundaries and mock states from the challenge contracts; do not represent it as an implemented live workflow. Added to the list at the user's request, not part of the current profile/social verification round. Backend note (November 10, review branch, not deployed): weekly themes are stored as `Challenge` documents managed by `createChallengeV1`/`updateChallengeV1` with same-company read rules; submissions, participation and approval (`submitChallengeV1`/`approveChallengeV1`) remain V2 and are still denied.
 
 
 ## November 2 verification handoff

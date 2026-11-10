@@ -197,6 +197,10 @@ export interface Challenge {
   pointsReward: number;
   participantCount: number;
   completedCount: number;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  revision?: number;
 }
 
 export interface ChallengeSubmission {
@@ -384,6 +388,49 @@ export interface UpdateEventResponse {
   contractVersion: number;
   eventId: string;
   revision: number;
+}
+
+export interface ChallengeDraft {
+  title: string;
+  description: string;
+  tagIds: Array<string>;
+  type: "weekly";
+  goal: number;
+  goalUnit: string;
+  coverImageURL: string;
+  startDate: string;
+  endDate: string;
+  pointsReward: number;
+}
+
+export interface CreateChallengeRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  draft: ChallengeDraft;
+}
+
+export interface CreateChallengeResponse {
+  contractVersion: number;
+  challengeId: string;
+  revision: number;
+  challenge: Challenge;
+  replayed: boolean;
+}
+
+export interface UpdateChallengeRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  expectedRevision: number;
+  draft: ChallengeDraft;
+}
+
+export interface UpdateChallengeResponse {
+  contractVersion: number;
+  challengeId: string;
+  revision: number;
+  challenge: Challenge;
 }
 
 export interface RecordAttendanceRequest {

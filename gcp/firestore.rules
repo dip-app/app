@@ -97,6 +97,19 @@ service cloud.firestore {
         && resource.data.companyId == memberCompany()
         && resource.data.status == 'going';
     }
+    // Weekly themes (challenges): written only by createChallengeV1/updateChallengeV1 (Admin SDK);
+    // participantCount/completedCount are server-owned. Same-company verified members get any theme
+    // (a missing one is observable) and list with a limit <= 20; organizers may list without a limit.
+    // The path scopes the tenant and only the server writes these documents, so list queries need no
+    // companyId filter (the iOS Home query is a single-field endDate range, no composite index).
+    // Submissions and participant rows stay denied until their V2 commands exist.
+    match /companies/{companyId}/challenges/{challengeId} {
+      allow get: if sameCompany(companyId) &&
+        (!exists(/databases/$(database)/documents/companies/$(companyId)/challenges/$(challengeId))
+          || resource.data.companyId == companyId);
+      allow list: if sameCompany(companyId)
+        && (organizer(companyId) || (request.query.limit != null && request.query.limit <= 20));
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }

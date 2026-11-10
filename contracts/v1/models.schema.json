@@ -813,6 +813,21 @@
         },
         "completedCount": {
           "type": "integer"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
         }
       },
       "required": [
@@ -1594,6 +1609,201 @@
         "contractVersion",
         "eventId",
         "revision"
+      ]
+    },
+    "ChallengeDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "tagIds": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string"
+          }
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "weekly"
+          ]
+        },
+        "goal": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 10000
+        },
+        "goalUnit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "coverImageURL": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "pointsReward": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "tagIds",
+        "type",
+        "goal",
+        "goalUnit",
+        "coverImageURL",
+        "startDate",
+        "endDate",
+        "pointsReward"
+      ]
+    },
+    "CreateChallengeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "draft": {
+          "$ref": "#/$defs/ChallengeDraft"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "draft"
+      ]
+    },
+    "CreateChallengeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "challengeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "challenge": {
+          "$ref": "#/$defs/Challenge"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "challengeId",
+        "revision",
+        "challenge",
+        "replayed"
+      ]
+    },
+    "UpdateChallengeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "challengeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "draft": {
+          "$ref": "#/$defs/ChallengeDraft"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "challengeId",
+        "expectedRevision",
+        "draft"
+      ]
+    },
+    "UpdateChallengeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "challengeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "challenge": {
+          "$ref": "#/$defs/Challenge"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "challengeId",
+        "revision",
+        "challenge"
       ]
     },
     "RecordAttendanceRequest": {

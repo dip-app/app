@@ -1,5 +1,11 @@
 import { type Tag, TAGS } from "./catalog";
 import {
+  THEME_REASONS, type ThemeCommandResult, type ThemeDraft, type WeeklyTheme, findOverlap, normalizeThemeDraft,
+  validateThemeDraft, windowLocked,
+} from "./challenge";
+import { THEMES } from "./themes";
+import { addDays, civilDateIn, mondayOf, weekEndIso, weekStartIso } from "./weeks";
+import {
   ApiError,
   type AdminEvent,
   type EventDraft,
@@ -39,6 +45,13 @@ export interface AdminApi {
   getEvent(eventId: string): Promise<AdminEvent>;
   createEvent(requestId: string, draft: EventDraft): Promise<CommandResult>;
   updateEvent(eventId: string, expectedRevision: number, draft: EventDraft, status: EventStatus): Promise<CommandResult>;
+  /** Weekly themes (`challenges` with `type: "weekly"`) of the organizer's company, newest first. */
+  listThemes(): Promise<WeeklyTheme[]>;
+  getTheme(challengeId: string): Promise<WeeklyTheme>;
+  /** createChallengeV1: a retry with the same requestId returns the same theme. */
+  createTheme(requestId: string, draft: ThemeDraft): Promise<ThemeCommandResult>;
+  /** updateChallengeV1: full-draft replacement guarded by expectedRevision. */
+  updateTheme(challengeId: string, expectedRevision: number, draft: ThemeDraft): Promise<ThemeCommandResult>;
 }
 
 export type PersonaId = "admin" | "member" | "otherAdmin";
@@ -61,10 +74,19 @@ interface Receipt {
   revision: number;
 }
 
+interface ThemeReceipt {
+  hash: string;
+  challengeId: string;
+  revision: number;
+}
+
 interface Persisted {
   events: AdminEvent[];
   receipts: Record<string, Receipt>;
   session: Session | null;
+  /** Added after v2 shipped; seeded on first load so stored preview data keeps its events. */
+  themes?: WeeklyTheme[];
+  themeReceipts?: Record<string, ThemeReceipt>;
 }
 
 // v2: events store tag IDs (catalog records) instead of labels.
@@ -131,17 +153,42 @@ function hashOf(draft: EventDraft): string {
   return JSON.stringify(normalizeDraft(draft));
 }
 
+/** Last week, this week (both Fitness, like the seed script) and one Globex theme for tenant isolation. */
+export function seedThemes(now: Date): WeeklyTheme[] {
+  const fitness = THEMES[0];
+  const thisMonday = mondayOf(civilDateIn(now));
+  const theme = (id: string, companyId: string, monday: string, counts: { participantCount: number; completedCount: number }): WeeklyTheme => ({
+    id, companyId, title: fitness.displayName, description: fitness.defaultDescription,
+    tagIds: TAGS.filter((tag) => tag.name === fitness.defaultTagName).map((tag) => tag.id), type: "weekly",
+    goal: 3, goalUnit: fitness.goalUnits[0], coverImageURL: fitness.url,
+    startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)), pointsReward: 50, ...counts,
+    createdBy: PERSONAS.admin.uid, createdAt: weekStartIso(addDays(monday, -7)), updatedAt: weekStartIso(addDays(monday, -7)), revision: 1,
+  });
+  const lastMonday = addDays(thisMonday, -7);
+  return [
+    theme(`weekly-fitness-${thisMonday.replaceAll("-", "")}`, "acme", thisMonday, { participantCount: 128, completedCount: 41 }),
+    theme(`weekly-fitness-${lastMonday.replaceAll("-", "")}`, "acme", lastMonday, { participantCount: 96, completedCount: 63 }),
+    theme(`weekly-fitness-${thisMonday.replaceAll("-", "")}`, "globex", thisMonday, { participantCount: 5, completedCount: 0 }),
+  ];
+}
+
 export function createMockApi(store: KeyValueStore, now: () => Date = () => new Date()): AdminApi {
   function load(): Persisted {
     const raw = store.getItem(KEY);
     if (raw) {
       try {
-        return JSON.parse(raw) as Persisted;
+        const stored = JSON.parse(raw) as Persisted;
+        if (!stored.themes) {
+          stored.themes = seedThemes(now());
+          stored.themeReceipts = {};
+          store.setItem(KEY, JSON.stringify(stored));
+        }
+        return stored;
       } catch {
         // Fall through to a fresh seed when stored data is unreadable.
       }
     }
-    const fresh = seed();
+    const fresh: Persisted = { ...seed(), themes: seedThemes(now()), themeReceipts: {} };
     store.setItem(KEY, JSON.stringify(fresh));
     return fresh;
   }
@@ -239,7 +286,89 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
       save(data);
       return { eventId, revision: current.revision + 1 };
     },
+    async listThemes() {
+      const data = load();
+      const session = requireAdmin(data);
+      return (data.themes ?? [])
+        .filter((theme) => theme.companyId === session.companyId && theme.type === "weekly")
+        .sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate));
+    },
+    async getTheme(challengeId) {
+      const data = load();
+      const session = requireAdmin(data);
+      const theme = data.themes?.find((item) => item.id === challengeId && item.companyId === session.companyId);
+      if (!theme) throw new ApiError("not-found", "That weekly theme doesn’t exist.", {}, THEME_REASONS.notFound);
+      return theme;
+    },
+    async createTheme(requestId, draft) {
+      const data = load();
+      const session = requireAdmin(data);
+      const themes = (data.themes ??= []);
+      const receipts = (data.themeReceipts ??= {});
+      const normalized = normalizeThemeDraft(draft);
+      const hash = JSON.stringify(normalized);
+      const key = `${session.companyId}:${session.uid}:${requestId}`;
+      const receipt = receipts[key];
+      if (receipt) {
+        if (receipt.hash !== hash) {
+          throw new ApiError("invalid-argument", "This request ID was already used with different details.", {}, THEME_REASONS.requestReused);
+        }
+        return { challengeId: receipt.challengeId, revision: receipt.revision, replayed: true };
+      }
+      checkTheme(normalized, themes.filter((theme) => theme.companyId === session.companyId), undefined, now());
+      const at = now().toISOString();
+      const theme: WeeklyTheme = {
+        ...normalized, id: `chl-${requestId.slice(0, 8)}`, companyId: session.companyId,
+        participantCount: 0, completedCount: 0, createdBy: session.uid, createdAt: at, updatedAt: at, revision: 1,
+      };
+      themes.push(theme);
+      receipts[key] = { hash, challengeId: theme.id, revision: 1 };
+      save(data);
+      return { challengeId: theme.id, revision: 1, replayed: false };
+    },
+    async updateTheme(challengeId, expectedRevision, draft) {
+      const data = load();
+      const session = requireAdmin(data);
+      const themes = (data.themes ??= []);
+      const index = themes.findIndex((item) => item.id === challengeId && item.companyId === session.companyId);
+      if (index < 0) throw new ApiError("not-found", "That weekly theme doesn’t exist.", {}, THEME_REASONS.notFound);
+      const current = themes[index];
+      if (current.revision !== expectedRevision) {
+        throw new ApiError("aborted", "Someone else changed this theme. Reload to see their changes.", {}, THEME_REASONS.revisionConflict);
+      }
+      const normalized = normalizeThemeDraft(draft);
+      // Once anyone has joined or completed, the start stays put and the end can't move into the past
+      // (mirrors updateChallengeV1's WINDOW_CHANGE_BLOCKED).
+      if (windowLocked(current)) {
+        const startMoved = normalized.startDate !== current.startDate;
+        const endPast = normalized.endDate !== current.endDate && Date.parse(normalized.endDate) < now().getTime();
+        if (startMoved || endPast) {
+          throw new ApiError("failed-precondition", "People have already joined this theme, so its start can’t move and it can’t end in the past.", {
+            ...(startMoved ? { startDate: "Locked: people have joined." } : {}),
+            ...(endPast ? { endDate: "Can’t end in the past once people have joined." } : {}),
+          }, THEME_REASONS.windowLocked);
+        }
+      }
+      checkTheme(normalized, themes.filter((theme) => theme.companyId === session.companyId), challengeId);
+      // Counts, author and creation time are server-owned: the draft can't carry them.
+      themes[index] = { ...current, ...normalized, updatedAt: now().toISOString(), revision: current.revision + 1 };
+      save(data);
+      return { challengeId, revision: current.revision + 1 };
+    },
   };
+}
+
+/** The server-side checks the callables run after authorization: validation, then the one-theme-per-week rule. */
+function checkTheme(draft: ThemeDraft, companyThemes: WeeklyTheme[], excludeId?: string, createdAt?: Date) {
+  const errors = validateThemeDraft(draft, { knownTagIds: TAGS.map((tag) => tag.id), now: createdAt });
+  if (Object.keys(errors).length) throw new ApiError("invalid-argument", "Check the highlighted fields.", errors, "VALIDATION_FAILED");
+  const conflict = findOverlap(draft, companyThemes, excludeId);
+  if (conflict) {
+    const message = "Another weekly theme already runs during these dates.";
+    throw new ApiError("failed-precondition", message, { startDate: message, endDate: message }, THEME_REASONS.overlap, {
+      challengeId: conflict.id, startDate: conflict.startDate, endDate: conflict.endDate,
+    });
+  }
 }
 
 export function browserStore(): KeyValueStore {
