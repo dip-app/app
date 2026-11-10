@@ -7,12 +7,7 @@ import SwiftUI
 /// Composition root: only this host chooses the repository implementation.
 /// Navigation/picker state stays here; product state comes exclusively from repository observation.
 struct DIPPrototypeApp: View {
-    private enum Route: Hashable {
-        case event(String)
-        case participants(String)
-        case album(String)
-        case challenge(String)
-    }
+    private typealias Route = EventBarAction.Route
     @State private var selectedTab: DIPHomeTab
     @State private var routes: [Route]
     @State private var model: DIPAppViewModel
@@ -218,42 +213,7 @@ struct DIPPrototypeApp: View {
     }
 
     private var bottomAction: DIPBottomBarAction? {
-        switch routes.last {
-        case .event(let id):
-            guard let event = model.snapshot?.eventDetails[id] else {
-                return DIPBottomBarAction(
-                    title: model.isLoading ? "Loading…" : "Activity unavailable",
-                    style: .complete, identifier: "event.primary")
-            }
-            if event.isPast { return DIPBottomBarAction(title: "View Album", identifier: "event.primary") }
-            let joined = event.isJoined
-            if let metadata = event.metadata {
-                switch metadata.state(now: Date(), attendeeCount: event.attendeeCount, isJoined: joined) {
-                case .cancelled: return DIPBottomBarAction(title: "Activity cancelled", style: .complete, identifier: "event.primary")
-                case .full: return DIPBottomBarAction(title: "Activity full", style: .complete, identifier: "event.primary")
-                case .started where !joined: return DIPBottomBarAction(title: "Activity started", style: .complete, identifier: "event.primary")
-                default: break
-                }
-            }
-            return DIPBottomBarAction(
-                title: joined ? "Activity Chat" : "Join the Activity",
-                style: joined ? .accent : .standard,
-                identifier: "event.primary", value: joined ? "Joined" : "Not joined",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
-        case .participants(let id) where model.snapshot?.eventDetails[id]?.isPast == true:
-            return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
-        case .participants(let id):
-            let joined = model.snapshot?.eventDetails[id]?.isJoined == true
-            return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
-                style: joined ? .accent : .standard,
-                identifier: joined ? "participants.chat" : "participants.join",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
-        case .album:
-            return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
-        case .challenge:
-            return DIPBottomBarAction(title: "Add Your Entry", identifier: "challenge.primary")
-        case nil: return nil
-        }
+        EventBarAction.resolve(route: routes.last, snapshot: model.snapshot, isLoading: model.isLoading)
     }
 
     private func performBottomAction() {

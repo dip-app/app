@@ -267,6 +267,8 @@
         let selected: DIPHomeTab
         let action: DIPBottomBarAction?
         let showsTabs: Bool
+        /// The tabs shown, in order. Defaults to every tab; onboarding demos pass `[.home, .events, .profile]`.
+        let tabs: [DIPHomeTab]
         let onSelect: (DIPHomeTab) -> Void
         let onAction: () -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -279,17 +281,19 @@
 
         public init(
             selected: DIPHomeTab = .home, action: DIPBottomBarAction?, showsTabs: Bool = true,
+            tabs: [DIPHomeTab] = DIPHomeTab.allCases,
             onSelect: @escaping (DIPHomeTab) -> Void, onAction: @escaping () -> Void = {}
         ) {
             self.selected = selected
             self.action = action
             self.showsTabs = showsTabs
+            self.tabs = tabs.isEmpty ? DIPHomeTab.allCases : tabs
             self.onSelect = onSelect
             self.onAction = onAction
         }
 
         private var selectedIndex: Int {
-            DIPHomeTab.allCases.firstIndex(of: selected) ?? 0
+            tabs.firstIndex(of: selected) ?? 0
         }
 
         private func asset(for tab: DIPHomeTab, selected: Bool) -> String {
@@ -305,7 +309,12 @@
         }
 
         private func restingMarkerX(width: CGFloat) -> CGFloat {
-            10 + (width - 80) / 3 * CGFloat(selectedIndex)
+            10 + slotStep(width: width) * CGFloat(selectedIndex)
+        }
+
+        /// Distance between adjacent tab slots (the first and last slots sit 40 pt from the ends).
+        private func slotStep(width: CGFloat) -> CGFloat {
+            (width - 80) / CGFloat(max(1, tabs.count - 1))
         }
 
         private func marker(width: CGFloat) -> some View {
@@ -320,12 +329,12 @@
 
         /// Dragging the marker selects each tab it crosses; releasing settles on the selected tab.
         private func dragGesture(width: CGFloat) -> some Gesture {
-            let step = (width - 80) / 3
+            let step = slotStep(width: width)
+            let tabs = self.tabs
             return DragGesture(minimumDistance: 6)
                 .onChanged { value in
-                    let x = min(max(value.location.x - 40, 10), 10 + 3 * step)
+                    let x = min(max(value.location.x - 40, 10), 10 + CGFloat(tabs.count - 1) * step)
                     dragMarkerX = x
-                    let tabs = DIPHomeTab.allCases
                     let index = min(max(Int(((x - 10) / step).rounded()), 0), tabs.count - 1)
                     // Rewards is not connected, so a drag passes over it instead of opening it.
                     if tabs[index] != selected, tabs[index] != .rewards { onSelect(tabs[index]) }
@@ -372,8 +381,8 @@
 
         private var tabItems: some View {
             HStack(spacing: 0) {
-                ForEach(DIPHomeTab.allCases) { tab in
-                    if tab != .home { Spacer(minLength: 0) }
+                ForEach(tabs) { tab in
+                    if tab != tabs.first { Spacer(minLength: 0) }
                     Button {
                         onSelect(tab)
                     } label: {
