@@ -108,5 +108,10 @@
     "name": "HeroiconsOutlineUserCircle",
     "figmaAsset": "80f1f.svg",
     "sha256": "10066754514c01e18892cb53897721b9472acf624865c3cdbcb0adad4a5a2446"
+  },
+  {
+    "name": "HeroiconsOutlineGift",
+    "source": "heroicons v2 optimized/24/outline/gift.svg (MIT), recoloured to the tab stroke #B5B8C0",
+    "sha256": "5a2c2ddc28fc11d10d4e25664d88206d67bcdb2668102a3a2a9d17ece13d8cfb"
   }
 ]

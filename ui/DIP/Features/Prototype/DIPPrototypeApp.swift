@@ -64,16 +64,23 @@ struct DIPPrototypeApp: View {
         default: _routes = State(initialValue: [])
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
-            initialSnapshot: ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+            initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
+                ?? (ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
                 ? DIPMockFixtures.chatGroupingReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference,
+                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures())))
+    }
+
+    /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
+    private static func emptyStateFixture() -> DIPEmptyStateFixture? {
+        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--empty-state=") }
+            .flatMap { DIPEmptyStateFixture(rawValue: String($0.dropFirst("--empty-state=".count))) }
     }
 
     /// Deterministic failure paths for local preview/UI testing only.

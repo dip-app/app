@@ -99,8 +99,8 @@ export class FirestoreOrganizerStore implements OrganizerStore {
             createdAt: FieldValue.serverTimestamp(),
           });
         },
-        updateEvent(companyId, eventId, draft, status, nextRevision) {
-          transaction.update(events(companyId).doc(eventId), { ...eventFields(draft), status, revision: nextRevision });
+        updateEvent(companyId, eventId, draft, status, nextRevision, updatedBy) {
+          transaction.update(events(companyId).doc(eventId), { ...eventFields(draft), status, revision: nextRevision, updatedBy });
         },
       };
       return work(tx);

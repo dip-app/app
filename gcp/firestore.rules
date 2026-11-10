@@ -97,9 +97,67 @@ service cloud.firestore {
         && resource.data.companyId == memberCompany()
         && resource.data.status == 'going';
     }
+    // Weekly themes (challenges): written only by createChallengeV1/updateChallengeV1 (Admin SDK);
+    // participantCount/completedCount are server-owned. Same-company verified members get any theme
+    // (a missing one is observable) and list with a limit <= 20; organizers may list without a limit.
+    // The path scopes the tenant and only the server writes these documents, so list queries need no
+    // companyId filter (the iOS Home query is a single-field endDate range, no composite index).
+    // Submissions and participant rows stay denied until their V2 commands exist.
+    match /companies/{companyId}/challenges/{challengeId} {
+      allow get: if sameCompany(companyId) &&
+        (!exists(/databases/$(database)/documents/companies/$(companyId)/challenges/$(challengeId))
+          || resource.data.companyId == companyId);
+      allow list: if sameCompany(companyId)
+        && (organizer(companyId) || (request.query.limit != null && request.query.limit <= 20));
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }
+    // --- Activity chat, notification preferences (notifications module, docs/contracts/callables.md) ---
+    // Chat: same-company members with a "going" RSVP read and append; no edit/delete. The message ID is the
+    // client-generated clientMessageId, so a retry can never create a duplicate. Author display fields must
+    // equal the caller's server-owned profile. Writable while the event is scheduled and until 24 h after
+    // endTime; history stays readable for going participants. Lists must set a limit <= 100.
+    match /companies/{companyId}/events/{eventId}/messages/{messageId} {
+      function chatEventPath() { return /databases/$(database)/documents/companies/$(companyId)/events/$(eventId); }
+      function chatRsvpPath() { return /databases/$(database)/documents/companies/$(companyId)/events/$(eventId)/rsvps/$(request.auth.uid); }
+      function chatParticipant() {
+        return sameCompany(companyId) && exists(chatRsvpPath())
+          && get(chatRsvpPath()).data.companyId == companyId && get(chatRsvpPath()).data.status == 'going';
+      }
+      function validMessage(data) {
+        let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        return data.keys().hasOnly(['companyId', 'eventId', 'authorId', 'authorName', 'authorAvatarId', 'text', 'createdAt'])
+          && data.keys().hasAll(['companyId', 'eventId', 'authorId', 'authorName', 'authorAvatarId', 'text', 'createdAt'])
+          && data.companyId == companyId && data.eventId == eventId && data.authorId == request.auth.uid
+          && data.authorName == profile.displayName && data.authorAvatarId == profile.avatarId
+          && data.text is string && data.text.size() >= 1 && data.text.size() <= 1000 && data.text == data.text.trim()
+          && data.createdAt == request.time;
+      }
+      function chatOpen() {
+        let event = get(chatEventPath()).data;
+        return event.companyId == companyId && event.status == 'scheduled'
+          && request.time < event.endTime + duration.value(24, 'h');
+      }
+      allow get: if chatParticipant() && (resource == null || resource.data.companyId == companyId);
+      allow list: if chatParticipant() && request.query.limit != null && request.query.limit <= 100;
+      allow create: if chatParticipant() && messageId.matches('^[A-Za-z0-9_-]{8,128}$')
+        && validMessage(request.resource.data) && exists(chatEventPath()) && chatOpen();
+    }
+    // Notification preference: own document only, {level, updatedAt} with a server timestamp; requires an
+    // RSVP row (current or past) in this company. Missing document = "none". No delete; no list.
+    match /companies/{companyId}/events/{eventId}/subscriptions/{userId} {
+      function subscriptionRsvpPath() { return /databases/$(database)/documents/companies/$(companyId)/events/$(eventId)/rsvps/$(userId); }
+      allow get: if own(userId) && sameCompany(companyId);
+      allow create, update: if own(userId) && sameCompany(companyId)
+        && exists(subscriptionRsvpPath()) && get(subscriptionRsvpPath()).data.companyId == companyId
+        && request.resource.data.keys().hasOnly(['level', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['level', 'updatedAt'])
+        && request.resource.data.level in ['all', 'changes', 'reminders', 'none']
+        && request.resource.data.updatedAt == request.time;
+    }
+    // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
+    // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
     match /{document=**} {
       allow read, write: if false;
     }

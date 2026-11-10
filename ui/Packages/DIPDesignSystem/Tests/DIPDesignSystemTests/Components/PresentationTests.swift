@@ -41,4 +41,21 @@ final class PresentationTests: XCTestCase {
         XCTAssertEqual(DIPDestination.allCases.map(\.title), ["Home", "My Events", "Profile"])
         XCTAssertEqual(DIPDestination.myEvents.systemImage, "calendar")
     }
+    func testBottomBarProgressIsAdditiveAndPartOfEquality() {
+        let plain = DIPBottomBarAction(title: "Continue", identifier: "x")
+        XCTAssertFalse(plain.showsProgress)
+        XCTAssertNil(plain.icon)
+        let busy = DIPBottomBarAction(title: "Continue", identifier: "x", showsProgress: true)
+        XCTAssertTrue(busy.showsProgress)
+        XCTAssertNotEqual(plain, busy)
+    }
+    func testFloatingNavigationStandardPlacementMatchesRootBar() {
+        XCTAssertEqual(DIPFloatingNavigation.barCenterInset, 61)
+        XCTAssertEqual(DIPFloatingNavigation.horizontalInset, 20)
+        XCTAssertEqual(DIPFloatingNavigation.standardInsets.bottom, 21)
+        XCTAssertEqual(DIPFloatingNavigation.standardInsets.leading, 20)
+        XCTAssertEqual(DIPFloatingNavigation.standardInsets.trailing, 20)
+        // On a 874 pt screen the bar occupies y 773...853.
+        XCTAssertEqual(874 - DIPFloatingNavigation.barCenterInset - DIPFloatingNavigation.height / 2, 773)
+    }
 }

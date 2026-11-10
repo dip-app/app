@@ -60,48 +60,19 @@ struct DIPHomeScreen: View {
                             }
                             VStack(alignment: .leading, spacing: 8) {
                                 sectionTitle(eventSectionTitle)
-                                if home.events.isEmpty { Text("No upcoming events yet.").accessibilityIdentifier("home.events.empty") }
+                                if home.events.isEmpty {
+                                    DIPEmptyState(
+                                        screen: "home-events", title: "Nothing planned yet",
+                                        message: "New company events will show up here.")
+                                }
                                 if let paginationError { Text(paginationError).font(.footnote).foregroundStyle(.secondary) }
                                 if let onLoadMore {
                                     Button(loadingMore ? "Loading more…" : "Load more events", action: onLoadMore)
                                         .disabled(loadingMore).accessibilityIdentifier("home.events.more")
                                 }
-                                ScrollView(.horizontal) {
-                                    HStack(spacing: 10) {
-                                        ForEach(home.events) { event in
-                                            DIPPhotoEventCard(
-                                                title: event.title, locality: event.locality,
-                                                identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
-                                                width: event.id == "hike" ? 169 : 163, shade: event.imageShade,
-                                                artwork: { DIPMedia(event.image).scaledToFill() },
-                                                avatarStack: { DIPMediaStack(event.avatars) }
-                                            ) { onEvent(event.id) }
-                                        }
-                                    }
-                                    .padding(.horizontal, 20)
-                                }
-                                .scrollIndicators(.hidden)
-                                .frame(height: 205).padding(.horizontal, -20)
-                                .accessibilityIdentifier("home.events")
+                                if !home.events.isEmpty { eventCarousel }
                             }
-                            VStack(alignment: .leading, spacing: 14) {
-                                sectionTitle("Attended Your Recent Events:")
-                                HStack(spacing: 10) {
-                                    ForEach(Array(home.recentAttendeeAvatars.enumerated()), id: \.offset) { _, avatar in
-                                        DIPMedia(avatar)
-                                            .resizable().frame(width: 40, height: 40).accessibilityHidden(true)
-                                    }
-                                    Button {
-                                        onSelect("Recent attendees")
-                                    } label: {
-                                        Text("See All").font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                            .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 40)
-                                            .background(
-                                                DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                                    }
-                                    .buttonStyle(.plain).accessibilityIdentifier("home.attendees")
-                                }
-                            }
+                            recentAttendees
                         }
                         .padding(.horizontal, 20).padding(.bottom, 120)
                     }
@@ -119,6 +90,53 @@ struct DIPHomeScreen: View {
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
+    }
+
+    private var eventCarousel: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                ForEach(home.events) { event in
+                    DIPPhotoEventCard(
+                        title: event.title, locality: event.locality,
+                        identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
+                        width: event.id == "hike" ? 169 : 163, shade: event.imageShade,
+                        artwork: { DIPMedia(event.image).scaledToFill() },
+                        avatarStack: { DIPMediaStack(event.avatars) }
+                    ) { onEvent(event.id) }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .scrollIndicators(.hidden)
+        .frame(height: 205).padding(.horizontal, -20)
+        .accessibilityIdentifier("home.events")
+    }
+
+    private var recentAttendees: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle("Attended Your Recent Events:")
+            if home.recentAttendeeAvatars.isEmpty {
+                DIPEmptyState(
+                    screen: "home-recents", title: "No one here yet",
+                    message: "Coworkers you meet at events will show up here.", style: .compact)
+            } else {
+                HStack(spacing: 10) {
+                    ForEach(Array(home.recentAttendeeAvatars.enumerated()), id: \.offset) { _, avatar in
+                        DIPMedia(avatar)
+                            .resizable().frame(width: 40, height: 40).accessibilityHidden(true)
+                    }
+                    Button {
+                        onSelect("Recent attendees")
+                    } label: {
+                        Text("See All").font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                            .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 40)
+                            .background(
+                                DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                    }
+                    .buttonStyle(.plain).accessibilityIdentifier("home.attendees")
+                }
+            }
+        }
     }
     /// Fixture cards keep their design-reference asset names as identifiers. Category cover
     /// images (V1-08, `cover_*`) are shared by many events, so those cards use the stable event ID.

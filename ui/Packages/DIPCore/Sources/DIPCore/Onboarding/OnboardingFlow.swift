@@ -186,7 +186,7 @@ public extension OnboardingStep {
         case .people: String(localized: "onboarding.pill.people", defaultValue: "Who's going")
         case .challenges: String(localized: "onboarding.pill.challenges", defaultValue: "Challenges")
         case .memories: String(localized: "onboarding.pill.memories", defaultValue: "Memories")
-        case .interests: String(localized: "onboarding.pill.interests", defaultValue: "Your interests")
+        case .interests: String(localized: "onboarding.pill.interests", defaultValue: "Interests")
         }
     }
 }
