@@ -15,6 +15,10 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(roundTrip, fixtures)
         XCTAssertEqual(fixtures.setRsvpRequest.companyId, "company-demo")
         XCTAssertEqual(fixtures.event.revision, 1)
+        XCTAssertEqual(fixtures.challenge.coverImageURL, "catalog://theme/fitness")
+        XCTAssertEqual(fixtures.challenge.revision, 1)
+        XCTAssertEqual(fixtures.createChallengeResponse.challenge, fixtures.challenge)
+        XCTAssertEqual(fixtures.updateChallengeResponse.challenge.revision, 2)
     }
     private struct Fixtures: Codable, Equatable {
         let event: Event
@@ -26,5 +30,10 @@ final class ContractTests: XCTestCase {
         let createEventResponse: CreateEventResponse
         let updateEventRequest: UpdateEventRequest
         let updateEventResponse: UpdateEventResponse
+        let challenge: Challenge
+        let createChallengeRequest: CreateChallengeRequest
+        let createChallengeResponse: CreateChallengeResponse
+        let updateChallengeRequest: UpdateChallengeRequest
+        let updateChallengeResponse: UpdateChallengeResponse
     }
 }
