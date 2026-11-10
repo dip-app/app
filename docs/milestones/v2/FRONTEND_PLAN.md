@@ -188,7 +188,7 @@ Depends on the new paid Apple Developer account and a few decisions.
 
 ## O — Onboarding (not in the committed V2 scope)
 
-The design for this item is in docs/milestones/v2/ONBOARDING_SPEC.md (PR #49, pending team approval): one Welcome screen before sign-in, a short tour after membership resolves (Discover & Join, People & Invites, Challenges, Memories, Interests) and a handoff into Home. It needs team approval because V2 does not list onboarding as committed or stretch scope, and it needs no contract, rules or backend change. The spec replaces **O1** (welcome tour) and folds **O2** (pick your interests) into its B5 step. **O3** (a one-line permission explainer before the first photo-picker use) stays with F3/F5 and is shown just in time.
+The design for this item is in [ONBOARDING_SPEC.md](ONBOARDING_SPEC.md) (PR #49, pending team approval): one Welcome screen before sign-in, a short tour after membership resolves (Discover & Join, People & Invites, Challenges, Memories, Interests) and a handoff into Home. It needs team approval because V2 does not list onboarding as committed or stretch scope, and it needs no contract, rules or backend change. The spec replaces **O1** (welcome tour) and folds **O2** (pick your interests) into its B5 step. **O3** (a one-line permission explainer before the first photo-picker use) stays with F3/F5 and is shown just in time.
 
 **Design status.** Spec v4 passed audit (9.18; earlier rounds 7.5 and 8.7). The Figma draft file is "DIP - Onboarding motion reference" (key `nAcWMM3OBnEtrGQj5vCEtk`) with the complete v4 frame set (24 primary frames plus variants). The owner will copy the frames into the main design file by hand.
 
