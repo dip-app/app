@@ -25,7 +25,14 @@ Updated November 10, 2026. "Merged" means merged to `main`; nothing here is a de
 | Onboarding P3 | Demo stage and B1 scene | In progress, stacked on #49 | `feature/onboarding-p3-demo` | iOS |
 | Onboarding P4 | Embedded interests | In progress | `feature/onboarding-p4-interests` | iOS |
 | Onboarding P2, B2-B5 | Tour shell (after P1); scenes B2-B5 (after P3) | Not started | to be created | iOS |
-| Activity chat (V2-S01) | Live chat or hide the entry | Decision pending | none | iOS / Backend |
+| Activity chat (V2-S01) | Selected: build live chat now (item A below). Must be recorded as selected in its own issue | Decided; not started | issue to be created | iOS / Backend |
+| C1 Backend slice | Chat rules, push functions, subscription preferences, change log trigger, reminders (items A, B, C, D) | Not started (subagent starting) | to be created | Backend |
+| C2 iOS slice | Chat live, bell menu (items A, C) | Not started | to be created | iOS |
+| C3 iOS slice | Push registration, permission priming, settings UI, history UI, add to calendar (items B, C, D, E) | Not started; after the current iOS agents finish | to be created | iOS |
+| Push notifications (B) | FCM/APNs end to end | Not started; needs the paid Apple Developer team to device-test | see C1/C3 | Backend / iOS |
+| Notification settings (C) | Per-event All/Changes/Reminders/None | Not started; semantics proposed, owner confirmation needed | see C1/C2/C3 | Backend / iOS |
+| Event change history (D) | `changeLog` trigger and history list | Not started | see C1/C3 | Backend / iOS |
+| Add to calendar (E) | EventKit button on the event header | Not started | see C3 | iOS |
 | A1-A4 | Admin attendance, review, points, challenge form | Not started (A4 now covered by T3) | to be created | Admin portal |
 | F6-F8 | Accessibility, tests, release | Not started | none | All |
 
@@ -52,6 +59,11 @@ Updated November 10, 2026. "Merged" means merged to `main`; nothing here is a de
 | O | Onboarding (proposal, not committed; spec: docs/milestones/v2/ONBOARDING_SPEC.md, PR #49, pending team approval) | none | Needs your decision; P0-P4 builds in progress | design review, F0–F4 components | M–L (P0–P4) |
 | A | Admin portal V2 screens | V2-03 / V2-04 | UI + mock yes | `recordAttendanceV1`, `approveChallengeV1`, submissions reads | M–L |
 | T1-T4 | Weekly theme (backend, iOS, admin) and designed empty states | none (supports Home design) | In progress | callables `createChallengeV1`/`updateChallengeV1` (T1) | M each |
+| N1 | Activity chat live (item A) | V2-S01 (selected) | Backend rules first | own issue; rules for `events/{eventId}/messages` | M |
+| N2 | Push notifications (item B) | V2-S05 (selected by owner request; record in an issue) | Functions and unit tests yes; no device test | paid Apple Developer team, APNs key | L |
+| N3 | Notification settings (item C) | with N2 | UI yes | subscription store and validation (C1) | S–M |
+| N4 | Event change history (item D) | none | Backend trigger yes | none | M |
+| N5 | Add to calendar (item E) | none | Yes | none | S |
 | B | Backlog (shake to report, stretch, TestFlight, Figma updates) | none | Not started | see Backlog | varies |
 
 Suggested order is at the end.
@@ -200,9 +212,39 @@ The organizer portal is also frontend work. V2-03 and V2-04 organizer actions ne
 - **A4 Challenge create/edit:** decided: the portal has a form backed by `createChallengeV1`/`updateChallengeV1`. The first version is the weekly themes list (T3 above); full challenge editing beyond themes is later.
 - Same pattern as V1: mock adapter first, Firebase adapter plus an emulator test (`npm run test:admin:live` style) when the callables exist. Existing sign-in and organizer role gating are reused.
 
-## Activity chat (V2-S01, stretch): decision pending
+## Owner-approved additions: chat, push, settings, history, calendar
 
-Current state, recorded so it is not lost. The chat UI is mock-backed only. In the live app the joined bar says "Activity Chat" and opens an empty chat whose send fails ("Chat isn't available yet"). The backend has no rules for `events/{eventId}/messages`. The contract proposal is in [data ownership](../../contracts/data-ownership.md): direct client writes with strict own-author append rules, counters server-only. **Decision pending:** build live chat now, or hide the chat entry until it is live.
+These five items were approved by the owner on November 10, 2026. They are stretch scope under [the V2 handoff](README.md): V2-S01 (chat) and V2-S05 (notifications) must each be recorded as selected in their own issue before work starts, with a separate packet and disjoint paths. Backend slice C1 starts first; iOS slices C2 and C3 follow (see the Status board). Nothing here exists yet.
+
+### A. Activity chat, live (V2-S01, selected)
+
+Decided: build live chat now (the earlier "hide the entry" option is dropped). Today the chat UI is mock-backed; in the live app the joined bar says "Activity Chat" and opens an empty chat whose send fails ("Chat isn't available yet"). The contract proposal is in [data ownership](../../contracts/data-ownership.md).
+
+- **Rules** for `events/{eventId}/messages`: readable and appendable only by members who joined the event; own-author create only; length limit; server timestamp; no edits or deletes by clients; counters server-only. Emulator tests: auth denial, tenant isolation, non-participant denial, field ownership.
+- **iOS:** real-time read and send in the adapter, replacing "Chat isn't available yet"; empty, failed and offline states; the joined bar keeps the label "Activity Chat".
+
+### B. Push notifications (frontend + Firebase)
+
+- **Firebase:** device token registry at `users/{uid}/devices/{token}`; per-event subscription level (item C); Cloud Functions that send pushes: chat message created goes to subscribers on "all"; event changed goes to subscribers on "all" or "changes"; reminders from a scheduled function before the event start (proposed 24 h and 1 h) go to subscribers on "all", "changes" or "reminders". Rate limiting and batching; invalid-token cleanup.
+- **iOS:** permission priming just in time after the first join, never at launch; token registration and refresh; notification tap routes to the event or the chat; badge and unread basics.
+- **Prerequisites (must be recorded and met first):** push needs the paid Apple Developer team (a free Personal Team cannot use push); an APNs auth key uploaded to the Firebase project; the `aps-environment` entitlement in `project.yml`; an App ID registered under the paid team with the Push capability. Therefore push cannot be device-tested with today's personal-bundle-ID builds. Plan emulator and unit tests for the functions now, and a TestFlight device check once the account is set up (ties to F8).
+
+### C. Notification settings
+
+- **UI:** a bell icon button at the top left of the Activity Chat screen opens a dropdown menu with the per-event setting All / Changes / Reminders / None (checkmark on the current one, a short description under each). The same setting is reachable from the event page (a small bell in the Who's Attending / actions area), and a global default lives in Profile settings.
+- **Semantics (proposed; owner to confirm):** All = chat messages + event changes + reminders. Changes = event detail changes + reminders. Reminders = reminders only. None = nothing.
+- **Default (proposed):** joining an activity subscribes the member to "changes" and not to chat; leaving unsubscribes.
+- **Storage:** per user per event, for example `events/{eventId}/subscriptions/{uid}` with a `level`; server-validated; readable only by the owner.
+
+### D. Event change history
+
+- **Backend:** a Firestore onUpdate trigger on `companies/{c}/events/{id}` appends an entry to a bounded array `changeLog` on the event document: `{at, by (uid, server-derived), revision, changes: [{field, from, to}]}`, for user-visible fields only (title, description, time, venue, price, capacity, tags, cover, status including cancel/restore). Cap at the latest about 50 entries. Guard against self-trigger loops: ignore writes that only touch `changeLog`, `attendeeCount`, `updatedAt` or `revision` bookkeeping. The same trigger sends the "changes" push.
+- **iOS:** a "Changes" (history) button on the event page opens a designed history list, most recent first, human-readable ("Time moved from 12:00 to 1:00 PM"); empty state "No changes since it was posted". The portal event edit screen can show the same history later.
+
+### E. Add to calendar
+
+- **UI:** an icon button to the left of the date pill at the top right of the event page header (the pill that shows, for example, "Nov 19 at 12:00"). The Figma header frames need the new icon.
+- **Behavior:** adds the event through EventKit (iOS 17 write-only access, requested just in time): title, start/end, location from the venue, notes with a short description. Handle denied or limited access with a clear fallback; show a confirmation state; no duplicate adds for the same event. Also include it in the share/details where useful.
 
 ## Backlog (later tasks)
 
@@ -215,7 +257,7 @@ Not started and not scheduled.
 
 ## Stretch goals (not selected, do not start)
 
-V2-S01 activity chat (mock-backed UI exists, no backend; see the decision above), V2-S02 raffle, V2-S03 rewards redemption (Rewards frame exists in Figma, tab is a dead end today), V2-S04 photo comments/favorites (mock-backed UI exists, placement redesign pending), V2-S05 notifications (the bell is a dead end today), V2-S06 venue/weather (Places provider unconfirmed). Each needs its own issue before work starts, per the [V2 handoff](README.md).
+V2-S01 activity chat (now selected, item A above), V2-S02 raffle, V2-S03 rewards redemption (Rewards frame exists in Figma, tab is a dead end today), V2-S04 photo comments/favorites (mock-backed UI exists, placement redesign pending), V2-S05 notifications (push is in the owner-approved items above; the Home bell stays hidden until it is wired), V2-S06 venue/weather (Places provider unconfirmed). Each needs its own issue before work starts, per the [V2 handoff](README.md).
 
 ## Decisions needed
 
@@ -225,19 +267,23 @@ V2-S01 activity chat (mock-backed UI exists, no backend; see the decision above)
 4. **Coworker list for invitations:** how the app gets same-company coworkers without leaking cross-company data (a callable vs a narrowly scoped read rule): backend call.
 5. **Photo limits:** types, max size, max count per upload, who may upload (participants only?), retention: needed before F5 ships.
 6. **Onboarding:** team approval of PR #49 and the spec; approve all phases or only some.
-7. **Activity chat:** build live chat now, or hide the chat entry until it is live.
+7. **Activity chat:** decided, build live now. Remaining: record V2-S01 as selected in its own issue.
 8. **Shake report destination:** Firestore collection written by a callable, or GitHub issue via a backend function.
 9. **Empty-state copy:** review the T4 copy before it ships.
 10. **Design:** no Figma exists for the filter, invitations, points or the admin V2 screens (onboarding has a draft file). Compose from the design system, or request frames?
-11. **Owners:** V2 owners are still TBD in the milestone; assign them before cross-area items start.
+11. **Notification settings semantics:** confirm All / Changes / Reminders / None as defined in item C, and the default (joining subscribes to "changes", not chat).
+12. **Reminder times:** confirm 24 h and 1 h before the event start.
+13. **Change log:** confirm the user-visible field list and the cap of about 50 entries.
+14. **Push timing:** push needs the paid Apple Developer team, APNs key, entitlement and App ID; decide when the account is available (F8). Until then only function and unit tests are possible.
+15. **Owners:** V2 owners are still TBD in the milestone; assign them before cross-area items start.
 
 ## Suggested order (Nov 10 – Dec 4)
 
 | Window | Frontend work | In parallel (others) |
 | --- | --- | --- |
-| Nov 10–16 | In parallel streams: onboarding builds P0/P1/P3/P4, weekly theme T1/T2/T3 and empty states T4 (all already running); F0 cleanup; F1 filtering (+ O2 if approved); F2 points display; settle the decisions above; start F8 account/bundle decisions | Backend/organizer: finalize schemas and fixtures for the V2 commands; review and production step for weekly themes |
-| Nov 17–23 | Onboarding P2 and scenes B2-B5; F3 submissions UI against mock; F4 invitations UI against mock; A1/A2 against mock | Backend: `submitChallengeV1`, `sendInviteV1`/`respondToInviteV1` with tests; rules |
-| Nov 24–30 (Thanksgiving week, expect reduced capacity) | Wire F3/F4 adapters as backends land; F5 upload pipeline (also used by F3) | Storage rules, `finalizeEventPhotoV1`, `recordAttendanceV1`/`approveChallengeV1` |
-| Dec 1–4 | F5 live; A1/A2 live; F6 sweep; F7 coverage numbers and device flows; F8 TestFlight build | Integration owner: full-flow verification, fixes |
+| Nov 10–16 | Backend slice C1 starts (chat rules, push functions, preferences, change log, reminders); in parallel streams: onboarding builds P0/P1/P3/P4, weekly theme T1/T2/T3 and empty states T4 (all already running); F0 cleanup; F1 filtering (+ O2 if approved); F2 points display; settle the decisions above; start F8 account/bundle decisions | Backend/organizer: finalize schemas and fixtures for the V2 commands; review and production step for weekly themes |
+| Nov 17–23 | C2 chat live + bell menu once current iOS agents finish; Onboarding P2 and scenes B2-B5; F3 submissions UI against mock; F4 invitations UI against mock; A1/A2 against mock | Backend: `submitChallengeV1`, `sendInviteV1`/`respondToInviteV1` with tests; rules |
+| Nov 24–30 (Thanksgiving week, expect reduced capacity) | C3 history UI, add to calendar, settings UI, push registration (UI and tests; no device push yet); wire F3/F4 adapters as backends land; F5 upload pipeline (also used by F3) | Storage rules, `finalizeEventPhotoV1`, `recordAttendanceV1`/`approveChallengeV1` |
+| Dec 1–4 | F5 live; A1/A2 live; F6 sweep; F7 coverage numbers and device flows; F8 TestFlight build; push device check only if the paid team is ready | Integration owner: full-flow verification, fixes |
 
-If the backend lags, the mock-first approach means the UI and tests for F1–F5 are still done and reviewable; the adapter swap is the only remaining work. Items to drop first if time runs out: onboarding phases after P1, the Backlog items, then the polish part of F5 (upload cancel/partial-retry UX), never F1/F2/F3/F4's core acceptance rows.
+If the backend lags, the mock-first approach means the UI and tests for F1–F5 are still done and reviewable; the adapter swap is the only remaining work. Items to drop first if time runs out: onboarding phases after P1, the Backlog items, push device verification, then the polish part of F5 (upload cancel/partial-retry UX), never F1/F2/F3/F4's core acceptance rows.

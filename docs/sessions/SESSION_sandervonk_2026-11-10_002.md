@@ -16,6 +16,7 @@ Made docs/milestones/v2/FRONTEND_PLAN.md the single tracked version of the V2 fr
 - Added sections: Status board, Weekly theme workstream and data model, Designed empty states (T4), Activity chat decision, Backlog.
 - Updated F0, F3, A4, onboarding, Decisions and Suggested order.
 - Added this session log.
+- Follow-up: recorded owner-approved items A-E (chat live, push, notification settings, change history, add to calendar) with prerequisites, plus status board, summary, decisions and order rows.
 
 ## Validation
 
@@ -26,7 +27,8 @@ Made docs/milestones/v2/FRONTEND_PLAN.md the single tracked version of the V2 fr
 ## Decisions
 
 - Challenge creation in the portal is decided (form plus callables); removed from open decisions.
-- Open decisions added: chat live vs hide, shake report destination, empty-state copy review.
+- Activity chat decided: build live now (V2-S01 selected; must be recorded in its own issue).
+- Open decisions added: settings semantics, reminder times, change-log fields and cap, push timing (paid team); earlier: chat live vs hide, shake report destination, empty-state copy review.
 
 ## Handoff
 
