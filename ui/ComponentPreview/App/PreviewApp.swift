@@ -12,6 +12,8 @@ struct PreviewApp: App {
                     OnboardingDemoPreview(sceneID: sceneID, configuration: OnboardingDemoPreview.configuration(sceneID: sceneID))
                 } else if ProcessInfo.processInfo.arguments.contains("--member-events") {
                     MemberEventsPreview()
+                } else if ProcessInfo.processInfo.arguments.contains("--onboarding-interests") {
+                    OnboardingInterestsPreview()
                 } else if let account = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--onboarding=") }) {
                     OnboardingPreview(account: String(account.dropFirst("--onboarding=".count)))
                 } else if ProcessInfo.processInfo.arguments.contains("--gallery") {
