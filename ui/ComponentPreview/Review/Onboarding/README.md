@@ -7,7 +7,7 @@ Launch: `--onboarding-demo=discover` on the Preview app, with the Debug-only ove
 | File | Capture | Figma reference (draft file `nAcWMM3OBnEtrGQj5vCEtk`, page "Onboarding flow") |
 | --- | --- | --- |
 | `discover-beat1-0.30.png` | `discover@0.3`: canvas developing from Stage purple | `figma-beat1-feed.png` (13:494, drawn at rest, not mid-reveal) |
-| `discover-beat4-3.80.png` | `discover@3.8`: event page, "Join the Activity", ghost starting toward the bar | `figma-beat4-event-page.png` (13:873) |
+| `discover-beat4-3.80.png` | `discover@3.8`: event page, "Join the Activity" (the ghost is just starting its fade-in) | `figma-beat4-event-page.png` (13:873) |
 | `discover-beat6-final.png` | `discover@final`: joined, "Activity Chat", callout, Replay | `figma-beat6-joined.png` (13:1019) |
 | `discover-reduced-1-feed.png`, `-2-event.png`, `-3-joined.png` | Reduce Motion stills at 1.10, 3.79 and 6.40 with the three-dot indicator | `figma-reduce-motion.png` (13:1175) |
 
@@ -19,3 +19,5 @@ Launch: `--onboarding-demo=discover` on the Preview app, with the Debug-only ove
 - The join ring is `actionPrimary`, not white: a white ring on the white canvas is invisible outside the avatar.
 - The callout hangs under Leave Activity with its tail on the action row (v3: it targets `actionRow`), rather than centred.
 - The Reduce Motion dots sit in the Stage's bottom gutter, not below the Stage (the dots belong to `DemoStage`, which does not draw outside the Stage).
+
+Captures come from `OnboardingDemoTests.testFreezeAtCaptures` (iPhone 17 Pro, iOS 27 simulator, November 10, 2026).
