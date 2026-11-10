@@ -104,7 +104,7 @@ export async function updateEvent(
     }
     await requireKnownTags(tx, request.event.tagIds);
     const nextRevision = current.revision + 1;
-    tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision);
+    tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision, authenticated.uid);
     return { contractVersion: 1, eventId: request.eventId, revision: nextRevision };
   });
 }

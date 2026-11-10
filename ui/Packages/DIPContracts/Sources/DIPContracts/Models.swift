@@ -165,8 +165,10 @@ public struct Event: Codable, Equatable, Sendable {
     public var createdBy: String
     public var createdAt: Date
     public var revision: Int
+    public var updatedBy: String?
+    public var changeLog: [EventChangeLogEntry]?
 
-    public init(id: String? = nil, companyId: String, title: String, description: String, tagIds: [String], coverImageURL: String, startTime: Date, endTime: Date, venue: Venue, costCents: Int, costNote: String, capacity: Int, pointsValue: Int, isOutdoor: Bool, status: String, attendeeCount: Int, createdBy: String, createdAt: Date, revision: Int) {
+    public init(id: String? = nil, companyId: String, title: String, description: String, tagIds: [String], coverImageURL: String, startTime: Date, endTime: Date, venue: Venue, costCents: Int, costNote: String, capacity: Int, pointsValue: Int, isOutdoor: Bool, status: String, attendeeCount: Int, createdBy: String, createdAt: Date, revision: Int, updatedBy: String? = nil, changeLog: [EventChangeLogEntry]? = nil) {
         self.id = id
         self.companyId = companyId
         self.title = title
@@ -186,6 +188,128 @@ public struct Event: Codable, Equatable, Sendable {
         self.createdBy = createdBy
         self.createdAt = createdAt
         self.revision = revision
+        self.updatedBy = updatedBy
+        self.changeLog = changeLog
+    }
+}
+
+public struct EventChangeLogEntry: Codable, Equatable, Sendable {
+    public var at: Date
+    public var by: String
+    public var revision: Int
+    public var changes: [EventFieldChange]
+
+    public init(at: Date, by: String, revision: Int, changes: [EventFieldChange]) {
+        self.at = at
+        self.by = by
+        self.revision = revision
+        self.changes = changes
+    }
+}
+
+public struct EventFieldChange: Codable, Equatable, Sendable {
+    public var field: String
+    public var from: String?
+    public var to: String?
+
+    public init(field: String, from: String? = nil, to: String? = nil) {
+        self.field = field
+        self.from = from
+        self.to = to
+    }
+}
+
+public struct EventSubscription: Codable, Equatable, Sendable {
+    public var id: String?
+    public var level: String
+    public var updatedAt: Date
+
+    public init(id: String? = nil, level: String, updatedAt: Date) {
+        self.id = id
+        self.level = level
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct DeviceRegistration: Codable, Equatable, Sendable {
+    public var id: String?
+    public var token: String
+    public var tokenHash: String
+    public var platform: String
+    public var appVersion: String
+    public var updatedAt: Date
+
+    public init(id: String? = nil, token: String, tokenHash: String, platform: String, appVersion: String, updatedAt: Date) {
+        self.id = id
+        self.token = token
+        self.tokenHash = tokenHash
+        self.platform = platform
+        self.appVersion = appVersion
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct RegisterDeviceRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var token: String
+    public var platform: String
+    public var appVersion: String
+
+    public init(contractVersion: Int, token: String, platform: String, appVersion: String) {
+        self.contractVersion = contractVersion
+        self.token = token
+        self.platform = platform
+        self.appVersion = appVersion
+    }
+}
+
+public struct RegisterDeviceResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var deviceId: String
+
+    public init(contractVersion: Int, deviceId: String) {
+        self.contractVersion = contractVersion
+        self.deviceId = deviceId
+    }
+}
+
+public struct UnregisterDeviceRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var token: String
+
+    public init(contractVersion: Int, token: String) {
+        self.contractVersion = contractVersion
+        self.token = token
+    }
+}
+
+public struct UnregisterDeviceResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var removed: Bool
+
+    public init(contractVersion: Int, removed: Bool) {
+        self.contractVersion = contractVersion
+        self.removed = removed
+    }
+}
+
+public struct PushNotificationData: Codable, Equatable, Sendable {
+    public var type: String
+    public var companyId: String
+    public var eventId: String
+    public var deepLink: String
+    public var messageId: String?
+    public var revision: String?
+    public var window: String?
+
+    public init(type: String, companyId: String, eventId: String, deepLink: String, messageId: String? = nil, revision: String? = nil, window: String? = nil) {
+        self.type = type
+        self.companyId = companyId
+        self.eventId = eventId
+        self.deepLink = deepLink
+        self.messageId = messageId
+        self.revision = revision
+        self.window = window
     }
 }
 
