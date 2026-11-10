@@ -32,7 +32,8 @@
     "test:organizer:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/organizer*.test.ts\"",
     "test:challenges:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/challenges*.test.ts\"",
     "test:accounts:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/accounts*.test.ts\"",
-    "test:participation:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/participation*.test.ts\""
+    "test:participation:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/participation*.test.ts\"",
+    "test:notifications:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/notifications*.test.ts\""
   },
   "devDependencies": {
     "ajv": "^8.17.1",

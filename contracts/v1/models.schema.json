@@ -356,6 +356,18 @@
         "revision": {
           "type": "integer",
           "minimum": 1
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Server-owned: UID of the organizer whose updateEventV1 wrote the current revision."
+        },
+        "changeLog": {
+          "type": "array",
+          "description": "Server-owned, optional: latest 50 user-visible changes, oldest first (onEventChanged trigger).",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/EventChangeLogEntry"
+          }
         }
       },
       "required": [
@@ -377,6 +389,278 @@
         "createdBy",
         "createdAt",
         "revision"
+      ]
+    },
+    "EventChangeLogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Editor UID from Event.updatedBy, or \"organizer\" when the writer is unknown."
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/EventFieldChange"
+          }
+        }
+      },
+      "required": [
+        "at",
+        "by",
+        "revision",
+        "changes"
+      ]
+    },
+    "EventFieldChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "enum": [
+            "title",
+            "description",
+            "tagIds",
+            "coverImageURL",
+            "startTime",
+            "endTime",
+            "venue.name",
+            "venue.address",
+            "venue.locality",
+            "costCents",
+            "costNote",
+            "capacity",
+            "isOutdoor",
+            "status"
+          ]
+        },
+        "from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "field",
+        "from",
+        "to"
+      ]
+    },
+    "EventSubscription": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "all",
+            "changes",
+            "reminders",
+            "none"
+          ]
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "level",
+        "updatedAt"
+      ]
+    },
+    "DeviceRegistration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "tokenHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "ios"
+          ]
+        },
+        "appVersion": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "token",
+        "tokenHash",
+        "platform",
+        "appVersion",
+        "updatedAt"
+      ]
+    },
+    "RegisterDeviceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "token": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9_:.-]+$"
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "ios"
+          ]
+        },
+        "appVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Za-z0-9._()+ -]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "token",
+        "platform",
+        "appVersion"
+      ]
+    },
+    "RegisterDeviceResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "deviceId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "deviceId"
+      ]
+    },
+    "UnregisterDeviceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "token": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9_:.-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "token"
+      ]
+    },
+    "UnregisterDeviceResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "removed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "removed"
+      ]
+    },
+    "PushNotificationData": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "FCM data payload (all values strings).",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "chat",
+            "event_changed",
+            "reminder"
+          ]
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "deepLink": {
+          "type": "string",
+          "pattern": "^dip://events/[A-Za-z0-9_-]+(/chat)?$"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "window": {
+          "type": "string",
+          "enum": [
+            "24h",
+            "1h"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "companyId",
+        "eventId",
+        "deepLink"
       ]
     },
     "RSVP": {

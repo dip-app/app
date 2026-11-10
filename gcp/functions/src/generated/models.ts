@@ -92,6 +92,68 @@ export interface Event {
   createdBy: string;
   createdAt: string;
   revision: number;
+  updatedBy?: string;
+  changeLog?: Array<EventChangeLogEntry>;
+}
+
+export interface EventChangeLogEntry {
+  at: string;
+  by: string;
+  revision: number;
+  changes: Array<EventFieldChange>;
+}
+
+export interface EventFieldChange {
+  field: "title" | "description" | "tagIds" | "coverImageURL" | "startTime" | "endTime" | "venue.name" | "venue.address" | "venue.locality" | "costCents" | "costNote" | "capacity" | "isOutdoor" | "status";
+  from: string | null;
+  to: string | null;
+}
+
+export interface EventSubscription {
+  id?: string;
+  level: "all" | "changes" | "reminders" | "none";
+  updatedAt: string;
+}
+
+export interface DeviceRegistration {
+  id?: string;
+  token: string;
+  tokenHash: string;
+  platform: "ios";
+  appVersion: string;
+  updatedAt: string;
+}
+
+export interface RegisterDeviceRequest {
+  contractVersion: number;
+  token: string;
+  platform: "ios";
+  appVersion: string;
+}
+
+export interface RegisterDeviceResponse {
+  contractVersion: number;
+  deviceId: string;
+}
+
+export interface UnregisterDeviceRequest {
+  contractVersion: number;
+  token: string;
+}
+
+export interface UnregisterDeviceResponse {
+  contractVersion: number;
+  removed: boolean;
+}
+
+export interface PushNotificationData {
+  type: "chat" | "event_changed" | "reminder";
+  companyId: string;
+  eventId: string;
+  deepLink: string;
+  messageId?: string;
+  revision?: string;
+  window?: "24h" | "1h";
 }
 
 export interface RSVP {
