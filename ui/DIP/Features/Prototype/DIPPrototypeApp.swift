@@ -91,6 +91,8 @@ struct DIPPrototypeApp: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
+    @Environment(\.weeklyChallengeFeed) private var challengeFeed
     @State private var albumPickerPresented = false
 
     var body: some View {
@@ -183,7 +185,8 @@ struct DIPPrototypeApp: View {
                     onLoadMore: onLoadMoreEvents, loadingMore: loadingMoreEvents,
                     paginationError: eventPaginationError,
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
-                    onRefresh: onRefreshEvents))
+                    onRefresh: homeRefresh, challengeState: challengeFeed?.state,
+                    onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } }))
             case .events:
                 if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
@@ -250,9 +253,8 @@ struct DIPPrototypeApp: View {
                 icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
-        case .challenge:
-            return DIPBottomBarAction(title: "Add Your Entry", identifier: "challenge.primary")
-        case nil: return nil
+        // Read-only until submissions ship (F3/V2): the page has no entry action, so the tabs stay.
+        case .challenge, nil: return nil
         }
     }
 
@@ -267,8 +269,7 @@ struct DIPPrototypeApp: View {
             else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
         case .album: albumPickerPresented = true
-        case .challenge: notice = "Challenge entries"
-        case nil: break
+        case .challenge, nil: break
         }
     }
 
@@ -278,11 +279,12 @@ struct DIPPrototypeApp: View {
         showChat = true
     }
 
-    private func changeChallenge(_ id: String, joined: Bool) {
-        guard !model.pendingCommands.contains("challenge:\(id)") else { return }
-        Task {
-            do { try await model.setChallengeJoined(challengeID: id, joined: joined) }
-            catch { rsvpError = (error as? DIPRepositoryError).map { String(describing: $0) } ?? "Couldn’t update the challenge. Please try again." }
+    /// Pull-to-refresh reloads the weekly theme alongside events.
+    private var homeRefresh: (() async -> Void)? {
+        guard challengeFeed != nil || onRefreshEvents != nil else { return nil }
+        return { [challengeFeed, onRefreshEvents] in
+            await challengeFeed?.load()
+            await onRefreshEvents?()
         }
     }
 
@@ -323,12 +325,8 @@ struct DIPPrototypeApp: View {
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .challenge(let id):
-                if let challenge = snapshot.challengeDetails[id] {
-                    DIPChallengeDetailsScreen(
-                        challenge: challenge, onBack: pop, onCompleted: { notice = "Completed list" },
-                        onJoin: { changeChallenge(id, joined: true) },
-                        onLeave: { changeChallenge(id, joined: false) })
-                    .disabled(isRSVPPending)
+                if let challenge = challengeFeed?.detail(id) ?? snapshot.challengeDetails[id] {
+                    DIPChallengeDetailsScreen(challenge: challenge, onBack: pop)
                 } else { missingResource }
             case .participants(let id):
                 if let people = snapshot.participants[id] {

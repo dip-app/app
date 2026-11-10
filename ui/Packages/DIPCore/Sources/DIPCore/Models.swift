@@ -21,32 +21,50 @@ public struct DIPEventSummary: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Home "This Week's Challenge" card. `category` is the stored title (the card uppercases it);
+/// artwork and accent come from `DIPThemeCatalog`, never from a photo URL.
 public struct DIPChallengeSummary: Equatable, Sendable {
     public var id: String
     public var category: String
     public var participantCount: Int
+    /// Participant faces. Empty when the source has none (v1 live data): the card then omits the stack.
     public var avatars: [MediaReference]
-    public var artwork: MediaReference
-    public init(id: String, category: String, participantCount: Int, avatars: [MediaReference], artwork: MediaReference) {
+    /// Bundled theme illustration; nil for an unknown theme (title-only card).
+    public var artwork: MediaReference?
+    public var accent: DIPThemeAccent
+    public init(id: String, category: String, participantCount: Int, avatars: [MediaReference] = [], artwork: MediaReference?, accent: DIPThemeAccent = .challenge) {
         self.id = id; self.category = category; self.participantCount = participantCount
-        self.avatars = avatars; self.artwork = artwork
+        self.avatars = avatars; self.artwork = artwork; self.accent = accent
+    }
+    /// White-pill text: "+ 128 others participating", "+ 1 other participating", or the empty invitation.
+    public var participationText: String { DIPChallengeText.participation(participantCount) }
+    /// VoiceOver label for the whole card.
+    public var accessibilityLabel: String {
+        "This week’s challenge: \(category), \(DIPChallengeText.participationSpoken(participantCount))"
     }
 }
 
-/// Detail projection of a weekly challenge, mirroring the event page.
+/// Read-only detail projection of a weekly challenge (submissions are V2).
 public struct DIPChallengeDetail: Identifiable, Equatable, Sendable {
     public var id: String
     public var title: String
-    public var image: MediaReference
+    public var image: MediaReference?
+    /// Week window, for example "Nov 9 - Nov 15".
     public var timing: String
     public var description: String
     public var tags: [String]
     public var isJoined: Bool
     public var completedCount: Int
     public var completedAvatars: [MediaReference]
-    public init(id: String, title: String, image: MediaReference, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = []) {
+    /// "3 workouts"; nil when the source has no goal.
+    public var goalText: String?
+    /// "+50 points"; nil when the theme awards no points.
+    public var rewardText: String?
+    public var accent: DIPThemeAccent
+    public init(id: String, title: String, image: MediaReference?, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = [], goalText: String? = nil, rewardText: String? = nil, accent: DIPThemeAccent = .challenge) {
         self.id = id; self.title = title; self.image = image; self.timing = timing; self.description = description
         self.tags = tags; self.isJoined = isJoined; self.completedCount = completedCount; self.completedAvatars = completedAvatars
+        self.goalText = goalText; self.rewardText = rewardText; self.accent = accent
     }
 }
 

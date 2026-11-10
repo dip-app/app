@@ -26,6 +26,7 @@ targets:
       - App
       - ../DIP/Data/Accounts/PreviewAccountsRepository.swift
       - ../DIP/Domain/Events
+      - ../DIP/Domain/Challenges
       - ../DIP/Data/Events/MemberEventAppRepository.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features

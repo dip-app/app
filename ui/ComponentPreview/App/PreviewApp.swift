@@ -5,7 +5,9 @@ struct PreviewApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if ProcessInfo.processInfo.arguments.contains("--member-events") {
+                if let theme = HomeThemePreview.launchMode() {
+                    HomeThemePreview(mode: theme.mode, count: theme.count)
+                } else if ProcessInfo.processInfo.arguments.contains("--member-events") {
                     MemberEventsPreview()
                 } else if let account = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--onboarding=") }) {
                     OnboardingPreview(account: String(account.dropFirst("--onboarding=".count)))
