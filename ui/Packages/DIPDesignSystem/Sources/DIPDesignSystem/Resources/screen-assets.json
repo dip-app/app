@@ -550,5 +550,11 @@
     "screen": "navigation",
     "figmaAsset": "25414.svg",
     "sha256": "1e1c4d5d3a6bdb38c8a4ce2192eef9d8606b879d2c7159e461af0909e5a2dcf0"
+  },
+  {
+    "name": "navigation_HeroiconsSolidGift",
+    "screen": "navigation",
+    "source": "heroicons v2 optimized/24/solid/gift.svg (MIT), ink fill #1E212B",
+    "sha256": "bc22adbae1924226ce5e39bef71b6b50a50c3e5994daef24bd4d187698897fc9"
   }
 ]
