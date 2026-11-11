@@ -120,6 +120,8 @@ struct OnboardingTourView: View {
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.3 / speed).delay((landed ? 0.15 : 0) / speed), value: landed)
         }
         .frame(width: frame.width, height: frame.height)
+        // The tall phone mock is cropped only by the card's own rounded rectangle (owner decision, Nov 11): no
+        // inner mask or fade below the card's top edge.
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         // Resume: the card fades in at its frame after the header is fully shown, never rising under the pill.
         .opacity(isResume && !landed ? 0 : 1)
