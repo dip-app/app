@@ -18,6 +18,14 @@ class HostingShareLinks(unittest.TestCase):
         self.assertTrue((ROOT / "apps/admin/public" / aasa["destination"].lstrip("/")).is_file())
         self.assertEqual(len(rewrites), 2)  # no catch-all that would shadow the admin site
 
+    def test_app_association_is_disabled_so_our_aasa_is_served(self):
+        # Firebase auto-generates an empty AASA on web.app unless appAssociation is NONE.
+        self.assertEqual(self.hosting["appAssociation"], "NONE")
+        headers = {h["source"]: {x["key"]: x["value"] for x in h["headers"]} for h in self.hosting["headers"]}
+        aasa = headers["/.well-known/apple-app-site-association"]
+        self.assertEqual(aasa["Content-Type"], "application/json")
+        self.assertEqual(aasa["Cache-Control"], "public, max-age=300")
+
     def test_share_function_is_exported_and_preview_images_exist(self):
         index = (ROOT / "gcp/functions/src/index.ts").read_text()
         self.assertIn('export { eventSharePageV1 } from "./modules/share";', index)
