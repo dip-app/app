@@ -28,6 +28,8 @@ targets:
       - ../DIP/Domain/Events
       - ../DIP/Domain/Challenges
       - ../DIP/Data/Events/MemberEventAppRepository.swift
+      # Album image preparation (ImageIO only); the Firebase album adapter stays out of the Preview app.
+      - ../DIP/Support/AlbumImageProcessing.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features
         excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]
