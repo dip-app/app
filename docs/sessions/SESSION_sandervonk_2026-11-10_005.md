@@ -26,4 +26,4 @@ Make main's iOS side compile and pass tests after PRs #49, #51, #52, #54-#58 mer
 
 ## Handoff
 
-None. Check the icon on a device after the next build.
+Icon bundle merged in PR #62. Pending: confirm the glass styling on a device build.

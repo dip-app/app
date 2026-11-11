@@ -24,4 +24,4 @@ Redrew the app icon without the circular mask that clipped the bottom-right of t
 
 ## Handoff
 
-None.
+Superseded by PR #62 (Icon Composer bundle from the Figma SVG); no further work on this log. Verify the icon on a device.
