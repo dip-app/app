@@ -128,7 +128,7 @@ struct OnboardingTourView: View {
         switch step {
         case .arrival:
             ArrivalCrew(you: you, namespace: crew, speed: speed, reduceMotion: reduceMotion)
-                .transition(.opacity)
+                .transition(stageContentTransition)
         case .discover:
             demo(DiscoverJoinScene(you: you))
         case .people:
@@ -147,7 +147,13 @@ struct OnboardingTourView: View {
     private func demo<Scene: DemoScene>(_ scene: Scene) -> some View {
         DemoStage(scene: scene, configuration: model.configuration.demo(sceneID: Scene.id))
             .id(Scene.id)
-            .transition(.opacity)
+            .transition(stageContentTransition)
+    }
+
+    /// Step content eases in with a slight scale-up (and out with the reverse) while the Stage card morphs;
+    /// Reduce Motion keeps the plain cross-fade.
+    private var stageContentTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96))
     }
 
     private var selectedInterestNames: [String] {
@@ -172,6 +178,7 @@ struct OnboardingTourView: View {
                         .lineLimit(1)
                         .padding(.horizontal, 16).frame(height: 44)
                         .background(OnboardingTheme.accent, in: Capsule())
+                        .contentTransition(.opacity)
                     TourCrewStack(members: model.stackMembers, you: you,
                                   youSaved: model.interestsSaved, namespace: crew, hidesYou: revealStarted,
                                   host: model.isHandingOff ? nil : CrewMember.host(of: step))
@@ -323,6 +330,9 @@ struct OnboardingTourView: View {
             // style), and the shell's enabled bar underneath would then snap brighter when the tour is removed.
             .allowsHitTesting(!model.isHandingOff)
             .opacity(fadesOut && revealStarted ? 0 : 1)
+            // The bar rises into place with the header chrome on first entrance (no travel with Reduce Motion).
+            .offset(y: chromeShown || reduceMotion ? 0 : 28)
+            .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed), value: chromeShown)
             .animation(.easeOut(duration: OnboardingHandoff.barFadeDuration / speed)
                 .delay(OnboardingHandoff.barAt / speed), value: revealStarted)
     }

@@ -309,6 +309,8 @@ struct ArrivalCrew: View {
     @State private var cheered = false
     @State private var youShown = false
     @State private var winking = false
+    /// Gentle idle float after the cheer has landed; never runs with Reduce Motion.
+    @State private var floating = false
 
     /// Figma B0: P and W on the left, Y and G on the right (112 pt either side, 56 pt above and below the
     /// centre), You in the middle. The cheer drops each face 12 pt with `hop`, 70 ms apart.
@@ -332,6 +334,10 @@ struct ArrivalCrew: View {
                 .offset(x: seat.1.width, y: seat.1.height + (cheered ? 0 : -12))
                 .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed).delay((0.10 + 0.07 * Double(index)) / speed),
                            value: cheered)
+                // Idle: each face drifts 3 pt up and down on its own beat, so the crew breathes instead of marching.
+                .offset(y: floating ? (index.isMultiple(of: 2) ? -3 : 3) : 0)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 1.5 + 0.2 * Double(index) / speed)
+                    .repeatForever(autoreverses: true), value: floating)
             }
             ZStack {
                 Circle().fill(OnboardingTheme.notification).frame(width: 88, height: 88)
@@ -348,6 +354,10 @@ struct ArrivalCrew: View {
             cheered = true
             youShown = true
             guard !reduceMotion else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.3 / speed))
+                floating = true
+            }
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(0.60 / speed))
                 withAnimation(.easeInOut(duration: OnboardingMotion.winkClose / speed)) { winking = true }
