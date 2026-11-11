@@ -116,6 +116,8 @@ struct DIPPrototypeApp: View {
     /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
     @Environment(\.weeklyChallengeFeed) private var challengeFeed
     @State private var albumPickerPresented = false
+    /// The tab whose name the fixed header shows (the last non-Profile tab while Profile is selected).
+    @State private var headerTab: DIPHomeTab = .home
     /// Photo to open the viewer on for an album reached from a Profile memory; cleared on back.
     @State private var memoryPhotoIDs: [String: String?] = [:]
 
@@ -198,6 +200,7 @@ struct DIPPrototypeApp: View {
                 }
                 tabPages(snapshot)
             }
+            .overlay(alignment: .top) { fixedHeader(snapshot) }
         } else if model.isLoading {
             ProgressView("Loading…").frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -215,7 +218,7 @@ struct DIPPrototypeApp: View {
         let lists = DIPEventLists(snapshot: snapshot, now: Date())
         var home = snapshot.home
         home.events = lists.discovery
-        return DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
+        let pages: (DIPHomeTab) -> AnyView = { tab in
             switch tab {
             case .home:
                 AnyView(DIPHomeScreen(
@@ -255,6 +258,29 @@ struct DIPPrototypeApp: View {
                     onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
             }
         }
+        // Home, Rewards and My Events share one header drawn by the shell (fixed while pages slide);
+        // Profile has its own header card that scrolls with its page.
+        return DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
+            AnyView(pages(tab).environment(\.dipHeaderHosted, tab != .profile))
+        }
+    }
+
+    /// The fixed tab header. On Profile it fades and lifts out of the way, keeping the last label.
+    private func fixedHeader(_ snapshot: DIPAppSnapshot) -> some View {
+        let away = selectedTab == .profile
+        return DIPHomeHeader(
+            title: headerTab.rawValue, unreadCount: snapshot.home.unreadCount,
+            profileAvatar: { DIPMedia(snapshot.home.profileAvatar) },
+            onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }
+        )
+        .environment(\.dipHeaderHosted, false)
+        .padding(.horizontal, 20).padding(.top, 60)
+        .opacity(away ? 0 : 1)
+        .offset(y: away ? -16 : 0)
+        .allowsHitTesting(!away)
+        .accessibilityHidden(away)
+        .animation(reduceMotion ? .linear(duration: DIPMotion.reducedMotionDuration) : DIPMotion.marker, value: away)
+        .onChange(of: selectedTab, initial: true) { _, tab in if tab != .profile { headerTab = tab } }
     }
 
     /// The onboarding handoff's view of this shell: loading, failed, or showing a snapshot.

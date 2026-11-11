@@ -23,8 +23,21 @@
         }
     }
 
+    private struct DIPHeaderHostedKey: EnvironmentKey { static let defaultValue = false }
+
+    extension EnvironmentValues {
+        /// True when the shell draws the shared tab header itself (fixed while pages slide). A page's own
+        /// `DIPHomeHeader` then only reserves its space, so page layout does not change.
+        public var dipHeaderHosted: Bool {
+            get { self[DIPHeaderHostedKey.self] }
+            set { self[DIPHeaderHostedKey.self] = newValue }
+        }
+    }
+
     /// Shared visual elements use the measured Figma geometry; product data remains an input.
     public struct DIPHomeHeader: View {
+        @Environment(\.dipHeaderHosted) private var hosted
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
         let title: String
         let unreadCount: Int
         private let profileAvatar: AnyView
@@ -50,14 +63,31 @@
             self.onProfile = onProfile
         }
         public var body: some View {
+            if hosted {
+                // The shell draws the header; keep the same height so the page does not shift.
+                Color.clear.frame(height: 50).accessibilityHidden(true)
+            } else {
+                content
+            }
+        }
+
+        private var content: some View {
             HStack {
-                Text(title)
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 20))
-                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                    .frame(height: 22)
-                    .padding(.horizontal, 20).padding(.vertical, 14)
-                    // Informational label, so outlined (pill rule: solid = pressable, outline = informational).
-                    .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
+                // A changed title blur-replaces in place while the outlined pill animates to the new width.
+                ZStack {
+                    if reduceMotion {
+                        Text(title).id(title).transition(.opacity)
+                    } else {
+                        Text(title).id(title).transition(.blurReplace)
+                    }
+                }
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 20))
+                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .frame(height: 22)
+                .padding(.horizontal, 20).padding(.vertical, 14)
+                // Informational label, so outlined (pill rule: solid = pressable, outline = informational).
+                .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
+                .animation(reduceMotion ? .linear(duration: DIPMotion.reducedMotionDuration) : DIPMotion.marker, value: title)
                 Spacer(minLength: 10)
                 HStack(spacing: 10) {
                     Button(action: onNotifications) {
