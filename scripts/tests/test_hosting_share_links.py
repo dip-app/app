@@ -64,6 +64,7 @@ class HostingShareLinks(unittest.TestCase):
         rule = self.legacy["redirects"][0]
         self.assertEqual((rule["source"], rule["type"]), ("/:path*", 301))
         self.assertEqual(rule["destination"], "https://letsdip.work/:path*")
+        self.assertIn(("/", 301), [(r["source"], r["type"]) for r in self.legacy["redirects"]])  # the static fallback page must not win at /
         self.assertNotIn("rewrites", self.legacy)
 
 

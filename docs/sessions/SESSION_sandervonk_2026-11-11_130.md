@@ -45,3 +45,7 @@ Removed the legacy `applinks:team05-dip.web.app` from ui/Config/DIP-Paid.entitle
 ## Follow-up: authorized domains
 
 Added `letsdip.work` and `www.letsdip.work` to Firebase Auth authorized domains (Identity Toolkit admin API) and to the "DIP Admin web" reCAPTCHA Enterprise key's allowed domains; existing entries kept. The admin's Google popup sign-in uses the firebaseapp.com handler, so no OAuth client change was needed.
+
+## Follow-up: redirect live
+
+Owner approved turning the legacy redirect on without waiting for letsdip.work's certificate (nothing had been shared). `hosting:team05-dip` deployed: every path (including `/`) answers 301 to https://letsdip.work/<path>. Until letsdip.work has an active certificate, the redirect target does not load over HTTPS; letsdip.web.app serves the same content meanwhile.
