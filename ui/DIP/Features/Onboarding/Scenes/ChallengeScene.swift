@@ -93,6 +93,8 @@ struct ChallengeCanvas: View {
         DemoPhoneScreen {
             DIPChallengeDetailsScreen(challenge: Self.detail, onBack: {})
         }
+        // Headroom for the balance chip: the page sits 64 pt lower so the chip and the Replay button float above the body text.
+        .offset(y: 64)
         .background(.white)
         .overlay(alignment: .topLeading) {
             if state.pointsEnabled {
@@ -148,6 +150,8 @@ struct ChallengeCanvas: View {
                     }
                 }
                 .frame(width: 84, height: 84)
+                // The filled photo must not spill into the caption's 12 pt gap.
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             ZStack {
                 DIPButton("Send") {}.frame(height: 50)
