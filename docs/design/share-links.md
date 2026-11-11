@@ -4,7 +4,7 @@ Status: implemented in the app and hosting files; **nothing deployed**. Needs th
 
 ## Link format
 
-`https://team05-dip.web.app/e/<eventId>` (constant `DIPShareLink.baseURL` in `ui/Packages/DIPCore/Sources/DIPCore/DIPShareLink.swift`; the only place the domain lives in Swift). The URL carries only the opaque event id, never a company id, title or personal data. Authorization is unchanged: the app opens the id inside the signed-in member's own company; a member of another company (or an id that no longer exists) sees "Activity unavailable". `DIPShareLink.url(forEventID:)` builds it and `DIPShareLink.eventID(from:)` parses it, rejecting other hosts, schemes, ports, user info and paths. The parser also accepts the push deep link `dip://events/<id>[/chat]` (see `docs/contracts/callables.md`); the `dip` URL scheme is now registered in `ui/project.yml`.
+`https://letsdip.work/e/<eventId>` (constant `DIPShareLink.baseURL` in `ui/Packages/DIPCore/Sources/DIPCore/DIPShareLink.swift`; the only place the domain lives in Swift). The URL carries only the opaque event id, never a company id, title or personal data. Authorization is unchanged: the app opens the id inside the signed-in member's own company; a member of another company (or an id that no longer exists) sees "Activity unavailable". `DIPShareLink.url(forEventID:)` builds it and `DIPShareLink.eventID(from:)` parses it, rejecting other hosts, schemes, ports, user info and paths. The parser also accepts the push deep link `dip://events/<id>[/chat]` (see `docs/contracts/callables.md`); the `dip` URL scheme is now registered in `ui/project.yml`.
 
 Share button: `ShareLink(item: <link>, message: <share text>)` on the event page, so rich targets show a link preview and text targets get the paragraphs followed by the link as the last line. `DIPEventMetadata.shareText(title:description:link:)` appends the link as its last line when given one (used and tested in DIPCore). Cancelled events share no link.
 
@@ -24,7 +24,7 @@ Share button: `ShareLink(item: <link>, message: <share text>)` on the event page
 | --- | --- | --- |
 | Apple Team ID | `apps/admin/public/aasa/apple-app-site-association.json` | `TEAMID.org.dip-app.DIP` |
 | App Store ID | `APP_STORE_ID` in `gcp/functions/src/modules/share/domain/sharePage.ts` (the Safari banner meta uses `0000000000` until set) | empty (shows "coming to the App Store") |
-| Custom subdomain | `DIPShareLink.baseURL`, `applinks:` in `ui/Config/DIP-Paid.entitlements`, Firebase Hosting custom domain | `team05-dip.web.app` |
+| Public domain | `DIPShareLink.baseURL`, `SHARE_ORIGIN` in `sharePage.ts`, `applinks:` in `ui/Config/DIP-Paid.entitlements`, Firebase Hosting custom domain | `letsdip.work` (the old `team05-dip.web.app` stays served and listed in `applinks:`) |
 
 ## Associated Domains and local builds
 
@@ -35,8 +35,8 @@ Associated Domains need a paid Apple Developer team. A free Personal Team cannot
 1. Join the paid Apple Developer Program team, enable Associated Domains for `org.dip-app.DIP`, and put `DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements` in `Local.xcconfig`.
 2. Replace `TEAMID` in the AASA file with the real Team ID.
 3. Create the App Store Connect listing and set `APP_STORE_ID` in `sharePage.ts`, then redeploy the function.
-4. Build the admin export (`npm --prefix apps/admin run build`) and deploy hosting (`firebase deploy --only hosting`) after approval. Verify `curl -i https://team05-dip.web.app/.well-known/apple-app-site-association` returns 200 JSON without a redirect.
-5. Optional: connect a custom subdomain in Firebase Hosting, then change the three places in the table above together.
+4. Build the admin export (`npm --prefix apps/admin run build`) and deploy hosting (`firebase deploy --only hosting`) after approval. Verify `curl -i https://letsdip.work/.well-known/apple-app-site-association` returns 200 JSON without a redirect.
+5. Done: `letsdip.work` is connected in Firebase Hosting (apex plus `www` redirect) and the three places above were switched together.
 
 ## Rich link previews
 
@@ -48,7 +48,7 @@ Crawlers (iMessage/LinkPresentation, Facebook, LinkedIn, Slack, Discord, WhatsAp
 
 **Tags emitted:** `og:title/description/url/site_name/type/locale`, `og:image` (+`:secure_url`, `:type`, `:width`, `:height` for our 1200x630 JPEGs, `:alt`), `twitter:card=summary_large_image`, `twitter:title/description/image/image:alt`, `<title>`, `meta description`, `link rel=canonical`, `link rel=image_src`, `theme-color`, `apple-itunes-app`. No `meta refresh`; the App Store redirect is a delayed script.
 
-**Images.** `catalog://default/<category>` maps to `https://team05-dip.web.app/share/og/<category>.jpg` (cover art scaled to 1200x630 with a DIP brand strip; under 300 KB each); `og/default.jpg` is the clover and wordmark on periwinkle. An https cover is used only when on this site or this project's Firebase Storage buckets, otherwise the default; arbitrary URLs are never hotlinked. Regenerate with `scripts/generate-share-og-images.sh` (needs `rsvg-convert` and macOS `sips`).
+**Images.** `catalog://default/<category>` maps to `https://letsdip.work/share/og/<category>.jpg` (cover art scaled to 1200x630 with a DIP brand strip; under 300 KB each); `og/default.jpg` is the clover and wordmark on periwinkle. An https cover is used only when on this site or this project's Firebase Storage buckets, otherwise the default; arbitrary URLs are never hotlinked. Regenerate with `scripts/generate-share-og-images.sh` (needs `rsvg-convert` and macOS `sips`).
 
 **Shared files touched:** `firebase.json` (the `/e/**` rewrite now targets the function; every other rule unchanged) and `gcp/functions/src/index.ts` (one export). `scripts/tests/test_hosting_share_links.py` checks the hosting config.
 
@@ -66,10 +66,10 @@ First 2nd-gen deploys can fail on Eventarc/permission propagation; wait a few mi
 ### Verify after deploy
 
 ```
-curl -si -A 'facebookexternalhit/1.1' https://team05-dip.web.app/e/<eventId> | head -60
-curl -s  -A 'Twitterbot/1.0'          https://team05-dip.web.app/e/<eventId> | grep -E 'og:|twitter:'
-curl -sI https://team05-dip.web.app/share/og/hiking.jpg            # 200 image/jpeg
-curl -s  https://team05-dip.web.app/e/doesnotexist1 | grep og:title  # generic "DIP"
+curl -si -A 'facebookexternalhit/1.1' https://letsdip.work/e/<eventId> | head -60
+curl -s  -A 'Twitterbot/1.0'          https://letsdip.work/e/<eventId> | grep -E 'og:|twitter:'
+curl -sI https://letsdip.work/share/og/hiking.jpg            # 200 image/jpeg
+curl -s  https://letsdip.work/e/doesnotexist1 | grep og:title  # generic "DIP"
 ```
 
 Then paste the link into Messages (iMessage caches previews, so test a fresh link), the Facebook Sharing Debugger and opengraph.xyz. Confirm that no address, venue or attendee data appears and that the admin portal and `/.well-known/apple-app-site-association` still load.

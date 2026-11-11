@@ -36,7 +36,7 @@ class HostingShareLinks(unittest.TestCase):
         sources = {h["source"] for h in self.hosting["headers"]}
         self.assertIn("/.well-known/apple-app-site-association", sources)
         self.assertIn("**", sources)  # global noindex headers
-        self.assertEqual(self.hosting["public"], "apps/admin/out")
+        self.assertEqual(self.hosting["public"], "site-dist")  # built by scripts/build-site.sh: landing at /, admin at /admin/
 
     def test_aasa_is_valid_json_for_the_event_path(self):
         aasa = json.loads((ROOT / "apps/admin/public/aasa/apple-app-site-association.json").read_text())
