@@ -118,6 +118,15 @@ struct DIPPrototypeApp: View {
     @State private var albumPickerPresented = false
     /// The tab whose name the fixed header shows (the last non-Profile tab while Profile is selected).
     @State private var headerTab: DIPHomeTab = .home
+    // Avatar flight between the header capsule and the Profile badge (see `avatarFlyer`).
+    @State private var flightFrame = CGRect.zero
+    @State private var flightRing: CGFloat = 0
+    @State private var isAvatarFlying = false
+    @State private var flightGeneration = 0
+    /// The Profile badge's last settled frame in screen coordinates (nil until the page reports one).
+    @State private var settledBadgeFrame: CGRect?
+    /// The latest badge frame the page reported, settled or not (used to correct the endpoint after a flight).
+    @State private var rawBadgeFrame: CGRect?
     /// Photo to open the viewer on for an album reached from a Profile memory; cleared on back.
     @State private var memoryPhotoIDs: [String: String?] = [:]
 
@@ -142,8 +151,11 @@ struct DIPPrototypeApp: View {
                 .disabled(isRSVPPending)
                 .padding(.horizontal, 20)
                 .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                avatarFlyer
             }
             .background(.white)
+            .onAppear { if flightFrame == .zero { flightFrame = idleAvatarFrame(for: selectedTab, in: geometry.size) } }
+            .onChange(of: selectedTab) { old, new in flyAvatar(from: old, to: new, in: geometry.size) }
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
@@ -261,7 +273,72 @@ struct DIPPrototypeApp: View {
         // Home, Rewards and My Events share one header drawn by the shell (fixed while pages slide);
         // Profile has its own header card that scrolls with its page.
         return DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
-            AnyView(pages(tab).environment(\.dipHeaderHosted, tab != .profile))
+            AnyView(pages(tab).environment(\.dipHeaderHosted, tab != .profile)
+                .environment(\.profileBadgeLink, ProfileBadgeLink(isHidden: isAvatarFlying, report: reportBadgeFrame)))
+        }
+    }
+
+    // MARK: Avatar flight
+
+    private func headerAvatarFrame(in size: CGSize) -> CGRect {
+        // Corner capsule: 20pt screen inset, 5pt capsule padding, 40pt avatar, header 60pt from the top.
+        CGRect(x: size.width - 20 - 5 - 40, y: 60 + 5, width: 40, height: 40)
+    }
+
+    private func idleAvatarFrame(for tab: DIPHomeTab, in size: CGSize) -> CGRect {
+        tab == .profile ? (settledBadgeFrame ?? ProfileBadgeLink.fallbackFrame()) : headerAvatarFrame(in: size)
+    }
+
+    /// Frames reported while the avatar flies or while another tab is selected are mid-slide values,
+    /// so only a settled Profile page updates the badge endpoint.
+    private func reportBadgeFrame(_ frame: CGRect) {
+        rawBadgeFrame = frame
+        guard selectedTab == .profile, !isAvatarFlying, frame.width > 0 else { return }
+        settledBadgeFrame = frame
+        flightFrame = frame
+    }
+
+    /// One avatar view in the shell overlay travels between the capsule and the Profile badge with a
+    /// spring; a tab change mid-flight retargets from the current position. Reduce Motion and the first
+    /// layout skip the flight (the header and badge simply crossfade).
+    private func flyAvatar(from old: DIPHomeTab, to new: DIPHomeTab, in size: CGSize) {
+        guard (old == .profile) != (new == .profile), !reduceMotion else {
+            if !isAvatarFlying { flightFrame = idleAvatarFrame(for: new, in: size) }
+            return
+        }
+        if !isAvatarFlying {
+            flightFrame = idleAvatarFrame(for: old, in: size)
+            flightRing = old == .profile ? 3 : 0
+            isAvatarFlying = true
+        }
+        flightGeneration += 1
+        let generation = flightGeneration
+        let target = idleAvatarFrame(for: new, in: size)
+        withAnimation(DIPMotion.marker, completionCriteria: .logicallyComplete) {
+            flightFrame = target
+            flightRing = new == .profile ? 3 : 0
+        } completion: {
+            guard generation == flightGeneration else { return }
+            var landed = target
+            // The page has finished sliding by now: trust its own badge frame if it differs from the estimate.
+            if new == .profile, let raw = rawBadgeFrame, raw.minX >= 0, raw.maxX <= size.width + 1, raw.width > 0 {
+                settledBadgeFrame = raw
+                landed = raw
+            }
+            isAvatarFlying = false
+            flightFrame = landed
+        }
+    }
+
+    @ViewBuilder private var avatarFlyer: some View {
+        if isAvatarFlying, let snapshot = model.snapshot {
+            DIPMedia(snapshot.home.profileAvatar)
+                .frame(width: flightFrame.width, height: flightFrame.height)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(.white, lineWidth: flightRing))
+                .position(x: flightFrame.midX, y: flightFrame.midY)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 
@@ -270,7 +347,11 @@ struct DIPPrototypeApp: View {
         let away = selectedTab == .profile
         return DIPHomeHeader(
             title: headerTab.rawValue, unreadCount: snapshot.home.unreadCount,
-            profileAvatar: { DIPMedia(snapshot.home.profileAvatar) },
+            profileAvatar: {
+                // Hidden instantly while the flyer carries the avatar (no cross-fade ghost).
+                DIPMedia(snapshot.home.profileAvatar).opacity(isAvatarFlying ? 0 : 1)
+                    .transaction(value: isAvatarFlying) { $0.animation = nil }
+            },
             onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }
         )
         .environment(\.dipHeaderHosted, false)
