@@ -96,6 +96,8 @@ import Foundation
                     progress(min(1, Double(snapshot.progress?.completedUnitCount ?? 0) / Double(total)))
                 }
                 uploads[id] = task
+                // Cancelled before the handle was stored: the onCancel hop would find nothing to cancel.
+                if Task.isCancelled { task.cancel() }
             }
         } onCancel: {
             Task { @MainActor [weak self] in self?.uploads[id]?.cancel() }
