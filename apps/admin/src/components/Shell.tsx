@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
@@ -22,10 +22,16 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   const { session, signOut } = useApp();
   const router = useRouter();
   const pathname = usePathname();
+  const nav = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!session) router.replace("/login/");
   }, [session, router]);
+  useEffect(() => {
+    // On narrow screens the nav scrolls sideways; keep the current page's item in view.
+    const current = nav.current?.querySelector<HTMLElement>("[aria-current=page]");
+    if (current && nav.current && nav.current.scrollWidth > nav.current.clientWidth) nav.current.scrollTo({ left: current.offsetLeft - 16 });
+  }, [pathname, session]);
   if (!session) return null;
 
   return (
@@ -35,7 +41,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
           <CloudMark size={40} />
           <span>DIP Admin</span>
         </Link>
-        <nav aria-label="Main">
+        <nav aria-label="Main" ref={nav}>
           <Link href="/events/" className="nav-item" aria-current={pathname.startsWith("/events") ? "page" : undefined}>
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
               <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />

@@ -26,8 +26,12 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, danger, con
 
   useEffect(() => {
     const dialog = ref.current;
+    const opener = document.activeElement as HTMLElement | null;
     if (dialog && !dialog.open) dialog.showModal();
-    return () => dialog?.close();
+    return () => {
+      dialog?.close();
+      opener?.focus?.(); // return focus to the control that opened the dialog
+    };
   }, []);
 
   async function confirm() {
@@ -43,9 +47,9 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, danger, con
 
   const needsReason = reasonLabel !== undefined;
   return (
-    <dialog ref={ref} className="dialog" aria-labelledby={`${id}-t`} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
+    <dialog ref={ref} className="dialog" role={danger ? "alertdialog" : undefined} aria-labelledby={`${id}-t`} aria-describedby={`${id}-b`} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
       <h2 id={`${id}-t`}>{title}</h2>
-      <div className="dialog-body">{children}</div>
+      <div className="dialog-body" id={`${id}-b`}>{children}</div>
       {needsReason && (
         <div className="field">
           <label htmlFor={`${id}-r`}>{reasonLabel}</label>

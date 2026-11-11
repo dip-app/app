@@ -105,3 +105,19 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .pill-btn.gray.small.quiet-danger, .table-wrap .pill-btn.quiet-danger { color: var(--error); }
 .pill-btn[disabled] { opacity: .55; }
 .photo-tile { transition: transform .12s ease; &:hover { transform: translateY(-2px); } &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }
+
+// Narrow screens: a .responsive table turns each row into a card so actions never fall off screen.
+@media (max-width: 700px) {
+  .table.responsive { display: block;
+    thead { display: none; }
+    tbody { display: grid; gap: 10px; }
+    tr { display: grid; gap: 8px; background: $white; border-radius: $radius-card; padding: 14px 16px; }
+    tbody tr + tr td { border-top: 0; }
+    td { display: block; padding: 0; }
+    td.right { text-align: left; }
+  }
+  .table-wrap:has(.responsive) { background: transparent; padding: 0; }
+  .toolbar .spacer { flex-basis: 100%; height: 0; }
+}
+
+@media (max-width: 700px) { .table.responsive .pill-btn.gray { background: $gray; } }

@@ -11,9 +11,9 @@ export type Capability =
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
   | "import.run" | "roster.manage" | "audit.view";
 
-const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "themes.manage", "albums.moderate", "attendees.manage", "members.view"];
+const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
-  ...ORGANIZER_CAPS, "members.edit", "members.status", "members.reset", "points.adjust",
+  ...ORGANIZER_CAPS, "themes.manage", "members.edit", "members.status", "members.reset", "points.adjust",
   "import.run", "roster.manage", "audit.view",
 ];
 

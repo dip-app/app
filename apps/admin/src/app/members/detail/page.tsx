@@ -151,7 +151,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
       )}
       {action === "points" && (
         <Dialog danger={resetPoints} title="Change points" confirmLabel={resetPoints ? "Reset to 0" : "Apply change"} reasonLabel="Reason for the change" confirmDisabled={resetPoints ? !member.pointsBalance : !deltaValid}
-          onClose={() => setAction(null)}
+          onClose={() => { setRequestId(crypto.randomUUID()); setAction(null); }}
           onConfirm={async (reason) => {
             const next = await api.adjustPoints(member.id, requestId, resetPoints ? -(member.pointsBalance ?? 0) : deltaValue, reason);
             setRequestId(crypto.randomUUID()); // a later adjustment is a new request, never a replay

@@ -13,8 +13,9 @@ function parseXml(text: string): Document {
   return new DOMParser().parseFromString(text, "application/xml");
 }
 
+/** Text of a shared string or inline cell; phonetic runs (rPh) are furigana, not the value. */
 function textOf(node: Element): string {
-  return Array.from(node.getElementsByTagName("t")).map((t) => t.textContent ?? "").join("");
+  return Array.from(node.getElementsByTagName("t")).filter((t) => t.parentElement?.tagName !== "rPh").map((t) => t.textContent ?? "").join("");
 }
 
 export async function readXlsx(buffer: ArrayBuffer): Promise<string[][]> {

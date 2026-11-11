@@ -46,12 +46,12 @@ export function validateRow(row: ImportRow, domain: string): string[] {
   const errors: string[] = [];
   const email = row.email;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Email isn’t valid.");
-  else if (domain && !email.endsWith(`@${domain}`)) errors.push(`Email must end in @${domain}.`);
+  else if (domain && !(email.endsWith(`@${domain}`) || email.endsWith(`.${domain}`))) errors.push(`Email must end in @${domain}.`);
   if (row.managerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.managerEmail)) errors.push("Manager email isn’t valid.");
-  if (row.displayName.length > 120) errors.push("Name is longer than 120 characters.");
+  if (row.displayName.length > 80) errors.push("Name is longer than 80 characters.");
   if (row.role !== "" && !ROLES.includes(row.role)) errors.push("Role must be member, organizer or admin.");
   if (row.startDate && (!/^\d{4}-\d{2}-\d{2}$/.test(row.startDate) || Number.isNaN(Date.parse(row.startDate)))) errors.push("Start date must look like 2026-01-31.");
-  for (const [field, max] of [["department", 80], ["jobTitle", 80], ["workLocation", 80]] as const) {
+  for (const [field, max] of [["department", 120], ["jobTitle", 120], ["workLocation", 120]] as const) {
     if (row[field].length > max) errors.push(`${FIELD_LABEL[field]} is longer than ${max} characters.`);
   }
   return errors;

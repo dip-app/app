@@ -150,11 +150,24 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
 
     listAttendees: (eventId) => run(async () => {
       const session = await organizer();
-      const snap = await getDocs(query(col(session, "events", eventId, "rsvps"), where("status", "==", "going"), limit(500)));
-      return snap.docs.map((d): Attendee => ({
-        memberId: str(d.get("userId")) || d.id, name: str(d.get("userName")), email: str(d.get("userEmail")), department: str(d.get("userDepartment")),
-        jobTitle: str(d.get("userJobTitle")), rsvpAt: iso(d.get("createdAt")), checkedIn: d.get("checkedIn") === true, addedByAdmin: d.get("source") === "admin",
-      })).sort((a, b) => a.name.localeCompare(b.name));
+      // RSVP list rules need the companyId constraint and limit <= 100, so read page by page.
+      const docs: QueryDocumentSnapshot[] = [];
+      let last: QueryDocumentSnapshot | undefined;
+      for (let page = 0; page < 20; page += 1) {
+        const snap = await getDocs(query(col(session, "events", eventId, "rsvps"), where("companyId", "==", session.companyId), where("status", "==", "going"), orderBy("createdAt"), ...(last ? [startAfter(last)] : []), limit(100)));
+        docs.push(...snap.docs);
+        last = snap.docs[snap.docs.length - 1];
+        if (snap.docs.length < 100) break;
+      }
+      // RSVP snapshots carry no email; join it from the member list (organizers may read it).
+      const emails = new Map((await listMembersAll(session).catch(() => [] as Member[])).map((m) => [m.id, m.email]));
+      return docs.map((d): Attendee => {
+        const id = str(d.get("userId")) || d.id;
+        return {
+          memberId: id, name: str(d.get("userName")), email: emails.get(id) ?? "", department: str(d.get("userDepartment")),
+          jobTitle: str(d.get("userJobTitle")), rsvpAt: iso(d.get("createdAt")), checkedIn: d.get("checkedIn") === true, addedByAdmin: d.get("source") === "admin",
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name));
     }),
     addAttendee: (input) => run(async () => {
       const data = await call<{ attendeeCount: number; capacity: number }>(ADMIN_CALLABLES.addAttendee, await organizer(), {

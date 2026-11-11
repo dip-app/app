@@ -105,7 +105,7 @@ function Attendees() {
         <Empty title="No matches" body="Try a different name, email or department." />
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table responsive">
             <caption className="sr-only">Attendees for {event.data.title}</caption>
             <thead><tr><th scope="col">Name</th><th scope="col">Department</th><th scope="col">RSVP</th><th scope="col">Attendance</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
