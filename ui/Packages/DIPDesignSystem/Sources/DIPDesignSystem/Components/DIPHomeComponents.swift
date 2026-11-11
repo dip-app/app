@@ -277,12 +277,17 @@
                     }
                     Spacer(minLength: 0)
                     VStack(alignment: .leading, spacing: 1) {
+                        // Up to three lines inside the card padding; shrinks only as a last resort.
                         Text(title.uppercased())
                             .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 20, relativeTo: .title3))
-                            .frame(height: 22, alignment: .leading)
+                            .lineLimit(3).minimumScaleFactor(0.75).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(locality)
                             .font(DIPReferenceAssets.font("Inter-LightItalic", size: 11))
-                            .frame(height: 18, alignment: .leading)
+                            .lineLimit(2).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .foregroundStyle(.white).padding(10)
                 }
