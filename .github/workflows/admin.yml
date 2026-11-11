@@ -39,7 +39,7 @@ jobs:
           name: admin-out
           path: apps/admin/out
   deploy:
-    # Deploys to Firebase Hosting (site team05-dip) only from main, and only once the
+    # Deploys to Firebase Hosting (site letsdip; team05-dip only redirects) only from main, and only once the
     # FIREBASE_SERVICE_ACCOUNT_TEAM05_DIP repository secret AND the NEXT_PUBLIC_FIREBASE_* repository
     # variables exist, so an automatic deploy can never replace the live portal with the mock.
     needs: build
@@ -55,6 +55,9 @@ jobs:
         with:
           name: admin-out
           path: apps/admin/out
+      - name: Assemble the Hosting root (landing at /, admin at /admin/)
+        if: env.HAS_SECRET == 'true'
+        run: scripts/build-site.sh --skip-admin-build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         if: env.HAS_SECRET == 'true'
         with:

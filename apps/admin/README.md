@@ -4,7 +4,8 @@ Organizer portal for V1-05, built from the `sandervonk/nextjs-template` setup (N
 
 ## What it does
 
-- Sign in screen (preview personas: organizer and member).
+- Sign in screen: value statement (events, albums and moderation, attendees, members and roster, bulk import, challenge review), a solid "Sign in with Google" button ("Sign in as organizer" in the mock), an outlined access note and an animated cluster of the app's own avatar characters (`public/img/avatars/`, regenerate with `python3 scripts/export-admin-avatars.py`; motion is off under Reduce Motion). The portal is light-only, so the page stays light in dark mode.
+- Page metadata: `src/lib/seo.ts` and `src/app/layout.tsx` (Next metadata API: title template, description, canonical `https://letsdip.work/admin/`, Open Graph and Twitter with absolute URLs, light/dark theme-color, favicon set, manifest); the login page has its own title and description. The share image is `public/img/og-admin.jpg` (1200x630) and the favicon/manifest files are in `public/img/admin/`, both built by `python3 scripts/make-og-images.py` (also writes the landing page's `apps/landing/img/og.jpg` and favicons). `robots` stays noindex; the whole site is also noindex through the `X-Robots-Tag` header in `firebase.json`.
 - Events list filtered by Upcoming / Past / Cancelled, classified from timestamps and status.
 - Create and edit an event with every `EventDraft` field, validated like the contract: title/description limits, UTC time order, future start on create, venue and coordinate bounds, integer price, capacity bounds, cover from the default catalog.
 - Create keeps one `requestId` across retries; edit sends `expectedRevision` and offers "Reload latest" on a conflict; capacity cannot drop below people already going; events can be cancelled and restored, never deleted.
@@ -63,7 +64,7 @@ npm run build    # static export to out/
 
 ## Deploy (Firebase Hosting)
 
-The portal is a static export (`output: "export"`) served by Firebase Hosting, project `team05-dip`, site `team05-dip` at **https://team05-dip.web.app**. The hosting config is the `hosting` block in the root [`firebase.json`](../../firebase.json) (public dir `apps/admin/out`, `trailingSlash`, `noindex`, `X-Frame-Options: DENY`, long cache on `/_next/static/**`).
+The portal is a static export (`output: "export"`) served by Firebase Hosting, project `team05-dip`, site `letsdip` at **https://letsdip.work/admin/**. The hosting config is the `hosting` block in the root [`firebase.json`](../../firebase.json) (public dir `apps/admin/out`, `trailingSlash`, `noindex`, `X-Frame-Options: DENY`, long cache on `/_next/static/**`).
 
 What is live is the **live-mode portal** (since November 4, 2026): Google sign-in against `team05-dip`, events read through Firestore rules and written only through `createEventV1`/`updateEventV1`. The site itself serves no private data; every read and write is authorized by the backend. It is `noindex`. A build without the `NEXT_PUBLIC_FIREBASE_*` variables is the mock-mode preview instead, so **always build with the live config before deploying** (below). The event photos are the app's prototype assets with unconfirmed release rights (see [asset provenance](../../docs/design/asset-provenance.md)); keep the URL internal until that is settled.
 
@@ -112,7 +113,7 @@ Open Firebase console, Hosting, release history for `team05-dip`, and roll back 
 
 - **Backend:** `createEventV1`, `updateEventV1`, `resolveMembershipV1` and the event read rules are deployed.
 - **Web app:** "DIP Admin", app ID `1:28423377357:web:a19e30f455328ae322b484` (public identifier; `firebase apps:sdkconfig WEB <appId> --project team05-dip` prints the rest of the config).
-- **App Check:** a reCAPTCHA Enterprise key ("DIP Admin web", domains `team05-dip.web.app`, `team05-dip.firebaseapp.com`, `localhost`) is registered for the web app (`NEXT_PUBLIC_APPCHECK_SITE_KEY`, a public site key). Production callables enforce App Check.
+- **App Check:** a reCAPTCHA Enterprise key ("DIP Admin web", domains `letsdip.work`, `www.letsdip.work`, `team05-dip.web.app`, `team05-dip.firebaseapp.com`, `localhost`) is registered for the web app (`NEXT_PUBLIC_APPCHECK_SITE_KEY`, a public site key). Production callables enforce App Check.
 - **Repository variables:** the five `NEXT_PUBLIC_*` values above are GitHub Actions variables (not secrets).
 - **First organizer:** one maintainer account has `users/{uid}.role == "admin"`, assigned with trusted tooling. Assign more the same way (Admin SDK or the Firebase console); clients cannot write roles. To revoke, set the role back to `"member"`.
 - **Not yet verified in production:** a real browser sign-in followed by an event create/edit (the adapter is proven end to end against the emulators in CI, and the live site loads and passes the App Check exchange).
