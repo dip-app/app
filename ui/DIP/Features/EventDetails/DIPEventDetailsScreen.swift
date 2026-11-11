@@ -114,7 +114,22 @@ struct DIPEventDetailsScreen: View {
     }
 
     private var header: some View {
-        DIPDetailHeader(timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack)
+        let addable = event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
+        return DIPDetailHeader(
+            timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
+            calendarLabel: addable.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
+            onCalendar: {
+                guard let metadata = addable else { return }
+                let fields = metadata.calendarFields(title: event.title, description: event.description)
+                Task { calendarResult = await calendarAdder.add(fields) }
+            })
+        .alert("Couldn’t add to calendar", isPresented: Binding(
+            get: { if case .failed = calendarResult { return true } else { return false } },
+            set: { if !$0 { calendarResult = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if case .failed(let message) = calendarResult { Text(message) }
+        }
     }
 
     private var hero: some View {
@@ -201,7 +216,7 @@ struct DIPEventDetailsScreen: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("event.cancelled")
             }
-            metadataRow("calendar", title: "When", trailing: calendarButton(metadata)) {
+            metadataRow("calendar", title: "When") {
                 Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
                 let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime)
                 Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(metadata.endTime.formatted(.dateTime.month(.abbreviated).day())))" : "")")
@@ -244,47 +259,11 @@ struct DIPEventDetailsScreen: View {
         }
     }
 
-    /// Pill label: generic by default (the card already shows the full date and time); `--calendar-label=date`
-    /// switches to a short date such as "Sunday, 11/22" for owner comparison.
+    /// Pill label: short date by default ("Monday, 11/23", no time; the card has the full details);
+    /// `--calendar-label=generic` switches to "Add to Calendar" for owner comparison.
     private static func calendarLabel(_ metadata: DIPEventMetadata) -> String {
-        guard ProcessInfo.processInfo.arguments.contains("--calendar-label=date") else { return "Add to Calendar" }
+        if ProcessInfo.processInfo.arguments.contains("--calendar-label=generic") { return "Add to Calendar" }
         return metadata.startTime.formatted(.dateTime.weekday(.wide).month(.defaultDigits).day())
-    }
-
-    /// Compact top-right pill that adds the event to the user's calendar; hidden for cancelled and past events.
-    @ViewBuilder private func calendarButton(_ metadata: DIPEventMetadata) -> some View {
-        if !event.isPast, metadata.canAddToCalendar(now: Date()) {
-            let added = calendarResult == .added
-            Button {
-                let fields = metadata.calendarFields(title: event.title, description: event.description)
-                Task { calendarResult = await calendarAdder.add(fields) }
-            } label: {
-                HStack(spacing: 6) {
-                    if added {
-                        Image(systemName: "checkmark").font(.system(size: 13, weight: .bold))
-                    } else {
-                        DIPReferenceAssets.image("HeroiconsOutlineCalendar").renderingMode(.template)
-                            .resizable().frame(width: 18, height: 18)
-                    }
-                    Text(added ? "Added" : Self.calendarLabel(metadata)).font(DIPReferenceAssets.font("Figtree-Bold", size: 14))
-                        .lineLimit(1).fixedSize()
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12).frame(height: 32)
-                .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(DIPPressFeedbackStyle())
-            .accessibilityLabel(added ? "Added to calendar" : "Add to calendar")
-            .accessibilityIdentifier("event.addToCalendar")
-            .alert("Couldn’t add to calendar", isPresented: Binding(
-                get: { if case .failed = calendarResult { return true } else { return false } },
-                set: { if !$0 { calendarResult = nil } })) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                if case .failed(let message) = calendarResult { Text(message) }
-            }
-        }
     }
 
     private func metadataRow<Content: View, Trailing: View>(

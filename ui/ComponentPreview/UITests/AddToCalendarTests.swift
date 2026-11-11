@@ -1,15 +1,14 @@
 import XCTest
 
 final class AddToCalendarTests: XCTestCase {
-    @MainActor func testShortDateLabelVariantCapture() {
+    @MainActor func testGenericLabelVariantCapture() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["--screen=event", "--v1-event-fixtures", "--calendar-label=date"]
+        app.launchArguments = ["--screen=event", "--v1-event-fixtures", "--calendar-label=generic"]
         app.launch()
         XCTAssertTrue(app.buttons["event.addToCalendar"].waitForExistence(timeout: 10))
-        app.swipeUp()
         let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "event-add-to-calendar-date"; shot.lifetime = .keepAlways; add(shot)
+        shot.name = "event-add-to-calendar-generic"; shot.lifetime = .keepAlways; add(shot)
     }
 
     @MainActor func testManyLongTagsWrapAndStayVisible() {
@@ -32,11 +31,10 @@ final class AddToCalendarTests: XCTestCase {
         let button = app.buttons["event.addToCalendar"]
         XCTAssertTrue(button.waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["calendar.fake.last"].label, "none")
-        app.swipeUp()
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "event-add-to-calendar"; shot.lifetime = .keepAlways; add(shot)
         button.tap()
-        XCTAssertTrue(app.staticTexts["Added"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Added to calendar"].waitForExistence(timeout: 3))
         let recorded = app.staticTexts["calendar.fake.last"].label
         XCTAssertTrue(recorded.lowercased().hasPrefix("puppy yoga|"), recorded)
         XCTAssertTrue(recorded.split(separator: "|").dropFirst().first.map { $0.contains(",") } ?? false, recorded)
