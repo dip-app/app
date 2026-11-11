@@ -168,7 +168,6 @@ button { cursor: pointer; border: 0; background: none; }
   .value-text { display: grid; font-family: var(--font-figtree), sans-serif; line-height: 1.25; min-width: 0; }
   .value-text strong { font-weight: 600; font-size: 17px; }
   .value-text span { font-size: 14px; color: var(--muted); } }
-.big-pill.google { gap: 14px; padding: 0 32px 0 14px; width: 100%; max-width: 420px; &:hover { opacity: .92; } .g-mark { flex: none; } }
 
 .login-stage { position: relative; align-self: stretch; width: 100%; min-height: 560px; max-height: 860px; background: $purple; border-radius: $radius-panel; overflow: hidden; container-type: inline-size;
   .shape { position: absolute; border-radius: 50%; }
