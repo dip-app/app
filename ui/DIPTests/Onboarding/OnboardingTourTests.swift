@@ -238,8 +238,8 @@ final class OnboardingTourModelTests: XCTestCase {
         XCTAssertEqual(model.flow.steps, [.arrival, .discover, .people, .memories, .interests])
         model.next(); model.next()
         XCTAssertEqual(model.nextStep, .memories)
-        XCTAssertEqual(OnboardingCopy.cta(for: .people, next: model.nextStep, features: []), "And after the event?")
-        XCTAssertEqual(OnboardingCopy.cta(for: .people, next: .challenges, features: .all), "What are challenges?")
+        XCTAssertEqual(OnboardingCopy.cta(for: .people, next: model.nextStep, features: []), "Show me memories")
+        XCTAssertEqual(OnboardingCopy.cta(for: .people, next: .challenges, features: .all), "Show me challenges")
     }
 
     func testHandoffWaitsForALoadingSurfaceThenReveals() async throws {
@@ -317,6 +317,6 @@ final class OnboardingTourSettingsTests: XCTestCase {
         XCTAssertEqual(OnboardingCopy.make(.people, firstName: nil, features: []).body,
                        "See who's going before you decide, by name and team.")
         XCTAssertTrue(OnboardingCopy.make(.people, firstName: nil, features: .invites).body.contains("Invite a coworker"))
-        XCTAssertEqual(OnboardingCopy.make(.memories, firstName: nil, features: []).cta, "Make it yours")
+        XCTAssertEqual(OnboardingCopy.make(.memories, firstName: nil, features: []).cta, "Pick my interests")
     }
 }
