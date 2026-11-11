@@ -284,7 +284,7 @@ import DIPAccounts
                     guard let self, !Task.isCancelled, !self.stopped, self.chatEventID == wanted else { return }
                     self.messages[wanted] = records.map {
                         DIPMessage(id: $0.id, authorID: $0.authorID, text: $0.text, authorName: $0.authorName,
-                                   authorAvatar: Self.avatar(""), createdAt: $0.createdAt)
+                                   authorAvatar: Self.avatar(userID: $0.authorID), createdAt: $0.createdAt)
                     }
                     self.publish()
                 }
