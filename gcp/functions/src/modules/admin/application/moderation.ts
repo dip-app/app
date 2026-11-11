@@ -59,7 +59,13 @@ export async function removeEventPhoto(deps: AdminDeps, caller: Caller | null, d
   }
   const objectPath = photoObjectPath(req.companyId, eventId, photoId);
   const objectRemoved = objectPath ? await deps.objects.remove(objectPath) : false;
-  return { ...result.value, commentsRemoved: result.value.commentsRemoved + extra, objectRemoved };
+  const final: RemoveEventPhotoResponse = { ...result.value, commentsRemoved: result.value.commentsRemoved + extra, objectRemoved };
+  if (final.removed && (extra > 0 || objectRemoved !== result.value.objectRemoved)) {
+    // Store the completed outcome on the receipt so a replay returns exactly what the first call returned.
+    const receipt = paths.receipt(req.companyId, authenticated.uid, req.requestId);
+    await deps.store.runTransaction(async tx => { tx.update(receipt, { response: final }); });
+  }
+  return final;
 }
 
 /** removeEventPhotoCommentV1: deletes one comment and recounts the photo's server-owned commentCount atomically. */
