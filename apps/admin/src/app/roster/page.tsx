@@ -89,7 +89,7 @@ export default function RosterPage() {
                         <td><Info tone={r.state === "active" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info></td>
                         <td>{formatDate(r.invitedAt)}</td>
                         <td className="right">
-                          {r.state === "invited" && <button className="pill-btn gray small" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}
+                          {r.state === "invited" && <button className="pill-btn gray small quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}
                           {r.state === "revoked" && <button className="pill-btn dark small" disabled={busy === r.email} onClick={() => void reinvite(r)} aria-label={`Invite ${r.displayName} again`}>Invite again</button>}
                         </td>
                       </tr>

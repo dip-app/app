@@ -91,9 +91,17 @@ a.person:hover strong { text-decoration: underline; }
 .audit-main { display: grid; gap: 4px; justify-items: start; }
 
 @media (max-width: 900px) {
-  .sidebar nav { flex-wrap: wrap; }
-  .nav-item { min-height: 44px; padding: 0 16px; font-size: 17px; }
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { min-width: 0; }
+  // One scrollable row instead of a tall wrapped block, so the page content stays above the fold.
+  .sidebar nav { flex-wrap: nowrap; overflow-x: auto; order: 3; width: 100%; scrollbar-width: none; padding: 2px; &::-webkit-scrollbar { display: none; } }
+  .nav-item { min-height: 44px; padding: 0 16px; font-size: 16px; white-space: nowrap; flex: none; }
   .page-header { flex-wrap: wrap; }
 }
 fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .attendance { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+// Quiet destructive row action: white pill, error-colored text (the confirm dialog carries the weight).
+.pill-btn.gray.small.quiet-danger, .table-wrap .pill-btn.quiet-danger { color: var(--error); }
+.pill-btn[disabled] { opacity: .55; }
+.photo-tile { transition: transform .12s ease; &:hover { transform: translateY(-2px); } &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }

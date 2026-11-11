@@ -122,7 +122,7 @@ function Attendees() {
                         aria-label={`${a.checkedIn ? "Undo check-in for" : "Check in"} ${a.name}`}>{a.checkedIn ? "Undo" : "Check in"}</button>
                     </span>
                   </td>
-                  <td className="right"><button className="pill-btn gray small" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={`Remove ${a.name}`}>Remove</button></td>
+                  <td className="right"><button className="pill-btn gray small quiet-danger" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={`Remove ${a.name}`}>Remove</button></td>
                 </tr>
               ))}
             </tbody>

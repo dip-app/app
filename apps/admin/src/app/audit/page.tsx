@@ -25,7 +25,7 @@ export default function AuditPage() {
 
   return (
     <Shell title="Audit log" subtitle="Every admin change: who did it, to what, and why. Read-only; the latest 100 entries." requires="audit.view"
-      action={<button className="pill-btn gray" disabled={!filtered.length} onClick={() => downloadText("audit-log.csv", auditCsv(filtered))}>Export CSV</button>}>
+      action={filtered.length > 0 ? <button className="pill-btn gray" onClick={() => downloadText("audit-log.csv", auditCsv(filtered))}>Export CSV</button> : undefined}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
         : !audit.data ? <Loading label="Loading audit log" />
         : audit.data.length === 0 ? <Empty title="No entries yet" body="Changes made with the admin tools appear here, newest first." />

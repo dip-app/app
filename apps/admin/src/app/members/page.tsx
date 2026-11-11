@@ -66,6 +66,9 @@ export default function MembersPage() {
                   <option value="all">All locations</option>{locations.map((l) => <option key={l}>{l}</option>)}
                 </select></div>
             </div>
+            {(search || role !== "all" || team !== "all" || location !== "all") && (
+              <div className="actions"><button className="pill-btn gray small" onClick={() => reset(() => { setSearch(""); setRole("all"); setTeam("all"); setLocation("all"); })}>Clear filters</button></div>
+            )}
             {filtered.length === 0 ? (
               <Empty title="No one matches" body="Clear a filter or search for a different name." />
             ) : (

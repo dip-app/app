@@ -68,7 +68,6 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
       <div className="toolbar">
         <Link className="pill-btn gray" href="/members/">All members</Link>
         <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? "Active" : member.status === "invited" ? "Invited" : "Deactivated"}</Info>
-        {member.pointsBalance !== null && <Info>{member.pointsBalance} points</Info>}
         <span className="muted">Joined {formatDate(member.createdAt)}</span>
       </div>
       {message && <Notice>{message}</Notice>}
