@@ -213,14 +213,17 @@ struct WordFlow: Layout {
     }
 }
 
-/// "You": initials in a `DIPAvatar` with a 3 pt white ring (spec §7.1), optionally with the B5 saved dot.
+/// "You": the member's photo, else their app-assigned avatar (never initials), with a white ring and the
+/// optional B5 saved dot.
 struct TourYouAvatar: View {
-    let name: String
+    let you: OnboardingYou
     let size: CGFloat
     var showsSavedDot = false
 
     var body: some View {
-        DIPAvatar(person: DIPAvatarIdentity(id: "onboarding.you", name: name), size: size, isDecorative: true)
+        DIPMedia(you.photo).resizable().scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(Circle())
             .overlay(Circle().strokeBorder(.white, lineWidth: size >= 56 ? 3 : 2))
             .overlay(alignment: .topTrailing) {
                 if showsSavedDot {
@@ -237,7 +240,7 @@ struct TourYouAvatar: View {
 /// The header's Crew stack: three faces then a "+n" disc (spec §4.2). One VoiceOver element with the pill.
 struct TourCrewStack: View {
     let members: [OnboardingStackMember]
-    let youName: String
+    let you: OnboardingYou
     let youSaved: Bool
     let namespace: Namespace.ID
     /// Hides You during the handoff while its own flight copy is drawn.
@@ -287,7 +290,7 @@ struct TourCrewStack: View {
     @ViewBuilder private func face(_ member: OnboardingStackMember) -> some View {
         switch member {
         case .you:
-            TourYouAvatar(name: youName, size: 28, showsSavedDot: youSaved)
+            TourYouAvatar(you: you, size: 28, showsSavedDot: youSaved)
                 .matchedGeometryEffect(id: "crew.you", in: namespace)
         case .host(let crew):
             crew.face(size: 28)
@@ -299,7 +302,7 @@ struct TourCrewStack: View {
 
 /// B0's Stage: the four faces cheer with You grown out of the yellow in front (spec §3 B0).
 struct ArrivalCrew: View {
-    let youName: String
+    let you: OnboardingYou
     let namespace: Namespace.ID
     let speed: Double
     let reduceMotion: Bool
@@ -333,7 +336,7 @@ struct ArrivalCrew: View {
             ZStack {
                 Circle().fill(OnboardingTheme.notification).frame(width: 88, height: 88)
                     .scaleEffect(youShown ? 1 : 0.4)
-                TourYouAvatar(name: youName, size: 88).opacity(youShown ? 1 : 0)
+                TourYouAvatar(you: you, size: 88).opacity(youShown ? 1 : 0)
             }
             .matchedGeometryEffect(id: "crew.you", in: namespace)
             .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed).delay(0.25 / speed), value: youShown)

@@ -12,7 +12,7 @@ struct DiscoverJoinScene: DemoScene {
     static let id = "discover"
 
     /// Initials or name for the "You" avatar that joins the people row.
-    var youName = OnboardingDemoFixtures.youPlaceholderName
+    var you = OnboardingYou.preview
 
     var script: DemoScript<DiscoverJoinState> { DiscoverJoinTimeline.script }
 
@@ -34,11 +34,10 @@ struct DiscoverJoinScene: DemoScene {
             _ = CrewAvatarImages.reference(member)
             _ = CrewAvatarImages.reference(member, size: 22)
         }
-        _ = CrewAvatarImages.you(name: youName)
     }
 
     func canvas(_ state: DiscoverJoinState) -> some View {
-        DiscoverJoinCanvas(state: state, youName: youName, stageFill: stageFill)
+        DiscoverJoinCanvas(state: state, you: you, stageFill: stageFill)
     }
 }
 
@@ -220,7 +219,7 @@ struct DiscoverJoinState: Equatable, Sendable {
 /// The B1 canvas, laid out in 390 × 540 canvas points.
 struct DiscoverJoinCanvas: View {
     let state: DiscoverJoinState
-    let youName: String
+    let you: OnboardingYou
     let stageFill: Color
     @Namespace private var namespace
 
@@ -252,7 +251,6 @@ struct DiscoverJoinCanvas: View {
                 }
         }
         .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height, alignment: .topLeading)
-        .clipped()
     }
 
     private var content: some View {
@@ -350,7 +348,7 @@ struct DiscoverJoinCanvas: View {
 
     private var people: [MediaReference] {
         let crew = [CrewMember.purple, .yellow, .gray].map { CrewAvatarImages.reference($0) }
-        return state.joined ? crew + [CrewAvatarImages.you(name: youName)] : crew
+        return state.joined ? crew + [you.photo] : crew
     }
 
     private var peopleRow: some View {
@@ -382,7 +380,7 @@ struct DiscoverJoinCanvas: View {
 
     private var miniBar: some View {
         DIPFloatingNavigation(
-            selected: .home, action: barAction, onSelect: { _ in })
+            selected: .home, action: barAction, showsTabs: barAction == nil, onSelect: { _ in })
             .padding(.horizontal, 20)
             .frame(width: DemoCanvas.size.width)
             .position(x: DemoCanvas.size.width / 2, y: DemoCanvas.barCenterY)

@@ -229,9 +229,14 @@ struct DemoStage<Scene: DemoScene>: View {
             .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height)
         }
         .background(.white)
-        .clipShape(UnevenRoundedRectangle(
-            bottomLeadingRadius: (DemoStageLayout.outerRadius - DemoStageLayout.bezel) / scale,
-            bottomTrailingRadius: (DemoStageLayout.outerRadius - DemoStageLayout.bezel) / scale, style: .continuous))
+        // Clip the sides and the rounded bottom only: content above the 540 pt canvas (the rest of a real screen,
+        // a cropped hero) keeps running up to the Stage's top edge, so taller phones show no white band there.
+        .mask(alignment: .bottom) {
+            UnevenRoundedRectangle(
+                bottomLeadingRadius: (DemoStageLayout.outerRadius - DemoStageLayout.bezel) / scale,
+                bottomTrailingRadius: (DemoStageLayout.outerRadius - DemoStageLayout.bezel) / scale, style: .continuous)
+                .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height + DemoPhoneScreen<EmptyView>.height)
+        }
         .environment(\.dynamicTypeSize, .large)
         .environment(\.colorScheme, .light)
         .allowsHitTesting(false)

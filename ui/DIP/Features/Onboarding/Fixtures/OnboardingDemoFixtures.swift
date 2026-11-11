@@ -43,14 +43,6 @@ enum CrewAvatarImages {
         cached("\(member)@\(size)") { member.face(size: size) }
     }
 
-    /// "You": the person's initials in a `DIPAvatar` on `surfaceMuted` with a 3 pt white ring (spec §7.1).
-    static func you(name: String, size: CGFloat = 40) -> MediaReference {
-        cached("you:\(name)@\(size)") {
-            DIPAvatar(person: DIPAvatarIdentity(id: "onboarding.you", name: name), size: size, isDecorative: true)
-                .overlay(Circle().strokeBorder(.white, lineWidth: 3))
-        }
-    }
-
     private static func cached<Content: View>(_ key: String, _ content: () -> Content) -> MediaReference {
         if let hit = cache[key] { return hit }
         let renderer = ImageRenderer(content: content().environment(\.colorScheme, .light))
@@ -92,8 +84,6 @@ enum OnboardingDemoFixtures {
     static let pastaCapacity = 12
     static let pastaTags = ["Food", "Social"]
 
-    /// Placeholder initials for "You" until the tour shell passes the member's name (Figma §7.1 uses "S").
-    static let youPlaceholderName = "S"
 
     /// Fictional venue for the demo's Directions link; the canvas has hit testing off, so it never opens.
     static let directionsURL = URL(string: "https://maps.apple.com/?q=Office%20kitchen")!
@@ -106,4 +96,21 @@ enum OnboardingDemoFixtures {
             timing: "Thu · 6:30 PM", description: "Fresh pasta and a long table.", tags: pastaTags,
             isJoined: joined, attendeeCount: joined ? 6 : 5, attendeeAvatars: avatars)
     }
+}
+
+/// The signed-in member as the tour and its demos show them (owner fix, Nov 11): their profile photo when they
+/// have one, otherwise their app-assigned avatar (`MediaReference.generatedAvatar`, the same character as
+/// everywhere else in the app). Never initials.
+struct OnboardingYou: Equatable, Sendable {
+    let uid: String
+    let photo: MediaReference
+
+    /// - Parameter photo: the member's portrait (the source Profile uses); nil falls back to the assigned avatar.
+    init(uid: String, photo: MediaReference? = nil) {
+        self.uid = uid
+        self.photo = photo ?? .generatedAvatar(userID: uid)
+    }
+
+    /// Previews and standalone demos: a fixed assigned avatar.
+    static let preview = OnboardingYou(uid: "onboarding.preview-member")
 }

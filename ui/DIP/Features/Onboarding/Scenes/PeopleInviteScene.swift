@@ -9,7 +9,7 @@ struct PeopleInviteScene: DemoScene {
     static let id = "people"
 
     var features: OnboardingFeatures = .shipping
-    var youName = OnboardingDemoFixtures.youPlaceholderName
+    var you = OnboardingYou.preview
 
     var script: DemoScript<PeopleInviteState> { PeopleInviteTimeline.script(features: features) }
 
@@ -35,16 +35,16 @@ struct PeopleInviteScene: DemoScene {
         return rows
     }
 
-    func prepare() { DemoPeople.prepare(youName: youName) }
+    func prepare() { DemoPeople.prepare() }
 
     func canvas(_ state: PeopleInviteState) -> some View {
-        PeopleInviteCanvas(state: state, youName: youName)
+        PeopleInviteCanvas(state: state, you: you)
     }
 }
 
 struct PeopleInviteCanvas: View {
     let state: PeopleInviteState
-    let youName: String
+    let you: OnboardingYou
 
     private enum Metrics {
         static let side: CGFloat = 20
@@ -64,7 +64,6 @@ struct PeopleInviteCanvas: View {
         }
         .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height, alignment: .topLeading)
         .rotation3DEffect(.degrees(state.flipAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-        .clipped()
     }
 
     // MARK: Theo's phone (the event page)
@@ -127,7 +126,7 @@ struct PeopleInviteCanvas: View {
     }
 
     private var avatars: [MediaReference] {
-        [CrewMember.purple, .yellow, .gray].map { CrewAvatarImages.reference($0) } + [CrewAvatarImages.you(name: youName)]
+        [CrewMember.purple, .yellow, .gray].map { CrewAvatarImages.reference($0) } + [you.photo]
     }
 
     /// The F4 placeholder for the invite control (spec: `DemoInviteChip`, until `InviteEntryPoint` ships).
@@ -145,7 +144,7 @@ struct PeopleInviteCanvas: View {
     /// "+ 2 More" pushes the app's real Participants screen, as `DIPPrototypeApp` does (`.participants` route);
     /// `b2.panelBack` pops it. The joined bar ("Activity Chat") stays, as on that route in the app.
     private var participantPanel: some View {
-        let people = DemoPeople.attendees(youName: youName)
+        let people = DemoPeople.attendees(you: you)
         return DemoPhoneScreen {
             DIPParticipantsScreen(people: people, participantCount: people.count, showsBottomBar: false,
                                   onBack: {}, onChat: {})
