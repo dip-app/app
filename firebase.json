@@ -17,6 +17,7 @@
   },
   "hosting": {
     "site": "team05-dip",
+    "appAssociation": "NONE",
     "public": "apps/admin/out",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "trailingSlash": true,
