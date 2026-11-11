@@ -15,6 +15,8 @@ struct DIPProfileScreen: View {
     let interestCatalogLoading: Bool
     let interestCatalogError: String?
     let onRetryInterestCatalog: (() -> Void)?
+    /// "How DIP works": replays the onboarding tour. Nil hides the row.
+    let onReplayTour: (() -> Void)?
     @State private var isSigningOut = false
 
     @State private var isEditing = false
@@ -38,8 +40,10 @@ struct DIPProfileScreen: View {
         onSave: @escaping (ProfileEdit) async throws -> Void,
         onSignOut: (() async -> Void)? = nil,
         interestCatalogLoading: Bool = false, interestCatalogError: String? = nil,
-        onRetryInterestCatalog: (() -> Void)? = nil
+        onRetryInterestCatalog: (() -> Void)? = nil,
+        onReplayTour: (() -> Void)? = nil
     ) {
+        self.onReplayTour = onReplayTour
         self.interestCatalogLoading = interestCatalogLoading
         self.interestCatalogError = interestCatalogError
         self.onRetryInterestCatalog = onRetryInterestCatalog
@@ -62,6 +66,25 @@ struct DIPProfileScreen: View {
                             onEdit: beginEditing, onAddInterests: { isChoosingInterests = true })
                         catalogStatus
                         memories
+                        if let onReplayTour {
+                            Button(action: onReplayTour) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "sparkles").accessibilityHidden(true)
+                                    Text("How DIP works")
+                                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                                        .accessibilityHidden(true)
+                                }
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 18)
+                                .frame(minHeight: 56)
+                                .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
+                                .contentShape(Capsule())
+                            }
+                            .buttonStyle(DIPPressFeedbackStyle())
+                            .accessibilityIdentifier("profile.howDIPWorks")
+                        }
                         if let onSignOut {
                             DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
                                 isLoading: isSigningOut) {

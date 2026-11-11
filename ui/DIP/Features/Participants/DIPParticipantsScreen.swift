@@ -107,6 +107,16 @@ struct DIPParticipantsScreen: View {
     }
 
     private func personRow(_ person: DIPParticipant) -> some View {
+        DIPParticipantRow(person: person)
+    }
+}
+
+/// One participant: 50 pt avatar, bold name and department, 75 pt tall (Figma attendees list).
+/// Shared with the onboarding B2 demo. Dividers stay with the caller.
+struct DIPParticipantRow: View {
+    let person: DIPParticipant
+
+    var body: some View {
         HStack(spacing: 16) {
             DIPMedia(person.avatar).resizable()
                 .frame(width: 50, height: 50)

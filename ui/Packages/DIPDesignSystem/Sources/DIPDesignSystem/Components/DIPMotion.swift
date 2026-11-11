@@ -43,14 +43,20 @@
         public let value: String?
         /// Optional design-system image shown in a white circle at the trailing edge of the action.
         public let icon: String?
-        /// Work in flight: a moving light band crosses the capsule, or (Reduce Motion) a static
-        /// spinner sits in the trailing icon circle. Presentation only; activation is the host's call.
+        /// Work in flight: `DIPProgressIndicator` (a wheel of member faces by default) turns in the trailing white
+        /// icon circle; under Reduce Motion one still face, no loop. Presentation only; activation is the host's call.
         public let showsProgress: Bool
+        /// Whether pressing the action changes something (`commit`: Join, Save, Send; felt as a slight haptic)
+        /// or only moves somewhere (`navigate`: open chat, view album; silent). See `DIPHaptics`.
+        public let kind: Kind
+
+        public enum Kind: Equatable, Sendable { case navigate, commit }
 
         public init(
             title: String, style: Style = .standard, identifier: String, value: String? = nil,
-            icon: String? = nil, showsProgress: Bool = false
+            icon: String? = nil, showsProgress: Bool = false, kind: Kind = .navigate
         ) {
+            self.kind = kind
             self.title = title
             self.style = style
             self.identifier = identifier

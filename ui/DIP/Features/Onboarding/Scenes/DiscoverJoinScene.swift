@@ -382,7 +382,7 @@ struct DiscoverJoinCanvas: View {
 
     private var miniBar: some View {
         DIPFloatingNavigation(
-            selected: .home, action: barAction, tabs: [.home, .events, .profile], onSelect: { _ in })
+            selected: .home, action: barAction, onSelect: { _ in })
             .padding(.horizontal, 20)
             .frame(width: DemoCanvas.size.width)
             .position(x: DemoCanvas.size.width / 2, y: DemoCanvas.barCenterY)

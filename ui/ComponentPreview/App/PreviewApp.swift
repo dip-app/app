@@ -1,3 +1,4 @@
+import DIPDesignSystem
 import SwiftUI
 
 @main
@@ -17,6 +18,9 @@ struct PreviewApp: App {
                     MemberEventsPreview()
                 } else if ProcessInfo.processInfo.arguments.contains("--onboarding-interests") {
                     OnboardingInterestsPreview()
+                } else if ProcessInfo.processInfo.arguments.contains("--onboarding-tour"),
+                          !ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--onboarding=") }) {
+                    OnboardingPreview(account: "member")
                 } else if let account = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--onboarding=") }) {
                     OnboardingPreview(account: String(account.dropFirst("--onboarding=".count)))
                 } else if ProcessInfo.processInfo.arguments.contains("--gallery") {
@@ -25,6 +29,11 @@ struct PreviewApp: App {
                     DIPHomeFixturePreview()
                 }
             }
+            // `--progress-style=wheel|orbit|hop` compares the Bar's progress indicators (wheel ships).
+            .environment(\.dipProgressIndicatorStyle, ProcessInfo.processInfo.arguments
+                .first { $0.hasPrefix("--progress-style=") }
+                .flatMap { DIPProgressIndicatorStyle(rawValue: String($0.dropFirst("--progress-style=".count))) }
+                ?? .shipping)
             .environment(\.eventCalendarAdder, calendar)
             .overlay(alignment: .bottom) {
                 if ProcessInfo.processInfo.arguments.contains("--fake-calendar") {

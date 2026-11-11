@@ -1,3 +1,4 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
@@ -17,6 +18,18 @@ struct OnboardingDemoPreview: View {
             host(DiscoverJoinScene(), pill: "Find events", title: "FIND SOMETHING FUN",
                  body: "Company events, from lunchtime board games to weekend hikes. Tap Join once and you're on the list.",
                  cta: "See who's going")
+        case PeopleInviteScene.id:
+            host(PeopleInviteScene(features: Self.features), pill: "Who's going", title: "GO WITH PEOPLE YOU KNOW",
+                 body: "See who's going before you decide. Invite a coworker and they can join in one tap.",
+                 cta: "What are challenges?")
+        case ChallengeScene.id:
+            host(ChallengeScene(features: Self.features), pill: "Challenges", title: "TAKE ON A CHALLENGE",
+                 body: "Each challenge shows what to do, how to send it in and when it ends. Once your organizer approves, the points are yours.",
+                 cta: "And after the event?")
+        case MemoriesScene.id:
+            host(MemoriesScene(), pill: "Memories", title: "KEEP THE MEMORIES",
+                 body: "Your events live in My Events. Past events keep a shared photo album for everyone who went.",
+                 cta: "Make it yours")
         default:
             ContentUnavailableView("Unknown demo \(sceneID)", systemImage: "questionmark")
         }
@@ -78,6 +91,14 @@ struct OnboardingDemoPreview: View {
         case .resting: "resting"
         case .frozen: "frozen"
         }
+    }
+
+    /// Demo previews show every beat unless `-onboarding.features none` asks for the shipping set.
+    static var features: OnboardingFeatures {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-onboarding.features"), arguments.indices.contains(index + 1),
+              arguments[index + 1] == "none" else { return .all }
+        return []
     }
 
     /// Debug overrides for the demo preview only (spec §5 UI tests):

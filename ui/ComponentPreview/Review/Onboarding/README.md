@@ -21,3 +21,18 @@ Launch: `--onboarding-demo=discover` on the Preview app, with the Debug-only ove
 - The Reduce Motion dots sit in the Stage's bottom gutter, not below the Stage (the dots belong to `DemoStage`, which does not draw outside the Stage).
 
 Captures come from `OnboardingDemoTests.testFreezeAtCaptures` (iPhone 17 Pro, iOS 27 simulator, November 10, 2026).
+
+## Tour shell and scenes B2–B5 (P2)
+
+Captures from `OnboardingTourTests.testStepCaptures` (`--onboarding-tour`, iPhone 17 Pro, iOS 27 simulator, November 10, 2026), scaled to 402 × 874, beside Figma draft frames from `nAcWMM3OBnEtrGQj5vCEtk`:
+
+| Capture | Launch | Figma reference |
+|---|---|---|
+| `tour-B0-arrival.png` | fresh first run | `figma-B0-arrival.png` (25:1237) |
+| `tour-B1-discover.png` | `resumeAt discover`, `freezeAt discover@final` | B1 frames above |
+| `tour-B2-people.png` | `resumeAt people`, `freezeAt people@2.1` (shipping flags: no invites) | `figma-B2-participants.png` (34:1419) |
+| `tour-B3-challenges.png` | `resumeAt challenges`, `features all`, `freezeAt challenges@3.2` | `figma-B3-requirements.png` (31:1785) |
+| `tour-B4-memories.png` | `resumeAt memories`, `freezeAt memories@5.7` | `figma-B4-my-events.png` (35:1967) |
+| `tour-B5-interests.png` | `resumeAt interests` | `figma-B5-picking.png` (37:2565) |
+
+Reviewed by eye: header (back, pill, Crew stack with "+n", Skip), Stage geometry, perch, `EXAMPLE` chip, title/body positions and Bar match. Known differences: B2 is captured without F4, so there is no "Invite a coworker" chip and the Bar reads "And after the event?" (B3 is not in the shipping run); B3's details band and entry form are marked placeholders ("PREVIEW · …") rather than the frame's sketch; B5 shows only the chip strip (no F1 interest cards); the frames show a status-bar home indicator that the simulator capture omits.

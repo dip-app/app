@@ -39,9 +39,9 @@ struct DemoStageConfiguration: Equatable, Sendable {
 
 /// The demo player that fills the Stage card (spec §3.0, §5).
 ///
-/// - Renders `Scene.canvas(state)` on the fixed 390 × 540 white canvas, scaled to fit inside the Stage with a
-///   40 pt top gutter (for the `EXAMPLE` chip and the host face) and 16 pt elsewhere, with `scaleEffect` and
-///   `compositingGroup`, hit testing off and Dynamic Type pinned to `.large`.
+/// - Renders `Scene.canvas(state)` on the fixed 390 × 540 white canvas (the lower part of a phone screen) in a
+///   device frame whose top runs off the Stage, with `scaleEffect` and `compositingGroup`, hit testing off and
+///   Dynamic Type pinned to `.large`. No `EXAMPLE` chip (owner revision, Nov 10).
 /// - Is exactly one accessibility element: label "Example", value = the scene's description, identifier
 ///   `onboarding.stage`, action "Replay".
 /// - Plays once after `autoplayDelay`, then rests on the final frame with a 44 pt Replay button. Tap replays;
@@ -50,14 +50,69 @@ struct DemoStageConfiguration: Equatable, Sendable {
 /// - Reduce Motion plays the scene's stills (crossfade 0.3 s, hold 1.6 s); VoiceOver and Low Power Mode open
 ///   on the final frame until Replay.
 /// Stage geometry inside the Stage card (spec §3.0: canvas at x 66, y 174 inside a Stage at x 20, y 134).
+///
+/// Owner revision (Nov 10): the canvas sits in an iPhone-style device frame whose top runs off the Stage's top
+/// edge, so the Stage shows the lower part of a phone. The 390 × 540 canvas is that lower part of a
+/// 390 × 844 screen (`DemoCanvas.phoneScreenHeight`); beat timing and canvas coordinates are unchanged.
 enum DemoStageLayout {
-    static let topGutter: CGFloat = 40
-    static let inset: CGFloat = 16
+    /// The same Stage-colour gap left, right and below the phone body (owner revision, Nov 10). Only the top of
+    /// the phone runs off the Stage.
+    static let gap: CGFloat = 24
+    /// Bezel thickness and the phone body's outer corner radius, in Stage points. The Stage's own radius (20) is
+    /// smaller than the gap, so the corners can't be strictly concentric; the phone keeps a device-like radius.
+    static let bezel: CGFloat = 9
+    static let outerRadius: CGFloat = 46
     static let replaySize: CGFloat = 44
+    /// Reduce Motion still dots sit in the bottom gap.
+    static let dotsInset: CGFloat = gap / 2
 
+    /// The canvas fills the phone's width; the phone body sits `gap` from the sides and the bottom.
     static func canvasScale(in size: CGSize) -> CGFloat {
-        let width = max(0, size.width - 2 * inset), height = max(0, size.height - topGutter - inset)
-        return max(0.01, min(width / DemoCanvas.size.width, height / DemoCanvas.size.height))
+        max(0.01, max(0, size.width - 2 * gap - 2 * bezel) / DemoCanvas.size.width)
+    }
+
+    /// The canvas frame inside the Stage: centred, with the phone body's bottom edge `gap` above the Stage's.
+    /// When the canvas is shorter than the room above, the phone's white screen continues up off the Stage.
+    static func canvasFrame(in size: CGSize) -> CGRect {
+        let scale = canvasScale(in: size)
+        let canvas = CGSize(width: DemoCanvas.size.width * scale, height: DemoCanvas.size.height * scale)
+        return CGRect(x: gap + bezel, y: size.height - gap - bezel - canvas.height,
+                      width: canvas.width, height: canvas.height)
+    }
+
+    /// The phone body's outer frame (without the part above the Stage), for layout checks.
+    static func phoneFrame(in size: CGSize) -> CGRect {
+        let screen = canvasFrame(in: size)
+        return CGRect(x: screen.minX - bezel, y: min(0, screen.minY - bezel),
+                      width: screen.width + 2 * bezel, height: screen.maxY + bezel - min(0, screen.minY - bezel))
+    }
+}
+
+/// An iPhone-style body around the demo screen: ink bezel, rounded bottom corners, and a white screen that
+/// continues above the canvas until it runs off the Stage (the Stage clips it).
+struct DemoDeviceFrame: View {
+    /// The canvas frame (the visible lower part of the screen), in Stage coordinates.
+    let screen: CGRect
+    let scale: CGFloat
+
+    var body: some View {
+        let bezel = DemoStageLayout.bezel
+        let overshoot: CGFloat = 400
+        let body = CGRect(x: screen.minX - bezel, y: screen.minY - overshoot,
+                          width: screen.width + 2 * bezel, height: screen.height + overshoot + bezel)
+        let screenRadius = DemoStageLayout.outerRadius - bezel
+        ZStack(alignment: .topLeading) {
+            UnevenRoundedRectangle(bottomLeadingRadius: DemoStageLayout.outerRadius,
+                                   bottomTrailingRadius: DemoStageLayout.outerRadius, style: .continuous)
+                .fill(OnboardingTheme.ink)
+                .frame(width: body.width, height: body.height)
+                .offset(x: body.minX, y: body.minY)
+            UnevenRoundedRectangle(bottomLeadingRadius: screenRadius, bottomTrailingRadius: screenRadius, style: .continuous)
+                .fill(.white)
+                .frame(width: screen.width, height: screen.height + overshoot)
+                .offset(x: screen.minX, y: screen.minY - overshoot)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -110,22 +165,24 @@ struct DemoStage<Scene: DemoScene>: View {
     var body: some View {
         GeometryReader { geometry in
             let scale = Layout.canvasScale(in: geometry.size)
-            let canvasSize = CGSize(width: DemoCanvas.size.width * scale, height: DemoCanvas.size.height * scale)
+            let canvasFrame = Layout.canvasFrame(in: geometry.size)
             ZStack(alignment: .topLeading) {
+                // The bezel is drawn taller than the Stage (it runs off the top); pin its layout to the Stage
+                // so the ZStack isn't re-centred around it (that left a dead band under the phone).
+                DemoDeviceFrame(screen: canvasFrame, scale: scale)
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                 canvasLayer(scale: scale)
-                    .frame(width: canvasSize.width, height: canvasSize.height)
-                    .position(x: geometry.size.width / 2, y: Layout.topGutter + canvasSize.height / 2)
-                DemoExampleChip()
-                    .padding(.leading, 12).padding(.top, 11)
+                    .frame(width: canvasFrame.width, height: canvasFrame.height)
+                    .position(x: canvasFrame.midX, y: canvasFrame.midY)
                 if reduceMotion, !scene.reducedStills.isEmpty {
                     stillDots
-                        .position(x: geometry.size.width / 2,
-                                  y: min(geometry.size.height - 8, Layout.topGutter + canvasSize.height + 8))
+                        .position(x: geometry.size.width / 2, y: geometry.size.height - Layout.dotsInset)
                 }
                 if showsReplay {
                     replayButton
-                        .position(x: geometry.size.width - 2 - Layout.replaySize / 2,
-                                  y: geometry.size.height - 12 - Layout.replaySize / 2)
+                        // Top-right of the visible screen, clear of the mini bar.
+                        .position(x: canvasFrame.maxX - 10 - Layout.replaySize / 2,
+                                  y: max(0, canvasFrame.minY) + 16 + Layout.replaySize / 2)
                         .transition(.opacity)
                 }
             }
@@ -172,7 +229,9 @@ struct DemoStage<Scene: DemoScene>: View {
             .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height)
         }
         .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: DemoCanvas.cornerRadius, style: .continuous))
+        .clipShape(UnevenRoundedRectangle(
+            bottomLeadingRadius: (DemoStageLayout.outerRadius - DemoStageLayout.bezel) / scale,
+            bottomTrailingRadius: (DemoStageLayout.outerRadius - DemoStageLayout.bezel) / scale, style: .continuous))
         .environment(\.dynamicTypeSize, .large)
         .environment(\.colorScheme, .light)
         .allowsHitTesting(false)
@@ -372,21 +431,5 @@ struct DemoStage<Scene: DemoScene>: View {
                 scrubOrigin = nil
                 if clockT >= script.duration { rest() } else { play(from: clockT) }
             }
-    }
-}
-
-/// The `EXAMPLE` chip every Stage carries (spec §1 "Honest demos", §3.0): Inter Medium 11, tracking 0.6,
-/// ink on white at 85%, height 22.
-struct DemoExampleChip: View {
-    var body: some View {
-        Text("EXAMPLE")
-            .font(DIPReferenceAssets.font("Inter-Medium", size: 11))
-            .tracking(0.6)
-            .foregroundStyle(OnboardingTheme.ink)
-            .padding(.horizontal, 8)
-            .frame(height: 22)
-            .background(.white.opacity(0.85), in: Capsule())
-            .environment(\.dynamicTypeSize, .large)
-            .accessibilityHidden(true)
     }
 }

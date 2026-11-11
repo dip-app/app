@@ -1,4 +1,5 @@
 import DIPAccounts
+import DIPDesignSystem
 import SwiftUI
 
 /// Account onboarding on top of `AccountsSession`. Renders `memberContent` only for an
@@ -6,13 +7,28 @@ import SwiftUI
 struct AccountsRootView<MemberContent: View>: View {
     let session: AccountsSession
     @ViewBuilder let memberContent: (MembershipContext) -> MemberContent
+    /// Set once this session shows "Finding your company", so only a resolution the member watched
+    /// plays the success haptic (a restored session on cold launch stays silent).
+    @State private var sawResolving = false
 
     var body: some View {
-        // One long-lived Stage for every non-member route, so A0–A4 morph instead of swapping views.
-        if case .member(let context) = AccountsRoute(session.state) {
-            memberContent(context)
-        } else {
-            AccountsStageView(session: session)
+        let route = AccountsRoute(session.state)
+        Group {
+            // One long-lived Stage for every non-member route, so A0–A4 morph instead of swapping views.
+            if case .member(let context) = route {
+                memberContent(context)
+            } else {
+                AccountsStageView(session: session)
+            }
+        }
+        .onChange(of: route, initial: true) { _, route in
+            switch route {
+            case .resolving: sawResolving = true
+            case .member where sawResolving:
+                sawResolving = false
+                DIPHaptics.success()
+            default: break
+            }
         }
     }
 }
