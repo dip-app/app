@@ -375,8 +375,7 @@
                     let x = min(max(value.location.x - 40, 10), 10 + CGFloat(tabs.count - 1) * step)
                     dragMarkerX = x
                     let index = min(max(Int(((x - 10) / step).rounded()), 0), tabs.count - 1)
-                    // Rewards is not connected, so a drag passes over it instead of opening it.
-                    if tabs[index] != selected, tabs[index] != .rewards { onSelect(tabs[index]) }
+                    if tabs[index] != selected { onSelect(tabs[index]) }
                 }
                 .onEnded { _ in dragMarkerX = nil }
         }
