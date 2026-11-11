@@ -2,26 +2,30 @@
 
 User: sandervonk
 Date: 2026-11-11
-Workstream: Pill outline/solid rule
+Workstream: Empty state consistency
 Agent: Claude Code
-Status: active
+Status: completed
 
 ## Summary
 
-Pill rule: solid means pressable, outline means informational. Shared DIPActionPill with solid and outline styles; Goal/Reward on the challenge page are outline pills; Home/My Events header title pill is outlined; the event page calendar pill is solid.
+Aligned every DIPEmptyState use to one look: the card style with the default three Crew faces, matching the Profile "no favorite memories yet" state.
 
 ## Changes
 
-- ui/DIP/Features/Shared/DIPActionPill.swift (new), DIPDetailComponents.swift (action row uses the shared pill; calendar pill solid), Challenge/DIPChallengeDetailsScreen.swift, DIPDesignSystem DIPHomeComponents.swift and DIPHeader.swift (outlined title pill), ui/ComponentPreview/UITests/PillRuleTests.swift, docs/design/components.md (rule note).
+- Home recents ("home-recents"): was the borderless compact style with different copy; now the card style, title "Events you’ve attended will show up here", body "Join one this week and your coworkers will appear here.". Identifier `empty.home-recents` unchanged.
+- Event/past-event attendees (DIPDetailComponents): compact style and 2 faces removed (card, default faces).
+- My Events memories: 4 faces override removed. Profile memories: 2 faces override removed.
+- Checked and left as they were (already card style with default faces): Home upcoming events, My Events active, participants, album, rewards.
+- Capture: ui/ComponentPreview/Review/Profile/home-recents-empty.png.
 
 ## Validation
 
-- One Preview UI run (PillRuleTests, 2 tests) passed with captures; no other suites by owner request.
+- Preview scheme build succeeded; one capture of the Home recents state. UI and unit tests not re-run (owner: one compile and one capture only).
 
 ## Decisions
 
-- Outline pill colour is the action primary token; identifiers unchanged.
+- The compact style stays in the shared component but nothing uses it now; no component change was needed since the difference was in call-site parameters.
 
 ## Handoff
 
-Possible rule violations left as is: white filled informational chips (hero tags, "N Attending", "+ N others participating"); onboarding step pill not touched.
+If a borderless inline variant is wanted somewhere later, `.compact` is still available.
