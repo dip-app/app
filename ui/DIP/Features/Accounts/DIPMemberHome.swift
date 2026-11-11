@@ -113,7 +113,8 @@ struct DIPMemberHome: View {
                 if let reads = eventReadFactory(context) {
                     liveEvents = MemberEventAppRepository(reads: reads,
                         profile: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL),
-                        participation: participationFactory?())
+                        participation: participationFactory?(),
+                        chatAuthor: ChatAuthor(name: context.profile.displayName, avatarID: context.profile.avatarId))
                 } else { eventConfigurationError = true }
             }
             await catalog.load()

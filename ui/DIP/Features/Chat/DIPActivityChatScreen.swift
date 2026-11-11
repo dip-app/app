@@ -9,6 +9,9 @@ struct DIPActivityChatScreen: View {
     let messages: [DIPMessage]
     let currentUserID: String
     let onSend: (_ messageID: String, _ text: String) async throws -> Void
+    /// Per-event notification preference (bell menu, top left). Hidden when `nil` (adapter without preferences).
+    var notificationLevel: DIPNotificationLevel?
+    var onSetNotificationLevel: ((DIPNotificationLevel) async -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,7 +23,8 @@ struct DIPActivityChatScreen: View {
     @State private var sendError: String?
     @State private var retryIntent: SendIntent?
 
-    private static let maximumLength = 2_000
+    // The deployed chat rules accept 1 to 1000 characters.
+    private static let maximumLength = 1_000
     private static let bottomAnchor = "chat-bottom"
 
     private struct SendIntent {
@@ -109,6 +113,28 @@ struct DIPActivityChatScreen: View {
                     }
                     .accessibilityElement(children: .combine)
                 }
+                if let notificationLevel {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Menu {
+                            ForEach(DIPNotificationLevel.allCases, id: \.self) { level in
+                                Button {
+                                    Task { await onSetNotificationLevel?(level) }
+                                } label: {
+                                    Label {
+                                        Text(level.title); Text(level.summary)
+                                    } icon: {
+                                        if level == notificationLevel { Image(systemName: "checkmark") }
+                                    }
+                                }
+                                .accessibilityIdentifier("event.chat.notifications.\(level.rawValue)")
+                            }
+                        } label: {
+                            Image(systemName: notificationLevel == .none ? "bell.slash" : "bell")
+                                .accessibilityLabel("Notifications: \(notificationLevel.title)")
+                        }
+                        .accessibilityIdentifier("event.chat.notifications")
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                         .accessibilityIdentifier("event.chat.done")
@@ -190,7 +216,8 @@ struct DIPActivityChatScreen: View {
                 if trimmedDraft == intent.text { draft = "" }
                 retryIntent = nil
             } catch {
-                sendError = "Your message couldn’t be sent. Try again."
+                if case DIPRepositoryError.invalidInput(let message) = error { sendError = message }
+                else { sendError = "Your message couldn’t be sent. Try again." }
             }
         }
     }
