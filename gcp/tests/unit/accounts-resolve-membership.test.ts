@@ -56,14 +56,17 @@ class FakeStore implements MembershipStore {
           return data ? { companyId: String(data.companyId), role: String(data.role), displayName: String(data.displayName ?? ""),
             ...(typeof data.status === "string" ? { status: data.status } : {}) } : null;
         },
-        getMembershipMode: async (companyId) => (await read(`companies/${companyId}`))?.membershipMode === "rosterOnly" ? "rosterOnly" : "open",
         getRosterEntry: async (companyId, email) => {
           const entryId = createHash("sha256").update(email.toLowerCase()).digest("hex");
           const data = await read(`companies/${companyId}/roster/${entryId}`);
           return data ? { entryId, email: String(data.email), status: String(data.status), displayName: String(data.displayName ?? ""), role: String(data.role),
             teamIds: (data.teamIds as string[] | undefined) ?? [], workLocation: String(data.workLocation ?? ""), department: String(data.department ?? ""), jobTitle: String(data.jobTitle ?? "") } : null;
         },
-        claimRosterEntry: (companyId, entryId, uid) => { writes.push([`companies/${companyId}/roster/${entryId}`, { status: "claimed", claimedBy: uid }, "update"]); },
+        recordRosterJoin: (companyId, entryId, action, uid, profile) => {
+          const path = `companies/${companyId}/roster/${entryId}`;
+          if (action === "create") writes.push([path, { email: profile.email.toLowerCase(), status: "claimed", claimedBy: uid, source: "signup" }, "create"]);
+          else writes.push([path, { status: "claimed", claimedBy: uid }, "update"]);
+        },
         createMember: (uid: string, profile: NewMemberProfile) => { writes.push([`users/${uid}`, { ...profile, createdAt: "SERVER_TIMESTAMP" }, "create"]); },
         updateDisplayName: (uid: string, displayName: string) => { writes.push([`users/${uid}`, { displayName }, "update"]); },
       };

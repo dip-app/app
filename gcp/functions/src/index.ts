@@ -9,6 +9,6 @@ export { sendInviteV1, respondToInviteV1, listCoworkersV1 } from "./modules/invi
 export { submitChallengeV1, approveChallengeV1, rejectChallengeV1, listChallengeSubmissionsV1 } from "./modules/submissions";
 export {
   removeEventPhotoV1, removeEventPhotoCommentV1, addEventAttendeeV1, removeEventAttendeeV1, recordAttendanceV1, listMembersV1, getMemberV1,
-  updateMemberV1, resetMemberProfileV1, setMemberStatusV1, adjustMemberPointsV1, upsertTeamV1, updateCompanySettingsV1,
+  updateMemberV1, resetMemberProfileV1, setMemberStatusV1, adjustMemberPointsV1, upsertTeamV1,
   upsertRosterEntryV1, revokeRosterEntryV1, importEmployeesV1, applyEmployeeImportV1, getEmployeeImportV1,
 } from "./modules/admin";

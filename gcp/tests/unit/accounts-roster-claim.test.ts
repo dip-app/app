@@ -4,24 +4,23 @@ import { describe, test } from "node:test";
 import { resolveMembership } from "../../functions/src/modules/accounts/application/resolveMembership";
 import type { MembershipStore, MembershipTransaction } from "../../functions/src/modules/accounts/application/ports";
 import { AccountsError } from "../../functions/src/modules/accounts/domain/errors";
-import type { AuthIdentity, MembershipMode, NewMemberProfile, RosterClaim, StoredMembership } from "../../functions/src/modules/accounts/domain/membership";
+import type { AuthIdentity, NewMemberProfile, RosterAction, RosterClaim, StoredMembership } from "../../functions/src/modules/accounts/domain/membership";
 
-// Roster claiming and deactivation in resolveMembershipV1 (docs/contracts/admin.md#roster-pre-provisioning).
+// Roster claiming/recording and deactivation in resolveMembershipV1 (docs/contracts/admin.md#roster-pre-provisioning).
+// There is no roster-only mode: anyone with a verified company-domain email joins, and every join is on the roster.
 const hash = (email: string) => createHash("sha256").update(email.toLowerCase()).digest("hex");
 
 class Store implements MembershipStore {
   members = new Map<string, StoredMembership>();
-  mode: MembershipMode = "open";
   roster = new Map<string, RosterClaim>();
   created: Array<[string, NewMemberProfile]> = [];
-  claimed: Array<[string, string]> = [];
+  joins: Array<{ entryId: string; action: RosterAction; uid: string; profile: NewMemberProfile }> = [];
   async runTransaction<T>(work: (tx: MembershipTransaction) => Promise<T>): Promise<T> {
     const tx: MembershipTransaction = {
       companyIdForDomain: async domain => (domain === "alpha.test" ? "alpha" : null),
       getMembership: async uid => this.members.get(uid) ?? null,
-      getMembershipMode: async () => this.mode,
       getRosterEntry: async (_company, email) => this.roster.get(hash(email)) ?? null,
-      claimRosterEntry: (_company, entryId, uid) => { this.claimed.push([entryId, uid]); },
+      recordRosterJoin: (_company, entryId, action, uid, profile) => { this.joins.push({ entryId, action, uid, profile }); },
       createMember: (uid, profile) => { this.created.push([uid, profile]); },
       updateDisplayName: () => undefined,
     };
@@ -36,8 +35,8 @@ class Store implements MembershipStore {
 const identity = (overrides: Partial<AuthIdentity> = {}): AuthIdentity => ({ uid: "u1", email: "pat@alpha.test", emailVerified: true, signInProvider: "google.com", name: "Pat Lee", ...overrides });
 const request = { contractVersion: 1 };
 
-describe("roster claim on first sign-in", () => {
-  test("an invited entry creates the member with its role, teams, location, department and title, and is marked claimed", async () => {
+describe("roster on first sign-in", () => {
+  test("an invited entry creates the member with its role, teams, location, department and title, and is claimed", async () => {
     const store = new Store();
     store.invite("pat@alpha.test", { managerEmail: "boss@alpha.test", startDate: "2030-03-01" });
     const response = await resolveMembership(store, identity(), request);
@@ -52,7 +51,7 @@ describe("roster claim on first sign-in", () => {
     assert.equal(profile.managerEmail, "boss@alpha.test");
     assert.equal(profile.pointsBalance, 0, "points always start at zero");
     assert.equal(profile.displayName, "Pat Lee", "Google's name wins over the roster hint");
-    assert.deepEqual(store.claimed, [[hash("pat@alpha.test"), "u1"]]);
+    assert.deepEqual(store.joins.map(j => [j.entryId, j.action, j.uid]), [[hash("pat@alpha.test"), "claim", "u1"]]);
   });
 
   test("the roster name is only a fallback when the token has no name", async () => {
@@ -62,57 +61,51 @@ describe("roster claim on first sign-in", () => {
     assert.equal(store.created[0]![1].displayName, "Roster Name");
   });
 
-  test("the entry is found by the verified email, case-insensitively, including subdomain addresses of the same mailbox only", async () => {
+  test("the entry is found by the verified email, case-insensitively", async () => {
     const store = new Store();
     store.invite("pat@alpha.test");
     await resolveMembership(store, identity({ email: "Pat@Alpha.Test" }), request);
-    assert.equal(store.created.length, 1);
     assert.equal(store.created[0]![1].role, "organizer");
+    assert.equal(store.joins[0]!.action, "claim");
   });
 
-  test("a spoofed address gains nothing: an entry for another email or an unverified email never applies", async () => {
+  test("someone who was never pre-imported joins as a default member and gets a new claimed roster entry", async () => {
+    const store = new Store();
+    const response = await resolveMembership(store, identity(), request);
+    assert.equal(response.role, "member");
+    assert.deepEqual(store.joins.map(j => [j.entryId, j.action, j.uid]), [[hash("pat@alpha.test"), "create", "u1"]]);
+    assert.deepEqual(Object.keys(store.created[0]![1]).sort(), ["availability", "avatarId", "city", "companyId", "department", "displayName", "email", "favoritePhotoIds",
+      "friendIds", "interestTagIds", "jobTitle", "photoURL", "pointsBalance", "role", "travelRadiusMiles"], "today's default profile is unchanged");
+  });
+
+  test("a revoked entry never applies its role: the person joins as a default member and the entry is overwritten", async () => {
+    const store = new Store();
+    store.invite("pat@alpha.test", { status: "revoked", role: "admin" });
+    assert.equal((await resolveMembership(store, identity(), request)).role, "member");
+    assert.equal(store.joins[0]!.action, "overwrite");
+    assert.equal(store.joins[0]!.profile.role, "member");
+  });
+
+  test("a spoofed address gains nothing: an entry for another email or with a different stored email never applies", async () => {
     const store = new Store();
     store.invite("boss@alpha.test", { role: "admin" });
     await resolveMembership(store, identity(), request);
     assert.equal(store.created[0]![1].role, "member");
-    assert.equal(store.claimed.length, 0);
-    await assert.rejects(resolveMembership(new Store(), identity({ emailVerified: false }), request), (e: AccountsError) => e.reason === "EMAIL_NOT_VERIFIED");
+    assert.equal(store.joins[0]!.action, "create");
     store.roster.set(hash("pat@alpha.test"), { ...store.roster.get(hash("boss@alpha.test"))!, entryId: hash("pat@alpha.test"), email: "someone-else@alpha.test" });
     await resolveMembership(store, identity({ uid: "u2" }), request);
     assert.equal(store.created[1]![1].role, "member", "an entry whose stored email differs from the token email is ignored");
+    await assert.rejects(resolveMembership(new Store(), identity({ emailVerified: false }), request), (e: AccountsError) => e.reason === "EMAIL_NOT_VERIFIED");
+    await assert.rejects(resolveMembership(new Store(), identity({ email: "pat@elsewhere.test" }), request), (e: AccountsError) => e.reason === "NO_COMPANY_FOR_DOMAIN");
   });
 
-  test("a second sign-in claims nothing and an already claimed or revoked entry is not applied", async () => {
+  test("a returning member records nothing on the roster and changes nothing", async () => {
     const store = new Store();
-    store.invite("pat@alpha.test", { status: "revoked" });
-    await resolveMembership(store, identity(), request);
-    assert.equal(store.created[0]![1].role, "member");
     store.members.set("u1", { companyId: "alpha", role: "member", displayName: "Pat Lee" });
     store.invite("pat@alpha.test");
-    const again = await resolveMembership(store, identity(), request);
-    assert.equal(again.role, "member");
-    assert.equal(store.created.length, 1);
-    assert.equal(store.claimed.length, 0);
-  });
-
-  test("an open company keeps today's default for people not on the roster", async () => {
-    const store = new Store();
-    const response = await resolveMembership(store, identity(), request);
-    assert.equal(response.role, "member");
-    assert.deepEqual(Object.keys(store.created[0]![1]).sort(), ["availability", "avatarId", "city", "companyId", "department", "displayName", "email", "favoritePhotoIds",
-      "friendIds", "interestTagIds", "jobTitle", "photoURL", "pointsBalance", "role", "travelRadiusMiles"]);
-  });
-
-  test("a roster-only company refuses people without an invited entry, but admits invited ones and existing members", async () => {
-    const store = new Store();
-    store.mode = "rosterOnly";
-    await assert.rejects(resolveMembership(store, identity(), request), (e: AccountsError) => e.code === "permission-denied" && e.reason === "NOT_ON_ROSTER");
-    store.invite("pat@alpha.test", { status: "revoked" });
-    await assert.rejects(resolveMembership(store, identity(), request), (e: AccountsError) => e.reason === "NOT_ON_ROSTER");
-    store.invite("pat@alpha.test", { role: "member" });
     assert.equal((await resolveMembership(store, identity(), request)).role, "member");
-    store.members.set("u9", { companyId: "alpha", role: "admin", displayName: "Old Admin" });
-    assert.equal((await resolveMembership(store, identity({ uid: "u9", email: "old@alpha.test" }), request)).role, "admin");
+    assert.equal(store.created.length, 0);
+    assert.equal(store.joins.length, 0);
   });
 
   test("a deactivated member is refused with ACCOUNT_DEACTIVATED; an organizer role resolves", async () => {

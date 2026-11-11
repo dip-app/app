@@ -3,7 +3,7 @@ import { describe, test } from "node:test";
 import { addEventAttendee, recordAttendance, removeEventAttendee } from "../../functions/src/modules/admin/application/attendees";
 import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../../functions/src/modules/admin/application/importEmployees";
 import {
-  adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateCompanySettings, updateMember, upsertTeam,
+  adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../../functions/src/modules/admin/application/members";
 import { removeEventPhoto, removeEventPhotoComment } from "../../functions/src/modules/admin/application/moderation";
 import { revokeRosterEntry, upsertRosterEntry } from "../../functions/src/modules/admin/application/roster";
@@ -37,7 +37,6 @@ const COMMANDS: Array<{ name: string; run: typeof removeEventPhoto; permission: 
   { name: "setMemberStatusV1", run: setMemberStatus as never, permission: "member.manage", payload: () => ({ ...base(), requestId: rid(), userId: "m1", status: "deactivated" }) },
   { name: "adjustMemberPointsV1", run: adjustMemberPoints as never, permission: "member.manage", payload: () => ({ ...base(), requestId: rid(), userId: "m1", delta: 5, reason: "Bonus" }) },
   { name: "upsertTeamV1", run: upsertTeam as never, permission: "team.manage", payload: () => ({ ...base(), requestId: rid(), name: "Platform" }) },
-  { name: "updateCompanySettingsV1", run: updateCompanySettings as never, permission: "company.settings", payload: () => ({ ...base(), requestId: rid(), membershipMode: "rosterOnly" }) },
   { name: "upsertRosterEntryV1", run: upsertRosterEntry as never, permission: "roster.manage", payload: () => ({ ...base(), requestId: rid(), entry: { email: "new@alpha.test" } }) },
   { name: "revokeRosterEntryV1", run: revokeRosterEntry as never, permission: "roster.manage", payload: () => ({ ...base(), requestId: rid(), entryId: HASH }) },
   { name: "importEmployeesV1", run: importEmployees as never, permission: "import.run", payload: () => ({ ...base(), requestId: rid(), rows: [{ email: "new@alpha.test" }] }) },
@@ -53,7 +52,7 @@ describe("permission matrix", () => {
       assert.equal(roles.includes("organizer"), can("organizer", permission as Permission));
     }
     for (const allowed of ["event.manage", "attendee.manage", "attendance.record", "album.moderate", "member.read"] as const) assert.equal(can("organizer", allowed), true);
-    for (const adminOnly of ["member.manage", "team.manage", "roster.manage", "import.run", "company.settings", "audit.read"] as const) assert.equal(can("organizer", adminOnly), false);
+    for (const adminOnly of ["member.manage", "team.manage", "roster.manage", "import.run", "audit.read"] as const) assert.equal(can("organizer", adminOnly), false);
     assert.equal(can("superuser", "member.read"), false);
     assert.equal(can(undefined, "member.read"), false);
   });

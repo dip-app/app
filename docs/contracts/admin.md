@@ -20,7 +20,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 |---|---|
 | unauthenticated | `UNAUTHENTICATED` |
 | invalid-argument | `VALIDATION_FAILED` (with `fields`), `TEAM_NOT_FOUND` (unknown or archived team in an edit), `EMAIL_DOMAIN_MISMATCH`, `IMPORT_TOO_LARGE` |
-| permission-denied | `EMAIL_NOT_VERIFIED`, `PROVIDER_NOT_ALLOWED`, `INSUFFICIENT_ROLE`, `COMPANY_MISMATCH`, `ACCOUNT_DEACTIVATED`, `MEMBERSHIP_CONFLICT` (caller has no membership), `NOT_ON_ROSTER` (resolveMembershipV1, rosterOnly company) |
+| permission-denied | `EMAIL_NOT_VERIFIED`, `PROVIDER_NOT_ALLOWED`, `INSUFFICIENT_ROLE`, `COMPANY_MISMATCH`, `ACCOUNT_DEACTIVATED`, `MEMBERSHIP_CONFLICT` (caller has no membership) |
 | not-found | `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND` (also for a user of another company), `ROSTER_ENTRY_NOT_FOUND`, `IMPORT_JOB_NOT_FOUND`, `TEAM_NOT_FOUND` (upsert of an unknown teamId) |
 | failed-precondition | `REQUEST_REUSED`, `EVENT_CLOSED` (cancelled or ended), `EVENT_NOT_STARTED`, `NOT_GOING`, `LAST_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `ATTENDANCE_LOCKED`, `INSUFFICIENT_POINTS`, `EMAIL_ALREADY_MEMBER`, `IMPORT_PLAN_MISMATCH`, `IMPORT_NOT_PLANNED` |
 | resource-exhausted | `EVENT_FULL` (no `capacityOverrideReason`, or capacity already 10000), `RATE_LIMITED` |
@@ -42,7 +42,6 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `team.manage` | `upsertTeamV1` | no | no | yes |
 | `roster.manage` | `upsertRosterEntryV1`, `revokeRosterEntryV1`, roster reads | no | no | yes |
 | `import.run` | `importEmployeesV1`, `applyEmployeeImportV1`, `getEmployeeImportV1`, import job reads | no | no | yes |
-| `company.settings` | `updateCompanySettingsV1` | no | no | yes |
 | `audit.read` | `companies/{c}/auditLog` reads | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
 
@@ -51,7 +50,6 @@ Only an admin can create another admin or organizer (through `updateMemberV1`, a
 ## Data model additions (all additive)
 
 - `users/{uid}`: `workLocation` (string), `teamIds` (string[] <= 20), `status` (`invited` | `active` | `deactivated`, missing = active; `invited` is used by roster entries, members are `active`/`deactivated`), optional `managerEmail`, `startDate` (YYYY-MM-DD), `revision` (>= 1, incremented by admin edits), `statusUpdatedAt`. All server-owned: the own-profile rule allow-list is unchanged, so clients cannot write them.
-- `companies/{c}`: optional `membershipMode` `open` (default) | `rosterOnly`.
 - `companies/{c}/teams/{teamId}` (`Team`): `name`, `archived`, `revision`, timestamps. Same-company members read (get/list <= 100); written only by `upsertTeamV1`.
 - `companies/{c}/auditLog/{auditId}` (`AuditEntry`): append-only, server-written, admin-readable (get/list limit <= 100, order by `createdAt`).
 - `companies/{c}/roster/{emailHash}` (`RosterEntry`): admin-readable only; id is the lower-case hex SHA-256 of the lower-case email.
@@ -66,7 +64,7 @@ AuditEntry {
   companyId, actorId, actorName, actorRole,          // from the caller's membership, never the payload
   action,        // "photo.remove" | "photo.comment.remove" | "attendee.add" | "attendee.remove" | "attendance.record"
                  // | "member.update" | "member.reset" | "member.status" | "points.adjust" | "team.upsert"
-                 // | "company.settings" | "roster.upsert" | "roster.revoke" | "roster.claim" | "import.plan" | "import.apply"
+                 // | "roster.upsert" | "roster.revoke" | "roster.claim" | "import.plan" | "import.apply"
   targetType,    // member | event | photo | comment | attendee | roster | import | team | company | points
   targetId,      // uid, "{eventId}/{photoId}", emailHash, jobId ...
   summary,       // <= 280 chars, human readable, no secrets
@@ -104,16 +102,18 @@ All carry `contractVersion: 1`, `companyId` and (mutations) `requestId`. Shapes 
 - `resetMemberProfileV1` `{userId, reason?}` -> `{userId, resetFields, revision}`: `photoURL=""`, `avatarId=""`, `city=""`, `interestTagIds=[]`, `travelRadiusMiles=20`, `availability=[]`, `favoritePhotoIds=[]`. Identity, role, department, jobTitle, teams, location, status, friends and points stay.
 - `setMemberStatusV1` `{userId, status, reason?}` -> `{userId, status, changed, rsvpsCancelled, revision}`. Deactivation: cannot target self (`CANNOT_DEACTIVATE_SELF`) or the last active admin (`LAST_ADMIN`); sets `status`/`statusUpdatedAt`, revokes the member's Firebase refresh tokens, cancels up to 200 upcoming `going` RSVPs (frees seats, decrements counts), and from then on `resolveMembershipV1` (`ACCOUNT_DEACTIVATED`), Firestore rules (`sameCompany`) and callables refuse the member. Reactivation sets `status: "active"`.
 - `adjustMemberPointsV1` `{userId, delta, reason}` -> `{userId, pointsBalance, applied}`: ledger entry `adjust_{uid}_{requestId}` + balance in one transaction; the balance may not go negative (`INSUFFICIENT_POINTS`).
-- `upsertTeamV1` `{teamId?, name, archived?}` -> `{teamId, created, revision}` (names unique case-insensitively within a company). `updateCompanySettingsV1 {membershipMode}` -> `{membershipMode, changed}`.
+- `upsertTeamV1` `{teamId?, name, archived?}` -> `{teamId, created, revision}` (names unique case-insensitively within a company).
 
 ### Roster pre-provisioning (roster.manage)
 
-- Model: `RosterEntry` at `companies/{c}/roster/{sha256(lower(email))}` with `status` `invited` -> `claimed` | `revoked`. Only emails within the company's `emailDomain` (registrable root, subdomains allowed as in `resolveMembershipV1`) are accepted (`EMAIL_DOMAIN_MISMATCH`).
+- Model: `RosterEntry` at `companies/{c}/roster/{sha256(lower(email))}` with `status` `invited` (pre-imported, not signed in) -> `claimed` (signed in) | `revoked`; `memberStatus` (`active` | `deactivated`) mirrors the member once claimed. **The roster lists everyone**: pre-imported people and every person who ever joined (`source` `manual` | `import` | `signup`). Only emails within the company's `emailDomain` (registrable root, subdomains allowed as in `resolveMembershipV1`) are accepted (`EMAIL_DOMAIN_MISMATCH`).
 - `upsertRosterEntryV1 {entry: EmployeeRecordInput}` -> `{entryId, created, status}`. An email that already belongs to a member -> `EMAIL_ALREADY_MEMBER` (use `updateMemberV1`). A revoked entry is re-invited. A claimed entry always has a member with that email, so it is refused the same way.
 - `revokeRosterEntryV1 {entryId}` -> `{entryId, status, changed}`. Claimed entries are unaffected (revoke the member instead).
-- Listing/search: Firestore direct reads under admin-only rules (`roster` list limit <= 100); the portal combines it with `listMembersV1` to show invited / active / deactivated.
-- **Claiming** in `resolveMembershipV1` (first verified Google sign-in, no `users/{uid}` yet): in the same transaction the server reads the company, then `roster/{sha256(email)}` where the stored `email` must equal the verified token email. An `invited` entry creates the member with the entry's `role`, `teamIds`, `workLocation`, `department`, `jobTitle`, `managerEmail`, `startDate` (display name: Google's name, else the roster hint), marks the entry `claimed` (`claimedBy`, `claimedAt`) and appends a `roster.claim` audit entry. No entry, or a revoked one: `open` company -> default member as today; `rosterOnly` company -> `permission-denied` `NOT_ON_ROSTER`. Existing members are never altered by a roster entry. Spoofed or unverified emails are rejected by the existing provider/verification checks before any read.
-- **Open vs roster-only** is a company setting `membershipMode`, default `open` (today's behaviour), changed by `updateCompanySettingsV1`.
+- **Listing**: one direct Firestore read of `companies/{c}/roster` (admin-only rules, `limit <= 100`, order by `email` or document id) shows everyone: `invited` entries have not signed in, `claimed` entries have a member (`claimedBy` = uid; `memberStatus` active/deactivated). Search and filters run client-side over the pages; use `listMembersV1` / `getMemberV1` for points and fresh member detail.
+- **There is no roster-only mode.** Anyone whose verified Google email matches the company's `emailDomain` joins, as today. The roster only pre-fills attributes.
+- **Joining** in `resolveMembershipV1` (first verified Google sign-in, no `users/{uid}` yet): in the same transaction the server reads `roster/{sha256(email)}` (stored `email` must equal the verified token email) and records the join: an `invited` entry **claims** (member gets the entry's `role`, `teamIds`, `workLocation`, `department`, `jobTitle`, `managerEmail`, `startDate`; display name: Google's name, else the roster hint; entry -> `claimed`, `claimedBy`, `claimedAt`; `roster.claim` audit entry); no entry **creates** a `claimed` entry (`source: "signup"`, default member attributes) so the roster always lists everyone; a `revoked` (or otherwise unusable) entry never grants its role: the person joins as a default member and the entry is **overwritten** with the real member. Returning members change nothing. Spoofed or unverified emails are rejected by the existing provider/verification checks before any read.
+- **Kept in sync**: `updateMemberV1` and the import mirror role, teams and org attributes onto the member's claimed entry; `setMemberStatusV1` mirrors `memberStatus`. Display-name refreshes are not mirrored.
+- **Backfill** (emulator/test only): `gcp/functions/src/modules/admin/application/backfillRoster.ts` creates a claimed entry for every existing member without one (idempotent, never touches existing entries); `gcp/scripts/backfill-roster.ts` wraps it and refuses to run unless `FIRESTORE_EMULATOR_HOST` is a local emulator. Production members get entries on the owner-run backfill only after explicit authorization; until then a signed-in member without an entry simply does not appear on the roster list (use `listMembersV1`).
 
 ### Bulk import (import.run)
 

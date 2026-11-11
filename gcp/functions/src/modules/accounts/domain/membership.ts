@@ -1,3 +1,4 @@
+import { emailHash } from "../../admin/domain/employee";
 import { AccountsError } from "./errors";
 import { isPersonalEmailDomain, rootDomainOfEmail } from "./emailDomain";
 
@@ -34,9 +35,6 @@ export interface StoredMembership {
   status?: string;
 }
 
-/** Company onboarding policy (companies.membershipMode, missing = open). */
-export type MembershipMode = "open" | "rosterOnly";
-
 /** A pre-provisioned roster entry (companies/{c}/roster/{sha256(email)}), as read by the claim step. */
 export interface RosterClaim {
   entryId: string;
@@ -52,7 +50,9 @@ export interface RosterClaim {
   startDate?: string;
 }
 
-export interface Onboarding { mode: MembershipMode; entry: RosterClaim | null }
+/** What the join does to the company roster (everyone who joins is listed there). */
+export type RosterAction = "claim" | "create" | "overwrite";
+export interface RosterJoin { entryId: string; action: RosterAction }
 
 /** Profile written for a first-time member. createdAt is assigned by the store (server time). */
 export interface NewMemberProfile {
@@ -121,7 +121,7 @@ function isRole(value: string): value is MembershipRole {
 }
 
 export type MembershipDecision =
-  | { kind: "create"; profile: NewMemberProfile; claimedEntryId?: string }
+  | { kind: "create"; profile: NewMemberProfile; roster: RosterJoin }
   | { kind: "existing"; companyId: string; role: MembershipRole; refreshDisplayName: string | null };
 
 /**
@@ -134,7 +134,7 @@ export function decideMembership(
   identity: EligibleIdentity,
   targetCompanyId: string,
   existing: StoredMembership | null,
-  onboarding: Onboarding = { mode: "open", entry: null },
+  entry: RosterClaim | null = null,
 ): MembershipDecision {
   if (existing) {
     if (existing.status === "deactivated") {
@@ -149,18 +149,17 @@ export function decideMembership(
     const refreshDisplayName = existing.displayName === identity.displayName ? null : identity.displayName;
     return { kind: "existing", companyId: existing.companyId, role: existing.role, refreshDisplayName };
   }
-  // First sign-in: claim an invited roster entry whose email equals the verified token email; otherwise follow the
-  // company's mode (open = today's default member, rosterOnly = refused).
-  const entry = onboarding.entry;
+  // First sign-in: anyone with a verified company-domain email joins (today's behaviour). An invited roster entry whose
+  // email equals the verified token email is claimed (its role, teams and org attributes apply). Everyone else gets the
+  // default member profile, and every join is recorded on the roster: a claim marks the invited entry claimed, a person
+  // who was never pre-imported gets a new claimed entry, and a revoked or odd entry is overwritten with the real member.
+  const entryId = entry?.entryId ?? emailHash(identity.email);
   const claimable = entry !== null && entry.status === "invited" && entry.email === identity.email.toLowerCase() && isRole(entry.role);
-  if (!claimable && onboarding.mode === "rosterOnly") {
-    throw new AccountsError("permission-denied", "NOT_ON_ROSTER", "Your organizer hasn't added you to DIP yet.");
-  }
   if (claimable && entry) {
     // Google's name wins; the roster name is only a fallback when the token carries none.
     const hint = Array.from(entry.displayName.trim()).slice(0, MAX_DISPLAY_NAME_LENGTH).join("");
     return {
-      kind: "create", claimedEntryId: entry.entryId,
+      kind: "create", roster: { entryId, action: "claim" },
       profile: {
         ...defaultProfile(identity, targetCompanyId),
         displayName: identity.name && identity.name.trim() ? identity.displayName : (hint || identity.displayName),
@@ -171,7 +170,7 @@ export function decideMembership(
       },
     };
   }
-  return { kind: "create", profile: defaultProfile(identity, targetCompanyId) };
+  return { kind: "create", profile: defaultProfile(identity, targetCompanyId), roster: { entryId, action: entry ? "overwrite" : "create" } };
 }
 
 function defaultProfile(identity: EligibleIdentity, targetCompanyId: string): NewMemberProfile {

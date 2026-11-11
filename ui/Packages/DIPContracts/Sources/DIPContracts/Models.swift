@@ -10,9 +10,8 @@ public struct Company: Codable, Equatable, Sendable {
     public var officeLatitude: Double
     public var officeLongitude: Double
     public var createdAt: Date
-    public var membershipMode: String?
 
-    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date, membershipMode: String? = nil) {
+    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date) {
         self.id = id
         self.name = name
         self.logoURL = logoURL
@@ -21,7 +20,6 @@ public struct Company: Codable, Equatable, Sendable {
         self.officeLatitude = officeLatitude
         self.officeLongitude = officeLongitude
         self.createdAt = createdAt
-        self.membershipMode = membershipMode
     }
 }
 
@@ -1120,12 +1118,13 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var importJobId: String?
     public var claimedBy: String?
     public var claimedAt: Date?
-    public var invitedBy: String
+    public var invitedBy: String?
     public var createdAt: Date
     public var updatedAt: Date
     public var revision: Int
+    public var memberStatus: String?
 
-    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String, createdAt: Date, updatedAt: Date, revision: Int) {
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.email = email
@@ -1146,6 +1145,7 @@ public struct RosterEntry: Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.revision = revision
+        self.memberStatus = memberStatus
     }
 }
 
@@ -1692,32 +1692,6 @@ public struct UpsertTeamResponse: Codable, Equatable, Sendable {
         self.teamId = teamId
         self.created = created
         self.revision = revision
-    }
-}
-
-public struct UpdateCompanySettingsRequest: Codable, Equatable, Sendable {
-    public var contractVersion: Int
-    public var companyId: String
-    public var requestId: String
-    public var membershipMode: String
-
-    public init(contractVersion: Int, companyId: String, requestId: String, membershipMode: String) {
-        self.contractVersion = contractVersion
-        self.companyId = companyId
-        self.requestId = requestId
-        self.membershipMode = membershipMode
-    }
-}
-
-public struct UpdateCompanySettingsResponse: Codable, Equatable, Sendable {
-    public var contractVersion: Int
-    public var membershipMode: String
-    public var changed: Bool
-
-    public init(contractVersion: Int, membershipMode: String, changed: Bool) {
-        self.contractVersion = contractVersion
-        self.membershipMode = membershipMode
-        self.changed = changed
     }
 }
 

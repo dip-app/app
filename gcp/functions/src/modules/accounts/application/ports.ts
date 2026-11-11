@@ -1,4 +1,4 @@
-import type { MembershipMode, NewMemberProfile, RosterClaim, StoredMembership } from "../domain/membership";
+import type { NewMemberProfile, RosterAction, RosterClaim, StoredMembership } from "../domain/membership";
 
 /**
  * Operations available inside one atomic membership transaction. All reads
@@ -14,12 +14,14 @@ export interface MembershipTransaction {
   getMembership(uid: string): Promise<StoredMembership | null>;
   /** Creates users/{uid}; createdAt is server time. Must fail if the document exists. */
   createMember(uid: string, profile: NewMemberProfile): void;
-  /** companies/{companyId}.membershipMode; missing or unknown means "open" (today's behaviour). */
-  getMembershipMode(companyId: string): Promise<MembershipMode>;
   /** The roster entry for the lower-case email's SHA-256 (companies/{c}/roster/{hash}), or null. */
   getRosterEntry(companyId: string, email: string): Promise<RosterClaim | null>;
-  /** Marks the entry claimed by `uid` and appends the roster.claim audit entry, in the same transaction as createMember. */
-  claimRosterEntry(companyId: string, entryId: string, uid: string, displayName: string): void;
+  /**
+   * Records the join on the roster, in the same transaction as createMember: `claim` marks the invited entry claimed
+   * (and audits roster.claim), `create` writes a new claimed entry for someone who was never pre-imported, `overwrite`
+   * replaces a revoked entry with the real member. Idempotent per entry id.
+   */
+  recordRosterJoin(companyId: string, entryId: string, action: RosterAction, uid: string, profile: NewMemberProfile): void;
   /** Server-side refresh of the OAuth display name on an existing profile. */
   updateDisplayName(uid: string, displayName: string): void;
 }
