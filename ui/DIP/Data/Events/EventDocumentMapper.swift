@@ -44,6 +44,25 @@ enum EventDocumentMapper {
                          longitude: coordinate("longitude", bound: 180), fsqPlaceId: optional("fsqPlaceId"), phone: optional("phone"), website: optional("website")),
             costCents: integer("costCents"), costNote: string("costNote"), capacity: capacity, pointsValue: integer("pointsValue"),
             isOutdoor: outdoor.boolValue, status: status, attendeeCount: integer("attendeeCount"),
-            createdBy: string("createdBy"), createdAt: date("createdAt"), revision: integer("revision", minimum: 1))
+            createdBy: string("createdBy"), createdAt: date("createdAt"), revision: integer("revision", minimum: 1),
+            changeLog: changeLog(f["changeLog"]))
+    }
+
+    /// Server-written history; malformed entries are skipped rather than failing the whole event.
+    static func changeLog(_ raw: Any?) -> [EventChangeLogEntry]? {
+        guard let items = raw as? [Any] else { return nil }
+        var seen = Set<Int>()
+        // Newest delivery wins when a trigger retry stored the same revision twice (ids must be unique in the UI).
+        let entries = items.reversed().compactMap { $0 as? [String: Any] }.compactMap { row -> EventChangeLogEntry? in
+            guard let at = (row["at"] as? Timestamp)?.dateValue(),
+                  let revision = row["revision"] as? Int, revision >= 1, seen.insert(revision).inserted,
+                  let changes = row["changes"] as? [[String: Any]] else { return nil }
+            let parsed = changes.compactMap { change -> EventFieldChange? in
+                guard let field = change["field"] as? String else { return nil }
+                return EventFieldChange(field: field, from: change["from"] as? String, to: change["to"] as? String)
+            }
+            return parsed.isEmpty ? nil : EventChangeLogEntry(at: at, by: row["by"] as? String ?? "", revision: revision, changes: parsed)
+        }
+        return entries.reversed()
     }
 }

@@ -15,6 +15,7 @@ struct DIPEventDetailsScreen: View {
     let onAlbum: () -> Void
     let onLeave: () -> Void
     @State private var confirmingLeave = false
+    @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.eventCalendarAdder) private var calendarAdder
 
@@ -55,6 +56,7 @@ struct DIPEventDetailsScreen: View {
                                 activityDetails
                                 attendeeDetails
                                 if let metadata = event.metadata { eventMetadata(metadata) }
+                                if let log = event.metadata?.changeLog, DIPChangeLogText.visibleCount(log) > 0 { changesButton(log) }
                                 if joined, !event.isPast, event.metadata?.status != .cancelled { leaveButton }
                                 if event.isPast { albumPreview }
                             }
@@ -106,6 +108,9 @@ struct DIPEventDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        .sheet(isPresented: $showingChanges) {
+            DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? [])
+        }
         .confirmationDialog("Leave this activity?", isPresented: $confirmingLeave, titleVisibility: .visible) {
             Button("Leave activity", role: .destructive, action: onLeave)
             Button("Keep my place", role: .cancel) {}
@@ -175,6 +180,19 @@ struct DIPEventDetailsScreen: View {
                 shareTitle: "Share Event", identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
+    }
+
+    /// Solid (pressable) pill, shown only when the organizer has edited the event.
+    private func changesButton(_ log: [DIPChangeLogEntry]) -> some View {
+        Button { showingChanges = true } label: {
+            // Dark solid like the other quiet actions ("+ N More", "See All"), so it does not compete with Directions/Share.
+            DIPActionPill(title: DIPChangeLogText.visibleCount(log) == 1 ? "See what changed" : "See what changed (\(DIPChangeLogText.visibleCount(log)))",
+                          color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
+                Image(systemName: "clock.arrow.circlepath").resizable().scaledToFit()
+            }
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .accessibilityIdentifier("event.changes")
     }
 
     /// Quiet destructive-secondary text button at the very bottom of the page.

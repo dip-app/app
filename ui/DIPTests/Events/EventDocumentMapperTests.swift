@@ -34,6 +34,33 @@ final class EventDocumentMapperTests: XCTestCase {
             XCTAssertThrowsError(try decode(f))
         }
     }
+    func testPointsAndChangeLogAreMappedAndMalformedEntriesSkipped() throws {
+        var f = fields(); f["pointsValue"] = 50
+        f["changeLog"] = [
+            ["at": Timestamp(seconds: 1_900_000_100, nanoseconds: 0), "by": "organizer", "revision": 2,
+             "changes": [["field": "venue.name", "from": "Cafe", "to": "Park"], ["field": "capacity", "from": "20", "to": NSNull()]]],
+            ["at": "not a timestamp", "revision": 3, "changes": [["field": "title"]]],
+            ["at": Timestamp(seconds: 1_900_000_200, nanoseconds: 0), "revision": 4, "changes": []],
+        ] as [[String: Any]]
+        let event = try XCTUnwrap(decode(f))
+        XCTAssertEqual(event.pointsValue, 50)
+        let log = try XCTUnwrap(event.changeLog)
+        XCTAssertEqual(log.count, 1)
+        XCTAssertEqual(log[0].changes.map(\.field), ["venue.name", "capacity"])
+        XCTAssertNil(log[0].changes[1].to)
+        let metadata = try MemberEventsRepository.metadata(event)
+        XCTAssertEqual(metadata.pointsValue, 50)
+        XCTAssertEqual(metadata.changeLog.count, 1)
+        XCTAssertNil(try decode(fields())?.changeLog, "An event never edited has no changeLog")
+        // A junk element does not drop the log; duplicate revisions keep the newest delivery.
+        var g = fields()
+        let at = Timestamp(seconds: 1_900_000_100, nanoseconds: 0)
+        g["changeLog"] = ["junk", ["at": at, "revision": 2, "changes": [["field": "title", "from": "a", "to": "b"]]],
+                          ["at": at, "revision": 2, "changes": [["field": "title", "from": "a", "to": "c"]]]] as [Any]
+        let deduped = try XCTUnwrap(decode(g)?.changeLog)
+        XCTAssertEqual(deduped.count, 1)
+        XCTAssertEqual(deduped[0].changes[0].to, "c")
+    }
     func testCancelledDetailsAndNullOptionalFieldsRemainReadable() throws {
         var f = fields(); f["status"] = "cancelled"
         var venue = f["venue"] as! [String: Any]; venue["website"] = NSNull(); f["venue"] = venue
