@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { CloudMark } from "@/components/Brand";
-import { GoogleG, LoginArt, VALUE_ROWS, ValueIcon } from "@/components/LoginArt";
+import { LoginArt, VALUE_ROWS, ValueIcon } from "@/components/LoginArt";
 
 export default function Login() {
   const { api, session, signIn } = useApp();
@@ -42,8 +42,7 @@ export default function Login() {
           ))}
         </ul>
         <div className="login-actions">
-          <button className="big-pill dark google" onClick={() => void start()}>
-            <GoogleG />
+          <button className="big-pill dark" onClick={() => void start()}>
             {live ? "Sign in with Google" : "Sign in as organizer"}
           </button>
         </div>
