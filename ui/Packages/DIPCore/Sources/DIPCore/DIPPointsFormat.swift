@@ -28,6 +28,14 @@ public enum DIPPointsFormat {
         return "Worth \(balance(points, locale: locale))"
     }
 
+    /// Points row of an event page by the member's relationship to it: "Earned 50 points" once they attended
+    /// (past and joined), "Worth 50 points" for a past event they did not join, "Earn +50 points" before it. nil at 0.
+    public static func eventRow(_ points: Int, isPast: Bool, attended: Bool, locale: Locale = .current) -> String? {
+        guard points > 0 else { return nil }
+        if isPast { return "\(attended ? "Earned" : "Worth") \(balance(points, locale: locale))" }
+        return "Earn \(reward(points, locale: locale) ?? "")"
+    }
+
     /// Compact card text: "+50 pts"; nil at 0 or below.
     public static func rewardShort(_ points: Int, locale: Locale = .current) -> String? {
         guard points > 0 else { return nil }

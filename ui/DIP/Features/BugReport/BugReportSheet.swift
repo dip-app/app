@@ -13,6 +13,7 @@ struct BugReportSheet: View {
     @State private var showsDiscard = false
     @State private var detailsExpanded = false
     @State private var crewUp = false
+    @State private var showsMarkup = false
     @FocusState private var descriptionFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -146,7 +147,7 @@ struct BugReportSheet: View {
     }
 
     @ViewBuilder private var screenshot: some View {
-        if let data = model.session.screenshot, let image = Self.image(from: data) {
+        if let data = model.screenshotToSend, let image = Self.image(from: data) {
             let included = model.draft.includesScreenshot
             HStack(alignment: .top, spacing: 14) {
                 Image(uiImage: image).resizable().scaledToFill()
@@ -166,6 +167,20 @@ struct BugReportSheet: View {
                          : "Screenshot won’t be sent.")
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
                         .foregroundStyle(ink.opacity(0.72))
+                    if included, let original = model.session.screenshot {
+                        DIPButton(model.annotatedScreenshot == nil ? "Mark up" : "Edit markup", emphasis: .secondary) {
+                            showsMarkup = true
+                        }
+                        .accessibilityHint("Draw on the screenshot before sending")
+                        .accessibilityIdentifier("report.markup")
+                        .fullScreenCover(isPresented: $showsMarkup) {
+                            ScreenshotMarkupEditor(screenshot: original, markup: model.markup) { result in
+                                guard let result else { return }
+                                model.applyMarkup(result, rendered: ScreenshotMarkupRenderer.render(base: original, markup: result))
+                                announce(result.isEmpty ? "Markup removed" : "Markup added to the screenshot")
+                            }
+                        }
+                    }
                     if included, model.session.screen == .album || model.session.screen == .participants {
                         Text("This screen shows coworkers’ photos. Remove the screenshot if needed.")
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))

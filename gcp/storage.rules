@@ -43,7 +43,7 @@ service firebase.storage {
         let event = firestore.get(/databases/(default)/documents/companies/$(companyId)/events/$(eventId)).data;
         return rsvp.companyId == companyId && rsvp.eventId == eventId && rsvp.userId == request.auth.uid
           && rsvp.status == 'going'
-          && event.companyId == companyId && event.status == 'scheduled' && event.endTime < request.time;
+          && event.companyId == companyId && event.status != 'cancelled' && event.endTime < request.time;
       }
       function published() {
         return firestore.exists(/databases/(default)/documents/companies/$(companyId)/events/$(eventId)/photos/$(uploaderId + '_' + slot));

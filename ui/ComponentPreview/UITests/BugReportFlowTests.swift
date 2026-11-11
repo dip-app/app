@@ -122,4 +122,41 @@ final class BugReportFlowTests: XCTestCase {
         entry.tap()
         XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10))
     }
+
+    @MainActor func testShakeAsksBeforeOpeningTheReport() {
+        let app = launch(["--screen=home", "--simulate-shake"])
+        let alert = app.alerts["Report a problem?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 10), "a shake asks first")
+        alert.buttons["Not now"].tap()
+        XCTAssertFalse(element(app, "report.sheet").exists)
+    }
+
+    @MainActor func testShakeQuestionLeadsToTheSheetWithTheScreenshot() {
+        let app = launch(["--screen=home", "--simulate-shake"])
+        let alert = app.alerts["Report a problem?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 10))
+        alert.buttons["Report"].tap()
+        XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "report.thumbnail").exists)
+    }
+
+    @MainActor func testMarkupCanBeDrawnUndoneAndKept() {
+        let app = launch(["--open-bug-report"])
+        XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10))
+        let markup = app.buttons["report.markup"]
+        XCTAssertTrue(markup.waitForExistence(timeout: 5))
+        markup.tap()
+        let canvas = element(app, "markup.canvas")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["markup.undo"].isEnabled, "nothing drawn yet")
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.3))
+        start.press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
+        XCTAssertTrue(app.buttons["markup.undo"].isEnabled)
+        app.buttons["markup.undo"].tap()
+        XCTAssertFalse(app.buttons["markup.undo"].isEnabled)
+        start.press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.7)))
+        app.buttons["markup.done"].tap()
+        XCTAssertTrue(app.buttons["report.markup"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["report.markup"].label, "Edit markup")
+    }
 }

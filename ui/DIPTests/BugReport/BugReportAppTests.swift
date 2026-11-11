@@ -1,6 +1,7 @@
 import DIPCore
 import DIPDesignSystem
 import Foundation
+import UIKit
 import XCTest
 
 @testable import DIP
@@ -79,6 +80,45 @@ final class BugReportAppTests: XCTestCase {
         XCTAssertEqual(sent.first?.uid, "u1")
         let shots = await submitter.screenshots
         XCTAssertEqual(shots[sent[0].reportId], Data([1, 2, 3]))
+    }
+
+    func testAnnotatedScreenshotIsSentInsteadOfTheOriginalAndClearingRestoresIt() async {
+        let (m, submitter, _) = model(.succeed)
+        m.select(.bug)
+        var markup = ScreenshotMarkup()
+        markup.begin(at: MarkupPoint(x: 0.2, y: 0.2)); markup.extend(to: MarkupPoint(x: 0.6, y: 0.6)); markup.end()
+        m.applyMarkup(markup, rendered: Data([9, 9]))
+        XCTAssertEqual(m.screenshotToSend, Data([9, 9]))
+        XCTAssertTrue(m.needsDiscardConfirmation, "drawn markup is worth confirming before discarding")
+        m.applyMarkup(ScreenshotMarkup(), rendered: nil)
+        XCTAssertEqual(m.screenshotToSend, Data([1, 2, 3]), "clearing the markup falls back to the original")
+        m.applyMarkup(markup, rendered: Data([9, 9]))
+        _ = await m.send()
+        let sent = await submitter.submitted
+        let shots = await submitter.screenshots
+        XCTAssertEqual(shots[sent[0].reportId], Data([9, 9]))
+    }
+
+    func testFailedRenderKeepsTheOriginalScreenshot() {
+        let (m, _, _) = model(.succeed)
+        var markup = ScreenshotMarkup(); markup.begin(at: MarkupPoint(x: 0.5, y: 0.5)); markup.end()
+        m.applyMarkup(markup, rendered: nil)
+        XCTAssertEqual(m.screenshotToSend, Data([1, 2, 3]))
+        XCTAssertTrue(m.markup.isEmpty)
+    }
+
+    func testMarkupRendererBurnsStrokesIntoASmallJPEG() throws {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 200, height: 400))
+        let base = try XCTUnwrap(renderer.image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 200, height: 400))
+        }.jpegData(compressionQuality: 0.8))
+        XCTAssertNil(ScreenshotMarkupRenderer.render(base: base, markup: ScreenshotMarkup()), "nothing drawn, nothing rendered")
+        var markup = ScreenshotMarkup()
+        markup.begin(at: MarkupPoint(x: 0.1, y: 0.5)); markup.extend(to: MarkupPoint(x: 0.9, y: 0.5)); markup.end()
+        let rendered = try XCTUnwrap(ScreenshotMarkupRenderer.render(base: base, markup: markup))
+        XCTAssertLessThanOrEqual(rendered.count, ScreenshotMarkupRenderer.maximumBytes)
+        XCTAssertNotEqual(rendered, base)
+        XCTAssertNotNil(UIImage(data: rendered))
     }
 
     func testOfflineIsQueuedWithItsScreenshot() async {
