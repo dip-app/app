@@ -55,5 +55,13 @@ export const finalizeEventPhotoV1 = onCall(
   request => handleFinalizeEventPhoto(new FirestorePhotoStore(getFirestore(app())), new StoragePhotoObjects(getStorage(app())), request));
 
 export const onPhotoCommentCreated = onDocumentCreated(
-  { document: "companies/{companyId}/events/{eventId}/photos/{photoId}/comments/{commentId}", region: REGION },
-  event => handlePhotoCommentCreated(new FirestorePhotoStore(getFirestore(app())), event.params));
+  // The recount is idempotent, so a failed attempt is safely retried by the platform.
+  { document: "companies/{companyId}/events/{eventId}/photos/{photoId}/comments/{commentId}", region: REGION, retry: true },
+  async event => {
+    try {
+      await handlePhotoCommentCreated(new FirestorePhotoStore(getFirestore(app())), event.params);
+    } catch (error) {
+      logger.error("onPhotoCommentCreated recount failed", { error: error instanceof Error ? error.name : "unknown" });
+      throw error;
+    }
+  });

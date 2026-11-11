@@ -102,6 +102,10 @@ test("album upload, finalize, read and comment flow through the real SDKs and ru
       assert.equal((await getDocs(album)).size, 1);
       assert.deepEqual(new Uint8Array(await getBytes(ref(coworker.storage, objectPath(uid, 0)))), JPEG);
       await rejects(getBytes(ref(outsider.storage, objectPath(uid, 0))), "storage/unauthorized");
+      // Uploaded but not finalized: only the uploader can read it.
+      await uploadBytes(ref(going.storage, objectPath(uid, 9)), JPEG, { contentType: "image/jpeg" });
+      assert.deepEqual(new Uint8Array(await getBytes(ref(going.storage, objectPath(uid, 9)))), JPEG);
+      await rejects(getBytes(ref(coworker.storage, objectPath(uid, 9))), "storage/unauthorized");
       await rejects(getDocs(query(collection(outsider.firestore, `companies/${companyId}/events/${eventId}/photos`), limit(50))), "firestore:permission-denied");
     });
 

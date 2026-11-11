@@ -62,7 +62,10 @@ before(async () => {
     await store.doc(`companies/${company}/events/past/rsvps/album-outsider`).set(rsvp(other, "past", "album-outsider", "going"));
     await store.doc(`companies/${company}/events/past/photos/album-going_0`).set(photoDoc("album-going"));
     await store.doc(`${comments}/seeded`).set({ ...comment("album-coworker", "Coworker"), createdAt: Timestamp.now() });
+    // Slot 19 is published (album document exists); slot 17 was uploaded but never finalized.
+    await store.doc(`companies/${company}/events/past/photos/album-going_19`).set(photoDoc("album-going"));
     await context.storage().ref(objectPath("past", "album-going", 19)).put(JPEG, { contentType: "image/jpeg" });
+    await context.storage().ref(objectPath("past", "album-going", 17)).put(JPEG, { contentType: "image/jpeg" });
   });
 });
 after(async () => { await env?.cleanup(); });
@@ -132,6 +135,13 @@ test("same-company members read album objects; listing folders stays denied", as
   await assertFails(st("album-going", false).ref(objectPath("past", "album-going", 19)).getMetadata());
   await assertFails(env.unauthenticatedContext().storage().ref(objectPath("past", "album-going", 19)).getMetadata());
   await assertFails(st("album-going").ref(`companies/${company}/events/past/photos/album-going`).listAll());
+});
+
+test("unpublished objects are readable only by their uploader, never by colleagues", async () => {
+  await assertSucceeds(st("album-going").ref(objectPath("past", "album-going", 17)).getMetadata());
+  await assertFails(st("album-coworker").ref(objectPath("past", "album-going", 17)).getMetadata());
+  await assertFails(st("album-coworker").ref(objectPath("past", "album-going", 17)).getDownloadURL());
+  await assertFails(st("album-outsider").ref(objectPath("past", "album-going", 17)).getMetadata());
 });
 
 // --- Firestore album documents ---
