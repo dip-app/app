@@ -18,6 +18,8 @@ struct DIPProfileScreen: View {
     /// "How DIP works": replays the onboarding tour. Nil hides the row.
     let onReplayTour: (() -> Void)?
     @State private var isSigningOut = false
+    @Environment(\.presentBugReport) private var presentBugReport
+    @AppStorage(ShakeGate.enabledKey) private var shakeToReport = true
 
     @State private var isEditing = false
     @State private var isChoosingInterests = false
@@ -85,6 +87,9 @@ struct DIPProfileScreen: View {
                             .buttonStyle(DIPPressFeedbackStyle())
                             .accessibilityIdentifier("profile.howDIPWorks")
                         }
+                        if let presentBugReport {
+                            reportProblem(presentBugReport)
+                        }
                         if let onSignOut {
                             DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
                                 isLoading: isSigningOut) {
@@ -130,6 +135,32 @@ struct DIPProfileScreen: View {
                 try await onSave(.init(department: profile.department, city: profile.city, interestTagIDs: interests))
             }
             .environment(\.dynamicTypeSize, dynamicTypeSize)
+        }
+    }
+
+    /// "Report a problem" is the accessible, non-shake path to the same sheet; the toggle turns the shake off.
+    private func reportProblem(_ present: @escaping @MainActor (BugReportSource) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("HELP US FIX THINGS")
+                .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 24, relativeTo: .title2))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                .accessibilityAddTraits(.isHeader)
+            Toggle(isOn: $shakeToReport) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shake to report a problem")
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                    Text("Shake your phone anywhere in DIP to tell us what went wrong.")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                }
+            }
+            .tint(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .padding(16)
+            .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                        in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+            .accessibilityIdentifier("profile.shakeToReport")
+            DIPButton("Report a problem", emphasis: .secondary) { present(.profile) }
+                .accessibilityIdentifier("profile.reportProblem")
         }
     }
 

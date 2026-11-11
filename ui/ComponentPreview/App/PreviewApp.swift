@@ -1,9 +1,14 @@
+import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
 @main
 struct PreviewApp: App {
     @StateObject private var calendar = FakeCalendarAdder()
+    /// Previews send reports to the in-memory submitter (never a network); `--bugreport-*` flags pick the outcome.
+    private let previewBugReporting = BugReportContext.make(
+        uid: "preview-member", submitter: BugReportPreviewBehavior.submitter(),
+        queueDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("PreviewBugReports-\(UUID().uuidString)"))
     var body: some Scene {
         WindowGroup {
             Group {
@@ -41,6 +46,7 @@ struct PreviewApp: App {
                 .flatMap { DIPProgressIndicatorStyle(rawValue: String($0.dropFirst("--progress-style=".count))) }
                 ?? .shipping)
             .environment(\.eventCalendarAdder, calendar)
+            .environment(\.bugReporting, previewBugReporting)
             .overlay(alignment: .bottom) {
                 if ProcessInfo.processInfo.arguments.contains("--fake-calendar") {
                     Text(calendar.summary).font(.system(size: 1)).opacity(0.02)

@@ -505,6 +505,18 @@
             }
         }
 
+        /// Design-system asset by name, or an SF Symbol when the name starts with `system:` (utility flows such as
+        /// the report sheet, which have no Heroicons asset yet).
+        @ViewBuilder private func actionIcon(_ name: String) -> some View {
+            if name.hasPrefix("system:") {
+                Image(systemName: String(name.dropFirst("system:".count)))
+                    .resizable().scaledToFit().padding(4).fontWeight(.regular)
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+            } else {
+                DIPReferenceAssets.image(name).resizable()
+            }
+        }
+
         private func actionOverlay(_ action: DIPBottomBarAction) -> some View {
             Button {
                 // Haptics mark commits, not navigation (DIPHaptics): Join, Save, Send… are felt; opening chat is not.
@@ -524,7 +536,7 @@
                             .transition(.opacity)
                         if let icon = action.icon {
                             // The affirmative state's affordance: a white circle that pops in at the trailing edge.
-                            DIPReferenceAssets.image(icon).resizable()
+                            actionIcon(icon)
                                 .frame(width: 30, height: 30)
                                 .frame(width: 64, height: 64)
                                 .background(.white, in: Circle())
