@@ -1,7 +1,7 @@
 import type { RespondToInviteResponse } from "../../../generated/models";
 import { applyRsvp } from "../../participation/application/setRsvp";
 import { InviteError } from "../domain/errors";
-import { parseRespond } from "../domain/invitePolicy";
+import { isActiveMember, parseRespond } from "../domain/invitePolicy";
 import type { InviteCaller, InviteStore } from "./ports";
 import { requireCaller } from "./sendInvite";
 
@@ -21,7 +21,7 @@ export async function respondToInvite(store: InviteStore, callerIn: InviteCaller
   const uid = caller.uid;
   return store.runTransaction(async (tx) => {
     const member = await tx.getMember(uid);
-    if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
+    if (!isActiveMember(member, companyId)) {
       throw new InviteError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
     }
     const invite = await tx.getInvite(companyId, inviteId);

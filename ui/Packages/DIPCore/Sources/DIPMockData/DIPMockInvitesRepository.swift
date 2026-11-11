@@ -148,7 +148,7 @@ public actor DIPMockInvitesRepository: DIPInvitesRepository {
         let wanted: DIPInviteStatus = accept ? .accepted : .declined
         if invite.status != .pending {
             if invite.status == wanted { return DIPInviteReply(status: wanted, joined: accept) }
-            throw DIPInviteFailure.notFound
+            throw DIPInviteFailure.alreadyAnswered
         }
         if accept {
             if invite.eventStart <= now() { throw DIPInviteFailure.closed }

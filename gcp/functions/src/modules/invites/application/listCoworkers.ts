@@ -1,6 +1,6 @@
 import type { Coworker, ListCoworkersResponse } from "../../../generated/models";
 import { InviteError } from "../domain/errors";
-import { DIRECTORY_SCAN_CAP, SEARCH_LIMIT, SEARCH_WINDOW_MS, fold, nameMatches, parseSearch } from "../domain/invitePolicy";
+import { isActiveMember, DIRECTORY_SCAN_CAP, SEARCH_LIMIT, SEARCH_WINDOW_MS, fold, nameMatches, parseSearch } from "../domain/invitePolicy";
 import type { InviteCaller, InviteStore } from "./ports";
 import { requireCaller } from "./sendInvite";
 
@@ -16,7 +16,7 @@ export async function listCoworkers(store: InviteStore, callerIn: InviteCaller |
   const { companyId, eventId, query, limit } = parseSearch(data);
   const uid = caller.uid;
   const member = await store.getMember(uid);
-  if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
+  if (!isActiveMember(member, companyId)) {
     throw new InviteError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
   }
   const event = await store.getEvent(companyId, eventId);
@@ -27,7 +27,7 @@ export async function listCoworkers(store: InviteStore, callerIn: InviteCaller |
   const { members, complete } = await store.listMembers(companyId, DIRECTORY_SCAN_CAP);
   const needle = fold(query);
   const matches = members
-    .filter((candidate) => candidate.userId !== uid && candidate.displayName !== "" && nameMatches(candidate.displayName, query))
+    .filter((candidate) => candidate.userId !== uid && candidate.displayName !== "" && isActiveMember(candidate.member, companyId) && nameMatches(candidate.displayName, query))
     .sort((a, b) => {
       const rank = (name: string) => (fold(name).startsWith(needle) ? 0 : 1);
       return rank(a.displayName) - rank(b.displayName) || fold(a.displayName).localeCompare(fold(b.displayName)) || a.userId.localeCompare(b.userId);

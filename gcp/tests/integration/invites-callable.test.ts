@@ -103,9 +103,9 @@ test("SDK callables: invite, accept through the RSVP path, decline, directory, r
       assert.equal((await getDoc(doc(sender.firestore, `companies/${companyId}/invites/${id}`))).exists(), true);
       await assert.rejects(getDoc(doc(late.firestore, `companies/${companyId}/invites/${id}`)));
       await assert.rejects(getDoc(doc(outsider.firestore, `companies/${companyId}/invites/${id}`)));
-      const received = await getDocs(query(collection(friend.firestore, `companies/${companyId}/invites`), where("toUserId", "==", uidFriend), limit(50)));
+      const received = await getDocs(query(collection(friend.firestore, `companies/${companyId}/invites`), where("companyId", "==", companyId), where("toUserId", "==", uidFriend), limit(50)));
       assert.equal(received.size, 1);
-      await assert.rejects(getDocs(query(collection(late.firestore, `companies/${companyId}/invites`), where("toUserId", "==", uidFriend), limit(50))));
+      await assert.rejects(getDocs(query(collection(late.firestore, `companies/${companyId}/invites`), where("companyId", "==", companyId), where("toUserId", "==", uidFriend), limit(50))));
       await assert.rejects(setDoc(doc(friend.firestore, `companies/${companyId}/invites/${id}`), { status: "accepted" }, { merge: true }));
       assert.equal((await getDoc(doc(friend.firestore, `users/${uidFriend}/notifications/invite_${id}`))).exists(), true);
       await assert.rejects(getDoc(doc(sender.firestore, `users/${uidFriend}/notifications/invite_${id}`)));

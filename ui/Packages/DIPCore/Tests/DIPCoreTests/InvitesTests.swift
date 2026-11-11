@@ -40,7 +40,7 @@ import Testing
     }
 
     @Test func failuresHaveUserTextAndRetryAdvice() {
-        for failure in [DIPInviteFailure.alreadyInvited, .alreadyGoing, .full, .closed, .cancelled, .notFound, .rateLimited, .notMember, .unauthenticated, .offline, .unknown] {
+        for failure in [DIPInviteFailure.alreadyInvited, .alreadyGoing, .alreadyAnswered, .full, .closed, .cancelled, .notFound, .rateLimited, .notMember, .unauthenticated, .offline, .unknown] {
             #expect(!failure.message.isEmpty)
         }
         #expect(DIPInviteFailure.offline.isRetryable)

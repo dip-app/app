@@ -64,12 +64,15 @@ export class FirestoreInviteStore implements InviteStore {
   async listMembers(companyId: string, cap: number): Promise<{ members: DirectoryMember[]; complete: boolean }> {
     // Only the four directory fields are selected; nothing else of a profile is ever read into the response path.
     const snapshot = await this.db.collection("users").where("companyId", "==", companyId)
-      .select("displayName", "avatarId", "department", "role").limit(cap + 1).get();
+      .select("displayName", "avatarId", "department", "role", "status").limit(cap + 1).get();
     const members: DirectoryMember[] = [];
     for (const doc of snapshot.docs.slice(0, cap)) {
       const data = doc.data();
-      if ((data.role !== "member" && data.role !== "admin") || typeof data.displayName !== "string") continue;
-      members.push({ userId: doc.id, displayName: data.displayName, avatarId: text(data.avatarId), department: text(data.department) });
+      if (typeof data.displayName !== "string") continue;
+      members.push({
+        userId: doc.id, displayName: data.displayName, avatarId: text(data.avatarId), department: text(data.department),
+        member: { companyId, role: data.role, status: data.status },
+      });
     }
     return { members, complete: snapshot.size <= cap };
   }

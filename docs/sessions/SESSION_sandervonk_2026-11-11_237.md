@@ -41,4 +41,6 @@ iOS (PR 2):
 
 ## Handoff
 
-Deploy list (owner, nothing deployed): Firestore rules (invites, notifications), functions `sendInviteV1`, `respondToInviteV1`, `listCoworkersV1`; optional TTL policy on `inviteRateLimits.expiresAt`. No new indexes.
+Deploy list (owner, nothing deployed): Firestore rules (invites, notifications), functions `sendInviteV1`, `respondToInviteV1`, `listCoworkersV1`; Firestore TTL policy on `inviteRateLimits.expiresAt`. No new indexes (the invite list queries use equality filters only).
+
+Review fixes applied: build artifacts removed from history; invite listeners filter on `companyId`; deactivated accounts refused and organizers accepted; search budget 30 per 10 minutes; distinct already-answered failure; live invites repository created in `DIPMemberHome.init`.

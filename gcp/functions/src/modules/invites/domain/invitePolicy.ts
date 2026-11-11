@@ -3,7 +3,7 @@ import { InviteError } from "./errors";
 export const MESSAGE_MAX = 200;
 export const SEND_LIMIT = 20;
 export const SEND_WINDOW_MS = 60 * 60_000;
-export const SEARCH_LIMIT = 120;
+export const SEARCH_LIMIT = 30;
 export const SEARCH_WINDOW_MS = 10 * 60_000;
 /** Most members read per directory search (a bounded scan; the response says when it truncated). */
 export const DIRECTORY_SCAN_CAP = 1000;
@@ -12,6 +12,12 @@ export const MAX_RESULTS = 25;
 
 const WIRE_ID = /^[A-Za-z0-9_-]+$/;
 const REQUEST_ID = /^[A-Za-z0-9_-]{8,128}$/;
+
+/** A member who may take part: same company, a known role (organizers included) and not deactivated. */
+export function isActiveMember(member: Record<string, unknown> | null | undefined, companyId: string): member is Record<string, unknown> {
+  return !!member && member.companyId === companyId && member.status !== "deactivated" &&
+    (member.role === "member" || member.role === "organizer" || member.role === "admin");
+}
 
 export const validWireId = (value: unknown): value is string =>
   typeof value === "string" && value.length >= 1 && value.length <= 128 && WIRE_ID.test(value);

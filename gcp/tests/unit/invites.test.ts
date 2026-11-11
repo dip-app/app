@@ -52,7 +52,8 @@ class Store implements InviteStore {
     const all: DirectoryMember[] = [];
     for (const [path, data] of this.docs) {
       if (/^users\/[^/]+$/.test(path) && data.companyId === companyId) {
-        all.push({ userId: path.slice(6), displayName: data.displayName as string, avatarId: data.avatarId as string, department: data.department as string });
+        all.push({ userId: path.slice(6), displayName: data.displayName as string, avatarId: data.avatarId as string, department: data.department as string,
+          member: { companyId: data.companyId as string, role: data.role, status: data.status } });
       }
     }
     return { members: all.slice(0, cap), complete: all.length <= cap };
@@ -291,4 +292,22 @@ test("errors map to callable errors with a stable reason and no internals", () =
   const internal = toHttpsError(new Error("secret detail"));
   assert.equal(internal.code, "internal"); assert.equal(internal.message.includes("secret"), false);
   assert.equal(toHttpsError(new InviteError("internal", "INVALID_STORED_DATA", "bad")).code, "internal");
+});
+
+test("deactivated accounts are refused everywhere and organizers take part", async () => {
+  const store = world();
+  store.seed("users/gone", { companyId: "alpha", role: "member", status: "deactivated", displayName: "Gus Gone", avatarId: "a", department: "" });
+  store.seed("users/boss", { companyId: "alpha", role: "organizer", displayName: "Olga Boss", avatarId: "a", department: "" });
+  assert.equal(await reason(sendInvite(store, null, caller(), { ...send, toUserId: "gone", requestId: "request-0009" }, now)), "RECIPIENT_NOT_FOUND");
+  assert.equal(await reason(sendInvite(store, null, caller("gone"), send, now)), "MEMBERSHIP_CONFLICT");
+  assert.equal((await sendInvite(store, null, caller(), { ...send, toUserId: "boss", requestId: "request-0010" }, now)).created, true);
+  assert.equal((await sendInvite(store, null, caller("boss"), { ...send, toUserId: "friend", requestId: "request-0011" }, now)).created, true);
+  const found = await listCoworkers(store, caller(), { contractVersion: 1, companyId: "alpha", eventId: "event", query: "g" + "u" }, now);
+  assert.deepEqual(found.coworkers, [], "a deactivated member is not in the directory");
+  const boss = await listCoworkers(store, caller(), { contractVersion: 1, companyId: "alpha", eventId: "event", query: "ol" }, now);
+  assert.deepEqual(boss.coworkers.map((c) => c.userId), ["boss"]);
+  // A member deactivated after being invited can no longer answer (nor rejoin the event through the invite).
+  await sendInvite(store, null, caller(), { ...send, toUserId: "friend", requestId: "request-0012" }, now).catch(() => undefined);
+  store.get("users/friend")!.status = "deactivated";
+  assert.equal(await reason(respondToInvite(store, caller("friend"), respond("accepted"), now)), "MEMBERSHIP_CONFLICT");
 });

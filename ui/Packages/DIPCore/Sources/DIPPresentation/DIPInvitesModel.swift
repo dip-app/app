@@ -168,7 +168,7 @@ public final class DIPInvitePickerModel {
             case .alreadyInvited: invitedIDs.insert(coworker.id); alreadyInvitedIDs.insert(coworker.id); requestIDs[coworker.id] = nil
             case .alreadyGoing: goingIDs.insert(coworker.id); requestIDs[coworker.id] = nil
             // A definite refusal will not succeed on retry, so the next attempt starts a fresh request.
-            case .full, .closed, .cancelled, .notFound, .notMember, .unauthenticated: requestIDs[coworker.id] = nil
+            case .full, .closed, .cancelled, .notFound, .notMember, .unauthenticated, .alreadyAnswered: requestIDs[coworker.id] = nil
             case .offline, .unknown, .rateLimited: break
             }
             rowErrors[coworker.id] = reason

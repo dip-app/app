@@ -1,7 +1,7 @@
 import type { SendInviteResponse } from "../../../generated/models";
 import { InviteError } from "../domain/errors";
 import {
-  SEND_LIMIT, SEND_WINDOW_MS, inviteIdFor, inviteNotificationText, nextBudget, notificationIdFor, parseSend, validWireId,
+  isActiveMember, SEND_LIMIT, SEND_WINDOW_MS, inviteIdFor, inviteNotificationText, nextBudget, notificationIdFor, parseSend, validWireId,
 } from "../domain/invitePolicy";
 import type { InviteCaller, InviteNotifier, InviteStore } from "./ports";
 
@@ -18,8 +18,7 @@ export function requireCaller(caller: InviteCaller | null): InviteCaller {
   return caller;
 }
 
-const isMember = (member: Record<string, unknown> | null, companyId: string) =>
-  member !== null && member.companyId === companyId && (member.role === "member" || member.role === "admin");
+const isMember = isActiveMember;
 
 /**
  * sendInviteV1: one same-company member invites another to a scheduled, future, not-full event.

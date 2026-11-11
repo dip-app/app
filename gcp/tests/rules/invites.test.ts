@@ -45,8 +45,10 @@ test("sender and recipient get the invite; a bystander, an outsider and unverifi
 
 test("lists must be bounded and pinned to the caller, so a query cannot reach another person's invites", async () => {
   const db = fs("inv-recipient");
-  await assertSucceeds(getDocs(query(collection(db, invites), where("toUserId", "==", "inv-recipient"), limit(50))));
-  await assertSucceeds(getDocs(query(collection(fs("inv-sender"), invites), where("fromUserId", "==", "inv-sender"), limit(50))));
+  await assertSucceeds(getDocs(query(collection(db, invites), where("companyId", "==", company), where("toUserId", "==", "inv-recipient"), limit(50))));
+  await assertSucceeds(getDocs(query(collection(fs("inv-sender"), invites), where("companyId", "==", company), where("fromUserId", "==", "inv-sender"), limit(50))));
+  // Without the companyId equality the rules cannot prove the documents belong to this tenant: refused as a whole.
+  await assertFails(getDocs(query(collection(db, invites), where("toUserId", "==", "inv-recipient"), limit(50))));
   await assertFails(getDocs(query(collection(db, invites), where("toUserId", "==", "inv-recipient"))));
   await assertFails(getDocs(query(collection(db, invites), where("toUserId", "==", "inv-recipient"), limit(51))));
   await assertFails(getDocs(query(collection(db, invites), limit(50))));

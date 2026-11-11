@@ -24,6 +24,7 @@ struct DIPMemberHome: View {
     private let participationFactory: (() -> (any ParticipationSource)?)?
     private let albumFactory: (() -> (any PhotoAlbumSource)?)?
     private let invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)?
+    /// Created with the home (like the other live sources), so the shell never starts without it.
     @State private var liveInvites: (any DIPInvitesRepository)?
     @State private var liveEvents: MemberEventAppRepository?
     @State private var eventConfigurationError = false
@@ -66,6 +67,7 @@ struct DIPMemberHome: View {
         self.participationFactory = participationFactory
         self.albumFactory = albumFactory
         self.invitesFactory = invitesFactory
+        _liveInvites = State(initialValue: eventReadFactory == nil ? nil : invitesFactory?(context))
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
@@ -134,7 +136,6 @@ struct DIPMemberHome: View {
             } else { prototype(repository: prototypeRepository, live: false) }
         }
         .task {
-            if liveInvites == nil { liveInvites = invitesFactory?(context) }
             if liveEvents == nil, let eventReadFactory {
                 if let reads = eventReadFactory(context) {
                     liveEvents = MemberEventAppRepository(reads: reads,

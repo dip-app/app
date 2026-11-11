@@ -19,7 +19,11 @@ export interface InviteTransaction extends ParticipationTransaction {
   setBudget(key: string, state: BudgetState, expiresAt: Date): void;
 }
 
-export interface DirectoryMember { userId: string; displayName: string; avatarId: string; department: string }
+/** `member` carries only the membership fields the policy needs (companyId, role, status), never shown to clients. */
+export interface DirectoryMember {
+  userId: string; displayName: string; avatarId: string; department: string;
+  member: { companyId: string; role: unknown; status: unknown };
+}
 
 export interface InviteStore {
   runTransaction<T>(work: (tx: InviteTransaction) => Promise<T>): Promise<T>;

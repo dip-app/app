@@ -56,12 +56,13 @@ public struct DIPInviteReply: Equatable, Sendable {
 
 /// User-facing failures, mapped from the callable `reason` details and SDK errors by the adapter.
 public enum DIPInviteFailure: Error, Equatable, Sendable {
-    case alreadyInvited, alreadyGoing, full, closed, cancelled, notFound, rateLimited, notMember, unauthenticated, offline, unknown
+    case alreadyInvited, alreadyGoing, alreadyAnswered, full, closed, cancelled, notFound, rateLimited, notMember, unauthenticated, offline, unknown
 
     public var message: String {
         switch self {
         case .alreadyInvited: "Someone already invited this coworker to this activity."
         case .alreadyGoing: "This coworker is already going."
+        case .alreadyAnswered: "You already answered this invitation."
         case .full: "This activity is full."
         case .closed: "This activity has already started."
         case .cancelled: "This activity was cancelled."

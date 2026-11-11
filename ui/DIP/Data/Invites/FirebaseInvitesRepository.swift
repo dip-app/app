@@ -22,8 +22,9 @@ final class FirebaseInvitesRepository: DIPInvitesRepository, @unchecked Sendable
 
     func observe() async -> AsyncThrowingStream<DIPInvites, Error> {
         let scope = scope
-        let received = invites.whereField("toUserId", isEqualTo: scope.uid).limit(to: 50)
-        let sent = invites.whereField("fromUserId", isEqualTo: scope.uid).limit(to: 50)
+        // The rules' list check needs the tenant proven by the query itself, so companyId is always filtered.
+        let received = invites.whereField("companyId", isEqualTo: scope.companyID).whereField("toUserId", isEqualTo: scope.uid).limit(to: 50)
+        let sent = invites.whereField("companyId", isEqualTo: scope.companyID).whereField("fromUserId", isEqualTo: scope.uid).limit(to: 50)
         return AsyncThrowingStream { continuation in
             let box = Latest()
             func publish() { if let value = box.merged() { continuation.yield(value) } }
@@ -108,7 +109,8 @@ final class FirebaseInvitesRepository: DIPInvitesRepository, @unchecked Sendable
             case "EVENT_FULL": return .full
             case "EVENT_CLOSED": return .closed
             case "EVENT_CANCELLED": return .cancelled
-            case "EVENT_NOT_FOUND", "INVITE_NOT_FOUND", "RECIPIENT_NOT_FOUND", "INVITE_ALREADY_RESPONDED": return .notFound
+            case "EVENT_NOT_FOUND", "INVITE_NOT_FOUND", "RECIPIENT_NOT_FOUND": return .notFound
+            case "INVITE_ALREADY_RESPONDED": return .alreadyAnswered
             case "CANNOT_INVITE_SELF", "VALIDATION_FAILED": return .unknown
             case "RATE_LIMITED": return .rateLimited
             case "MEMBERSHIP_CONFLICT", "EMAIL_NOT_VERIFIED", "PROVIDER_NOT_ALLOWED": return .notMember
