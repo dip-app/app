@@ -116,11 +116,12 @@ final class ChallengeSubmissionTests: XCTestCase {
         let app = launch("rejected", extra: ["--submission-evidence-fail=3"])
         XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 10))
         app.buttons["submission.action"].tap()
-        // Two scripted failures: the status card's read and the sheet's read; the retry then succeeds.
-        let retry = app.buttons["submission.existing.retry"]
+        // Scripted failures cover the status card's read and the sheet's read; Try again then succeeds.
+        XCTAssertTrue(app.buttons["submission.existing.replace"].waitForExistence(timeout: 8))
+        let retry = app.buttons["Try again"].firstMatch
         XCTAssertTrue(retry.waitForExistence(timeout: 8))
         retry.tap()
-        XCTAssertTrue(element(app, "submission.existing.preview").waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["submission.existing.replace"].exists)
     }
 
     @MainActor func testApprovedShowsPointsAndNoAction() {

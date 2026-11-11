@@ -61,6 +61,7 @@ final class ChallengeSubmissionModel {
     /// The submitted photo (large display copy) for the status card and the existing-photo row.
     private(set) var evidence: Evidence = .none
     @ObservationIgnored private var evidencePath: String?
+    @ObservationIgnored private var evidenceTask: Task<Void, Never>?
 
     @ObservationIgnored private let scope: ChallengeReadScope
     @ObservationIgnored private let source: any SubmissionSource
@@ -158,25 +159,37 @@ final class ChallengeSubmissionModel {
 
     func stop() {
         observation?.cancel(); observation = nil
+        evidenceTask?.cancel(); evidenceTask = nil
         source.stop()
     }
 
     /// Loads the submitted photo once per path (large display copy through the member's own Storage read); a failure
     /// is shown with a retry (`force`), never silently.
     func loadEvidence(force: Bool = false) async {
-        guard let path = submission?.storagePath else { evidence = .none; evidencePath = nil; return }
-        if !force, path == evidencePath, evidence != .failed { return }
+        guard let path = submission?.storagePath else { evidence = .none; evidencePath = nil; evidenceTask?.cancel(); evidenceTask = nil; return }
+        if !force, path == evidencePath, evidence != .failed {
+            // Already loading or loaded for this path: wait for the one model-owned load, never start a second.
+            await evidenceTask?.value
+            return
+        }
         evidencePath = path
         evidence = .loading
-        do {
-            let data = try await source.evidenceData(scope: scope, path: path)
-            guard submission?.storagePath == path else { return }
-            if let copy = AlbumImageProcessing.displayCopy(data, maxPixelSize: 1200) { evidence = .loaded(copy) } else { evidence = .failed }
-        } catch is CancellationError {
-            if evidence == .loading { evidence = .failed }
-        } catch {
-            if submission?.storagePath == path { evidence = .failed }
+        // Owned by the model (not by a view's task): a view that goes away cannot turn a healthy load into a failure.
+        let task = Task { [weak self, source, scope] in
+            let result: Evidence
+            do {
+                let data = try await source.evidenceData(scope: scope, path: path)
+                if let copy = AlbumImageProcessing.displayCopy(data, maxPixelSize: 1200) { result = .loaded(copy) } else { result = .failed }
+            } catch is CancellationError {
+                return
+            } catch {
+                result = .failed
+            }
+            guard let self, self.evidencePath == path, self.submission?.storagePath == path else { return }
+            self.evidence = result
         }
+        evidenceTask = task
+        await task.value
     }
 
     /// Previews and tests only: puts an already prepared photo into the draft.
@@ -194,7 +207,6 @@ final class ChallengeSubmissionModel {
         photo = nil; uploadedPath = nil
         if let submission {
             draft = DIPSubmissionDraft(from: submission)
-            progressValue = submission.progress
             keepsExistingPhoto = submission.hasPhoto
             if let slot = DIPSubmissionPolicy.slot(of: submission.storagePath) { occupiedSlots.insert(slot) }
         } else {

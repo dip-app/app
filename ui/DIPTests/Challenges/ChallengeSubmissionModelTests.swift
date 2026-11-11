@@ -269,6 +269,17 @@ final class ChallengeSubmissionModelTests: XCTestCase {
         XCTAssertEqual(none.evidence, .none)
     }
 
+    func testACancelledCallerNeverTurnsAHealthyPhotoLoadIntoAFailure() async {
+        let source = MockSubmissionSource(initial: DIPSubmission(id: id, status: .submitted, progress: 2, storagePath: "companies/alpha/challenges/w1/submissions/alice/0"))
+        let model = await loaded(source)
+        let first = Task { await model.loadEvidence() }
+        first.cancel()
+        await first.value
+        await model.loadEvidence()
+        if case .loaded = model.evidence {} else { XCTFail("expected the photo, got \(model.evidence)") }
+        XCTAssertEqual(source.evidenceReads, 1, "one model-owned read serves every caller")
+    }
+
     func testStopEndsTheSource() async {
         let source = MockSubmissionSource()
         let model = await loaded(source)
