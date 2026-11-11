@@ -6,6 +6,8 @@ struct RsvpAttendee: Equatable, Sendable {
     let name: String
     let department: String
     let avatarID: String
+    /// "" when the RSVP predates job titles or the member has none.
+    var jobTitle: String = ""
 }
 
 /// User-facing RSVP failures, mapped from setRsvpV1 `reason` details and SDK errors.

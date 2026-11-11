@@ -92,7 +92,7 @@ import Foundation
                   f["userId"] as? String == row.id, f["status"] as? String == "going",
                   let name = f["userName"] as? String else { return nil }
             return RsvpAttendee(userID: row.id, name: name, department: f["userDepartment"] as? String ?? "",
-                                avatarID: f["userAvatarId"] as? String ?? "")
+                                avatarID: f["userAvatarId"] as? String ?? "", jobTitle: f["userJobTitle"] as? String ?? "")
         }
         .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
