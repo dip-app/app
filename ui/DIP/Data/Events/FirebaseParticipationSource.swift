@@ -66,6 +66,18 @@ import Foundation
         } catch { throw Self.failure(error) }
     }
 
+    func previewAttendees(scope: EventReadScope, eventID: String, limit: Int) async throws -> [RsvpAttendee] {
+        guard !stopped else { throw RsvpFailure.unauthenticated }
+        guard MemberEventsRepository.validID(eventID) else { throw RsvpFailure.notFound }
+        do {
+            let result = try await firestore.collection("companies").document(scope.companyID)
+                .collection("events").document(eventID).collection("rsvps")
+                .whereField("companyId", isEqualTo: scope.companyID)
+                .whereField("status", isEqualTo: "going").limit(to: max(1, min(limit, 10))).getDocuments()
+            return Self.attendees(result.documents.map { (id: $0.documentID, fields: $0.data()) }, companyID: scope.companyID, eventID: eventID)
+        } catch { throw Self.failure(error) }
+    }
+
     func stop() {
         stopped = true
         listeners.values.forEach { $0.remove() }; listeners.removeAll()

@@ -21,6 +21,8 @@ struct DIPMedia: View {
                     placeholder
                 }
             }
+        case .generatedAvatar(let userID):
+            DIPAssignedAvatar(userID: userID)
         case .data(let bytes):
             if let image = UIImage(data: bytes) {
                 Image(uiImage: image).resizable()

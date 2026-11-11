@@ -10,7 +10,7 @@ final class MemberEventsFlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["home.challenge"].exists)
         XCTAssertTrue(app.staticTexts["Upcoming events"].exists)
         XCTAssertFalse(event.label.contains("attending"), "No attendee count on an event nobody has joined")
-        XCTAssertFalse(app.staticTexts["0 Attending"].exists)
+        XCTAssertFalse(app.staticTexts["0 going"].exists)
         event.tap()
         XCTAssertTrue(app.staticTexts["event.title"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["event.title"].label, "COMPANY LUNCH")
