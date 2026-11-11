@@ -11,6 +11,7 @@ struct DIPApp: App {
     private let makeEventReads: ((MembershipContext) -> MemberEventsRepository?)?
     private let makeParticipation: (() -> (any ParticipationSource)?)?
     private let makeBugReportSubmitter: (() -> (any BugReportSubmitting)?)
+    private let makeAlbums: (() -> (any PhotoAlbumSource)?)?
     private let makeChallengeReads: ((MembershipContext) -> MemberChallengesRepository?)?
     private let repository: any AccountsRepository & InterestCatalogRepository
 
@@ -28,6 +29,7 @@ struct DIPApp: App {
             return nil
             #endif
         }
+        makeAlbums = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makePhotoAlbumSource() }
         makeChallengeReads = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeMemberChallengesRepository(context: $0) }
         let repository = Self.makeRepository()
         self.repository = repository
@@ -55,7 +57,7 @@ struct DIPApp: App {
     /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed
     /// by the same scope ID); unconfigured builds keep the fixture challenge card.
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
-        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, onSignOut: { await session.signOut() })
+        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, onSignOut: { await session.signOut() })
         if let makeChallengeReads {
             WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
         } else { home }

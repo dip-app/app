@@ -17,7 +17,7 @@ import DIPCore
 /// the in-memory preview repository. Nothing here embeds project IDs or keys.
 ///
 /// Debug builds route to the local emulators (Auth 9099, Firestore 8080,
-/// Functions 5001 on 127.0.0.1) when the scheme sets `DIP_USE_EMULATORS=1`.
+/// Functions 5001, Storage 9199 on 127.0.0.1) when the scheme sets `DIP_USE_EMULATORS=1`.
 /// Never point a development build at production by accident: emulator routing
 /// is opt-in and Release builds ignore it.
 ///
@@ -102,6 +102,14 @@ enum FirebaseBootstrap {
     @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
         guard case .configured = status else { return nil }
         return FirebaseBugReportSubmitter(firestore: Firestore.firestore(), storage: Storage.storage())
+    }
+
+    /// Event photo albums (Storage uploads, finalizeEventPhotoV1, album/comment reads) share the configured SDKs.
+    @MainActor static func makePhotoAlbumSource() -> (any PhotoAlbumSource)? {
+        guard case .configured = status else { return nil }
+        return FirebasePhotoAlbumSource(firestore: Firestore.firestore(),
+                                        functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                        storage: Storage.storage())
     }
 
     /// Completes the Google sign-in redirect. Wire to `.onOpenURL` in the app.
