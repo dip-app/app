@@ -25,12 +25,14 @@ struct DIPAlbumScreen: View {
         commentsByPhoto: [String: [DIPPhotoComment]],
         currentUser: DIPProfile,
         showsBottomBar: Bool = true,
+        initialPhotoID: String? = nil,
         isPickerPresented: Binding<Bool> = .constant(false),
         onBack: @escaping () -> Void,
         onAddPhotos: @escaping ([PhotoUpload]) async throws -> Void,
         onAddComment: @escaping (String, String, String) async throws -> Void
     ) {
         self.album = album
+        _viewedPhotoID = State(initialValue: initialPhotoID)
         self.commentsByPhoto = commentsByPhoto
         self.currentUser = currentUser
         self.onAddComment = onAddComment
@@ -248,6 +250,8 @@ struct DIPAlbumScreen: View {
             currentUser: currentUser, onClose: { viewedPhotoID = nil },
             onAddComment: onAddComment
         )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("photo.viewer.\(photo.id)")
         .presentationBackground(.clear)
     }
 
