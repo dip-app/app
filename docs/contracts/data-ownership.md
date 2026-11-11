@@ -7,12 +7,12 @@ The schema currently includes all 18 supplied document structs plus embedded Ven
 | Data/path | Swift read contract | Planned client write boundary |
 |---|---|---|
 | Firebase Auth | current user and verified email | Google sign-in only in V1 (ADR 0007); no email/password. Apple later |
-| users/{uid} | Self only in V1; no company-wide list of private profiles | Own allowlisted profile fields only (photoURL, avatarId, department, jobTitle, city, interestTagIds, travelRadiusMiles, availability). companyId, role, email, displayName (from OAuth, ADR 0007), pointsBalance, createdAt are server-owned. Other employees appear through minimal RSVP snapshots; public directory needs a separate projection. |
+| users/{uid} | Self only in V1; no company-wide list of private profiles | Own allowlisted profile fields only (photoURL, avatarId, department, jobTitle, city, interestTagIds, travelRadiusMiles, availability). companyId, role, email, displayName (from OAuth, ADR 0007), pointsBalance, createdAt are server-owned. Other employees appear through minimal RSVP snapshots; the only other path is the `listCoworkersV1` minimal directory (name, avatar id, team; query >= 2 characters, rate limited) for the invite picker. |
 | companies/{companyId} | Own-company public metadata only | Server/admin tooling only. `emailDomain` is the authoritative sign-in lookup key (one lowercase registrable root domain, unique per company); `resolveMembershipV1` queries it with the Admin SDK. Never store secrets in this readable document. |
 | tags/{tagId}, partners/{partnerId} | Authenticated shared catalog; partners later | Trusted seed/admin tooling only |
 | companies/{c}/events/{eventId} | Tenant-scoped feed and details | Create/update callable; counts, revision, author/audit and points server-owned |
 | .../events/{eventId}/rsvps/{uid} | Same-company attendee list; own joined events | setRsvp callable only; attendance later admin callable |
-| users/{uid}/notifications/{id} | Recipient only, later | Server creates; recipient may change isRead only |
+| users/{uid}/notifications/{id} | Recipient only (get; list limit <= 50) | Server creates (invite notices today); recipient may change isRead only |
 | companies/{c}/challenges/{id} | Same-company weekly themes (get; list limit <= 20; organizers unbounded) | `createChallengeV1`/`updateChallengeV1` only; participantCount, completedCount, revision, author/audit server-owned |
 | .../challenges/{id}/submissions/{challengeId}_{uid} | Own submission and completion summaries, V2 (denied today) | Submission/approval commands; no client counters/status approval |
 | .../pointTransactions/{id} | Own ledger, V2 | Server append-only, deterministic award IDs; balance and ledger updated atomically |
@@ -24,6 +24,7 @@ The schema currently includes all 18 supplied document structs plus embedded Ven
 | users/{uid}/devices/{tokenHash} | None (server-only) | `registerDeviceV1`/`unregisterDeviceV1` only |
 | .../events/{eventId}.changeLog, .updatedBy | Same readers as the event | Server only (`onEventChanged` trigger, `updateEventV1`) |
 | .../photos/{photoId}/comments/{commentId} | Same-company verified members (get; list limit <= 100) | Own-author append under rules (exact fields, profile-matched author, trimmed 1..2000, server timestamp, client ID); no edit/delete; count server-only |
+| companies/{c}/invites/{eventId_toUserId} | Sender/recipient only (get; list limit <= 50 pinned to the caller) | `sendInviteV1`/`respondToInviteV1` only; acceptance, status, snapshots and notifications are server-owned. See [coworker invitations](callables.md#coworker-invitations) |
 | companies/{c}/teams/{teamId} | Same-company members (get; list limit <= 100) | `upsertTeamV1` only |
 | companies/{c}/auditLog/{id} | Same-company admins (get; list limit <= 100) | Append-only, written by admin callables in the command transaction |
 | companies/{c}/roster/{emailHash}, .../importJobs/{id} | Same-company admins | Server only (`upsertRosterEntryV1`, import callables, `resolveMembershipV1` claim); `importJobs/*/chunks` and `commandReceipts` server-only |

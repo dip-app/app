@@ -35,6 +35,7 @@
     "test:participation:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/participation*.test.ts\"",
     "test:notifications:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/notifications*.test.ts\"",
     "test:adminapi:integration": "firebase emulators:exec --project demo-dip --only firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/admin*.test.ts\"",
+    "test:invites:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/invites*.test.ts\"",
     "test:photos:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore,storage \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/photos*.test.ts\"",
     "test:challenge-submissions:integration": "npm run build && firebase emulators:exec --project demo-dip --only auth,functions,firestore,storage \"node --import tsx --test --test-concurrency=1 gcp/tests/integration/challenge-submissions*.test.ts\""
   },

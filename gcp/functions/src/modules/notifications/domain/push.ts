@@ -1,5 +1,8 @@
 import type { PushKind } from "./subscription";
 
+/** Push kinds: the subscription-driven kinds plus `invite`, which targets one recipient and ignores subscriptions. */
+export type PushType = PushKind | "invite";
+
 /** Chat pushes carry at most this many characters of the message; other kinds carry no user text. */
 export const CHAT_PREVIEW_MAX = 80;
 const TITLE_MAX = 60;
@@ -10,7 +13,7 @@ const TITLE_MAX = 60;
  */
 export interface PushData {
   [key: string]: string;
-  type: PushKind;
+  type: PushType;
   companyId: string;
   eventId: string;
   deepLink: string;
@@ -31,7 +34,7 @@ export function shorten(text: string, max: number): string {
   return single.length <= max ? single : `${single.slice(0, max - 1).trimEnd()}…`;
 }
 
-function base(kind: PushKind, companyId: string, eventId: string, suffix = ""): PushData {
+function base(kind: PushType, companyId: string, eventId: string, suffix = ""): PushData {
   return { type: kind, companyId, eventId, deepLink: `dip://events/${eventId}${suffix}` };
 }
 
@@ -68,5 +71,17 @@ export function reminderPush(companyId: string, eventId: string, eventTitle: str
     data: { ...base("reminder", companyId, eventId), window },
     threadId: `event-${eventId}`,
     collapseId: `reminder-${eventId}`,
+  };
+}
+
+/** A coworker invited the recipient; the tap opens the event page (`dip://events/{id}`), where the invite is answered. */
+export function invitePush(companyId: string, eventId: string, eventTitle: string, inviteId: string, fromName: string): PushMessage {
+  const from = shorten(fromName, 40) || "A coworker";
+  return {
+    title: "New invitation",
+    body: `${from} invited you to ${shorten(eventTitle, TITLE_MAX)}.`,
+    data: { ...base("invite", companyId, eventId), inviteId },
+    threadId: "invites",
+    collapseId: `invite-${inviteId}`,
   };
 }
