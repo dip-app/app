@@ -1,7 +1,62 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Setup baseline. Upload/read policies belong to the V2 photo feature.
+    // Bug-report screenshots (shake-to-report, V2): a signed-in, verified company member (the server-owned
+    // users/{uid} document exists; this cross-service read needs the Firebase Storage service agent to hold
+    // the Firestore viewer role, which `firebase deploy --only storage` offers to grant) may write one JPEG of
+    // at most 400 KB at bugReports/{uid}/{reportId}.jpg. A retry may overwrite its own object. Nobody reads or
+    // deletes through the client SDK; admins use the console. The report document is created under bugReports
+    // in firestore.rules. Add a bucket lifecycle rule for the bugReports/ prefix (retention and orphans).
+    match /bugReports/{uid}/{reportId} {
+      allow create, update: if request.auth != null && request.auth.token.email_verified == true
+        && request.auth.uid == uid
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && reportId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[.]jpg$')
+        && request.resource.size > 0 && request.resource.size <= 400 * 1024
+        && request.resource.contentType == 'image/jpeg';
+      allow read, delete: if false;
+    }
+    // Event photo albums (V2-05, docs/contracts/callables.md#event-photo-albums).
+    //
+    // One create-only object per slot: companies/{c}/events/{e}/photos/{uid}/{slot}, slot 0..19, so a member
+    // can never hold more than 20 objects per event (finalized or not). Upload: only the member into their own
+    // folder, 1 byte..10 MiB, image/jpeg|png|heic, while their server-written RSVP for this event is `going`
+    // (which also proves same-company membership) and the scheduled event has ended. No overwrite, no client
+    // delete. finalizeEventPhotoV1 re-verifies the object (size, type, file signature) before publishing it.
+    // Read: verified members of the same company, and only once the object is published (its album document
+    // exists); the uploader may read their own unpublished object to confirm an ambiguous retry. Authenticated
+    // SDK access only; no download-token URLs are minted. Unpublished bytes are never visible to colleagues.
+    // Cross-service rules may read at most two Firestore documents per evaluation: create reads RSVP + event,
+    // read reads the caller's membership + the album document.
+    // Assumption: membership never moves between companies (ADR 0007, domain-derived); the RSVP row written by
+    // setRsvpV1 under companies/{c} is the upload's proof of membership.
+    match /companies/{companyId}/events/{eventId}/photos/{uploaderId}/{slot} {
+      function verified() {
+        return request.auth != null && request.auth.token.email_verified == true;
+      }
+      function sameCompany() {
+        return verified()
+          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+      }
+      function attendedEndedEvent() {
+        let rsvp = firestore.get(/databases/(default)/documents/companies/$(companyId)/events/$(eventId)/rsvps/$(request.auth.uid)).data;
+        let event = firestore.get(/databases/(default)/documents/companies/$(companyId)/events/$(eventId)).data;
+        return rsvp.companyId == companyId && rsvp.eventId == eventId && rsvp.userId == request.auth.uid
+          && rsvp.status == 'going'
+          && event.companyId == companyId && event.status == 'scheduled' && event.endTime < request.time;
+      }
+      function published() {
+        return firestore.exists(/databases/(default)/documents/companies/$(companyId)/events/$(eventId)/photos/$(uploaderId + '_' + slot));
+      }
+      allow get: if sameCompany() && (request.auth.uid == uploaderId || published());
+      // `resource == null` keeps it create-only even where a platform maps an overwrite to create.
+      allow create: if verified() && request.auth.uid == uploaderId && resource == null
+        && slot.matches('^(1?[0-9])$')
+        && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('^image/(jpeg|png|heic)$')
+        && attendedEndedEvent();
+    }
+    // Everything else, including listing album folders, stays denied.
     match /{allPaths=**} {
       allow read, write: if false;
     }
