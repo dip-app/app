@@ -129,6 +129,8 @@ final class MemberProfileBridgeTests: XCTestCase {
         XCTAssertEqual(DIPProfileScreen.radiusChoices(including: 35), [5, 10, 20, 35, 50, 100])
         XCTAssertEqual(DIPProfileScreen.radiusLabel(1), "Within 1 mile")
         XCTAssertEqual(DIPProfileScreen.radiusLabel(20), "Within 20 miles")
+        XCTAssertEqual(DIPProfileScreen.radiusPhrase(1), "Events within 1 mile")
+        XCTAssertEqual(DIPProfileScreen.radiusPhrase(20), "Events within 20 miles")
     }
 
     func testEmptyOrInvalidPortraitUsesNeutralAvatarInsteadOfAnotherPerson() throws {
