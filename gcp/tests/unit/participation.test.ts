@@ -70,7 +70,7 @@ test("first join, retry, cancel, retry and rejoin preserve one trusted RSVP and 
   const store = fixture();
   assert.deepEqual(await call(store), { contractVersion: 1, eventId: "event", status: "going", attendeeCount: 1 });
   const original = structuredClone(store.get(rsvpPath));
-  assert.deepEqual(original, { companyId: "alpha", eventId: "event", userId: "a", userName: "Member a", userAvatarId: "avatar", userDepartment: "Engineering", status: "going", checkedIn: false, checkedInAt: null, createdAt: "SERVER_TIME", eventStartTime: new Date("2030-01-02T12:00:00Z") });
+  assert.deepEqual(original, { companyId: "alpha", eventId: "event", userId: "a", userName: "Member a", userAvatarId: "avatar", userDepartment: "Engineering", userJobTitle: "", status: "going", checkedIn: false, checkedInAt: null, createdAt: "SERVER_TIME", eventStartTime: new Date("2030-01-02T12:00:00Z") });
   const writes = store.writes; await call(store); assert.equal(store.writes, writes);
   assert.equal((await call(store, "cancelled")).attendeeCount, 0);
   const cancelledWrites = store.writes; await call(store, "cancelled"); assert.equal(store.writes, cancelledWrites);
@@ -160,4 +160,12 @@ test("transport maps known errors and redacts unexpected failures", async () => 
   const broken: ParticipationStore = { async runTransaction() { throw new Error("private backend detail"); } };
   const auth = { uid: "a", token: { email_verified: true, firebase: { sign_in_provider: "google.com" } } } as any;
   await assert.rejects(handleSetRsvp(broken, { auth, data: request }), (e: any) => e.code === "internal" && !JSON.stringify(e).includes("private backend detail"));
+});
+
+test("first join snapshots the member job title and department", async () => {
+  const store = fixture();
+  store.seed("users/a", { ...store.get("users/a"), jobTitle: "Software Engineer (Part-Time)" });
+  await call(store);
+  assert.equal(store.get(rsvpPath)?.userJobTitle, "Software Engineer (Part-Time)");
+  assert.equal(store.get(rsvpPath)?.userDepartment, "Engineering");
 });

@@ -144,7 +144,7 @@ import DIPCore
     func testAttendeeRowsAreFilteredToWellFormedGoingRowsAndSorted() {
         let rows: [(id: String, fields: [String: Any])] = [
             (id: "u2", fields: ["companyId": "alpha", "eventId": "yoga", "userId": "u2", "status": "going", "userName": "sam"]),
-            (id: "u1", fields: ["companyId": "alpha", "eventId": "yoga", "userId": "u1", "status": "going", "userName": "Alex", "userDepartment": "HR"]),
+            (id: "u1", fields: ["companyId": "alpha", "eventId": "yoga", "userId": "u1", "status": "going", "userName": "Alex", "userDepartment": "HR", "userJobTitle": "Software Engineer (Part-Time)"]),
             (id: "u3", fields: ["companyId": "alpha", "eventId": "yoga", "userId": "u3", "status": "cancelled", "userName": "Gone"]),
             (id: "u4", fields: ["companyId": "beta", "eventId": "yoga", "userId": "u4", "status": "going", "userName": "Other"]),
             (id: "u5", fields: ["companyId": "alpha", "eventId": "yoga", "userId": "someone-else", "status": "going", "userName": "Forged"]),
@@ -152,6 +152,8 @@ import DIPCore
         let people = FirebaseParticipationSource.attendees(rows, companyID: "alpha", eventID: "yoga")
         XCTAssertEqual(people.map(\.name), ["Alex", "sam"])
         XCTAssertEqual(people.first?.department, "HR")
+        XCTAssertEqual(people.first?.jobTitle, "Software Engineer (Part-Time)")
+        XCTAssertEqual(people.last?.jobTitle, "", "RSVPs from before job titles map to an empty title")
     }
 
     func testCallableReasonsMapToUserFacingFailures() {

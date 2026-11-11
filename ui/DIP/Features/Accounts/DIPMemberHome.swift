@@ -73,7 +73,7 @@ struct DIPMemberHome: View {
                 .accessibilityHidden(tour != nil)
             if let tour {
                 OnboardingTourView(model: tour, interests: tourInterests, firstName: firstName, you: you,
-                                   onSignOut: onSignOut)
+                                   onSignOut: { await signOut() })
                     .onAppear { tour.reportSurface(currentSurface); tour.onFinished = { self.tour = nil } }
                     .transition(.identity)
             }
@@ -126,6 +126,15 @@ struct DIPMemberHome: View {
 
     // MARK: Onboarding
 
+    /// Sign out from Profile or the tour's first step. Debug builds also forget this account's tour record, so
+    /// the next sign-in plays the whole tour again (owner request, Nov 11). Release keeps the record.
+    private func signOut() async {
+        #if DEBUG
+        (onboarding?.store as? UserDefaultsOnboardingRecordStore)?.removeRecord(for: context.uid)
+        #endif
+        await onSignOut()
+    }
+
     /// True while the tour hides the shell completely (before its window reveal starts).
     private var tourCoversShell: Bool {
         guard let tour else { return false }
@@ -174,7 +183,7 @@ struct DIPMemberHome: View {
 
     private func prototype(repository: any DIPRepository, live: Bool) -> some View {
         DIPPrototypeApp(
-            repository: repository, onSignOut: onSignOut,
+            repository: repository, onSignOut: { await signOut() },
             accountProfile: MemberProfileBridge.profile(context: context, tags: catalog.tags, oauthPhotoURL: oauthPhotoURL),
             interestCatalogLoading: catalogIsLoading, interestCatalogError: catalogError,
             onRetryInterestCatalog: { Task { await catalog.load() } }, onProfileSave: saveProfile,

@@ -308,3 +308,18 @@ final class AccountsStageTests: XCTestCase {
         XCTAssertEqual(right.minX - left.minX, 12, accuracy: 0.5)
     }
 }
+
+/// "Finding your company" minimum display time (owner request, Nov 11): pads only, ends on a whole wheel turn.
+final class ResolvingHoldTests: XCTestCase {
+    func testPadsAFastResolutionToWholeWheelTurns() {
+        guard AccountsStage.minimumResolvingDuration > 0 else { return }  // `--no-resolving-delay`
+        XCTAssertEqual(AccountsStage.remainingResolvingHold(elapsed: 0, reduceMotion: false), 2.2, accuracy: 1e-9)
+        XCTAssertEqual(AccountsStage.remainingResolvingHold(elapsed: 0.5, reduceMotion: false), 1.7, accuracy: 1e-9)
+        XCTAssertEqual(AccountsStage.remainingResolvingHold(elapsed: 0.2, reduceMotion: true), 0.6, accuracy: 1e-9)
+    }
+
+    func testASlowResolutionIsNeverDelayed() {
+        XCTAssertEqual(AccountsStage.remainingResolvingHold(elapsed: 2.5, reduceMotion: false), 0)
+        XCTAssertEqual(AccountsStage.remainingResolvingHold(elapsed: 0.9, reduceMotion: true), 0)
+    }
+}

@@ -164,6 +164,7 @@ export interface RSVP {
   userName: string;
   userAvatarId: string;
   userDepartment: string;
+  userJobTitle?: string;
   eventStartTime: string;
   status: string;
   checkedIn: boolean;

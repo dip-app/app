@@ -125,8 +125,9 @@ struct DIPParticipantRow: View {
                 Text(person.name)
                     .font(DIPReferenceAssets.font("Figtree-Bold", size: 18))
                     .frame(height: 22, alignment: .leading)
-                Text(person.department)
+                Text(person.subtitle)
                     .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
+                    .lineLimit(1).truncationMode(.tail)
                     .frame(height: 22, alignment: .leading)
             }
             .foregroundStyle(.black)
