@@ -12,14 +12,19 @@ struct DIPRewardsScreen: View {
     let onSelectTab: (DIPHomeTab) -> Void
     let onNotifications: () -> Void
     let onProfile: () -> Void
+    /// The member's real points, or nil for fixture profiles (the mock-backed page then shows 520).
+    private let pointsBalance: Int?
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var notice: DIPRewardEntry?
     private let isEmpty: Bool
 
     init(
         unreadCount: Int, profileAvatar: MediaReference, showsBottomBar: Bool = true,
-        onSelectTab: @escaping (DIPHomeTab) -> Void, onNotifications: @escaping () -> Void, onProfile: @escaping () -> Void
+        onSelectTab: @escaping (DIPHomeTab) -> Void, onNotifications: @escaping () -> Void, onProfile: @escaping () -> Void,
+        pointsBalance: Int? = nil
     ) {
+        self.pointsBalance = pointsBalance
         self.unreadCount = unreadCount
         self.profileAvatar = profileAvatar
         self.showsBottomBar = showsBottomBar
@@ -28,6 +33,32 @@ struct DIPRewardsScreen: View {
         self.onProfile = onProfile
         // `--rewards-state=empty` is for design review only.
         isEmpty = ProcessInfo.processInfo.arguments.contains("--rewards-state=empty")
+    }
+
+    /// "Your points" with the balance as an outlined (informational, not pressable) pill on the right. The
+    /// page is mock-backed, so fixture profiles without a real balance show the design's 520.
+    private var balancePill: some View {
+        let balance = pointsBalance ?? 520
+        return HStack(spacing: 12) {
+            Text("Your points")
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.subtitle))
+                .foregroundStyle(ink)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            HStack(spacing: 6) {
+                Image(systemName: "star.fill").font(.system(size: 13)).accessibilityHidden(true)
+                Text(DIPPointsFormat.balance(balance))
+                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 16))
+                    .contentTransition(.numericText(value: Double(balance)))
+                    .animation(reduceMotion ? nil : .smooth, value: balance)
+            }
+            .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .padding(.horizontal, 14).frame(height: 36)
+            .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Your balance: \(DIPPointsFormat.balance(balance))")
+        .accessibilityIdentifier("rewards.balance")
     }
 
     /// Type sizes from the Rewards frame.
@@ -50,6 +81,7 @@ struct DIPRewardsScreen: View {
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
+                            balancePill.padding(.bottom, 16)
                             if isEmpty {
                                 DIPEmptyState(
                                     screen: "rewards", title: "No rewards yet",

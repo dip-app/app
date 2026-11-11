@@ -237,7 +237,7 @@ enum MemberProfileBridge {
             interestTagIDs: stored.interestTagIds, interestCatalog: interests,
             photo: photo, avatar: avatar, favoriteMemories: [],
             jobTitle: stored.jobTitle, availability: stored.availability,
-            travelRadiusMiles: stored.travelRadiusMiles
+            travelRadiusMiles: stored.travelRadiusMiles, pointsBalance: stored.pointsBalance
         )
     }
 

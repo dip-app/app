@@ -56,15 +56,33 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
 
         private let segments: [Segment]
         private let selection: ID
+        public enum Style: Sendable {
+            /// Solid accent track, white thumb (My Events).
+            case filled
+            /// Quiet: faint accent track with a hairline, white thumb with a soft shadow, ink labels.
+            case soft
+        }
+
         private let accent: Color
+        private let style: Style
+        private let inset: Double
+        private let height: Double
+        private let fontSize: CGFloat
         private let onSelect: (ID) -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var dragThumbX: Double?
 
-        public init(segments: [Segment], selection: ID, accent: Color, onSelect: @escaping (ID) -> Void) {
+        public init(
+            segments: [Segment], selection: ID, accent: Color, style: Style = .filled, height: Double = 50,
+            inset: Double = 5, fontSize: CGFloat = 18, onSelect: @escaping (ID) -> Void
+        ) {
             self.segments = segments
             self.selection = selection
             self.accent = accent
+            self.style = style
+            self.inset = inset
+            self.height = height
+            self.fontSize = fontSize
             self.onSelect = onSelect
         }
 
@@ -74,12 +92,14 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
         public var body: some View {
             GeometryReader { proxy in
                 let geometry = DIPSegmentedGeometry(
-                    trackWidth: proxy.size.width, trackHeight: proxy.size.height, segmentCount: segments.count)
+                    trackWidth: proxy.size.width, trackHeight: proxy.size.height, segmentCount: segments.count,
+                    inset: inset)
                 let thumbX = dragThumbX ?? geometry.thumbX(for: selectedIndex)
                 let liveIndex = dragThumbX.map { geometry.nearestIndex(thumbX: $0) } ?? selectedIndex
                 ZStack(alignment: .leading) {
-                    Capsule().fill(accent)
+                    track
                     Capsule().fill(.white)
+                        .shadow(color: style == .soft ? DIPComponentTheme.ink.opacity(0.10) : .clear, radius: 4, y: 1)
                         .frame(width: geometry.thumbWidth, height: geometry.thumbHeight)
                         .offset(x: thumbX)
                         .accessibilityHidden(true)
@@ -87,8 +107,8 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
                         ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
                             Button { choose(index, geometry: geometry) } label: {
                                 Text(segment.title)
-                                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                                    .foregroundStyle(index == liveIndex ? accent : .white)
+                                    .font(DIPReferenceAssets.font("Figtree-Regular", size: fontSize))
+                                    .foregroundStyle(labelColor(selected: index == liveIndex))
                                     .lineLimit(1).minimumScaleFactor(0.8)
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                                     .contentShape(Rectangle())
@@ -110,8 +130,24 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
                             choose(geometry.nearestIndex(thumbX: x), geometry: geometry)
                         })
             }
-            .frame(height: 50)
+            .frame(height: height)
             .accessibilityElement(children: .contain)
+        }
+
+        @ViewBuilder private var track: some View {
+            switch style {
+            case .filled: Capsule().fill(accent)
+            case .soft:
+                Capsule().fill(accent.opacity(0.12))
+                    .overlay(Capsule().strokeBorder(accent.opacity(0.30), lineWidth: 1))
+            }
+        }
+
+        private func labelColor(selected: Bool) -> Color {
+            switch style {
+            case .filled: selected ? accent : .white
+            case .soft: DIPComponentTheme.ink.opacity(selected ? 1 : 0.75)
+            }
         }
 
         private func choose(_ index: Int, geometry: DIPSegmentedGeometry) {
