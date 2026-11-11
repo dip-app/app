@@ -202,7 +202,7 @@ struct DIPMyEventsScreen: View {
         if memoryAlbums.isEmpty {
             DIPEmptyState(
                 screen: "my-events-memories", title: "No memories yet",
-                message: "Events you’ve attended will show up here.", faces: 4)
+                message: "Events you’ve attended will show up here.")
         }
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], spacing: 18) {
             ForEach(Array(memoryAlbums.enumerated()), id: \.offset) { index, memory in

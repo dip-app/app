@@ -55,6 +55,7 @@ struct DIPEventDetailsScreen: View {
                                 activityDetails
                                 attendeeDetails
                                 if let metadata = event.metadata { eventMetadata(metadata) }
+                                if joined, !event.isPast, event.metadata?.status != .cancelled { leaveButton }
                                 if event.isPast { albumPreview }
                             }
                         }
@@ -165,7 +166,7 @@ struct DIPEventDetailsScreen: View {
                 identifierPrefix: "event", onMore: onAttendees)
             DIPDetailActionRow(
                 showsParticipation: !event.isPast,
-                // The bottom bar (own or the shell's) is the one Join action; this slot is Directions before joining, Leave after.
+                // The bottom bar (own or the shell's) is the one Join action; this slot is Directions (always, when there is a location); Leave sits at the bottom of the page.
                 joinInRow: false, directionsURL: event.metadata?.directionsURL(fallbackTitle: event.title),
                 isParticipating: joined, canChange: canChangeParticipation,
                 joinTitle: "Join Activity", leaveTitle: "Leave Activity",
@@ -173,6 +174,21 @@ struct DIPEventDetailsScreen: View {
                 shareTitle: "Share Event", identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
+    }
+
+    /// Quiet destructive-secondary text button at the very bottom of the page.
+    private var leaveButton: some View {
+        Button { confirmingLeave = true } label: {
+            Text("Leave Activity")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 15))
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .disabled(!canChangeParticipation)
+        .opacity(canChangeParticipation ? 1 : 0.5)
+        .accessibilityIdentifier("event.leave")
     }
 
     private var canChangeParticipation: Bool {
@@ -223,7 +239,7 @@ struct DIPEventDetailsScreen: View {
                 Text(durationLabel(metadata))
                     .foregroundStyle(.secondary)
             }
-            metadataRow("mappin.and.ellipse", title: "Where", trailing: directionsButton(metadata)) {
+            metadataRow("mappin.and.ellipse", title: "Where") {
                 Text(metadata.venueName)
                 Text(metadata.address).foregroundStyle(.secondary)
                 if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
@@ -238,25 +254,6 @@ struct DIPEventDetailsScreen: View {
         .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event.metadata")
-    }
-
-    /// Once joined, the action row shows Leave instead of Directions, so Directions lives on the Where row.
-    @ViewBuilder private func directionsButton(_ metadata: DIPEventMetadata) -> some View {
-        if joined, !event.isPast, let url = metadata.directionsURL(fallbackTitle: event.title) {
-            Link(destination: url) {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.turn.up.right.diamond").font(.system(size: 14, weight: .semibold))
-                    Text("Directions").font(DIPReferenceAssets.font("Figtree-Bold", size: 14)).lineLimit(1).fixedSize()
-                }
-                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                .padding(.horizontal, 12).frame(height: 32)
-                .overlay(Capsule().stroke(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 1.5))
-                .contentShape(Capsule())
-            }
-            .buttonStyle(DIPPressFeedbackStyle())
-            .accessibilityLabel("Directions")
-            .accessibilityIdentifier("event.whereDirections")
-        }
     }
 
     /// Pill label: short date by default ("Monday, 11/23", no time; the card has the full details);

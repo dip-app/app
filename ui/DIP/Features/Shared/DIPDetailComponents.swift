@@ -129,8 +129,7 @@ struct DIPDetailPeopleRow: View {
             .frame(height: 22)
             if total == 0 {
                 DIPEmptyState(
-                    screen: "\(identifierPrefix)-attendees", title: emptyTitle, message: emptyText,
-                    style: .compact, faces: 2)
+                    screen: "\(identifierPrefix)-attendees", title: emptyTitle, message: emptyText)
             } else {
                 HStack(spacing: 10) {
                     ForEach(Array(shown.enumerated()), id: \.offset) { _, avatar in
@@ -176,8 +175,9 @@ struct DIPDetailActionRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if showsParticipation && !joinInRow && !isParticipating {
-                if let directionsURL {
+            if !joinInRow {
+                // Directions sits beside Share, in both joined and unjoined states; Leave lives at the page bottom.
+                if showsParticipation, let directionsURL {
                     Link(destination: directionsURL) {
                         label(directionsTitle, systemImage: "mappin.and.ellipse",
                               background: DIPTokens.Color.actionPrimary.swiftUIColor)

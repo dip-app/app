@@ -20,7 +20,7 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertEqual(join.label, "Activity Chat")
         XCTAssertTrue(app.buttons["event.leave"].waitForExistence(timeout: 3), "Leave appears once joined")
         XCTAssertFalse(app.buttons["event.join"].exists)
-        XCTAssertFalse(app.buttons["event.directions"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["event.directions"].exists, "Directions stays beside Share once joined")
         app.buttons["event.attendees"].tap()
         XCTAssertTrue(app.buttons["participants.back"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Elissa Woode"].exists)
