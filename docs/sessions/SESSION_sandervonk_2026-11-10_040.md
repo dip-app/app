@@ -27,7 +27,9 @@ Onboarding phase P2 (tour shell) and scenes B2–B5 on top of the merged P0/P1/P
 - `npm ci` + `npm run check`: exit 0 (Node v26.7.0, not the pinned 24.12).
 - `xcodegen generate` for both projects; DIP and Preview `build-for-testing` (generic iOS Simulator): succeeded.
 - DIPTests (`xcodebuild test`, scheme DIP, iPhone 17 Pro iOS 27 simulator): 158 tests, 0 failures, 2 pre-existing skips.
-- Preview UI tests `OnboardingTourTests` (same simulator, under `/tmp/dip-sim-lock`): see the final run below.
+- Final Preview UI run (`-only-testing` OnboardingTourTests, OnboardingFlowTests/testWelcomeSignsInToHome, MemberEventsFlowTests; iPhone 17 Pro iOS 27, under `/tmp/dip-sim-lock`): 9 tests, all passed (** TEST SUCCEEDED **).
+- Final DIPTests run after merging origin/main (#61): 158 tests, 0 failures, 2 pre-existing skips.
+- Simulator shut down, lock released, DerivedData and xcresults deleted.
 - Regression UI run (OnboardingFlowTests 11, MemberEventsFlowTests 1, ProfileInterestTests 3, OnboardingInterestsTests 5, OnboardingDemoTests 4): all pass except three failures in files this branch does not touch, left to the iOS fixer: `OnboardingDemoTests.testReduceMotionShowsStillsThenRests` and `testStageIsOneElementThatAutoplaysRestsAndReplays` (already documented as failing in the P3 log) and `OnboardingInterestsTests.testSearchAndSkipWriteNothing` (search still shows `tag-food`).
 - Not run: `npm run test:rules` (no rules change), VoiceOver / Low Power Mode / iPhone SE–12 manual passes, Instruments, GIFs.
 
