@@ -118,6 +118,10 @@ final class ScreenFlowTests: XCTestCase {
         app.buttons["Cancel"].tap()
         app.buttons["profile.memory.0"].tap()
         XCTAssertTrue(app.buttons["album.back"].waitForExistence(timeout: 3))
+        // A memory opens its event's album, and a photo there opens the comment viewer.
+        app.buttons["album.photo.0"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["photo.comments.message"].waitForExistence(timeout: 5))
+        app.buttons["album.photo.close"].tap()
         app.buttons["album.back"].tap()
         XCTAssertTrue(app.buttons["profile.edit"].exists)
     }
