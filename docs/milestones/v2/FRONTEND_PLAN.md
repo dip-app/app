@@ -318,7 +318,7 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 12 | Home recents empty state matches the memories format (all empty states consistent) | Done | #71 |
 | 13 | Swipe from the left edge goes back everywhere | Done (album photo viewer and sheets excluded) | #74 |
 | 14 | My Events Active/Memories toggle draggable and not clipped | Done | #78 |
-| 15 | Home event cards: attendee avatars must load without opening the event; "N going" if tight | Queued | Profile agent |
+| 15 | Home event cards: attendee avatars must load without opening the event; "N going" if tight | Done (background prefetch of 3 attendees per card; chip reads "N going") | #79 |
 | 16 | Rewards: original raffle layout with solid gift-box cards and small bows; badge tab; progress inside the raffle card; no "Discounted Experiences" header | Done | #65 |
 | 17 | Event page: calendar pill top-right of the PAGE (short date, solid); Directions pill left of Share; Leave Activity at the bottom once joined; no When/Where/Price labels | Done | #68, #70, #72 |
 | 18 | Share text as flowing paragraphs; tags wrap; share link (universal link) | Done (link not deployed: needs Team ID, App Store ID, hosting deploy approval) | #68, #75 |

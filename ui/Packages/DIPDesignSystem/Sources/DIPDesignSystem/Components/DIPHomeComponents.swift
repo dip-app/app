@@ -238,7 +238,7 @@
                     if attendeeCount > 0 {
                         HStack(spacing: -4) {
                             avatarStack
-                            Text("\(attendeeCount) Attending")
+                            Text("\(attendeeCount) going")
                                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                                 .foregroundStyle(.black).frame(height: 22).padding(.horizontal, 7)
                                 .background(.white, in: Capsule())

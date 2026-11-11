@@ -38,6 +38,23 @@ import DIPCore
         XCTAssertTrue(participation.stopped)
     }
 
+    func testHomeCardsGetAvatarPreviewsWithoutOpeningTheEvent() async throws {
+        let reads = ReadsStub(); reads.page = [event("yoga", attendees: 3), event("hike", startsIn: 7200, attendees: 0)]
+        let participation = ParticipationStub()
+        participation.people = (1...5).map { RsvpAttendee(userID: "u\($0)", name: "P\($0)", department: "", avatarID: "") }
+        let repository = make(reads, participation)
+        let stream = await repository.observe(); var iterator = stream.makeAsyncIterator()
+        var found: DIPAppSnapshot?
+        repeat { found = try await iterator.next() } while found.map { ($0.eventDetails["yoga"]?.attendeeAvatars.count ?? 0) == 0 } ?? true
+        let snapshot = try XCTUnwrap(found)
+        XCTAssertEqual(snapshot.eventDetails["yoga"]?.attendeeAvatars,
+                       [.generatedAvatar(userID: "u1"), .generatedAvatar(userID: "u2"), .generatedAvatar(userID: "u3")],
+                       "previews are bounded to three and use the app-assigned avatar")
+        XCTAssertEqual(snapshot.eventDetails["hike"]?.attendeeAvatars.count, 0, "no read for an event with nobody going")
+        XCTAssertNil(snapshot.participants["yoga"], "a preview is never presented as the full attendee list")
+        repository.stop()
+    }
+
     func testJoinedPastEventOutsideTheFeedIsFetchedForMemories() async throws {
         let reads = ReadsStub(); reads.page = [event("yoga")]
         reads.extra = [event("kayak", startsIn: -10_000)]
