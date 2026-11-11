@@ -133,13 +133,17 @@ struct DIPMyEventsScreen: View {
                     onEvent(event.id)
                 } label: {
                     VStack(alignment: .leading, spacing: 6) {
+                        // Wraps onto up to three lines inside the card padding; shrinks only as a last resort.
                         Text(event.title.uppercased())
                             .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
-                            .fixedSize(horizontal: true, vertical: false)
-                            .frame(height: 32, alignment: .leading)
+                            .lineLimit(3).minimumScaleFactor(0.6).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(event.locality)
                             .font(DIPReferenceAssets.font("Inter-LightItalic", size: 11))
-                            .frame(height: 14, alignment: .leading)
+                            .lineLimit(2).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .foregroundStyle(.white)
                     .padding(15)
@@ -187,10 +191,14 @@ struct DIPMyEventsScreen: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(memory.title.uppercased())
                                     .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 20, relativeTo: .title3))
-                                    .fixedSize(horizontal: true, vertical: false).frame(height: 22, alignment: .leading)
+                                    .lineLimit(3).minimumScaleFactor(0.75).multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 Text(memory.locality)
                                     .font(DIPReferenceAssets.font("Inter-LightItalic", size: 11))
-                                    .fixedSize(horizontal: true, vertical: false).frame(height: 18, alignment: .leading)
+                                    .lineLimit(2).multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .foregroundStyle(.white).padding(10)
                         }
