@@ -22,6 +22,9 @@ final class MockMemberLaunchUITests: XCTestCase {
         let event = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'home.event.'")).firstMatch
         XCTAssertTrue(event.waitForExistence(timeout: 20), "no event on Home")
         event.tap()
-        XCTAssertTrue(app.staticTexts["100 Example Street"].waitForExistence(timeout: 10), "event details with venue address did not open")
+        // DIPMockFixtures.v1Events() gives every event one of these synthetic venue addresses (never "Example Street").
+        let addresses = ["101 Panther Hollow Rd", "1 Allegheny Ave", "4800 Liberty Ave", "1 Schenley Dr", "3600 Butler St", "601 Commonwealth Pl"]
+        let venue = app.staticTexts.matching(NSPredicate(format: "label IN %@", addresses)).firstMatch
+        XCTAssertTrue(venue.waitForExistence(timeout: 10), "event details with venue address did not open")
     }
 }

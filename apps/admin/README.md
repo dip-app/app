@@ -13,6 +13,25 @@ Organizer portal for V1-05, built from the `sandervonk/nextjs-template` setup (N
   - One theme per week per company: overlaps are caught before saving and, if someone else got there first, the server's `CHALLENGE_WINDOW_OVERLAP` answer (with `details.conflict`) is shown against the conflicting theme's week. A new theme can start in the week already under way but not in a week that has ended. Once anyone has joined or completed, the start is locked and the end can't move into the past (`WINDOW_CHANGE_BLOCKED`). Counts are server-owned and never sent.
   - Same retry rules as events: one `requestId` per create attempt (a replay returns the same theme), `expectedRevision` on edit with "Reload latest" on a conflict.
 
+## Admin tools (V2: members, roster, import, albums, attendees, audit)
+
+Tickets #121 to #126. All of it sits behind `AdminOpsApi` (`src/lib/adminApi.ts`), implemented by `adminMock.ts` (same rules as the callables: role and tenant checks, revisions, request-ID idempotency, last-admin protection, capacity) and `adminLive.ts` (Firestore reads, callables, Storage blobs). Callable names live in `ADMIN_CALLABLES` (`adminTypes.ts`) and follow [`docs/contracts/admin.md`](../../docs/contracts/admin.md). Live mode reads lists from Firestore where the rules allow it (album, RSVPs, teams, roster and audit log for admins) and uses `listMembersV1` / `getMemberV1` for people; it is not yet verified against a deployed backend.
+
+| Screen | Path | Who |
+| --- | --- | --- |
+| Album viewer, remove photo or comment (reason required) | `/events/album/?id=` (past events) | organizer, admin |
+| Attendees: search, add (a full event needs a reason and grows by one), remove, check in or undo (`recordAttendanceV1`; undo is refused once points were awarded), CSV export | `/events/attendees/?id=` | organizer, admin |
+| Member directory, filters, CSV export (organizers see people without points) | `/members/` | organizer (read), admin |
+| Member detail: role, teams, location, department, title, deactivate or reactivate, reset participant profile, adjust or reset points (all with a reason) | `/members/detail/?id=` | admin (organizers read only) |
+| Bulk import: template, CSV or XLSX, dry-run preview with create / update / unchanged / invalid counts and field diff, apply in chunks with progress, error CSV | `/import/` | admin |
+| Roster: not signed up, active, deactivated, revoked; revoke, invite again (no resend: the contract sends no invite email) | `/roster/` | admin |
+| Audit log (read-only, search, filter, details, CSV) | `/audit/` | admin |
+
+- **Roles:** `member | organizer | admin` (`can(role, capability)` in `adminTypes.ts`). Organizers manage events, themes, albums and attendees and can read the member list; admins also manage people, imports, roster and audit. The UI only hides what the backend would refuse.
+- **Import:** parsed in the browser (`csv.ts`; `xlsx.ts` uses `fflate@0.8.2`, loaded on demand, first sheet as text). Local checks reject bad emails, wrong domain, duplicates, unknown roles and bad dates before anything is sent; valid rows go to `importEmployeesV1` in one dry-run call (the server plans up to 2000 rows), then `applyEmployeeImportV1` is called repeatedly, one 100-row chunk per call with the `planHash`, until `done`. Limits: 2000 rows, 2 MB. Blank cells keep the current value. Re-running a chunk is a no-op.
+- **Destructive actions** use a native `<dialog>` with a required reason that is written to the audit log. Exported CSVs neutralize leading `= + - @`.
+- Pass `?`-style ids in the URL (static export): `/members/detail/?id=<uid>`.
+
 ## Mock mode and live mode
 
 `src/lib/api.ts` defines the `AdminApi` interface the UI depends on, with two implementations chosen at build time:

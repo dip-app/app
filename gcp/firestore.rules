@@ -28,7 +28,9 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'companyId', 'displayName', 'email', 'photoURL', 'avatarId', 'department',
           'jobTitle', 'city', 'role', 'interestTagIds', 'travelRadiusMiles',
-          'availability', 'friendIds', 'favoritePhotoIds', 'pointsBalance', 'createdAt'
+          'availability', 'friendIds', 'favoritePhotoIds', 'pointsBalance', 'createdAt',
+          // Server-owned admin fields (updateMemberV1, roster claim); never client-writable (see the update allow-list).
+          'workLocation', 'teamIds', 'status', 'managerEmail', 'startDate', 'revision', 'statusUpdatedAt'
         ])
         && data.displayName is string && data.displayName.size() <= 80
         && data.displayName.matches('^[^\\s](.*[^\\s])?$')
@@ -41,9 +43,19 @@ service cloud.firestore {
     function memberCompany() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
     }
-    function sameCompany(companyId) { return verified() && memberCompany() == companyId; }
-    // Organizers are manually assigned (role "admin" on the server-owned membership document).
+    // A deactivated member (status set by setMemberStatusV1) loses every same-company read.
+    function sameCompany(companyId) {
+      return verified()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', 'active') != 'deactivated';
+    }
+    // Organizers and admins are assigned on the server-owned membership document (docs/contracts/admin.md).
     function organizer(companyId) {
+      return sameCompany(companyId)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'organizer'];
+    }
+    // Admin-only data: audit log, roster, import jobs.
+    function adminOf(companyId) {
       return sameCompany(companyId)
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
@@ -70,11 +82,11 @@ service cloud.firestore {
       allow get: if sameCompany(companyId) &&
         (!exists(/databases/$(database)/documents/companies/$(companyId)/events/$(eventId))
           || (resource.data.companyId == companyId
-            && (resource.data.status == 'scheduled' || organizer(companyId))));
+            && (resource.data.status in ['scheduled', 'completed'] || organizer(companyId))));
       allow list: if organizer(companyId)
         || (sameCompany(companyId)
           && request.query.limit != null && request.query.limit <= 100
-          && resource.data.companyId == companyId && resource.data.status == 'scheduled');
+          && resource.data.companyId == companyId && resource.data.status in ['scheduled', 'completed']);
       // Client mutations, RSVP rows and private command receipts remain denied.
     }
     // RSVP rows are written only by setRsvpV1 (Admin SDK). Members get their own row in any
@@ -127,6 +139,26 @@ service cloud.firestore {
       allow list: if sameCompany(companyId) && request.query.limit != null && request.query.limit <= 100
         && resource.data.companyId == companyId && resource.data.userId == request.auth.uid;
     }
+    // --- Admin backend (docs/contracts/admin.md): all writes are server-only (Admin SDK callables) ---
+    // Team catalog: same-company members read; only upsertTeamV1 writes.
+    match /companies/{companyId}/teams/{teamId} {
+      allow get: if sameCompany(companyId);
+      allow list: if sameCompany(companyId) && request.query.limit != null && request.query.limit <= 100;
+    }
+    // Append-only audit log, roster (pre-provisioned people, with emails) and import jobs: admins only.
+    // importJobs/{id}/chunks (plan rows) and commandReceipts stay server-only (deny-all fallthrough).
+    match /companies/{companyId}/auditLog/{auditId} {
+      allow get: if adminOf(companyId);
+      allow list: if adminOf(companyId) && request.query.limit != null && request.query.limit <= 100;
+    }
+    match /companies/{companyId}/roster/{entryId} {
+      allow get: if adminOf(companyId);
+      allow list: if adminOf(companyId) && request.query.limit != null && request.query.limit <= 100;
+    }
+    match /companies/{companyId}/importJobs/{jobId} {
+      allow get: if adminOf(companyId);
+      allow list: if adminOf(companyId) && request.query.limit != null && request.query.limit <= 100;
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }
@@ -153,7 +185,7 @@ service cloud.firestore {
       }
       function chatOpen() {
         let event = get(chatEventPath()).data;
-        return event.companyId == companyId && event.status == 'scheduled'
+        return event.companyId == companyId && event.status != 'cancelled'
           && request.time < event.endTime + duration.value(24, 'h');
       }
       allow get: if chatParticipant() && (resource == null || resource.data.companyId == companyId);

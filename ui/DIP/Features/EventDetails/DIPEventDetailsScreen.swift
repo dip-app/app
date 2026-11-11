@@ -111,6 +111,11 @@ struct DIPEventDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        // Joining and leaving change the bottom bar and the Leave button: say so, once, for VoiceOver.
+        .onChange(of: joined) { old, new in
+            guard old != new else { return }
+            AccessibilityNotification.Announcement(new ? "You joined \(event.title)" : "You left \(event.title)").post()
+        }
         .sheet(isPresented: $showingChanges) {
             DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? [])
         }
@@ -218,9 +223,12 @@ struct DIPEventDetailsScreen: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(Rectangle())
         }
+        // The column spaces sections by 20; 4 more above and below makes ~24pt of air around the button.
+        .padding(.vertical, 4)
         .buttonStyle(DIPPressFeedbackStyle())
         .disabled(!canChangeParticipation)
         .opacity(canChangeParticipation ? 1 : 0.5)
+        .accessibilityHint("Asks you to confirm before giving up your place")
         .accessibilityIdentifier("event.leave")
     }
 
@@ -272,12 +280,13 @@ struct DIPEventDetailsScreen: View {
                 if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
             }
             .accessibilityIdentifier("event.price")
-            if metadata.status == .scheduled, let reward = DIPPointsFormat.reward(metadata.pointsValue) {
-                metadataRow("star.fill", title: "Points") {
-                    Text(event.isPast ? "Worth \(reward.dropFirst())" : "Earn \(reward)")
+            if metadata.status != .cancelled,
+               let text = DIPPointsFormat.eventRow(metadata.pointsValue, isPast: event.isPast, attended: joined) {
+                metadataRow("star.fill", title: "Points", tint: DIPTokens.Color.notificationAccent.swiftUIColor) {
+                    Text(text)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(DIPPointsFormat.rewardAccessibility(metadata.pointsValue) ?? reward)
+                .accessibilityLabel(event.isPast ? text : (DIPPointsFormat.rewardAccessibility(metadata.pointsValue) ?? text))
                 .accessibilityIdentifier("event.points")
             }
         }
@@ -351,12 +360,13 @@ struct DIPEventDetailsScreen: View {
     }
 
     private func metadataRow<Content: View, Trailing: View>(
-        _ symbol: String, title: String, trailing: Trailing = EmptyView(), @ViewBuilder content: () -> Content
+        _ symbol: String, title: String, tint: Color = DIPTokens.Color.actionPrimary.swiftUIColor,
+        trailing: Trailing = EmptyView(), @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(alignment: .center, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: symbol)
-                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .foregroundStyle(tint)
                     .frame(width: 24).padding(.top, 2)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {

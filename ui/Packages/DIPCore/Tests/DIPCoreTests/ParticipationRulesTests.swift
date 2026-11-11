@@ -19,6 +19,13 @@ final class ParticipationRulesTests: XCTestCase {
         XCTAssertEqual(DIPParticipationRules.joinDenial(metadata(), attendeeCount: 0, isGoing: false, now: start.addingTimeInterval(3_600)), .ended)
     }
 
+    func testCompletedEventsAreClosedToJoiningAndLeaving() {
+        XCTAssertEqual(DIPParticipationRules.joinDenial(metadata(status: .completed), attendeeCount: 0, isGoing: false, now: before), .ended)
+        XCTAssertEqual(DIPParticipationRules.leaveDenial(metadata(status: .completed), isGoing: true, now: before), .ended)
+        XCTAssertEqual(metadata(status: .completed).state(now: before, attendeeCount: 0, isJoined: true), .past)
+        XCTAssertFalse(metadata(status: .completed).canCancel(now: before))
+    }
+
     func testLeaveDenials() {
         XCTAssertNil(DIPParticipationRules.leaveDenial(metadata(), isGoing: true, now: before))
         XCTAssertEqual(DIPParticipationRules.leaveDenial(metadata(), isGoing: false, now: before), .notGoing)

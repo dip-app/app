@@ -6,7 +6,7 @@ import { PhotoError } from "./errors";
  * slot and eligibility limits on the upload itself; this module re-verifies everything server-side.
  *
  * - Who may upload: a verified Google member whose server-written RSVP for the event is `going`
- *   (which also proves same-company membership), after the event has ended, while it is `scheduled`.
+ *   (which also proves same-company membership), after the event has ended, while it is `scheduled` or `completed` (only `cancelled` events are refused).
  *   Attendance (`checkedIn`) is not required: no attendance command is live yet.
  * - Limits: at most PHOTO_SLOTS objects per member per event (one create-only Storage object per slot),
  *   each 1 byte..10 MiB, `image/jpeg`, `image/png` or `image/heic` with matching file signature.

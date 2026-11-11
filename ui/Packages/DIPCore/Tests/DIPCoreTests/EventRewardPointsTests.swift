@@ -16,6 +16,14 @@ final class EventRewardPointsTests: XCTestCase {
         XCTAssertNil(DIPPointsFormat.rewardShort(0, locale: locale))
     }
 
+    func testEventPageRowReadsEarnedForAttendedPastEvents() {
+        XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: true, attended: true, locale: locale), "Earned 50 points")
+        XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: true, attended: false, locale: locale), "Worth 50 points")
+        XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: false, attended: true, locale: locale), "Earn +50 points")
+        XCTAssertEqual(DIPPointsFormat.eventRow(1, isPast: true, attended: true, locale: locale), "Earned 1 point")
+        XCTAssertNil(DIPPointsFormat.eventRow(0, isPast: true, attended: true, locale: locale))
+    }
+
     func testMetadataAndSummariesCarryPointsAndClampNegatives() {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
         let metadata = DIPEventMetadata(startTime: start, endTime: start.addingTimeInterval(3_600), venueName: "V", address: "A",

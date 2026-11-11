@@ -402,7 +402,8 @@ export interface UpdateEventRequest {
   eventId: string;
   expectedRevision: number;
   event: EventDraft;
-  status: "scheduled" | "cancelled";
+  status: "scheduled" | "cancelled" | "completed";
+  statusReason?: string;
 }
 
 export interface UpdateEventResponse {

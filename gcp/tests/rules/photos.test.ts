@@ -51,6 +51,7 @@ before(async () => {
       past: event(company, "scheduled", -5 * HOUR, -2 * HOUR),
       live: event(company, "scheduled", -1 * HOUR, 1 * HOUR),
       cancelled: event(company, "cancelled", -5 * HOUR, -2 * HOUR),
+      completed: event(company, "completed", -5 * HOUR, -2 * HOUR),
     })) {
       await store.doc(`companies/${company}/events/${eventId}`).set(data);
       await store.doc(`companies/${company}/events/${eventId}/rsvps/album-going`).set(rsvp(company, eventId, "album-going", "going"));
@@ -117,6 +118,11 @@ test("uploads are refused before the event ends and for cancelled events", async
   await assertFails(upload(st("album-going"), objectPath("live", "album-going", 0)));
   await assertFails(upload(st("album-going"), objectPath("cancelled", "album-going", 0)));
   await assertFails(upload(st("album-going"), objectPath("missing", "album-going", 0)));
+});
+
+test("uploads are accepted for completed events (ended and joined)", async () => {
+  await assertSucceeds(upload(st("album-going"), objectPath("completed", "album-going", 3)));
+  await assertFails(upload(st("album-coworker"), objectPath("completed", "album-coworker", 3)));
 });
 
 test("cross-company: an outsider cannot upload into or read another company's album", async () => {

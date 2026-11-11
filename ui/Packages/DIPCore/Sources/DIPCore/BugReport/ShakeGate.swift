@@ -3,6 +3,8 @@ import Foundation
 /// Decides whether a shake may open the report sheet. Pure and clock-injected.
 public struct ShakeGate: Sendable {
     public static let enabledKey = "dip.shakeToReport.enabled"
+    /// Whether a shake first asks "Report a problem?" (default on) or opens the sheet straight away.
+    public static let promptKey = "dip.shakeToReport.askFirst"
     public static let debounce: TimeInterval = 1.5
     public static let suppressionAfterClose: TimeInterval = 10
 
@@ -29,6 +31,11 @@ public struct ShakeGate: Sendable {
     /// Default on when the key was never written.
     public static func isEnabled(_ defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: enabledKey) as? Bool ?? true
+    }
+
+    /// Default on when the key was never written.
+    public static func asksFirst(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: promptKey) as? Bool ?? true
     }
 
     /// True when the shake should present the sheet; records the trigger time.
