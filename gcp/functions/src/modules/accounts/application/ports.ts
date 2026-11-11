@@ -1,4 +1,4 @@
-import type { NewMemberProfile, StoredMembership } from "../domain/membership";
+import type { MembershipMode, NewMemberProfile, RosterClaim, StoredMembership } from "../domain/membership";
 
 /**
  * Operations available inside one atomic membership transaction. All reads
@@ -14,6 +14,12 @@ export interface MembershipTransaction {
   getMembership(uid: string): Promise<StoredMembership | null>;
   /** Creates users/{uid}; createdAt is server time. Must fail if the document exists. */
   createMember(uid: string, profile: NewMemberProfile): void;
+  /** companies/{companyId}.membershipMode; missing or unknown means "open" (today's behaviour). */
+  getMembershipMode(companyId: string): Promise<MembershipMode>;
+  /** The roster entry for the lower-case email's SHA-256 (companies/{c}/roster/{hash}), or null. */
+  getRosterEntry(companyId: string, email: string): Promise<RosterClaim | null>;
+  /** Marks the entry claimed by `uid` and appends the roster.claim audit entry, in the same transaction as createMember. */
+  claimRosterEntry(companyId: string, entryId: string, uid: string, displayName: string): void;
   /** Server-side refresh of the OAuth display name on an existing profile. */
   updateDisplayName(uid: string, displayName: string): void;
 }
