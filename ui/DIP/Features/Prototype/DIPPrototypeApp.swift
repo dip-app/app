@@ -96,6 +96,8 @@ struct DIPPrototypeApp: View {
     /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
     @Environment(\.weeklyChallengeFeed) private var challengeFeed
     @State private var albumPickerPresented = false
+    /// Photo to open the viewer on for an album reached from a Profile memory; cleared on back.
+    @State private var memoryPhotoIDs: [String: String?] = [:]
 
     var body: some View {
         GeometryReader { geometry in
@@ -203,7 +205,7 @@ struct DIPPrototypeApp: View {
             case .profile:
                 AnyView(DIPProfileScreen(
                     profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
-                    onMemory: { routes.append(.album($0)) },
+                    onMemory: { event, photo in memoryPhotoIDs[event] = photo; routes.append(.album(event)) },
                     onSave: { edit in
                         if let onProfileSave { try await onProfileSave(edit) }
                         else { try await model.updateProfile(edit) }
@@ -307,6 +309,7 @@ struct DIPPrototypeApp: View {
                     DIPAlbumScreen(
                         album: album, commentsByPhoto: snapshot.photoComments[id] ?? [:],
                         currentUser: accountProfile ?? snapshot.profile, showsBottomBar: false,
+                        initialPhotoID: memoryPhotoIDs[id] ?? nil,
                         isPickerPresented: $albumPickerPresented, onBack: pop,
                         onAddPhotos: { try await model.addPhotos(eventID: id, photos: $0) },
                         onAddComment: { try await model.addPhotoComment(
@@ -332,7 +335,10 @@ struct DIPPrototypeApp: View {
             routes = []
         }
     }
-    private func pop() { if !routes.isEmpty { routes.removeLast() } }
+    private func pop() {
+        if case .album(let id)? = routes.last { memoryPhotoIDs[id] = nil }
+        if !routes.isEmpty { routes.removeLast() }
+    }
     private func homeSelection(_ selection: String) {
         switch selection {
         case "Profile": selectTab(.profile)

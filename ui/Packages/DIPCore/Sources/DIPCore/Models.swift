@@ -99,8 +99,10 @@ public struct DIPFavoriteMemory: Identifiable, Equatable, Sendable {
     public var eventID: String
     public var image: MediaReference
     public var dateLabel: String
-    public init(id: String, eventID: String, image: MediaReference, dateLabel: String) {
-        self.id = id; self.eventID = eventID; self.image = image; self.dateLabel = dateLabel
+    /// The album photo this memory is, so a tap lands in the viewer on that photo. nil opens the album.
+    public var photoID: String?
+    public init(id: String, eventID: String, image: MediaReference, dateLabel: String, photoID: String? = nil) {
+        self.id = id; self.eventID = eventID; self.image = image; self.dateLabel = dateLabel; self.photoID = photoID
     }
 }
 

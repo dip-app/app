@@ -8,7 +8,8 @@ struct DIPProfileScreen: View {
     let profile: DIPProfile
     let showsBottomBar: Bool
     let onSelectTab: (DIPHomeTab) -> Void
-    let onMemory: (String) -> Void
+    /// (eventID, photoID): the album opens on that photo when the memory knows it.
+    let onMemory: (String, String?) -> Void
     let onSave: (ProfileEdit) async throws -> Void
     let onSignOut: (() async -> Void)?
     let interestCatalogLoading: Bool
@@ -33,7 +34,7 @@ struct DIPProfileScreen: View {
         profile: DIPProfile,
         showsBottomBar: Bool = true,
         onSelectTab: @escaping (DIPHomeTab) -> Void,
-        onMemory: @escaping (String) -> Void,
+        onMemory: @escaping (String, String?) -> Void,
         onSave: @escaping (ProfileEdit) async throws -> Void,
         onSignOut: (() async -> Void)? = nil,
         interestCatalogLoading: Bool = false, interestCatalogError: String? = nil,
@@ -151,7 +152,7 @@ struct DIPProfileScreen: View {
     }
 
     private func memoryTile(_ memory: DIPFavoriteMemory, index: Int) -> some View {
-        Button { onMemory(memory.eventID) } label: {
+        Button { onMemory(memory.eventID, memory.photoID) } label: {
             Color.clear.aspectRatio(1, contentMode: .fit)
                 .overlay { DIPMedia(memory.image).resizable().scaledToFill() }
                 .clipShape(RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))

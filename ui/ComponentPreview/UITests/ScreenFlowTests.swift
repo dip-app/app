@@ -117,12 +117,14 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertEqual(department.value as? String, "Design")
         XCTAssertEqual(oauthName.label, "Name, Elissa Woode")
         app.buttons["Cancel"].tap()
+        // Memory 0 is album photo "4" (not the first photo): the viewer opens on exactly that photo,
+        // with the comment field, and closing it leaves the album grid.
         app.buttons["profile.memory.0"].tap()
-        XCTAssertTrue(app.buttons["album.back"].waitForExistence(timeout: 3))
-        // A memory opens its event's album, and a photo there opens the comment viewer.
-        app.buttons["album.photo.0"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["photo.viewer.4"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["photo.viewer.0"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["photo.comments.message"].waitForExistence(timeout: 5))
         app.buttons["album.photo.close"].tap()
+        XCTAssertTrue(app.buttons["album.back"].waitForExistence(timeout: 3))
         app.buttons["album.back"].tap()
         XCTAssertTrue(app.buttons["profile.edit"].exists)
     }

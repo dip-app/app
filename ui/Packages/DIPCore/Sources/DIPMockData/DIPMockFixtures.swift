@@ -102,12 +102,12 @@ public enum DIPMockFixtures {
             DIPMemory(id: row.0, eventID: row.0, title: row.1, locality: row.2, image: .asset("events-past_" + row.3), avatars: assets(row.4.map { "events-past_" + $0 }), imageShade: row.5)
         }
         let favorites: [DIPFavoriteMemory] = [
-            .init(id: "favorite-0", eventID: "kayaking-memory", image: .asset("profile_Rectangle935"), dateLabel: "03/01"),
-            .init(id: "favorite-1", eventID: "hiking-memory", image: .asset("profile_Rectangle931"), dateLabel: "02/10"),
-            .init(id: "favorite-2", eventID: "rug-tuft", image: .asset("profile_Rectangle932"), dateLabel: "02/07"),
-            .init(id: "favorite-3", eventID: "boat-ride", image: .asset("profile_Rectangle933"), dateLabel: "02/04"),
-            .init(id: "favorite-4", eventID: "ceramics", image: .asset("profile_Rectangle934"), dateLabel: "01/07"),
-            .init(id: "favorite-5", eventID: "book-club", image: .asset("profile_Rectangle936"), dateLabel: "12/30")
+            .init(id: "favorite-0", eventID: "kayaking-memory", image: .asset("profile_Rectangle935"), dateLabel: "03/01", photoID: "4"),
+            .init(id: "favorite-1", eventID: "hiking-memory", image: .asset("profile_Rectangle931"), dateLabel: "02/10", photoID: "0"),
+            .init(id: "favorite-2", eventID: "rug-tuft", image: .asset("profile_Rectangle932"), dateLabel: "02/07", photoID: "3"),
+            .init(id: "favorite-3", eventID: "boat-ride", image: .asset("profile_Rectangle933"), dateLabel: "02/04", photoID: "1"),
+            .init(id: "favorite-4", eventID: "ceramics", image: .asset("profile_Rectangle934"), dateLabel: "01/07", photoID: "2"),
+            .init(id: "favorite-5", eventID: "book-club", image: .asset("profile_Rectangle936"), dateLabel: "12/30", photoID: "5")
         ]
         let profile = DIPProfile(id: "elissa-woode", displayName: "Elissa Woode", department: "Human Resources", city: "Pittsburgh, PA", interestTagIDs: ["tag-fitness", "tag-cooking", "tag-outdoors", "tag-carpentry"], interestCatalog: interestCatalog, photo: .asset("profile_Image"), avatar: .asset("profile_Image1"), favoriteMemories: favorites)
         let puppyDescription = "Join us for a delightful puppy yoga session where you can stretch, relax, and bond with adorable puppies! Experience the joy of  yoga surrounded by puppies who will bring smiles and laughter to your practice. This session combines gentle yoga poses with the heartwarming presence of our furry friends."

@@ -19,10 +19,10 @@ struct ProfileStatesPreview: View {
 
     private var profile: DIPProfile {
         let memories: [DIPFavoriteMemory] = [
-            .init(id: "m0", eventID: "kayaking-memory", image: .asset("profile_Rectangle935"), dateLabel: "03/01"),
-            .init(id: "m1", eventID: "hiking-memory", image: .asset("profile_Rectangle931"), dateLabel: "02/10"),
-            .init(id: "m2", eventID: "rug-tuft", image: .asset("profile_Rectangle932"), dateLabel: "02/07"),
-            .init(id: "m3", eventID: "boat-ride", image: .asset("profile_Rectangle933"), dateLabel: "02/04"),
+            .init(id: "m0", eventID: "kayaking-memory", image: .asset("profile_Rectangle935"), dateLabel: "03/01", photoID: "4"),
+            .init(id: "m1", eventID: "hiking-memory", image: .asset("profile_Rectangle931"), dateLabel: "02/10", photoID: "0"),
+            .init(id: "m2", eventID: "rug-tuft", image: .asset("profile_Rectangle932"), dateLabel: "02/07", photoID: "3"),
+            .init(id: "m3", eventID: "boat-ride", image: .asset("profile_Rectangle933"), dateLabel: "02/04", photoID: "1"),
         ]
         switch state {
         case "account-empty":
@@ -45,7 +45,7 @@ struct ProfileStatesPreview: View {
     }
 
     var body: some View {
-        DIPProfileScreen(profile: profile, onSelectTab: { _ in }, onMemory: { _ in }, onSave: { _ in },
+        DIPProfileScreen(profile: profile, onSelectTab: { _ in }, onMemory: { _, _ in }, onSave: { _ in },
                          onSignOut: {})
     }
 }
