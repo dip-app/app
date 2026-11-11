@@ -139,3 +139,12 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
   .mapping-table { thead { display: none; } tbody { display: grid; gap: 10px; } tr { display: grid; gap: 8px; background: $white; border-radius: $radius-card; padding: 12px 14px; } td, th { display: block; padding: 0; border: 0 !important; } select { width: 100%; background: $gray; } .sample { max-width: 140px; background: $gray; } }
   .table-wrap:has(.mapping-table) { background: transparent; padding: 0; }
 }
+
+// Round 2 audit: compact steps and samples on narrow screens
+@media (max-width: 700px) {
+  .steps { flex-wrap: nowrap; li:not(.current) .step-label { display: none; } li { padding-right: 10px; flex: none; } li.current { padding-right: 16px; } }
+  .sample.extra { display: none; }
+  .sample { max-width: 100%; }
+}
+.notice .pill-btn { margin: 4px 6px 0 0; }
+.banner.error a.pill-btn { background: $white; color: $ink; min-height: 44px; font-size: 16px; }

@@ -93,8 +93,9 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
 
       {saved && (
         <p className="notice" role="status">
-          Using the mapping you saved for this company. <button className="link-btn" onClick={() => setState({ mapping: suggestMapping(headers), saved: false })}>Start from suggestions</button>
-          {" · "}<button className="link-btn" onClick={() => { forgetMapping(store, companyId); setState({ mapping: suggestMapping(headers), saved: false }); }}>Forget it</button>
+          Using the mapping you saved for this company.{" "}
+          <button className="pill-btn gray small" onClick={() => setState({ mapping: suggestMapping(headers), saved: false })}>Start from suggestions</button>{" "}
+          <button className="pill-btn gray small" onClick={() => { forgetMapping(store, companyId); setState({ mapping: suggestMapping(headers), saved: false }); }}>Forget it</button>
         </p>
       )}
 
@@ -110,7 +111,7 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
               return (
                 <tr key={i}>
                   <th scope="row"><span className="col-letter" aria-hidden>{columnLetter(i)}</span> {header || <span className="muted">(no header)</span>}</th>
-                  <td>{values.length ? values.map((v, k) => <span key={k} className="sample">{v}</span>) : <span className="muted">Empty</span>}</td>
+                  <td>{values.length ? values.map((v, k) => <span key={k} className={`sample${k > 0 ? " extra" : ""}`}>{v}</span>) : <span className="muted">Empty</span>}</td>
                   <td>
                     <label className="sr-only" htmlFor={`map-${i}`}>Field for column {columnLetter(i)} {header}</label>
                     <select id={`map-${i}`} value={target} onChange={(e) => change(i, e.target.value as Target)} aria-invalid={target !== "skip" && full.filter((t) => t === target).length > 1}>
@@ -138,7 +139,8 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
             })}
           </dl>
         )}
-        <p className="muted"><Info>{data.length} {data.length === 1 ? "row" : "rows"}</Info> {mappedCount} of {columnCount} columns used. Skipped columns are ignored. Dates should look like 2026-01-31.</p>
+        <p className="muted"><Info>{data.length} {data.length === 1 ? "row" : "rows"} found</Info> {mappedCount} of {columnCount} columns used. Skipped columns are ignored.</p>
+        <p className="hint">Dates should look like 2026-01-31. Several teams are separated by semicolons.</p>
       </div>
 
       <Toggle checked={remember} onChange={setRemember} label="Remember this mapping" hint="Used next time a file has the same column names. Saved in this browser for your company." />

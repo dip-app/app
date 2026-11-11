@@ -2,11 +2,13 @@
 
 import type { ApiError } from "@/lib/contract";
 
-export function LoadError({ error, onRetry }: { error: ApiError; onRetry: () => void }) {
+export function LoadError({ error, onRetry, backHref, backLabel }: { error: ApiError; onRetry: () => void; backHref?: string; backLabel?: string }) {
+  // Retrying a missing item never helps: offer the way back instead.
+  const missing = error.code === "not-found" && backHref;
   return (
     <div className="banner error" role="alert">
       <span>{error.message}</span>
-      <button className="pill-btn" onClick={onRetry}>Try again</button>
+      {missing ? <a className="pill-btn" href={backHref}>{backLabel ?? "Go back"}</a> : <button className="pill-btn" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

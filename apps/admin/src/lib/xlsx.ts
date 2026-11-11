@@ -18,6 +18,8 @@ function textOf(node: Element): string {
   return Array.from(node.getElementsByTagName("t")).filter((t) => t.parentElement?.tagName !== "rPh").map((t) => t.textContent ?? "").join("");
 }
 
+const MAX_ROW_INDEX = 20000;
+
 export interface XlsxSheet { name: string; rows: string[][] }
 
 /**
@@ -62,6 +64,7 @@ export async function readXlsxWorkbook(buffer: ArrayBuffer): Promise<XlsxSheet[]
         cells[columnIndex(cell.getAttribute("r") ?? "A1")] = value;
       }
       const index = Number(rowNode.getAttribute("r")) - 1;
+      if (index >= MAX_ROW_INDEX) continue; // a hostile row number would allocate a huge sparse array
       rows[Number.isInteger(index) && index >= 0 ? index : rows.length] = Array.from(cells, (value) => value ?? "");
     }
     sheets.push({ name, rows: Array.from(rows, (row) => row ?? []) });

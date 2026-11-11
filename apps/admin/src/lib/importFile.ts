@@ -63,8 +63,9 @@ export async function readRawFile(file: File): Promise<RawFile> {
       return sheets.length ? { ...base, sheets } : { ...base, fatal: "The workbook is empty." };
     }
     if (name.endsWith(".csv") || name.endsWith(".txt") || file.type === "text/csv") {
-      const rows = parseCsv(await file.text());
-      return rows.length ? { ...base, sheets: [{ name: "CSV", rows }] } : { ...base, fatal: "The file is empty." };
+      // Blank lines are kept so row numbers match the file.
+      const rows = parseCsv(await file.text(), true);
+      return rows.some((row) => row.some((cell) => cell.trim() !== "")) ? { ...base, sheets: [{ name: "CSV", rows }] } : { ...base, fatal: "The file is empty." };
     }
     return { ...base, fatal: "Upload a .csv or .xlsx file." };
   } catch {

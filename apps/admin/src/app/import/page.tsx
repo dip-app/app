@@ -143,7 +143,7 @@ export default function ImportPage() {
       <ol className="steps" aria-label="Import steps">
         {STEPS.map((step, i) => (
           <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>
-            <span className="step-n">{i + 1}</span> {step.label}
+            <span className="step-n">{i + 1}</span><span className="step-label">{step.label}</span>
           </li>
         ))}
       </ol>

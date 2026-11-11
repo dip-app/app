@@ -14,7 +14,7 @@ export const REQUIRED_FIELDS: readonly ImportField[] = ["email"];
 const HEADER_ALIASES: Record<string, ImportField> = {
   email: "email", emailaddress: "email", workemail: "email", mail: "email", emailid: "email", companyemail: "email",
   displayname: "displayName", name: "displayName", fullname: "displayName", employeename: "displayName", employee: "displayName",
-  role: "role", accessrole: "role", accesslevel: "role", permission: "role",
+  role: "role", accessrole: "role",
   team: "teams", teams: "teams", teamnames: "teams", squad: "teams", group: "teams", groups: "teams",
   department: "department", dept: "department", division: "department", businessunit: "department",
   jobtitle: "jobTitle", title: "jobTitle", position: "jobTitle", jobposition: "jobTitle",
@@ -24,6 +24,8 @@ const HEADER_ALIASES: Record<string, ImportField> = {
 };
 
 export const normHeader = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+/** Key for remembering a header: its trimmed lower-case text, so non-Latin headers are kept too. */
+const headerKey = (value: string) => value.trim().toLowerCase();
 
 /** The best guess for one header; the first column that claims a field wins in `suggestMapping`. */
 export function suggestTarget(header: string): Target {
@@ -145,7 +147,7 @@ export function loadSavedMapping(store: KeyValueStore, companyId: string): Saved
 export function saveMapping(store: KeyValueStore, companyId: string, headers: string[], mapping: Target[], now: Date = new Date()): void {
   const byHeader: Record<string, Target> = {};
   headers.forEach((header, i) => {
-    const key = normHeader(header);
+    const key = headerKey(header);
     if (key) byHeader[key] = mapping[i] ?? "skip";
   });
   try {
@@ -165,13 +167,13 @@ export function forgetMapping(store: KeyValueStore, companyId: string): void {
  * the saved mapping doesn't recognise enough of this file.
  */
 export function mappingFromSaved(headers: string[], saved: SavedMapping): Target[] | null {
-  const known = headers.filter((header) => normHeader(header) in saved.byHeader);
-  if (known.length === 0 || known.length < headers.filter((header) => normHeader(header)).length / 2) return null;
+  const known = headers.filter((header) => headerKey(header) in saved.byHeader);
+  if (known.length === 0 || known.length < headers.filter((header) => headerKey(header)).length / 2) return null;
   const suggested = suggestMapping(headers);
   const used = new Set<Target>();
-  const mapping = headers.map((header): Target => {
-    const key = normHeader(header);
-    const target = key in saved.byHeader ? saved.byHeader[key] : suggested[headers.indexOf(header)];
+  const mapping = headers.map((header, column): Target => {
+    const key = headerKey(header);
+    const target = key in saved.byHeader ? saved.byHeader[key] : suggested[column];
     if (target === "skip" || used.has(target)) return "skip";
     used.add(target);
     return target;
