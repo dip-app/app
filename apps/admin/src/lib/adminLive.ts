@@ -76,11 +76,21 @@ interface Deps {
 }
 
 export function createLiveOps({ app, db, functions, organizer, run }: Deps): AdminOpsApi {
-  /** Calls a callable with the contract envelope; `mutating` adds a fresh requestId (retries of one UI action reuse the caller's own). */
+  // Retries of the same action reuse one requestId (a lost response then replays instead of repeating); a success
+  // forgets it so the next identical action is new. Callers that hold their own key pass `requestId`.
+  const pendingKeys = new Map<string, string>();
   async function call<T = Record<string, unknown>>(name: string, session: Session, payload: Record<string, unknown>, mutating = true): Promise<T> {
+    const memo = mutating && typeof payload.requestId !== "string" ? `${name}:${JSON.stringify(payload)}` : "";
+    let requestId: string | undefined = typeof payload.requestId === "string" ? payload.requestId : undefined;
+    if (mutating && !requestId) {
+      requestId = pendingKeys.get(memo) ?? crypto.randomUUID();
+      if (pendingKeys.size > 200) pendingKeys.clear();
+      pendingKeys.set(memo, requestId);
+    }
     const result = await httpsCallable<unknown, T>(functions, name)({
-      contractVersion: 1, companyId: session.companyId, ...(mutating ? { requestId: crypto.randomUUID() } : {}), ...payload,
+      contractVersion: 1, companyId: session.companyId, ...payload, ...(mutating ? { requestId } : {}),
     });
+    if (memo) pendingKeys.delete(memo);
     return result.data;
   }
   const col = (session: Session, ...path: string[]) => collection(db, "companies", session.companyId, ...path);

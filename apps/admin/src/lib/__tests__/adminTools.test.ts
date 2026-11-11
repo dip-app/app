@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { type KeyValueStore, createMockApi } from "../api";
 import { can, isStaff } from "../adminTypes";
 import { neutralizeFormula, parseCsv, toCsv } from "../csv";
-import { planCounts, rowsFromTable, templateCsv, validRows } from "../importFile";
+import { planCounts, templateCsv, validRows } from "../importFile";
+import { rowsFromTable } from "../importMapping";
 import { applyAll, planAll } from "../importRun";
 import { columnIndex } from "../xlsx";
 
@@ -63,7 +64,7 @@ describe("import file", () => {
     expect(parsed.localErrors.has(2)).toBe(false);
   });
   it("rejects files without an email column or over the row limit", () => {
-    expect(rowsFromTable([["Name"], ["a"]], "acme.com").fatal).toMatch(/Email/);
+    expect(rowsFromTable([["Name"], ["a"]], "acme.com").fatal).toMatch(/email/i);
     expect(rowsFromTable([["Email"], ...Array.from({ length: 2001 }, (_, i) => [`u${i}@acme.com`])], "acme.com").fatal).toMatch(/2000/);
     expect(rowsFromTable([], "acme.com").fatal).toBeTruthy();
   });
