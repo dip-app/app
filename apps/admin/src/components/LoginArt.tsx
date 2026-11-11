@@ -39,8 +39,6 @@ export function LoginArt() {
           <img src={`/admin/img/avatars/${a.name}.webp`} alt="" width={192} height={192} decoding="async" />
         </span>
       ))}
-      <span className="chip chip-a" style={{ "--i": 9 } as CSSProperties}>Team hike · 14 going</span>
-      <span className="chip chip-b" style={{ "--i": 10 } as CSSProperties}>32 new photos</span>
     </div>
   );
 }
