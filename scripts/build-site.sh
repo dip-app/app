@@ -10,7 +10,7 @@ fi
 rm -rf site-dist
 mkdir -p site-dist/admin
 cp apps/landing/index.html site-dist/index.html
-mkdir -p site-dist/img/landing && cp apps/landing/img/*.jpg site-dist/img/landing/
+mkdir -p site-dist/img/landing && cp apps/landing/img/* site-dist/img/landing/
 cp -R apps/admin/out/. site-dist/admin/
 # Root-level public assets the share page, Universal Links and admin <img src="/img/..."> rely on.
 for d in aasa share img; do

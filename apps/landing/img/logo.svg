@@ -1,0 +1,25 @@
+<svg width="255" height="255" viewBox="0 0 255 255" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="favicon">
+<g clip-path="url(#clip0_0_1)">
+<rect width="255" height="255" rx="127.5" fill="#7C88FA"/>
+<g id="Mask group">
+<mask id="mask0_0_1" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+<circle id="Ellipse 4" cx="127.608" cy="127.608" r="127.608" fill="#D9D9D9"/>
+</mask>
+<g mask="url(#mask0_0_1)">
+<path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M167.926 291.231C134.979 291.231 108.27 264.522 108.27 231.575V217.09H95.4384C62.4912 217.09 35.7822 190.381 35.7822 157.434C35.7822 124.486 62.4912 97.7775 95.4384 97.7775H108.27V85.8933C108.27 52.9461 134.979 26.2372 167.926 26.2372C200.873 26.2372 227.582 52.9461 227.582 85.8933V97.7775H241.12C274.067 97.7775 300.776 124.486 300.776 157.434C300.776 190.381 274.067 217.09 241.12 217.09H227.582V231.575C227.582 264.522 200.873 291.231 167.926 291.231Z" fill="white"/>
+<g id="Group 3">
+<path id="Vector 4" d="M121.739 136.693C124.659 130.055 134.545 119.576 150.727 130.761" stroke="#7C88FA" stroke-width="14.7952" stroke-linecap="round"/>
+<path id="Vector 5" d="M174.122 129.061C177.042 122.423 186.928 111.943 203.11 123.129" stroke="#7C88FA" stroke-width="14.7952" stroke-linecap="round"/>
+<path id="Vector 6" d="M200.105 144.821C193.275 160.346 170.153 184.856 132.306 158.695" stroke="#7C88FA" stroke-width="14.7952" stroke-linecap="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_1">
+<rect width="255" height="255" rx="127.5" fill="white"/>
+</clipPath>
+</defs>
+</svg>
