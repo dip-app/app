@@ -33,3 +33,7 @@ The landing phone now cycles real Figma frames (Home, Event Page, Event Page (Jo
 ## Follow-up: letsdip.work
 
 Hosting deployed (landing at /, admin at /admin/). letsdip.work and www.letsdip.work (redirect) were added as Firebase Hosting custom domains via the Hosting API; DNS (A 199.36.158.100, TXT hosting-site=team05-dip) was already in place and the apex serves over HTTPS. This change switches SHARE_ORIGIN, DIPShareLink.baseURL and the paid entitlements' applinks together (old host kept in applinks), keeps the old origin in the approved preview-image prefixes, and updates the hosting test for site-dist. Pending: eventSharePageV1 redeploy, www certificate, Firebase Auth authorized domain for admin sign-in, Team ID in the AASA file.
+
+## Follow-up: separate redirect site
+
+team05-dip.web.app cannot redirect itself while it also serves letsdip.work, so letsdip.work and www moved to a new Hosting site `letsdip` (firebase.json is now a two-site array: `letsdip` = landing, /admin/, share route, AASA; `team05-dip` = redirect-only, apps/redirect, 301 to https://letsdip.work/:path*). Required DNS changes: TXT hosting-site=letsdip and www CNAME letsdip.web.app. Only `hosting:letsdip` was deployed; the redirect (`firebase deploy --only hosting:team05-dip`) must wait until letsdip.work has an active certificate. Admin CI workflow now assembles site-dist before deploying. Note: AASA does not follow redirects, so the legacy applinks: host in the paid entitlements stops working once the redirect is live; drop it then.
