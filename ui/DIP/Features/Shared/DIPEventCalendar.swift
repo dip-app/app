@@ -24,10 +24,22 @@ struct DIPEventKitCalendarAdder: DIPEventCalendarAdding {
         let store = EKEventStore()
         let event = EKEvent(eventStore: store)
         event.title = fields.title
-        event.startDate = fields.startDate
-        event.endDate = fields.endDate
         event.isAllDay = fields.isAllDay
-        event.timeZone = fields.timeZone
+        if fields.isAllDay {
+            // All-day events float: keep the same calendar days as shown (in the source time zone) on every device.
+            var source = Calendar(identifier: .gregorian); source.timeZone = fields.timeZone
+            func local(_ date: Date) -> Date {
+                let parts = source.dateComponents([.year, .month, .day], from: date)
+                return Calendar.current.date(from: parts) ?? date
+            }
+            event.startDate = local(fields.startDate)
+            event.endDate = local(fields.endDate)
+            event.timeZone = nil
+        } else {
+            event.startDate = fields.startDate
+            event.endDate = fields.endDate
+            event.timeZone = fields.timeZone
+        }
         if !fields.location.isEmpty { event.location = fields.location }
         if !fields.notes.isEmpty { event.notes = fields.notes }
         event.url = fields.url

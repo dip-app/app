@@ -16,8 +16,11 @@ PR 1 (change history): DIPCore DIPChangeLog.swift (entries, pure text), DIPEvent
 
 PR 2 (event reward points): DIPEventSummary.pointsValue from metadata, DIPPointsFormat.reward/rewardShort, outline icon-left pill on the event page (`event.points`) and Home photo cards (`home.event.points`), hidden at 0; fixtures; Preview target build fix after Stream B (AlbumImageProcessing source, canImport guard).
 
+PR 3 (weekly-theme polish): DIPChallengeDetail start/end dates, pure phase/statusNote/calendarFields (all-day week, New York days, floating all-day in EventKit), solid calendar window pill (outline once ended, icon kept), tinted info card with how-it-works and phase note, Preview phase host and tests.
+
 ## Validation
 
+- PR 3: DIPCore ChallengeWindowTests (4), DIP build, Preview ChallengePhaseTests (3), AddToCalendarTests, PillRule challenge test passed; audit REVISE-minor (~7.8) and review APPROVE WITH FIXES, fixes applied (ink status note, icon kept in the outline pill, floating all-day dates, Added disables the button). HomeThemeTests.testErrorRetriesInPlaceAndKeepsOtherHomeContent fails (pre-existing, unrelated).
 - PR 2: DIPCore EventRewardPointsTests, DIP build, Preview EventPointsTests (2) passed; audit and review rounds in the PR.
 - PR 1: DIPCore ChangeLogTextTests (5), DIP build, Preview ChangeHistoryTests (2) passed; audit and review rounds recorded in the PR.
 

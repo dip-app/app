@@ -85,7 +85,8 @@ public enum DIPChallengeProjection {
             timing: windowText(start: challenge.startDate, end: challenge.endDate, timeZone: timeZone, locale: locale),
             description: challenge.description, tags: [], completedCount: max(0, challenge.completedCount),
             goalText: goalText(goal: challenge.goal, unit: challenge.goalUnit),
-            rewardText: rewardText(challenge.pointsReward), accent: theme.accent)
+            rewardText: rewardText(challenge.pointsReward), accent: theme.accent,
+            startDate: challenge.startDate, endDate: challenge.endDate)
     }
 
     /// "Nov 9 - Nov 15". The end is inclusive: a window ending Monday 00:00 (or Sunday 23:59:59)
