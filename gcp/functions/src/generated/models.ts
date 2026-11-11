@@ -298,6 +298,8 @@ export interface EventPhoto {
   caption: string;
   commentCount: number;
   createdAt: string;
+  sizeBytes?: number;
+  contentType?: "image/jpeg" | "image/png" | "image/heic";
 }
 
 export interface PhotoComment {
@@ -459,4 +461,19 @@ export interface ApproveChallengeResponse {
   contractVersion: number;
   submissionId: string;
   pointsAwarded: number;
+}
+
+export interface FinalizeEventPhotoRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  photoId: string;
+  storagePath: string;
+  caption?: string;
+}
+
+export interface FinalizeEventPhotoResponse {
+  contractVersion: number;
+  photoId: string;
+  created: boolean;
 }

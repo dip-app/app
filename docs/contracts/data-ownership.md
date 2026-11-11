@@ -18,12 +18,12 @@ The schema currently includes all 18 supplied document structs plus embedded Ven
 | .../pointTransactions/{id} | Own ledger, V2 | Server append-only, deterministic award IDs; balance and ledger updated atomically |
 | .../rewards/{id}, .../raffles/{id} | Same-company catalogs, stretch | Admin commands; server-owned stock/counts |
 | .../redemptions/{id}, .../raffles/{id}/entries/{uid} | Own private code/entry; no broad code list | Server only |
-| .../photos/{photoId} | Same-company past-event albums, V2 | Finalization command after authorized Storage upload; comments/favorites stretch |
+| companies/{c}/events/{e}/photos/{photoId} | Same-company verified members (get; list limit <= 100) | `finalizeEventPhotoV1` only after an authorized Storage upload; `commentCount` server-owned (trigger). Favorites deferred. See [event photo albums](callables.md#event-photo-albums) |
 | .../events/{eventId}/messages/{clientMessageId} | Same-company members with a `going` RSVP (feature branch, see below) | Own-author append only (rules); no edit/delete; push fan-out by trigger |
 | .../events/{eventId}/subscriptions/{uid} | Owner only | Owner sets `{level, updatedAt}`; server creates the default on join and removes it on leave |
 | users/{uid}/devices/{tokenHash} | None (server-only) | `registerDeviceV1`/`unregisterDeviceV1` only |
 | .../events/{eventId}.changeLog, .updatedBy | Same readers as the event | Server only (`onEventChanged` trigger, `updateEventV1`) |
-| .../photos/{photoId}/comments/{id} | Authorized tenant/participants, stretch | Proposed own-author append with strict rules; counters server-only |
+| .../photos/{photoId}/comments/{commentId} | Same-company verified members (get; list limit <= 100) | Own-author append under rules (exact fields, profile-matched author, trimmed 1..2000, server timestamp, client ID); no edit/delete; count server-only |
 | .../invites/{id} | Sender/recipient only, V2 | Send/respond commands, server-owned acceptance and notifications |
 
 **The accounts integration opens only verified self-profile get/update, scoped public company get and shared tags reads. The organizer slice adds same-company reads of `companies/{c}/events/{eventId}`: members read scheduled events only (list queries must constrain companyId, filter `status == 'scheduled'` and specify a limit <=100), organizers (`role == 'admin'`) also read cancelled events. Events are written only by `createEventV1`/`updateEventV1`; `commandReceipts` is server-only. The weekly-theme slice adds same-company verified reads of `companies/{c}/challenges/{id}` (get, including a missing document; member lists need a limit <= 20, organizers may list without one; get also checks `companyId` matches the path); themes are written only by `createChallengeV1`/`updateChallengeV1` and challenge submissions stay denied. Other paths remain denied.** See [exact limits and integration status](accounts-integration.md); the remaining table is target access design, not an assertion that all access is enabled. Each feature PR must implement and test its permitted subset. Admin SDK bypasses Firestore rules, so every function must perform its own authorization.
@@ -36,7 +36,7 @@ Weekly theme (Home): `companies/{c}/challenges` where `endDate >= now` ordered b
 
 ## Storage
 
-Planned V2 object path `companies/{c}/events/{eventId}/{photoId}.jpg` matches the source. Before enabling uploads, settle accepted image formats, size limit, uploader metadata, authorization on event participation, metadata finalization and orphan cleanup. Prefer authenticated SDK access; permanent download-token URLs are bearer URLs and weaken company isolation if shared. The source's downloadURL field is legacy/reference; settle delivery policy before implementing photos. V1 default event images are bundled or approved static assets, not Storage user uploads.
+Album objects live at `companies/{c}/events/{eventId}/photos/{uid}/{slot}` (slot 0..19, create-only, <= 10 MiB, jpeg/png/heic), uploaded only by the member into their own folder while their RSVP is `going` and the scheduled event has ended; same-company verified members read them through the authenticated SDK. This replaces the source's planned `{photoId}.jpg` path. No download-token (bearer) URLs are minted; `EventPhoto.downloadURL` is stored empty. Orphans (uploaded, never finalized) are bounded by the 20 slots per member per event; finalizing an invalid object deletes it. Details and the eligibility decision: [event photo albums](callables.md#event-photo-albums). V1 default event images are bundled or approved static assets, not Storage user uploads.
 
 ## Internal server data proposals
 
