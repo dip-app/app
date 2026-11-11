@@ -176,7 +176,7 @@ function metaProperty(property: string, content: string): string {
 /** Renders the complete server-side HTML page: preview tags for crawlers plus the human landing behaviour. */
 export function renderSharePage(preview: SharePreview, appStoreId: string = APP_STORE_ID): string {
   const pageURL = preview.eventId ? `${SHARE_ORIGIN}/e/${encodeURIComponent(preview.eventId)}` : `${SHARE_ORIGIN}/`;
-  const appLink = preview.eventId ? `dip://events/${encodeURIComponent(preview.eventId)}` : "dip://";
+  const appLink = preview.eventId && EVENT_ID.test(preview.eventId) ? `dip://events/${encodeURIComponent(preview.eventId)}` : "dip://";
   const storeURL = /^[0-9]+$/.test(appStoreId) ? `https://apps.apple.com/app/id${appStoreId}` : "";
   const bannerId = storeURL ? appStoreId : APP_STORE_ID_PLACEHOLDER;
   const tags = [
@@ -278,7 +278,9 @@ ${lead}    <a class="pill" id="open-app" href="${escapeHtml(appLink)}" role="but
     var f = document.createElement('iframe');
     f.hidden = true; f.setAttribute('aria-hidden', 'true'); f.src = btn.getAttribute('href');
     document.body.appendChild(f);
-    setTimeout(function () { f.remove(); }, 1500);
+    setTimeout(function () { f.remove(); }, 1500);${storeURL ? `
+    // No app installed (page still visible after the tap): offer the listing. Only ever after a tap.
+    setTimeout(function () { if (!document.hidden) { location.href = ${JSON.stringify(storeURL).replace(/</g, "\\u003c")}; } }, 1500);` : ""}
   });
 })();
 </script>

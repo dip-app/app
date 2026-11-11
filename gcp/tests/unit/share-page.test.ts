@@ -78,11 +78,12 @@ describe("share page domain", () => {
     assert.ok(renderSharePage(genericPreview("evt_123")).includes('href="dip://events/evt_123"'));
   });
 
-  test("with an App Store id the muted line links to the listing and nothing redirects", () => {
+  test("with an App Store id the muted line links to the listing and nothing redirects on load", () => {
     const html = renderSharePage(buildPreview("evt_123", EVENT), "1234567890");
     assert.ok(html.includes('<a href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>'));
     assert.ok(!html.includes("coming to the App Store"));
     assert.ok(!html.includes("location.replace"));
+    assert.match(html, /addEventListener\('click'[^]*document\.hidden[^]*location\.href = "https:\/\/apps\.apple\.com\/app\/id1234567890"/);
     assert.ok(!/http-equiv/i.test(html));
     assert.ok(metaContent(html, "apple-itunes-app")!.startsWith("app-id=1234567890,"));
   });
