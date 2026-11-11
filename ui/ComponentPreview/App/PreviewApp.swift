@@ -18,6 +18,8 @@ struct PreviewApp: App {
                     LongTitlesPreview(mode: mode)
                 } else if let state = ProfileStatesPreview.launchState() {
                     ProfileStatesPreview(state: state)
+                } else if let mode = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--changes-sheet=") }) {
+                    ChangesSheetPreview(mode: String(mode.dropFirst("--changes-sheet=".count)))
                 } else if ProcessInfo.processInfo.arguments.contains("--member-events") {
                     MemberEventsPreview()
                 } else if ProcessInfo.processInfo.arguments.contains("--onboarding-interests") {

@@ -22,10 +22,15 @@ public struct DIPEventMetadata: Equatable, Sendable {
     public var capacity: Int
     public var status: DIPEventStatus
     public var revision: Int
+    /// Points the event awards (0 = none; the UI hides the points pill at 0).
+    public var pointsValue: Int
+    /// Organizer edits, oldest first as stored; empty when the event was never changed.
+    public var changeLog: [DIPChangeLogEntry]
 
     public init(startTime: Date, endTime: Date, venueName: String, address: String,
                 locality: String, costCents: Int, costNote: String = "", capacity: Int,
-                status: DIPEventStatus = .scheduled, revision: Int = 1) {
+                status: DIPEventStatus = .scheduled, revision: Int = 1,
+                pointsValue: Int = 0, changeLog: [DIPChangeLogEntry] = []) {
         self.startTime = startTime
         self.endTime = endTime
         self.venueName = venueName
@@ -36,6 +41,8 @@ public struct DIPEventMetadata: Equatable, Sendable {
         self.capacity = capacity
         self.status = status
         self.revision = revision
+        self.pointsValue = max(0, pointsValue)
+        self.changeLog = changeLog
     }
 
     public func state(now: Date, attendeeCount: Int, isJoined: Bool) -> DIPEventState {
