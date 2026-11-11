@@ -86,7 +86,7 @@ export default function RosterPage() {
                         </td>
                         <td>{ROLE_LABEL[r.role]}</td>
                         <td>{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
-                        <td><Info tone={r.state === "active" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info></td>
+                        <td><Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info></td>
                         <td>{formatDate(r.invitedAt)}</td>
                         <td className="right">
                           {r.state === "invited" && <button className="pill-btn gray small quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}
