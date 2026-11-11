@@ -269,6 +269,13 @@
             self.avatarStack = AnyView(avatarStack())
             self.onSelect = onSelect
         }
+        /// Title, date and place (the card shows them on two lines; spoken with a comma), attendance and reward.
+        private var spokenLabel: String {
+            var parts = [title, locality.replacingOccurrences(of: "\n", with: ", ")]
+            if attendeeCount > 0 { parts.append("\(attendeeCount) attending") }
+            if let reward = rewardAccessibility ?? rewardText { parts.append(reward) }
+            return parts.joined(separator: ", ")
+        }
         public var body: some View {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -328,9 +335,8 @@
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(attendeeCount > 0
-                ? "\(title), \(locality), \(attendeeCount) attending"
-                : "\(title), \(locality)")
+            .accessibilityLabel(spokenLabel)
+            .accessibilityHint("Opens the event page")
             .accessibilityIdentifier("home.event.\(identifier)")
         }
     }

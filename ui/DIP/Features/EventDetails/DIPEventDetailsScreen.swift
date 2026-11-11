@@ -111,6 +111,11 @@ struct DIPEventDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        // Joining and leaving change the bottom bar and the Leave button: say so, once, for VoiceOver.
+        .onChange(of: joined) { old, new in
+            guard old != new else { return }
+            AccessibilityNotification.Announcement(new ? "You joined \(event.title)" : "You left \(event.title)").post()
+        }
         .sheet(isPresented: $showingChanges) {
             DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? [])
         }
@@ -223,6 +228,7 @@ struct DIPEventDetailsScreen: View {
         .buttonStyle(DIPPressFeedbackStyle())
         .disabled(!canChangeParticipation)
         .opacity(canChangeParticipation ? 1 : 0.5)
+        .accessibilityHint("Asks you to confirm before giving up your place")
         .accessibilityIdentifier("event.leave")
     }
 
