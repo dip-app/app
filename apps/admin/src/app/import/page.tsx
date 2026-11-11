@@ -185,7 +185,7 @@ export default function ImportPage() {
                   <li>You match your columns to ours next, so any header names work. Email is the key: people are matched by lowercase email{domain && <> and must end in <strong>@{domain}</strong></>}.</li>
                   <li>Teams are separated by semicolons. Unknown teams are flagged.</li>
                   <li>Blank cells keep the current value. Points and sign-in data are never touched.</li>
-                  <li>People who haven’t signed up yet join the roster and get these details when they do.</li>
+                  <li>People who haven’t signed in yet appear on the roster as Invited and get these details when they join.</li>
                   <li>Running the same file twice changes nothing the second time.</li>
                 </ul>
               </section>
