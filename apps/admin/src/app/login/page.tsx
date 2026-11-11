@@ -48,11 +48,6 @@ export default function Login() {
           </button>
         </div>
         {failed && <p className="note error" role="alert">Sign-in didn’t finish. Try again.</p>}
-        <p className="note info">
-          {live
-            ? "Use your work Google account. Organizer access is assigned manually and checked on every request."
-            : "Preview mode: data stays in this browser. Production uses Google sign‑in; organizer access is assigned manually."}
-        </p>
       </section>
       <LoginArt />
     </main>
