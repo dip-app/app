@@ -142,7 +142,7 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 
 // Round 2 audit: compact steps and samples on narrow screens
 @media (max-width: 700px) {
-  .steps { flex-wrap: nowrap; li:not(.current) .step-label { display: none; } li { padding-right: 10px; flex: none; } li.current { padding-right: 16px; } }
+  .steps { flex-wrap: nowrap; li:not(.current) .step-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } li { padding-right: 10px; flex: none; } li.current { padding-right: 16px; } }
   .sample.extra { display: none; }
   .sample { max-width: 100%; }
 }
