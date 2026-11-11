@@ -89,17 +89,11 @@ struct DIPChallengeDetailsScreen: View {
         }
     }
 
+    /// Goal and Reward are informational, so they use the shared pill in its outline (non-pressable) style.
     private func fact(_ item: (String, String, String, String)) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: item.3).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(item.0).font(DIPReferenceAssets.font("Inter-Regular", size: 12, relativeTo: .caption)).opacity(0.7)
-                Text(item.1).font(DIPReferenceAssets.font("Inter-Medium", size: 16, relativeTo: .body))
-            }
+        DIPActionPill(title: "\(item.0): \(item.1)", color: DIPTokens.Color.actionPrimary.swiftUIColor, style: .outline) {
+            Image(systemName: item.3).resizable().scaledToFit().accessibilityHidden(true)
         }
-        .padding(.horizontal, 14).frame(minHeight: 50, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(challenge.accent.fill.opacity(0.16), in: RoundedRectangle(cornerRadius: 14))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.0): \(item.1)")
         .accessibilityIdentifier(item.2)

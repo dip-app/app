@@ -56,9 +56,10 @@ struct MemoriesCanvas: View {
             }
             DemoMiniBar(selected: state.selectedTab == .events ? .events : .home, action: barAction)
             if state.callout == .myEvents || state.myEventsCallout > 0 {
+                // Aimed at the real My Events tab (3rd of 4), not the bar's centre.
                 DemoCallout(text: "My Events", tail: .bottom, appearance: state.myEventsCallout)
                     .fixedSize()
-                    .position(x: 195, y: 418)
+                    .position(x: DemoMiniBar.tabCenter(.events).x, y: 418)
             }
             if state.callout == .past || state.pastCallout > 0 {
                 DemoCallout(text: "Past events", tail: .bottom, appearance: state.pastCallout)

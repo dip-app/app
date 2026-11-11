@@ -45,12 +45,21 @@ struct DemoPhoneScreen<Content: View>: View {
 /// The demo's mini bar: the real `DIPFloatingNavigation`, with every tab the app shows (owner revision Nov 10), centred at
 /// canvas y 479.
 struct DemoMiniBar: View {
+    static let inset: CGFloat = 20
+
+    /// A tab's icon centre in canvas points, from the real bar's slot geometry (all tabs, 20 pt insets).
+    static func tabCenter(_ tab: DIPHomeTab) -> CGPoint {
+        let width = DemoCanvas.size.width - 2 * inset
+        let x = DIPFloatingNavigation.tabCenterX(tab, width: width) ?? width / 2
+        return CGPoint(x: inset + x, y: DemoCanvas.barCenterY)
+    }
+
     var selected: DIPHomeTab = .home
     var action: DIPBottomBarAction?
 
     var body: some View {
         DIPFloatingNavigation(selected: selected, action: action, onSelect: { _ in })
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Self.inset)
             .frame(width: DemoCanvas.size.width)
             .position(x: DemoCanvas.size.width / 2, y: DemoCanvas.barCenterY)
     }

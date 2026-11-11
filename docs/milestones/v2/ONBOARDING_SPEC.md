@@ -506,7 +506,7 @@ Element names: `canvasZoom`, `peopleRow`, `moreCapsule`, `participantPanel`, `in
 
 | Label | at | animation | moves | targets | What happens |
 |---|---|---|---|---|---|
-| `b2.zoom` | 0.00 | `stage` | canvasZoom, peopleRow, moreCapsule, inviteChip | peopleRow | Canvas scale 1 → 1.35, anchored at the people row (195, 300). Settles at 0.946. |
+| `b2.zoom` | 0.00 | `stage` | canvasZoom, peopleRow, moreCapsule, inviteChip | peopleRow | Owner fix (Nov 11): no visual zoom; the page renders at the phone's true width (the 1.35× zoom cropped it). The beat stays for timing. Settles at 0.946. |
 | `b2.ghostMore` | 0.96 | `.easeOut(0.15)` | ghost | moreCapsule | The ghost appears on "+ 2 More". |
 | `b2.pressMore` | 1.00 | `.easeInOut(0.22)` | ghost | moreCapsule | Press. |
 | `b2.panel` | 1.15 | `expand` | participantPanel | moreCapsule | Owner revision (Nov 10): the app's real `DIPParticipantsScreen` pushes in from the trailing edge, as the `.participants` route does; the bar resolves to that route's "Activity Chat". Six rows: **Maya · Design**, **Theo · Engineering**, **Jun · Finance**, **Lena · Sales**, **Omar · Product**, **You**. Settles at 2.018. `b2.panelBack` pops it. |
