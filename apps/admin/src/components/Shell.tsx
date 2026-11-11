@@ -22,7 +22,7 @@ interface NavGroup { heading: string; items: NavItem[] }
 
 // Grouped like most admin tools: what you run, what you review, who is involved, what happened. Items a role can't use are hidden.
 const NAV: NavGroup[] = [
-  { heading: "Programme", items: [
+  { heading: "Program", items: [
     { href: "/events/", label: "Events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
   ] },
   { heading: "Challenges", items: [
