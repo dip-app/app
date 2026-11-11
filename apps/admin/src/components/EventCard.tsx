@@ -29,6 +29,10 @@ export function EventCard({ event }: { event: AdminEvent }) {
           <div><dt>Price</dt><dd>{formatPrice(event.costCents)}</dd></div>
           <div><dt>Going</dt><dd>{event.attendeeCount} of {event.capacity}</dd></div>
         </dl>
+        <div className="card-links">
+          <Link className="pill-btn dark small" href={`/events/attendees/?id=${encodeURIComponent(event.id)}`}>Attendees</Link>
+          {kind === "past" && <Link className="pill-btn dark small" href={`/events/album/?id=${encodeURIComponent(event.id)}`}>Album</Link>}
+        </div>
       </div>
     </article>
     </div>

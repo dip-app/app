@@ -31,12 +31,24 @@ final class BugReportFormModel {
         draft.includesScreenshot = session.screenshot != nil
     }
 
+    /// The screenshot with the member's markup, when they drew on it; otherwise nil (the original is sent).
+    private(set) var annotatedScreenshot: Data?
+    private(set) var markup = ScreenshotMarkup()
+
     var hasScreenshot: Bool { session.screenshot != nil }
+    /// What the sheet previews and what is sent: the annotated copy when there is one.
+    var screenshotToSend: Data? { annotatedScreenshot ?? session.screenshot }
+
+    /// Keeps the editor's strokes and the JPEG rendered from them. An empty markup (or a failed render) restores the original.
+    func applyMarkup(_ markup: ScreenshotMarkup, rendered: Data?) {
+        if markup.isEmpty || rendered == nil { self.markup = ScreenshotMarkup(); annotatedScreenshot = nil }
+        else { self.markup = markup; annotatedScreenshot = rendered }
+    }
     var isSending: Bool { phase == .sending }
     var isFinished: Bool { phase == .sent || phase == .queued }
     var failure: BugReportSubmitError? { if case .failed(let error) = phase { error } else { nil } }
     /// Closing asks first when there is something to lose.
-    var needsDiscardConfirmation: Bool { draft.hasContent && !isFinished }
+    var needsDiscardConfirmation: Bool { (draft.hasContent || annotatedScreenshot != nil) && !isFinished }
 
     func setText(_ new: String) {
         let limited = BugReportDraft.limited(new)
@@ -92,7 +104,7 @@ final class BugReportFormModel {
         guard draft.canSend, phase == .editing || failure != nil, failure != .rateLimited else { return nil }
         phase = .sending
         let report = makeReport()
-        let outcome = await context.sender.send(report, screenshot: report.includesScreenshot ? session.screenshot : nil)
+        let outcome = await context.sender.send(report, screenshot: report.includesScreenshot ? screenshotToSend : nil)
         switch outcome {
         case .sent: phase = .sent
         case .queued: phase = .queued

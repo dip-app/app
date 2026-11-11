@@ -29,7 +29,7 @@ export async function setRsvp(store: ParticipationStore, identity: Participation
     stored(event.companyId === companyId && date(event.startTime) && integer(event.capacity) &&
       event.capacity >= 1 && event.capacity <= 10000 && integer(event.attendeeCount) &&
       event.attendeeCount >= 0 && event.attendeeCount <= event.capacity &&
-      (event.status === "scheduled" || event.status === "cancelled"));
+      (event.status === "scheduled" || event.status === "cancelled" || event.status === "completed"));
     const rsvp = await tx.getRsvp(companyId, eventId, uid);
     if (rsvp) {
       validateRsvp(rsvp, companyId, eventId, uid);

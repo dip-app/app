@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
+import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
 import { ThemeCard } from "@/components/ThemeCard";
 import { type ThemePhase, type WeeklyTheme, sortThemes, themePhase } from "@/lib/challenge";
@@ -42,7 +43,7 @@ export default function ThemesPage() {
 
   return (
     <Shell title="Weekly themes" subtitle="The “This Week’s Challenge” card on the app’s Home screen."
-      action={session?.role === "admin" ? <Link className="pill-btn purple" href="/themes/new/">New theme</Link> : undefined}>
+      action={can(session?.role, "themes.manage") ? <Link className="pill-btn purple" href="/themes/new/">New theme</Link> : undefined}>
       {error?.code === "permission-denied" ? (
         <div className="empty" role="alert">
           <h2>No organizer access</h2>

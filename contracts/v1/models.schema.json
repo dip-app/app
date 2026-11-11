@@ -1720,8 +1720,16 @@
           "type": "string",
           "enum": [
             "scheduled",
-            "cancelled"
-          ]
+            "cancelled",
+            "completed"
+          ],
+          "description": "completed: only a scheduled event that has ended. Leaving completed after the album has photos needs an admin and statusReason."
+        },
+        "statusReason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Required (admin only) to reopen or cancel a completed event whose album has photos."
         }
       },
       "required": [
@@ -3511,7 +3519,8 @@
         },
         "revision": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "description": "Member revision after the call; 0 when the member was never admin-edited."
         },
         "changedFields": {
           "type": "array",
@@ -3594,7 +3603,8 @@
         },
         "revision": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "description": "Member revision after the call; 0 when the member was never admin-edited."
         }
       },
       "required": [
@@ -3683,7 +3693,8 @@
         },
         "revision": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "description": "Member revision after the call; 0 when the member was never admin-edited."
         }
       },
       "required": [

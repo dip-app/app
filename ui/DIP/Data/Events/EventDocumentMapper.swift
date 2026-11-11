@@ -37,7 +37,7 @@ enum EventDocumentMapper {
         let start = try date("startTime"), end = try date("endTime"), capacity = try integer("capacity", minimum: 1)
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.unicodeScalars.count <= 120,
               !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, description.unicodeScalars.count <= 5000,
-              end > start, capacity <= 10000, ["scheduled", "cancelled"].contains(status) else { throw EventReadFailure.invalidDocument }
+              end > start, capacity <= 10000, ["scheduled", "cancelled", "completed"].contains(status) else { throw EventReadFailure.invalidDocument }
         return try DIPContracts.Event(id: id, companyId: companyID, title: title, description: description,
             tagIds: tags, coverImageURL: string("coverImageURL"), startTime: start, endTime: end,
             venue: Venue(name: name, address: address, locality: locality, latitude: coordinate("latitude", bound: 90),

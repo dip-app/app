@@ -6,3 +6,8 @@ export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";
 export { submitChallengeV1, approveChallengeV1, rejectChallengeV1, listChallengeSubmissionsV1 } from "./modules/submissions";
+export {
+  removeEventPhotoV1, removeEventPhotoCommentV1, addEventAttendeeV1, removeEventAttendeeV1, recordAttendanceV1, listMembersV1, getMemberV1,
+  updateMemberV1, resetMemberProfileV1, setMemberStatusV1, adjustMemberPointsV1, upsertTeamV1, updateCompanySettingsV1,
+  upsertRosterEntryV1, revokeRosterEntryV1, importEmployeesV1, applyEmployeeImportV1, getEmployeeImportV1,
+} from "./modules/admin";

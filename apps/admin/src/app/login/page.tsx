@@ -31,8 +31,9 @@ export default function Login() {
         <p>Create events, set the details and keep them up to date for everyone in your company.</p>
         <div className="login-actions">
           <button className="big-pill dark" onClick={() => void start()}>
-            {live ? "Sign in with Google" : "Sign in as organizer"}
+            {live ? "Sign in with Google" : "Sign in as admin"}
           </button>
+          {!live && <button className="big-pill gray" onClick={() => void signIn("organizer").catch(() => setFailed(true))}>Preview as organizer</button>}
         </div>
         {failed && <p className="note" role="alert">Sign-in didn’t finish. Try again.</p>}
         <p className="note">
