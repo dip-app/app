@@ -4,7 +4,8 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-/// Renders observed album records. Picker bytes and retries are transient command drafts.
+/// Renders observed album records plus the member's in-flight upload drafts (optimistic thumbnails with
+/// progress, failure and retry). Published photos come only from repository observation.
 struct DIPAlbumScreen: View {
     let album: DIPAlbum
     let commentsByPhoto: [String: [DIPPhotoComment]]
@@ -13,12 +14,13 @@ struct DIPAlbumScreen: View {
     let showsBottomBar: Bool
     @Binding private var isPickerPresented: Bool
     let onBack: () -> Void
-    let onAddPhotos: ([PhotoUpload]) async throws -> Void
+    /// The photo open in the viewer (nil when closed), so the host can observe its comments.
+    let onViewPhoto: ((String?) -> Void)?
+    private let injectedUploads: AlbumUploadQueue?
+    @State private var ownUploads: AlbumUploadQueue
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var viewedPhotoID: String?
-    @State private var importMessage: String?
-    @State private var isImporting = false
-    @State private var pendingUploads: [PhotoUpload] = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         album: DIPAlbum,
@@ -27,9 +29,11 @@ struct DIPAlbumScreen: View {
         showsBottomBar: Bool = true,
         initialPhotoID: String? = nil,
         isPickerPresented: Binding<Bool> = .constant(false),
+        uploads: AlbumUploadQueue? = nil,
         onBack: @escaping () -> Void,
         onAddPhotos: @escaping ([PhotoUpload]) async throws -> Void,
-        onAddComment: @escaping (String, String, String) async throws -> Void
+        onAddComment: @escaping (String, String, String) async throws -> Void,
+        onViewPhoto: ((String?) -> Void)? = nil
     ) {
         self.album = album
         _viewedPhotoID = State(initialValue: initialPhotoID)
@@ -39,7 +43,24 @@ struct DIPAlbumScreen: View {
         self.showsBottomBar = showsBottomBar
         _isPickerPresented = isPickerPresented
         self.onBack = onBack
-        self.onAddPhotos = onAddPhotos
+        self.onViewPhoto = onViewPhoto
+        injectedUploads = uploads
+        // Hosts without a shared queue (standalone previews) send each photo through `onAddPhotos`.
+        _ownUploads = State(initialValue: AlbumUploadQueue(send: { _, photo, progress in
+            try await onAddPhotos([photo])
+            progress(1)
+            return photo.id
+        }))
+    }
+
+    private var uploads: AlbumUploadQueue { injectedUploads ?? ownUploads }
+    private var drafts: [AlbumUploadQueue.Item] { uploads.items(for: album.eventID) }
+
+    /// How many more photos the picker may offer (the source's limit minus drafts not yet published).
+    private var selectionLimit: Int {
+        guard album.canAddPhotos else { return 0 }
+        guard let remaining = album.remainingUploads else { return 12 }
+        return max(0, remaining - uploads.reservedCount(for: album.eventID))
     }
 
     var body: some View {
@@ -52,33 +73,17 @@ struct DIPAlbumScreen: View {
                         .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView {
                         VStack(spacing: 9) {
-                            if album.photos.isEmpty {
-                                DIPEmptyState(
-                                    screen: "album", title: "No photos yet",
-                                    message: "Photos from this event will show up here.",
-                                    // Standalone, the page's own bottom picker is the add action; composed,
-                                    // this opens the shell's picker through the shared binding.
-                                    actionTitle: showsBottomBar ? nil : "Add photos",
-                                    action: showsBottomBar ? nil : { isPickerPresented = true })
-                                    .padding(.top, 8)
-                            } else {
-                                mosaic(width: width)
-                                if album.photos.count > 12 {
-                                    ForEach(12..<album.photos.count, id: \.self) { index in
-                                        photoButton(album.photos[index], index: index, width: width, height: 246)
-                                    }
-                                }
-                            }
-                            if isImporting { ProgressView("Adding photos…") }
+                            if !drafts.isEmpty { uploadStrip }
+                            content(width: width)
                         }
                         .padding(.horizontal, 20).padding(.bottom, 100)
                     }
                     .scrollIndicators(.hidden)
                 }
                 .padding(.bottom, 22)
-                if showsBottomBar {
-                    PhotosPicker(selection: $selectedItems, maxSelectionCount: 12, matching: .images) {
-                        Text("Add Photos")
+                if showsBottomBar && album.canAddPhotos {
+                    PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, selectionLimit), matching: .images) {
+                        Text(selectionLimit > 0 ? "Add Photos" : "Photo limit reached")
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity).frame(height: 80)
@@ -86,7 +91,7 @@ struct DIPAlbumScreen: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .disabled(isImporting)
+                    .disabled(selectionLimit == 0)
                     .accessibilityIdentifier("album.add-photos")
                     .padding(.horizontal, 20)
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
@@ -98,27 +103,52 @@ struct DIPAlbumScreen: View {
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
         .photosPicker(
-            isPresented: $isPickerPresented, selection: $selectedItems,
-            maxSelectionCount: 12, matching: .images
+            isPresented: Binding(get: { isPickerPresented && selectionLimit > 0 }, set: { isPickerPresented = $0 }),
+            selection: $selectedItems, maxSelectionCount: max(1, selectionLimit), matching: .images
         )
         .fullScreenCover(item: viewedPhoto) { photo in
             photoViewer(photo)
         }
-        .onChange(of: selectedItems) { _, items in
-            Task { await importSelection(items) }
+        .onChange(of: selectedItems) { _, items in importSelection(items) }
+        .onChange(of: album.photos.map(\.id), initial: true) { _, ids in
+            uploads.reconcile(eventID: album.eventID, publishedPhotoIDs: Set(ids))
         }
-        .alert(
-            "Photo selection",
-            isPresented: Binding(
-                get: { importMessage != nil },
-                set: { if !$0 { importMessage = nil } })
-        ) {
-            if !pendingUploads.isEmpty {
-                Button("Try Again") { Task { await retryPendingPhotos() } }
+        // Not onDisappear: presenting the full-screen viewer itself makes this page disappear.
+        .onChange(of: viewedPhotoID, initial: true) { _, id in onViewPhoto?(id) }
+        .onAppear { if injectedUploads == nil { ownUploads.onRunFinished = Self.feelRun } }
+    }
+
+    /// Finished uploads are felt: success when every photo landed, failure when any did not.
+    static func feelRun(succeeded: Int, failed: Int) {
+        if failed > 0 { DIPHaptics.failure() } else if succeeded > 0 { DIPHaptics.success() }
+    }
+
+    @ViewBuilder private func content(width: CGFloat) -> some View {
+        if !album.isLoaded {
+            ProgressView("Loading photos…")
+                .frame(maxWidth: .infinity).padding(.top, 40)
+                .accessibilityIdentifier("album.loading")
+        } else if album.photos.isEmpty {
+            if drafts.isEmpty { emptyState.padding(.top, 8) }
+        } else {
+            mosaic(width: width)
+            if album.photos.count > 12 {
+                ForEach(12..<album.photos.count, id: \.self) { index in
+                    photoButton(album.photos[index], index: index, width: width, height: 246)
+                }
             }
-            Button("OK") { importMessage = nil }
-        } message: {
-            Text(importMessage ?? "")
+        }
+    }
+
+    /// Shared empty-state format. The invitation to add appears only when this member may upload.
+    @ViewBuilder private var emptyState: some View {
+        if let error = album.loadError {
+            DIPEmptyState(screen: "album-error", title: "Couldn’t load photos", message: error)
+        } else if album.canAddPhotos && selectionLimit > 0 {
+            // The solid Add Photos pill below is the single add action (no second button in the card).
+            DIPEmptyState(screen: "album", title: "No photos yet", message: "Be the first to add one.")
+        } else {
+            DIPEmptyState(screen: "album", title: "No photos yet", message: "Photos from this event will show up here.")
         }
     }
 
@@ -156,6 +186,157 @@ struct DIPAlbumScreen: View {
         .buttonStyle(.plain)
         .frame(height: 50)
     }
+
+    // MARK: Upload drafts
+
+    private var uploadStrip: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text(uploadStatus)
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                    .accessibilityIdentifier("album.upload.status")
+                Spacer(minLength: 0)
+                if retryableFailures.count > 1 {
+                    Button("Retry all") { retryableFailures.forEach { uploads.retry($0.id) } }
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                        .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                        .padding(.horizontal, 14).frame(minHeight: 32)
+                        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                        .contentShape(Capsule())
+                        .buttonStyle(DIPPressFeedbackStyle())
+                        .accessibilityIdentifier("album.upload.retry-all")
+                }
+            }
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    ForEach(Array(drafts.enumerated()), id: \.element.id) { index, item in
+                        uploadTile(item, index: index)
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 6)
+        // Finished drafts fade out instead of making the strip jump.
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: drafts.map(\.id))
+    }
+
+    private var retryableFailures: [AlbumUploadQueue.Item] {
+        drafts.filter { if case .failed = $0.state { $0.upload != nil } else { false } }
+    }
+
+    /// Counts every state shown in the strip, e.g. "2 couldn’t be added · 1 uploading".
+    private var uploadStatus: String {
+        let pending = uploads.pendingCount(for: album.eventID)
+        let failed = uploads.failedCount(for: album.eventID)
+        var parts: [String] = []
+        if failed > 0 { parts.append(failed == 1 ? "1 couldn’t be added" : "\(failed) couldn’t be added") }
+        if pending > 0 { parts.append(pending == 1 ? "1 uploading" : "\(pending) uploading") }
+        return parts.isEmpty ? "Photos added" : parts.joined(separator: " · ")
+    }
+
+    /// One draft: thumbnail with a status scrim; a failed draft carries its own Retry and remove controls.
+    private func uploadTile(_ item: AlbumUploadQueue.Item, index: Int) -> some View {
+        let side: CGFloat = 104
+        return ZStack {
+            Group {
+                if let thumbnail = item.thumbnail { DIPMedia(.data(thumbnail)).resizable().scaledToFill() }
+                else { DIPTokens.Color.surfaceMuted.swiftUIColor }
+            }
+            .frame(width: side, height: side)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            tileOverlay(item)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(tileLabel(item))
+                .accessibilityIdentifier("album.upload.\(index)")
+        }
+        .frame(width: side, height: side)
+        .overlay(alignment: .bottom) {
+            if case .failed(let message) = item.state, item.upload != nil {
+                Button("Retry") { uploads.retry(item.id) }
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                    .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                    .padding(.horizontal, 14).frame(height: 28)
+                    .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .buttonStyle(DIPPressFeedbackStyle())
+                    .accessibilityHint(message)
+                    .accessibilityIdentifier("album.upload.retry.\(index)")
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if case .failed = item.state {
+                Button { uploads.remove(item.id) } label: {
+                    Image(systemName: "xmark").font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                        .frame(width: 24, height: 24)
+                        .background(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.85), in: Circle())
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(DIPPressFeedbackStyle())
+                .offset(x: 8, y: -8)
+                .accessibilityLabel("Remove photo")
+                .accessibilityIdentifier("album.upload.remove.\(index)")
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    @ViewBuilder private func tileOverlay(_ item: AlbumUploadQueue.Item) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        ZStack {
+            switch item.state {
+            case .preparing, .waiting:
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))
+                ProgressView().tint(.white)
+            case .uploading(let value):
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))
+                Circle().stroke(.white.opacity(0.35), lineWidth: 3).frame(width: 28, height: 28)
+                Circle().trim(from: 0, to: max(0.02, value))
+                    .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90)).frame(width: 28, height: 28)
+                    .animation(.linear(duration: 0.2), value: value)
+            case .failed:
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.55))
+                Image(systemName: "exclamationmark.circle.fill").font(.system(size: 28))
+                    .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
+                    .offset(y: -10)
+            case .done:
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 28)).foregroundStyle(.white)
+            }
+        }
+    }
+
+    private func tileLabel(_ item: AlbumUploadQueue.Item) -> String {
+        switch item.state {
+        case .preparing, .waiting: "Photo waiting to upload"
+        case .uploading(let value): "Uploading photo, \(Int(value * 100)) percent"
+        case .failed(let message): "Photo not added. \(message)"
+        case .done: "Photo added"
+        }
+    }
+
+    private func importSelection(_ items: [PhotosPickerItem]) {
+        guard !items.isEmpty else { return }
+        selectedItems = []
+        let accepted = Array(items.prefix(max(0, selectionLimit)))
+        guard !accepted.isEmpty else { return }
+        uploads.enqueue(eventID: album.eventID, loaders: accepted.map { item in
+            { @Sendable in
+                guard let data = try await item.loadTransferable(type: Data.self) else {
+                    throw AlbumImageProcessing.Failure.unreadable
+                }
+                return data
+            }
+        })
+    }
+
+    // MARK: Grid
 
     private func mosaic(width: CGFloat) -> some View {
         let large = (width - 10) * 237 / 352
@@ -253,66 +434,5 @@ struct DIPAlbumScreen: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.viewer.\(photo.id)")
         .presentationBackground(.clear)
-    }
-
-    @MainActor
-    private func importSelection(_ items: [PhotosPickerItem]) async {
-        guard !items.isEmpty else { return }
-        guard !isImporting else {
-            selectedItems = []
-            return
-        }
-        isImporting = true
-        importMessage = nil
-        defer {
-            selectedItems = []
-            isImporting = false
-        }
-        var uploads: [PhotoUpload] = []
-        var failures = 0
-        for item in items {
-            do {
-                guard let data = try await item.loadTransferable(type: Data.self),
-                    data.count <= 25_000_000, UIImage(data: data) != nil
-                else {
-                    failures += 1
-                    continue
-                }
-                uploads.append(PhotoUpload(data: data))
-            } catch {
-                failures += 1
-            }
-        }
-        guard !uploads.isEmpty else {
-            importMessage = "The selected photos could not be opened. Choose images smaller than 25 MB."
-            return
-        }
-        pendingUploads = uploads
-        do {
-            try await onAddPhotos(uploads)
-            pendingUploads = []
-            DIPHaptics.success()
-            if failures > 0 {
-                importMessage = "\(failures) selected photo(s) could not be opened. Choose images smaller than 25 MB."
-            }
-        } catch {
-            // Retain command IDs/bytes for an idempotent retry; observed album data is unchanged here.
-            DIPHaptics.failure()
-            importMessage = "Your photos could not be added. Try again."
-        }
-    }
-
-    @MainActor
-    private func retryPendingPhotos() async {
-        guard !isImporting, !pendingUploads.isEmpty else { return }
-        isImporting = true
-        importMessage = nil
-        defer { isImporting = false }
-        do {
-            try await onAddPhotos(pendingUploads)
-            pendingUploads = []
-        } catch {
-            importMessage = "Your photos could not be added. Try again."
-        }
     }
 }

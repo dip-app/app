@@ -20,6 +20,7 @@ struct DIPMemberHome: View {
     @State private var catalog: InterestCatalog
     private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
     private let participationFactory: (() -> (any ParticipationSource)?)?
+    private let albumFactory: (() -> (any PhotoAlbumSource)?)?
     @State private var liveEvents: MemberEventAppRepository?
     @State private var eventConfigurationError = false
     @State private var prototypeRepository: DIPMockRepository
@@ -37,6 +38,7 @@ struct DIPMemberHome: View {
         oauthPhotoURL: String = "",
         eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
+        albumFactory: (() -> (any PhotoAlbumSource)?)? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
         deepLinkEventID: String? = nil,
@@ -48,6 +50,7 @@ struct DIPMemberHome: View {
         self.onDeepLinkHandled = onDeepLinkHandled
         self.eventReadFactory = eventReadFactory
         self.participationFactory = participationFactory
+        self.albumFactory = albumFactory
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
@@ -113,7 +116,7 @@ struct DIPMemberHome: View {
                 if let reads = eventReadFactory(context) {
                     liveEvents = MemberEventAppRepository(reads: reads,
                         profile: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL),
-                        participation: participationFactory?(),
+                        participation: participationFactory?(), albums: albumFactory?(),
                         chatAuthor: ChatAuthor(name: context.profile.displayName, avatarID: context.profile.avatarId))
                 } else { eventConfigurationError = true }
             }
@@ -121,7 +124,10 @@ struct DIPMemberHome: View {
             liveEvents?.updateTagLabels(Dictionary(catalog.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first }))
         }
         .onDisappear { liveEvents?.stop(); liveEvents = nil }
-        .onChange(of: context.profile) { _, _ in editor.receive(context) }
+        .onChange(of: context.profile) { _, profile in
+            editor.receive(context)
+            liveEvents?.updateAuthor(ChatAuthor(name: profile.displayName, avatarID: profile.avatarId))
+        }
     }
 
     // MARK: Onboarding
@@ -191,6 +197,7 @@ struct DIPMemberHome: View {
             onLoadMoreEvents: live && (liveEvents?.hasMore == true) ? { Task { await liveEvents?.loadMore() } } : nil,
             loadingMoreEvents: liveEvents?.isLoadingMore == true, eventPaginationError: liveEvents?.paginationError,
             onRefreshEvents: live ? { await liveEvents?.refresh() } : nil,
+            onPhotoViewed: live ? { eventID, photoID in liveEvents?.selectPhoto(eventID: eventID, photoID: photoID) } : nil,
             onSurfaceChange: { homeSurface = $0 },
             onReplayTour: onboarding == nil ? nil : { startReplay() },
             // Held while the onboarding tour (or its replay) covers the shell.
