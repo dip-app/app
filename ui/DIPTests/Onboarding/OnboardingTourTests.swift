@@ -90,6 +90,22 @@ final class DemoTimingTests: XCTestCase {
     }
 }
 
+final class DemoStageLayoutTests: XCTestCase {
+    /// The phone fills the Stage: equal side gaps (within 2 pt), and no band under it: the screen ends on the
+    /// Stage's bottom edge and the bezel bleeds off (owner revision, Nov 10). Checked for the tour Stage on the
+    /// reference phone and on smaller and larger screens.
+    func testDeviceFrameFillsTheStageWithEqualSideGaps() {
+        for size in [CGSize(width: 362, height: 429), CGSize(width: 335, height: 330), CGSize(width: 390, height: 500)] {
+            let frame = DemoStageLayout.canvasFrame(in: size)
+            let left = frame.minX - DemoStageLayout.bezel, right = size.width - frame.maxX - DemoStageLayout.bezel
+            XCTAssertEqual(left, right, accuracy: 2, "\(size)")
+            XCTAssertGreaterThanOrEqual(left, DemoStageLayout.minimumSideInset - 0.001, "\(size)")
+            XCTAssertEqual(frame.maxY, size.height, accuracy: 0.5, "no dead band below the phone at \(size)")
+            XCTAssertEqual(frame.width / frame.height, DemoCanvas.size.width / DemoCanvas.size.height, accuracy: 0.001)
+        }
+    }
+}
+
 final class WindowSheetTests: XCTestCase {
     func testWindowSheetInterpolatesHalfway() {
         let start = WindowSheet(window: CGRect(x: 20, y: 134, width: 362, height: 429), radius: 20)

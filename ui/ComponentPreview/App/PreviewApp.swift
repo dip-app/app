@@ -1,3 +1,4 @@
+import DIPDesignSystem
 import SwiftUI
 
 @main
@@ -25,6 +26,11 @@ struct PreviewApp: App {
                     DIPHomeFixturePreview()
                 }
             }
+            // `--progress-style=wheel|orbit|hop` compares the Bar's progress indicators (wheel ships).
+            .environment(\.dipProgressIndicatorStyle, ProcessInfo.processInfo.arguments
+                .first { $0.hasPrefix("--progress-style=") }
+                .flatMap { DIPProgressIndicatorStyle(rawValue: String($0.dropFirst("--progress-style=".count))) }
+                ?? .shipping)
             .environment(
                 \.dynamicTypeSize,
                 ProcessInfo.processInfo.arguments.contains("--largest-text") ? .accessibility5

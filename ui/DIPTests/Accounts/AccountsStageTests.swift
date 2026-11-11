@@ -33,7 +33,7 @@ final class AccountsStageTests: XCTestCase {
         XCTAssertEqual(pending.tone.fill, .challenge)
         XCTAssertEqual(resolving.tone.fill, .challenge)
         XCTAssertEqual(pending.bar.title, "Just a moment…")
-        XCTAssertEqual(resolving.bar.title, "Finding your company…")
+        XCTAssertEqual(resolving.bar.title, "Finding your company")
         for progress in [pending, resolving] {
             XCTAssertTrue(progress.bar.showsProgress)
             XCTAssertEqual(progress.bar.identifier, "onboarding.progress")

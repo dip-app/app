@@ -159,7 +159,10 @@ struct DemoStage<Scene: DemoScene>: View {
             let scale = Layout.canvasScale(in: geometry.size)
             let canvasFrame = Layout.canvasFrame(in: geometry.size)
             ZStack(alignment: .topLeading) {
+                // The bezel is drawn taller than the Stage (it runs off the top); pin its layout to the Stage
+                // so the ZStack isn't re-centred around it (that left a dead band under the phone).
                 DemoDeviceFrame(screen: canvasFrame, scale: scale)
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                 canvasLayer(scale: scale)
                     .frame(width: canvasFrame.width, height: canvasFrame.height)
                     .position(x: canvasFrame.midX, y: canvasFrame.midY)

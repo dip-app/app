@@ -49,8 +49,10 @@ struct OnboardingTourView: View {
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
-        .sensoryFeedback(.impact(weight: .light), trigger: model.ctaTaps)
-        .sensoryFeedback(.success, trigger: model.interestsSaved) { _, saved in saved }
+        // Haptics (DIPHaptics): step CTAs are navigation (silent); saving interests is a commit, then success
+        // or failure. Demo beats never fire haptics (spec §3.0).
+        .onChange(of: model.interestsSaved) { _, saved in if saved { DIPHaptics.success() } }
+        .onChange(of: interests?.saveErrorMessage) { _, message in if message != nil { DIPHaptics.failure() } }
         .onAppear(perform: enter)
         .onChange(of: model.step) { _, _ in titleFocused = true }
         .onChange(of: model.handoff) { _, handoff in
@@ -207,6 +209,7 @@ struct OnboardingTourView: View {
         guard model.flow.mode == .firstRun, let onSignOut else { return nil }
         return AnyView(Button {
             guard !signingOut else { return }
+            DIPHaptics.commit()
             signingOut = true
             Task { await onSignOut(); signingOut = false }
         } label: {
@@ -298,7 +301,8 @@ struct OnboardingTourView: View {
             }
             return DIPBottomBarAction(title: bar.title, style: bar.isAccent ? .accent : .standard,
                                       identifier: OnboardingInterestsModel.Bar.identifier,
-                                      value: bar.showsProgress ? "In progress" : nil, showsProgress: bar.showsProgress)
+                                      value: bar.showsProgress ? "In progress" : nil, showsProgress: bar.showsProgress,
+                                      kind: [.saveAndStart, .retry].contains(bar.action) ? .commit : .navigate)
         }
         return DIPBottomBarAction(title: OnboardingCopy.cta(for: step, next: model.nextStep, features: features),
                                   identifier: "onboarding.next")

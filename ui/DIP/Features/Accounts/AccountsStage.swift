@@ -243,7 +243,8 @@ struct AccountsStageScene: Equatable {
 
     static let footnoteText = "Use your work Google account. We find your company from your email."
     static let pendingTitle = "Just a moment…"
-    static let resolvingTitle = "Finding your company…"
+    /// No dots: the indicator in the Bar's circle shows the work (owner revision, Nov 10).
+    static let resolvingTitle = "Finding your company"
     static let signInTitle = "Continue with Google"
     static let connectingTitle = "Connecting…"
     static let inProgress = "In progress"
@@ -279,7 +280,7 @@ struct AccountsStageScene: Equatable {
                 tone: .welcome, formation: .welcome, pill: .reel, copy: .welcome(dimmed: false), footnote: footnoteText,
                 bar: DIPBottomBarAction(
                     title: isSubmitting ? connectingTitle : signInTitle, identifier: "onboarding.google",
-                    value: isSubmitting ? inProgress : nil),
+                    value: isSubmitting ? inProgress : nil, kind: .commit),
                 barIntent: .signIn, barEnabled: !isSubmitting,
                 secondary: nil, secondaryEnabled: false, isSearching: false, notice: nil)
         case .resolving:
@@ -301,7 +302,7 @@ struct AccountsStageScene: Equatable {
             copy: .notice(title: notice.title, message: notice.message), footnote: nil,
             bar: DIPBottomBarAction(
                 title: notice.primary.title, identifier: "onboarding.primary",
-                value: isSubmitting ? inProgress : nil, showsProgress: isSubmitting),
+                value: isSubmitting ? inProgress : nil, showsProgress: isSubmitting, kind: .commit),
             barIntent: .notice(notice.primary.action), barEnabled: !isSubmitting,
             secondary: notice.secondary.map { ($0.title, .notice($0.action)) }, secondaryEnabled: !isSubmitting,
             isSearching: false, notice: notice)

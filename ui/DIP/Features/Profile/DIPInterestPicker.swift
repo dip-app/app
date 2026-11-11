@@ -258,6 +258,7 @@ private struct InterestRows: View {
             let isSelected = selection.contains(interest.id)
             let atMaximum = !InterestSelectionRules.canSelect(interest.id, in: selection)
             Button {
+                DIPHaptics.select()
                 selection = InterestSelectionRules.toggling(interest.id, in: selection)
                 onToggle()
             } label: {

@@ -302,6 +302,7 @@
         let onSelect: (DIPHomeTab) -> Void
         let onAction: () -> Void
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @Environment(\.dipProgressIndicatorStyle) private var progressStyle
         /// Marker position while a finger is dragging it; nil when it rests on the selected tab.
         @State private var dragMarkerX: CGFloat?
 
@@ -457,7 +458,11 @@
         }
 
         private func actionOverlay(_ action: DIPBottomBarAction) -> some View {
-            Button(action: onAction) {
+            Button {
+                // Haptics mark commits, not navigation (DIPHaptics): Join, Save, Send… are felt; opening chat is not.
+                if action.kind == .commit { DIPHaptics.commit() }
+                onAction()
+            } label: {
                 ZStack {
                     Capsule().fill(actionColor(action.style))
                     HStack(spacing: 0) {
@@ -467,7 +472,6 @@
                             .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.4)
                             .padding(.horizontal, 16)
                             .frame(maxWidth: .infinity)
-                            .modifier(DIPProgressBreath(active: action.showsProgress && !reduceMotion))
                             .id(action.title)
                             .transition(.opacity)
                         if let icon = action.icon {
@@ -480,9 +484,9 @@
                                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                 .accessibilityHidden(true)
                         } else if action.showsProgress {
-                            // Work in flight: three ink dots breathing in the white icon circle (the affirmative
-                            // state's affordance slot). Under Reduce Motion the dots rest, with no loop.
-                            DIPProgressPulse(animated: !reduceMotion)
+                            // Work in flight: the progress indicator in the white icon circle (the affirmative
+                            // state's slot, so nothing else moves). Reduce Motion: one still face, no loop.
+                            DIPProgressIndicator(style: progressStyle, animated: !reduceMotion)
                                 .frame(width: 64, height: 64)
                                 .background(.white, in: Circle())
                                 .padding(.trailing, 8)
@@ -502,51 +506,6 @@
             .accessibilityLabel(action.title)
             .accessibilityIdentifier(action.identifier)
             .accessibilityValue(action.value ?? "")
-        }
-    }
-
-    /// Three 8 pt ink dots that breathe in turn (scale 0.6 → 1, opacity 0.35 → 1), like the Crew's faces hopping:
-    /// a soft pulse instead of a shimmer. It exists only while progress is shown; `animated: false` (Reduce
-    /// Motion) draws the dots at rest with no loop.
-    struct DIPProgressPulse: View {
-        static let dotSize: CGFloat = 8
-        /// One breath in or out; the dots are a third of a cycle apart.
-        static let breath = 0.6
-        let animated: Bool
-        @State private var breathing = false
-
-        var body: some View {
-            HStack(spacing: 6) {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(DIPTokens.Color.navigationBackground.swiftUIColor)
-                        .frame(width: Self.dotSize, height: Self.dotSize)
-                        .scaleEffect(animated && !breathing ? 0.6 : 1)
-                        .opacity(animated && !breathing ? 0.35 : 1)
-                        .animation(
-                            animated
-                                ? .easeInOut(duration: Self.breath).repeatForever(autoreverses: true)
-                                    .delay(Double(index) * Self.breath * 2 / 3)
-                                : nil,
-                            value: breathing)
-                }
-            }
-            .allowsHitTesting(false)
-            .onAppear { if animated { breathing = true } }
-        }
-    }
-
-    /// The action label breathes gently (opacity 1 ↔ 0.7) while work is in flight. No loop when inactive.
-    struct DIPProgressBreath: ViewModifier {
-        let active: Bool
-        @State private var dimmed = false
-
-        func body(content: Content) -> some View {
-            content
-                .opacity(active && dimmed ? 0.7 : 1)
-                .animation(active ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: dimmed)
-                .onAppear { if active { dimmed = true } }
-                .onChange(of: active) { _, isActive in dimmed = isActive }
         }
     }
 
