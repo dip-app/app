@@ -8,7 +8,7 @@ struct DIPSlidingPages: UIViewControllerRepresentable {
     let selection: DIPHomeTab
     let reduceMotion: Bool
     let content: (DIPHomeTab) -> AnyView
-    private static let order: [DIPHomeTab] = [.home, .events, .profile]
+    private static let order: [DIPHomeTab] = [.home, .rewards, .events, .profile]
 
     func makeCoordinator() -> Coordinator { Coordinator(configuration: self) }
 

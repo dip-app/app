@@ -20,6 +20,8 @@ Redrew the app icon without the circular mask that clipped the bottom-right of t
 
 ## Decisions
 
+- Redrew the PNG as a stopgap before moving to the Icon Composer bundle (superseded by the glass icon).
 
 ## Handoff
 
+None.

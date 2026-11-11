@@ -2,37 +2,35 @@
 
 User: sandervonk
 Date: 2026-11-10
-Workstream: Add to calendar button
+Workstream: Rewards page gift redesign
 Agent: Claude Code
-Status: active
+Status: completed
 
 ## Summary
 
-Slice 1 of the event page work: add to calendar pill on the When card, natural-language share text, wrapping interest tags.
+Rewards tab now opens a mock-backed page matching the Figma Rewards frame (76:7200), with the raffle ticket shape replaced by solid gift-box cards with a small bow (loop/knot, top-centre/left/right). First draft invented a points header, grids and detail sheet; the owner rejected that and it was removed.
 
 ## Changes
 
-- ui/Packages/DIPCore: DIPCalendarEvent.swift (pure metadata to calendar fields mapping, DIPEventCalendarAdding protocol), shareText rewritten (two paragraphs, fallbacks), tests in CalendarEventTests and EventMetadataTests.
-- ui/DIP/Features/Shared: DIPEventCalendar.swift (EventKitUI adapter, environment key), DIPTagFlowLayout.swift, DIPDetailComponents hero tags wrap.
-- ui/DIP/Features/EventDetails/DIPEventDetailsScreen.swift: calendar pill moved to the header (DIPDetailHeader, event.addToCalendar), When/Where/Price titles removed, Directions fallback and Where-row Directions, share text with description.
-- ui/Packages/DIPDesignSystem Home.xcassets: HeroiconsOutlineCalendar imageset.
-- ui/project.yml: NSCalendarsWriteOnlyAccessUsageDescription only.
-- Preview: FakeCalendarAdder, --v1-event-fixtures, --many-tags, AddToCalendarTests UI tests.
-- docs/milestones/v2/FRONTEND_PLAN.md status rows (calendar, share text, tags, points display held).
+- ui/DIP/Features/Rewards/ (screen, mock entries); ui/DIP/Features/Prototype/DIPPrototypeApp.swift and DIPSlidingPages.swift (tab wiring); DIPHomeComponents.swift (drag over Rewards now selects it)
+- ui/Packages/DIPDesignSystem DIPGiftIllustration.swift (DIPGiftBoxCard, DIPGiftBow); ui/DesignSystem/tokens.json + generated Swift (rewardYellow/Orange/Blue ticket fills)
+- docs/milestones/v2/FRONTEND_PLAN.md, ui/ComponentPreview/README.md
 
 ## Validation
 
-- npm run test:swift passed (DIPCore 106 tests including new ones).
-- DIP and Preview builds, AddToCalendarTests (2) passed on Claude-DIP.
-- ConversationFlowTests: 3 album/chat tests failed (empty chat, four bubbles, photo comment retry); they use flags unaffected by this change, not investigated.
-- No large-text tests run.
+- npm run test:swift: all package tests pass; check:generated passes; Preview and DIP schemes build
+- Screenshots (list, empty) in ui/ComponentPreview/Review/Rewards/; bows verified on enlarged crops as one connected shape per card
+- Design audit: 6.8 REVISE then applied its numbers batch (no second formal audit)
+- No large-text/accessibility-size runs, per owner
 
 ## Decisions
 
-- EKEventEditViewController (no permission prompt on iOS 17); usage string added anyway.
-- Default label is the short date; generic via --calendar-label=generic.
-- Hero tags wrap fully (owner requirement) rather than capping at two rows as the design auditor suggested.
+- Card radius 24 and lid band are local to the Rewards cards (DIPGiftBoxCard); token owner may want to promote them.
+- Loading and error variants are out of scope; only the empty state exists.
+- Mock data only; no rewards contract/backend. Tapping an entry shows a not-connected notice.
+- Ticket colours added as tokens from Figma fills (#FABF37, #FD4D03, #77C5FF).
 
 ## Handoff
 
-Next slices: change history sheet, chat live adapter and bell, push registration, challenge page polish. Auditor notes (card pill) superseded by the header move; not applied: tag cap with +N, scrim, 44pt pill hit area.
+Rewards backend (V2-S03/S02) still needs its own issue and contracts.
+
