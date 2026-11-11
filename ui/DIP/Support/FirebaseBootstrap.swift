@@ -1,10 +1,12 @@
 import Foundation
 import DIPAccounts
+import DIPCore
 @preconcurrency import FirebaseAppCheck
 @preconcurrency import FirebaseAuth
 @preconcurrency import FirebaseCore
 @preconcurrency import FirebaseFirestore
 @preconcurrency import FirebaseFunctions
+@preconcurrency import FirebaseStorage
 @preconcurrency import GoogleSignIn
 
 /// Single place where the app attaches to Firebase (ADR 0007).
@@ -59,6 +61,7 @@ enum FirebaseBootstrap {
             settings.cacheSettings = MemoryCacheSettings()
             Firestore.firestore().settings = settings
             Functions.functions(region: FirebaseAccountsRepository.region).useEmulator(withHost: host, port: 5001)
+            Storage.storage().useEmulator(withHost: host, port: 9199)
             usingEmulators = true
         }
         #endif
@@ -93,6 +96,12 @@ enum FirebaseBootstrap {
         guard case .configured = status else { return nil }
         return FirebaseParticipationSource(firestore: Firestore.firestore(),
                                            functions: Functions.functions(region: FirebaseAccountsRepository.region))
+    }
+
+    /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.
+    @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
+        guard case .configured = status else { return nil }
+        return FirebaseBugReportSubmitter(firestore: Firestore.firestore(), storage: Storage.storage())
     }
 
     /// Completes the Google sign-in redirect. Wire to `.onOpenURL` in the app.

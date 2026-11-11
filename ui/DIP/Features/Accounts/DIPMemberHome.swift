@@ -25,6 +25,8 @@ struct DIPMemberHome: View {
     @State private var prototypeRepository: DIPMockRepository
     /// Onboarding tour (spec §2): first run for a uid without a finished record, and replay from Profile.
     private let onboarding: OnboardingTourSettings?
+    /// Where bug reports go (Firebase when configured, the in-memory mock in unconfigured Debug builds). Nil: off.
+    @State private var bugReporting: BugReportContext?
     @State private var tour: OnboardingTourModel?
     @State private var tourInterests: OnboardingInterestsModel?
     @State private var replay: OnboardingTourModel?
@@ -39,11 +41,13 @@ struct DIPMemberHome: View {
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
+        bugReportSubmitter: (() -> (any BugReportSubmitting)?)? = nil,
         deepLinkEventID: String? = nil,
         onDeepLinkHandled: ((String) -> Void)? = nil,
         onSignOut: @escaping () async -> Void
     ) {
         self.onboarding = onboarding
+        _bugReporting = State(initialValue: bugReportSubmitter?().map { BugReportContext.make(uid: context.uid, submitter: $0) })
         self.deepLinkEventID = deepLinkEventID
         self.onDeepLinkHandled = onDeepLinkHandled
         self.eventReadFactory = eventReadFactory
@@ -68,6 +72,8 @@ struct DIPMemberHome: View {
         ZStack {
             // The shell stays transparent until the window reveal starts uncovering it.
             shell
+                .environment(\.bugReporting, bugReporting)
+                .environment(\.bugReportSuppressed, tour != nil || replay != nil)
                 .opacity(tourCoversShell ? 0 : 1)
                 .allowsHitTesting(tour == nil)
                 .accessibilityHidden(tour != nil)
@@ -132,6 +138,8 @@ struct DIPMemberHome: View {
         #if DEBUG
         (onboarding?.store as? UserDefaultsOnboardingRecordStore)?.removeRecord(for: context.uid)
         #endif
+        // Queued reports belong to this account on this device; they are not kept for the next person.
+        await bugReporting?.sender.discardQueue(uid: context.uid)
         await onSignOut()
     }
 

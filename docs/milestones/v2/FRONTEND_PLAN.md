@@ -38,7 +38,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Event tag wrapping | Interest tags wrap onto several lines instead of truncating (hero overlay) | In review, same PR; verified in a many-tags fixture screenshot | `feature/add-to-calendar` | iOS |
 | Event points reward display | Show the points an event gives on card/detail when the event has a points value; check the Event contract for the field first (belongs with F2) | Held, not started | none | iOS |
 | Push notifications (B) | FCM/APNs end to end | Not started; device test needs the paid Apple Developer team | see C1/C3 | Backend / iOS |
-| Shake to report | Implementation | Not started (design done, see Design status) | none | iOS |
+| Shake to report | Shake (and Profile "Report a problem") opens a report sheet: screenshot captured first, category, text, optional app details, offline queue; Firestore `bugReports` + Storage `bugReports/{uid}/…` create-only rules; Debug and TestFlight builds. Markup editor and the shake prompt step are not built | In review on `feature/v2-stream-c`; rules not deployed | `feature/v2-stream-c` | iOS / Rules |
 | TestFlight | Release build | Not started; needs the paid team (F8) | none | All |
 | F0-F5 | Cleanup, interest filter, points, challenges submissions, invitations, live albums | Not started | to be created | iOS |
 | A1-A3 | Admin attendance, review, points | Not started (A4 is covered by weekly themes) | to be created | Admin portal |
@@ -332,7 +332,7 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 24 | Push registration, permission priming, deep links | Held, cannot be device-tested without the paid team APNs key | Events agent |
 | 25 | Weekly-theme page polish to match the event page | Held | Events agent |
 | 26 | Reward points an event gives (show if it has them) | Held, owner said leave in the plan | see F2 |
-| 27 | Shake-to-report bug screen (design exists) implementation | Not started | Backlog B |
+| 27 | Shake-to-report bug screen (design exists) implementation | In review (`feature/v2-stream-c`); markup and shake prompt deferred | Backlog B |
 | 28 | TestFlight release | Not started, needs the paid team | F8 |
 | 29 | Known failing UI tests to repair after the owner's fix list (two demo-stage, interests search, chat/photo-comment retry, ScreenFlowTests join expectation) | Not started | F7 |
 | 30 | Owner process rules: no large-text/accessibility work, no full test runs while landing, merge early, shared Claude-DIP simulator under the lock | Standing | all agents |

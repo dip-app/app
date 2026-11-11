@@ -1,7 +1,20 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Setup baseline. Upload/read policies belong to the V2 photo feature.
+    // Bug-report screenshots (shake-to-report, V2): the signed-in, verified owner may write one JPEG of at most
+    // 400 KB at bugReports/{uid}/{reportId}.jpg (a retry may overwrite its own object). Nobody reads or deletes
+    // through the client SDK; admins use the console. The matching Firestore document is created under
+    // bugReports in firestore.rules, which also checks membership (Storage rules cannot read Firestore without a
+    // cross-service grant), so an orphaned upload is invisible and can be swept by a lifecycle rule.
+    match /bugReports/{uid}/{reportId} {
+      allow create, update: if request.auth != null && request.auth.token.email_verified == true
+        && request.auth.uid == uid
+        && reportId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[.]jpg$')
+        && request.resource.size > 0 && request.resource.size <= 400 * 1024
+        && request.resource.contentType == 'image/jpeg';
+      allow read, delete: if false;
+    }
+    // Setup baseline. Other upload/read policies belong to the V2 photo feature.
     match /{allPaths=**} {
       allow read, write: if false;
     }
