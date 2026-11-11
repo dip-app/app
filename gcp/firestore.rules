@@ -156,6 +156,36 @@ service cloud.firestore {
         && request.resource.data.level in ['all', 'changes', 'reminders', 'none']
         && request.resource.data.updatedAt == request.time;
     }
+    // --- Event photo albums (photos module, docs/contracts/callables.md#event-photo-albums) ---
+    // Album documents are written only by finalizeEventPhotoV1 (Admin SDK); commentCount is server-owned
+    // (onPhotoCommentCreated). Verified same-company members read albums (get, including a missing photo;
+    // lists need a limit <= 100). The path scopes the tenant and only the server writes these documents.
+    match /companies/{companyId}/events/{eventId}/photos/{photoId} {
+      allow get: if sameCompany(companyId) && (resource == null || resource.data.companyId == companyId);
+      allow list: if sameCompany(companyId) && request.query.limit != null && request.query.limit <= 100;
+    }
+    // Photo comments: verified same-company members append their own comment to an existing photo of this
+    // company; no edit/delete. The ID is the client-generated commentId, so a retry never duplicates. Author
+    // display fields must equal the caller's server-owned profile; text trimmed, 1..2000 characters.
+    match /companies/{companyId}/events/{eventId}/photos/{photoId}/comments/{commentId} {
+      function commentPhotoPath() {
+        return /databases/$(database)/documents/companies/$(companyId)/events/$(eventId)/photos/$(photoId);
+      }
+      function validComment(data) {
+        let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        return data.keys().hasOnly(['companyId', 'photoId', 'authorId', 'authorName', 'authorAvatarId', 'text', 'createdAt'])
+          && data.keys().hasAll(['companyId', 'photoId', 'authorId', 'authorName', 'authorAvatarId', 'text', 'createdAt'])
+          && data.companyId == companyId && data.photoId == photoId && data.authorId == request.auth.uid
+          && data.authorName == profile.displayName && data.authorAvatarId == profile.avatarId
+          && data.text is string && data.text.size() >= 1 && data.text.size() <= 2000 && data.text == data.text.trim()
+          && data.createdAt == request.time;
+      }
+      allow get: if sameCompany(companyId) && (resource == null || resource.data.companyId == companyId);
+      allow list: if sameCompany(companyId) && request.query.limit != null && request.query.limit <= 100;
+      allow create: if sameCompany(companyId) && commentId.matches('^[A-Za-z0-9_-]{8,128}$')
+        && exists(commentPhotoPath()) && get(commentPhotoPath()).data.companyId == companyId
+        && validComment(request.resource.data);
+    }
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
     match /{document=**} {

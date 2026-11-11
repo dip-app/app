@@ -1193,20 +1193,38 @@
           "type": "string"
         },
         "storagePath": {
-          "type": "string"
+          "type": "string",
+          "description": "companies/{companyId}/events/{eventId}/photos/{uploaderId}/{slot} with slot 0..19 (one create-only object per slot)."
         },
         "downloadURL": {
-          "type": "string"
+          "type": "string",
+          "description": "Legacy/reference field. finalizeEventPhotoV1 stores an empty string: no bearer download-token URLs are minted; clients read bytes through the authenticated Storage SDK (gcp/storage.rules)."
         },
         "caption": {
           "type": "string"
         },
         "commentCount": {
-          "type": "integer"
+          "type": "integer",
+          "description": "Server-owned: recounted by the onPhotoCommentCreated trigger."
         },
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10485760,
+          "description": "Server-owned, optional: verified object size in bytes (finalizeEventPhotoV1)."
+        },
+        "contentType": {
+          "type": "string",
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "image/heic"
+          ],
+          "description": "Server-owned, optional: verified object content type (finalizeEventPhotoV1)."
         }
       },
       "required": [
@@ -1932,6 +1950,75 @@
         "contractVersion",
         "submissionId",
         "pointsAwarded"
+      ]
+    },
+    "FinalizeEventPhotoRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "finalizeEventPhotoV1: publish an uploaded album photo. photoId must equal '{auth.uid}_{slot}' and storagePath the matching Storage object; retries are idempotent on photoId.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "photoId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160,
+          "pattern": "^[A-Za-z0-9_-]+_(1?[0-9])$"
+        },
+        "storagePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 280
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "photoId",
+        "storagePath"
+      ]
+    },
+    "FinalizeEventPhotoResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "photoId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "created": {
+          "type": "boolean",
+          "description": "false when this photoId was already finalized (idempotent retry)."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "photoId",
+        "created"
       ]
     }
   }

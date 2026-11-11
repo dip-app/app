@@ -9,8 +9,19 @@ struct DIPHomeFixturePreview: View {
     var body: some View { DIPPrototypeApp(onSignOut: onSignOut) }
 }
 
+/// Interest filter state shown above Home's events. nil hides the control (no catalog or no active interests).
+struct DIPHomeEventFilter: Equatable {
+    var interests: [DIPInterest]
+    var scope: DIPHomeEventScope
+    /// Events shown now, and all upcoming events loaded (before filtering).
+    var shownCount: Int
+    var totalCount: Int
+}
+
 struct DIPHomeScreen: View {
     let home: DIPHomeSnapshot
+    let eventFilter: DIPHomeEventFilter?
+    let onFilterScope: (DIPHomeEventScope) -> Void
     let onEvent: (String) -> Void
     let onChallenge: (String) -> Void
     let showsBottomBar: Bool
@@ -28,8 +39,11 @@ struct DIPHomeScreen: View {
         onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void,
         onLoadMore: (() -> Void)? = nil, loadingMore: Bool = false, paginationError: String? = nil,
         eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil,
-        challengeState: DIPChallengeCardState? = nil, onRetryChallenge: (() -> Void)? = nil
+        challengeState: DIPChallengeCardState? = nil, onRetryChallenge: (() -> Void)? = nil,
+        eventFilter: DIPHomeEventFilter? = nil, onFilterScope: @escaping (DIPHomeEventScope) -> Void = { _ in }
     ) {
+        self.eventFilter = eventFilter
+        self.onFilterScope = onFilterScope
         self.challengeState = challengeState ?? home.challenge.map { .current($0, stale: false) }
         self.onRetryChallenge = onRetryChallenge
         self.eventSectionTitle = eventSectionTitle; self.onRefresh = onRefresh
@@ -60,10 +74,22 @@ struct DIPHomeScreen: View {
                             }
                             VStack(alignment: .leading, spacing: 8) {
                                 sectionTitle(eventSectionTitle)
+                                if let eventFilter { interestFilterBar(eventFilter).padding(.bottom, 4) }
                                 if home.events.isEmpty {
-                                    DIPEmptyState(
-                                        screen: "home-events", title: "Nothing planned yet",
-                                        message: "New company events will show up here.")
+                                    if let eventFilter, eventFilter.scope == .matching, eventFilter.totalCount > 0 {
+                                        // More pages may exist: an empty filtered page is not "nothing matches".
+                                        DIPEmptyState(
+                                            screen: "home-filter",
+                                            title: onLoadMore == nil ? "No events match your interests" : "No matches in the events loaded so far",
+                                            message: onLoadMore == nil
+                                                ? "Switch to All events to see everything coming up."
+                                                : "Load more events, or switch to All events.",
+                                            actionTitle: "Show all events", action: { DIPHaptics.select(); onFilterScope(.all) })
+                                    } else {
+                                        DIPEmptyState(
+                                            screen: "home-events", title: "Nothing planned yet",
+                                            message: "New company events will show up here.")
+                                    }
                                 }
                                 if let paginationError { Text(paginationError).font(.footnote).foregroundStyle(.secondary) }
                                 if let onLoadMore {
@@ -110,6 +136,53 @@ struct DIPHomeScreen: View {
         .scrollIndicators(.hidden)
         .frame(height: 205).padding(.horizontal, -20)
         .accessibilityIdentifier("home.events")
+    }
+
+    /// "Matching your interests" / "All events": the solid thumb is the pressable control; the count and the
+    /// interest chips are informational, so they are outlined.
+    private func interestFilterBar(_ filter: DIPHomeEventFilter) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DIPSegmentedToggle(
+                segments: [
+                    .init(id: DIPHomeEventScope.matching, title: "Matching your interests", identifier: "home.filter.matching"),
+                    .init(id: DIPHomeEventScope.all, title: "All events", identifier: "home.filter.all"),
+                ],
+                selection: filter.scope, accent: DIPTokens.Color.actionPrimary.swiftUIColor, style: .soft,
+                height: 40, inset: 4, fontSize: 15, onSelect: onFilterScope)
+            if filter.scope == .matching {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        // Hidden when nothing matches: the empty state below already says so.
+                        if filter.shownCount > 0 {
+                            outlinedChip("Showing \(filter.shownCount) of \(filter.totalCount) events\(onLoadMore == nil ? "" : " loaded")")
+                                .accessibilityIdentifier("home.filter.count")
+                        }
+                        ForEach(filter.interests) { interest in tintChip(interest.name) }
+                    }
+                    .padding(.horizontal, 2)
+                }
+                .scrollIndicators(.hidden)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("home.filter.chips")
+            }
+        }
+    }
+
+    /// A read-only interest label: tinted, no outline, so it does not look tappable.
+    private func tintChip(_ text: String) -> some View {
+        Text(text)
+            .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
+            .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
+            .padding(.horizontal, 12).frame(height: 28)
+            .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.10), in: Capsule())
+    }
+
+    private func outlinedChip(_ text: String) -> some View {
+        Text(text)
+            .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
+            .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .padding(.horizontal, 12).frame(height: 28)
+            .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 1.5))
     }
 
     private var recentAttendees: some View {

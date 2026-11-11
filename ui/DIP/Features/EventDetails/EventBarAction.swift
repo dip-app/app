@@ -33,7 +33,12 @@ enum EventBarAction {
                 style: joined ? .accent : .standard,
                 identifier: joined ? "participants.chat" : "participants.join",
                 icon: joined ? chatIcon : nil, kind: joined ? .navigate : .commit)
-        case .album:
+        case .album(let id):
+            // Offered only where this member may upload (live: going to an ended, scheduled event).
+            guard let album = snapshot?.albums[id], album.isLoaded, album.canAddPhotos else { return nil }
+            if album.remainingUploads == 0 {
+                return DIPBottomBarAction(title: "Photo limit reached", style: .complete, identifier: "album.add-photos")
+            }
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
         // Read-only until submissions ship (F3/V2): the page has no entry action, so the tabs stay.
         case .challenge, nil:
