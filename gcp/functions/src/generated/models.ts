@@ -214,9 +214,17 @@ export interface ChallengeSubmission {
   photoURL?: string | null;
   caption: string;
   progress: number;
-  status: string;
+  status: "submitted" | "approved" | "rejected";
   createdAt: string;
   updatedAt: string;
+  storagePath?: string | null;
+  contentType?: "image/jpeg" | "image/png" | "image/heic";
+  sizeBytes?: number;
+  attempt?: number;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  pointsAwarded?: number;
 }
 
 export interface PointTransaction {
@@ -461,6 +469,7 @@ export interface ApproveChallengeResponse {
   contractVersion: number;
   submissionId: string;
   pointsAwarded: number;
+  replayed?: boolean;
 }
 
 export interface FinalizeEventPhotoRequest {
@@ -476,4 +485,51 @@ export interface FinalizeEventPhotoResponse {
   contractVersion: number;
   photoId: string;
   created: boolean;
+}
+
+export interface SubmitChallengeRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  progress: number;
+  caption?: string;
+  storagePath?: string;
+}
+
+export interface SubmitChallengeResponse {
+  contractVersion: number;
+  submissionId: string;
+  status: "submitted" | "approved" | "rejected";
+  outcome: "created" | "updated" | "resubmitted" | "unchanged";
+  attempt: number;
+}
+
+export interface RejectChallengeRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  userId: string;
+  reason: string;
+}
+
+export interface RejectChallengeResponse {
+  contractVersion: number;
+  submissionId: string;
+  status: "rejected";
+  replayed: boolean;
+}
+
+export interface ListChallengeSubmissionsRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  status?: "submitted" | "approved" | "rejected";
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ListChallengeSubmissionsResponse {
+  contractVersion: number;
+  submissions: Array<ChallengeSubmission>;
+  nextCursor: string | null;
 }

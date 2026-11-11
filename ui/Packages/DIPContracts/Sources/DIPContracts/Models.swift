@@ -422,8 +422,16 @@ public struct ChallengeSubmission: Codable, Equatable, Sendable {
     public var status: String
     public var createdAt: Date
     public var updatedAt: Date
+    public var storagePath: String?
+    public var contentType: String?
+    public var sizeBytes: Int?
+    public var attempt: Int?
+    public var reviewedBy: String?
+    public var reviewedAt: Date?
+    public var reviewNote: String?
+    public var pointsAwarded: Int?
 
-    public init(id: String? = nil, companyId: String, challengeId: String, userId: String, userName: String, userAvatarId: String, photoURL: String? = nil, caption: String, progress: Double, status: String, createdAt: Date, updatedAt: Date) {
+    public init(id: String? = nil, companyId: String, challengeId: String, userId: String, userName: String, userAvatarId: String, photoURL: String? = nil, caption: String, progress: Double, status: String, createdAt: Date, updatedAt: Date, storagePath: String? = nil, contentType: String? = nil, sizeBytes: Int? = nil, attempt: Int? = nil, reviewedBy: String? = nil, reviewedAt: Date? = nil, reviewNote: String? = nil, pointsAwarded: Int? = nil) {
         self.id = id
         self.companyId = companyId
         self.challengeId = challengeId
@@ -436,6 +444,14 @@ public struct ChallengeSubmission: Codable, Equatable, Sendable {
         self.status = status
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.storagePath = storagePath
+        self.contentType = contentType
+        self.sizeBytes = sizeBytes
+        self.attempt = attempt
+        self.reviewedBy = reviewedBy
+        self.reviewedAt = reviewedAt
+        self.reviewNote = reviewNote
+        self.pointsAwarded = pointsAwarded
     }
 }
 
@@ -919,11 +935,13 @@ public struct ApproveChallengeResponse: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var submissionId: String
     public var pointsAwarded: Int
+    public var replayed: Bool?
 
-    public init(contractVersion: Int, submissionId: String, pointsAwarded: Int) {
+    public init(contractVersion: Int, submissionId: String, pointsAwarded: Int, replayed: Bool? = nil) {
         self.contractVersion = contractVersion
         self.submissionId = submissionId
         self.pointsAwarded = pointsAwarded
+        self.replayed = replayed
     }
 }
 
@@ -954,5 +972,99 @@ public struct FinalizeEventPhotoResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.photoId = photoId
         self.created = created
+    }
+}
+
+public struct SubmitChallengeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var challengeId: String
+    public var progress: Double
+    public var caption: String?
+    public var storagePath: String?
+
+    public init(contractVersion: Int, companyId: String, challengeId: String, progress: Double, caption: String? = nil, storagePath: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.challengeId = challengeId
+        self.progress = progress
+        self.caption = caption
+        self.storagePath = storagePath
+    }
+}
+
+public struct SubmitChallengeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var submissionId: String
+    public var status: String
+    public var outcome: String
+    public var attempt: Int
+
+    public init(contractVersion: Int, submissionId: String, status: String, outcome: String, attempt: Int) {
+        self.contractVersion = contractVersion
+        self.submissionId = submissionId
+        self.status = status
+        self.outcome = outcome
+        self.attempt = attempt
+    }
+}
+
+public struct RejectChallengeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var challengeId: String
+    public var userId: String
+    public var reason: String
+
+    public init(contractVersion: Int, companyId: String, challengeId: String, userId: String, reason: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.challengeId = challengeId
+        self.userId = userId
+        self.reason = reason
+    }
+}
+
+public struct RejectChallengeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var submissionId: String
+    public var status: String
+    public var replayed: Bool
+
+    public init(contractVersion: Int, submissionId: String, status: String, replayed: Bool) {
+        self.contractVersion = contractVersion
+        self.submissionId = submissionId
+        self.status = status
+        self.replayed = replayed
+    }
+}
+
+public struct ListChallengeSubmissionsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var challengeId: String
+    public var status: String?
+    public var limit: Int?
+    public var cursor: String?
+
+    public init(contractVersion: Int, companyId: String, challengeId: String, status: String? = nil, limit: Int? = nil, cursor: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.challengeId = challengeId
+        self.status = status
+        self.limit = limit
+        self.cursor = cursor
+    }
+}
+
+public struct ListChallengeSubmissionsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var submissions: [ChallengeSubmission]
+    public var nextCursor: String?
+
+    public init(contractVersion: Int, submissions: [ChallengeSubmission], nextCursor: String? = nil) {
+        self.contractVersion = contractVersion
+        self.submissions = submissions
+        self.nextCursor = nextCursor
     }
 }

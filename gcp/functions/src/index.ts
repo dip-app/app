@@ -5,3 +5,4 @@ export { registerDeviceV1, unregisterDeviceV1, onEventMessageCreated, onEventCha
 export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";
+export { submitChallengeV1, approveChallengeV1, rejectChallengeV1, listChallengeSubmissionsV1 } from "./modules/submissions";
