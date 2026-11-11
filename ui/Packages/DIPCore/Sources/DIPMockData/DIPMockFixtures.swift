@@ -25,9 +25,13 @@ public enum DIPMockFixtures {
             let locality = snapshot.home.events.first { $0.id == id }?.locality
                 ?? snapshot.activeEvents.first { $0.id == id }?.locality
                 ?? snapshot.memories.first { $0.eventID == id }?.locality ?? "Pittsburgh, PA"
+            let venues = [("Schenley Park Visitor Center", "101 Panther Hollow Rd"), ("Allegheny Riverfront Park", "1 Allegheny Ave"),
+                          ("The Yoga Studio", "4800 Liberty Ave"), ("Phipps Conservatory", "1 Schenley Dr"),
+                          ("Lawrenceville Community Kitchen", "3600 Butler St"), ("Point State Park", "601 Commonwealth Pl")]
+            let venue = venues[index % venues.count]
             event.metadata = .init(
                 startTime: start, endTime: start.addingTimeInterval(5_400),
-                venueName: "Team activity venue", address: "100 Example Street", locality: locality,
+                venueName: venue.0, address: venue.1, locality: locality,
                 costCents: index.isMultiple(of: 2) ? 0 : 2_000, costNote: "", capacity: 30)
             event.isJoined = joinedIDs.contains(id)
             event.timing = start.formatted(date: .abbreviated, time: .shortened)
@@ -37,6 +41,15 @@ public enum DIPMockFixtures {
         snapshot.home.events = lists.discovery
         snapshot.activeEvents = lists.upcoming
         snapshot.memories = lists.past
+        return snapshot
+    }
+
+    /// V1 events where puppy-yoga carries many long interest tags (wrapping review).
+    public static func manyTagsReview(now: Date = Date()) -> DIPAppSnapshot {
+        var snapshot = v1Events(now: now)
+        snapshot.eventDetails["puppy-yoga"]?.tags = [
+            "Yoga", "Animals", "Wellness & mindfulness", "Outdoor adventures and hiking", "Board games", "Live music",
+            "Food and cooking classes", "Volunteering", "Photography", "A really long interest name that needs wrapping"]
         return snapshot
     }
 

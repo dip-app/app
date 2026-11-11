@@ -45,6 +45,7 @@ targets:
     info:
       path: Config/DIP-Info.plist
       properties:
+        NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
@@ -88,12 +89,24 @@ targets:
         excludes: ["**/*.md"]
     dependencies:
       - target: DIP
+  DIPUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    configFiles:
+      Debug: Config/Base.xcconfig
+      Release: Config/Base.xcconfig
+    sources:
+      - path: DIPUITests
+        excludes: ["**/*.md"]
+    dependencies:
+      - target: DIP
 schemes:
   DIP:
     build:
       targets:
         DIP: all
         DIPTests: [test]
+        DIPUITests: [test]
     test:
       gatherCoverageData: true
-      targets: [DIPTests]
+      targets: [DIPTests, DIPUITests]
