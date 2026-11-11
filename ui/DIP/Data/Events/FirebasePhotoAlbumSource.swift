@@ -75,7 +75,9 @@ import Foundation
             let nsError = error as NSError
             guard nsError.domain == StorageErrorDomain, nsError.code == StorageErrorCode.unauthorized.rawValue,
                   let existing = try? await ref.getMetadata() else { throw Self.failure(error) }
-            if existing.md5Hash == Self.md5Base64(jpeg) { progress(1); return .stored }
+            // Without a checksum the slot's content is ambiguous: fail retryably instead of risking a duplicate.
+            guard let md5 = existing.md5Hash else { throw AlbumFailure.unavailable }
+            if md5 == Self.md5Base64(jpeg) { progress(1); return .stored }
             return .slotOccupied
         }
     }
@@ -83,17 +85,22 @@ import Foundation
     private func put(_ ref: StorageReference, data: Data, metadata: StorageMetadata,
                      progress: @escaping @Sendable (Double) -> Void) async throws {
         let id = UUID()
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let task = ref.putData(data, metadata: metadata) { _, error in
-                if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+        defer { uploads[id] = nil }
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                let task = ref.putData(data, metadata: metadata) { _, error in
+                    if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                }
+                task.observe(.progress) { snapshot in
+                    guard let total = snapshot.progress?.totalUnitCount, total > 0 else { return }
+                    progress(min(1, Double(snapshot.progress?.completedUnitCount ?? 0) / Double(total)))
+                }
+                uploads[id] = task
             }
-            task.observe(.progress) { snapshot in
-                guard let total = snapshot.progress?.totalUnitCount, total > 0 else { return }
-                progress(min(1, Double(snapshot.progress?.completedUnitCount ?? 0) / Double(total)))
-            }
-            uploads[id] = task
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.uploads[id]?.cancel() }
         }
-        uploads[id] = nil
+        try Task.checkCancellation()
     }
 
     func finalize(scope: EventReadScope, eventID: String, slot: Int) async throws -> String {

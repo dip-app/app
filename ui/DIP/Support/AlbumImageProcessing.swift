@@ -13,7 +13,7 @@ enum AlbumImageProcessing {
     /// Re-encodes picker bytes into an upload-ready JPEG of at most `AlbumPolicy.maxBytes`.
     static func prepareUpload(_ data: Data, maxPixelSize: Int = AlbumPolicy.maxPixelSize,
                               maxBytes: Int = AlbumPolicy.maxBytes) throws -> Data {
-        guard let image = downsample(data, maxPixelSize: maxPixelSize) else { throw Failure.unreadable }
+        guard let image = downsample(data, maxPixelSize: maxPixelSize).flatMap(opaque) else { throw Failure.unreadable }
         for quality in [0.85, 0.7, 0.55, 0.4] {
             if let jpeg = jpeg(image, quality: quality), jpeg.count <= maxBytes { return jpeg }
         }
@@ -36,6 +36,19 @@ enum AlbumImageProcessing {
             kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    /// JPEG has no alpha: transparent pixels (PNG) are drawn onto white instead of turning black.
+    static func opaque(_ image: CGImage) -> CGImage? {
+        guard image.alphaInfo != .none, image.alphaInfo != .noneSkipLast, image.alphaInfo != .noneSkipFirst else { return image }
+        guard let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+        else { return nil }
+        let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(rect)
+        context.draw(image, in: rect)
+        return context.makeImage()
     }
 
     static func jpeg(_ image: CGImage, quality: Double) -> Data? {

@@ -124,7 +124,10 @@ struct DIPMemberHome: View {
             liveEvents?.updateTagLabels(Dictionary(catalog.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first }))
         }
         .onDisappear { liveEvents?.stop(); liveEvents = nil }
-        .onChange(of: context.profile) { _, _ in editor.receive(context) }
+        .onChange(of: context.profile) { _, profile in
+            editor.receive(context)
+            liveEvents?.updateAuthor(ChatAuthor(name: profile.displayName, avatarID: profile.avatarId))
+        }
     }
 
     // MARK: Onboarding

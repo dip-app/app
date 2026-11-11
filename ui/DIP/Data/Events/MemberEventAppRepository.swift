@@ -37,7 +37,9 @@ import DIPAccounts
     var supportsParticipation: Bool { participation != nil }
     // Live chat (the participation source also implements ChatSource). One listener, for the last opened joined event.
     private let chat: (any ChatSource)?
-    private let chatAuthor: ChatAuthor?
+    /// Chat and comment author fields; rules require them to equal the current server profile, so the host
+    /// refreshes them when the membership profile changes (`updateAuthor`).
+    private var chatAuthor: ChatAuthor?
     private var messages: [String: [DIPMessage]] = [:]
     private var chatTask: Task<Void, Never>?
     private var chatCandidateID: String?
@@ -140,6 +142,7 @@ import DIPAccounts
             }
         }
     }
+    func updateAuthor(_ author: ChatAuthor) { if chatAuthor != nil { chatAuthor = author } }
     func updateTagLabels(_ labels: [String: String]) { tagLabels = labels; if query != nil { publish() } }
     func stop() {
         guard !stopped else { return }; stopped = true; generation = UUID()
@@ -451,7 +454,7 @@ import DIPAccounts
     func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
         guard let albums, !stopped else { throw DIPRepositoryError.invalidInput("Photo uploads aren’t available yet") }
         let scope = reads.scope
-        guard canUpload(eventID) else { throw DIPRepositoryError.invalidInput(AlbumFailure.notAttendee.message) }
+        if let denial = uploadDenial(eventID) { throw DIPRepositoryError.invalidInput(denial.message) }
         do {
             if ownSlots[eventID] == nil {
                 let ids = try await albums.ownPhotoIDs(scope: scope, eventID: eventID)
@@ -493,9 +496,12 @@ import DIPAccounts
     }
 
     /// Mirrors the Storage upload rule: going RSVP, event scheduled and ended.
-    private func canUpload(_ eventID: String) -> Bool {
-        guard albums != nil, joinedIDs.contains(eventID), let event = joinedRecords[eventID] ?? records[eventID] else { return false }
-        return event.status == "scheduled" && event.endTime <= clock()
+    private func canUpload(_ eventID: String) -> Bool { uploadDenial(eventID) == nil }
+
+    private func uploadDenial(_ eventID: String) -> AlbumFailure? {
+        guard albums != nil, joinedIDs.contains(eventID), let event = joinedRecords[eventID] ?? records[eventID] else { return .notAttendee }
+        if event.status != "scheduled" { return .cancelled }
+        return event.endTime <= clock() ? nil : .notEnded
     }
 
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {

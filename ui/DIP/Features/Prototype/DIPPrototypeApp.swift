@@ -230,7 +230,6 @@ struct DIPPrototypeApp: View {
             default: onEventOpened?(nil)
             }
         }
-        .onDisappear { uploads.cancelAll() }
         .onChange(of: deepLinkEventID, initial: true) { _, id in
             guard let id else { return }
             // Open the linked event on top of the current tab; an id outside this company shows "Activity unavailable".

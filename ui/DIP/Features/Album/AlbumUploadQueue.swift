@@ -39,6 +39,7 @@ final class AlbumUploadQueue {
     @ObservationIgnored private let send: Send
     @ObservationIgnored private let prepare: Prepare
     @ObservationIgnored private var worker: Task<Void, Never>?
+    @ObservationIgnored private var workerGeneration = 0
     @ObservationIgnored private var runSucceeded = 0
     @ObservationIgnored private var runFailed = 0
     /// Called when the queue drains after a run: felt success when everything landed, failure otherwise.
@@ -110,13 +111,17 @@ final class AlbumUploadQueue {
 
     /// Sign-out or account switch: drafts belong to that session only.
     func cancelAll() {
-        worker?.cancel(); worker = nil
+        worker?.cancel(); worker = nil; workerGeneration += 1
         items.removeAll()
     }
 
     private func startWorker() {
         guard worker == nil else { return }
+        workerGeneration += 1
+        let generation = workerGeneration
         worker = Task { [weak self] in
+            // Only this run's own handle is cleared; a cancelled stale run never resets a newer worker.
+            defer { if let self, self.workerGeneration == generation { self.worker = nil } }
             while let self, !Task.isCancelled, let index = self.items.firstIndex(where: { $0.state == .waiting }) {
                 let item = self.items[index]
                 guard let upload = item.upload else { self.items[index].state = .failed(Self.unreadableMessage); continue }
@@ -134,14 +139,15 @@ final class AlbumUploadQueue {
                     self.runFailed += 1
                 }
             }
-            guard let self else { return }
-            self.worker = nil
+            guard let self, self.workerGeneration == generation, !Task.isCancelled else { return }
             // Photos still being prepared will restart the worker; report once everything settled.
             if !self.items.contains(where: { $0.state == .preparing }) {
                 let (succeeded, failed) = (self.runSucceeded, self.runFailed)
                 self.runSucceeded = 0; self.runFailed = 0
                 if succeeded + failed > 0 { self.onRunFinished?(succeeded, failed) }
             }
+            // Drafts that became ready while this run was finishing start the next run.
+            if self.items.contains(where: { $0.state == .waiting }) { Task { @MainActor [weak self] in self?.startWorker() } }
         }
     }
 

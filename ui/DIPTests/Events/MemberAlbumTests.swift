@@ -83,7 +83,8 @@ import UniformTypeIdentifiers
     }
 
     func testNonAttendeeAndCancelledOrLiveEventsCannotUpload() async throws {
-        for (joined, ev) in [(false, event("boat", endsIn: -600)), (true, event("boat", endsIn: 600)), (true, event("boat", endsIn: -600, status: "cancelled"))] {
+        for (joined, ev, reason) in [(false, event("boat", endsIn: -600), AlbumFailure.notAttendee), (true, event("boat", endsIn: 600), .notEnded),
+                                     (true, event("boat", endsIn: -600, status: "cancelled"), .cancelled)] {
             let reads = AlbumReadsStub(); reads.extra = [ev]; reads.page = ev.endTime > now ? [ev] : []
             let participation = AlbumParticipationStub(), albums = AlbumSourceStub()
             let repository = make(reads, participation, albums)
@@ -95,7 +96,7 @@ import UniformTypeIdentifiers
                 _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u1", data: Data([1])), progress: { _ in })
                 XCTFail("upload must be refused")
             } catch {
-                XCTAssertEqual(error as? DIPRepositoryError, .invalidInput(AlbumFailure.notAttendee.message))
+                XCTAssertEqual(error as? DIPRepositoryError, .invalidInput(reason.message))
             }
             XCTAssertTrue(albums.uploads.isEmpty)
             _ = iterator
@@ -157,6 +158,10 @@ import UniformTypeIdentifiers
         XCTAssertEqual(snapshot?.photoComments["boat"]?["other_0"]?.first?.authorAvatar, .generatedAvatar(userID: "other"))
         try await repository.addPhotoComment(eventID: "boat", photoID: "other_0", commentID: "comment-123", text: "Nice")
         XCTAssertEqual(albums.sentComments.first?.author, ChatAuthor(name: "Member", avatarID: "a1"))
+        // The rules compare author fields with the current profile: an avatar change applies to the next comment.
+        repository.updateAuthor(ChatAuthor(name: "Member", avatarID: "a2"))
+        try await repository.addPhotoComment(eventID: "boat", photoID: "other_0", commentID: "comment-456", text: "Again")
+        XCTAssertEqual(albums.sentComments.last?.author, ChatAuthor(name: "Member", avatarID: "a2"))
         repository.selectPhoto(eventID: "boat", photoID: nil)
         try await waitFor { albums.commentsTerminated }
         repository.stop()
@@ -204,12 +209,17 @@ import UniformTypeIdentifiers
             XCTAssertEqual(error as? AlbumImageProcessing.Failure, .tooLarge)
         }
         XCTAssertNotNil(AlbumImageProcessing.displayCopy(jpeg))
+        // Transparent PNG pixels become white, not black.
+        let clear = try Self.image(width: 8, height: 8, type: .png, alpha: 0)
+        let flattened = try XCTUnwrap(AlbumImageProcessing.downsample(AlbumImageProcessing.prepareUpload(clear), maxPixelSize: 8))
+        let pixel = try XCTUnwrap(flattened.dataProvider?.data as Data?)
+        XCTAssertGreaterThan(pixel[0], 240)
     }
 
-    static func image(width: Int, height: Int, type: UTType) throws -> Data {
+    static func image(width: Int, height: Int, type: UTType, alpha: CGFloat = 1) throws -> Data {
         let context = try XCTUnwrap(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                               space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.setFillColor(CGColor(red: 0.4, green: 0.5, blue: 0.9, alpha: 1))
+        context.setFillColor(CGColor(red: 0.4, green: 0.5, blue: 0.9, alpha: alpha))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         let image = try XCTUnwrap(context.makeImage())
         let output = NSMutableData()
