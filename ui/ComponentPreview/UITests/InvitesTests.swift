@@ -194,4 +194,35 @@ final class InvitesTests: XCTestCase {
         XCTAssertTrue(picker.descendants(matching: .any)["invite.state.u-priya"].waitForExistence(timeout: 15))
         shot("motion-picker-invited-final")
     }
+
+    /// An accepted invitation whose activity the member left sits under Cancelled with a Rejoin; rejoining moves it back to
+    /// Going with a toast; full / closed are refused with a neutral message.
+    @MainActor func testCancelledSectionRejoinAndRefusals() {
+        let app = launch(["--screen=invitations"])
+        XCTAssertTrue(app.descendants(matching: .any)["invitations.cancelled.e4_me"].waitForExistence(timeout: 20), "left activity is listed as Cancelled")
+        XCTAssertTrue(app.buttons["invitations.going.e3_me"].exists, "an activity the member still goes to stays under Going")
+        XCTAssertFalse(app.buttons["invitations.going.e4_me"].exists)
+        shot("invitations-cancelled-section")
+        app.buttons["invitations.rejoin.e4_me"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["invitations.toast"].waitForExistence(timeout: 5), "rejoining is confirmed")
+        shot("invitations-rejoined-toast")
+        XCTAssertTrue(app.buttons["invitations.going.e4_me"].waitForExistence(timeout: 10), "the row moves back to Going")
+        XCTAssertFalse(app.buttons["invitations.rejoin.e4_me"].exists)
+        app.terminate()
+
+        let full = launch(["--screen=invitations", "--rejoin-state=full"])
+        XCTAssertTrue(full.buttons["invitations.rejoin.e4_me"].waitForExistence(timeout: 20))
+        full.buttons["invitations.rejoin.e4_me"].tap()
+        XCTAssertTrue(full.descendants(matching: .any)["invitations.rejoin.error.e4_me"].waitForExistence(timeout: 5))
+        XCTAssertTrue(full.buttons["invitations.rejoin.e4_me"].isEnabled, "a full activity may open up, so Rejoin stays available")
+        shot("invitations-rejoin-full")
+        full.terminate()
+
+        let closed = launch(["--screen=invitations", "--rejoin-state=closed"])
+        XCTAssertTrue(closed.buttons["invitations.rejoin.e4_me"].waitForExistence(timeout: 20))
+        closed.buttons["invitations.rejoin.e4_me"].tap()
+        XCTAssertTrue(closed.descendants(matching: .any)["invitations.rejoin.error.e4_me"].waitForExistence(timeout: 5))
+        XCTAssertFalse(closed.buttons["invitations.rejoin.e4_me"].isEnabled, "a started activity cannot be rejoined")
+        shot("invitations-rejoin-closed")
+    }
 }

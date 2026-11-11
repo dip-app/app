@@ -20,6 +20,15 @@ public final class DIPInvitesModel {
     public private(set) var answerErrors: [String: DIPInviteFailure] = [:]
     /// Accepted in this session (the row shows "You're going" and an Open action).
     public private(set) var joinedInviteIDs: Set<String> = []
+    /// Rejoin (RSVP) in flight / refused, per invite id.
+    public private(set) var rejoining: Set<String> = []
+    public private(set) var rejoinErrors: [String: DIPInviteFailure] = [:]
+    /// When this session accepted an invite: the RSVP listener may lag the server by a moment, so such an invite counts as going
+    /// for `acceptanceGrace` instead of flashing as cancelled.
+    @ObservationIgnored private var acceptedAt: [String: Date] = [:]
+    public static let acceptanceGrace: TimeInterval = 8
+    /// Called after an accepted invitation joined the activity server-side. Fixture hosts use it to keep their own RSVP state in step.
+    @ObservationIgnored public var didJoin: ((String) async -> Void)?
 
     @ObservationIgnored private let repository: any DIPInvitesRepository
     @ObservationIgnored private let now: () -> Date
@@ -52,7 +61,16 @@ public final class DIPInvitesModel {
         if invites != nil { isStale = true } else { phase = .failed(message) }
     }
 
-    public var inbox: DIPInviteInbox { DIPInviteInbox(invites ?? DIPInvites(), now: now()) }
+    public var inbox: DIPInviteInbox { inbox(rsvp: { _ in nil }) }
+
+    /// The inbox with the member's live RSVP state (see `DIPInviteInbox.init`). Just-accepted invitations count as going for a moment.
+    public func inbox(rsvp: @escaping (String) -> Bool?) -> DIPInviteInbox {
+        let current = now()
+        let graced = Set((invites?.received ?? []).filter { invite in
+            acceptedAt[invite.id].map { current.timeIntervalSince($0) < Self.acceptanceGrace } ?? false
+        }.map(\.eventID))
+        return DIPInviteInbox(invites ?? DIPInvites(), now: current, rsvp: { graced.contains($0) ? true : rsvp($0) })
+    }
     /// Waiting invitations for the bell badge; 0 until the first snapshot.
     public var badgeCount: Int { inbox.badgeCount }
 
@@ -68,7 +86,10 @@ public final class DIPInvitesModel {
                 all.received[index].status = reply.status
                 invites = all
             }
-            if reply.joined { joinedInviteIDs.insert(inviteID) }
+            if reply.joined {
+                joinedInviteIDs.insert(inviteID); acceptedAt[inviteID] = now()
+                if let eventID = invites?.received.first(where: { $0.id == inviteID })?.eventID { await didJoin?(eventID) }
+            }
             return reply
         } catch {
             answerErrors[inviteID] = failure(error)
@@ -77,6 +98,18 @@ public final class DIPInvitesModel {
     }
 
     public func clearAnswerError(_ inviteID: String) { answerErrors[inviteID] = nil }
+
+    /// Rejoins an accepted invitation's activity through the normal RSVP path (`perform` is the app's join command, so capacity and
+    /// eligibility rules apply). `perform` returns nil on success or the reason it was refused. True when the member is going again.
+    @discardableResult
+    public func rejoin(_ invite: DIPInvite, perform: (String) async -> DIPInviteFailure?) async -> Bool {
+        guard !rejoining.contains(invite.id) else { return false }
+        rejoining.insert(invite.id); rejoinErrors[invite.id] = nil
+        defer { rejoining.remove(invite.id) }
+        if let failure = await perform(invite.eventID) { rejoinErrors[invite.id] = failure; return false }
+        acceptedAt[invite.id] = now()
+        return true
+    }
 
     public func makePicker(eventID: String) -> DIPInvitePickerModel {
         DIPInvitePickerModel(eventID: eventID, repository: repository)
