@@ -32,9 +32,9 @@ public enum ChallengeTimeline {
     public enum Point {
         public static let card = DemoCoordinate(195, 132)
         public static let bar = DemoCoordinate(195, 479)
-        public static let send = DemoCoordinate(195, 392)
+        public static let send = DemoCoordinate(195, 383)
         /// The status pill grows from the Send button's frame.
-        public static let statusPill = DemoCoordinate(195, 392)
+        public static let statusPill = DemoCoordinate(195, 383)
         public static let pointsPill = DemoCoordinate(318, 44)
     }
 

@@ -20,6 +20,13 @@ struct DIPMemberHome: View {
     @State private var liveEvents: MemberEventAppRepository?
     @State private var eventConfigurationError = false
     @State private var prototypeRepository: DIPMockRepository
+    /// Onboarding tour (spec §2): first run for a uid without a finished record, and replay from Profile.
+    private let onboarding: OnboardingTourSettings?
+    @State private var tour: OnboardingTourModel?
+    @State private var tourInterests: OnboardingInterestsModel?
+    @State private var replay: OnboardingTourModel?
+    @State private var replayInterests: OnboardingInterestsModel?
+    @State private var homeSurface: OnboardingHomeSurface?
 
     init(
         context: MembershipContext,
@@ -27,20 +34,60 @@ struct DIPMemberHome: View {
         oauthPhotoURL: String = "",
         eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
+        onboarding: OnboardingTourSettings? = nil,
         onSignOut: @escaping () async -> Void
     ) {
+        self.onboarding = onboarding
         self.eventReadFactory = eventReadFactory
         self.participationFactory = participationFactory
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
-        _editor = State(initialValue: ProfileEditor(context: context, repository: repository))
+        let editor = ProfileEditor(context: context, repository: repository)
+        _editor = State(initialValue: editor)
         _catalog = State(initialValue: InterestCatalog(repository: repository))
+        if let onboarding, onboarding.prepare(uid: context.uid) {
+            _tour = State(initialValue: OnboardingTourModel(
+                mode: .firstRun, uid: context.uid, store: onboarding.store, configuration: onboarding.configuration,
+                announce: { AccessibilityNotification.Announcement($0).post() }))
+            _tourInterests = State(initialValue: OnboardingInterestsModel(editor: editor, uid: context.uid))
+        }
         _prototypeRepository = State(initialValue: DIPMockRepository(
             initialSnapshot: MemberProfileBridge.seed(context: context, oauthPhotoURL: oauthPhotoURL)))
     }
 
     var body: some View {
+        ZStack {
+            shell
+                .allowsHitTesting(tour == nil)
+                .accessibilityHidden(tour != nil)
+            if let tour {
+                OnboardingTourView(model: tour, interests: tourInterests, firstName: firstName, youName: youName)
+                    .onAppear { tour.reportSurface(currentSurface); tour.onFinished = { self.tour = nil } }
+                    .transition(.identity)
+            }
+        }
+        .onChange(of: currentSurface) { _, surface in
+            tour?.reportSurface(surface)
+            replay?.reportSurface(surface)
+        }
+        .onChange(of: catalog.state, initial: true) { _, state in
+            tourInterests?.updateCatalog(state)
+            replayInterests?.updateCatalog(state)
+        }
+        .onChange(of: editor.profile) { _, _ in
+            tourInterests?.receiveProfile()
+            replayInterests?.receiveProfile()
+        }
+        .fullScreenCover(isPresented: Binding(get: { replay != nil }, set: { if !$0 { replay = nil } })) {
+            if let replay {
+                OnboardingTourView(model: replay, interests: replayInterests, firstName: firstName, youName: youName)
+                    .presentationBackground(.clear)
+            }
+        }
+    }
+
+    private var shell: some View {
         Group {
             if eventReadFactory != nil {
                 if let liveEvents { prototype(repository: liveEvents, live: true) }
@@ -65,6 +112,43 @@ struct DIPMemberHome: View {
         .onChange(of: context.profile) { _, _ in editor.receive(context) }
     }
 
+    // MARK: Onboarding
+
+    private var firstName: String? {
+        context.profile.displayName.split(separator: " ").first.map(String.init)
+    }
+
+    private var youName: String {
+        let name = context.profile.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "You" : name
+    }
+
+    /// The shell's own surfaces; inside `DIPPrototypeApp` the app reports its surface instead (spec §3 H).
+    private var currentSurface: OnboardingHomeSurface {
+        if eventReadFactory != nil, liveEvents == nil {
+            return eventConfigurationError ? .shellUnavailable : .shellLoading
+        }
+        return homeSurface ?? .activitiesLoading
+    }
+
+    /// "How DIP works" in Profile: the tour from B1 over Profile, never persisted (spec §2 Replay).
+    private func startReplay() {
+        guard let onboarding else { return }
+        let model = OnboardingTourModel(
+            mode: .replay, uid: context.uid, store: nil, configuration: onboarding.configuration,
+            announce: { AccessibilityNotification.Announcement($0).post() })
+        model.reportSurface(.ready)
+        model.onFinished = {
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { replay = nil; replayInterests = nil }
+        }
+        let interests = OnboardingInterestsModel(editor: editor, uid: context.uid)
+        interests.updateCatalog(catalog.state)
+        replayInterests = interests
+        replay = model
+    }
+
     private func prototype(repository: any DIPRepository, live: Bool) -> some View {
         DIPPrototypeApp(
             repository: repository, onSignOut: onSignOut,
@@ -74,7 +158,9 @@ struct DIPMemberHome: View {
             eventReadsOnly: live, liveParticipation: live && liveEvents?.supportsParticipation == true, onEventOpened: live ? { liveEvents?.selectDetail($0) } : nil,
             onLoadMoreEvents: live && (liveEvents?.hasMore == true) ? { Task { await liveEvents?.loadMore() } } : nil,
             loadingMoreEvents: liveEvents?.isLoadingMore == true, eventPaginationError: liveEvents?.paginationError,
-            onRefreshEvents: live ? { await liveEvents?.refresh() } : nil)
+            onRefreshEvents: live ? { await liveEvents?.refresh() } : nil,
+            onSurfaceChange: { homeSurface = $0 },
+            onReplayTour: onboarding == nil ? nil : { startReplay() })
     }
 
     private var catalogIsLoading: Bool {

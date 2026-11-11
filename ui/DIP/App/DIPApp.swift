@@ -33,7 +33,7 @@ struct DIPApp: App {
     /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed
     /// by the same scope ID); unconfigured builds keep the fixture challenge card.
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
-        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, onSignOut: { await session.signOut() })
+        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, onboarding: .standard(), onSignOut: { await session.signOut() })
         if let makeChallengeReads {
             WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
         } else { home }

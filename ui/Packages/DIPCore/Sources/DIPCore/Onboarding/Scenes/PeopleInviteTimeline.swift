@@ -36,7 +36,7 @@ public enum PeopleInviteTimeline {
         public static let inviteChip = DemoCoordinate(195, 401)
         public static let priyaRow = DemoCoordinate(195, 266)
         public static let sendInvite = DemoCoordinate(195, 499)
-        public static let accept = DemoCoordinate(107, 355)
+        public static let accept = DemoCoordinate(114, 318)
     }
 
     public static let endWithInvites = Duration.milliseconds(10_200)
