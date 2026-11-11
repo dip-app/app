@@ -79,7 +79,7 @@ struct DIPChallengeDetailsScreen: View {
 
     @ViewBuilder private var facts: some View {
         let items = [("Goal", challenge.goalText, "challenge.goal", "target"),
-                     ("Reward", challenge.rewardText, "challenge.reward", "star")]
+                     ("Reward", challenge.rewardText, "challenge.reward", "gift")]
             .compactMap { item in item.1.map { (item.0, $0, item.2, item.3) } }
         if !items.isEmpty {
             ViewThatFits(in: .horizontal) {
@@ -91,8 +91,16 @@ struct DIPChallengeDetailsScreen: View {
 
     /// Goal and Reward are informational, so they use the shared pill in its outline (non-pressable) style.
     private func fact(_ item: (String, String, String, String)) -> some View {
-        DIPActionPill(title: "\(item.0): \(item.1)", color: DIPTokens.Color.actionPrimary.swiftUIColor, style: .outline) {
-            Image(systemName: item.3).resizable().scaledToFit().accessibilityHidden(true)
+        // Icon on the left and only the value as text; VoiceOver still hears "Goal: 3 workouts".
+        DIPActionPill(title: item.1, color: DIPTokens.Color.actionPrimary.swiftUIColor, style: .outline, iconLeading: true) {
+            Group {
+                if item.3 == "gift" {
+                    DIPReferenceAssets.image("HeroiconsOutlineGift").renderingMode(.template).resizable().scaledToFit()
+                } else {
+                    Image(systemName: item.3).resizable().scaledToFit()
+                }
+            }
+            .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.0): \(item.1)")
