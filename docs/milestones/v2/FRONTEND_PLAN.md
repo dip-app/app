@@ -17,6 +17,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Weekly theme production | Seeded: Fitness theme documents `weekly-fitness-20261109` and `weekly-fitness-20261116` for Arianne AI (`pNVpp3OusRvgfUV8hv5R`) and Globex (`zFKQd6KU14LqKr4a7yTb`) | Done in production | none | Orchestrator |
 | Weekly theme T2 | iOS Home card live and read-only detail | Draft. Its dependency (#53 deployed) is now met; needs simulator verification | PR #57 | iOS |
 | Weekly theme T3 | Admin portal "Weekly themes" list/create/edit | Open. Mock mode verified; live emulator test was skipped until #53, which is now merged | PR #52 | Admin portal |
+| Profile redesign | Periwinkle header holding avatar, name, About details and interests; flat brand shapes; memory grid opening the album; `DIPEmptyState` for no memories | In review on `feature/profile-redesign` (see PR) | feature/profile-redesign | iOS |
 | Empty states T4 | Reusable `DIPEmptyState` and its uses | Draft; simulator tests pending | PR #51 | iOS |
 | Chat/push/settings/history/reminders backend (C1) | Chat rules, push functions, subscription preferences, change log trigger, reminders | Open, nothing deployed. Needs APNs key and paid team for real pushes. Open questions: level semantics, chat closing 24 h after the event end, organizer chat access, trigger region check | PR #54 | Backend |
 | Onboarding P0 + spec | Core logic and ONBOARDING_SPEC v4 | Open, waiting for team approval of onboarding | PR #49 | iOS / Design |
