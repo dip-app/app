@@ -123,10 +123,11 @@ struct DIPPrototypeApp: View {
     @State private var flightRing: CGFloat = 0
     @State private var isAvatarFlying = false
     @State private var flightGeneration = 0
-    /// The Profile badge's last settled frame in screen coordinates (nil until the page reports one).
-    @State private var settledBadgeFrame: CGRect?
-    /// The latest badge frame the page reported, settled or not (used to correct the endpoint after a flight).
-    @State private var rawBadgeFrame: CGRect?
+    /// The Profile badge's frame in the Profile page's own (screen-aligned) space; nil until reported.
+    @State private var badgeFrame: CGRect?
+    /// Where the shell's overlay space starts on screen (normally zero).
+    @State private var shellOrigin = CGPoint.zero
+    @State private var shellSize = CGSize.zero
     /// Photo to open the viewer on for an album reached from a Profile memory; cleared on back.
     @State private var memoryPhotoIDs: [String: String?] = [:]
 
@@ -154,6 +155,7 @@ struct DIPPrototypeApp: View {
                 avatarFlyer
             }
             .background(.white)
+            .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { shellOrigin = $0 }
             .onAppear { if flightFrame == .zero { flightFrame = idleAvatarFrame(for: selectedTab, in: geometry.size) } }
             .onChange(of: selectedTab) { old, new in flyAvatar(from: old, to: new, in: geometry.size) }
         }
@@ -286,22 +288,30 @@ struct DIPPrototypeApp: View {
     }
 
     private func idleAvatarFrame(for tab: DIPHomeTab, in size: CGSize) -> CGRect {
-        tab == .profile ? (settledBadgeFrame ?? ProfileBadgeLink.fallbackFrame()) : headerAvatarFrame(in: size)
+        guard tab == .profile else { return headerAvatarFrame(in: size) }
+        // Profile page space is screen-aligned; express it in the overlay's space.
+        return (badgeFrame ?? ProfileBadgeLink.fallbackFrame()).offsetBy(dx: -shellOrigin.x, dy: -shellOrigin.y)
     }
 
-    /// Frames reported while the avatar flies or while another tab is selected are mid-slide values,
-    /// so only a settled Profile page updates the badge endpoint.
+    /// The Profile page reports the badge frame in its own space, which stays correct while the page
+    /// slides (it moves with the page). A report while the avatar is flying toward Profile re-aims the
+    /// flight to the real frame; a report while idle on Profile (scrolling) just updates the endpoint.
     private func reportBadgeFrame(_ frame: CGRect) {
-        rawBadgeFrame = frame
-        guard selectedTab == .profile, !isAvatarFlying, frame.width > 0 else { return }
-        settledBadgeFrame = frame
-        flightFrame = frame
+        guard frame.width > 0, frame != badgeFrame else { return }
+        badgeFrame = frame
+        guard selectedTab == .profile else { return }
+        if isAvatarFlying {
+            animateFlight(toward: .profile, size: nil)
+        } else {
+            flightFrame = idleAvatarFrame(for: .profile, in: .zero)
+        }
     }
 
     /// One avatar view in the shell overlay travels between the capsule and the Profile badge with a
     /// spring; a tab change mid-flight retargets from the current position. Reduce Motion and the first
     /// layout skip the flight (the header and badge simply crossfade).
     private func flyAvatar(from old: DIPHomeTab, to new: DIPHomeTab, in size: CGSize) {
+        shellSize = size
         guard (old == .profile) != (new == .profile), !reduceMotion else {
             if !isAvatarFlying { flightFrame = idleAvatarFrame(for: new, in: size) }
             return
@@ -311,22 +321,21 @@ struct DIPPrototypeApp: View {
             flightRing = old == .profile ? 3 : 0
             isAvatarFlying = true
         }
+        animateFlight(toward: new, size: size)
+    }
+
+    private func animateFlight(toward tab: DIPHomeTab, size: CGSize?) {
         flightGeneration += 1
         let generation = flightGeneration
-        let target = idleAvatarFrame(for: new, in: size)
+        let target = idleAvatarFrame(for: tab, in: size ?? shellSize)
         withAnimation(DIPMotion.marker, completionCriteria: .logicallyComplete) {
             flightFrame = target
-            flightRing = new == .profile ? 3 : 0
+            flightRing = tab == .profile ? 3 : 0
         } completion: {
             guard generation == flightGeneration else { return }
-            var landed = target
-            // The page has finished sliding by now: trust its own badge frame if it differs from the estimate.
-            if new == .profile, let raw = rawBadgeFrame, raw.minX >= 0, raw.maxX <= size.width + 1, raw.width > 0 {
-                settledBadgeFrame = raw
-                landed = raw
-            }
+            // Land exactly on the real endpoint (the badge may have reported after the target was chosen).
+            flightFrame = idleAvatarFrame(for: tab, in: size ?? shellSize)
             isAvatarFlying = false
-            flightFrame = landed
         }
     }
 
