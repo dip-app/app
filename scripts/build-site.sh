@@ -11,6 +11,7 @@ rm -rf site-dist
 mkdir -p site-dist/admin
 cp apps/landing/index.html site-dist/index.html
 mkdir -p site-dist/img/landing && cp apps/landing/img/* site-dist/img/landing/
+cp apps/landing/img/favicon.ico site-dist/favicon.ico   # crawlers and old clients ask for /favicon.ico
 cp -R apps/admin/out/. site-dist/admin/
 # Root-level public assets the share page, Universal Links and admin <img src="/img/..."> rely on.
 for d in aasa share img; do
