@@ -240,7 +240,7 @@ import UniformTypeIdentifiers
         XCTAssertTrue(condition())
     }
 
-    func testDraftsUploadInOrderReportProgressAndClearOnceObserved() async throws {
+    func testDraftsUploadOnceReportProgressAndClearOnceObserved() async throws {
         var sent: [String] = []
         var runs: [(Int, Int)] = []
         let queue = AlbumUploadQueue(send: { _, photo, progress in
@@ -250,7 +250,9 @@ import UniformTypeIdentifiers
         queue.enqueue(eventID: "boat", loaders: [{ Data([1]) }, { Data([2]) }])
         try await waitFor { runs.count == 1 }
         XCTAssertEqual(runs.first?.0, 2); XCTAssertEqual(runs.first?.1, 0)
-        XCTAssertEqual(sent, queue.items.map(\.id))
+        // Preparation runs concurrently, so the send order follows readiness; each draft is sent exactly once.
+        XCTAssertEqual(sent.count, 2)
+        XCTAssertEqual(Set(sent), Set(queue.items.map(\.id)))
         XCTAssertEqual(queue.pendingCount(for: "boat"), 0)
         XCTAssertEqual(queue.reservedCount(for: "boat"), 0, "published drafts no longer hold a slot")
         queue.reconcile(eventID: "boat", publishedPhotoIDs: Set(sent.map { "published-\($0)" }))
