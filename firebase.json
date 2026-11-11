@@ -22,7 +22,7 @@
     "trailingSlash": true,
     "rewrites": [
       { "source": "/.well-known/apple-app-site-association", "destination": "/aasa/apple-app-site-association.json" },
-      { "source": "/e/**", "destination": "/share/event.html" }
+      { "source": "/e/**", "function": { "functionId": "eventSharePageV1", "region": "us-central1" } }
     ],
     "headers": [
       {
