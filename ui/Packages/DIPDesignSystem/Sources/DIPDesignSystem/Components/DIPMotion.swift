@@ -24,6 +24,14 @@
                 : .spring(response: 0.45, dampingFraction: 0.68)
         }
 
+        /// A content swap driven by a filter toggle: short ease, plain cross-fade (no slide) with Reduce Motion.
+        public static let filterDuration = 0.25
+        public static func filter(reduceMotion: Bool = false) -> Animation {
+            reduceMotion
+                ? .linear(duration: reducedMotionDuration)
+                : .easeInOut(duration: filterDuration)
+        }
+
         public static func section(reduceMotion: Bool = false) -> Animation {
             reduceMotion
                 ? .linear(duration: reducedMotionDuration)

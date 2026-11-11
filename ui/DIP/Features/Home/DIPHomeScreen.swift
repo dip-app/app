@@ -34,14 +34,21 @@ struct DIPHomeScreen: View {
     /// nil hides the section (fixtures without a challenge); live Home always passes a state.
     let challengeState: DIPChallengeCardState?
     let onRetryChallenge: (() -> Void)?
+    /// Freshness of the events list (skeleton, failure, offline label). `.ready` for fixtures.
+    let eventsPhase: DIPHomeEventsPhase
+    let onRetryEvents: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     init(
         home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
         onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void,
         onLoadMore: (() -> Void)? = nil, loadingMore: Bool = false, paginationError: String? = nil,
         eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil,
         challengeState: DIPChallengeCardState? = nil, onRetryChallenge: (() -> Void)? = nil,
-        eventFilter: DIPHomeEventFilter? = nil, onFilterScope: @escaping (DIPHomeEventScope) -> Void = { _ in }
+        eventFilter: DIPHomeEventFilter? = nil, onFilterScope: @escaping (DIPHomeEventScope) -> Void = { _ in },
+        eventsPhase: DIPHomeEventsPhase = .ready, onRetryEvents: (() -> Void)? = nil
     ) {
+        self.eventsPhase = eventsPhase
+        self.onRetryEvents = onRetryEvents
         self.eventFilter = eventFilter
         self.onFilterScope = onFilterScope
         self.challengeState = challengeState ?? home.challenge.map { .current($0, stale: false) }
@@ -72,32 +79,7 @@ struct DIPHomeScreen: View {
                                     .padding(.top, 15)
                                     .animation(.easeInOut(duration: DIPMotion.reducedMotionDuration), value: challengeState)
                             }
-                            VStack(alignment: .leading, spacing: 8) {
-                                sectionTitle(eventSectionTitle)
-                                if let eventFilter { interestFilterBar(eventFilter).padding(.bottom, 4) }
-                                if home.events.isEmpty {
-                                    if let eventFilter, eventFilter.scope == .matching, eventFilter.totalCount > 0 {
-                                        // More pages may exist: an empty filtered page is not "nothing matches".
-                                        DIPEmptyState(
-                                            screen: "home-filter",
-                                            title: onLoadMore == nil ? "No events match your interests" : "No matches in the events loaded so far",
-                                            message: onLoadMore == nil
-                                                ? "Switch to All events to see everything coming up."
-                                                : "Load more events, or switch to All events.",
-                                            actionTitle: "Show all events", action: { DIPHaptics.select(); onFilterScope(.all) })
-                                    } else {
-                                        DIPEmptyState(
-                                            screen: "home-events", title: "Nothing planned yet",
-                                            message: "New company events will show up here.")
-                                    }
-                                }
-                                if let paginationError { Text(paginationError).font(.footnote).foregroundStyle(.secondary) }
-                                if let onLoadMore {
-                                    Button(loadingMore ? "Loading more…" : "Load more events", action: onLoadMore)
-                                        .disabled(loadingMore).accessibilityIdentifier("home.events.more")
-                                }
-                                if !home.events.isEmpty { eventCarousel }
-                            }
+                            eventsSection(width: geometry.size.width - 40)
                             recentAttendees
                         }
                         .padding(.horizontal, 20).padding(.bottom, 120)
@@ -118,8 +100,82 @@ struct DIPHomeScreen: View {
         .preferredColorScheme(.light)
     }
 
-    private var eventCarousel: some View {
-        ScrollView(.horizontal) {
+    // MARK: Events section
+
+    private var scope: DIPHomeEventScope { eventFilter?.scope ?? .all }
+    private var content: DIPHomeEventsContent {
+        .resolve(
+            phase: eventsPhase, filterActive: eventFilter != nil, scope: scope, visibleCount: home.events.count,
+            totalCount: eventFilter?.totalCount ?? home.events.count, canLoadMore: onLoadMore != nil)
+    }
+    private var swap: Animation { DIPMotion.filter(reduceMotion: reduceMotion) }
+
+    /// Title, filter and events. The toggle never moves; only the area below it swaps. The area is a top-aligned
+    /// ZStack so the outgoing and incoming content overlap while the container height animates, with no jump.
+    private func eventsSection(width: CGFloat) -> some View {
+        let content = content
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                sectionTitle(eventSectionTitle)
+                if eventsPhase == .offline {
+                    Spacer(minLength: 4)
+                    Label("Offline", systemImage: "wifi.slash")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 12))
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
+                        .accessibilityLabel("Offline. Showing the last update.")
+                        .accessibilityIdentifier("home.events.stale")
+                }
+            }
+            if let eventFilter { interestFilterBar(eventFilter).padding(.bottom, 4) }
+            ZStack(alignment: .top) {
+                eventsArea(content, width: width)
+                    .id(content.key(scope: scope))
+                    .transition(areaTransition)
+            }
+            .frame(maxWidth: .infinity, alignment: .top)
+            if let paginationError { Text(paginationError).font(.footnote).foregroundStyle(.secondary) }
+            if let onLoadMore {
+                Button(loadingMore ? "Loading more…" : "Load more events", action: onLoadMore)
+                    .disabled(loadingMore).accessibilityIdentifier("home.events.more")
+            }
+        }
+        .animation(swap, value: scope)
+        .animation(swap, value: content)
+    }
+
+    /// Cards for the old scope drift out a little and fade; the new ones drift in from the side the toggle moved
+    /// toward. Plain cross-fade with Reduce Motion.
+    private var areaTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        let sign: CGFloat = scope == .all ? 1 : -1
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(x: 28 * sign)),
+            removal: .opacity.combined(with: .offset(x: -28 * sign)))
+    }
+
+    @ViewBuilder private func eventsArea(_ content: DIPHomeEventsContent, width: CGFloat) -> some View {
+        switch content {
+        case .list: eventCarousel(width: width)
+        case .skeleton: eventSkeleton(width: width)
+        case .failure(let message): eventFailure(message)
+        case .emptyFiltered(let canLoadMore):
+            // More pages may exist: an empty filtered page is not "nothing matches".
+            DIPEmptyState(
+                screen: "home-filter",
+                title: canLoadMore ? "No matches in the events loaded so far" : "No events match your interests",
+                message: canLoadMore
+                    ? "Load more events, or switch to All events." : "Switch to All events to see everything coming up.",
+                actionTitle: "Show all events", action: { DIPHaptics.select(); onFilterScope(.all) })
+        case .emptyAll:
+            DIPEmptyState(
+                screen: "home-events", title: "Nothing planned yet",
+                message: "New company events will show up here.")
+        }
+    }
+
+    private func eventCarousel(width: CGFloat) -> some View {
+        let equal = DIPHomeCardLayout.equalColumnWidth(count: home.events.count, available: Double(width)).map { CGFloat($0) }
+        return ScrollView(.horizontal) {
             HStack(spacing: 10) {
                 ForEach(home.events) { event in
                     DIPPhotoEventCard(
@@ -127,7 +183,7 @@ struct DIPHomeScreen: View {
                         identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
                         rewardText: DIPPointsFormat.rewardShort(event.pointsValue),
                         rewardAccessibility: DIPPointsFormat.rewardAccessibility(event.pointsValue),
-                        width: event.id == "hike" ? 169 : 163, shade: event.imageShade,
+                        width: equal ?? (event.id == "hike" ? 169 : 163), shade: event.imageShade,
                         artwork: { DIPMedia(event.image).scaledToFill() },
                         avatarStack: { DIPMediaStack(event.avatars) }
                     ) { onEvent(event.id) }
@@ -140,17 +196,46 @@ struct DIPHomeScreen: View {
         .accessibilityIdentifier("home.events")
     }
 
-    /// "Matching your interests" / "All events": the solid thumb is the pressable control; the count and the
-    /// interest chips are informational, so they are outlined.
+    /// Card-shaped placeholders in the real cards' footprint (two equal columns), so nothing below moves.
+    private func eventSkeleton(width: CGFloat) -> some View {
+        let column = CGFloat(DIPHomeCardLayout.equalColumnWidth(count: 2, available: Double(width)) ?? 163)
+        return HStack(spacing: 10) {
+            DIPSkeleton(cornerRadius: 20).frame(width: column, height: 205)
+            DIPSkeleton(cornerRadius: 20).frame(width: column, height: 205)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading events")
+        .accessibilityIdentifier("home.events.loading")
+    }
+
+    /// Nothing cached and the read failed: one retry in place, the rest of Home stays usable.
+    private func eventFailure(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "wifi.exclamationmark").font(.title2).accessibilityHidden(true)
+            Text(message)
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            if let onRetryEvents { DIPButton("Try again", action: onRetryEvents).accessibilityIdentifier("home.events.retry") }
+        }
+        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 205)
+        .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home.events.failure")
+    }
+
+    /// "Matching your interests" / "All events": the solid thumb is the pressable control (the same toggle as
+    /// My Events); the count and the interest chips are informational, so they are outlined or tinted.
     private func interestFilterBar(_ filter: DIPHomeEventFilter) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             DIPSegmentedToggle(
                 segments: [
-                    .init(id: DIPHomeEventScope.matching, title: "Matching your interests", identifier: "home.filter.matching"),
+                    .init(id: DIPHomeEventScope.matching, title: "Your interests", identifier: "home.filter.matching"),
                     .init(id: DIPHomeEventScope.all, title: "All events", identifier: "home.filter.all"),
                 ],
-                selection: filter.scope, accent: DIPTokens.Color.actionPrimary.swiftUIColor, style: .soft,
-                height: 40, inset: 4, fontSize: 15, onSelect: onFilterScope)
+                selection: filter.scope, accent: DIPTokens.Color.actionPrimary.swiftUIColor, onSelect: onFilterScope)
             if filter.scope == .matching {
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
@@ -166,6 +251,7 @@ struct DIPHomeScreen: View {
                 .scrollIndicators(.hidden)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("home.filter.chips")
+                .transition(.opacity)
             }
         }
     }

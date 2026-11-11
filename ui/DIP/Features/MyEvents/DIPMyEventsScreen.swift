@@ -11,6 +11,8 @@ struct DIPMyEventsScreen: View {
     }
 
     @State private var section: Section
+    /// The page the paging scroll view rests on; nil until first appear, then set without animation.
+    @State private var pageID: Section?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let activeEvents: [DIPEventSummary]
     let memoryAlbums: [DIPMemory]
@@ -60,25 +62,11 @@ struct DIPMyEventsScreen: View {
                         onNotifications: onNotifications, onProfile: onProfile
                     )
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
-                    ScrollView {
-                        VStack(spacing: 18) {
-                            sectionPicker
-                            ZStack(alignment: .topLeading) {
-                                if section == .active {
-                                    activeEvents(width: geometry.size.width - 40)
-                                        .transition(pageTransition(edge: .leading))
-                                } else {
-                                    memories
-                                        .transition(pageTransition(edge: .trailing))
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .clipped()
-                        }
-                        .padding(.horizontal, 20).padding(.bottom, 120)
-                    }
-                    .scrollIndicators(.hidden)
-                    .accessibilityIdentifier("events.content")
+                    // The toggle is pinned above the pages. Each page is a full-width vertical scroll view that carries
+                    // its own 20pt page padding, so while swiping the content travels to the display edge and the
+                    // padding is the gap between the two pages (nothing is clipped at the padding).
+                    sectionPicker.padding(.horizontal, 20).padding(.bottom, 18)
+                    pager(width: geometry.size.width)
                 }
                 if showsBottomBar {
                     DIPFloatingNavigation(selected: .events, onSelect: onSelectTab)
@@ -91,6 +79,39 @@ struct DIPMyEventsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        .onChange(of: section) { _, next in
+            AccessibilityNotification.Announcement(next == .active ? "Active Events" : "Memories").post()
+        }
+    }
+
+    /// Two real pages side by side in a paging scroll view. The toggle and the pages stay in sync both ways:
+    /// tapping the toggle animates to the page, and swiping the content moves the toggle's thumb.
+    private func pager(width: CGFloat) -> some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 0) {
+                page(.active, width: width) { activeEvents(width: width - 40) }
+                page(.memories, width: width) { memories }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $pageID)
+        .onAppear { var t = Transaction(animation: nil); t.disablesAnimations = true; withTransaction(t) { pageID = section } }
+        .onChange(of: pageID) { _, next in if let next, next != section { section = next } }
+        .scrollIndicators(.hidden)
+        .accessibilityIdentifier("events.content")
+    }
+
+    private func page<Content: View>(_ id: Section, width: CGFloat, @ViewBuilder _ content: () -> Content) -> some View {
+        ScrollView(.vertical) {
+            VStack(spacing: 18) { content() }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 20).padding(.bottom, 120)
+        }
+        .scrollIndicators(.hidden)
+        .frame(width: width)
+        .id(id)
+        .accessibilityIdentifier("events.page.\(id.rawValue)")
     }
 
     private var sectionPicker: some View {
@@ -109,11 +130,7 @@ struct DIPMyEventsScreen: View {
 
     private func selectSection(_ next: Section) {
         guard next != section else { return }
-        withAnimation(sectionAnimation) { section = next }
-    }
-
-    private func pageTransition(edge: Edge) -> AnyTransition {
-        reduceMotion ? .opacity : .move(edge: edge)
+        withAnimation(sectionAnimation) { section = next; pageID = next }
     }
 
     private var segmentAccent: Color {

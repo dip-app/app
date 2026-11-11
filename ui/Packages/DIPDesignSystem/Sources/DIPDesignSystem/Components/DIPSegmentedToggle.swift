@@ -40,7 +40,7 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
 #if canImport(SwiftUI)
     import SwiftUI
 
-    /// A two-or-more segment toggle with a white thumb that can be dragged: the thumb follows the finger
+    /// A two-or-more segment toggle (solid accent track, white thumb) with a white thumb that can be dragged: the thumb follows the finger
     /// anywhere on the track and, on release, springs to the nearest segment (DIPMotion.marker) and reports
     /// the choice. A tap on a segment still works. Each segment is a button with identifier
     /// `<identifierPrefix>.<segment id>` and the selected trait.
@@ -56,15 +56,7 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
 
         private let segments: [Segment]
         private let selection: ID
-        public enum Style: Sendable {
-            /// Solid accent track, white thumb (My Events).
-            case filled
-            /// Quiet: faint accent track with a hairline, white thumb with a soft shadow, ink labels.
-            case soft
-        }
-
         private let accent: Color
-        private let style: Style
         private let inset: Double
         private let height: Double
         private let fontSize: CGFloat
@@ -73,13 +65,12 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
         @State private var dragThumbX: Double?
 
         public init(
-            segments: [Segment], selection: ID, accent: Color, style: Style = .filled, height: Double = 50,
+            segments: [Segment], selection: ID, accent: Color, height: Double = 50,
             inset: Double = 5, fontSize: CGFloat = 18, onSelect: @escaping (ID) -> Void
         ) {
             self.segments = segments
             self.selection = selection
             self.accent = accent
-            self.style = style
             self.inset = inset
             self.height = height
             self.fontSize = fontSize
@@ -99,7 +90,6 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
                 ZStack(alignment: .leading) {
                     track
                     Capsule().fill(.white)
-                        .shadow(color: style == .soft ? DIPComponentTheme.ink.opacity(0.10) : .clear, radius: 4, y: 1)
                         .frame(width: geometry.thumbWidth, height: geometry.thumbHeight)
                         .offset(x: thumbX)
                         .accessibilityHidden(true)
@@ -119,6 +109,7 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
                         }
                     }
                 }
+                .animation(dragThumbX == nil ? settle : nil, value: selectedIndex)
                 .contentShape(Capsule())
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 6)
@@ -134,21 +125,9 @@ public struct DIPSegmentedGeometry: Equatable, Sendable {
             .accessibilityElement(children: .contain)
         }
 
-        @ViewBuilder private var track: some View {
-            switch style {
-            case .filled: Capsule().fill(accent)
-            case .soft:
-                Capsule().fill(accent.opacity(0.12))
-                    .overlay(Capsule().strokeBorder(accent.opacity(0.30), lineWidth: 1))
-            }
-        }
+        private var track: some View { Capsule().fill(accent) }
 
-        private func labelColor(selected: Bool) -> Color {
-            switch style {
-            case .filled: selected ? accent : .white
-            case .soft: DIPComponentTheme.ink.opacity(selected ? 1 : 0.75)
-            }
-        }
+        private func labelColor(selected: Bool) -> Color { selected ? accent : .white }
 
         private func choose(_ index: Int, geometry: DIPSegmentedGeometry) {
             let next = segments[min(max(index, 0), segments.count - 1)].id

@@ -300,6 +300,9 @@ struct DIPPrototypeApp: View {
             storedIDs: member.interestTagIDs, catalog: member.interestCatalog.isEmpty ? nil : member.interestCatalog)
         let visible = DIPInterestFilter.visibleEvents(lists.discovery, scope: homeScope, activeInterests: interests)
         home.events = visible.events
+        // Design review / UI tests: a forced loading or failed state has no events behind it.
+        switch Self.previewEventsPhase { case .loading?, .failed?: home.events = []; default: break }
+        let matchingCount = DIPInterestFilter.visibleEvents(lists.discovery, scope: .matching, activeInterests: interests).events.count
         let eventFilter: DIPHomeEventFilter? = interests.isEmpty ? nil : DIPHomeEventFilter(
             interests: interests, scope: homeScope, shownCount: visible.events.count, totalCount: lists.discovery.count)
         let pages: (DIPHomeTab) -> AnyView = { tab in
@@ -314,7 +317,9 @@ struct DIPPrototypeApp: View {
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
                     onRefresh: homeRefresh, challengeState: challengeFeed?.state,
                     onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } },
-                    eventFilter: eventFilter, onFilterScope: { setHomeScope($0, uid: member.id) }))
+                    eventFilter: eventFilter, onFilterScope: { setHomeScope($0, uid: member.id, shown: matchingCount, total: eventFilter?.totalCount) },
+                    eventsPhase: eventsPhase(snapshot, hasEvents: !lists.discovery.isEmpty),
+                    onRetryEvents: { observationID = UUID() }))
             case .events:
                 if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
@@ -341,7 +346,7 @@ struct DIPPrototypeApp: View {
                     unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
                     showsBottomBar: false, onSelectTab: selectTab,
                     onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) },
-                    pointsBalance: (accountProfile ?? snapshot.profile).pointsBalance))
+                    pointsDisplay: pointsDisplay(accountProfile == nil ? nil : (accountProfile ?? snapshot.profile).pointsBalance)))
             }
         }
         // Home, Rewards and My Events share one header drawn by the shell (fixed while pages slide);
@@ -352,10 +357,56 @@ struct DIPPrototypeApp: View {
         }
     }
 
-    private func setHomeScope(_ scope: DIPHomeEventScope, uid: String) {
+    /// Freshness of Home's events. The snapshot only exists after a successful read, so a load error with a
+    /// snapshot means the list on screen is the last good one (offline); without events it is a failure.
+    private func eventsPhase(_ snapshot: DIPAppSnapshot, hasEvents: Bool) -> DIPHomeEventsPhase {
+        if let forced = Self.previewEventsPhase { return forced }
+        if let error = model.loadError {
+            return hasEvents ? .offline : .failed(error)
+        }
+        return model.isLoading && !hasEvents ? .loading : .ready
+    }
+
+    /// The points pill. A fixture profile (no account) shows the design's mock; a load error flags the cached value.
+    private func pointsDisplay(_ real: Int?) -> DIPPointsDisplay {
+        if let forced = Self.previewPointsDisplay { return forced }
+        guard let real else { return .balance(520) }
+        return model.loadError == nil ? .balance(real) : .stale(real)
+    }
+
+    /// `--home-events-state=loading|failed|offline` for design review and UI tests only.
+    private static var previewEventsPhase: DIPHomeEventsPhase? {
+        guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--home-events-state=") }) else { return nil }
+        switch arg.dropFirst("--home-events-state=".count) {
+        case "loading": return .loading
+        case "failed": return .failed("Couldn’t load events. Check your connection and try again.")
+        case "offline": return .offline
+        default: return nil
+        }
+    }
+
+    /// `--points-state=loading|unavailable|stale` for design review and UI tests only (`--points=<n>` sets the value).
+    private static var previewPointsDisplay: DIPPointsDisplay? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let arg = args.first(where: { $0.hasPrefix("--points-state=") }) else { return nil }
+        let value = args.first(where: { $0.hasPrefix("--points=") }).flatMap { Int($0.dropFirst("--points=".count)) } ?? 520
+        switch arg.dropFirst("--points-state=".count) {
+        case "loading": return .loading
+        case "unavailable": return .unavailable
+        case "stale": return .stale(value)
+        default: return nil
+        }
+    }
+
+    private func setHomeScope(_ scope: DIPHomeEventScope, uid: String, shown: Int?, total: Int?) {
         guard scope != homeScope else { return }
-        withAnimation(DIPMotion.section(reduceMotion: reduceMotion)) { homeScope = scope }
+        withAnimation(DIPMotion.filter(reduceMotion: reduceMotion)) { homeScope = scope }
         DIPHomeScopeStore().save(scope, uid: uid)
+        // The counts after the switch: matching shows the filtered count, all shows every loaded event.
+        if let total {
+            let count = scope == .all ? total : (shown ?? total)
+            AccessibilityNotification.Announcement(DIPHomeFilterAnnouncement.text(scope: scope, shown: count, total: total)).post()
+        }
     }
 
     // MARK: Avatar flight

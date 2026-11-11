@@ -1,3 +1,4 @@
+import UIKit
 import DIPCore
 import DIPDesignSystem
 import SwiftUI
@@ -11,6 +12,16 @@ struct PreviewApp: App {
     private let previewBugReporting = BugReportContext.make(
         uid: "preview-member", submitter: BugReportPreviewBehavior.submitter(),
         queueDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("PreviewBugReports-\(UUID().uuidString)"))
+    private static func applyAnimationSpeed() {
+        guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--animation-speed=") }),
+              let speed = Float(arg.dropFirst("--animation-speed=".count)) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            for scene in UIApplication.shared.connectedScenes {
+                (scene as? UIWindowScene)?.windows.forEach { $0.layer.speed = speed }
+            }
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -49,6 +60,8 @@ struct PreviewApp: App {
                 .first { $0.hasPrefix("--progress-style=") }
                 .flatMap { DIPProgressIndicatorStyle(rawValue: String($0.dropFirst("--progress-style=".count))) }
                 ?? .shipping)
+            // `--animation-speed=0.1` slows every animation (design review of mid-transition frames only).
+            .onAppear { Self.applyAnimationSpeed() }
             .environment(\.eventCalendarAdder, calendar)
             .environment(\.bugReporting, previewBugReporting)
             .environment(\.openURL, OpenURLAction { url in
