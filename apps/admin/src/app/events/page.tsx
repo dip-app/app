@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { EventCard } from "@/components/EventCard";
+import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
 import { ApiError, type AdminEvent, classify } from "@/lib/contract";
 
@@ -36,7 +37,7 @@ export default function EventsPage() {
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
 
   return (
-    <Shell title="Events" subtitle="Everything your company can see in the DIP app." action={session?.role === "admin" ? <Link className="pill-btn purple" href="/events/new/">New event</Link> : undefined}>
+    <Shell title="Events" subtitle="Everything your company can see in the DIP app." action={can(session?.role, "events.manage") ? <Link className="pill-btn purple" href="/events/new/">New event</Link> : undefined}>
       {error?.code === "permission-denied" ? (
         <div className="empty" role="alert">
           <h2>No organizer access</h2>
