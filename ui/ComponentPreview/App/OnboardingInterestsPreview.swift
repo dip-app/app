@@ -29,7 +29,7 @@ struct OnboardingInterestsPreview: View {
             role: "member", interestTagIds: [], travelRadiusMiles: 20, availability: [], friendIds: [],
             favoritePhotoIds: [], pointsBalance: 0, createdAt: Date(timeIntervalSince1970: 0))
         // swiftlint:disable:next force_try
-        let context = try! MembershipContext(uid: profile.id, profile: profile)
+        let context = try! MembershipContext(uid: "preview-member@example.invalid", profile: profile)
         let editor = ProfileEditor(context: context, repository: repository)
         _editor = State(initialValue: editor)
         _catalog = State(initialValue: InterestCatalog(repository: repository))
