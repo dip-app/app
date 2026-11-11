@@ -44,9 +44,10 @@
   h1 em { font-style: normal; color: var(--purple); }
   .lead { font-size: 20px; color: var(--muted); max-width: 30em; margin: 0 0 28px; }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-  .pill { display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 22px; border-radius: 26px; font: 700 17px Figtree, sans-serif; text-decoration: none; }
+  .pill { display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 26px; border-radius: 28px; font: 400 20px/1 Figtree, sans-serif; text-decoration: none; white-space: nowrap; }
   /* solid = pressable, outline = informational */
-  .pill.store { background: #0071E3; color: #FFFFFF; transition: background .15s, transform .1s; }
+  .store-icon { display: block; flex: none; }
+  .pill.store { gap: 12px; padding-left: 18px; background: #0071E3; color: #FFFFFF; transition: background .15s, transform .1s; }
   .pill.store:hover { background: #0A84FF; }
   .pill.store:active { transform: scale(.97); }
   .pill.store:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
@@ -101,8 +102,10 @@
         <h1>Get out of the office. <em>Do something together.</em></h1>
         <p class="lead">DIP is the app for your company's events: find something to join, see who's going, share the photos afterwards and earn points as a team.</p>
         <div class="ctas">
-          <!-- TODO: replace with the real App Store listing URL (https://apps.apple.com/app/id<APP_STORE_ID>) once the listing exists. -->
-          <a class="pill store" href="https://apps.apple.com/" rel="noopener">Get it now</a>
+          <!-- Opens the app if installed (dip:// is registered in the app's Info.plist); silently does nothing otherwise. Swap in the App Store listing link once it exists. -->
+          <a class="pill store" id="open-app" href="dip://" role="button">
+            <img class="store-icon" src="/img/landing/app-store.svg" alt="" width="26" height="26">
+            Get the app</a>
         </div>
         <span class="admin">Organizing events for your company? <a href="/admin/">Go to the admin portal</a></span>
       </div>
@@ -131,6 +134,21 @@
   </div>
 </main>
 <footer><div class="wrap">© DIP</div></footer>
+<script>
+// "Get the app" opens the installed app; with no app installed nothing happens (a hidden frame avoids the
+// "address is invalid" alert that iOS Safari shows when navigating straight to an unhandled scheme).
+(function () {
+  var btn = document.getElementById('open-app');
+  if (!btn) return;
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    var f = document.createElement('iframe');
+    f.hidden = true; f.setAttribute('aria-hidden', 'true'); f.src = 'dip://';
+    document.body.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1500);
+  });
+})();
+</script>
 <script>
 // Tilt toward the cursor and slide the screen sheen against it (ported from the case-study DeviceFrame).
 // Off for reduced motion and touch screens.

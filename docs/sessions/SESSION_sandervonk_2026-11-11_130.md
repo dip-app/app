@@ -57,3 +57,7 @@ The landing page's informational "Coming soon to the App Store" pill became a so
 ## Follow-up: tilt and shimmer
 
 Ported the case-study DeviceFrame effect (sandervonk.github.io/src/components/case/primitives/DeviceFrame: perspective 900px, max tilt 7deg with cursor falloff, spring-like easing, Shimmer sheen sliding against the tilt with proximity opacity) to plain JS in apps/landing/index.html. Disabled for prefers-reduced-motion and coarse pointers. Verified by dispatching pointer events in the browser: tilt follows, then returns to ~0.
+
+## Follow-up: store button
+
+The landing "Get it now" button became "Get the app": a solid App Store blue pill (Figtree regular 20) with the public-domain App Store glyph from Wikimedia Commons (File:App_Store_(iOS).svg, gradient tile removed, white glyph only). It opens the installed app through the registered dip:// scheme via a hidden frame and does nothing when the app is not installed (no App Store link until the listing exists). Previewed on a temporary Hosting channel and deleted afterwards.
