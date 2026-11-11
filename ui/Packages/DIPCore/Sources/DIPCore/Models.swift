@@ -68,7 +68,11 @@ public struct DIPChallengeDetail: Identifiable, Equatable, Sendable {
     /// "+50 points"; nil when the theme awards no points.
     public var rewardText: String?
     public var accent: DIPThemeAccent
-    public init(id: String, title: String, image: MediaReference?, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = [], goalText: String? = nil, rewardText: String? = nil, accent: DIPThemeAccent = .challenge) {
+    /// Window bounds (end exclusive); nil when the source has none (the onboarding demo theme).
+    public var startDate: Date?
+    public var endDate: Date?
+    public init(id: String, title: String, image: MediaReference?, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = [], goalText: String? = nil, rewardText: String? = nil, accent: DIPThemeAccent = .challenge, startDate: Date? = nil, endDate: Date? = nil) {
+        self.startDate = startDate; self.endDate = endDate
         self.id = id; self.title = title; self.image = image; self.timing = timing; self.description = description
         self.tags = tags; self.isJoined = isJoined; self.completedCount = completedCount; self.completedAvatars = completedAvatars
         self.goalText = goalText; self.rewardText = rewardText; self.accent = accent

@@ -9,13 +9,33 @@ import SwiftUI
 struct DIPChallengeDetailsScreen: View {
     let challenge: DIPChallengeDetail
     let onBack: () -> Void
+    /// Injected so previews and tests control "now" (phase and calendar eligibility depend on it).
+    var now: Date = Date()
+    @Environment(\.eventCalendarAdder) private var calendarAdder
+    @State private var calendarResult: DIPCalendarAddResult?
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.white
             VStack(spacing: 0) {
-                DIPDetailHeader(timing: challenge.timing, widePill: true, identifierPrefix: "challenge", onBack: onBack)
+                DIPDetailHeader(
+                    timing: challenge.timing, widePill: true, identifierPrefix: "challenge", onBack: onBack,
+                    // Pressable (solid) only while the window can still be added; otherwise the informational outline pill.
+                    calendarLabel: challenge.canAddToCalendar(now: now) ? challenge.timing : nil,
+                    calendarAdded: calendarResult == .added,
+                    onCalendar: {
+                        guard let fields = challenge.calendarFields() else { return }
+                        Task { calendarResult = await calendarAdder.add(fields) }
+                    },
+                    showsCalendarIcon: challenge.startDate != nil)
                     .accessibilityElement(children: .contain)
+                    .alert("Couldn’t add to calendar", isPresented: Binding(
+                        get: { if case .failed = calendarResult { return true } else { return false } },
+                        set: { if !$0 { calendarResult = nil } })) {
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        if case .failed(let message) = calendarResult { Text(message) }
+                    }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         hero
@@ -36,19 +56,7 @@ struct DIPChallengeDetailsScreen: View {
                             }
                             .padding(.top, 10)
                             facts
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("How it works")
-                                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
-                                    .accessibilityAddTraits(.isHeader)
-                                Text(DIPChallengeText.howItWorks)
-                                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityIdentifier("challenge.how")
-                            }
-                            Label(DIPChallengeText.submissionsSoon, systemImage: "clock")
-                                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.65))
-                                .accessibilityIdentifier("challenge.submissions")
+                            infoCard
                         }
                         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     }
@@ -62,6 +70,37 @@ struct DIPChallengeDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+    }
+
+    /// Same tinted card as the event page: how entries work and where the theme stands right now.
+    private var infoCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "info.circle").foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .frame(width: 24).padding(.top, 2).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("How it works").font(DIPReferenceAssets.font("Figtree-Bold", size: 16, relativeTo: .headline))
+                        .accessibilityAddTraits(.isHeader)
+                    Text(DIPChallengeText.howItWorks)
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("challenge.how")
+                }
+            }
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "clock").foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .frame(width: 24).accessibilityHidden(true)
+                Text(challenge.statusNote(now: now))
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                    .accessibilityIdentifier("challenge.submissions")
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("challenge.info")
     }
 
     @ViewBuilder private var hero: some View {

@@ -13,6 +13,8 @@ struct DIPDetailHeader: View {
     var calendarLabel: String?
     var calendarAdded = false
     var onCalendar: () -> Void = {}
+    /// Keeps the calendar glyph on the informational (outlined) pill so the header does not jump between states.
+    var showsCalendarIcon = false
 
     var body: some View {
         HStack {
@@ -41,15 +43,23 @@ struct DIPDetailHeader: View {
                     .contentShape(Capsule())
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
+                .disabled(calendarAdded)
                 .accessibilityLabel(calendarAdded ? "Added to calendar" : "Add to calendar")
                 .accessibilityIdentifier("\(identifierPrefix).addToCalendar")
             } else {
-                Text(timing)
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, widePill ? 28 : 0)
-                    .frame(width: widePill ? nil : 164, height: 50)
-                    .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
+                HStack(spacing: 8) {
+                    if showsCalendarIcon {
+                        DIPReferenceAssets.image("HeroiconsOutlineCalendar").renderingMode(.template)
+                            .resizable().frame(width: 22, height: 22)
+                            .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor).accessibilityHidden(true)
+                    }
+                    Text(timing)
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                        .foregroundStyle(.black)
+                }
+                .padding(.horizontal, widePill ? 28 : 0)
+                .frame(width: widePill ? nil : 164, height: 50)
+                .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
             }
         }
         .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
