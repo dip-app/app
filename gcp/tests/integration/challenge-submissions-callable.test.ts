@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { createRequire } from "node:module";
-import { initializeApp } from "firebase/app";
+import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
 import { getFirestore, connectFirestoreEmulator, doc, getDoc } from "firebase/firestore";
@@ -22,6 +22,7 @@ if ((process.env.GCLOUD_PROJECT ?? projectId) !== projectId) throw new Error("Re
 const req = createRequire(require.resolve("../../functions/package.json"));
 const adminApp = req("firebase-admin/app") as typeof import("firebase-admin/app");
 const adminFirestore = req("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+const adminAuth = req("firebase-admin/auth") as typeof import("firebase-admin/auth");
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]);
 const GIF = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 async function rejects(promise: Promise<unknown>, code: string, reason?: string) {
@@ -48,7 +49,7 @@ test("submit, review and award flow through the real SDKs, rules and ledger", { 
     const storage = getStorage(app);
     const [stHost, stPort] = storageHost!.split(":"); connectStorageEmulator(storage, stHost!, Number(stPort));
     return {
-      auth, firestore, storage,
+      app, auth, firestore, storage,
       submit: httpsCallable(functions, "submitChallengeV1"), approve: httpsCallable(functions, "approveChallengeV1"),
       reject: httpsCallable(functions, "rejectChallengeV1"), list: httpsCallable(functions, "listChallengeSubmissionsV1"),
     };
@@ -69,6 +70,16 @@ test("submit, review and award flow through the real SDKs, rules and ledger", { 
     companyId, title: "Fitness", description: "Move", tagIds: [], type: "weekly", goal: 5, goalUnit: "workouts",
     coverImageURL: "catalog://theme/fitness", startDate: adminFirestore.Timestamp.fromMillis(Date.now() - 86_400_000),
     endDate: adminFirestore.Timestamp.fromMillis(Date.now() + 86_400_000), pointsReward: 40, participantCount: 0, completedCount: 0, revision: 1,
+  });
+  // Close every client and admin handle so the test process exits (open Firestore/Auth handles otherwise hang it).
+  t.after(async () => {
+    await db.recursiveDelete(db.doc(`companies/${companyId}`)).catch(() => undefined);
+    for (const user of uids) {
+      await db.doc(`users/${user}`).delete().catch(() => undefined);
+      await adminAuth.getAuth(admin).deleteUser(user).catch(() => undefined);
+    }
+    for (const client of clients) await deleteApp(client.app).catch(() => undefined);
+    await adminApp.deleteApp(admin).catch(() => undefined);
   });
   const evidence = (slot: number) => `companies/${companyId}/challenges/${challengeId}/submissions/${uid}/${slot}`;
   const payload = (overrides: Record<string, unknown> = {}) => ({ contractVersion: 1, companyId, challengeId, progress: 3, caption: "Ran", ...overrides });
