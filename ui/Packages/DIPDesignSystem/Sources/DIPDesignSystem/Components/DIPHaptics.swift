@@ -127,4 +127,16 @@ public struct DIPHapticGate: Sendable {
             return generator
         }
     }
+#else
+    /// No haptics without UIKit (the package's macOS test host): the same API, all no-ops.
+    @MainActor
+    public enum DIPHaptics {
+        public static func navigate() {}
+        public static func select() {}
+        public static func commit() {}
+        public static func success() {}
+        public static func failure() {}
+        public static func prepare(_ event: DIPHapticEvent) {}
+        public static func play(_ event: DIPHapticEvent, defaults: UserDefaults = .standard) {}
+    }
 #endif

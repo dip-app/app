@@ -67,3 +67,30 @@ Onboarding phase P2 (tour shell) and scenes B2–B5 on top of the merged P0/P1/P
   - Simulators: this session first created "Claude-DIP" (UDID B1885C1A-2AC8-42B7-A821-21A3406E8887), which is now the shared agents' simulator, and then its own **"Claude-DIP (Onboarding)"** (UDID 44A8367D-1717-4E92-9A3E-8A969CD59F96), which later onboarding runs use. Both are kept and shut down, not deleted.
   - The owner's "iPhone 17 Pro" is no longer used.
   - Large-text, Dynamic Type and accessibility tests and captures are excluded from all runs, by owner instruction.
+- Device-frame bug found in captures and fixed: the bezel shape is taller than the Stage (it runs off the top), so the Stage's ZStack centred itself around it and left a ~205 pt dead band under the phone. The frame's layout is now pinned to the Stage. `DemoStageLayoutTests` asserts equal side gaps (within 2 pt) and that the screen ends on the Stage's bottom edge (no band) at three Stage sizes.
+- Bar progress (owner, supersedes the pulse):
+  - The resolving label is "Finding your company", without dots.
+  - `DIPProgressIndicator` draws in the trailing 64 pt circle, the same slot as the action icon, so the label does not jump.
+  - Three candidates:
+    - `wheel` (shipped): a wheel of the app-assigned avatars; the front face is centred and large, and every 0.55 s it turns with `DIPMotion.marker`.
+    - `orbit`: a face with an `actionPrimary` arc spinning around it.
+    - `hop`: three small faces hopping in turn with `DIPMotion.affordance`.
+  - Compare them in the Preview app with `--progress-style=wheel|orbit|hop` (for example `--onboarding=slow --progress-style=orbit`).
+  - Reduce Motion shows one still face with no loop.
+  - Choice: `wheel`. It answers the owner's idea, is the most on-brand (faces), and is calmer than `hop`; `orbit` reads as a generic spinner.
+- Haptics: `DIPHaptics` in DIPDesignSystem.
+  - Semantics:
+    - `navigate`: none. Tab switches, opening chat, View Album, back and step CTAs are silent.
+    - `select`: selection tick for interest rows.
+    - `commit`: light impact at 0.7 for Join the Activity, Save and start, Try again, Continue with Google, a notice's primary action, and the tour's Sign out.
+    - `success`: membership resolved after the member watched "Finding your company", and interests saved.
+    - `failure`: warning, for a blocked notice and a failed interest save.
+  - Tuning: one table (`DIPHapticTuning.table`), an 80 ms throttle per event, and the `dip.haptics.enabled` switch (default on). Reduce Motion does not mute haptics.
+  - `DIPBottomBarAction.kind` (`.navigate` / `.commit`) decides the bar press. `EventBarAction` marks Join as commit and chat as navigate; `EventBarActionTests` is updated on purpose.
+  - Demo beats fire no haptics (spec §3.0).
+  - Call sites left to other areas, not edited here:
+    - Events: RSVP join/leave stored → `DIPHaptics.success()`; RSVP failure alert → `failure()`; the Leave Activity row button → `commit()`.
+    - Profile: profile save → `commit()` on press, then `success()` / `failure()`; Sign out → `commit()`.
+    - Rewards: redeem → `commit()` then `success()` / `failure()`.
+    - Chat: send → `commit()`.
+    - Album: photo upload finished → `success()`.
