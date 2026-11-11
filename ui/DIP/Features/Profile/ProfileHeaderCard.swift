@@ -25,8 +25,12 @@ struct ProfileHeaderCard: View {
                             .frame(width: ProfileBadgeLink.badgeSize, height: ProfileBadgeLink.badgeSize)
                             .clipShape(Circle())
                             .overlay(Circle().strokeBorder(.white, lineWidth: 3))
-                            .offset(x: 8, y: -6)
-                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { badgeLink.report($0) }
+                            // Measured on the badge itself (inside the offset below), so the frame already
+                            // includes the nudge and is where the badge is actually drawn.
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(ProfileBadgeLink.pageSpace)) } action: {
+                                badgeLink.report($0)
+                            }
+                            .offset(x: ProfileBadgeLink.badgeNudge.width, y: ProfileBadgeLink.badgeNudge.height)
                             .opacity(badgeLink.isHidden ? 0 : 1)
                             .accessibilityLabel("Assigned avatar")
                             .accessibilityIdentifier("profile.avatar.badge")
