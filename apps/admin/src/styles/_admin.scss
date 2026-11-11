@@ -20,7 +20,7 @@
   h2 { font-family: var(--font-figtree), sans-serif; font-weight: 400; font-size: 24px; } }
 // Controls sitting on a gray panel use white fills so they stay visible.
 .panel .field input:not([type="checkbox"]), .panel .field select, .panel .field textarea, .filters .field select, .filters .field input { background: $white; }
-.panel .chip { background: $white; &[aria-pressed="true"] { background: $purple; } }
+.panel .chip { background: $white; &[aria-pressed="true"] { background: $purple; color: $white; } }
 .table-wrap .pill-btn.gray, .panel .pill-btn.gray, .audit-row .pill-btn.gray, .comment-list .pill-btn.gray, .viewer .pill-btn.gray { background: $white; }
 .panel .tabs { background: $white; }
 .panel .toggle, .dialog .toggle { background: $gray; }
@@ -35,7 +35,7 @@
 .field.search { margin-bottom: 20px; }
 .filters .field.search { margin-bottom: 0; }
 .result-count { margin-bottom: 8px; }
-.avatar { width: 40px; height: 40px; border-radius: 50%; background: $purple; color: $ink; display: inline-grid; place-items: center; font-family: var(--font-figtree), sans-serif; font-size: 15px; flex: none; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: $purple; color: $white; display: inline-grid; place-items: center; font-family: var(--font-figtree), sans-serif; font-size: 15px; flex: none; }
 .person { display: inline-flex; align-items: center; gap: 12px; min-width: 0; line-height: 1.3; &.big { margin-bottom: 8px; .avatar { width: 56px; height: 56px; font-size: 20px; } h2 { margin: 0; } } }
 a.person:hover strong { text-decoration: underline; }
 
@@ -91,11 +91,6 @@ a.person:hover strong { text-decoration: underline; }
 .audit-main { display: grid; gap: 4px; justify-items: start; }
 
 @media (max-width: 900px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { min-width: 0; }
-  // One scrollable row instead of a tall wrapped block, so the page content stays above the fold.
-  .sidebar nav { flex-wrap: nowrap; overflow-x: auto; order: 3; width: 100%; scrollbar-width: none; padding: 2px; &::-webkit-scrollbar { display: none; } }
-  .nav-item { min-height: 44px; padding: 0 16px; font-size: 16px; white-space: nowrap; flex: none; }
   .page-header { flex-wrap: wrap; }
 }
 fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }

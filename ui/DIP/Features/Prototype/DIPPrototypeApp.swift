@@ -19,6 +19,12 @@ struct DIPPrototypeApp: View {
     @State private var showChat = false
     @State private var chatNotificationLevel: DIPNotificationLevel?
     @State private var chatEventID = "puppy-yoga"
+    /// Coworker invitations (F4): nil when there is no invitations adapter (the bell then says "not connected").
+    @State private var invites: DIPInvitesModel?
+    @State private var showInvitations = false
+    @State private var invitesObservationID = UUID()
+    @State private var inviteSession: InviteSession?
+    private let startsWithInvitePicker: Bool
     private let initialMemories: Bool
     private let onSignOut: (() async -> Void)?
     private let accountProfile: DIPProfile?
@@ -59,7 +65,8 @@ struct DIPPrototypeApp: View {
          onPhotoViewed: ((String, String?) -> Void)? = nil,
          onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil,
          deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil,
-         deepLinkOpensChat: Bool = false, onJoined: (() -> Void)? = nil) {
+         deepLinkOpensChat: Bool = false, onJoined: (() -> Void)? = nil,
+         invitesRepository: (any DIPInvitesRepository)? = nil) {
         self.deepLinkOpensChat = deepLinkOpensChat
         self.onJoined = onJoined
         self.deepLinkEventID = deepLinkEventID
@@ -85,7 +92,7 @@ struct DIPPrototypeApp: View {
             initialValue: screen == "profile" ? .profile : screen == "rewards" ? .rewards : ["events", "memories"].contains(screen) ? .events : .home)
         initialMemories = screen == "memories"
         switch screen {
-        case "event", "event-joined": _routes = State(initialValue: [.event("puppy-yoga")])
+        case "event", "event-joined", "invite-picker": _routes = State(initialValue: [.event("puppy-yoga")])
         case "attendees": _routes = State(initialValue: [.participants("puppy-yoga")])
         case "past-event": _routes = State(initialValue: [.event("kayaking-memory")])
         case "album": _routes = State(initialValue: [.album("kayaking-memory")])
@@ -106,7 +113,7 @@ struct DIPPrototypeApp: View {
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
                 ? DIPMockFixtures.photoCommentReview
-                : ["event", "event-joined", "past-event"].contains(screen)
+                : ["event", "event-joined", "past-event", "invite-picker"].contains(screen)
                 ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures()))
@@ -117,6 +124,37 @@ struct DIPPrototypeApp: View {
         uploads.onRunFinished = DIPAlbumScreen.feelRun
         uploads.onDiscard = { id in Task { await model.discardUpload(uploadID: id) } }
         _uploads = State(initialValue: Self.uploadReview() ?? uploads)
+        // The shell's own mock mode (previews, UI tests) gets the fixture invitations; real members get the adapter.
+        let inviteSource = invitesRepository ?? (repository == nil ? Self.fixtureInvites() : nil)
+        _invites = State(initialValue: inviteSource.map { DIPInvitesModel(repository: $0) })
+        _showInvitations = State(initialValue: inviteSource != nil && screen == "invitations")
+        startsWithInvitePicker = inviteSource != nil && screen == "invite-picker"
+    }
+
+    /// Fixture invitations; `--invites-state=empty|loading|failed|full|search-failed|send-failed|already-invited|slow-send` (Debug) for review and UI tests.
+    static func fixtureInvites() -> any DIPInvitesRepository {
+        #if DEBUG
+        let state = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--invites-state=") }.map { String($0.dropFirst("--invites-state=".count)) }
+        switch state {
+        case "empty": return DIPMockInvitesRepository.empty()
+        case "loading": return DIPMockInvitesRepository.reference(behavior: .init(latency: .seconds(3600)))
+        case "failed": return DIPMockInvitesRepository.reference(behavior: .init(observeFailure: true))
+        case "full": return DIPMockInvitesRepository.reference(behavior: .init(respondFailure: .full))
+        case "search-failed": return DIPMockInvitesRepository.reference(behavior: .init(searchFailure: .offline))
+        case "send-failed": return DIPMockInvitesRepository.reference(behavior: .init(sendFailure: .offline))
+        case "already-invited": return DIPMockInvitesRepository.reference(behavior: .init(sendFailure: .alreadyInvited))
+        case "slow-send": return DIPMockInvitesRepository.reference(behavior: .init(sendLatency: .seconds(3600)))
+        default: break
+        }
+        #endif
+        return DIPMockInvitesRepository.reference()
+    }
+
+    /// One open invite sheet: its picker model is created with it and dropped with it.
+    struct InviteSession: Identifiable {
+        let id: String
+        let title: String
+        let model: DIPInvitePickerModel
     }
 
     /// `--album-upload-review` (Debug): the Kayaking album with three drafts (uploading at 40%, failed with a
@@ -243,6 +281,25 @@ struct DIPPrototypeApp: View {
                 })
             .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
         }
+        .sheet(isPresented: $showInvitations) {
+            if let invites {
+                DIPInvitationsScreen(
+                    model: invites,
+                    onOpenEvent: { id in showInvitations = false; routes = [.event(id)] },
+                    onRetry: { invitesObservationID = UUID() },
+                    onClose: { showInvitations = false })
+            }
+        }
+        .sheet(item: $inviteSession) { session in
+            DIPInviteSheet(model: session.model, eventTitle: session.title, onClose: { inviteSession = nil })
+        }
+        .task(id: invitesObservationID) { await invites?.observe() }
+        .onAppear {
+            if startsWithInvitePicker, inviteSession == nil, let invites {
+                inviteSession = InviteSession(id: "puppy-yoga", title: model.snapshot?.eventDetails["puppy-yoga"]?.title ?? "Puppy Yoga",
+                                              model: invites.makePicker(eventID: "puppy-yoga"))
+            }
+        }
         .onChange(of: routes, initial: true) { _, path in
             // The album route keeps its event observed (album photos and upload rights come with it).
             switch path.last {
@@ -330,11 +387,11 @@ struct DIPPrototypeApp: View {
                         description: Text("You can browse company events from Home.")))
                 } else { AnyView(DIPMyEventsScreen(
                     activeEvents: lists.upcoming, memories: lists.past,
-                    unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
+                    unreadCount: bellCount(snapshot), profileAvatar: snapshot.home.profileAvatar,
                     initialMemories: initialMemories, showsBottomBar: false,
                     onSelectTab: selectTab,
                     onEvent: { routes.append(.event($0)) }, onAlbum: { routes.append(.event($0)) },
-                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) })) }
+                    onNotifications: openNotifications, onProfile: { selectTab(.profile) })) }
             case .profile:
                 AnyView(DIPProfileScreen(
                     profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
@@ -347,9 +404,9 @@ struct DIPPrototypeApp: View {
                     onReplayTour: onReplayTour))
             case .rewards:
                 AnyView(DIPRewardsScreen(
-                    unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
+                    unreadCount: bellCount(snapshot), profileAvatar: snapshot.home.profileAvatar,
                     showsBottomBar: false, onSelectTab: selectTab,
-                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) },
+                    onNotifications: openNotifications, onProfile: { selectTab(.profile) },
                     pointsDisplay: pointsDisplay(accountProfile == nil ? nil : (accountProfile ?? snapshot.profile).pointsBalance)))
             }
         }
@@ -497,13 +554,13 @@ struct DIPPrototypeApp: View {
     private func fixedHeader(_ snapshot: DIPAppSnapshot) -> some View {
         let away = selectedTab == .profile
         return DIPHomeHeader(
-            title: headerTab.rawValue, unreadCount: snapshot.home.unreadCount,
+            title: headerTab.rawValue, unreadCount: bellCount(snapshot),
             profileAvatar: {
                 // Hidden instantly while the flyer carries the avatar (no cross-fade ghost).
                 DIPMedia(snapshot.home.profileAvatar).opacity(isAvatarFlying ? 0 : 1)
                     .transaction(value: isAvatarFlying) { $0.animation = nil }
             },
-            onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }
+            onNotifications: openNotifications, onProfile: { selectTab(.profile) }
         )
         .environment(\.dipHeaderHosted, false)
         .padding(.horizontal, 20).padding(.top, 60)
@@ -536,6 +593,21 @@ struct DIPPrototypeApp: View {
             case .profile: return .profile
             }
         }
+    }
+
+    /// The bell opens the invitations (the notifications area) when there is an adapter; its badge counts invitations waiting for an answer.
+    private func openNotifications() {
+        if invites != nil { showInvitations = true } else { notice = "Notifications" }
+    }
+
+    private func bellCount(_ snapshot: DIPAppSnapshot) -> Int {
+        invites.map(\.badgeCount) ?? snapshot.home.unreadCount
+    }
+
+    private func openInvite(_ eventID: String) {
+        guard let invites, inviteSession == nil else { return }
+        let title = model.snapshot?.eventDetails[eventID]?.title ?? "This activity"
+        inviteSession = InviteSession(id: eventID, title: title, model: invites.makePicker(eventID: eventID))
     }
 
     private var isRSVPPending: Bool {
@@ -627,7 +699,8 @@ struct DIPPrototypeApp: View {
                         onJoin: { join(id) }, onBack: pop,
                         onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { routes.append(.participants(id)) } }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
-                        onLeave: { changeRSVP(id, going: false) })
+                        onLeave: { changeRSVP(id, going: false) },
+                        onInvite: invites == nil || participationUnavailable ? nil : { openInvite(id) })
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .challenge(let id):

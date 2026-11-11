@@ -10,9 +10,8 @@ public struct Company: Codable, Equatable, Sendable {
     public var officeLatitude: Double
     public var officeLongitude: Double
     public var createdAt: Date
-    public var membershipMode: String?
 
-    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date, membershipMode: String? = nil) {
+    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date) {
         self.id = id
         self.name = name
         self.logoURL = logoURL
@@ -21,7 +20,6 @@ public struct Company: Codable, Equatable, Sendable {
         self.officeLatitude = officeLatitude
         self.officeLongitude = officeLongitude
         self.createdAt = createdAt
-        self.membershipMode = membershipMode
     }
 }
 
@@ -675,8 +673,13 @@ public struct EventInvite: Codable, Equatable, Sendable {
     public var message: String
     public var status: String
     public var createdAt: Date
+    public var fromUserAvatarId: String?
+    public var toUserName: String?
+    public var toUserAvatarId: String?
+    public var requestId: String?
+    public var respondedAt: Date?
 
-    public init(id: String? = nil, companyId: String, eventId: String, eventTitle: String, eventStartTime: Date, fromUserId: String, fromUserName: String, toUserId: String, message: String, status: String, createdAt: Date) {
+    public init(id: String? = nil, companyId: String, eventId: String, eventTitle: String, eventStartTime: Date, fromUserId: String, fromUserName: String, toUserId: String, message: String, status: String, createdAt: Date, fromUserAvatarId: String? = nil, toUserName: String? = nil, toUserAvatarId: String? = nil, requestId: String? = nil, respondedAt: Date? = nil) {
         self.id = id
         self.companyId = companyId
         self.eventId = eventId
@@ -688,6 +691,11 @@ public struct EventInvite: Codable, Equatable, Sendable {
         self.message = message
         self.status = status
         self.createdAt = createdAt
+        self.fromUserAvatarId = fromUserAvatarId
+        self.toUserName = toUserName
+        self.toUserAvatarId = toUserAvatarId
+        self.requestId = requestId
+        self.respondedAt = respondedAt
     }
 }
 
@@ -1110,12 +1118,13 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var importJobId: String?
     public var claimedBy: String?
     public var claimedAt: Date?
-    public var invitedBy: String
+    public var invitedBy: String?
     public var createdAt: Date
     public var updatedAt: Date
     public var revision: Int
+    public var memberStatus: String?
 
-    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String, createdAt: Date, updatedAt: Date, revision: Int) {
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.email = email
@@ -1136,6 +1145,7 @@ public struct RosterEntry: Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.revision = revision
+        self.memberStatus = memberStatus
     }
 }
 
@@ -1685,32 +1695,6 @@ public struct UpsertTeamResponse: Codable, Equatable, Sendable {
     }
 }
 
-public struct UpdateCompanySettingsRequest: Codable, Equatable, Sendable {
-    public var contractVersion: Int
-    public var companyId: String
-    public var requestId: String
-    public var membershipMode: String
-
-    public init(contractVersion: Int, companyId: String, requestId: String, membershipMode: String) {
-        self.contractVersion = contractVersion
-        self.companyId = companyId
-        self.requestId = requestId
-        self.membershipMode = membershipMode
-    }
-}
-
-public struct UpdateCompanySettingsResponse: Codable, Equatable, Sendable {
-    public var contractVersion: Int
-    public var membershipMode: String
-    public var changed: Bool
-
-    public init(contractVersion: Int, membershipMode: String, changed: Bool) {
-        self.contractVersion = contractVersion
-        self.membershipMode = membershipMode
-        self.changed = changed
-    }
-}
-
 public struct UpsertRosterEntryRequest: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var companyId: String
@@ -1950,5 +1934,111 @@ public struct ListChallengeSubmissionsResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.submissions = submissions
         self.nextCursor = nextCursor
+    }
+}
+
+public struct SendInviteRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var toUserId: String
+    public var message: String?
+    public var requestId: String
+
+    public init(contractVersion: Int, companyId: String, eventId: String, toUserId: String, message: String? = nil, requestId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.toUserId = toUserId
+        self.message = message
+        self.requestId = requestId
+    }
+}
+
+public struct SendInviteResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var inviteId: String
+    public var status: String
+    public var created: Bool
+
+    public init(contractVersion: Int, inviteId: String, status: String, created: Bool) {
+        self.contractVersion = contractVersion
+        self.inviteId = inviteId
+        self.status = status
+        self.created = created
+    }
+}
+
+public struct RespondToInviteRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var inviteId: String
+    public var response: String
+
+    public init(contractVersion: Int, companyId: String, inviteId: String, response: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.inviteId = inviteId
+        self.response = response
+    }
+}
+
+public struct RespondToInviteResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var inviteId: String
+    public var status: String
+    public var rsvpStatus: String?
+    public var attendeeCount: Int?
+
+    public init(contractVersion: Int, inviteId: String, status: String, rsvpStatus: String? = nil, attendeeCount: Int? = nil) {
+        self.contractVersion = contractVersion
+        self.inviteId = inviteId
+        self.status = status
+        self.rsvpStatus = rsvpStatus
+        self.attendeeCount = attendeeCount
+    }
+}
+
+public struct Coworker: Codable, Equatable, Sendable {
+    public var userId: String
+    public var displayName: String
+    public var avatarId: String
+    public var department: String
+    public var state: String
+
+    public init(userId: String, displayName: String, avatarId: String, department: String, state: String) {
+        self.userId = userId
+        self.displayName = displayName
+        self.avatarId = avatarId
+        self.department = department
+        self.state = state
+    }
+}
+
+public struct ListCoworkersRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var query: String
+    public var limit: Int?
+
+    public init(contractVersion: Int, companyId: String, eventId: String, query: String, limit: Int? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.query = query
+        self.limit = limit
+    }
+}
+
+public struct ListCoworkersResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var coworkers: [Coworker]
+    public var truncated: Bool
+
+    public init(contractVersion: Int, coworkers: [Coworker], truncated: Bool) {
+        self.contractVersion = contractVersion
+        self.coworkers = coworkers
+        self.truncated = truncated
     }
 }

@@ -23,6 +23,9 @@ struct DIPMemberHome: View {
     private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
     private let participationFactory: (() -> (any ParticipationSource)?)?
     private let albumFactory: (() -> (any PhotoAlbumSource)?)?
+    private let invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)?
+    /// Created with the home (like the other live sources), so the shell never starts without it.
+    @State private var liveInvites: (any DIPInvitesRepository)?
     @State private var liveEvents: MemberEventAppRepository?
     @State private var eventConfigurationError = false
     @State private var prototypeRepository: DIPMockRepository
@@ -44,6 +47,7 @@ struct DIPMemberHome: View {
         eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
         albumFactory: (() -> (any PhotoAlbumSource)?)? = nil,
+        invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
         bugReportSubmitter: (() -> (any BugReportSubmitting)?)? = nil,
@@ -62,6 +66,8 @@ struct DIPMemberHome: View {
         self.eventReadFactory = eventReadFactory
         self.participationFactory = participationFactory
         self.albumFactory = albumFactory
+        self.invitesFactory = invitesFactory
+        _liveInvites = State(initialValue: eventReadFactory == nil ? nil : invitesFactory?(context))
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
@@ -222,7 +228,9 @@ struct DIPMemberHome: View {
             onReplayTour: onboarding == nil ? nil : { startReplay() },
             // Held while the onboarding tour (or its replay) covers the shell.
             deepLinkEventID: tour == nil && replay == nil ? deepLinkEventID : nil,
-            onDeepLinkHandled: onDeepLinkHandled, deepLinkOpensChat: deepLinkOpensChat, onJoined: onJoined)
+            onDeepLinkHandled: onDeepLinkHandled, deepLinkOpensChat: deepLinkOpensChat, onJoined: onJoined,
+            // Live members use the Firebase adapter; fixture members (unconfigured Debug) get fixture invitations.
+            invitesRepository: live ? liveInvites : DIPPrototypeApp.fixtureInvites())
     }
 
     private var catalogIsLoading: Bool {

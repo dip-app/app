@@ -278,6 +278,30 @@ service cloud.firestore {
         && exists(commentPhotoPath()) && get(commentPhotoPath()).data.companyId == companyId
         && validComment(request.resource.data);
     }
+    // --- Coworker invitations (invites module, docs/contracts/callables.md#coworker-invitations) ---
+    // Invites live at companies/{c}/invites/{eventId_toUserId} and are written only by sendInviteV1 /
+    // respondToInviteV1 (Admin SDK). Only the sender and the recipient read them: get checks the stored
+    // sender/recipient, and lists must carry a limit <= 50 and pin one of the two fields to the caller so
+    // the query itself proves ownership (single-field indexes only).
+    match /companies/{companyId}/invites/{inviteId} {
+      allow get: if sameCompany(companyId)
+        && (resource == null || (resource.data.companyId == companyId
+          && (resource.data.toUserId == request.auth.uid || resource.data.fromUserId == request.auth.uid)));
+      allow list: if sameCompany(companyId)
+        && request.query.limit != null && request.query.limit <= 50
+        && resource.data.companyId == companyId
+        && (resource.data.toUserId == request.auth.uid || resource.data.fromUserId == request.auth.uid);
+    }
+    // In-app notifications (invite notices today): the recipient reads their own and may flip only isRead;
+    // the server creates them. No client create or delete.
+    match /users/{uid}/notifications/{notificationId} {
+      allow get: if own(uid);
+      allow list: if own(uid) && request.query.limit != null && request.query.limit <= 50;
+      allow update: if own(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
+        && request.resource.data.isRead is bool;
+    }
+    // inviteRateLimits is server-only and falls through to the deny-all rule below.
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
     match /{document=**} {

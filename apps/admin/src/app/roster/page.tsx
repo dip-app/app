@@ -11,8 +11,8 @@ import { ROLE_LABEL, type RosterRow } from "@/lib/adminTypes";
 
 type Filter = RosterRow["state"] | "all";
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: "invited", label: "Not signed up" }, { id: "active", label: "Active" }, { id: "deactivated", label: "Deactivated" },
-  { id: "revoked", label: "Revoked" }, { id: "all", label: "Everyone" },
+  { id: "all", label: "Everyone" }, { id: "invited", label: "Invited" }, { id: "active", label: "Active" },
+  { id: "deactivated", label: "Deactivated" }, { id: "revoked", label: "Revoked" },
 ];
 const STATE_LABEL: Record<RosterRow["state"], string> = { invited: "Invited", active: "Active", deactivated: "Deactivated", revoked: "Revoked" };
 
@@ -20,7 +20,7 @@ export default function RosterPage() {
   const { api } = useApp();
   const roster = useLoad((a) => a.listRoster(), "roster");
   const company = useLoad((a) => a.companyInfo(), "company");
-  const [filter, setFilter] = useState<Filter>("invited");
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [revoking, setRevoking] = useState<RosterRow | null>(null);
   const [message, setMessage] = useState("");
@@ -53,7 +53,7 @@ export default function RosterPage() {
   }
 
   return (
-    <Shell title="Roster" subtitle="People added before they sign in. When they sign in with their work account they get the role and teams you set here." requires="roster.manage"
+    <Shell title="Roster" subtitle="Everyone at your company. Invited people were added in advance and get their role and teams when they sign in; anyone with a company email can join." requires="roster.manage"
       action={<Link className="pill-btn purple" href="/import/">Import people</Link>}>
       {roster.error ? <LoadError error={roster.error} onRetry={roster.reload} />
         : !roster.data ? <Loading label="Loading roster" />
@@ -67,8 +67,8 @@ export default function RosterPage() {
             {error && <div className="banner error" role="alert"><span>{error}</span></div>}
             {shown.length === 0 ? (
               <Empty
-                title={filter === "invited" ? "Everyone has signed up" : "Nothing here"}
-                body={roster.data.length === 0 ? "Import a spreadsheet to add people before they sign in." : filter === "invited" ? "No pending invites. People you import who have no account yet show up here." : "No one matches this filter."}
+                title={filter === "invited" ? "No pending invites" : "Nothing here"}
+                body={roster.data.length === 0 ? "Import a spreadsheet to add people before they sign in." : filter === "invited" ? "People you import who haven’t signed in yet show up here as Invited." : "No one matches this filter."}
                 action={roster.data.length === 0 ? <Link className="pill-btn dark" href="/import/">Import people</Link> : undefined}
               />
             ) : (
@@ -86,7 +86,7 @@ export default function RosterPage() {
                         </td>
                         <td>{ROLE_LABEL[r.role]}</td>
                         <td>{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
-                        <td><Info tone={r.state === "active" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info></td>
+                        <td><Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info></td>
                         <td>{formatDate(r.invitedAt)}</td>
                         <td className="right">
                           {r.state === "invited" && <button className="pill-btn gray small quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}

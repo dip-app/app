@@ -106,6 +106,14 @@ enum FirebaseBootstrap {
                                            functions: Functions.functions(region: FirebaseAccountsRepository.region))
     }
 
+    /// Coworker invitations (`sendInviteV1`, `respondToInviteV1`, `listCoworkersV1` and the invite listeners) share the configured SDKs.
+    @MainActor static func makeInvitesRepository(context: MembershipContext) -> (any DIPInvitesRepository)? {
+        guard case .configured = status else { return nil }
+        return FirebaseInvitesRepository(firestore: Firestore.firestore(),
+                                         functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                         scope: EventReadScope(uid: context.uid, companyID: context.companyID))
+    }
+
     /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.
     @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
         guard case .configured = status else { return nil }

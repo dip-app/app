@@ -9,7 +9,6 @@ export interface Company {
   officeLatitude: number;
   officeLongitude: number;
   createdAt: string;
-  membershipMode?: "open" | "rosterOnly";
 }
 
 export interface AppUser {
@@ -343,6 +342,11 @@ export interface EventInvite {
   message: string;
   status: string;
   createdAt: string;
+  fromUserAvatarId?: string;
+  toUserName?: string;
+  toUserAvatarId?: string;
+  requestId?: string;
+  respondedAt?: string;
 }
 
 export interface ResolveMembershipRequest {
@@ -559,14 +563,15 @@ export interface RosterEntry {
   managerEmail?: string;
   startDate?: string;
   status: "invited" | "claimed" | "revoked";
-  source: "manual" | "import";
+  source: "manual" | "import" | "signup";
   importJobId?: string;
   claimedBy?: string;
   claimedAt?: string;
-  invitedBy: string;
+  invitedBy?: string;
   createdAt: string;
   updatedAt: string;
   revision: number;
+  memberStatus?: "active" | "deactivated";
 }
 
 export interface AdminMemberSummary {
@@ -842,19 +847,6 @@ export interface UpsertTeamResponse {
   revision: number;
 }
 
-export interface UpdateCompanySettingsRequest {
-  contractVersion: number;
-  companyId: string;
-  requestId: string;
-  membershipMode: "open" | "rosterOnly";
-}
-
-export interface UpdateCompanySettingsResponse {
-  contractVersion: number;
-  membershipMode: "open" | "rosterOnly";
-  changed: boolean;
-}
-
 export interface UpsertRosterEntryRequest {
   contractVersion: number;
   companyId: string;
@@ -974,4 +966,57 @@ export interface ListChallengeSubmissionsResponse {
   contractVersion: number;
   submissions: Array<ChallengeSubmission>;
   nextCursor: string | null;
+}
+
+export interface SendInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  toUserId: string;
+  message?: string;
+  requestId: string;
+}
+
+export interface SendInviteResponse {
+  contractVersion: number;
+  inviteId: string;
+  status: "pending" | "accepted" | "declined";
+  created: boolean;
+}
+
+export interface RespondToInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  inviteId: string;
+  response: "accepted" | "declined";
+}
+
+export interface RespondToInviteResponse {
+  contractVersion: number;
+  inviteId: string;
+  status: "accepted" | "declined";
+  rsvpStatus?: "going";
+  attendeeCount?: number;
+}
+
+export interface Coworker {
+  userId: string;
+  displayName: string;
+  avatarId: string;
+  department: string;
+  state: "available" | "going" | "invited";
+}
+
+export interface ListCoworkersRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  query: string;
+  limit?: number;
+}
+
+export interface ListCoworkersResponse {
+  contractVersion: number;
+  coworkers: Array<Coworker>;
+  truncated: boolean;
 }

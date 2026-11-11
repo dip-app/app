@@ -31,12 +31,12 @@ export async function resolveMembership(
       throw new AccountsError("not-found", "NO_COMPANY_FOR_DOMAIN", "Your company isn't on DIP yet.");
     }
     const existing = await tx.getMembership(eligible.uid);
-    // Onboarding policy is read only for a first sign-in (reads precede writes in the transaction).
-    const onboarding = existing ? undefined : { mode: await tx.getMembershipMode(companyId), entry: await tx.getRosterEntry(companyId, eligible.email) };
-    const decision = decideMembership(eligible, companyId, existing, onboarding);
+    // The roster entry is read only for a first sign-in (reads precede writes in the transaction).
+    const entry = existing ? null : await tx.getRosterEntry(companyId, eligible.email);
+    const decision = decideMembership(eligible, companyId, existing, entry);
     if (decision.kind === "create") {
       tx.createMember(eligible.uid, decision.profile);
-      if (decision.claimedEntryId) tx.claimRosterEntry(companyId, decision.claimedEntryId, eligible.uid, decision.profile.displayName);
+      tx.recordRosterJoin(companyId, decision.roster.entryId, decision.roster.action, eligible.uid, decision.profile);
       return { contractVersion: 1, companyId, role: decision.profile.role };
     }
     if (decision.refreshDisplayName) tx.updateDisplayName(eligible.uid, decision.refreshDisplayName);

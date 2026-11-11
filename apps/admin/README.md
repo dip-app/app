@@ -24,7 +24,7 @@ Tickets #121 to #126. All of it sits behind `AdminOpsApi` (`src/lib/adminApi.ts`
 | Member directory, filters, CSV export (organizers see people without points) | `/members/` | organizer (read), admin |
 | Member detail: role, teams, location, department, title, deactivate or reactivate, reset participant profile, adjust or reset points (all with a reason) | `/members/detail/?id=` | admin (organizers read only) |
 | Bulk import: template, CSV or XLSX, dry-run preview with create / update / unchanged / invalid counts and field diff, apply in chunks with progress, error CSV | `/import/` | admin |
-| Roster: not signed up, active, deactivated, revoked; revoke, invite again (no resend: the contract sends no invite email) | `/roster/` | admin |
+| Roster: everyone at the company in one list (Invited, Active, Deactivated, Revoked) with search and filters; revoke or invite again for pre-imported people, link to the member for those who joined (no resend: the contract sends no invite email; no roster-only mode) | `/roster/` | admin |
 | Audit log (read-only, search, filter, details, CSV) | `/audit/` | admin |
 
 - **Roles:** `member | organizer | admin` (`can(role, capability)` in `adminTypes.ts`). Organizers manage events, themes, albums and attendees and can read the member list; admins also manage people, imports, roster and audit. The UI only hides what the backend would refuse.

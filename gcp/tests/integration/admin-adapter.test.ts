@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, test } from "node:test";
+import { backfillRoster } from "../../functions/src/modules/admin/application/backfillRoster";
 import { addEventAttendee, recordAttendance } from "../../functions/src/modules/admin/application/attendees";
 import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../../functions/src/modules/admin/application/importEmployees";
 import { adjustMemberPoints, listMembers, setMemberStatus, updateMember } from "../../functions/src/modules/admin/application/members";
@@ -227,21 +228,43 @@ describe("bulk import and roster on Firestore", () => {
     assert.deepEqual([entry.status, entry.claimedBy], ["claimed", "new-user"]);
     assert.ok(entry.claimedAt instanceof Timestamp);
     assert.equal((await db.doc(`companies/alpha/auditLog/claim_${sha("fresh.hire@alpha.test")}`).get()).get("action"), "roster.claim");
-    // A different uid with the same email can't claim it again and gets today's default member.
-    assert.equal((await resolveMembership(membership, identity("second-user", "fresh.hire@alpha.test"), { contractVersion: 1 })).role, "member");
     // The roster entry now belongs to a member: it can no longer be upserted.
     assert.equal(await reason(upsertRosterEntry(deps, asUser("admin1"), { ...base, requestId: rid(), entry: { email: "fresh.hire@alpha.test" } })), "EMAIL_ALREADY_MEMBER");
   });
 
-  test("roster-only companies refuse everyone else; deactivated members are refused", async () => {
-    await db.doc("companies/alpha").update({ membershipMode: "rosterOnly" });
+  test("someone who was never pre-imported joins as a default member and is added to the roster as claimed; returning sign-ins change nothing", async () => {
     const membership = new FirestoreMembershipStore(db);
-    const identity = (uid: string, email: string) => ({ uid, email, emailVerified: true, signInProvider: "google.com", name: "Someone" });
-    await assert.rejects(resolveMembership(membership, identity("stranger", "stranger@alpha.test"), { contractVersion: 1 }), (e: { reason?: string }) => e.reason === "NOT_ON_ROSTER");
-    assert.equal((await db.doc("users/stranger").get()).exists, false);
+    const identity = { uid: "walk-in", email: "Walk.In@alpha.test", emailVerified: true, signInProvider: "google.com", name: "Walk In" };
+    assert.equal((await resolveMembership(membership, identity, { contractVersion: 1 })).role, "member");
+    const entry = (await db.doc(`companies/alpha/roster/${sha("walk.in@alpha.test")}`).get()).data()!;
+    assert.deepEqual([entry.status, entry.source, entry.claimedBy, entry.role, entry.memberStatus, entry.email, entry.revision], ["claimed", "signup", "walk-in", "member", "active", "walk.in@alpha.test", 1]);
+    assert.ok(entry.claimedAt instanceof Timestamp);
+    await resolveMembership(membership, identity, { contractVersion: 1 });
+    assert.equal((await db.doc(`companies/alpha/roster/${sha("walk.in@alpha.test")}`).get()).get("revision"), 1);
+    // Admin edits and deactivation keep the entry in step.
+    await updateMember(deps, asUser("admin1"), { ...base, requestId: rid(), userId: "walk-in", workLocation: "HQ" });
+    await setMemberStatus(deps, asUser("admin1"), { ...base, requestId: rid(), userId: "walk-in", status: "deactivated" });
+    const synced = (await db.doc(`companies/alpha/roster/${sha("walk.in@alpha.test")}`).get()).data()!;
+    assert.deepEqual([synced.workLocation, synced.memberStatus], ["HQ", "deactivated"]);
+  });
+
+  test("a revoked entry is overwritten by the real member; deactivated members are refused", async () => {
+    const membership = new FirestoreMembershipStore(db);
+    await upsertRosterEntry(deps, asUser("admin1"), { ...base, requestId: rid(), entry: { email: "ex@alpha.test", role: "admin" } });
+    await db.doc(`companies/alpha/roster/${sha("ex@alpha.test")}`).update({ status: "revoked" });
+    const joined = await resolveMembership(membership, { uid: "ex-user", email: "ex@alpha.test", emailVerified: true, signInProvider: "google.com", name: "Ex" }, { contractVersion: 1 });
+    assert.equal(joined.role, "member", "a revoked invitation never grants its role");
+    assert.deepEqual([(await db.doc(`companies/alpha/roster/${sha("ex@alpha.test")}`).get()).get("status"), (await db.doc(`companies/alpha/roster/${sha("ex@alpha.test")}`).get()).get("role")], ["claimed", "member"]);
     await db.doc("users/m5").update({ status: "deactivated" });
-    await assert.rejects(resolveMembership(membership, identity("m5", "member.5@alpha.test"), { contractVersion: 1 }), (e: { reason?: string }) => e.reason === "ACCOUNT_DEACTIVATED");
-    // Existing active members are unaffected by switching to roster-only.
-    assert.equal((await resolveMembership(membership, identity("m6", "member.6@alpha.test"), { contractVersion: 1 })).role, "member");
+    await assert.rejects(resolveMembership(membership, { uid: "m5", email: "member.5@alpha.test", emailVerified: true, signInProvider: "google.com", name: "M5" }, { contractVersion: 1 }), (e: { reason?: string }) => e.reason === "ACCOUNT_DEACTIVATED");
+  });
+
+  test("backfillRoster lists existing members on the roster through the real adapter and is idempotent", async () => {
+    const first = await backfillRoster(deps.store, "alpha");
+    assert.deepEqual(first, { scanned: 11, created: 11, existing: 0, skipped: 0 });
+    assert.equal((await db.collection("companies/alpha/roster").get()).size, 11);
+    assert.equal((await db.doc(`companies/alpha/roster/${sha("ada.admin@alpha.test")}`).get()).get("role"), "admin");
+    assert.deepEqual(await backfillRoster(deps.store, "alpha"), { scanned: 11, created: 0, existing: 11, skipped: 0 });
+    assert.equal((await db.collection("companies/beta/roster").get()).size, 0);
   });
 });

@@ -7,7 +7,7 @@ import { callerFromRequest } from "../../organizer/transport/organizerCallables"
 import { addEventAttendee, recordAttendance, removeEventAttendee } from "../application/attendees";
 import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../application/importEmployees";
 import {
-  adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateCompanySettings, updateMember, upsertTeam,
+  adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../application/members";
 import { removeEventPhoto, removeEventPhotoComment } from "../application/moderation";
 import type { AdminDeps, Caller } from "../application/ports";
@@ -71,7 +71,6 @@ export const resetMemberProfileV1 = onCall(base, command("resetMemberProfileV1",
 export const setMemberStatusV1 = onCall(heavy, command("setMemberStatusV1", setMemberStatus));
 export const adjustMemberPointsV1 = onCall(base, command("adjustMemberPointsV1", adjustMemberPoints));
 export const upsertTeamV1 = onCall(base, command("upsertTeamV1", upsertTeam));
-export const updateCompanySettingsV1 = onCall(base, command("updateCompanySettingsV1", updateCompanySettings));
 export const upsertRosterEntryV1 = onCall(base, command("upsertRosterEntryV1", upsertRosterEntry));
 export const revokeRosterEntryV1 = onCall(base, command("revokeRosterEntryV1", revokeRosterEntry));
 export const importEmployeesV1 = onCall(heavy, command("importEmployeesV1", importEmployees));

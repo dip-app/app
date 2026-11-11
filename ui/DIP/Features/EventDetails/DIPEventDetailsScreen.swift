@@ -14,6 +14,8 @@ struct DIPEventDetailsScreen: View {
     let photos: [DIPPhoto]
     let onAlbum: () -> Void
     let onLeave: () -> Void
+    /// Opens the coworker picker; nil hides the action (no invitations adapter, or read-only live events).
+    let onInvite: (() -> Void)?
     @State private var confirmingLeave = false
     @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
@@ -32,8 +34,10 @@ struct DIPEventDetailsScreen: View {
         onChat: @escaping () -> Void,
         photos: [DIPPhoto] = [],
         onAlbum: @escaping () -> Void = {},
-        onLeave: @escaping () -> Void = {}
+        onLeave: @escaping () -> Void = {},
+        onInvite: (() -> Void)? = nil
     ) {
+        self.onInvite = onInvite
         self.onLeave = onLeave
         self.photos = photos
         self.onAlbum = onAlbum
@@ -188,6 +192,7 @@ struct DIPEventDetailsScreen: View {
                 emptyText: event.isPast ? "No one checked in to this event." : "Coworkers who join will show up here.",
                 capacity: event.isPast ? nil : event.metadata?.capacity,
                 identifierPrefix: "event", onMore: onAttendees)
+            if onInvite != nil, canOfferInvite { inviteButton }
             DIPDetailActionRow(
                 showsParticipation: !event.isPast,
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions (always, when there is a location); Leave sits at the bottom of the page.
@@ -198,6 +203,37 @@ struct DIPEventDetailsScreen: View {
                 shareLink: event.metadata?.status == .cancelled ? nil : DIPShareLink.url(forEventID: event.id),
                 shareTitle: "Share Event", identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
+        }
+    }
+
+    /// Cancelled, started and finished activities have nothing to invite to; a full one shows the action disabled with the reason.
+    private var inviteDenial: DIPInviteDenial? {
+        guard let metadata = event.metadata else { return nil }
+        return DIPInviteRules.denial(metadata, attendeeCount: event.attendeeCount, now: Date())
+    }
+    private var canOfferInvite: Bool {
+        guard !event.isPast else { return false }
+        switch inviteDenial { case nil, .full?: return true; default: return false }
+    }
+
+    /// Solid (pressable) ink pill under the attendees, like "See what changed" (a separate action from the iOS share sheet).
+    private var inviteButton: some View {
+        let denial = inviteDenial
+        return VStack(alignment: .leading, spacing: 6) {
+            Button { onInvite?() } label: {
+                DIPActionPill(title: "Invite a Coworker", color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
+                    Image(systemName: "person.badge.plus").resizable().scaledToFit()
+                }
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .disabled(denial != nil)
+            .opacity(denial == nil ? 1 : 0.5)
+            .accessibilityLabel("Invite a coworker")
+            .accessibilityHint(denial?.message ?? "Choose a coworker from your company to invite")
+            .accessibilityIdentifier("event.invite")
+            if let denial {
+                Text(denial.message).font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote)).foregroundStyle(.secondary)
+            }
         }
     }
 
