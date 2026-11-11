@@ -4,7 +4,7 @@ User: sandervonk
 Date: 2026-11-10
 Workstream: iOS fixups after merges
 Agent: Claude Code
-Status: active
+Status: completed
 
 ## Summary
 
@@ -22,6 +22,8 @@ Make main's iOS side compile and pass tests after PRs #49, #51, #52, #54-#58 mer
 
 ## Decisions
 
+- Built the icon as an Icon Composer bundle from the Figma logo SVG (node 3228:981) so iOS applies its layered glass styling; kept the Figma solid #7C88FA fill.
 
 ## Handoff
 
+None. Check the icon on a device after the next build.

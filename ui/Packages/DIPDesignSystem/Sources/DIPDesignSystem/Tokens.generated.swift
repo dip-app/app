@@ -50,6 +50,12 @@ public enum DIPTokens {
         public static let eventsAccent = RGBColor(hex: "#F054A5", red: 240.0 / 255.0, green: 84.0 / 255.0, blue: 165.0 / 255.0)
         /// Source: figma.
         public static let actionComplete = RGBColor(hex: "#CCCCCC", red: 204.0 / 255.0, green: 204.0 / 255.0, blue: 204.0 / 255.0)
+        /// Source: figma.
+        public static let rewardYellowCard = RGBColor(hex: "#FABF37", red: 250.0 / 255.0, green: 191.0 / 255.0, blue: 55.0 / 255.0)
+        /// Source: figma.
+        public static let rewardOrangeCard = RGBColor(hex: "#FD4D03", red: 253.0 / 255.0, green: 77.0 / 255.0, blue: 3.0 / 255.0)
+        /// Source: figma.
+        public static let rewardBlueCard = RGBColor(hex: "#77C5FF", red: 119.0 / 255.0, green: 197.0 / 255.0, blue: 255.0 / 255.0)
     }
     public enum Spacing {
         public static let compact: Double = 5

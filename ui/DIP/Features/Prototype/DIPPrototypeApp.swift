@@ -60,7 +60,7 @@ struct DIPPrototypeApp: View {
         let argument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--screen=") }
         let screen = initialScreen ?? argument.map { String($0.dropFirst("--screen=".count)) } ?? "home"
         _selectedTab = State(
-            initialValue: screen == "profile" ? .profile : ["events", "memories"].contains(screen) ? .events : .home)
+            initialValue: screen == "profile" ? .profile : screen == "rewards" ? .rewards : ["events", "memories"].contains(screen) ? .events : .home)
         initialMemories = screen == "memories"
         switch screen {
         case "event", "event-joined": _routes = State(initialValue: [.event("puppy-yoga")])
@@ -218,7 +218,11 @@ struct DIPPrototypeApp: View {
                     }, onSignOut: onSignOut, interestCatalogLoading: interestCatalogLoading,
                     interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog,
                     onReplayTour: onReplayTour))
-            case .rewards: AnyView(EmptyView())
+            case .rewards:
+                AnyView(DIPRewardsScreen(
+                    unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
+                    showsBottomBar: false, onSelectTab: selectTab,
+                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
             }
         }
     }
@@ -338,10 +342,6 @@ struct DIPPrototypeApp: View {
     }
 
     private func selectTab(_ tab: DIPHomeTab) {
-        guard tab != .rewards else {
-            notice = "Rewards"
-            return
-        }
         withAnimation(DIPMotion.navigation(reduceMotion: reduceMotion)) {
             selectedTab = tab
             routes = []
