@@ -57,6 +57,8 @@ export async function setRsvp(store: ParticipationStore, identity: Participation
       tx.createRsvp(companyId, eventId, uid, {
         companyId, eventId, userId: uid, status,
         userName: member.displayName, userAvatarId: member.avatarId, userDepartment: member.department,
+        // Optional profile field: "" when the member has not set a job title (kept current by onUserProfileUpdated).
+        userJobTitle: typeof member.jobTitle === "string" ? member.jobTitle : "",
         eventStartTime: event.startTime, checkedIn: false, checkedInAt: null,
         // Adapter assigns createdAt with serverTimestamp, never caller-supplied data.
       });

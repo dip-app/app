@@ -253,7 +253,7 @@ import DIPAccounts
                 for (id, people) in results where self.previews[id] == nil {
                     self.previews[id] = people.map {
                         DIPParticipant(id: $0.userID, name: $0.name, department: $0.department,
-                                       avatar: Self.avatar(userID: $0.userID))
+                                       avatar: Self.avatar(userID: $0.userID), jobTitle: $0.jobTitle)
                     }
                 }
                 if !results.isEmpty { self.publish() }
@@ -265,7 +265,8 @@ import DIPAccounts
         guard let participation, !stopped else { return }
         guard let people = try? await participation.attendees(scope: reads.scope, eventID: eventID), !stopped else { return }
         participants[eventID] = people.map {
-            DIPParticipant(id: $0.userID, name: $0.name, department: $0.department, avatar: Self.avatar(userID: $0.userID))
+            DIPParticipant(id: $0.userID, name: $0.name, department: $0.department,
+                           avatar: Self.avatar(userID: $0.userID), jobTitle: $0.jobTitle)
         }
         publish()
     }

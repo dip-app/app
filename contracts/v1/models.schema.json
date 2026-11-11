@@ -688,6 +688,9 @@
         "userDepartment": {
           "type": "string"
         },
+        "userJobTitle": {
+          "type": "string"
+        },
         "eventStartTime": {
           "type": "string",
           "format": "date-time"

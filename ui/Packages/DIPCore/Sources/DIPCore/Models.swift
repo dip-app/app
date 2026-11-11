@@ -195,9 +195,17 @@ public struct DIPParticipant: Identifiable, Equatable, Sendable {
     public var id: String
     public var name: String
     public var department: String
+    /// Optional; empty when the member has not set one (older RSVP snapshots).
+    public var jobTitle: String
     public var avatar: MediaReference
-    public init(id: String, name: String, department: String, avatar: MediaReference) {
-        self.id = id; self.name = name; self.department = department; self.avatar = avatar
+    public init(id: String, name: String, department: String, avatar: MediaReference, jobTitle: String = "") {
+        self.id = id; self.name = name; self.department = department; self.avatar = avatar; self.jobTitle = jobTitle
+    }
+
+    /// One-line subtitle for attendee rows: "Job title · Department", only the parts that exist.
+    public var subtitle: String {
+        [jobTitle, department].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 

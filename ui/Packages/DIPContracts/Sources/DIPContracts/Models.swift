@@ -321,13 +321,14 @@ public struct RSVP: Codable, Equatable, Sendable {
     public var userName: String
     public var userAvatarId: String
     public var userDepartment: String
+    public var userJobTitle: String?
     public var eventStartTime: Date
     public var status: String
     public var checkedIn: Bool
     public var checkedInAt: Date?
     public var createdAt: Date
 
-    public init(id: String? = nil, companyId: String, eventId: String, userId: String, userName: String, userAvatarId: String, userDepartment: String, eventStartTime: Date, status: String, checkedIn: Bool, checkedInAt: Date? = nil, createdAt: Date) {
+    public init(id: String? = nil, companyId: String, eventId: String, userId: String, userName: String, userAvatarId: String, userDepartment: String, userJobTitle: String? = nil, eventStartTime: Date, status: String, checkedIn: Bool, checkedInAt: Date? = nil, createdAt: Date) {
         self.id = id
         self.companyId = companyId
         self.eventId = eventId
@@ -335,6 +336,7 @@ public struct RSVP: Codable, Equatable, Sendable {
         self.userName = userName
         self.userAvatarId = userAvatarId
         self.userDepartment = userDepartment
+        self.userJobTitle = userJobTitle
         self.eventStartTime = eventStartTime
         self.status = status
         self.checkedIn = checkedIn
