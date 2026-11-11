@@ -33,7 +33,7 @@ public enum DIPMockFixtures {
                 startTime: start, endTime: start.addingTimeInterval(5_400),
                 venueName: venue.0, address: venue.1, locality: locality,
                 costCents: index.isMultiple(of: 2) ? 0 : 2_000, costNote: "", capacity: 30)
-            event.metadata?.pointsValue = index.isMultiple(of: 2) ? 50 : 0
+            event.metadata?.pointsValue = id == "puppy-yoga" ? 50 : (index.isMultiple(of: 2) ? 25 : 0)
             if id == "puppy-yoga" {
                 // Preview history: a time move and a venue/cost change (oldest first, as stored).
                 func iso(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }

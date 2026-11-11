@@ -229,6 +229,10 @@
         private let artwork: AnyView
         private let avatarStack: AnyView
         let attendeeCount: Int
+        /// Text of the reward pill ("+50 pts"); nil hides it.
+        let rewardText: String?
+        /// Spoken form of the reward ("Worth 25 points"); supplied by the caller from DIPPointsFormat.
+        let rewardAccessibility: String?
         let width: CGFloat
         let shade: Double
         let onSelect: () -> Void
@@ -236,6 +240,8 @@
             title: String, locality: String, imageName: String, avatars: [String],
             attendeeCount: Int, width: CGFloat = 163, shade: Double = 0.1, onSelect: @escaping () -> Void
         ) {
+            self.rewardText = nil
+            self.rewardAccessibility = nil
             self.title = title
             self.locality = locality
             self.identifier = imageName
@@ -247,10 +253,12 @@
             self.onSelect = onSelect
         }
         public init<Artwork: View, Avatars: View>(
-            title: String, locality: String, identifier: String, attendeeCount: Int,
+            title: String, locality: String, identifier: String, attendeeCount: Int, rewardText: String? = nil, rewardAccessibility: String? = nil,
             width: CGFloat = 163, shade: Double = 0.1,
             artwork: () -> Artwork, avatarStack: () -> Avatars, onSelect: @escaping () -> Void
         ) {
+            self.rewardText = rewardText
+            self.rewardAccessibility = rewardAccessibility
             self.title = title
             self.locality = locality
             self.identifier = identifier
@@ -274,6 +282,20 @@
                                 .background(.white, in: Capsule())
                         }
                         .fixedSize()
+                    }
+                    if let rewardText {
+                        // Informational (not tappable): the same white chip as "going", with a filled star.
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill").font(.system(size: 12))
+                                .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
+                            Text(rewardText).font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(.black)
+                        }
+                        .frame(height: 22).padding(.horizontal, 8)
+                        .background(.white, in: Capsule())
+                        .padding(.top, 6)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(Text(rewardAccessibility ?? rewardText))
+                        .accessibilityIdentifier("home.event.points")
                     }
                     Spacer(minLength: 0)
                     VStack(alignment: .leading, spacing: 1) {

@@ -125,6 +125,8 @@ struct DIPHomeScreen: View {
                     DIPPhotoEventCard(
                         title: event.title, locality: event.locality,
                         identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
+                        rewardText: DIPPointsFormat.rewardShort(event.pointsValue),
+                        rewardAccessibility: DIPPointsFormat.rewardAccessibility(event.pointsValue),
                         width: event.id == "hike" ? 169 : 163, shade: event.imageShade,
                         artwork: { DIPMedia(event.image).scaledToFill() },
                         avatarStack: { DIPMediaStack(event.avatars) }

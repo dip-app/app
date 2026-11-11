@@ -263,6 +263,14 @@ struct DIPEventDetailsScreen: View {
                 Text(metadata.address).foregroundStyle(.secondary)
                 if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
             }
+            if metadata.status == .scheduled, let reward = DIPPointsFormat.reward(metadata.pointsValue) {
+                metadataRow("star.fill", title: "Points") {
+                    Text(event.isPast ? "Worth \(reward.dropFirst())" : "Earn \(reward)")
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(DIPPointsFormat.rewardAccessibility(metadata.pointsValue) ?? reward)
+                .accessibilityIdentifier("event.points")
+            }
             metadataRow("ticket", title: "Price") {
                 Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
                 if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
