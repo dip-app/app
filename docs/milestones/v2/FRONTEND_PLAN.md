@@ -41,6 +41,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Shake to report | Implementation | Not started (design done, see Design status) | none | iOS |
 | TestFlight | Release build | Not started; needs the paid team (F8) | none | All |
 | F0-F5 | Cleanup, interest filter, points, challenges submissions, invitations, live albums | Not started | to be created | iOS |
+| F5 (Stream B) | Live event albums: storage rules, `finalizeEventPhotoV1`, comments, iOS upload/grid/viewer | Backend merged to `feature/v2-remaining` (#96, not deployed); iOS in review. Device upload not yet verified | #96 + iOS PR | Backend / iOS |
 | A1-A3 | Admin attendance, review, points | Not started (A4 is covered by weekly themes) | to be created | Admin portal |
 | F6-F8 | Accessibility, tests, release | Not started | none | All |
 

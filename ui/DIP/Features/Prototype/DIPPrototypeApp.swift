@@ -11,6 +11,8 @@ struct DIPPrototypeApp: View {
     @State private var selectedTab: DIPHomeTab
     @State private var routes: [Route]
     @State private var model: DIPAppViewModel
+    /// Album upload drafts, owned here so uploads continue while the member navigates.
+    @State private var uploads: AlbumUploadQueue
     @State private var observationID = UUID()
     @State private var notice: String?
     @State private var rsvpError: String?
@@ -29,6 +31,8 @@ struct DIPPrototypeApp: View {
     private var participationUnavailable: Bool { eventReadsOnly && !liveParticipation }
     private let onEventOpened: ((String?) -> Void)?
     private let onRefreshEvents: (() async -> Void)?
+    /// The photo open in an album's viewer (event ID, photo ID or nil), for live comment observation.
+    private let onPhotoViewed: ((String, String?) -> Void)?
     private let onLoadMoreEvents: (() -> Void)?
     private let loadingMoreEvents: Bool
     private let eventPaginationError: String?
@@ -48,6 +52,7 @@ struct DIPPrototypeApp: View {
          eventReadsOnly: Bool = false, liveParticipation: Bool = false, onEventOpened: ((String?) -> Void)? = nil,
          onLoadMoreEvents: (() -> Void)? = nil, loadingMoreEvents: Bool = false,
          eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil,
+         onPhotoViewed: ((String, String?) -> Void)? = nil,
          onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil,
          deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil) {
         self.deepLinkEventID = deepLinkEventID
@@ -55,6 +60,7 @@ struct DIPPrototypeApp: View {
         self.onSurfaceChange = onSurfaceChange
         self.onReplayTour = onReplayTour
         self.onRefreshEvents = onRefreshEvents
+        self.onPhotoViewed = onPhotoViewed
         self.eventReadsOnly = eventReadsOnly; self.liveParticipation = liveParticipation; self.onEventOpened = onEventOpened
         self.onLoadMoreEvents = onLoadMoreEvents; self.loadingMoreEvents = loadingMoreEvents
         self.eventPaginationError = eventPaginationError
@@ -77,7 +83,7 @@ struct DIPPrototypeApp: View {
         case "challenge": _routes = State(initialValue: [.challenge("fitness-challenge")])
         default: _routes = State(initialValue: [])
         }
-        _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
+        let model = DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
                 ?? (ProcessInfo.processInfo.arguments.contains("--many-tags")
                 ? DIPMockFixtures.manyTagsReview()
@@ -94,7 +100,39 @@ struct DIPPrototypeApp: View {
                 : ["event", "event-joined", "past-event"].contains(screen)
                 ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
-            initialFailures: Self.previewFailures())))
+            initialFailures: Self.previewFailures()))
+        _model = State(initialValue: model)
+        let uploads = AlbumUploadQueue(send: { eventID, photo, progress in
+            try await model.uploadPhoto(eventID: eventID, photo: photo, progress: progress)
+        })
+        uploads.onRunFinished = DIPAlbumScreen.feelRun
+        _uploads = State(initialValue: Self.uploadReview() ?? uploads)
+    }
+
+    /// `--album-upload-review` (Debug): the Kayaking album with three drafts (uploading at 40%, failed with a
+    /// retry, finished) for design review and UI tests; nothing is sent anywhere.
+    private static func uploadReview() -> AlbumUploadQueue? {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("--album-upload-review") else { return nil }
+        let queue = AlbumUploadQueue(send: { _, photo, progress in
+            if photo.data.first == 1 { progress(0.4); try await Task.sleep(for: .seconds(3600)) }
+            if photo.data.first == 2 { throw DIPRepositoryError.invalidInput(AlbumFailure.unavailable.message) }
+            return photo.id
+        }, prepare: { data in
+            let shades: [UInt8: (Double, Double, Double)] = [1: (0.48, 0.53, 0.98), 2: (0.94, 0.33, 0.65), 3: (1, 0.8, 0.24)]
+            let (r, g, b) = shades[data.first ?? 1] ?? (0.5, 0.5, 0.5)
+            guard let context = CGContext(data: nil, width: 120, height: 120, bitsPerComponent: 8, bytesPerRow: 0,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return (data, nil) }
+            context.setFillColor(CGColor(red: r, green: g, blue: b, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: 120, height: 120))
+            return (data, context.makeImage().flatMap { AlbumImageProcessing.jpeg($0, quality: 0.8) })
+        })
+        queue.enqueue(eventID: "kayaking-memory", loaders: [{ Data([1]) }, { Data([2]) }, { Data([3]) }])
+        return queue
+        #else
+        return nil
+        #endif
     }
 
     /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
@@ -186,8 +224,13 @@ struct DIPPrototypeApp: View {
             .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
         }
         .onChange(of: routes, initial: true) { _, path in
-            if case .event(let id) = path.last { onEventOpened?(id) } else { onEventOpened?(nil) }
+            // The album route keeps its event observed (album photos and upload rights come with it).
+            switch path.last {
+            case .event(let id)?, .album(let id)?: onEventOpened?(id)
+            default: onEventOpened?(nil)
+            }
         }
+        .onDisappear { uploads.cancelAll() }
         .onChange(of: deepLinkEventID, initial: true) { _, id in
             guard let id else { return }
             // Open the linked event on top of the current tab; an id outside this company shows "Activity unavailable".
@@ -388,7 +431,10 @@ struct DIPPrototypeApp: View {
     }
 
     private var bottomAction: DIPBottomBarAction? {
-        EventBarAction.resolve(route: routes.last, snapshot: model.snapshot, isLoading: model.isLoading)
+        if case .album(let id)? = routes.last, uploads.pendingCount(for: id) > 0 {
+            return DIPBottomBarAction(title: "Adding photos…", identifier: "album.add-photos", showsProgress: true)
+        }
+        return EventBarAction.resolve(route: routes.last, snapshot: model.snapshot, isLoading: model.isLoading)
     }
 
     private func performBottomAction() {
@@ -482,10 +528,11 @@ struct DIPPrototypeApp: View {
                         album: album, commentsByPhoto: snapshot.photoComments[id] ?? [:],
                         currentUser: accountProfile ?? snapshot.profile, showsBottomBar: false,
                         initialPhotoID: memoryPhotoIDs[id] ?? nil,
-                        isPickerPresented: $albumPickerPresented, onBack: pop,
+                        isPickerPresented: $albumPickerPresented, uploads: uploads, onBack: pop,
                         onAddPhotos: { try await model.addPhotos(eventID: id, photos: $0) },
                         onAddComment: { try await model.addPhotoComment(
-                            eventID: id, photoID: $0, commentID: $1, text: $2) })
+                            eventID: id, photoID: $0, commentID: $1, text: $2) },
+                        onViewPhoto: { onPhotoViewed?(id, $0) })
                 } else { missingResource }
             }
         } else { ProgressView("Loading…") }

@@ -230,8 +230,19 @@ public struct DIPAlbum: Identifiable, Equatable, Sendable {
     public var eventID: String
     public var title: String
     public var photos: [DIPPhoto]
-    public init(id: String, eventID: String, title: String, photos: [DIPPhoto]) {
+    /// Whether the signed-in member may add photos here (live: a going RSVP to an ended, scheduled event).
+    public var canAddPhotos: Bool
+    /// How many more photos this member may add; nil when the source sets no limit (fixtures).
+    public var remainingUploads: Int?
+    /// False until the first album read arrives (live), so the screen shows loading rather than empty.
+    public var isLoaded: Bool
+    /// A readable message when the album could not be read (offline, access denied).
+    public var loadError: String?
+    public init(id: String, eventID: String, title: String, photos: [DIPPhoto], canAddPhotos: Bool = true,
+                remainingUploads: Int? = nil, isLoaded: Bool = true, loadError: String? = nil) {
         self.id = id; self.eventID = eventID; self.title = title; self.photos = photos
+        self.canAddPhotos = canAddPhotos; self.remainingUploads = remainingUploads
+        self.isLoaded = isLoaded; self.loadError = loadError
     }
 }
 

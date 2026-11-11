@@ -43,7 +43,12 @@ final class EventBarActionTests: XCTestCase {
                 identifier: joined ? "participants.chat" : "participants.join",
                 icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil,
                 kind: joined ? .navigate : .commit)
-        case .album:
+        // Stream B (live albums): Add Photos only where the member may upload; the full limit shows a complete pill.
+        case .album(let id):
+            guard let album = snapshot?.albums[id], album.isLoaded, album.canAddPhotos else { return nil }
+            if album.remainingUploads == 0 {
+                return DIPBottomBarAction(title: "Photo limit reached", style: .complete, identifier: "album.add-photos")
+            }
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
         case .challenge, nil: return nil
         }
@@ -126,7 +131,8 @@ final class EventBarActionTests: XCTestCase {
         XCTAssertEqual(resolve(.event("missing"), loading: true)?.title, "Loading…")
         XCTAssertEqual(resolve(.participants("joined"))?.identifier, "participants.chat")
         XCTAssertEqual(resolve(.participants("past"))?.identifier, "participants.album")
-        XCTAssertEqual(resolve(.album("x"))?.title, "Add Photos")
+        XCTAssertEqual(resolve(.album("kayaking-memory"))?.title, "Add Photos")
+        XCTAssertNil(resolve(.album("x")), "no album, no upload action")
         XCTAssertNil(resolve(.challenge("x")))
     }
 

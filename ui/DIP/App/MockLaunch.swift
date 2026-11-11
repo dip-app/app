@@ -34,7 +34,16 @@ enum MockLaunch {
     }
 
     /// Reference prototype content with dated events that carry venue, address and cost.
-    static func snapshot() -> DIPAppSnapshot? { mode() == nil ? nil : DIPMockFixtures.v1Events() }
+    /// Album review (with `--screen=album`): `--empty-state=album` empties the Kayaking album and
+    /// `--album-readonly` shows it to a member who may not add photos.
+    static func snapshot(arguments: [String] = ProcessInfo.processInfo.arguments) -> DIPAppSnapshot? {
+        guard mode() != nil else { return nil }
+        var snapshot = arguments.contains("--empty-state=album") ? DIPMockFixtures.emptyStateReview(.album) : DIPMockFixtures.v1Events()
+        if arguments.contains("--album-readonly") {
+            for id in snapshot.albums.keys { snapshot.albums[id]?.canAddPhotos = false }
+        }
+        return snapshot
+    }
     #else
     static func mode(arguments: [String] = [], environment: [String: String] = [:]) -> Mode? { nil }
     static func snapshot() -> DIPAppSnapshot? { nil }
