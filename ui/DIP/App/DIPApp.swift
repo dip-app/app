@@ -1,9 +1,12 @@
 import DIPAccounts
+import Foundation
 import SwiftUI
 
 @main
 struct DIPApp: App {
     @State private var session: AccountsSession
+    /// Event links wait here until the member shell can open them (signed out, resolving, onboarding).
+    @State private var eventLinks = EventLinkInbox()
     private let makeEventReads: ((MembershipContext) -> MemberEventsRepository?)?
     private let makeParticipation: (() -> (any ParticipationSource)?)?
     private let makeChallengeReads: ((MembershipContext) -> MemberChallengesRepository?)?
@@ -27,14 +30,21 @@ struct DIPApp: App {
                     .id(EventReadScope(uid: context.uid, companyID: context.companyID))
             }
             .task { session.start() }
-            .onOpenURL { url in _ = FirebaseBootstrap.handle(url: url) }
+            .onOpenURL { url in
+                // Google sign-in redirects first; anything else may be an event share link or `dip://events/<id>`.
+                if !FirebaseBootstrap.handle(url: url) { eventLinks.receive(url) }
+            }
+            // Universal Links delivered as web-browsing activities (needs the Associated Domains entitlement).
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL { eventLinks.receive(url) }
+            }
         }
     }
 
     /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed
     /// by the same scope ID); unconfigured builds keep the fixture challenge card.
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
-        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), onSignOut: { await session.signOut() })
+        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, onSignOut: { await session.signOut() })
         if let makeChallengeReads {
             WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
         } else { home }

@@ -36,6 +36,9 @@ struct DIPPrototypeApp: View {
     private let onSurfaceChange: ((OnboardingHomeSurface) -> Void)?
     /// Profile's "How DIP works" row; nil hides it.
     private let onReplayTour: (() -> Void)?
+    /// Event id from a share link or `dip://events/<id>`; opened once, then reported through `onDeepLinkHandled`.
+    private let deepLinkEventID: String?
+    private let onDeepLinkHandled: ((String) -> Void)?
 
     init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil,
          accountProfile: DIPProfile? = nil, interestCatalogLoading: Bool = false,
@@ -44,7 +47,10 @@ struct DIPPrototypeApp: View {
          eventReadsOnly: Bool = false, liveParticipation: Bool = false, onEventOpened: ((String?) -> Void)? = nil,
          onLoadMoreEvents: (() -> Void)? = nil, loadingMoreEvents: Bool = false,
          eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil,
-         onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil) {
+         onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil,
+         deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil) {
+        self.deepLinkEventID = deepLinkEventID
+        self.onDeepLinkHandled = onDeepLinkHandled
         self.onSurfaceChange = onSurfaceChange
         self.onReplayTour = onReplayTour
         self.onRefreshEvents = onRefreshEvents
@@ -156,6 +162,13 @@ struct DIPPrototypeApp: View {
         }
         .onChange(of: routes, initial: true) { _, path in
             if case .event(let id) = path.last { onEventOpened?(id) } else { onEventOpened?(nil) }
+        }
+        .onChange(of: deepLinkEventID, initial: true) { _, id in
+            guard let id else { return }
+            // Open the linked event on top of the current tab; an id outside this company shows "Activity unavailable".
+            routes = [.event(id)]
+            showChat = false
+            onDeepLinkHandled?(id)
         }
         .task(id: observationID) { await model.observe() }
         .onChange(of: surface, initial: true) { _, surface in onSurfaceChange?(surface) }
@@ -347,6 +360,8 @@ struct DIPPrototypeApp: View {
     private var missingResource: some View {
         ContentUnavailableView {
             Label("Activity unavailable", systemImage: "calendar.badge.exclamationmark")
+        } description: {
+            Text("This activity isn’t available to your account. It may belong to another company or no longer exist.")
         } actions: { Button("Back", action: pop) }
     }
 

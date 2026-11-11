@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Default (free Personal Team safe): no Associated Domains. Paid builds use DIP-Paid.entitlements. -->
+	<!-- Google Sign-In stores its session in the keychain; without a keychain group it fails with -34018. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)org.dip-app.DIP</string>
+	</array>
+</dict>
+</plist>

@@ -171,6 +171,7 @@ struct DIPEventDetailsScreen: View {
                 isParticipating: joined, canChange: canChangeParticipation,
                 joinTitle: "Join Activity", leaveTitle: "Leave Activity",
                 shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title) — \(event.timing)",
+                shareLink: event.metadata?.status == .cancelled ? nil : DIPShareLink.url(forEventID: event.id),
                 shareTitle: "Share Event", identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
