@@ -37,7 +37,8 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["See you there!"].exists)
         app.buttons["Done"].tap()
         app.buttons["event.back"].tap()
-        app.buttons["home.event.EventCard"].tap()
+        // v1 fixtures: Puppy Yoga's card artwork is `event_Image` (the card id follows the artwork, not the event id).
+        app.buttons["home.event.event_Image"].tap()
         XCTAssertEqual(app.buttons["event.primary"].label, "Activity Chat")
     }
 

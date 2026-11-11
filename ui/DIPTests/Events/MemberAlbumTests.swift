@@ -53,6 +53,34 @@ import UniformTypeIdentifiers
                          storagePath: "companies/alpha/events/boat/photos/\(uploader)/0", createdAt: now, commentCount: 0)
     }
 
+    func testMemoriesCardShowsTheFirstAlbumPhotoAndKeepsTheCatalogCoverWithout() async throws {
+        let reads = AlbumReadsStub(); reads.extra = [event("boat", endsIn: -600)]
+        let participation = AlbumParticipationStub(), albums = AlbumSourceStub()
+        let repository = make(reads, participation, albums)
+        let stream = await repository.observe(); var iterator = stream.makeAsyncIterator()
+        _ = try await iterator.next()
+        participation.joined?.yield(["boat"])
+        var snapshot: DIPAppSnapshot?
+        repeat { snapshot = try await iterator.next() } while snapshot?.eventDetails["boat"] == nil
+        XCTAssertEqual(snapshot?.eventDetails["boat"]?.image, .asset(DIPEventCover.fallback.assetName), "catalog cover until a photo arrives")
+        try await waitFor { albums.coverQueries == ["boat"] }
+        XCTAssertEqual(albums.coverQueries, ["boat"], "an event with no cover photo is asked for once")
+        // Now an album with a photo: a fresh repository gets the decoded first photo as the card image.
+        let withPhoto = AlbumSourceStub()
+        withPhoto.cover = record("member_0", uploader: "member"); withPhoto.coverBytes = try Self.image(width: 40, height: 30, type: .jpeg)
+        let participation2 = AlbumParticipationStub()
+        let second = make(reads, participation2, withPhoto)
+        let stream2 = await second.observe(); var iterator2 = stream2.makeAsyncIterator()
+        _ = try await iterator2.next()
+        participation2.joined?.yield(["boat"])
+        var photoBytes: Data?
+        for _ in 0..<20 where photoBytes == nil {
+            guard let next = try await iterator2.next() else { break }
+            if case .data(let bytes)? = next.eventDetails["boat"]?.image { photoBytes = bytes }
+        }
+        XCTAssertFalse(try XCTUnwrap(photoBytes, "expected the album photo as cover").isEmpty)
+    }
+
     func testPolicySlotsMatchTheStorageRules() {
         XCTAssertEqual(AlbumPolicy.storagePath(scope: scope, eventID: "boat", slot: 7), "companies/alpha/events/boat/photos/member/7")
         XCTAssertEqual(AlbumPolicy.photoID(uid: "member", slot: 19), "member_19")
@@ -420,7 +448,12 @@ final class AlbumBarActionTests: XCTestCase {
         }
     }
     func ownPhotoIDs(scope: EventReadScope, eventID: String) async throws -> Set<String> { own }
-    func imageData(path: String) async throws -> Data { Data() }
+    /// First-photo cover: the record `coverPhoto` returns and the bytes `imageData` serves (empty = undecodable).
+    var cover: AlbumPhotoRecord?
+    var coverBytes = Data()
+    var coverQueries: [String] = []
+    func coverPhoto(scope: EventReadScope, eventID: String) async -> AlbumPhotoRecord? { coverQueries.append(eventID); return cover }
+    func imageData(path: String) async throws -> Data { coverBytes }
     func upload(scope: EventReadScope, eventID: String, slot: Int, jpeg: Data,
                 progress: @escaping @Sendable (Double) -> Void) async throws -> AlbumUploadOutcome {
         if let uploadFailure { throw uploadFailure }

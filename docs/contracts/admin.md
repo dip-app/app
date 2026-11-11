@@ -93,6 +93,10 @@ All carry `contractVersion: 1`, `companyId` and (mutations) `requestId`. Shapes 
 - `removeEventAttendeeV1` `{eventId, userId, reason?, notify?}`. Going RSVP -> `cancelled`, count decremented (never below 0), attendance fields kept. Not going -> `removed:false`.
 - `recordAttendanceV1` `{eventId, userId, checkedIn? = true}` -> `{eventId, userId, pointsAwarded, checkedIn, changed}`. Requires a `going` RSVP and `startTime <= now` (`EVENT_NOT_STARTED`). Sets `checkedIn`, `checkedInAt` (server time) once and, if `pointsValue > 0`, appends the ledger entry `attendance_{eventId}_{uid}` and increases `pointsBalance` in the same transaction (repeat awards 0). `checkedIn:false` (no-show) is refused with `ATTENDANCE_LOCKED` after points were awarded (no reversal flow yet). No `requestId`: the command converges on state.
 
+### Event completion (`updateEventV1`, event.manage)
+
+`UpdateEventRequest.status` is now `scheduled` | `cancelled` | `completed`, plus optional `statusReason` (3..200). Organizers and admins may mark a **scheduled** event **completed** once it has ended (`EVENT_NOT_ENDED` otherwise; a cancelled event cannot be completed: `STATUS_TRANSITION_BLOCKED`). Leaving `completed` (back to `scheduled` or to `cancelled`) is free while the album has no photos; once any album photo exists only an `admin` with a `statusReason` may do it, otherwise `failed-precondition` `STATUS_TRANSITION_BLOCKED` with `fields: ["status","statusReason"]`. Attendance (`recordAttendanceV1`) and album moderation work on completed events; adding or removing attendees follows the usual not-ended rule. `updateEventV1` also accepts the `organizer` role.
+
 ### Member management (member.read / member.manage)
 
 - `listMembersV1` `{query?, role?, status?, teamId?, workLocation?, pageSize? (<= 100, default 50), pageToken?}` -> `{members: AdminMemberSummary[], nextPageToken?}`. Server scans `users` of the caller's company in document-id order (up to 1000 documents per call), filters in memory, and returns the id cursor, so no composite index is needed; `pointsBalance` is returned to admins only. `getMemberV1 {userId}` returns one summary. These replace company-wide private-profile reads (rules stay self-only).
@@ -105,7 +109,7 @@ All carry `contractVersion: 1`, `companyId` and (mutations) `requestId`. Shapes 
 ### Roster pre-provisioning (roster.manage)
 
 - Model: `RosterEntry` at `companies/{c}/roster/{sha256(lower(email))}` with `status` `invited` -> `claimed` | `revoked`. Only emails within the company's `emailDomain` (registrable root, subdomains allowed as in `resolveMembershipV1`) are accepted (`EMAIL_DOMAIN_MISMATCH`).
-- `upsertRosterEntryV1 {entry: EmployeeRecordInput}` -> `{entryId, created, status}`. An email that already belongs to a member -> `EMAIL_ALREADY_MEMBER` (use `updateMemberV1`). A revoked entry is re-invited; a claimed entry cannot be edited.
+- `upsertRosterEntryV1 {entry: EmployeeRecordInput}` -> `{entryId, created, status}`. An email that already belongs to a member -> `EMAIL_ALREADY_MEMBER` (use `updateMemberV1`). A revoked entry is re-invited. A claimed entry always has a member with that email, so it is refused the same way.
 - `revokeRosterEntryV1 {entryId}` -> `{entryId, status, changed}`. Claimed entries are unaffected (revoke the member instead).
 - Listing/search: Firestore direct reads under admin-only rules (`roster` list limit <= 100); the portal combines it with `listMembersV1` to show invited / active / deactivated.
 - **Claiming** in `resolveMembershipV1` (first verified Google sign-in, no `users/{uid}` yet): in the same transaction the server reads the company, then `roster/{sha256(email)}` where the stored `email` must equal the verified token email. An `invited` entry creates the member with the entry's `role`, `teamIds`, `workLocation`, `department`, `jobTitle`, `managerEmail`, `startDate` (display name: Google's name, else the roster hint), marks the entry `claimed` (`claimedBy`, `claimedAt`) and appends a `roster.claim` audit entry. No entry, or a revoked one: `open` company -> default member as today; `rosterOnly` company -> `permission-denied` `NOT_ON_ROSTER`. Existing members are never altered by a roster entry. Spoofed or unverified emails are rejected by the existing provider/verification checks before any read.
@@ -125,3 +129,16 @@ All carry `contractVersion: 1`, `companyId` and (mutations) `requestId`. Shapes 
 ## Not in this contract
 
 Reports/flag queue, welcome emails and push for roster invites, notifying the uploader of a removal, bulk removal per member, undo of removals, points reversal for un-checked attendance, XLSX parsing (client side) and server-side CSV download.
+
+## Implementation status and tests (feature/admin-backend, November 11)
+
+Implemented in `gcp/functions/src/modules/admin` (domain/application/infrastructure/transport) and exported from `gcp/functions/src/index.ts`; `resolveMembershipV1` (accounts module) claims roster entries and refuses deactivated accounts; `updateEventV1` (organizer module) accepts `completed`, `statusReason` and the `organizer` role. **Nothing is deployed.**
+
+- Unit: `gcp/tests/unit/admin-permissions.test.ts` (every command: unauthenticated, unverified, wrong provider, member, no membership, deactivated, other tenant, organizer vs admin-only), `admin-events.test.ts` (moderation, attendees, attendance), `admin-members.test.ts`, `admin-roster-import.test.ts`, `accounts-roster-claim.test.ts`, plus completed-status cases in `organizer-events.test.ts`. They use an optimistic in-memory store (`gcp/tests/unit/helpers/adminFakes.ts`) that retries on conflicting reads, so races (last seat, last admin, balances, import lease) are exercised; it is not emulator evidence.
+- Rules: `gcp/tests/rules/admin.test.ts` (`npm run test:rules`).
+- Emulator: `gcp/tests/integration/admin-adapter.test.ts` (`npm run test:adminapi:integration`, in CI) drives the same services through `FirestoreAdminStore` on the Firestore emulator with real transaction contention, cursors, count(), collection-group queries, 250-row chunked import and the roster claim through `FirestoreMembershipStore`. It does not call the deployed callables, so Auth tokens and App Check are not covered; deploy checks must include one signed-in smoke call per callable.
+- Contracts: `contracts/tests/admin.test.mjs`.
+
+Index notes: member scans, last-admin checks and email lookups use equality filters ordered by document id (served by merged single-field indexes); deactivation uses the existing collection-group `rsvps` index (companyId, userId, status, eventStartTime). No new composite index is declared.
+
+Known limits: `listMembersV1` scans at most 1000 members per call and orders by user id (the portal sorts a page client-side); stored member emails are matched case-sensitively against lower-cased import emails (Google tokens are lower-case); import counters can be approximate after an interrupted chunk is retried; points reversal for attendance, undo of removals, report queue and welcome emails are not built.

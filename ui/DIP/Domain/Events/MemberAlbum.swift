@@ -82,6 +82,8 @@ enum AlbumFailure: Error, Equatable {
     func observePhotos(scope: EventReadScope, eventID: String) -> AsyncThrowingStream<[AlbumPhotoRecord], Error>
     /// IDs of the member's own published photos for the event (used to pick free slots).
     func ownPhotoIDs(scope: EventReadScope, eventID: String) async throws -> Set<String>
+    /// The event's first (oldest) published photo, one cheap query; nil when the album is empty or unavailable.
+    func coverPhoto(scope: EventReadScope, eventID: String) async -> AlbumPhotoRecord?
     /// Authenticated download of a published (or own) object.
     func imageData(path: String) async throws -> Data
     /// Uploads into the slot (create-only); progress in 0...1.
@@ -95,4 +97,9 @@ enum AlbumFailure: Error, Equatable {
     func addComment(scope: EventReadScope, eventID: String, photoID: String, commentID: String, text: String,
                     author: ChatAuthor) async throws
     func stop()
+}
+
+extension PhotoAlbumSource {
+    /// Sources without a cover query simply keep the catalog cover.
+    func coverPhoto(scope: EventReadScope, eventID: String) async -> AlbumPhotoRecord? { nil }
 }

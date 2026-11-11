@@ -3,6 +3,9 @@ import Foundation
 public enum DIPEventStatus: String, Equatable, Sendable {
     case scheduled
     case cancelled
+    /// Closed by the organizer after the event ended. Still visible to members (My Events, Memories, album uploads);
+    /// never joinable, discoverable or cancellable.
+    case completed
 }
 
 /// A presentation state derived from observed event/RSVP data, never permission to write.
@@ -47,7 +50,7 @@ public struct DIPEventMetadata: Equatable, Sendable {
 
     public func state(now: Date, attendeeCount: Int, isJoined: Bool) -> DIPEventState {
         if status == .cancelled { return .cancelled }
-        if endTime <= now { return .past }
+        if status == .completed || endTime <= now { return .past }
         if startTime <= now { return .started }
         if isJoined { return .joined }
         if attendeeCount >= capacity { return .full }

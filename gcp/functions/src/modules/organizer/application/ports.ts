@@ -30,6 +30,8 @@ export interface OrganizerTransaction {
   getReceipt(companyId: string, uid: string, requestId: string): Promise<CommandReceipt | null>;
   /** True when any RSVP record exists for the event, including cancelled ones (they keep a start-time snapshot). */
   hasAnyRsvp(companyId: string, eventId: string): Promise<boolean>;
+  /** True when the event's album has at least one photo (a completed event with photos is not reopened casually). */
+  hasAnyPhoto(companyId: string, eventId: string): Promise<boolean>;
   /** Tag IDs that do not exist in the shared tags catalog. */
   missingTagIds(tagIds: readonly string[]): Promise<string[]>;
   /** Creates the event, revision 1, with server-owned fields; fails if it exists. */
@@ -37,7 +39,7 @@ export interface OrganizerTransaction {
   /** Creates the private deduplication receipt; fails if it exists. */
   createReceipt(companyId: string, uid: string, requestId: string, receipt: CommandReceipt): void;
   /** Full-draft replacement; increments revision to `nextRevision` and records `updatedBy` (the editor UID, for the change log). */
-  updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled", nextRevision: number, updatedBy: string): void;
+  updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled" | "completed", nextRevision: number, updatedBy: string): void;
 }
 
 export interface OrganizerStore {

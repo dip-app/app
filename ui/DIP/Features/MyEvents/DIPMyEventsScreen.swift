@@ -180,7 +180,8 @@ struct DIPMyEventsScreen: View {
                     .contentShape(RoundedRectangle(cornerRadius: 20))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(event.title), \(event.locality)")
+                .accessibilityLabel("\(event.title), \(event.locality.replacingOccurrences(of: "\n", with: ", "))")
+                .accessibilityHint("Opens the event page")
                 .accessibilityIdentifier("events.card.\(event.id)")
             }
         }
@@ -246,7 +247,8 @@ struct DIPMyEventsScreen: View {
                         .contentShape(RoundedRectangle(cornerRadius: 20))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("View album, \(memory.title), \(memory.locality)")
+                    .accessibilityLabel("View album, \(memory.title), \(memory.locality.replacingOccurrences(of: "\n", with: ", "))")
+                    .accessibilityHint("Opens the photo album")
                     .accessibilityIdentifier("events.album.\(index)")
                 }
                 .frame(height: 205)
