@@ -56,6 +56,38 @@ service firebase.storage {
         && request.resource.contentType.matches('^image/(jpeg|png|heic)$')
         && attendedEndedEvent();
     }
+    // Challenge submission evidence (F3, docs/contracts/challenge-submissions.md).
+    //
+    // One create-only object per slot: companies/{c}/challenges/{ch}/submissions/{uid}/{slot}, slot 0..4, so a
+    // member holds at most 5 uploads per challenge. Upload: only the member into their own folder, 1 byte..10
+    // MiB, image/jpeg|png|heic, while the weekly theme window is open (cross-service reads: the caller's profile
+    // and the challenge, two documents, the platform maximum). No overwrite, no client delete.
+    // submitChallengeV1 re-verifies size, type and file signature before the object is referenced.
+    // Read (get only, authenticated SDK; no download-token URLs): the owner, and organizers of the same company
+    // (role `admin`) who review evidence. One profile read decides both.
+    match /companies/{companyId}/challenges/{challengeId}/submissions/{uploaderId}/{slot} {
+      function signedIn() {
+        return request.auth != null && request.auth.token.email_verified == true;
+      }
+      function profile() {
+        return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+      }
+      function windowOpen() {
+        let challenge = firestore.get(/databases/(default)/documents/companies/$(companyId)/challenges/$(challengeId)).data;
+        return challenge.companyId == companyId && challenge.startDate <= request.time && request.time <= challenge.endDate;
+      }
+      function active() {
+        return profile().get('status', 'active') != 'deactivated';
+      }
+      allow get: if signedIn() && profile().companyId == companyId && active()
+        && (request.auth.uid == uploaderId || profile().role == 'admin');
+      allow create: if signedIn() && request.auth.uid == uploaderId && resource == null
+        && slot.matches('^[0-4]$')
+        && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('^image/(jpeg|png|heic)$')
+        && profile().companyId == companyId && active()
+        && windowOpen();
+    }
     // Everything else, including listing album folders, stays denied.
     match /{allPaths=**} {
       allow read, write: if false;

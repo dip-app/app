@@ -94,6 +94,7 @@ jobs:
       - run: npm run test:participation:integration
       - run: npm run test:notifications:integration
       - run: npm run test:photos:integration
+      - run: npm run test:challenge-submissions:integration
       - run: npm run test:adminapi:integration
       - run: npm ci --prefix apps/admin
       - run: npm run test:admin:live
