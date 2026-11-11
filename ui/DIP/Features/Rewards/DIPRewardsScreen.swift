@@ -54,6 +54,7 @@ struct DIPRewardsScreen: View {
             .accessibilityIdentifier("rewards.balance")
             if pointsDisplay.showsZeroNudge { zeroNudge }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: pointsDisplay.showsZeroNudge)
     }
 
     @ViewBuilder private var pillContent: some View {

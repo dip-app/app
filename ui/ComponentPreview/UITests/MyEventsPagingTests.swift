@@ -36,9 +36,9 @@ final class MyEventsPagingTests: XCTestCase {
         XCTAssertTrue(puppy.waitForExistence(timeout: 10))
         XCTAssertEqual(puppy.frame.minX, 20, accuracy: 0.5)
         XCTAssertEqual(puppy.frame.maxX, width - 20, accuracy: 0.5)
-        // The other page sits a full screen away, its own padding included: nothing of it peeks in.
+        // The other page sits a full screen away and is hidden from accessibility while it is off screen.
         let album = app.buttons["events.album.0"]
-        XCTAssertGreaterThanOrEqual(album.frame.minX, width, "the memories page starts at the display edge")
+        XCTAssertFalse(album.exists, "the off-screen page is not an accessibility target")
         app.buttons["events.segment.memories"].tap()
         XCTAssertTrue(album.waitForExistence(timeout: 5))
         XCTAssertTrue(album.isHittable)
@@ -47,7 +47,20 @@ final class MyEventsPagingTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(card.frame.minX, 20 - 0.5)
             XCTAssertLessThanOrEqual(card.frame.maxX, width - 20 + 0.5)
         }
-        XCTAssertLessThanOrEqual(puppy.frame.maxX, 0.5, "the active page has left the screen completely")
+        XCTAssertFalse(puppy.exists, "the active page is off screen and hidden from accessibility")
+    }
+
+    @MainActor func testRapidTogglingEndsOnTheLastTappedPage() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["events.card.puppy-yoga"].waitForExistence(timeout: 10))
+        app.buttons["events.segment.memories"].tap()
+        app.buttons["events.segment.active"].tap()
+        app.buttons["events.segment.memories"].tap()
+        app.buttons["events.segment.active"].tap()
+        XCTAssertTrue(app.buttons["events.segment.active"].isSelected)
+        XCTAssertTrue(app.buttons["events.card.puppy-yoga"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["events.card.puppy-yoga"].isHittable)
+        XCTAssertFalse(app.buttons["events.segment.memories"].isSelected)
     }
 
     @MainActor func testMemoriesDestinationOpensOnTheMemoriesPage() {

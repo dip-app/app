@@ -144,13 +144,14 @@ struct DIPHomeScreen: View {
     }
 
     /// Cards for the old scope drift out a little and fade; the new ones drift in from the side the toggle moved
-    /// toward. Plain cross-fade with Reduce Motion.
+    /// toward. SwiftUI evaluates the removal with the old scope's sign and the insertion with the new one's, so
+    /// the same offset gives opposite directions (to All: old exits left, new enters right; back: mirrored). Plain cross-fade with Reduce Motion.
     private var areaTransition: AnyTransition {
         guard !reduceMotion else { return .opacity }
         let sign: CGFloat = scope == .all ? 1 : -1
         return .asymmetric(
             insertion: .opacity.combined(with: .offset(x: 28 * sign)),
-            removal: .opacity.combined(with: .offset(x: -28 * sign)))
+            removal: .opacity.combined(with: .offset(x: 28 * sign)))
     }
 
     @ViewBuilder private func eventsArea(_ content: DIPHomeEventsContent, width: CGFloat) -> some View {
@@ -209,21 +210,12 @@ struct DIPHomeScreen: View {
         .accessibilityIdentifier("home.events.loading")
     }
 
-    /// Nothing cached and the read failed: one retry in place, the rest of Home stays usable.
+    /// Nothing cached and the read failed: the shared empty-state format with one retry in place; the rest of
+    /// Home stays usable. The message is a single line.
     private func eventFailure(_ message: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "wifi.exclamationmark").font(.title2).accessibilityHidden(true)
-            Text(message)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
-                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            if let onRetryEvents { DIPButton("Try again", action: onRetryEvents).accessibilityIdentifier("home.events.retry") }
-        }
-        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 205)
-        .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.events.failure")
+        DIPEmptyState(
+            screen: "home-events-error", title: "Couldn’t load events", message: message,
+            actionTitle: onRetryEvents == nil ? nil : "Try again", action: onRetryEvents.map { retry in { DIPHaptics.select(); retry() } })
     }
 
     /// "Matching your interests" / "All events": the solid thumb is the pressable control (the same toggle as

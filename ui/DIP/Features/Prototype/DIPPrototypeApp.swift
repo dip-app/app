@@ -361,13 +361,14 @@ struct DIPPrototypeApp: View {
     /// snapshot means the list on screen is the last good one (offline); without events it is a failure.
     private func eventsPhase(_ snapshot: DIPAppSnapshot, hasEvents: Bool) -> DIPHomeEventsPhase {
         if let forced = Self.previewEventsPhase { return forced }
-        if let error = model.loadError {
-            return hasEvents ? .offline : .failed(error)
+        if model.loadError != nil {
+            return hasEvents ? .offline : .failed("Check your connection and try again.")
         }
         return model.isLoading && !hasEvents ? .loading : .ready
     }
 
-    /// The points pill. A fixture profile (no account) shows the design's mock; a load error flags the cached value.
+    /// The points pill. A fixture profile (no account) shows the design's mock. Points ride on the profile, which has no
+    /// freshness signal of its own, so a data load error (the events feed is offline) flags the value as possibly out of date.
     private func pointsDisplay(_ real: Int?) -> DIPPointsDisplay {
         if let forced = Self.previewPointsDisplay { return forced }
         guard let real else { return .balance(520) }
@@ -376,17 +377,24 @@ struct DIPPrototypeApp: View {
 
     /// `--home-events-state=loading|failed|offline` for design review and UI tests only.
     private static var previewEventsPhase: DIPHomeEventsPhase? {
+        #if !DEBUG
+        return nil
+        #else
         guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--home-events-state=") }) else { return nil }
         switch arg.dropFirst("--home-events-state=".count) {
         case "loading": return .loading
-        case "failed": return .failed("Couldn’t load events. Check your connection and try again.")
+        case "failed": return .failed("Check your connection and try again.")
         case "offline": return .offline
         default: return nil
         }
+        #endif
     }
 
     /// `--points-state=loading|unavailable|stale` for design review and UI tests only (`--points=<n>` sets the value).
     private static var previewPointsDisplay: DIPPointsDisplay? {
+        #if !DEBUG
+        return nil
+        #else
         let args = ProcessInfo.processInfo.arguments
         guard let arg = args.first(where: { $0.hasPrefix("--points-state=") }) else { return nil }
         let value = args.first(where: { $0.hasPrefix("--points=") }).flatMap { Int($0.dropFirst("--points=".count)) } ?? 520
@@ -396,6 +404,7 @@ struct DIPPrototypeApp: View {
         case "stale": return .stale(value)
         default: return nil
         }
+        #endif
     }
 
     private func setHomeScope(_ scope: DIPHomeEventScope, uid: String, shown: Int?, total: Int?) {

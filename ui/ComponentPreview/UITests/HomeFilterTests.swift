@@ -101,8 +101,9 @@ final class HomeFilterTests: XCTestCase {
 
     @MainActor func testFailedShowsAnInlineRetryAndKeepsTheToggle() {
         let app = launch("match", scope: nil, extra: ["--home-events-state=failed"])
-        XCTAssertTrue(element(app, "home.events.failure").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "empty.home-events-error").waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["home.filter.all"].exists, "the rest of Home stays usable")
+        XCTAssertTrue(app.buttons["empty.home-events-error.action"].exists, "retry in place")
     }
 
     @MainActor func testOfflineKeepsTheCachedListWithAnOfflineLabel() {

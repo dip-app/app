@@ -79,9 +79,6 @@ struct DIPMyEventsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
-        .onChange(of: section) { _, next in
-            AccessibilityNotification.Announcement(next == .active ? "Active Events" : "Memories").post()
-        }
     }
 
     /// Two real pages side by side in a paging scroll view. The toggle and the pages stay in sync both ways:
@@ -97,7 +94,13 @@ struct DIPMyEventsScreen: View {
         .scrollTargetBehavior(.paging)
         .scrollPosition(id: $pageID)
         .onAppear { var t = Transaction(animation: nil); t.disablesAnimations = true; withTransaction(t) { pageID = section } }
-        .onChange(of: pageID) { _, next in if let next, next != section { section = next } }
+        .onChange(of: pageID) { _, next in
+            // A swipe moved the page: the toggle follows and VoiceOver hears the new page. (A toggle tap already
+            // speaks the selected segment, so it does not announce twice.)
+            guard let next, next != section else { return }
+            section = next
+            AccessibilityNotification.Announcement(next == .active ? "Active Events" : "Memories").post()
+        }
         .scrollIndicators(.hidden)
         .accessibilityIdentifier("events.content")
     }
@@ -110,6 +113,9 @@ struct DIPMyEventsScreen: View {
         }
         .scrollIndicators(.hidden)
         .frame(width: width)
+        // The page that is off screen is not an accessibility target (VoiceOver would scroll the pager under
+        // the user); the toggle, with its selected trait, is how VoiceOver switches pages.
+        .accessibilityHidden(section != id)
         .id(id)
         .accessibilityIdentifier("events.page.\(id.rawValue)")
     }
