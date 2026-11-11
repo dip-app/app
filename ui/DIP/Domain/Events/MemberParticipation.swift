@@ -34,5 +34,13 @@ enum RsvpFailure: Error, Equatable {
     func observeMyGoingEventIDs(scope: EventReadScope) -> AsyncThrowingStream<Set<String>, Error>
     /// Up to 100 going attendees, sorted by name.
     func attendees(scope: EventReadScope, eventID: String) async throws -> [RsvpAttendee]
+    /// A few going attendees for a card's avatar stack (one bounded read; no ordering guarantee).
+    func previewAttendees(scope: EventReadScope, eventID: String, limit: Int) async throws -> [RsvpAttendee]
     func stop()
+}
+
+extension ParticipationSource {
+    func previewAttendees(scope: EventReadScope, eventID: String, limit: Int) async throws -> [RsvpAttendee] {
+        Array(try await attendees(scope: scope, eventID: eventID).prefix(limit))
+    }
 }

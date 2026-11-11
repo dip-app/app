@@ -29,6 +29,8 @@ import DIPAccounts
     /// Joined events outside the loaded feed page (e.g. past events), fetched by ID.
     private var joinedRecords: [String: DIPContracts.Event] = [:]
     private var participants: [String: [DIPParticipant]] = [:]
+    /// Up to three attendees per event for Home card avatar stacks; never shown as a full attendee list.
+    private var previews: [String: [DIPParticipant]] = [:]
     private var joinedTask: Task<Void, Never>?
     var supportsParticipation: Bool { participation != nil }
 
@@ -56,6 +58,7 @@ import DIPAccounts
             query = nextQuery; cursor = page.nextCursor; hasMore = cursor != nil; paginationError = nil
             records = Dictionary(uniqueKeysWithValues: page.events.map { ($0.id!, $0) })
             publish()
+            prefetchPreviews(for: page.events.compactMap(\.id), token: token)
             if let detailID { selectDetail(detailID) }
         } catch {
             guard generation == token, !stopped else { return }
@@ -73,6 +76,7 @@ import DIPAccounts
             for event in page.events { records[event.id!] = event }
             self.cursor = page.nextCursor; hasMore = self.cursor != nil
             publish()
+            prefetchPreviews(for: page.events.compactMap(\.id), token: token)
         } catch {
             guard generation == token, !stopped else { return }
             if error as? EventReadFailure == .unauthenticated { stop() }
@@ -109,7 +113,7 @@ import DIPAccounts
         guard !stopped else { return }; stopped = true; generation = UUID()
         detailTask?.cancel(); detailTask = nil; detailID = nil
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
-        joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll()
+        joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
         fail(EventReadFailure.unauthenticated)
     }
@@ -129,7 +133,7 @@ import DIPAccounts
                 image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds),
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
                 isJoined: joinedIDs.contains(id),
-                attendeeCount: event.attendeeCount, attendeeAvatars: (participants[id] ?? []).prefix(5).map(\.avatar),
+                attendeeCount: event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
                 isPast: event.endTime <= clock(), metadata: metadata)
         }
         var snapshot = DIPAppSnapshot(home: DIPHomeSnapshot(unreadCount: 0, profileAvatar: profile.avatar,
@@ -186,18 +190,54 @@ import DIPAccounts
         publish()
     }
 
+    /// Card avatar stacks must not wait for an event to be opened: after each feed page, read up to
+    /// three going attendees for events that have attendees and no cached list. Bounded (4 reads in
+    /// flight, one pass per page), cached in `participants`, and it never blocks the feed. Until a
+    /// preview arrives the card shows only its count chip; a failed preview is simply retried with the
+    /// next feed refresh.
+    private func prefetchPreviews(for ids: [String], token: UUID) {
+        guard let participation, !stopped else { return }
+        let wanted = ids.filter { id in
+            participants[id] == nil && previews[id] == nil && (records[id]?.attendeeCount ?? 0) > 0
+        }
+        guard !wanted.isEmpty else { return }
+        let scope = reads.scope
+        Task { [weak self] in
+            var index = 0
+            while index < wanted.count {
+                let batch = wanted[index..<min(index + 4, wanted.count)]
+                index += 4
+                let reads = batch.map { id in
+                    (id, Task { @MainActor in
+                        try? await participation.previewAttendees(scope: scope, eventID: id, limit: 3)
+                    })
+                }
+                var results: [(String, [RsvpAttendee])] = []
+                for (id, task) in reads { if let people = await task.value { results.append((id, people)) } }
+                guard let self, self.generation == token, !self.stopped else { return }
+                for (id, people) in results where self.previews[id] == nil {
+                    self.previews[id] = people.map {
+                        DIPParticipant(id: $0.userID, name: $0.name, department: $0.department,
+                                       avatar: Self.avatar(userID: $0.userID))
+                    }
+                }
+                if !results.isEmpty { self.publish() }
+            }
+        }
+    }
+
     private func loadAttendees(_ eventID: String) async {
         guard let participation, !stopped else { return }
         guard let people = try? await participation.attendees(scope: reads.scope, eventID: eventID), !stopped else { return }
         participants[eventID] = people.map {
-            DIPParticipant(id: $0.userID, name: $0.name, department: $0.department, avatar: Self.avatar($0.avatarID))
+            DIPParticipant(id: $0.userID, name: $0.name, department: $0.department, avatar: Self.avatar(userID: $0.userID))
         }
         publish()
     }
 
-    /// RSVP snapshots carry an avatar ID; until an approved avatar catalog exists, use the
-    /// app's neutral bundled character rather than any fixture person's photo.
-    nonisolated static func avatar(_ avatarID: String) -> MediaReference { .asset("AvatarTeal") }
+    /// RSVP snapshots carry an avatar ID but no approved avatar catalog exists, so attendees get the
+    /// app-assigned avatar derived from their user id (never a fixture person's photo).
+    nonisolated static func avatar(userID: String) -> MediaReference { .generatedAvatar(userID: userID) }
     func updateProfile(_ edit: ProfileEdit) async throws { throw DIPRepositoryError.invalidInput("Use your account profile editor") }
     func sendMessage(eventID: String, messageID: String, text: String) async throws { throw DIPRepositoryError.invalidInput("Chat isn’t available yet") }
     func addPhotos(eventID: String, photos: [PhotoUpload]) async throws { throw DIPRepositoryError.invalidInput("Photo uploads aren’t available yet") }

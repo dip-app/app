@@ -5,6 +5,8 @@ public enum MediaReference: Equatable, Sendable {
     case asset(String)
     case remote(URL)
     case data(Data)
+    /// The app-assigned avatar for a user id (shape, mood and colour from a stable hash); no photo needed.
+    case generatedAvatar(userID: String)
 }
 
 public struct DIPEventSummary: Identifiable, Equatable, Sendable {
