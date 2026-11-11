@@ -325,7 +325,7 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 18 | Share text as flowing paragraphs; tags wrap; share link (universal link) | Done (link not deployed: needs Team ID, App Store ID, hosting deploy approval) | #68, #75 |
 | 19 | Outline = not pressable, solid = pressable (Goal/Reward outline pills, header title outlined) | Done (white informational chips and disabled bar left as is) | #72 |
 | 20 | Mock-data launch mode for the real app | Done | #67 |
-| 21 | Optimistic join/leave with reasonableness checks; disabled "Event is Full" button (today still "Activity full") | Queued | Events agent |
+| 21 | Optimistic join/leave with reasonableness checks; full event shows a disabled "Activity full" bar (wording kept per owner; disabled state verified in EventBarActionTests) | Built on `feature/optimistic-rsvp`; unit-tested rules and reducer, not device-tested | Events agent |
 | 22 | Activity Chat live (Firestore adapter), fix "not working" on the phone build, bell menu in chat (All/Changes/Reminders/None) | In progress | Events agent |
 | 23 | Event change-history button and sheet | Held (owner: wait) | Events agent |
 | 24 | Push registration, permission priming, deep links | Held, cannot be device-tested without the paid team APNs key | Events agent |

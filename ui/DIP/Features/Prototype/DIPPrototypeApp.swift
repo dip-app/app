@@ -322,8 +322,17 @@ struct DIPPrototypeApp: View {
     private func changeRSVP(_ eventID: String, going: Bool) {
         guard !participationUnavailable else { notice = "RSVP"; return }
         guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return }
+        // Local reasonableness check before the optimistic flip: a refused change gets the failure haptic and
+        // a clear message, and the state never changes.
+        if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
+           let denial = DIPParticipationRules.denial(going: going, metadata: metadata, attendeeCount: event.attendeeCount,
+                                                     isGoing: event.isJoined, now: Date()) {
+            DIPHaptics.failure(); rsvpError = denial.message; return
+        }
+        // The repository flips the state immediately, so the success haptic plays now; a server failure rolls back.
+        DIPHaptics.success()
         Task {
-            do { try await model.setRSVP(eventID: eventID, going: going); DIPHaptics.success() }
+            do { try await model.setRSVP(eventID: eventID, going: going) }
             catch { DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error) }
         }
     }
