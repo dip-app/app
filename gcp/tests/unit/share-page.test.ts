@@ -49,18 +49,40 @@ describe("share page domain", () => {
     assert.ok(html.includes(`<link rel="image_src" href="${image}">`));
   });
 
-  test("landing behaviour: deep link, no meta refresh, coming-soon fallback without an App Store id", () => {
+  test("event page: logo, title, coarse date, cover card, landing button, one muted line, no meta refresh", () => {
     const html = renderSharePage(buildPreview("evt_123", EVENT));
-    assert.ok(html.includes('href="dip://events/evt_123"'));
+    assert.ok(html.includes('id="open-app" href="dip://events/evt_123"'));
+    assert.ok(html.includes(">Get the app</a>"));
+    assert.ok(html.includes('src="/img/landing/app-store.svg"'));
+    assert.ok(html.includes('src="/img/landing/logo.svg"'));
+    assert.ok(html.includes("<h1>Sunset hike</h1>"));
+    assert.ok(html.includes('<p class="date">Fri, Nov 20</p>'));
+    assert.ok(html.includes(`<img src="${SHARE_ORIGIN}/share/og/hiking.jpg" alt="Cover image for Sunset hike"`));
+    assert.ok(html.includes("Don’t have DIP yet? It’s coming to the App Store."));
+    assert.ok(!html.includes("Open in DIP"));
+    assert.ok(!html.slice(html.indexOf("<body>")).includes("Bring water")); // description stays in the meta tags only
     assert.ok(!/http-equiv/i.test(html));
-    assert.ok(!html.includes("<script"));
-    assert.ok(html.includes("DIP is coming to the App Store") || html.includes("coming to the App Store"));
+    assert.ok(!html.includes("location.replace"));
+    assert.equal((html.match(/<script/g) ?? []).length, 1);
+    assert.ok(html.includes("fonts.googleapis.com/css2?family=Fjalla+One&family=Figtree"));
   });
 
-  test("with an App Store id the redirect is delayed JavaScript only", () => {
+  test("generic page: logo, DIP headline, one line, same button to dip://", () => {
+    const html = renderSharePage(genericPreview(null));
+    assert.ok(html.includes('id="open-app" href="dip://"'));
+    assert.ok(html.includes("<h1>DIP</h1>"));
+    assert.ok(html.includes("Join activities with your coworkers on DIP."));
+    assert.ok(!html.includes('class="cover"'));
+    assert.ok(!html.includes('class="date"'));
+    assert.ok(!html.includes("Open in DIP"));
+    assert.ok(renderSharePage(genericPreview("evt_123")).includes('href="dip://events/evt_123"'));
+  });
+
+  test("with an App Store id the muted line links to the listing and nothing redirects", () => {
     const html = renderSharePage(buildPreview("evt_123", EVENT), "1234567890");
-    assert.ok(html.includes("https://apps.apple.com/app/id1234567890"));
-    assert.match(html, /setTimeout\([^]*2500\)/);
+    assert.ok(html.includes('<a href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>'));
+    assert.ok(!html.includes("coming to the App Store"));
+    assert.ok(!html.includes("location.replace"));
     assert.ok(!/http-equiv/i.test(html));
     assert.ok(metaContent(html, "apple-itunes-app")!.startsWith("app-id=1234567890,"));
   });
