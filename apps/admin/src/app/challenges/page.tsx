@@ -48,7 +48,7 @@ export default function ChallengesPage() {
                     <span className="theme-row-pills"><Info tone={phase === "current" ? "ok" : undefined}>{PHASE_LABEL[phase]}</Info>{pending[theme.id] !== undefined && <Info tone={pending[theme.id] !== "0" ? "warn" : undefined}>{pending[theme.id]} pending</Info>}</span>
                     <h2>{theme.title}</h2>
                     <p className="muted">{formatWindow(theme.startDate, theme.endDate)} · {formatGoal(theme.goal, theme.goalUnit)} · {formatReward(theme.pointsReward)}</p>
-                    <p className="muted">{theme.participantCount} joined{theme.completedCount > 0 ? ` · ${theme.completedCount} completed` : ""}</p>
+                    <p className="muted">{theme.participantCount} joined{theme.completedCount > 0 ? ` · ${theme.completedCount} completed` : ""}{phase === "past" ? " · Reviews stay open after the week ends" : ""}</p>
                   </div>
                   <Link className="pill-btn dark" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={`Review submissions for ${theme.title}, ${formatWindow(theme.startDate, theme.endDate)}`}>Review submissions</Link>
                 </li>
