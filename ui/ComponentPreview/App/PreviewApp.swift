@@ -12,6 +12,8 @@ struct PreviewApp: App {
                 } else if let demo = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--onboarding-demo=") }) {
                     let sceneID = String(demo.dropFirst("--onboarding-demo=".count))
                     OnboardingDemoPreview(sceneID: sceneID, configuration: OnboardingDemoPreview.configuration(sceneID: sceneID))
+                } else if let mode = HomeFilterPreview.launchMode() {
+                    HomeFilterPreview(mode: mode)
                 } else if let mode = LongTitlesPreview.launchMode() {
                     LongTitlesPreview(mode: mode)
                 } else if let state = ProfileStatesPreview.launchState() {

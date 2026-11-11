@@ -147,7 +147,7 @@ import DIPAccounts
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
                 isJoined: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.isGoing : joinedIDs.contains(id),
                 attendeeCount: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.attendeeCount : event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
-                isPast: event.endTime <= clock(), metadata: metadata)
+                isPast: event.endTime <= clock(), metadata: metadata, tagIDs: event.tagIds)
         }
         var snapshot = DIPAppSnapshot(home: DIPHomeSnapshot(unreadCount: 0, profileAvatar: profile.avatar,
             challenge: nil, events: [], recentAttendeeAvatars: []), activeEvents: [], memories: [], profile: profile,

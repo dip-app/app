@@ -59,6 +59,8 @@ struct DIPPrototypeApp: View {
         self.onLoadMoreEvents = onLoadMoreEvents; self.loadingMoreEvents = loadingMoreEvents
         self.eventPaginationError = eventPaginationError
         self.accountProfile = accountProfile
+        // Read the saved scope up front so the first frame is already filtered (no flash of All events).
+        _homeScope = State(initialValue: accountProfile.map { DIPHomeScopeStore().scope(uid: $0.id) } ?? .all)
         self.interestCatalogLoading = interestCatalogLoading
         self.interestCatalogError = interestCatalogError
         self.onRetryInterestCatalog = onRetryInterestCatalog
@@ -118,6 +120,8 @@ struct DIPPrototypeApp: View {
     @State private var albumPickerPresented = false
     /// The tab whose name the fixed header shows (the last non-Profile tab while Profile is selected).
     @State private var headerTab: DIPHomeTab = .home
+    /// Home's interest filter scope; persisted per member on this device.
+    @State private var homeScope: DIPHomeEventScope = .all
     // Avatar flight between the header capsule and the Profile badge (see `avatarFlyer`).
     @State private var flightFrame = CGRect.zero
     @State private var flightRing: CGFloat = 0
@@ -158,6 +162,9 @@ struct DIPPrototypeApp: View {
             .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { shellOrigin = $0 }
             .onAppear { if flightFrame == .zero { flightFrame = idleAvatarFrame(for: selectedTab, in: geometry.size) } }
             .onChange(of: selectedTab) { old, new in flyAvatar(from: old, to: new, in: geometry.size) }
+            .onChange(of: accountProfile?.id ?? model.snapshot?.profile.id, initial: true) { _, uid in
+                if let uid { homeScope = DIPHomeScopeStore().scope(uid: uid) }
+            }
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
@@ -231,7 +238,16 @@ struct DIPPrototypeApp: View {
     private func tabPages(_ snapshot: DIPAppSnapshot) -> some View {
         let lists = DIPEventLists(snapshot: snapshot, now: Date())
         var home = snapshot.home
-        home.events = lists.discovery
+        // Interest filter over the loaded events (no extra reads). Only members with interests the catalog
+        // still knows get the control; everyone else sees Home exactly as before.
+        // Fixture (non-account) Home keeps its reference layout: the control is for real members only.
+        let member = accountProfile ?? snapshot.profile
+        let interests = accountProfile == nil ? [] : DIPInterestFilter.activeInterests(
+            storedIDs: member.interestTagIDs, catalog: member.interestCatalog.isEmpty ? nil : member.interestCatalog)
+        let visible = DIPInterestFilter.visibleEvents(lists.discovery, scope: homeScope, activeInterests: interests)
+        home.events = visible.events
+        let eventFilter: DIPHomeEventFilter? = interests.isEmpty ? nil : DIPHomeEventFilter(
+            interests: interests, scope: homeScope, shownCount: visible.events.count, totalCount: lists.discovery.count)
         let pages: (DIPHomeTab) -> AnyView = { tab in
             switch tab {
             case .home:
@@ -243,7 +259,8 @@ struct DIPPrototypeApp: View {
                     paginationError: eventPaginationError,
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
                     onRefresh: homeRefresh, challengeState: challengeFeed?.state,
-                    onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } }))
+                    onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } },
+                    eventFilter: eventFilter, onFilterScope: { setHomeScope($0, uid: member.id) }))
             case .events:
                 if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
@@ -269,7 +286,8 @@ struct DIPPrototypeApp: View {
                 AnyView(DIPRewardsScreen(
                     unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
                     showsBottomBar: false, onSelectTab: selectTab,
-                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
+                    onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) },
+                    pointsBalance: (accountProfile ?? snapshot.profile).pointsBalance))
             }
         }
         // Home, Rewards and My Events share one header drawn by the shell (fixed while pages slide);
@@ -278,6 +296,12 @@ struct DIPPrototypeApp: View {
             AnyView(pages(tab).environment(\.dipHeaderHosted, tab != .profile)
                 .environment(\.profileBadgeLink, ProfileBadgeLink(isHidden: isAvatarFlying, report: reportBadgeFrame)))
         }
+    }
+
+    private func setHomeScope(_ scope: DIPHomeEventScope, uid: String) {
+        guard scope != homeScope else { return }
+        withAnimation(DIPMotion.section(reduceMotion: reduceMotion)) { homeScope = scope }
+        DIPHomeScopeStore().save(scope, uid: uid)
     }
 
     // MARK: Avatar flight

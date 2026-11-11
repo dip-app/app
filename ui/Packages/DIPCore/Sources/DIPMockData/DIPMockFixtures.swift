@@ -91,9 +91,9 @@ public enum DIPMockFixtures {
 
     public static var reference: DIPAppSnapshot {
         let homeEvents: [DIPEventSummary] = [
-            .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("EventCard"), avatars: assets(["AvatarPink", "CoworkerProfilePicture1", "AvatarTeal"]), attendeeCount: 7, imageShade: 0.1),
-            .init(id: "kayaking", title: "Kayaking", locality: "Delaware River, NJ", image: .asset("EventCard1"), avatars: assets(["CoworkerProfilePicture2", "AvatarRed", "CoworkerProfilePicture1"]), attendeeCount: 13, imageShade: 0.2),
-            .init(id: "hike", title: "Hike", locality: "Poconos, PA", image: .asset("EventCard2"), avatars: assets(["CoworkerProfilePicture", "CoworkerProfilePicture2", "AvatarTeal"]), attendeeCount: 10, imageShade: 0.08)
+            .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("EventCard"), avatars: assets(["AvatarPink", "CoworkerProfilePicture1", "AvatarTeal"]), attendeeCount: 7, imageShade: 0.1, tagIDs: ["tag-animals"]),
+            .init(id: "kayaking", title: "Kayaking", locality: "Delaware River, NJ", image: .asset("EventCard1"), avatars: assets(["CoworkerProfilePicture2", "AvatarRed", "CoworkerProfilePicture1"]), attendeeCount: 13, imageShade: 0.2, tagIDs: ["tag-outdoors"]),
+            .init(id: "hike", title: "Hike", locality: "Poconos, PA", image: .asset("EventCard2"), avatars: assets(["CoworkerProfilePicture", "CoworkerProfilePicture2", "AvatarTeal"]), attendeeCount: 10, imageShade: 0.08, tagIDs: ["tag-outdoors", "tag-fitness"])
         ]
         let active: [DIPEventSummary] = [
             .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("events_Rectangle930"), imageShade: 0.2),

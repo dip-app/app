@@ -17,9 +17,11 @@ public struct DIPEventSummary: Identifiable, Equatable, Sendable {
     public var avatars: [MediaReference]
     public var attendeeCount: Int
     public var imageShade: Double
-    public init(id: String, title: String, locality: String, image: MediaReference, avatars: [MediaReference] = [], attendeeCount: Int = 0, imageShade: Double = 0) {
+    /// Catalog tag ids of the event (opaque ids, not names); used for interest filtering.
+    public var tagIDs: [String]
+    public init(id: String, title: String, locality: String, image: MediaReference, avatars: [MediaReference] = [], attendeeCount: Int = 0, imageShade: Double = 0, tagIDs: [String] = []) {
         self.id = id; self.title = title; self.locality = locality; self.image = image
-        self.avatars = avatars; self.attendeeCount = attendeeCount; self.imageShade = imageShade
+        self.avatars = avatars; self.attendeeCount = attendeeCount; self.imageShade = imageShade; self.tagIDs = tagIDs
     }
 }
 
@@ -143,7 +145,10 @@ public struct DIPProfile: Identifiable, Equatable, Sendable {
     public var availability: [String]
     public var travelRadiusMiles: Int?
     public var hasAccountDetails: Bool { travelRadiusMiles != nil }
-    public init(id: String, displayName: String, department: String, city: String, interestTagIDs: [String], interestCatalog: [DIPInterest], photo: MediaReference, avatar: MediaReference, favoriteMemories: [DIPFavoriteMemory], jobTitle: String = "", availability: [String] = [], travelRadiusMiles: Int? = nil) {
+    /// The member's points from the profile document (display only); nil for fixture profiles.
+    public var pointsBalance: Int?
+    public init(id: String, displayName: String, department: String, city: String, interestTagIDs: [String], interestCatalog: [DIPInterest], photo: MediaReference, avatar: MediaReference, favoriteMemories: [DIPFavoriteMemory], jobTitle: String = "", availability: [String] = [], travelRadiusMiles: Int? = nil, pointsBalance: Int? = nil) {
+        self.pointsBalance = pointsBalance
         self.id = id; self.displayName = displayName; self.department = department; self.city = city
         self.interestTagIDs = interestTagIDs; self.interestCatalog = interestCatalog; self.photo = photo
         self.avatar = avatar; self.favoriteMemories = favoriteMemories
@@ -182,7 +187,10 @@ public struct DIPEventDetail: Identifiable, Equatable, Sendable {
     public var attendeeCount: Int
     public var attendeeAvatars: [MediaReference]
     public var attendeeOverflowCount: Int { max(0, attendeeCount - attendeeAvatars.count) }
-    public init(id: String, title: String, image: MediaReference, timing: String, description: String, tags: [String], isJoined: Bool = false, attendeeCount: Int = 0, attendeeAvatars: [MediaReference], isPast: Bool = false, metadata: DIPEventMetadata? = nil) {
+    /// Catalog tag ids (the `tags` above are the display names).
+    public var tagIDs: [String]
+    public init(id: String, title: String, image: MediaReference, timing: String, description: String, tags: [String], isJoined: Bool = false, attendeeCount: Int = 0, attendeeAvatars: [MediaReference], isPast: Bool = false, metadata: DIPEventMetadata? = nil, tagIDs: [String] = []) {
+        self.tagIDs = tagIDs
         self.metadata = metadata
         self.isPast = isPast
         self.id = id; self.title = title; self.image = image; self.timing = timing; self.description = description
