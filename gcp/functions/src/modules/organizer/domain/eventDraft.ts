@@ -157,7 +157,9 @@ export function parseCreateEventRequest(data: unknown): ParsedCreate {
 
 export function parseUpdateEventRequest(data: unknown): ParsedUpdate {
   const record = asRecord(data, "request");
-  exactKeys(record, ["contractVersion", "companyId", "eventId", "expectedRevision", "event", "status", "statusReason"], "");
+  // statusReason is the only optional key.
+  const { statusReason: _optional, ...required } = record;
+  exactKeys(required, ["contractVersion", "companyId", "eventId", "expectedRevision", "event", "status"], "");
   if (record.contractVersion !== 1) fail(["contractVersion"]);
   const eventId = record.eventId;
   if (typeof eventId !== "string" || !ID_PATTERN.test(eventId)) fail(["eventId"]);

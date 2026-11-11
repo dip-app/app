@@ -3455,7 +3455,8 @@
         },
         "revision": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "description": "Member revision after the call; 0 when the member was never admin-edited."
         },
         "changedFields": {
           "type": "array",
@@ -3538,7 +3539,8 @@
         },
         "revision": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "description": "Member revision after the call; 0 when the member was never admin-edited."
         }
       },
       "required": [
@@ -3627,7 +3629,8 @@
         },
         "revision": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "description": "Member revision after the call; 0 when the member was never admin-edited."
         }
       },
       "required": [
