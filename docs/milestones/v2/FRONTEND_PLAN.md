@@ -332,7 +332,7 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 21 | Optimistic join/leave with reasonableness checks; full event shows a disabled "Activity full" bar (wording kept per owner; disabled state verified in EventBarActionTests) | Built on `feature/optimistic-rsvp`; unit-tested rules and reducer, not device-tested | Events agent |
 | 22 | Activity Chat live (Firestore adapter), fix "not working" on the phone build, bell menu in chat (All/Changes/Reminders/None) | In progress | Events agent |
 | 23 | Event change-history button and sheet | Merged into `feature/v2-remaining` (PR #100); not merged to main | Events agent |
-| 24 | Push registration, permission priming, deep links | Held, cannot be device-tested without the paid team APNs key | Events agent |
+| 24 | Push registration, permission priming, deep links | Stream A PR 4 merged into `feature/v2-remaining` behind a flag (off by default); unit-tested with fakes, device-unverified: needs the paid team APNs key and aps-environment | Events agent |
 | 25 | Weekly-theme page polish to match the event page | Stream A PR 3 merged into `feature/v2-remaining` (calendar window pill, info card, not-started/active/ended states) | Events agent |
 | 26 | Reward points an event gives (show if it has them) | Stream A PR 2 on `feature/v2-remaining`: outline points pill on the event page and Home cards (hidden at 0); in quality rounds | Events agent |
 | 27 | Shake-to-report bug screen (design exists) implementation | In review (`feature/v2-stream-c`); markup and shake prompt deferred | Backlog B |

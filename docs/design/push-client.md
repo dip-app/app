@@ -17,6 +17,18 @@ Status: built on `feature/v2-remaining`, behind a feature flag, unit-tested with
 3. Set `DIP_PUSH_ENABLED = YES` in `Local.xcconfig`.
 4. Deploy the C1 notification functions if they are not deployed (registerDeviceV1/unregisterDeviceV1 are in the notifications module).
 
+## Containment and sign-out
+
+- With the flag off, FirebaseMessaging is linked but inert: Info.plist sets `FirebaseMessagingAutoInitEnabled` to NO, and only `PushComposition.make()` (flag on) enables FCM auto-init. No token is minted and no FCM traffic starts.
+- The registered device is remembered per member (`uid|token`), so another member on the same phone always registers again; sign-out calls `unregisterDeviceV1` and deletes the FCM token, and a failed unregister is retried at the next sign-in. Forced sign-outs (expired or revoked sessions) cannot call the server; the server moves a token to the next registering member and prunes dead ones.
+- Registration is re-run whenever the app becomes active, so a permission granted later in iOS Settings takes effect.
+
+## Device checklist (when the paid team is ready)
+
+- Cold start from a notification tap: the event opens; `/chat` falls back to the event page if the event snapshot has not loaded yet.
+- Join an activity: the priming dialog appears once; accepting shows the system prompt; the device appears under `users/{uid}/devices`.
+- Sign out and sign in as another member on the same phone: the device moves to the new member.
+
 ## Not covered
 
 Background/silent pushes, badge counts, notification categories/actions, and any server change. A rich notification service extension is out of scope.
