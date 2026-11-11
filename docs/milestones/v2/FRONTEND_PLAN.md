@@ -337,3 +337,5 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 29 | Known failing UI tests to repair after the owner's fix list (two demo-stage, interests search, chat/photo-comment retry, ScreenFlowTests join expectation) | Not started | F7 |
 | 30 | Owner process rules: no large-text/accessibility work, no full test runs while landing, merge early, shared Claude-DIP simulator under the lock | Standing | all agents |
 | 31 | Rich link previews (og/twitter metadata: title, short description, image; no address/PII) for event share links | In progress (agent building a public function behind the hosting rewrite; not deployed) | share-link previews agent |
+| 32 | Apple Team ID for Universal Links (replace `TEAMID` in apps/admin/public/aasa/apple-app-site-association.json, build with the paid-team entitlements, set App Store ID, redeploy hosting) | **Blocked: waiting for Apple to approve the owner's developer account.** The association file is already served correctly on team05-dip.web.app (appAssociation NONE, PR #86); only the Team ID and App Store ID are missing | owner |
+
