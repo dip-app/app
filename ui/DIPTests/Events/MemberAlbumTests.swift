@@ -92,6 +92,11 @@ import UniformTypeIdentifiers
             _ = try await iterator.next()
             participation.joined?.yield(joined ? ["boat"] : [])
             repository.selectDetail("boat")
+            if joined {
+                // Wait for the joined event's record (fetched by ID) before asking for upload rights.
+                var seen: DIPAppSnapshot?
+                repeat { seen = try await iterator.next() } while seen?.eventDetails["boat"]?.isJoined != true
+            }
             do {
                 _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u1", data: Data([1])), progress: { _ in })
                 XCTFail("upload must be refused")
@@ -99,7 +104,6 @@ import UniformTypeIdentifiers
                 XCTAssertEqual(error as? DIPRepositoryError, .invalidInput(reason.message))
             }
             XCTAssertTrue(albums.uploads.isEmpty)
-            _ = iterator
             repository.stop()
         }
     }

@@ -190,12 +190,25 @@ struct DIPAlbumScreen: View {
 
     private var uploadStrip: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(uploadStatus)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
-                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
-                .accessibilityIdentifier("album.upload.status")
+            HStack(spacing: 10) {
+                Text(uploadStatus)
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                    .accessibilityIdentifier("album.upload.status")
+                Spacer(minLength: 0)
+                if retryableFailures.count > 1 {
+                    Button("Retry all") { retryableFailures.forEach { uploads.retry($0.id) } }
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                        .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                        .padding(.horizontal, 14).frame(minHeight: 32)
+                        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                        .contentShape(Capsule())
+                        .buttonStyle(DIPPressFeedbackStyle())
+                        .accessibilityIdentifier("album.upload.retry-all")
+                }
+            }
             ScrollView(.horizontal) {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(spacing: 10) {
                     ForEach(Array(drafts.enumerated()), id: \.element.id) { index, item in
                         uploadTile(item, index: index)
                     }
@@ -207,77 +220,92 @@ struct DIPAlbumScreen: View {
         .padding(.bottom, 6)
     }
 
+    private var retryableFailures: [AlbumUploadQueue.Item] {
+        drafts.filter { if case .failed = $0.state { $0.upload != nil } else { false } }
+    }
+
+    /// Counts every state shown in the strip, e.g. "2 not added · 1 uploading".
     private var uploadStatus: String {
         let pending = uploads.pendingCount(for: album.eventID)
         let failed = uploads.failedCount(for: album.eventID)
-        if pending > 0 { return pending == 1 ? "Adding 1 photo…" : "Adding \(pending) photos…" }
-        if failed > 0 { return failed == 1 ? "1 photo wasn’t added." : "\(failed) photos weren’t added." }
-        return "Photos added"
+        var parts: [String] = []
+        if failed > 0 { parts.append("\(failed) not added") }
+        if pending > 0 { parts.append(pending == 1 ? "1 uploading" : "\(pending) uploading") }
+        return parts.isEmpty ? "Photos added" : parts.joined(separator: " · ")
     }
 
+    /// One draft: thumbnail with a status scrim; a failed draft carries its own Retry and remove controls.
     private func uploadTile(_ item: AlbumUploadQueue.Item, index: Int) -> some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Group {
-                    if let thumbnail = item.thumbnail { DIPMedia(.data(thumbnail)).resizable().scaledToFill() }
-                    else { DIPTokens.Color.surfaceMuted.swiftUIColor }
-                }
-                .frame(width: 84, height: 84)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                tileOverlay(item)
+        let side: CGFloat = 104
+        return ZStack {
+            Group {
+                if let thumbnail = item.thumbnail { DIPMedia(.data(thumbnail)).resizable().scaledToFill() }
+                else { DIPTokens.Color.surfaceMuted.swiftUIColor }
             }
-            .frame(width: 84, height: 84)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(tileLabel(item))
-            .accessibilityIdentifier("album.upload.\(index)")
-            if case .failed(let message) = item.state {
-                HStack(spacing: 6) {
-                    if item.upload != nil {
-                        Button("Retry") { uploads.retry(item.id) }
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
-                            .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
-                            .padding(.horizontal, 12).frame(height: 30)
-                            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                            .contentShape(Capsule())
-                            .buttonStyle(DIPPressFeedbackStyle())
-                            .accessibilityHint(message)
-                            .accessibilityIdentifier("album.upload.retry.\(index)")
-                    }
-                    Button { uploads.remove(item.id) } label: {
-                        Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
-                            .frame(width: 30, height: 30)
-                            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Circle())
-                            .contentShape(Circle())
-                    }
+            .frame(width: side, height: side)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            tileOverlay(item)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(tileLabel(item))
+                .accessibilityIdentifier("album.upload.\(index)")
+        }
+        .frame(width: side, height: side)
+        .overlay(alignment: .bottom) {
+            if case .failed(let message) = item.state, item.upload != nil {
+                Button("Retry") { uploads.retry(item.id) }
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                    .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                    .padding(.horizontal, 14).frame(height: 28)
+                    .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                     .buttonStyle(DIPPressFeedbackStyle())
-                    .accessibilityLabel("Remove photo")
-                    .accessibilityIdentifier("album.upload.remove.\(index)")
-                }
+                    .accessibilityHint(message)
+                    .accessibilityIdentifier("album.upload.retry.\(index)")
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if case .failed = item.state {
+                Button { uploads.remove(item.id) } label: {
+                    Image(systemName: "xmark").font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                        .frame(width: 24, height: 24)
+                        .background(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.85), in: Circle())
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(DIPPressFeedbackStyle())
+                .offset(x: 8, y: -8)
+                .accessibilityLabel("Remove photo")
+                .accessibilityIdentifier("album.upload.remove.\(index)")
+            }
+        }
+        .padding(.top, 8)
     }
 
     @ViewBuilder private func tileOverlay(_ item: AlbumUploadQueue.Item) -> some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        switch item.state {
-        case .preparing, .waiting:
-            shape.fill(.black.opacity(0.35))
-            ProgressView().tint(.white)
-        case .uploading(let value):
-            shape.fill(.black.opacity(0.35))
-            Circle().stroke(.white.opacity(0.35), lineWidth: 3).frame(width: 30, height: 30)
-            Circle().trim(from: 0, to: max(0.02, value))
-                .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .rotationEffect(.degrees(-90)).frame(width: 30, height: 30)
-                .animation(.linear(duration: 0.2), value: value)
-        case .failed:
-            shape.fill(.black.opacity(0.55))
-            Image(systemName: "exclamationmark.circle.fill").font(.system(size: 24))
-                .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
-        case .done:
-            shape.fill(.black.opacity(0.2))
-            Image(systemName: "checkmark.circle.fill").font(.system(size: 24)).foregroundStyle(.white)
+        ZStack {
+            switch item.state {
+            case .preparing, .waiting:
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))
+                ProgressView().tint(.white)
+            case .uploading(let value):
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))
+                Circle().stroke(.white.opacity(0.35), lineWidth: 3).frame(width: 28, height: 28)
+                Circle().trim(from: 0, to: max(0.02, value))
+                    .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90)).frame(width: 28, height: 28)
+                    .animation(.linear(duration: 0.2), value: value)
+            case .failed:
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.55))
+                Image(systemName: "exclamationmark.circle.fill").font(.system(size: 28))
+                    .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
+                    .offset(y: -10)
+            case .done:
+                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 28)).foregroundStyle(.white)
+            }
         }
     }
 
