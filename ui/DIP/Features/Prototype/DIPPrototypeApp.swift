@@ -65,7 +65,11 @@ struct DIPPrototypeApp: View {
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
-                ?? (ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+                ?? (ProcessInfo.processInfo.arguments.contains("--many-tags")
+                ? DIPMockFixtures.manyTagsReview()
+                : ProcessInfo.processInfo.arguments.contains("--v1-event-fixtures")
+                ? DIPMockFixtures.v1Events()
+                : ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
                 ? DIPMockFixtures.chatGroupingReview

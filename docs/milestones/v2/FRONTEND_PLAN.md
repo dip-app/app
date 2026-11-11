@@ -26,6 +26,10 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Onboarding P2, B2-B5 | Tour shell (after P1); scenes B2-B5 (after P3) | Not started | to be created | iOS |
 | C2 iOS slice | Activity chat live adapter (V2-S01, selected; record it in its own issue) and bell menu (items A, C) | Not started | to be created | iOS |
 | C3 iOS slice | Push registration, permission priming, settings UI, history UI, add to calendar (items B, C, D, E) | Not started | to be created | iOS |
+| Add to calendar (E) | "Add" pill with calendar icon on the event When card; system event editor (no permission needed); hidden for past/cancelled | In review, PR pending (branch `feature/add-to-calendar`) | `feature/add-to-calendar` | iOS |
+| Event share text | Share sheet text rewritten as two natural-language paragraphs with fallbacks (pure tested function in DIPCore) | In review, same PR | `feature/add-to-calendar` | iOS |
+| Event tag wrapping | Interest tags wrap onto several lines instead of truncating (hero overlay) | In review, same PR; verified in a many-tags fixture screenshot | `feature/add-to-calendar` | iOS |
+| Event points reward display | Show the points an event gives on card/detail when the event has a points value; check the Event contract for the field first (belongs with F2) | Held, not started | none | iOS |
 | Push notifications (B) | FCM/APNs end to end | Not started; device test needs the paid Apple Developer team | see C1/C3 | Backend / iOS |
 | Shake to report | Implementation | Not started (design done, see Design status) | none | iOS |
 | TestFlight | Release build | Not started; needs the paid team (F8) | none | All |

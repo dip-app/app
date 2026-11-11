@@ -40,6 +40,15 @@ public enum DIPMockFixtures {
         return snapshot
     }
 
+    /// V1 events where puppy-yoga carries many long interest tags (wrapping review).
+    public static func manyTagsReview(now: Date = Date()) -> DIPAppSnapshot {
+        var snapshot = v1Events(now: now)
+        snapshot.eventDetails["puppy-yoga"]?.tags = [
+            "Yoga", "Animals", "Wellness & mindfulness", "Outdoor adventures and hiking", "Board games", "Live music",
+            "Food and cooking classes", "Volunteering", "Photography", "A really long interest name that needs wrapping"]
+        return snapshot
+    }
+
     public static var emptySocialReview: DIPAppSnapshot {
         var snapshot = reference
         for id in snapshot.messages.keys { snapshot.messages[id] = [] }

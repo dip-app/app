@@ -48,14 +48,15 @@ struct DIPDetailHero: View {
                     DIPMedia(image).resizable().scaledToFill()
                         .frame(width: geometry.size.width, height: 264).clipped()
                 }
-                HStack(spacing: 10.435) {
+                DIPTagFlowLayout(spacing: 10.435, lineSpacing: 8) {
                     ForEach(tags, id: \.self) { tag in
                         Text(tag)
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                             .foregroundStyle(.black)
+                            .multilineTextAlignment(.center)
                             .padding(.horizontal, 13.043)
-                            .frame(height: 30)
-                            .background(.white, in: Capsule())
+                            .frame(minHeight: 30)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 15))
                     }
                 }
                 .padding(10)

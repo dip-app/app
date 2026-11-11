@@ -73,19 +73,58 @@ public struct DIPEventMetadata: Equatable, Sendable {
         return formatter.string(from: amount) ?? "USD \(amount.stringValue)"
     }
 
-    /// Useful plain text for the native share sheet; V1 does not promise a deep link.
-    public func shareText(title: String, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
-        var lines = [title]
-        if status == .cancelled { lines.append("Cancelled") }
-        lines.append(dateTimeText(locale: locale, timeZone: timeZone))
-        lines.append("Duration: \(durationMinutes) minutes")
-        let location = [venueName, address, locality].map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines)
-        }.filter { !$0.isEmpty }
-        if !location.isEmpty { lines.append(location.joined(separator: ", ")) }
+    /// Natural-language text for the native share sheet (two short paragraphs); V1 does not promise a deep link.
+    /// Missing pieces (end time, venue, price, description) are left out gracefully instead of shown as blank labels.
+    public func shareText(title: String, description: String = "", locale: Locale = .current,
+                          timeZone: TimeZone = .current) -> String {
+        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let subject = name.isEmpty ? "this activity" : name
+        if status == .cancelled {
+            return "Heads up: \(subject) has been cancelled. Hopefully we can find another time to get together."
+        }
+        var intro = "Join me for \(subject)!"
+        if let sentence = Self.firstSentence(description) { intro += " \(sentence)" }
+
+        var details = "It’s \(whenPhrase(locale: locale, timeZone: timeZone))"
+        let place = Self.uniqueJoined([venueName, address, locality])
+        if !place.isEmpty { details += " at \(place)" }
+        details += "."
         let note = costNote.trimmingCharacters(in: .whitespacesAndNewlines)
-        lines.append(priceText(locale: locale) + (note.isEmpty ? "" : " — \(note)"))
-        return lines.joined(separator: "\n")
+        if costCents > 0 {
+            details += " It costs \(priceText(locale: locale))\(note.isEmpty ? "" : " (\(note))")."
+        } else {
+            details += " It’s free to join\(note.isEmpty ? "" : " (\(note))")."
+        }
+        return "\(intro)\n\n\(details) Hope to see you there!"
+    }
+
+    private func whenPhrase(locale: Locale, timeZone: TimeZone) -> String {
+        let day = DateFormatter()
+        day.locale = locale; day.timeZone = timeZone
+        day.setLocalizedDateFormatFromTemplate("EEEEMMMMd")
+        let time = DateFormatter()
+        time.locale = locale; time.timeZone = timeZone
+        time.dateStyle = .none; time.timeStyle = .short
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let startDay = day.string(from: startTime), startTimeText = time.string(from: startTime)
+        guard endTime > startTime else { return "on \(startDay) at \(startTimeText)" }
+        if calendar.isDate(startTime, inSameDayAs: endTime) {
+            return "on \(startDay) from \(startTimeText) to \(time.string(from: endTime))"
+        }
+        return "from \(startDay) at \(startTimeText) to \(day.string(from: endTime)) at \(time.string(from: endTime))"
+    }
+
+    private static func firstSentence(_ text: String) -> String? {
+        let flat = text.split(whereSeparator: \.isNewline).joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !flat.isEmpty else { return nil }
+        var end = flat.endIndex
+        for terminator in [". ", "! ", "? "] {
+            if let range = flat.range(of: terminator), range.lowerBound < end { end = flat.index(after: range.lowerBound) }
+        }
+        let sentence = String(flat[..<end])
+        return sentence.count > 160 ? String(sentence.prefix(159)) + "…" : sentence
     }
 
     /// Apple Maps search for the venue (opens Maps or the web page); nil when there is no usable address.
