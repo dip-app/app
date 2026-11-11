@@ -15,19 +15,21 @@ final class ChallengeSubmissionCaptureTests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
     }
 
-    private func scrollToSection(_ app: XCUIApplication) {
-        XCTAssertTrue(element(app, "submission.section").waitForExistence(timeout: 10))
-        for _ in 0..<3 { app.swipeUp() }
+    private func openSheet(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 10))
+        app.buttons["submission.action"].tap()
+        XCTAssertTrue(app.buttons["submission.send"].waitForExistence(timeout: 5))
     }
 
-    @MainActor func testSectionStates() {
+    @MainActor func testPageStates() {
         continueAfterFailure = true
-        for (state, name) in [("none", "01-not-started"), ("pending", "02-pending"), ("approved", "03-approved"),
-                              ("rejected", "04-needs-changes"), ("missed", "05-closed"), ("upcoming", "06-upcoming"),
-                              ("loading", "07-loading"), ("load-failed", "08-load-error")] {
+        for (state, name, scroll) in [("none", "01-no-entry-bar-only", 0), ("pending", "02-pending-large-photo", 3), ("approved", "03-approved", 3),
+                                      ("rejected", "04-needs-changes", 3), ("missed", "05-closed-no-entry", 0), ("upcoming", "06-upcoming", 0),
+                                      ("loading", "07-loading", 3), ("load-failed", "08-load-error", 3)] {
             let app = launch(state)
-            scrollToSection(app)
-            if state == "pending" { sleep(1) }
+            _ = element(app, "challenge.how").waitForExistence(timeout: 10)
+            for _ in 0..<scroll { app.swipeUp() }
+            sleep(1)
             snap(app, name)
             app.terminate()
         }
@@ -35,71 +37,58 @@ final class ChallengeSubmissionCaptureTests: XCTestCase {
 
     @MainActor func testSheetStates() {
         continueAfterFailure = true
-        // Empty sheet, then with the validation issue.
         var app = launch("none")
-        scrollToSection(app)
-        app.buttons["submission.action"].tap()
-        XCTAssertTrue(app.buttons["submission.send"].waitForExistence(timeout: 5))
-        snap(app, "09-sheet-empty")
-        app.buttons["submission.send"].tap()
-        sleep(1)
-        snap(app, "10-sheet-validation")
+        openSheet(app)
+        snap(app, "09-sheet-new-entry")
+        app.buttons["submission.progress.increase"].tap()
+        app.swipeUp()
+        snap(app, "10-sheet-new-entry-scrolled")
         app.terminate()
 
-        // Photo picked, ready to send.
         app = launch("none", extra: ["--submission-photo"])
-        scrollToSection(app)
-        app.buttons["submission.action"].tap()
-        let field = app.textFields["submission.progress"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.tap(); field.typeText("2")
+        openSheet(app)
+        app.buttons["submission.progress.increase"].tap()
         app.swipeUp()
         snap(app, "11-sheet-photo-ready")
         app.terminate()
 
-        // Photo upload in progress.
         app = launch("none", extra: ["--submission-photo", "--submission-slow"])
-        scrollToSection(app)
-        app.buttons["submission.action"].tap()
-        let progress = app.textFields["submission.progress"]
-        XCTAssertTrue(progress.waitForExistence(timeout: 5))
-        progress.tap(); progress.typeText("2")
+        openSheet(app)
         app.buttons["submission.send"].tap()
-        _ = element(app, "submission.progress.status").waitForExistence(timeout: 5)
-        sleep(2)
+        sleep(3)
         snap(app, "12-sheet-uploading")
         app.terminate()
 
-        // Upload failed (offline), draft kept, retry available.
         app = launch("none", extra: ["--submission-photo", "--submission-upload-fail"])
-        scrollToSection(app)
-        app.buttons["submission.action"].tap()
-        let failing = app.textFields["submission.progress"]
-        XCTAssertTrue(failing.waitForExistence(timeout: 5))
-        failing.tap(); failing.typeText("2")
+        openSheet(app)
         app.buttons["submission.send"].tap()
         _ = element(app, "submission.error").waitForExistence(timeout: 8)
+        sleep(1)
         snap(app, "13-sheet-upload-failed")
         app.terminate()
 
-        // Send failed (offline) after a note-only draft.
         app = launch("none", extra: ["--submission-fail=1", "--submission-offline"])
-        scrollToSection(app)
-        app.buttons["submission.action"].tap()
-        let offline = app.textFields["submission.progress"]
-        XCTAssertTrue(offline.waitForExistence(timeout: 5))
-        offline.tap(); offline.typeText("1")
+        openSheet(app)
         app.buttons["submission.send"].tap()
         _ = element(app, "submission.error").waitForExistence(timeout: 8)
+        sleep(1)
         snap(app, "14-sheet-offline")
         app.terminate()
 
-        // Resubmit sheet for a rejected entry.
         app = launch("rejected")
-        scrollToSection(app)
-        app.buttons["submission.action"].tap()
-        XCTAssertTrue(app.buttons["submission.send"].waitForExistence(timeout: 5))
-        snap(app, "15-sheet-resubmit")
+        openSheet(app)
+        sleep(1)
+        snap(app, "15-sheet-resubmit-top")
+        app.swipeUp(); app.swipeUp()
+        sleep(1)
+        snap(app, "16-sheet-resubmit-existing-photo")
+        app.terminate()
+
+        app = launch("rejected", extra: ["--submission-evidence-fail=100"])
+        openSheet(app)
+        app.swipeUp(); app.swipeUp()
+        sleep(1)
+        snap(app, "17-sheet-existing-photo-failed")
         app.terminate()
     }
 }

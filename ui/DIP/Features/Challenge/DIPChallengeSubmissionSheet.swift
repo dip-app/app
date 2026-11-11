@@ -20,12 +20,11 @@ struct DIPChallengeSubmissionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private enum Field { case progress, note }
+    private enum Field { case note }
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
     private var muted: Color { DIPTokens.Color.surfaceMuted.swiftUIColor }
     private var accent: Color { DIPTokens.Color.actionPrimary.swiftUIColor }
     private var issues: [DIPSubmissionIssue] { model.showsIssues ? model.issues : [] }
-    private var hasProgressIssue: Bool { issues.contains { if case .captionTooLong = $0 { false } else { true } } }
 
     var body: some View {
         @Bindable var model = model
@@ -39,14 +38,14 @@ struct DIPChallengeSubmissionSheet: View {
                     VStack(alignment: .leading, spacing: DIPTokens.Spacing.sectionGap) {
                         if let note = model.submission?.reviewNote, model.submission?.status == .rejected { organizerNote(note) }
                         explain
-                        progressField($model.draft.progressText)
+                        progressControl
                         noteField($model.draft.caption)
                         photoSection
                         statusBanner.id("banner")
                         review
                     }
                     .padding(.horizontal, DIPTokens.Spacing.contentInset)
-                    .padding(.top, 12).padding(.bottom, 32)
+                    .padding(.top, 12).padding(.bottom, 40)
                     .disabled(model.phase.isBusy)
                 }
                 .scrollIndicators(.hidden)
@@ -130,7 +129,7 @@ struct DIPChallengeSubmissionSheet: View {
                 .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 34, relativeTo: .largeTitle))
                 .foregroundStyle(ink)
                 .accessibilityAddTraits(.isHeader)
-            Text(DIPSubmissionCopy.explain)
+            Text(DIPSubmissionCopy.sheetIntro)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body))
                 .foregroundStyle(ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -159,29 +158,77 @@ struct DIPChallengeSubmissionSheet: View {
         .accessibilityLabel("\(label): \(value)")
     }
 
-    private func progressField(_ text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            label("How much did you do?", hint: "Required · Goal: \(model.goalText)")
-            TextField("", text: text, prompt: Text("For example 3"))
-                .keyboardType(.decimalPad)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body))
-                .foregroundStyle(ink)
-                .focused($focus, equals: .progress)
-                .padding(.horizontal, 16)
-                .frame(minHeight: DIPTokens.Spacing.minimumTouchTarget + 8)
-                .background(muted, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
-                .overlay {
-                    if hasProgressIssue {
-                        RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous)
-                            .strokeBorder(DIPTokens.Color.eventsAccent.swiftUIColor, lineWidth: 1)
-                    }
+    /// Touch-friendly count: a big live readout, a stepped slider (haptic detent per step, the goal marks the end) and
+    /// -/+ buttons for exact values. No keyboard. VoiceOver adjusts it like any slider; the buttons are labelled.
+    private var progressControl: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            label("How much did you do?", hint: "Goal: \(model.goalText)")
+            VStack(spacing: 14) {
+                VStack(spacing: 2) {
+                    Text(DIPSubmissionDraft.format(model.progressValue))
+                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 56, relativeTo: .largeTitle))
+                        .foregroundStyle(ink).minimumScaleFactor(0.5).lineLimit(1)
+                        .contentTransition(.numericText())
+                    Text(model.canIncrease ? unitText : "\(unitText) · goal reached").font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
+                        .foregroundStyle(ink.opacity(0.72)).multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(DIPSubmissionDraft.format(model.progressValue)) of \(model.goalText)")
+                .accessibilityIdentifier("submission.progress.value")
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { stepButton(-1); slider; stepButton(1) }
+                    VStack(spacing: 10) { slider; HStack { stepButton(-1); Spacer(); stepButton(1) } }
+                }
+                if model.goal > model.step {
+                    HStack {
+                        Text(DIPSubmissionDraft.format(model.step))
+                        Spacer()
+                        Label("Goal \(DIPSubmissionDraft.format(model.goal))", systemImage: "flag.fill").labelStyle(.titleAndIcon)
+                    }
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                    .foregroundStyle(ink.opacity(0.72))
+                    .accessibilityHidden(true)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .background(muted, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+            .onChange(of: model.progressValue) { _, _ in DIPHaptics.select() }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("submission.progress")
+    }
+
+    @ViewBuilder private var slider: some View {
+        if model.goal > model.step {
+            Slider(value: Binding(get: { model.progressValue }, set: { model.progressValue = $0 }),
+                   in: model.step...model.goal, step: model.step)
+                .tint(accent)
+                .frame(minHeight: DIPTokens.Spacing.minimumTouchTarget)
                 .accessibilityLabel("How much did you do")
-                .accessibilityHint("Goal: \(model.goalText)")
-                .accessibilityIdentifier("submission.progress")
-            issueText(issues.first { if case .captionTooLong = $0 { false } else { true } }, id: "submission.progress.issue")
+                .accessibilityValue("\(DIPSubmissionDraft.format(model.progressValue)) of \(model.goalText)")
+                .accessibilityIdentifier("submission.progress.slider")
         }
     }
+
+    private func stepButton(_ direction: Double) -> some View {
+        let enabled = direction < 0 ? model.canDecrease : model.canIncrease
+        return Button { model.nudge(direction) } label: {
+            Image(systemName: direction < 0 ? "minus" : "plus").font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(ink.opacity(enabled ? 1 : 0.3))
+                .frame(width: 48, height: 48).background(DIPTokens.Color.surfaceDefault.swiftUIColor, in: Circle())
+                .overlay(Circle().strokeBorder(ink.opacity(enabled ? 0.12 : 0.06), lineWidth: 1))
+                .contentShape(Circle())
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .disabled(!enabled)
+        .accessibilityLabel(direction < 0 ? "Decrease" : "Increase")
+        .accessibilityValue(DIPSubmissionDraft.format(model.progressValue))
+        .accessibilityIdentifier(direction < 0 ? "submission.progress.decrease" : "submission.progress.increase")
+    }
+
+    private var unitText: String { "of \(model.goalText)" }
 
     private func noteField(_ text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -214,7 +261,7 @@ struct DIPChallengeSubmissionSheet: View {
             if let thumbnail = model.photo?.thumbnail, let image = Self.image(from: thumbnail) {
                 photoRow(Image(uiImage: image), title: "Photo ready to send")
             } else if model.keepsExistingPhoto {
-                photoRow(nil, title: "Your current photo stays attached")
+                existingPhoto
             } else {
                 DIPButton("Choose a photo", emphasis: .secondary, isLoading: model.phase == .preparingPhoto) {
                     focus = nil; showsPicker = true
@@ -226,6 +273,62 @@ struct DIPChallengeSubmissionSheet: View {
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
                 .foregroundStyle(ink.opacity(0.72))
         }
+    }
+
+    /// Resubmitting or editing: the actual submitted photo (large preview via the member's Storage read), with
+    /// Replace and Remove; it stays attached unless one of those is used.
+    private var existingPhoto: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Existing photo").font(DIPReferenceAssets.font("Figtree-Bold", size: 16, relativeTo: .headline)).foregroundStyle(ink)
+                .accessibilityAddTraits(.isHeader)
+            Group {
+                switch model.evidence {
+                case .loaded(let data):
+                    if let image = Self.image(from: data) {
+                        Image(uiImage: image).resizable().scaledToFill()
+                            .frame(maxWidth: .infinity).aspectRatio(4 / 3, contentMode: .fill)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .accessibilityLabel("Existing photo").accessibilityAddTraits(.isImage)
+                    }
+                case .failed:
+                    VStack(spacing: 10) {
+                        Text("Couldn’t load your photo.").font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline)).foregroundStyle(ink)
+                        DIPButton("Try again", emphasis: .secondary) { DIPHaptics.select(); Task { await model.loadEvidence(force: true) } }
+                            .accessibilityIdentifier("submission.existing.retry")
+                    }
+                    .frame(maxWidth: .infinity).padding(16)
+                    .background(DIPTokens.Color.surfaceDefault.swiftUIColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                case .none, .loading:
+                    DIPSkeleton(cornerRadius: 16).frame(maxWidth: .infinity).aspectRatio(4 / 3, contentMode: .fit)
+                        .accessibilityLabel("Loading your photo")
+                }
+            }
+            .accessibilityIdentifier("submission.existing.preview")
+            HStack(spacing: 12) {
+                DIPButton("Replace photo", emphasis: .secondary, isLoading: model.phase == .preparingPhoto) {
+                    focus = nil; showsPicker = true
+                }
+                .accessibilityIdentifier("submission.existing.replace")
+                Button { showsRemovePhoto = true } label: {
+                    Image(systemName: "trash").font(.system(size: 17, weight: .semibold)).foregroundStyle(ink)
+                        .frame(width: 48, height: 48).background(muted, in: Circle()).contentShape(Circle())
+                }
+                .buttonStyle(DIPPressFeedbackStyle())
+                .accessibilityLabel("Remove photo")
+                .accessibilityIdentifier("submission.photo.remove")
+                .confirmationDialog("Remove this photo?", isPresented: $showsRemovePhoto, titleVisibility: .visible) {
+                    Button("Remove photo", role: .destructive) { DIPHaptics.select(); pickerItem = nil; model.removePhoto() }
+                    Button("Keep photo", role: .cancel) {}
+                }
+            }
+            Text("It stays attached unless you replace or remove it.")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote)).foregroundStyle(ink.opacity(0.72))
+        }
+        .padding(12)
+        .background(muted.opacity(0.6), in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("submission.existing")
+        .task { await model.loadEvidence() }
     }
 
     private func photoRow(_ image: Image?, title: String) -> some View {
@@ -286,36 +389,32 @@ struct DIPChallengeSubmissionSheet: View {
 
     // MARK: Bar
 
+    /// The sheet's one action is the shared bottom-bar pill (same component as "Activity Chat"), like the report sheet.
     private var bottomBar: some View {
-        VStack(spacing: 10) {
-            // Enabled until busy: a press with a problem shows it and focuses the field (no faded button).
-            DIPButton(sendTitle, isLoading: model.phase.isBusy) {
-                focus = nil
-                // A valid press is a commit (the outcome is felt after); an invalid one is a failure tap.
-                if model.canSend { DIPHaptics.commit() } else { DIPHaptics.failure() }
-                Task {
-                    await model.send()
-                    if !model.issues.isEmpty { focus = .progress }
-                }
-            }
-            .accessibilityIdentifier("submission.send")
-        }
-        .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
-        .padding(.top, 10).padding(.bottom, 10)
-        .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
+        DIPFloatingNavigation(selected: .home, action: model.sheetBarAction, showsTabs: false, onSelect: { _ in }, onAction: barTapped)
+            .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
+            .padding(.top, 10).padding(.bottom, 10)
+            .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
+            .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: model.sheetBarAction)
+    }
+
+    private func barTapped() {
+        focus = nil
+        guard !model.phase.isBusy else { return }
+        Task { await model.send() }
     }
 
     /// Progress and failures live in the form (above Review), not on top of it: neutral while working, yellow only
     /// for failures, with the actions that fit (retry is the main button; remove the photo or send without it).
     @ViewBuilder private var statusBanner: some View {
-        if let message = barMessage {
-            let failed = model.failure != nil
+        // Progress lives in the shared bar (one indicator); the form shows only failures, with their actions.
+        if let message = barMessage, model.failure != nil {
+            let failed = true
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: failed ? "exclamationmark.circle" : "arrow.up.circle").font(.system(size: 20)).accessibilityHidden(true)
                     Text(message).font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
                 }
-                if case .uploading(let value) = model.phase { ProgressView(value: value).tint(accent).accessibilityHidden(true) }
                 if failed, model.uploadFailed, model.hasPhoto {
                     DIPButton("Send without photo", emphasis: .secondary) {
                         DIPHaptics.commit(); Task { await model.sendWithoutPhoto() }
@@ -331,11 +430,6 @@ struct DIPChallengeSubmissionSheet: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(failed ? "submission.error" : "submission.progress.status")
         }
-    }
-
-    private var sendTitle: String {
-        if let failure = model.failure, failure.isRetryable { return model.uploadFailed ? "Retry upload" : "Try again" }
-        return model.submission?.status == .rejected ? "Resubmit entry" : (model.submission == nil ? "Send entry" : "Save changes")
     }
 
     private var barMessage: String? {

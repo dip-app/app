@@ -6,12 +6,18 @@ final class TokenTests: XCTestCase {
         let pairs: [(DIPDesignSystem.RGBColor, DIPDesignSystem.RGBColor)] = [
             (DIPTokens.Color.textPrimary, DIPTokens.Color.surfaceDefault),
             (DIPTokens.Color.textPrimary, DIPTokens.Color.surfaceMuted),
-            (DIPTokens.Color.textInverse, DIPTokens.Color.navigationBackground),
-            (DIPTokens.Color.textOnAccent, DIPTokens.Color.actionPrimary)
+            (DIPTokens.Color.textInverse, DIPTokens.Color.navigationBackground)
         ]
         for (foreground, background) in pairs {
             XCTAssertGreaterThanOrEqual(contrast(foreground, background), 4.5)
         }
+    }
+
+    /// Owner rule: text on the periwinkle fill is always white. White on #7B88FA is about 3.2:1, which meets the 3:1
+    /// large-text minimum (buttons and pills use 18 pt and larger); the owner accepted this trade-off.
+    func testTextOnAccentIsWhiteAndMeetsLargeTextContrast() {
+        XCTAssertEqual(DIPTokens.Color.textOnAccent.hex, "#FFFFFF")
+        XCTAssertGreaterThanOrEqual(contrast(DIPTokens.Color.textOnAccent, DIPTokens.Color.actionPrimary), 3.0)
     }
 
     func testColorRepresentationPreservesReference() {

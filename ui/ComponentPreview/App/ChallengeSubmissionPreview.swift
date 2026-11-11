@@ -1,4 +1,5 @@
 import DIPCore
+import DIPDesignSystem
 import SwiftUI
 import UIKit
 
@@ -10,6 +11,8 @@ import UIKit
 /// first upload as offline.
 struct ChallengeSubmissionPreview: View {
     let state: String
+    /// Stands in for the shell: the page publishes its entry action here and this host renders the shared bar.
+    @State private var bar = ChallengeEntryBar()
 
     static func launchMode() -> String? {
         ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--challenge-submission=") }
@@ -37,11 +40,12 @@ struct ChallengeSubmissionPreview: View {
         let entry: DIPSubmission? = switch state {
         case "pending": DIPSubmission(id: id, status: .submitted, progress: 2, caption: "Lunchtime run with Sam and Priya", storagePath: "p/0")
         case "approved": DIPSubmission(id: id, status: .approved, progress: 3, caption: "Three classes", pointsAwarded: 50)
-        case "rejected": DIPSubmission(id: id, status: .rejected, progress: 3, caption: "Three classes", reviewNote: "The photo is too dark to see the class.")
+        case "rejected": DIPSubmission(id: id, status: .rejected, progress: 3, caption: "Three classes", storagePath: "p/0", reviewNote: "The photo is too dark to see the class.")
         default: nil
         }
         let mock = MockSubmissionSource(initial: entry, load: state == "loading" ? .never : (state == "load-failed" ? .fails : .normal))
         let failures = Int(Self.argument("submission-fail") ?? "") ?? 0
+        if let count = Self.argument("submission-evidence-fail") { mock.evidenceFailures = Int(count) ?? 1 }
         if ProcessInfo.processInfo.arguments.contains("--submission-slow") { mock.progressPause = .seconds(2) }
         if ProcessInfo.processInfo.arguments.contains("--submission-upload-fail") { mock.uploadFailures = [.offline] }
         mock.failures = Array(repeating: ProcessInfo.processInfo.arguments.contains("--submission-offline") ? .offline : .unknown, count: failures)
@@ -55,7 +59,15 @@ struct ChallengeSubmissionPreview: View {
             type: "weekly", goal: 3, goalUnit: "workouts", coverImageURL: "catalog://theme/fitness",
             startDate: w.start, endDate: w.end, pointsReward: 50, participantCount: 12)
         let mock = source
-        DIPChallengeDetailsScreen(challenge: DIPChallengeProjection.detail(weekly), onBack: {}, now: w.now)
+        GeometryReader { geometry in
+            ZStack(alignment: .top) {
+                DIPChallengeDetailsScreen(challenge: DIPChallengeProjection.detail(weekly), onBack: {}, now: w.now)
+                DIPFloatingNavigation(selected: .home, action: bar.action, onSelect: { _ in }, onAction: { bar.perform?() })
+                    .padding(.horizontal, 20)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+            }
+        }
+        .environment(\.challengeEntryBar, bar)
             .environment(\.challengeSubmissionContext, ChallengeSubmissionContext(
                 scope: ChallengeReadScope(uid: "preview-member", companyID: "preview-company"), makeSource: { mock },
                 previewPhoto: ProcessInfo.processInfo.arguments.contains("--submission-photo") ? Self.samplePhoto : nil))

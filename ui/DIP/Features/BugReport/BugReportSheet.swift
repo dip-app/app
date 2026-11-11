@@ -105,7 +105,7 @@ struct BugReportSheet: View {
                         Text(category.title)
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
                     }
-                    .foregroundStyle(ink)
+                    .foregroundStyle(selected ? DIPTokens.Color.textOnAccent.swiftUIColor : ink)
                     .padding(.horizontal, 12)
                     .frame(minHeight: DIPTokens.Spacing.minimumTouchTarget)
                     .background(selected ? accent : muted, in: Capsule())

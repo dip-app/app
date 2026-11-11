@@ -1,6 +1,7 @@
 import XCTest
 
-/// Weekly-theme entry flow (F3) against the in-memory source: states, the full submit path, validation and retry.
+/// Weekly-theme entry flow (F3) against the in-memory source: states, the full submit path, the count control and retry.
+/// The one entry action is the shared bottom-bar pill (`submission.action` on the page, `submission.send` in the sheet).
 final class ChallengeSubmissionTests: XCTestCase {
     private func launch(_ state: String, extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
@@ -12,95 +13,115 @@ final class ChallengeSubmissionTests: XCTestCase {
     private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.descendants(matching: .any)[id] }
 
     private func scrollToSection(_ app: XCUIApplication) {
-        let section = element(app, "submission.section")
-        XCTAssertTrue(section.waitForExistence(timeout: 10))
-        var swipes = 0
-        while !app.buttons["submission.action"].isHittable, swipes < 6, app.buttons["submission.action"].exists || swipes < 2 {
-            app.swipeUp(); swipes += 1
-        }
+        XCTAssertTrue(element(app, "submission.section").waitForExistence(timeout: 10))
+        for _ in 0..<3 { app.swipeUp() }
     }
 
-    @MainActor func testNotStartedShowsExplanationAndOneSolidAction() {
+    @MainActor func testNoEntryShowsOnlyTheSharedBarActionAndNoSection() {
         continueAfterFailure = false
         let app = launch("none")
         XCTAssertTrue(element(app, "challenge.how").waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "challenge.goal").exists)
         XCTAssertTrue(element(app, "challenge.reward").exists)
-        scrollToSection(app)
-        XCTAssertEqual(element(app, "submission.status").label, "Entry status: Not started")
-        XCTAssertTrue(app.buttons["submission.action"].exists)
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "submission-none"; shot.lifetime = .keepAlways; add(shot)
+        XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["submission.action"].label, "Add your entry")
+        for _ in 0..<2 { app.swipeUp() }
+        XCTAssertFalse(element(app, "submission.section").exists, "no placeholder section without an entry")
+        XCTAssertFalse(element(app, "submission.status").exists)
     }
 
     @MainActor func testFullSubmitPathEndsPendingReview() {
         continueAfterFailure = false
         let app = launch("none")
-        scrollToSection(app)
+        XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 10))
         app.buttons["submission.action"].tap()
-        let progress = app.textFields["submission.progress"]
-        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "submission.progress.value").waitForExistence(timeout: 5))
         // Above the form: requirement, window and reward.
         XCTAssertTrue(element(app, "submission.explain").exists)
         XCTAssertTrue(element(app, "submission.facts").exists)
-        progress.tap(); progress.typeText("2")
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "submission-sheet"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["submission.progress.increase"].tap()
+        XCTAssertEqual(element(app, "submission.progress.value").label, "2 of 3 workouts")
+        XCTAssertTrue(app.buttons["submission.send"].exists, "the shared bar button is the only send action")
         app.buttons["submission.send"].tap()
-        XCTAssertTrue(element(app, "submission.section").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(app, "submission.status").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "submission.status").waitForExistence(timeout: 8))
         XCTAssertEqual(element(app, "submission.status").label, "Entry status: Waiting for review")
-        XCTAssertFalse(app.textFields["submission.progress"].exists)
+        XCTAssertFalse(element(app, "submission.progress.value").exists)
     }
 
-    @MainActor func testInvalidProgressShowsAnInlineIssueAndSendsNothing() {
+    @MainActor func testCountControlStaysWithinOneStepAndTheGoal() {
         continueAfterFailure = false
         let app = launch("none")
-        scrollToSection(app)
+        XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 10))
         app.buttons["submission.action"].tap()
-        XCTAssertTrue(app.buttons["submission.send"].waitForExistence(timeout: 5))
-        app.buttons["submission.send"].tap()
-        XCTAssertTrue(element(app, "submission.progress.issue").waitForExistence(timeout: 3))
-        let field = app.textFields["submission.progress"]
-        field.tap(); field.typeText("9")
-        app.buttons["submission.send"].tap()
-        XCTAssertTrue(element(app, "submission.progress.issue").label.contains("more than"))
-        XCTAssertTrue(app.textFields["submission.progress"].exists)
+        let decrease = app.buttons["submission.progress.decrease"]
+        let increase = app.buttons["submission.progress.increase"]
+        XCTAssertTrue(decrease.waitForExistence(timeout: 5))
+        XCTAssertFalse(decrease.isEnabled, "a new entry starts at the smallest step")
+        increase.tap(); increase.tap()
+        XCTAssertFalse(increase.isEnabled, "the goal is the maximum")
+        decrease.tap()
+        XCTAssertEqual(element(app, "submission.progress.value").label, "2 of 3 workouts")
+        XCTAssertFalse(app.keyboards.element.exists, "no keyboard for the count")
     }
 
     @MainActor func testOfflineFailureKeepsTheDraftAndRetrySucceeds() {
         continueAfterFailure = false
         let app = launch("none", extra: ["--submission-fail=1", "--submission-offline"])
-        scrollToSection(app)
+        XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 10))
         app.buttons["submission.action"].tap()
-        let field = app.textFields["submission.progress"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.tap(); field.typeText("1")
+        XCTAssertTrue(app.buttons["submission.progress.increase"].waitForExistence(timeout: 5))
+        app.buttons["submission.progress.increase"].tap()
         app.buttons["submission.send"].tap()
-        XCTAssertTrue(element(app, "submission.error").waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "offline")).firstMatch.exists)
-        XCTAssertEqual(app.textFields["submission.progress"].value as? String, "1", "the draft survives a failure")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "offline")).firstMatch.waitForExistence(timeout: 8))
+        XCTAssertEqual(element(app, "submission.progress.value").label, "2 of 3 workouts", "the draft survives a failure")
         app.buttons["submission.send"].tap()
-        XCTAssertTrue(element(app, "submission.status").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "submission.status").waitForExistence(timeout: 8))
         XCTAssertEqual(element(app, "submission.status").label, "Entry status: Waiting for review")
     }
 
-    @MainActor func testPendingCanBeEditedWhileOpen() {
+    @MainActor func testPendingCanBeEditedAndShowsALargePhoto() {
         continueAfterFailure = false
         let app = launch("pending")
         scrollToSection(app)
         XCTAssertEqual(element(app, "submission.status").label, "Entry status: Waiting for review")
+        let photo = app.buttons["submission.photo.preview"]
+        XCTAssertTrue(photo.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(photo.frame.width, 300, "the submitted photo is shown at full content width")
+        XCTAssertGreaterThan(photo.frame.height, 200)
+        photo.tap()
+        XCTAssertTrue(element(app, "submission.photo.viewer").waitForExistence(timeout: 5))
+        app.buttons["submission.photo.viewer.close"].tap()
         XCTAssertEqual(app.buttons["submission.action"].label, "Edit entry")
         app.buttons["submission.action"].tap()
-        XCTAssertEqual(app.textFields["submission.progress"].waitForExistence(timeout: 5) ? app.textFields["submission.progress"].value as? String : nil, "2")
+        XCTAssertEqual(element(app, "submission.progress.value").waitForExistence(timeout: 5) ? element(app, "submission.progress.value").label : "", "2 of 3 workouts")
     }
 
-    @MainActor func testRejectedShowsTheOrganizerNoteAndAllowsResubmission() {
+    @MainActor func testRejectedShowsTheNoteAndTheExistingPhotoWithReplaceAndRemove() {
         continueAfterFailure = false
         let app = launch("rejected")
         scrollToSection(app)
         XCTAssertEqual(element(app, "submission.status").label, "Entry status: Needs changes")
-        XCTAssertTrue(element(app, "submission.detail").label.contains("too dark"))
+        XCTAssertTrue(element(app, "submission.organizer-note").label.contains("too dark"))
         XCTAssertEqual(app.buttons["submission.action"].label, "Update and resubmit")
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "submission-rejected"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["submission.action"].tap()
+        XCTAssertTrue(element(app, "submission.organizer-note").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "submission.existing").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["submission.existing.replace"].exists)
+        XCTAssertTrue(app.buttons["submission.photo.remove"].exists)
+        XCTAssertEqual(app.buttons["submission.send"].label, "Resubmit entry")
+    }
+
+    @MainActor func testExistingPhotoFailureOffersRetry() {
+        continueAfterFailure = false
+        let app = launch("rejected", extra: ["--submission-evidence-fail=3"])
+        XCTAssertTrue(app.buttons["submission.action"].waitForExistence(timeout: 10))
+        app.buttons["submission.action"].tap()
+        // Scripted failures cover the status card's read and the sheet's read; Try again then succeeds.
+        XCTAssertTrue(app.buttons["submission.existing.replace"].waitForExistence(timeout: 8))
+        let retry = app.buttons["Try again"].firstMatch
+        XCTAssertTrue(retry.waitForExistence(timeout: 8))
+        retry.tap()
+        XCTAssertTrue(app.buttons["submission.existing.replace"].exists)
     }
 
     @MainActor func testApprovedShowsPointsAndNoAction() {
@@ -113,12 +134,11 @@ final class ChallengeSubmissionTests: XCTestCase {
         XCTAssertFalse(app.buttons["submission.action"].exists)
     }
 
-    @MainActor func testClosedThemeWithoutEntryOffersNoAction() {
+    @MainActor func testClosedThemeWithoutEntryShowsNothingToPress() {
         continueAfterFailure = false
         let app = launch("missed")
-        XCTAssertTrue(element(app, "submission.section").waitForExistence(timeout: 10))
-        app.swipeUp()
-        XCTAssertEqual(element(app, "submission.status").label, "Entry status: Closed")
+        XCTAssertTrue(element(app, "challenge.how").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "submission.section").exists)
         XCTAssertFalse(app.buttons["submission.action"].exists)
     }
 

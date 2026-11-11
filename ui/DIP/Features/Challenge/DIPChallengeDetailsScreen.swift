@@ -15,6 +15,7 @@ struct DIPChallengeDetailsScreen: View {
     @Environment(\.eventCalendarAdder) private var calendarAdder
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.challengeSubmissionContext) private var submissionContext
+    @Environment(\.challengeEntryBar) private var entryBar
     @State private var submission: ChallengeSubmissionModel?
     @State private var showsEntrySheet = false
 
@@ -61,14 +62,7 @@ struct DIPChallengeDetailsScreen: View {
                             .padding(.top, 10)
                             facts
                             infoCard
-                            if let submission {
-                                DIPChallengeSubmissionSection(model: submission) {
-                                    // Opening the sheet is navigation: silent.
-                                    submission.beginEditing()
-                                    if let photo = submissionContext?.previewPhoto { submission.attachPreparedPhoto(photo) }
-                                    showsEntrySheet = true
-                                }
-                            }
+                            if let submission { DIPChallengeSubmissionSection(model: submission) }
                         }
                         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     }
@@ -83,9 +77,22 @@ struct DIPChallengeDetailsScreen: View {
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
         .task(id: challenge.id) { startSubmissions() }
-        .onDisappear { submission?.stop(); submission = nil }
+        // The one entry action lives in the shared bottom bar; the page only publishes it (opening the sheet is
+        // navigation, so it is silent).
+        .onChange(of: submission?.pageBarAction, initial: true) { _, _ in publishEntryAction() }
+        .onDisappear { entryBar?.clear(owner: challenge.id); submission?.stop(); submission = nil }
         .sheet(isPresented: $showsEntrySheet) {
             if let submission { DIPChallengeSubmissionSheet(model: submission) }
+        }
+    }
+
+    private func publishEntryAction() {
+        guard let entryBar else { return }
+        guard let submission, let action = submission.pageBarAction else { entryBar.clear(owner: challenge.id); return }
+        entryBar.set(action, owner: challenge.id) {
+            submission.beginEditing()
+            if let photo = submissionContext?.previewPhoto { submission.attachPreparedPhoto(photo) }
+            showsEntrySheet = true
         }
     }
 

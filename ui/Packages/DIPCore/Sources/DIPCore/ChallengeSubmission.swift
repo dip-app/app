@@ -41,6 +41,23 @@ public enum DIPSubmissionPolicy {
     /// Long edge of the uploaded JPEG (same preparation as album photos).
     public static let maxPixelSize = 2048
 
+    /// The touch control's step: whole numbers for whole goals (at most 100 detents), halves for small fractional
+    /// goals, and about 20 detents for anything else. The smallest value is one step (progress must be above 0).
+    public static func step(forGoal goal: Double) -> Double {
+        guard goal.isFinite, goal > 0 else { return 1 }
+        if goal.rounded() == goal { return max(1, (goal / 100).rounded(.up)) }
+        if goal <= 20 { return 0.5 }
+        return max(0.5, (goal / 20 * 2).rounded() / 2)
+    }
+
+    /// Snaps a value to the step grid within `step...goal` (the goal itself is always reachable).
+    public static func clamp(_ value: Double, goal: Double) -> Double {
+        let step = step(forGoal: goal)
+        guard value.isFinite else { return step }
+        let snapped = (value / step).rounded() * step
+        return min(goal, max(step, snapped))
+    }
+
     public static func submissionID(challengeID: String, uid: String) -> String { "\(challengeID)_\(uid)" }
 
     public static func evidencePath(companyID: String, challengeID: String, uid: String, slot: Int) -> String {
@@ -212,6 +229,7 @@ public enum DIPSubmissionFailure: Error, Equatable, Sendable {
 
 public enum DIPSubmissionCopy {
     public static let sectionTitle = "Your entry"
+    public static let sheetIntro = "How much did you do? A note and a photo are optional."
     public static let sheetTitle = "ADD YOUR ENTRY"
     public static let explain = "Tell us how much you did, add a short note and optionally a photo. An organizer reviews every entry before points are awarded."
     public static let loadFailure = "Couldn’t load your entry."
