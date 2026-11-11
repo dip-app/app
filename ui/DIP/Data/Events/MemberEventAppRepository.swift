@@ -32,6 +32,8 @@ import DIPAccounts
     /// Up to three attendees per event for Home card avatar stacks; never shown as a full attendee list.
     private var previews: [String: [DIPParticipant]] = [:]
     private var joinedTask: Task<Void, Never>?
+    /// In-flight optimistic RSVPs by event; they override the observed joined state and count while pending.
+    private var rsvpStates: [String: DIPOptimisticRSVP] = [:]
     var supportsParticipation: Bool { participation != nil }
     // Live chat (the participation source also implements ChatSource). One listener, for the last opened joined event.
     private let chat: (any ChatSource)?
@@ -122,7 +124,7 @@ import DIPAccounts
     func stop() {
         guard !stopped else { return }; stopped = true; generation = UUID()
         detailTask?.cancel(); detailTask = nil; detailID = nil
-        chatTask?.cancel(); chatTask = nil; chatEventID = nil; chatCandidateID = nil; messages.removeAll()
+        chatTask?.cancel(); chatTask = nil; chatEventID = nil; chatCandidateID = nil; messages.removeAll(); rsvpStates.removeAll()
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
         joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
@@ -143,8 +145,8 @@ import DIPAccounts
             details[id] = DIPEventDetail(id: id, title: event.title,
                 image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds),
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
-                isJoined: joinedIDs.contains(id),
-                attendeeCount: event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
+                isJoined: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.isGoing : joinedIDs.contains(id),
+                attendeeCount: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.attendeeCount : event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
                 isPast: event.endTime <= clock(), metadata: metadata)
         }
         var snapshot = DIPAppSnapshot(home: DIPHomeSnapshot(unreadCount: 0, profileAvatar: profile.avatar,
@@ -153,13 +155,34 @@ import DIPAccounts
         snapshot.home.events = DIPEventLists(snapshot: snapshot, now: clock()).discovery
         for observer in observers.values { observer.yield(snapshot) }
     }
+    /// Optimistic: after a local reasonableness check the UI flips at once (joined state, attendee count, My Events,
+    /// Home cards) and rolls back only if the server rejects or fails. The latest intent wins; the RSVP and event
+    /// listeners reconcile once the server state arrives.
     func setRSVP(eventID: String, going: Bool) async throws {
         guard let participation, !stopped else { throw DIPRepositoryError.invalidInput("RSVP isn’t available yet") }
+        let requestID = UUID().uuidString
+        if let event = records[eventID] ?? joinedRecords[eventID], let metadata = try? MemberEventsRepository.metadata(event) {
+            let state = rsvpStates[eventID] ?? DIPOptimisticRSVP(going: joinedIDs.contains(eventID), attendeeCount: event.attendeeCount)
+            if let denial = DIPParticipationRules.denial(going: going, metadata: metadata, attendeeCount: state.attendeeCount,
+                                                         isGoing: state.isGoing, now: clock()) {
+                throw DIPRepositoryError.invalidInput(denial.message)
+            }
+            var next = state
+            next.begin(going: going, requestID: requestID)
+            rsvpStates[eventID] = next
+            publish()
+        }
         let count: Int
         do { count = try await participation.setRsvp(scope: reads.scope, eventID: eventID, going: going) }
-        catch { throw DIPRepositoryError.invalidInput((error as? RsvpFailure ?? .unknown).message) }
+        catch {
+            if var state = rsvpStates[eventID], state.fail(requestID: requestID) { rsvpStates[eventID] = nil; publish() }
+            throw DIPRepositoryError.invalidInput((error as? RsvpFailure ?? .unknown).message)
+        }
         guard !stopped else { return }
-        // Acknowledgement only: show it now; the RSVP and event listeners confirm it.
+        // A newer intent replaced this request: its own result decides the final state.
+        if let state = rsvpStates[eventID], state.pending?.requestID != requestID { return }
+        rsvpStates[eventID] = nil
+        // Acknowledgement: the RSVP and event listeners confirm it.
         if going { joinedIDs.insert(eventID) } else { joinedIDs.remove(eventID) }
         if var event = records[eventID] ?? joinedRecords[eventID] {
             event.attendeeCount = count
