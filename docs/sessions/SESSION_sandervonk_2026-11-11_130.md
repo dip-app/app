@@ -29,3 +29,7 @@ After merge: deploy hosting, add letsdip.work as a custom domain, then switch DI
 ## Follow-up: Figma frames
 
 The landing phone now cycles real Figma frames (Home, Event Page, Event Page (Joined), Album Page, Rewards from file DCIagJo7uk5IOUGqlKzAjf), cropped to the screen and stored in apps/landing/img/ (about 440 KB); build-site.sh copies them to /img/landing/. They are design placeholders, so re-export when the designs change.
+
+## Follow-up: letsdip.work
+
+Hosting deployed (landing at /, admin at /admin/). letsdip.work and www.letsdip.work (redirect) were added as Firebase Hosting custom domains via the Hosting API; DNS (A 199.36.158.100, TXT hosting-site=team05-dip) was already in place and the apex serves over HTTPS. This change switches SHARE_ORIGIN, DIPShareLink.baseURL and the paid entitlements' applinks together (old host kept in applinks), keeps the old origin in the approved preview-image prefixes, and updates the hosting test for site-dist. Pending: eventSharePageV1 redeploy, www certificate, Firebase Auth authorized domain for admin sign-in, Team ID in the AASA file.
