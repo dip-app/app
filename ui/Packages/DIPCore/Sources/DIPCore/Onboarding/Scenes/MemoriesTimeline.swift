@@ -27,8 +27,9 @@ public enum MemoriesTimeline {
     }
 
     public enum Point {
-        /// The My Events icon in the three-tab mini bar.
-        public static let myEventsTab = DemoCoordinate(195, 479)
+        /// The My Events icon: 3rd of the bar's 4 tabs (20 + 40 + 270 / 3 × 2); the app asserts this against
+        /// `DIPFloatingNavigation.tabCenterX` (`DemoMiniBarTests`).
+        public static let myEventsTab = DemoCoordinate(240, 479)
         public static let pastCard = DemoCoordinate(195, 196)
         public static let bar = DemoCoordinate(195, 479)
     }

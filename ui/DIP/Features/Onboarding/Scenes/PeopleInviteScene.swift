@@ -53,7 +53,6 @@ struct PeopleInviteCanvas: View {
         static let peopleTop: CGFloat = 224
         static let actionTop: CGFloat = 316
         static let chip = CGRect(x: 95, y: 376, width: 200, height: 50)
-        static let zoomAnchor = UnitPoint(x: 195 / 390, y: 276 / 540)
         static let sheet = CGRect(x: 0, y: 213, width: 390, height: 327)
     }
 
@@ -72,8 +71,10 @@ struct PeopleInviteCanvas: View {
 
     private var organizerPhone: some View {
         ZStack(alignment: .topLeading) {
+            // Owner fix (Nov 11): the page renders at the phone's true width. The spec's 1.35× zoom on Who's
+            // Attending cropped the page at both sides ("ASTA NIGHT"), so `b2.zoom` no longer scales anything;
+            // the beat stays in the table so the timing is unchanged.
             eventPage
-                .scaleEffect(state.zoomed ? 1.35 : 1, anchor: Metrics.zoomAnchor)
             participantPanel
             DemoMiniBar(action: EventBarAction.resolve(
                 route: state.panelShown ? .participants(OnboardingDemoFixtures.pastaNight.id) : .event(OnboardingDemoFixtures.pastaNight.id),

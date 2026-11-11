@@ -318,7 +318,10 @@ struct OnboardingTourView: View {
             .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
             .frame(width: layout.width)
             .position(x: layout.width / 2, y: layout.barCenterY)
-            .disabled(model.isHandingOff || (model.step == .interests && interests?.bar.isEnabled == false))
+            .disabled(model.step == .interests && interests?.bar.isEnabled == false)
+            // During the handoff the bar only stops taps: `.disabled` would draw its tabs dimmed (plain button
+            // style), and the shell's enabled bar underneath would then snap brighter when the tour is removed.
+            .allowsHitTesting(!model.isHandingOff)
             .opacity(fadesOut && revealStarted ? 0 : 1)
             .animation(.easeOut(duration: OnboardingHandoff.barFadeDuration / speed)
                 .delay(OnboardingHandoff.barAt / speed), value: revealStarted)
@@ -469,7 +472,7 @@ struct OnboardingTourView: View {
                 }
                 DIPFloatingNavigation(selected: .home, action: barAction, showsTabs: barDissolved,
                                       onSelect: { _ in }, onAction: barTapped)
-                    .disabled(model.isHandingOff)
+                    .allowsHitTesting(!model.isHandingOff)
             }
             .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
             .padding(.bottom, DIPFloatingNavigation.standardInsets.bottom)

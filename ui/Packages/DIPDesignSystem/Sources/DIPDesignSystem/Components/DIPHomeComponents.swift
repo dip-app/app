@@ -354,7 +354,20 @@
 
         /// Distance between adjacent tab slots (the first and last slots sit 40 pt from the ends).
         private func slotStep(width: CGFloat) -> CGFloat {
-            (width - 80) / CGFloat(max(1, tabs.count - 1))
+            Self.slotStep(width: width, count: tabs.count)
+        }
+
+        private static func slotStep(width: CGFloat, count: Int) -> CGFloat {
+            (width - 80) / CGFloat(max(1, count - 1))
+        }
+
+        /// The centre x of `tab`'s icon in a bar of `width`, measured from the bar's leading edge, using the same
+        /// slot geometry the bar lays out (for callouts and pointers that aim at a tab). Nil if the tab isn't shown.
+        public static func tabCenterX(
+            _ tab: DIPHomeTab, tabs: [DIPHomeTab] = DIPHomeTab.allCases, width: CGFloat
+        ) -> CGFloat? {
+            guard let index = tabs.firstIndex(of: tab) else { return nil }
+            return 40 + slotStep(width: width, count: tabs.count) * CGFloat(index)
         }
 
         private func marker(width: CGFloat) -> some View {
