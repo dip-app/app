@@ -31,6 +31,7 @@ struct OnboardingTourView: View {
     @State private var stageContentFaded = false
     @State private var barDissolved = false
 
+    private var isResume: Bool { if case .resume = model.entrance { true } else { false } }
     private var reduceMotion: Bool { systemReduceMotion || model.configuration.forceReduceMotion }
     private var speed: Double { max(0.01, model.configuration.timeScale) }
     private var features: OnboardingFeatures { model.configuration.features }
@@ -95,7 +96,7 @@ struct OnboardingTourView: View {
     }
 
     private func stageFrame(_ layout: TourLayout, step: OnboardingStep) -> CGRect {
-        guard landed else { return layout.welcome }
+        guard landed || isResume else { return layout.welcome }
         return step == .interests ? layout.strip : layout.stage
     }
 
@@ -120,6 +121,8 @@ struct OnboardingTourView: View {
         }
         .frame(width: frame.width, height: frame.height)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // Resume: the card fades in at its frame after the header is fully shown, never rising under the pill.
+        .opacity(isResume && !landed ? 0 : 1)
         .position(x: frame.midX, y: frame.midY)
         .animation(motion(OnboardingMotion.stage), value: frame)
         .animation(motion(OnboardingMotion.stage), value: step)
@@ -333,6 +336,8 @@ struct OnboardingTourView: View {
             // style), and the shell's enabled bar underneath would then snap brighter when the tour is removed.
             .allowsHitTesting(!model.isHandingOff)
             .opacity(fadesOut && revealStarted ? 0 : 1)
+            // The CTA label follows the Stage swap instead of leading it.
+            .animation(reduceMotion ? nil : OnboardingMotion.bar(reduceMotion: false).delay(0.18 / speed), value: model.step)
             // The bar rises into place with the header chrome on first entrance (no travel with Reduce Motion).
             // (it follows the same delayed transaction that fades the header chrome in)
             .offset(y: chromeShown || reduceMotion ? 0 : 28)
@@ -387,7 +392,7 @@ struct OnboardingTourView: View {
             }
             // Resume: header (0.05 s), then the Stage morph (0.20 s), then its content (0.35 s, see `stageCard`).
             // Fresh: the Stage lands first, the chrome follows at 0.70 s (B0 has no header to lead with).
-            let stageDelay = model.entrance == .fresh ? 0.05 : 0.20
+            let stageDelay = model.entrance == .fresh ? 0.05 : 0.32
             withAnimation(motion(OnboardingMotion.stage).delay(stageDelay / speed)) { landed = true }
             let chromeDelay = model.entrance == .fresh ? 0.70 : 0.05
             withAnimation(.easeOut(duration: 0.25 / speed).delay(chromeDelay / speed)) { chromeShown = true }
