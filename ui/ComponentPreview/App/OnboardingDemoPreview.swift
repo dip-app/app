@@ -21,15 +21,15 @@ struct OnboardingDemoPreview: View {
         case PeopleInviteScene.id:
             host(PeopleInviteScene(features: Self.features), pill: "Who's going", title: "GO WITH PEOPLE YOU KNOW",
                  body: "See who's going before you decide. Invite a coworker and they can join in one tap.",
-                 cta: "What are challenges?")
+                 cta: "Show me challenges")
         case ChallengeScene.id:
             host(ChallengeScene(features: Self.features), pill: "Challenges", title: "TAKE ON A CHALLENGE",
                  body: "Each challenge shows what to do, how to send it in and when it ends. Once your organizer approves, the points are yours.",
-                 cta: "And after the event?")
+                 cta: "Show me memories")
         case MemoriesScene.id:
             host(MemoriesScene(), pill: "Memories", title: "KEEP THE MEMORIES",
                  body: "Your events live in My Events. Past events keep a shared photo album for everyone who went.",
-                 cta: "Make it yours")
+                 cta: "Pick my interests")
         default:
             ContentUnavailableView("Unknown demo \(sceneID)", systemImage: "questionmark")
         }

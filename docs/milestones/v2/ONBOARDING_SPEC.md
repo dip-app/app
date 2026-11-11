@@ -485,7 +485,7 @@ The canvas is Home's events section. The weekly challenge card (§7.1 Home rule)
 - **Pill:** **"Who's going"**
 - **Title:** **"GO WITH PEOPLE YOU KNOW"**
 - **Body:** **"See who's going before you decide. Invite a coworker and they can join in one tap."** Without F4: **"See who's going before you decide, by name and team."**
-- **Bar:** **"What are challenges?"**
+- **Bar:** **"Show me challenges"**
 
 **Stage.** `surfaceMuted`. The host face is the yellow square. The canvas opens on B1's final state.
 
@@ -547,7 +547,7 @@ Without F4, the rows from `b2.ghostChip` onward are dropped and the demo ends at
 - **Pill:** **"Challenges"**
 - **Title:** **"TAKE ON A CHALLENGE"**
 - **Body:** **"Each challenge shows what to do, how to send it in and when it ends. Once your organizer approves, the points are yours."**
-- **Bar:** **"And after the event?"**
+- **Bar:** **"Show me memories"**
 
 **Stage.** `challengeAccent`. The host face is the white pill.
 
@@ -610,7 +610,7 @@ Without F2, `b3.arc` and `b3.balance` are dropped, `b3.approved` shows "Approved
 - **Pill:** **"Memories"**
 - **Title:** **"KEEP THE MEMORIES"**
 - **Body:** **"Your events live in My Events. Past events keep a shared photo album for everyone who went."**
-- **Bar:** **"Make it yours"**
+- **Bar:** **"Pick my interests"**
 
 **Stage.** `notificationAccent` yellow, distinct from B3's pink. The host face is gray round.
 
@@ -1410,7 +1410,7 @@ Captures refer to `-onboarding.freezeAt`.
 
     Each row has a 50 pt avatar, the name in Figtree Bold 18 and the department in Figtree Regular 18.
   - Body "See who's going before you decide. Invite a coworker and they can join in one tap."
-  - Bar "What are challenges?".
+  - Bar "Show me challenges".
 - **Callouts:**
   - "Panel grows from '+ 2 More' · 0.3 → 1 · spring 0.50 / 0.86"
   - "Zoom 1.35 → 1 · spring 0.55 / 0.86"
@@ -1458,7 +1458,7 @@ Captures refer to `-onboarding.freezeAt`.
   - `calendar` "Ends Friday" (Inter 14). "+50 points" (Figtree 18). Callout "How to submit".
   - Mini bar "Add Your Entry".
   - Body "Each challenge shows what to do, how to send it in and when it ends. Once your organizer approves, the points are yours."
-  - Bar "And after the event?".
+  - Bar "Show me memories".
 - **Callouts:**
   - "White background rises behind the card · 0 → 540 · spring 0.55 / 0.86"
   - "Lines wipe in · 120 ms apart · deadline at 1.76 s"
@@ -1495,7 +1495,7 @@ Captures refer to `-onboarding.freezeAt`.
   - Stage #FFCC3E.
   - Canvas: the My Events upcoming list (Pasta Night row). Mini bar with **three tabs** (Home, My Events, Profile; no gift), the marker on My Events, and the callout "My Events" above it.
   - Body "Your events live in My Events. Past events keep a shared photo album for everyone who went."
-  - Bar "Make it yours".
+  - Bar "Pick my interests".
 - **Callouts:**
   - "Action → tabs · 0.30 s · marker → My Events · spring 0.38 / 0.82"
   - "Callout · 0.8 → 1 · spring 0.36 / 0.62 · holds 1.65 s · exits easeIn 0.15 s"
@@ -1654,7 +1654,7 @@ Each variant gives its on-screen content and its callouts. "As Pn" means the sam
 **V15 · `Onboarding / B3 Challenges & Points / accessibility XXXL`**
 - **On screen:**
   - Rows: `list.number` "Each challenge lists what to do", `calendar` "It shows when it ends and the points you'll get", `square.and.arrow.up` "Send progress, a caption and an optional photo", `checkmark.seal` "Your organizer approves, then points are added".
-  - Bar "And after the event?".
+  - Bar "Show me memories".
 - **Callouts:**
   - "AX: Stage → 4 rows"
 

@@ -33,19 +33,19 @@ struct OnboardingCopy: Equatable {
                              defaultValue: "See who's going before you decide. Invite a coworker and they can join in one tap.")
                     : String(localized: "onboarding.people.body.noInvites",
                              defaultValue: "See who's going before you decide, by name and team."),
-                cta: String(localized: "onboarding.people.cta", defaultValue: "What are challenges?"))
+                cta: String(localized: "onboarding.people.cta", defaultValue: "Show me challenges"))
         case .challenges:
             return OnboardingCopy(
                 title: String(localized: "onboarding.challenges.title", defaultValue: "Take on a challenge"),
                 body: String(localized: "onboarding.challenges.body",
                              defaultValue: "Each challenge shows what to do, how to send it in and when it ends. Once your organizer approves, the points are yours."),
-                cta: String(localized: "onboarding.challenges.cta", defaultValue: "And after the event?"))
+                cta: String(localized: "onboarding.challenges.cta", defaultValue: "Show me memories"))
         case .memories:
             return OnboardingCopy(
                 title: String(localized: "onboarding.memories.title", defaultValue: "Keep the memories"),
                 body: String(localized: "onboarding.memories.body",
                              defaultValue: "Your events live in My Events. Past events keep a shared photo album for everyone who went."),
-                cta: String(localized: "onboarding.memories.cta", defaultValue: "Make it yours"))
+                cta: String(localized: "onboarding.memories.cta", defaultValue: "Pick my interests"))
         case .interests:
             return OnboardingCopy(
                 title: String(localized: "onboarding.interests.title", defaultValue: "What are you into?"),
@@ -55,10 +55,11 @@ struct OnboardingCopy: Equatable {
         }
     }
 
-    /// The CTA when the next step is B3 but B3 is not in this run: B2's question would point nowhere.
+    /// B2's CTA names the step that follows: "Show me challenges" when B3 is in this run, otherwise
+    /// "Show me memories" (B4). Every step CTA is a short first-person imperative (verb + object), no questions.
     static func cta(for step: OnboardingStep, next: OnboardingStep?, features: OnboardingFeatures) -> String {
         if step == .people, next != .challenges {
-            return String(localized: "onboarding.people.cta.noChallenges", defaultValue: "And after the event?")
+            return String(localized: "onboarding.people.cta.noChallenges", defaultValue: "Show me memories")
         }
         return make(step, firstName: nil, features: features).cta
     }
