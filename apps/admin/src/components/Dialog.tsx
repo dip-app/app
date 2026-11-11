@@ -14,6 +14,8 @@ interface Props {
   reasonHint?: string;
   /** Destructive actions use the error color so they read differently from a normal save. */
   danger?: boolean;
+  /** Start with focus on Cancel, for actions that are final (a stray Enter must not confirm). */
+  focusCancel?: boolean;
   /** Extra condition (e.g. a valid number inside the dialog body) before confirm is enabled. */
   confirmDisabled?: boolean;
   onConfirm: (reason: string) => Promise<void>;
@@ -21,21 +23,25 @@ interface Props {
 }
 
 /** Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. */
-export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, confirmDisabled, onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, focusCancel, confirmDisabled, onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const id = useId();
+  const cancel = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const dialog = ref.current;
     const opener = document.activeElement as HTMLElement | null;
     if (dialog && !dialog.open) dialog.showModal();
+    if (focusCancel) cancel.current?.focus();
     return () => {
       dialog?.close();
       opener?.focus?.(); // return focus to the control that opened the dialog
     };
+  // Runs once on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function confirm() {
@@ -66,7 +72,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
         <button className={`pill-btn ${danger ? "danger" : "dark"}`} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
           {busy ? "Working…" : confirmLabel}
         </button>
-        <button className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
+        <button ref={cancel} className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
       </div>
     </dialog>
   );

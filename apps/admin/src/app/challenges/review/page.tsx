@@ -36,7 +36,11 @@ function Evidence({ submission }: { submission: Submission }) {
     let cancelled = false;
     let made: string | null = null;
     api.submissionEvidence(submission).then(
-      (value) => { made = value; if (!cancelled) setUrl(value); },
+      (value) => {
+        made = value;
+        if (cancelled) { if (value.startsWith("blob:")) URL.revokeObjectURL(value); return; }
+        setUrl(value);
+      },
       () => !cancelled && setFailed(true),
     );
     return () => { cancelled = true; if (made?.startsWith("blob:")) URL.revokeObjectURL(made); };
@@ -58,7 +62,7 @@ function Evidence({ submission }: { submission: Submission }) {
       <button className="evidence" onClick={() => setOpen(true)} aria-label={`Open ${submission.userName}’s photo full size`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={`Evidence from ${submission.userName}`} />
-        <span className="info-pill">View full size</span>
+        <span className="view-full">View full size</span>
       </button>
       <dialog ref={dialog} className="dialog viewer" aria-label={`${submission.userName}’s photo`} onClose={() => setOpen(false)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -86,6 +90,11 @@ function Review() {
   const [more, setMore] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const detail = useRef<HTMLElement>(null);
+  const queueTop = useRef<HTMLElement>(null);
+  const idRef = useRef(id);
+  const statusRef = useRef(status);
+  idRef.current = id;
+  statusRef.current = status;
 
   useEffect(() => {
     if (!id) return;
@@ -139,6 +148,8 @@ function Review() {
     const rest = items.filter((s) => s.id !== done.id);
     setItems(rest);
     setSelectedId(rest[Math.min(at, rest.length - 1)]?.id ?? null);
+    // The visible page is used up but the server has more: fetch the next ones instead of showing an empty queue.
+    if (rest.length === 0 && cursor) void loadMore(rest);
   }
 
   /** The server's answers that mean "someone else got there first" are explained, not shown as failures. */
@@ -186,13 +197,17 @@ function Review() {
     }
   }
 
-  async function loadMore() {
+  async function loadMore(base?: Submission[]) {
     if (!cursor) return;
+    const asked = { id, status };
     setMore(true);
     try {
       const page = await api.listSubmissions(id, status, cursor);
-      setItems((list) => [...(list ?? []), ...page.submissions]);
+      // The reviewer may have switched tab or theme meanwhile; a late page belongs to the old list.
+      if (asked.id !== idRef.current || asked.status !== statusRef.current) return;
+      setItems((list) => [...(base ?? list ?? []), ...page.submissions]);
       setCursor(page.nextCursor);
+      setSelectedId((current) => current ?? page.submissions[0]?.id ?? null);
     } catch (failure) {
       setError(failure instanceof ApiError ? failure : null);
     } finally {
@@ -222,10 +237,12 @@ function Review() {
 
       {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/" backLabel="Back to challenges" />
         : !items ? <Loading label="Loading submissions" />
-        : items.length === 0 ? <Empty title={EMPTY[status].title} body={EMPTY[status].body} />
+        : items.length === 0 ? (
+          cursor ? <Loading label="Loading more submissions" /> : <Empty title={EMPTY[status].title} body={EMPTY[status].body} />
+        )
         : (
           <div className="review-layout">
-            <section aria-label="Submissions" className="queue-wrap">
+            <section aria-label="Submissions" className="queue-wrap" ref={queueTop}>
               <ul className="queue">
                 {items.map((item) => (
                   <li key={item.id}>
@@ -234,9 +251,8 @@ function Review() {
                       <span className="queue-text">
                         <strong>{item.userName}</strong>
                         <span className="muted">{item.progress} of {theme?.goal ?? "?"} {theme?.goalUnit ?? ""} · {formatDateTime(item.updatedAt)}</span>
+                        {(item.attempt > 1 || !item.storagePath) && <span className="queue-chips">{item.attempt > 1 && <Info>Attempt {item.attempt}</Info>}{!item.storagePath && <Info>No photo</Info>}</span>}
                       </span>
-                      {item.attempt > 1 && <Info>Attempt {item.attempt}</Info>}
-                      {!item.storagePath && <Info>No photo</Info>}
                     </button>
                   </li>
                 ))}
@@ -264,6 +280,7 @@ function Review() {
                     <button className="pill-btn gray small" onClick={() => go(-1)} disabled={index <= 0}>Previous</button>
                     <span className="muted" aria-live="polite">{index + 1} of {items.length}{cursor ? "+" : ""}</span>
                     <button className="pill-btn gray small" onClick={() => go(1)} disabled={index >= items.length - 1}>Next</button>
+                    <button className="pill-btn gray small to-list" onClick={() => queueTop.current?.scrollIntoView?.({ block: "start" })}>Back to list</button>
                   </div>
                   <p className="hint keys">Keys: <kbd>J</kbd> next, <kbd>K</kbd> previous{selected.status === "submitted" && <>, <kbd>A</kbd> approve, <kbd>R</kbd> request changes</>}.</p>
                 </div>
@@ -291,7 +308,8 @@ function Review() {
         )}
 
       {dialog === "approve" && selected && (
-        <Dialog title={`Approve ${selected.userName}?`} confirmLabel={`Approve and award ${points} points`} onClose={() => setDialog(null)} onConfirm={() => approve(selected)}>
+        <Dialog title={`Approve ${selected.userName}?`} confirmLabel={`Approve and award ${points} points`} focusCancel onClose={() => setDialog(null)} onConfirm={() => approve(selected)}>
+          <p className="muted">{selected.progress} of {formatGoal(theme?.goal ?? 0, theme?.goalUnit ?? "")}{selected.storagePath ? ", with a photo" : ", no photo"}.</p>
           <p><strong>{points} points</strong> are added to {selected.userName}’s balance now. Approvals are final and can’t be undone.</p>
           {selected.caption && <p className="muted">“{selected.caption}”</p>}
         </Dialog>
