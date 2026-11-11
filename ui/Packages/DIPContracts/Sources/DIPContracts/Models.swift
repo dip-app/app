@@ -10,8 +10,9 @@ public struct Company: Codable, Equatable, Sendable {
     public var officeLatitude: Double
     public var officeLongitude: Double
     public var createdAt: Date
+    public var membershipMode: String?
 
-    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date) {
+    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date, membershipMode: String? = nil) {
         self.id = id
         self.name = name
         self.logoURL = logoURL
@@ -20,6 +21,7 @@ public struct Company: Codable, Equatable, Sendable {
         self.officeLatitude = officeLatitude
         self.officeLongitude = officeLongitude
         self.createdAt = createdAt
+        self.membershipMode = membershipMode
     }
 }
 
@@ -41,8 +43,15 @@ public struct AppUser: Codable, Equatable, Sendable {
     public var favoritePhotoIds: [String]
     public var pointsBalance: Int
     public var createdAt: Date
+    public var workLocation: String?
+    public var teamIds: [String]?
+    public var status: String?
+    public var managerEmail: String?
+    public var startDate: String?
+    public var revision: Int?
+    public var statusUpdatedAt: Date?
 
-    public init(id: String? = nil, companyId: String, displayName: String, email: String, photoURL: String, avatarId: String, department: String, jobTitle: String, city: String, role: String, interestTagIds: [String], travelRadiusMiles: Int, availability: [String], friendIds: [String], favoritePhotoIds: [String], pointsBalance: Int, createdAt: Date) {
+    public init(id: String? = nil, companyId: String, displayName: String, email: String, photoURL: String, avatarId: String, department: String, jobTitle: String, city: String, role: String, interestTagIds: [String], travelRadiusMiles: Int, availability: [String], friendIds: [String], favoritePhotoIds: [String], pointsBalance: Int, createdAt: Date, workLocation: String? = nil, teamIds: [String]? = nil, status: String? = nil, managerEmail: String? = nil, startDate: String? = nil, revision: Int? = nil, statusUpdatedAt: Date? = nil) {
         self.id = id
         self.companyId = companyId
         self.displayName = displayName
@@ -60,6 +69,13 @@ public struct AppUser: Codable, Equatable, Sendable {
         self.favoritePhotoIds = favoritePhotoIds
         self.pointsBalance = pointsBalance
         self.createdAt = createdAt
+        self.workLocation = workLocation
+        self.teamIds = teamIds
+        self.status = status
+        self.managerEmail = managerEmail
+        self.startDate = startDate
+        self.revision = revision
+        self.statusUpdatedAt = statusUpdatedAt
     }
 }
 
@@ -327,8 +343,10 @@ public struct RSVP: Codable, Equatable, Sendable {
     public var checkedIn: Bool
     public var checkedInAt: Date?
     public var createdAt: Date
+    public var source: String?
+    public var managedBy: String?
 
-    public init(id: String? = nil, companyId: String, eventId: String, userId: String, userName: String, userAvatarId: String, userDepartment: String, userJobTitle: String? = nil, eventStartTime: Date, status: String, checkedIn: Bool, checkedInAt: Date? = nil, createdAt: Date) {
+    public init(id: String? = nil, companyId: String, eventId: String, userId: String, userName: String, userAvatarId: String, userDepartment: String, userJobTitle: String? = nil, eventStartTime: Date, status: String, checkedIn: Bool, checkedInAt: Date? = nil, createdAt: Date, source: String? = nil, managedBy: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.eventId = eventId
@@ -342,6 +360,8 @@ public struct RSVP: Codable, Equatable, Sendable {
         self.checkedIn = checkedIn
         self.checkedInAt = checkedInAt
         self.createdAt = createdAt
+        self.source = source
+        self.managedBy = managedBy
     }
 }
 
@@ -894,12 +914,14 @@ public struct RecordAttendanceRequest: Codable, Equatable, Sendable {
     public var companyId: String
     public var eventId: String
     public var userId: String
+    public var checkedIn: Bool?
 
-    public init(contractVersion: Int, companyId: String, eventId: String, userId: String) {
+    public init(contractVersion: Int, companyId: String, eventId: String, userId: String, checkedIn: Bool? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.eventId = eventId
         self.userId = userId
+        self.checkedIn = checkedIn
     }
 }
 
@@ -908,12 +930,16 @@ public struct RecordAttendanceResponse: Codable, Equatable, Sendable {
     public var eventId: String
     public var userId: String
     public var pointsAwarded: Int
+    public var checkedIn: Bool?
+    public var changed: Bool?
 
-    public init(contractVersion: Int, eventId: String, userId: String, pointsAwarded: Int) {
+    public init(contractVersion: Int, eventId: String, userId: String, pointsAwarded: Int, checkedIn: Bool? = nil, changed: Bool? = nil) {
         self.contractVersion = contractVersion
         self.eventId = eventId
         self.userId = userId
         self.pointsAwarded = pointsAwarded
+        self.checkedIn = checkedIn
+        self.changed = changed
     }
 }
 
@@ -972,6 +998,858 @@ public struct FinalizeEventPhotoResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.photoId = photoId
         self.created = created
+    }
+}
+
+public struct Team: Codable, Equatable, Sendable {
+    public var id: String?
+    public var companyId: String
+    public var name: String
+    public var archived: Bool
+    public var createdAt: Date
+    public var updatedAt: Date
+    public var revision: Int
+
+    public init(id: String? = nil, companyId: String, name: String, archived: Bool, createdAt: Date, updatedAt: Date, revision: Int) {
+        self.id = id
+        self.companyId = companyId
+        self.name = name
+        self.archived = archived
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.revision = revision
+    }
+}
+
+public struct AuditFieldChange: Codable, Equatable, Sendable {
+    public var field: String
+    public var before: String?
+    public var after: String?
+
+    public init(field: String, before: String? = nil, after: String? = nil) {
+        self.field = field
+        self.before = before
+        self.after = after
+    }
+}
+
+public struct AuditEntry: Codable, Equatable, Sendable {
+    public var id: String?
+    public var companyId: String
+    public var actorId: String
+    public var actorName: String
+    public var actorRole: String
+    public var action: String
+    public var targetType: String
+    public var targetId: String
+    public var summary: String
+    public var changes: [AuditFieldChange]
+    public var reason: String?
+    public var requestId: String?
+    public var createdAt: Date
+
+    public init(id: String? = nil, companyId: String, actorId: String, actorName: String, actorRole: String, action: String, targetType: String, targetId: String, summary: String, changes: [AuditFieldChange], reason: String? = nil, requestId: String? = nil, createdAt: Date) {
+        self.id = id
+        self.companyId = companyId
+        self.actorId = actorId
+        self.actorName = actorName
+        self.actorRole = actorRole
+        self.action = action
+        self.targetType = targetType
+        self.targetId = targetId
+        self.summary = summary
+        self.changes = changes
+        self.reason = reason
+        self.requestId = requestId
+        self.createdAt = createdAt
+    }
+}
+
+public struct EmployeeRecordInput: Codable, Equatable, Sendable {
+    public var email: String
+    public var displayName: String?
+    public var role: String?
+    public var teamIds: [String]?
+    public var workLocation: String?
+    public var department: String?
+    public var jobTitle: String?
+    public var managerEmail: String?
+    public var startDate: String?
+
+    public init(email: String, displayName: String? = nil, role: String? = nil, teamIds: [String]? = nil, workLocation: String? = nil, department: String? = nil, jobTitle: String? = nil, managerEmail: String? = nil, startDate: String? = nil) {
+        self.email = email
+        self.displayName = displayName
+        self.role = role
+        self.teamIds = teamIds
+        self.workLocation = workLocation
+        self.department = department
+        self.jobTitle = jobTitle
+        self.managerEmail = managerEmail
+        self.startDate = startDate
+    }
+}
+
+public struct RosterEntry: Codable, Equatable, Sendable {
+    public var id: String?
+    public var companyId: String
+    public var email: String
+    public var displayName: String
+    public var role: String
+    public var teamIds: [String]
+    public var workLocation: String
+    public var department: String
+    public var jobTitle: String
+    public var managerEmail: String?
+    public var startDate: String?
+    public var status: String
+    public var source: String
+    public var importJobId: String?
+    public var claimedBy: String?
+    public var claimedAt: Date?
+    public var invitedBy: String
+    public var createdAt: Date
+    public var updatedAt: Date
+    public var revision: Int
+
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String, createdAt: Date, updatedAt: Date, revision: Int) {
+        self.id = id
+        self.companyId = companyId
+        self.email = email
+        self.displayName = displayName
+        self.role = role
+        self.teamIds = teamIds
+        self.workLocation = workLocation
+        self.department = department
+        self.jobTitle = jobTitle
+        self.managerEmail = managerEmail
+        self.startDate = startDate
+        self.status = status
+        self.source = source
+        self.importJobId = importJobId
+        self.claimedBy = claimedBy
+        self.claimedAt = claimedAt
+        self.invitedBy = invitedBy
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.revision = revision
+    }
+}
+
+public struct AdminMemberSummary: Codable, Equatable, Sendable {
+    public var userId: String
+    public var email: String
+    public var displayName: String
+    public var avatarId: String
+    public var photoURL: String
+    public var role: String
+    public var status: String
+    public var department: String
+    public var jobTitle: String
+    public var city: String
+    public var workLocation: String
+    public var teamIds: [String]
+    public var managerEmail: String?
+    public var startDate: String?
+    public var pointsBalance: Int?
+    public var revision: Int
+    public var createdAt: Date
+
+    public init(userId: String, email: String, displayName: String, avatarId: String, photoURL: String, role: String, status: String, department: String, jobTitle: String, city: String, workLocation: String, teamIds: [String], managerEmail: String? = nil, startDate: String? = nil, pointsBalance: Int? = nil, revision: Int, createdAt: Date) {
+        self.userId = userId
+        self.email = email
+        self.displayName = displayName
+        self.avatarId = avatarId
+        self.photoURL = photoURL
+        self.role = role
+        self.status = status
+        self.department = department
+        self.jobTitle = jobTitle
+        self.city = city
+        self.workLocation = workLocation
+        self.teamIds = teamIds
+        self.managerEmail = managerEmail
+        self.startDate = startDate
+        self.pointsBalance = pointsBalance
+        self.revision = revision
+        self.createdAt = createdAt
+    }
+}
+
+public struct ImportFieldChange: Codable, Equatable, Sendable {
+    public var field: String
+    public var before: String?
+    public var after: String?
+
+    public init(field: String, before: String? = nil, after: String? = nil) {
+        self.field = field
+        self.before = before
+        self.after = after
+    }
+}
+
+public struct ImportRowError: Codable, Equatable, Sendable {
+    public var field: String
+    public var code: String
+    public var message: String
+
+    public init(field: String, code: String, message: String) {
+        self.field = field
+        self.code = code
+        self.message = message
+    }
+}
+
+public struct ImportRowPlan: Codable, Equatable, Sendable {
+    public var rowNumber: Int
+    public var email: String
+    public var action: String
+    public var target: String
+    public var changes: [ImportFieldChange]
+    public var errors: [ImportRowError]
+
+    public init(rowNumber: Int, email: String, action: String, target: String, changes: [ImportFieldChange], errors: [ImportRowError]) {
+        self.rowNumber = rowNumber
+        self.email = email
+        self.action = action
+        self.target = target
+        self.changes = changes
+        self.errors = errors
+    }
+}
+
+public struct ImportTotals: Codable, Equatable, Sendable {
+    public var total: Int
+    public var create: Int
+    public var update: Int
+    public var unchanged: Int
+    public var invalid: Int
+
+    public init(total: Int, create: Int, update: Int, unchanged: Int, invalid: Int) {
+        self.total = total
+        self.create = create
+        self.update = update
+        self.unchanged = unchanged
+        self.invalid = invalid
+    }
+}
+
+public struct ImportProgress: Codable, Equatable, Sendable {
+    public var processed: Int
+    public var total: Int
+    public var created: Int
+    public var updated: Int
+    public var unchanged: Int
+    public var failed: Int
+
+    public init(processed: Int, total: Int, created: Int, updated: Int, unchanged: Int, failed: Int) {
+        self.processed = processed
+        self.total = total
+        self.created = created
+        self.updated = updated
+        self.unchanged = unchanged
+        self.failed = failed
+    }
+}
+
+public struct ImportRowResult: Codable, Equatable, Sendable {
+    public var rowNumber: Int
+    public var email: String
+    public var outcome: String
+    public var errorCode: String?
+    public var message: String?
+
+    public init(rowNumber: Int, email: String, outcome: String, errorCode: String? = nil, message: String? = nil) {
+        self.rowNumber = rowNumber
+        self.email = email
+        self.outcome = outcome
+        self.errorCode = errorCode
+        self.message = message
+    }
+}
+
+public struct ImportJob: Codable, Equatable, Sendable {
+    public var id: String?
+    public var companyId: String
+    public var status: String
+    public var fileName: String?
+    public var totals: ImportTotals
+    public var progress: ImportProgress
+    public var planHash: String
+    public var chunkCount: Int
+    public var nextChunk: Int
+    public var errors: [ImportRowResult]
+    public var errorsTruncated: Bool
+    public var createdBy: String
+    public var createdAt: Date
+    public var updatedAt: Date
+
+    public init(id: String? = nil, companyId: String, status: String, fileName: String? = nil, totals: ImportTotals, progress: ImportProgress, planHash: String, chunkCount: Int, nextChunk: Int, errors: [ImportRowResult], errorsTruncated: Bool, createdBy: String, createdAt: Date, updatedAt: Date) {
+        self.id = id
+        self.companyId = companyId
+        self.status = status
+        self.fileName = fileName
+        self.totals = totals
+        self.progress = progress
+        self.planHash = planHash
+        self.chunkCount = chunkCount
+        self.nextChunk = nextChunk
+        self.errors = errors
+        self.errorsTruncated = errorsTruncated
+        self.createdBy = createdBy
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct RemoveEventPhotoRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var photoId: String
+    public var requestId: String
+    public var reason: String?
+
+    public init(contractVersion: Int, companyId: String, eventId: String, photoId: String, requestId: String, reason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.photoId = photoId
+        self.requestId = requestId
+        self.reason = reason
+    }
+}
+
+public struct RemoveEventPhotoResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var photoId: String
+    public var removed: Bool
+    public var commentsRemoved: Int
+    public var objectRemoved: Bool
+
+    public init(contractVersion: Int, photoId: String, removed: Bool, commentsRemoved: Int, objectRemoved: Bool) {
+        self.contractVersion = contractVersion
+        self.photoId = photoId
+        self.removed = removed
+        self.commentsRemoved = commentsRemoved
+        self.objectRemoved = objectRemoved
+    }
+}
+
+public struct RemoveEventPhotoCommentRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var photoId: String
+    public var commentId: String
+    public var requestId: String
+    public var reason: String?
+
+    public init(contractVersion: Int, companyId: String, eventId: String, photoId: String, commentId: String, requestId: String, reason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.photoId = photoId
+        self.commentId = commentId
+        self.requestId = requestId
+        self.reason = reason
+    }
+}
+
+public struct RemoveEventPhotoCommentResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var commentId: String
+    public var removed: Bool
+    public var commentCount: Int
+
+    public init(contractVersion: Int, commentId: String, removed: Bool, commentCount: Int) {
+        self.contractVersion = contractVersion
+        self.commentId = commentId
+        self.removed = removed
+        self.commentCount = commentCount
+    }
+}
+
+public struct AddEventAttendeeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var userId: String
+    public var requestId: String
+    public var notify: Bool?
+    public var capacityOverrideReason: String?
+
+    public init(contractVersion: Int, companyId: String, eventId: String, userId: String, requestId: String, notify: Bool? = nil, capacityOverrideReason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.userId = userId
+        self.requestId = requestId
+        self.notify = notify
+        self.capacityOverrideReason = capacityOverrideReason
+    }
+}
+
+public struct AddEventAttendeeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var eventId: String
+    public var userId: String
+    public var added: Bool
+    public var attendeeCount: Int
+    public var capacity: Int
+    public var capacityOverridden: Bool
+    public var notified: Bool
+
+    public init(contractVersion: Int, eventId: String, userId: String, added: Bool, attendeeCount: Int, capacity: Int, capacityOverridden: Bool, notified: Bool) {
+        self.contractVersion = contractVersion
+        self.eventId = eventId
+        self.userId = userId
+        self.added = added
+        self.attendeeCount = attendeeCount
+        self.capacity = capacity
+        self.capacityOverridden = capacityOverridden
+        self.notified = notified
+    }
+}
+
+public struct RemoveEventAttendeeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var userId: String
+    public var requestId: String
+    public var notify: Bool?
+    public var reason: String?
+
+    public init(contractVersion: Int, companyId: String, eventId: String, userId: String, requestId: String, notify: Bool? = nil, reason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.userId = userId
+        self.requestId = requestId
+        self.notify = notify
+        self.reason = reason
+    }
+}
+
+public struct RemoveEventAttendeeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var eventId: String
+    public var userId: String
+    public var removed: Bool
+    public var attendeeCount: Int
+    public var notified: Bool
+
+    public init(contractVersion: Int, eventId: String, userId: String, removed: Bool, attendeeCount: Int, notified: Bool) {
+        self.contractVersion = contractVersion
+        self.eventId = eventId
+        self.userId = userId
+        self.removed = removed
+        self.attendeeCount = attendeeCount
+        self.notified = notified
+    }
+}
+
+public struct ListMembersRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var query: String?
+    public var role: String?
+    public var status: String?
+    public var teamId: String?
+    public var workLocation: String?
+    public var pageSize: Int?
+    public var pageToken: String?
+
+    public init(contractVersion: Int, companyId: String, query: String? = nil, role: String? = nil, status: String? = nil, teamId: String? = nil, workLocation: String? = nil, pageSize: Int? = nil, pageToken: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.query = query
+        self.role = role
+        self.status = status
+        self.teamId = teamId
+        self.workLocation = workLocation
+        self.pageSize = pageSize
+        self.pageToken = pageToken
+    }
+}
+
+public struct ListMembersResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var members: [AdminMemberSummary]
+    public var nextPageToken: String?
+
+    public init(contractVersion: Int, members: [AdminMemberSummary], nextPageToken: String? = nil) {
+        self.contractVersion = contractVersion
+        self.members = members
+        self.nextPageToken = nextPageToken
+    }
+}
+
+public struct GetMemberRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var userId: String
+
+    public init(contractVersion: Int, companyId: String, userId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.userId = userId
+    }
+}
+
+public struct GetMemberResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var member: AdminMemberSummary
+
+    public init(contractVersion: Int, member: AdminMemberSummary) {
+        self.contractVersion = contractVersion
+        self.member = member
+    }
+}
+
+public struct UpdateMemberRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var userId: String
+    public var requestId: String
+    public var expectedRevision: Int?
+    public var role: String?
+    public var teamIds: [String]?
+    public var workLocation: String?
+    public var department: String?
+    public var jobTitle: String?
+    public var managerEmail: String?
+    public var startDate: String?
+
+    public init(contractVersion: Int, companyId: String, userId: String, requestId: String, expectedRevision: Int? = nil, role: String? = nil, teamIds: [String]? = nil, workLocation: String? = nil, department: String? = nil, jobTitle: String? = nil, managerEmail: String? = nil, startDate: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.userId = userId
+        self.requestId = requestId
+        self.expectedRevision = expectedRevision
+        self.role = role
+        self.teamIds = teamIds
+        self.workLocation = workLocation
+        self.department = department
+        self.jobTitle = jobTitle
+        self.managerEmail = managerEmail
+        self.startDate = startDate
+    }
+}
+
+public struct UpdateMemberResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var userId: String
+    public var revision: Int
+    public var changedFields: [String]
+
+    public init(contractVersion: Int, userId: String, revision: Int, changedFields: [String]) {
+        self.contractVersion = contractVersion
+        self.userId = userId
+        self.revision = revision
+        self.changedFields = changedFields
+    }
+}
+
+public struct ResetMemberProfileRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var userId: String
+    public var requestId: String
+    public var reason: String?
+
+    public init(contractVersion: Int, companyId: String, userId: String, requestId: String, reason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.userId = userId
+        self.requestId = requestId
+        self.reason = reason
+    }
+}
+
+public struct ResetMemberProfileResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var userId: String
+    public var resetFields: [String]
+    public var revision: Int
+
+    public init(contractVersion: Int, userId: String, resetFields: [String], revision: Int) {
+        self.contractVersion = contractVersion
+        self.userId = userId
+        self.resetFields = resetFields
+        self.revision = revision
+    }
+}
+
+public struct SetMemberStatusRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var userId: String
+    public var status: String
+    public var requestId: String
+    public var reason: String?
+
+    public init(contractVersion: Int, companyId: String, userId: String, status: String, requestId: String, reason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.userId = userId
+        self.status = status
+        self.requestId = requestId
+        self.reason = reason
+    }
+}
+
+public struct SetMemberStatusResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var userId: String
+    public var status: String
+    public var changed: Bool
+    public var rsvpsCancelled: Int
+    public var revision: Int
+
+    public init(contractVersion: Int, userId: String, status: String, changed: Bool, rsvpsCancelled: Int, revision: Int) {
+        self.contractVersion = contractVersion
+        self.userId = userId
+        self.status = status
+        self.changed = changed
+        self.rsvpsCancelled = rsvpsCancelled
+        self.revision = revision
+    }
+}
+
+public struct AdjustMemberPointsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var userId: String
+    public var requestId: String
+    public var delta: Int
+    public var reason: String
+
+    public init(contractVersion: Int, companyId: String, userId: String, requestId: String, delta: Int, reason: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.userId = userId
+        self.requestId = requestId
+        self.delta = delta
+        self.reason = reason
+    }
+}
+
+public struct AdjustMemberPointsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var userId: String
+    public var pointsBalance: Int
+    public var applied: Bool
+
+    public init(contractVersion: Int, userId: String, pointsBalance: Int, applied: Bool) {
+        self.contractVersion = contractVersion
+        self.userId = userId
+        self.pointsBalance = pointsBalance
+        self.applied = applied
+    }
+}
+
+public struct UpsertTeamRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var teamId: String?
+    public var name: String
+    public var archived: Bool?
+
+    public init(contractVersion: Int, companyId: String, requestId: String, teamId: String? = nil, name: String, archived: Bool? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.teamId = teamId
+        self.name = name
+        self.archived = archived
+    }
+}
+
+public struct UpsertTeamResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var teamId: String
+    public var created: Bool
+    public var revision: Int
+
+    public init(contractVersion: Int, teamId: String, created: Bool, revision: Int) {
+        self.contractVersion = contractVersion
+        self.teamId = teamId
+        self.created = created
+        self.revision = revision
+    }
+}
+
+public struct UpdateCompanySettingsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var membershipMode: String
+
+    public init(contractVersion: Int, companyId: String, requestId: String, membershipMode: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.membershipMode = membershipMode
+    }
+}
+
+public struct UpdateCompanySettingsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var membershipMode: String
+    public var changed: Bool
+
+    public init(contractVersion: Int, membershipMode: String, changed: Bool) {
+        self.contractVersion = contractVersion
+        self.membershipMode = membershipMode
+        self.changed = changed
+    }
+}
+
+public struct UpsertRosterEntryRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var entry: EmployeeRecordInput
+
+    public init(contractVersion: Int, companyId: String, requestId: String, entry: EmployeeRecordInput) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.entry = entry
+    }
+}
+
+public struct UpsertRosterEntryResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var entryId: String
+    public var created: Bool
+    public var status: String
+
+    public init(contractVersion: Int, entryId: String, created: Bool, status: String) {
+        self.contractVersion = contractVersion
+        self.entryId = entryId
+        self.created = created
+        self.status = status
+    }
+}
+
+public struct RevokeRosterEntryRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var entryId: String
+
+    public init(contractVersion: Int, companyId: String, requestId: String, entryId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.entryId = entryId
+    }
+}
+
+public struct RevokeRosterEntryResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var entryId: String
+    public var status: String
+    public var changed: Bool
+
+    public init(contractVersion: Int, entryId: String, status: String, changed: Bool) {
+        self.contractVersion = contractVersion
+        self.entryId = entryId
+        self.status = status
+        self.changed = changed
+    }
+}
+
+public struct ImportEmployeesRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var fileName: String?
+    public var rows: [EmployeeRecordInput]
+
+    public init(contractVersion: Int, companyId: String, requestId: String, fileName: String? = nil, rows: [EmployeeRecordInput]) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.fileName = fileName
+        self.rows = rows
+    }
+}
+
+public struct ImportEmployeesResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var jobId: String
+    public var status: String
+    public var totals: ImportTotals
+    public var rows: [ImportRowPlan]
+    public var planHash: String
+    public var chunkCount: Int
+
+    public init(contractVersion: Int, jobId: String, status: String, totals: ImportTotals, rows: [ImportRowPlan], planHash: String, chunkCount: Int) {
+        self.contractVersion = contractVersion
+        self.jobId = jobId
+        self.status = status
+        self.totals = totals
+        self.rows = rows
+        self.planHash = planHash
+        self.chunkCount = chunkCount
+    }
+}
+
+public struct ApplyEmployeeImportRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var jobId: String
+    public var planHash: String
+
+    public init(contractVersion: Int, companyId: String, jobId: String, planHash: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.jobId = jobId
+        self.planHash = planHash
+    }
+}
+
+public struct ApplyEmployeeImportResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var jobId: String
+    public var status: String
+    public var done: Bool
+    public var progress: ImportProgress
+    public var results: [ImportRowResult]
+
+    public init(contractVersion: Int, jobId: String, status: String, done: Bool, progress: ImportProgress, results: [ImportRowResult]) {
+        self.contractVersion = contractVersion
+        self.jobId = jobId
+        self.status = status
+        self.done = done
+        self.progress = progress
+        self.results = results
+    }
+}
+
+public struct GetEmployeeImportRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var jobId: String
+
+    public init(contractVersion: Int, companyId: String, jobId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.jobId = jobId
+    }
+}
+
+public struct GetEmployeeImportResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var job: ImportJob
+
+    public init(contractVersion: Int, job: ImportJob) {
+        self.contractVersion = contractVersion
+        self.job = job
     }
 }
 
