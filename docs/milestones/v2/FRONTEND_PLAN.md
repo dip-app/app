@@ -9,6 +9,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Item | What | Status | PR / branch | Owner area |
 | --- | --- | --- | --- | --- |
 | Rewards icon | Rewards tab icon is a gift | Done, merged | PR #48 | iOS |
+| Rewards page (V2-S03 stretch) | Rewards tab opens the Figma Rewards frame (raffle entry with built-in progress meter, Discounted Experiences with corner tags) with the ticket shape swapped for solid gift-box cards with a small bow. Mock-backed: local entries, no redemption, contract or backend | In PR | feature/rewards-gifts | iOS |
 | Event Join | One clear Join action; Directions/Leave row; chat icon on the joined bar | Done, merged | PR #47 | iOS |
 | V1-08 imagery | Event and catalog imagery | Done, merged | PR #44 | iOS |
 | Frontend plan | This plan | Done, merged | PR #50 | Plan steward |
@@ -78,7 +79,7 @@ Suggested order is at the end.
 Remove or resolve everything a TestFlight tester can tap that goes nowhere or confuses, and apply the usability findings that are still open. Do this first because later items add to the same screens.
 
 - **Remove or hide dead ends.** The notifications bell and the Rewards tab stay hidden or unconnected until their stretch features (V2-S05, V2-S03) are selected. The Rewards tab icon is already a gift (PR #48, merged).
-- **Dead-end prototype alerts.** Today the bell opens "Notifications is not connected yet", the Rewards tab opens a "Rewards" notice, the Home challenge card opens "Challenge entries", and "Completed list" is a notice (`ui/DIP/Features/Prototype/DIPPrototypeApp.swift`). For each: hide the entry point until its screen exists, or replace it in F2/F3/F4. Notifications and Rewards are stretch (V2-S05, V2-S03): hide unless selected.
+- **Dead-end prototype alerts.** Today the bell opens "Notifications is not connected yet", the Rewards tab opened a "Rewards" notice (now a mock-backed Rewards page, see the status board), the Home challenge card opens "Challenge entries", and "Completed list" is a notice (`ui/DIP/Features/Prototype/DIPPrototypeApp.swift`). For each: hide the entry point until its screen exists, or replace it in F2/F3/F4. Notifications and Rewards are stretch (V2-S05, V2-S03): hide unless selected.
 - **Findings still open from testing:** My Events icon was not understood (show its title, or change the icon: needs a design call); "Memories" alone was not an obvious route to past events (label it plainly, e.g. "Past events"); testers read the app as fitness-focused (broader coworker-socializing copy on Home, empty states and the welcome screen).
 - **Tag fallback bug.** `DIPEventCover`'s tag fallback keys on `tag-fitness`-style ids, but live tag ids are opaque, so tag-only events always fall back to the outdoors image. Resolve through the loaded tag catalog by name, or drop the fallback (events with a catalog cover are unaffected).
 - **Known failing UI test:** `testProfileEditsAndMemoryNavigation` (department text assertion). Fix or retire so the suite is green before adding more.
