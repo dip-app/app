@@ -112,7 +112,7 @@ test("a deactivated member loses every same-company read but keeps own profile a
 
 test("clients cannot write the server-owned member fields, role, status, teams or points", async () => {
   const own = (uid: string) => doc(fs(uid), `users/${uid}`);
-  for (const patch of [{ role: "admin" }, { status: "active" }, { status: "deactivated" }, { teamIds: ["t1"] }, { workLocation: "HQ" }, { revision: 9 },
+  for (const patch of [{ role: "admin" }, { status: "invited" }, { status: "deactivated" }, { teamIds: ["t-other"] }, { workLocation: "Remote" }, { revision: 9 },
     { managerEmail: "a@b.c" }, { startDate: "2030-01-01" }, { pointsBalance: 1_000_000 }, { statusUpdatedAt: Timestamp.now() }]) {
     await assertFails(updateDoc(own("adm-member"), patch));
     await assertFails(updateDoc(own("adm-active"), patch));
