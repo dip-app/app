@@ -3,12 +3,17 @@ import SwiftUI
 
 /// Shared press feedback darkens an opaque surface instead of fading it through underlying content.
 public struct DIPPressFeedbackStyle: ButtonStyle {
-    public init() {}
+    /// Corner radius of the darkening overlay for rectangular surfaces such as a tappable row; nil keeps the capsule.
+    private let cornerRadius: CGFloat?
+    public init(cornerRadius: CGFloat? = nil) { self.cornerRadius = cornerRadius }
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .overlay {
-                Capsule().fill(.black.opacity(configuration.isPressed ? 0.08 : 0))
-                    .allowsHitTesting(false)
+                Group {
+                    if let cornerRadius { RoundedRectangle(cornerRadius: cornerRadius).fill(.black.opacity(configuration.isPressed ? 0.08 : 0)) }
+                    else { Capsule().fill(.black.opacity(configuration.isPressed ? 0.08 : 0)) }
+                }
+                .allowsHitTesting(false)
             }
             .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
