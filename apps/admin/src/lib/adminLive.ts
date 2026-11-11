@@ -1,6 +1,6 @@
 import type { FirebaseApp } from "firebase/app";
 import {
-  type DocumentData, type Firestore, type QueryDocumentSnapshot, Timestamp, collection, doc, getDoc, getDocs, limit, orderBy, query, startAfter, where,
+  type DocumentData, type Firestore, type QueryDocumentSnapshot, Timestamp, collection, doc, documentId, getDoc, getDocs, limit, orderBy, query, startAfter, where,
 } from "firebase/firestore";
 import { type Functions, httpsCallable } from "firebase/functions";
 import { getBlob, getStorage, ref } from "firebase/storage";
@@ -154,7 +154,7 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       const docs: QueryDocumentSnapshot[] = [];
       let last: QueryDocumentSnapshot | undefined;
       for (let page = 0; page < 20; page += 1) {
-        const snap = await getDocs(query(col(session, "events", eventId, "rsvps"), where("companyId", "==", session.companyId), where("status", "==", "going"), orderBy("createdAt"), ...(last ? [startAfter(last)] : []), limit(100)));
+        const snap = await getDocs(query(col(session, "events", eventId, "rsvps"), where("companyId", "==", session.companyId), where("status", "==", "going"), orderBy(documentId()), ...(last ? [startAfter(last)] : []), limit(100)));
         docs.push(...snap.docs);
         last = snap.docs[snap.docs.length - 1];
         if (snap.docs.length < 100) break;
