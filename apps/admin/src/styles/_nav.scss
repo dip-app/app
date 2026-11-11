@@ -3,7 +3,7 @@
 // Navigation: a docked, flat ink sidebar (full height, square edges) with grouped compact items. On narrow screens
 // the same sidebar becomes an off-canvas drawer opened from a slim top bar.
 $sidebar-width: 232px;
-$nav-muted: #aeb1c2; // 7.9:1 on ink
+$nav-muted: #b9bccb; // 9:1 on ink
 $nav-text: #e6e8f0;
 
 .app { min-height: 100dvh; display: grid; grid-template-columns: $sidebar-width minmax(0, 1fr); }
@@ -15,19 +15,20 @@ $nav-text: #e6e8f0;
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 14px 8px; min-height: 52px; }
   nav { flex: 1; display: grid; align-content: start; gap: 20px; padding-top: 6px; }
   .nav-group { display: grid; gap: 2px; }
-  .nav-heading { padding: 0 10px 6px; font-family: var(--font-figtree), sans-serif; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: $nav-muted; }
+  .nav-heading { padding: 0 10px 6px; font-family: var(--font-figtree), sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: $nav-muted; }
   .account { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .14); display: grid; gap: 2px; }
   .who { display: grid; padding: 4px 10px 8px; min-width: 0; font-family: var(--font-figtree), sans-serif; strong { font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } span { font-size: 13px; color: $nav-muted; } }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-size: 22px; letter-spacing: .01em; color: inherit; }
 
+.nav-item.signout { color: $nav-muted; }
 .nav-item {
   position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 0 10px 0 12px; border-radius: 6px; text-align: left;
   font-family: var(--font-figtree), sans-serif; font-size: 15px; line-height: 1.2; color: $nav-text; background: transparent; transition: background .15s ease, color .15s ease;
   svg { flex: none; width: 18px; height: 18px; opacity: .8; }
   .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   &:hover { background: rgba(255, 255, 255, .08); color: $white; svg { opacity: 1; } }
-  &[aria-current="page"] { background: rgba(255, 255, 255, .13); color: $white; font-weight: 600; svg { opacity: 1; }
+  &[aria-current="page"], &[aria-current="true"] { background: rgba(255, 255, 255, .17); color: $white; font-weight: 600; svg { opacity: 1; }
     &::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: $purple; } }
   &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; }
 }
@@ -47,7 +48,8 @@ $nav-text: #e6e8f0;
   }
   .scrim { display: block; position: fixed; inset: 0; z-index: 35; background: rgba(30, 33, 43, .55); opacity: 0; pointer-events: none; transition: opacity .2s ease;
     &[data-open="true"] { opacity: 1; pointer-events: auto; } }
-  .content { padding: 20px 16px 56px; }
+  .content { padding: 24px 16px 56px; }
   .nav-item { min-height: 44px; }
+  .review-detail { top: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar, .scrim, .nav-item { transition: none !important; } }

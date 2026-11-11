@@ -41,6 +41,13 @@ const NAV: NavGroup[] = [
 
 const MOBILE = "(max-width: 900px)";
 
+/** "page" for the item's own page, "true" for pages below it (`/members/` covers `/members/detail/`, never `/membersfoo`). */
+function isWithin(pathname: string, href: string): "page" | "true" | undefined {
+  const base = href.replace(/\/$/, "");
+  if (pathname.replace(/\/$/, "") === base) return "page";
+  return pathname.startsWith(`${base}/`) ? "true" : undefined;
+}
+
 /** Signed-in frame. Visibility is a convenience only; every command is authorized by the backend. */
 export function Shell({ title, subtitle, action, children, requires }: Props) {
   const { session, signOut } = useApp();
@@ -76,6 +83,8 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
+      // Focus that ended up outside the drawer (for example on the body after a click) comes back in.
+      if (!sidebar.current.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); return; }
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     }
@@ -96,14 +105,14 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
 
   return (
     <div className="app">
-      <header className="topbar">
+      <header className="topbar" inert={open}>
         <button ref={menuButton} className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
         <Link href="/events/" className="brand" aria-label="DIP Admin home"><CloudMark size={28} /><span>DIP Admin</span></Link>
       </header>
       <div className="scrim" data-open={open ? "true" : undefined} onClick={() => close()} aria-hidden />
-      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label="Sidebar">
+      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label="Sidebar" role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
         <div className="sidebar-top">
           <Link href="/events/" className="brand" aria-label="DIP Admin home"><CloudMark size={30} /><span>DIP Admin</span></Link>
           <button ref={closeButton} className="menu-btn close-btn" aria-label="Close menu" onClick={() => close()}>
@@ -115,7 +124,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
             <div className="nav-group" key={group.heading} role="group" aria-label={group.heading}>
               <p className="nav-heading" aria-hidden>{group.heading}</p>
               {group.items.map((item) => (
-                <Link key={item.href} href={item.href} className="nav-item" title={item.label} aria-current={pathname.startsWith(item.href.slice(0, -1)) ? "page" : undefined}>
+                <Link key={item.href} href={item.href} className="nav-item" title={item.label} aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
                   <span className="label">{item.label}</span>
                 </Link>
