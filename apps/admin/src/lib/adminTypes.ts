@@ -9,11 +9,11 @@ export type MemberStatus = "invited" | "active" | "deactivated";
 export type Capability =
   | "events.manage" | "themes.manage" | "albums.moderate" | "attendees.manage"
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
-  | "import.run" | "roster.manage" | "audit.view";
+  | "import.run" | "roster.manage" | "audit.view" | "challenges.review";
 
 const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
-  ...ORGANIZER_CAPS, "themes.manage", "members.edit", "members.status", "members.reset", "points.adjust",
+  ...ORGANIZER_CAPS, "themes.manage", "challenges.review", "members.edit", "members.status", "members.reset", "points.adjust",
   "import.run", "roster.manage", "audit.view",
 ];
 
@@ -47,6 +47,9 @@ export const ADMIN_CALLABLES = {
   planImport: "importEmployeesV1",
   applyImport: "applyEmployeeImportV1",
   getImport: "getEmployeeImportV1",
+  listSubmissions: "listChallengeSubmissionsV1",
+  approveSubmission: "approveChallengeV1",
+  rejectSubmission: "rejectChallengeV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -236,3 +239,30 @@ export interface ApplyStepResponse {
   progress: ImportProgress;
   results: ApplyRowResult[];
 }
+
+// ---------- Challenge submissions (docs/contracts/challenge-submissions.md)
+
+export type SubmissionStatus = "submitted" | "approved" | "rejected";
+export const SUBMISSION_STATUS_LABEL: Record<SubmissionStatus, string> = { submitted: "Pending", rejected: "Needs changes", approved: "Approved" };
+
+export interface Submission {
+  /** `{challengeId}_{userId}` */
+  id: string;
+  challengeId: string;
+  userId: string;
+  userName: string;
+  caption: string;
+  progress: number;
+  status: SubmissionStatus;
+  createdAt: string;
+  /** Send back as `expectedUpdatedAt` when reviewing: the review fails if the member edited since. */
+  updatedAt: string;
+  /** Evidence object path, or null for a note-only entry. */
+  storagePath: string | null;
+  attempt: number;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  pointsAwarded: number;
+}
+
+export interface SubmissionPage { submissions: Submission[]; nextCursor: string | null }

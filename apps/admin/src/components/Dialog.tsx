@@ -8,6 +8,10 @@ interface Props {
   confirmLabel: string;
   /** Asks for a written reason (recorded in the audit log) before the confirm button works. */
   reasonLabel?: string;
+  /** Longest note allowed (default 200, the audit-log limit). */
+  reasonMax?: number;
+  /** Replaces "Saved in the audit log." under the field. */
+  reasonHint?: string;
   /** Destructive actions use the error color so they read differently from a normal save. */
   danger?: boolean;
   /** Extra condition (e.g. a valid number inside the dialog body) before confirm is enabled. */
@@ -17,7 +21,7 @@ interface Props {
 }
 
 /** Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. */
-export function Dialog({ title, children, confirmLabel, reasonLabel, danger, confirmDisabled, onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, confirmDisabled, onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,8 +57,8 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, danger, con
       {needsReason && (
         <div className="field">
           <label htmlFor={`${id}-r`}>{reasonLabel} (required)</label>
-          <textarea id={`${id}-r`} value={reason} maxLength={200} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
-          <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? "Add a reason to continue. " : ""}Saved in the audit log. {reason.trim().length}/200</span>
+          <textarea id={`${id}-r`} value={reason} maxLength={reasonMax} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
+          <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? "Add a reason to continue. " : ""}{reasonHint} {reason.trim().length}/{reasonMax}</span>
         </div>
       )}
       {error && <p className="error" role="alert">{error}</p>}
