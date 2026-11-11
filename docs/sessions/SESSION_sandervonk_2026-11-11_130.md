@@ -25,3 +25,7 @@ Add a static landing page at the apex of the shared Hosting site and move the ad
 ## Handoff
 
 After merge: deploy hosting, add letsdip.work as a custom domain, then switch DIPShareLink.baseURL, applinks: and SHARE_ORIGIN together once DNS and SSL are live.
+
+## Follow-up: Figma frames
+
+The landing phone now cycles real Figma frames (Home, Event Page, Event Page (Joined), Album Page, Rewards from file DCIagJo7uk5IOUGqlKzAjf), cropped to the screen and stored in apps/landing/img/ (about 440 KB); build-site.sh copies them to /img/landing/. They are design placeholders, so re-export when the designs change.

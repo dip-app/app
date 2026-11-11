@@ -58,42 +58,10 @@
   .blob.b { width: 220px; height: 220px; background: var(--pink); bottom: 2%; right: 4%; animation: drift 11s ease-in-out infinite reverse; }
   .phone { position: relative; width: 270px; height: 548px; border-radius: 46px; background: #0d0e13; padding: 10px; box-shadow: 0 30px 60px rgba(30,33,43,.28); animation: float 6s ease-in-out infinite; }
   .screen { position: relative; width: 100%; height: 100%; border-radius: 37px; background: #fff; color: var(--ink); overflow: hidden; }
-  .notch { position: absolute; top: 9px; left: 50%; width: 84px; height: 24px; border-radius: 14px; background: #0d0e13; transform: translateX(-50%); z-index: 5; }
-  .scene { position: absolute; inset: 0; padding: 48px 16px 16px; opacity: 0; animation: scene 12s infinite; }
-  .scene:nth-child(2) { animation-delay: 0s; }
-  .scene:nth-child(3) { animation-delay: 4s; }
-  .scene:nth-child(4) { animation-delay: 8s; }
-  .scene h2 { font-family: "Fjalla One", Impact, sans-serif; font-weight: 400; font-size: 22px; margin: 0 0 12px; text-transform: uppercase; }
-  .chips { display: flex; gap: 6px; margin-bottom: 12px; }
-  .chip { font: 700 11px Figtree, sans-serif; padding: 6px 10px; border-radius: 14px; background: var(--gray); }
-  .chip.on { background: var(--purple); color: #fff; }
-  .ev { position: relative; height: 128px; border-radius: 20px; margin-bottom: 10px; padding: 12px; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; transform: translateY(24px); opacity: 0; animation: rise 12s infinite; }
-  .ev b { font-family: "Fjalla One", Impact, sans-serif; font-weight: 400; font-size: 19px; line-height: 1.1; text-transform: uppercase; }
-  .ev small { font-size: 11px; opacity: .92; }
-  .ev.e1 { background: linear-gradient(135deg, #7B88FA, #FB72E4); animation-delay: .2s; }
-  .ev.e2 { background: linear-gradient(135deg, #F054A5, #FD4D03); animation-delay: .5s; }
-  .ev .pts { position: absolute; top: 10px; right: 10px; background: #fff; color: var(--ink); font: 700 11px Figtree, sans-serif; padding: 5px 9px; border-radius: 12px; }
-  .ev .pts::before { content: "★ "; color: var(--yellow); }
-  .scene.s2 { animation-delay: 4s; }
-  .scene.s2 .hero-img { height: 150px; border-radius: 20px; background: linear-gradient(160deg, #77C5FF, #7B88FA); margin-bottom: 12px; }
-  .row { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 16px; margin-bottom: 8px; font-size: 12px; background: var(--tint); }
-  .row i { width: 22px; height: 22px; border-radius: 50%; background: var(--purple); flex: none; }
-  .join { margin-top: 12px; height: 44px; border-radius: 22px; background: var(--ink); color: #fff; display: grid; place-items: center; font: 700 14px Figtree, sans-serif; position: relative; overflow: hidden; }
-  .join span { position: absolute; inset: 0; display: grid; place-items: center; }
-  .join .a { animation: swapA 12s infinite 4s; }
-  .join .b { background: var(--purple); opacity: 0; animation: swapB 12s infinite 4s; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .grid div { aspect-ratio: 1; border-radius: 12px; transform: scale(.4); opacity: 0; animation: pop 12s infinite; }
-  .grid div:nth-child(1) { background: #7B88FA; animation-delay: 8.3s; }
-  .grid div:nth-child(2) { background: #FB72E4; animation-delay: 8.45s; }
-  .grid div:nth-child(3) { background: #FFCC3E; animation-delay: 8.6s; }
-  .grid div:nth-child(4) { background: #77C5FF; animation-delay: 8.75s; }
-  .grid div:nth-child(5) { background: #F054A5; animation-delay: 8.9s; }
-  .grid div:nth-child(6) { background: #FD4D03; animation-delay: 9.05s; }
-  .grid div:nth-child(7) { background: #7B88FA; animation-delay: 9.2s; }
-  .grid div:nth-child(8) { background: #FFCC3E; animation-delay: 9.35s; }
-  .grid div:nth-child(9) { background: #FB72E4; animation-delay: 9.5s; }
-  .earn { position: absolute; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: #fff; font: 700 13px Figtree, sans-serif; padding: 10px 16px; border-radius: 20px; opacity: 0; animation: toast 12s infinite 8.2s; white-space: nowrap; }
+  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; animation: shot 15s infinite; }
+  .shot:nth-child(1) { animation-delay: 0s; } .shot:nth-child(2) { animation-delay: 3s; } .shot:nth-child(3) { animation-delay: 6s; }
+  .shot:nth-child(4) { animation-delay: 9s; } .shot:nth-child(5) { animation-delay: 12s; }
+  .screen { border-radius: 40px; background: #fff; }
 
   .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-bottom: 56px; }
   .card { border: 1.5px solid var(--line); background: var(--tint); border-radius: 20px; padding: 22px; }
@@ -101,12 +69,7 @@
   .card p { margin: 0; color: var(--muted); }
   footer { padding: 24px 0 34px; font-size: 14px; color: var(--muted); }
 
-  @keyframes scene { 0% { opacity: 0; } 4% { opacity: 1; } 31% { opacity: 1; } 35% { opacity: 0; } 100% { opacity: 0; } }
-  @keyframes rise { 0% { transform: translateY(24px); opacity: 0; } 6% { transform: translateY(0); opacity: 1; } 31% { transform: translateY(0); opacity: 1; } 35%, 100% { opacity: 0; } }
-  @keyframes swapA { 0%, 12% { opacity: 1; } 16%, 31% { opacity: 0; } 35%, 100% { opacity: 1; } }
-  @keyframes swapB { 0%, 12% { opacity: 0; } 16%, 31% { opacity: 1; } 35%, 100% { opacity: 0; } }
-  @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 3% { transform: scale(1.06); opacity: 1; } 5%, 24% { transform: scale(1); opacity: 1; } 27%, 100% { opacity: 0; } }
-  @keyframes toast { 0% { transform: translate(-50%, 20px); opacity: 0; } 4% { transform: translate(-50%, 0); opacity: 1; } 22% { transform: translate(-50%, 0); opacity: 1; } 26%, 100% { opacity: 0; } }
+  @keyframes shot { 0% { opacity: 0; transform: scale(1.02); } 4% { opacity: 1; transform: scale(1); } 20% { opacity: 1; transform: scale(1); } 24%, 100% { opacity: 0; } }
   @keyframes float { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-12px) rotate(1.5deg); } }
   @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(24px, -18px); } }
   @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
@@ -118,8 +81,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; }
-    .scene:nth-child(2) { opacity: 1; }
-    .ev { opacity: 1; transform: none; }
+    .shot:nth-child(1) { opacity: 1; }
   }
 </style>
 </head>
@@ -140,25 +102,11 @@
         <div class="blob a"></div><div class="blob b"></div>
         <div class="phone">
           <div class="screen">
-            <div class="notch"></div>
-            <div class="scene s1">
-              <h2>This week</h2>
-              <div class="chips"><span class="chip on">Matching your interests</span><span class="chip">All events</span></div>
-              <div class="ev e1"><span class="pts">+25 pts</span><b>Boat ride</b><small>Sat · 16 going</small></div>
-              <div class="ev e2"><span class="pts">+15 pts</span><b>Game cafe night</b><small>Thu · 9 going</small></div>
-            </div>
-            <div class="scene s2">
-              <div class="hero-img"></div>
-              <h2>Boat ride</h2>
-              <div class="row"><i></i>Sat, 4:00 PM</div>
-              <div class="row"><i style="background:var(--pink)"></i>Pier 11</div>
-              <div class="join"><span class="a">Join Activity</span><span class="b">You're in!</span></div>
-            </div>
-            <div class="scene s3">
-              <h2>Album</h2>
-              <div class="grid"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
-              <div class="earn">★ +25 points earned</div>
-            </div>
+            <img class="shot" src="/img/landing/home.jpg" alt="" width="376" height="820">
+            <img class="shot" src="/img/landing/event.jpg" alt="" width="376" height="820" loading="lazy">
+            <img class="shot" src="/img/landing/joined.jpg" alt="" width="376" height="820" loading="lazy">
+            <img class="shot" src="/img/landing/album.jpg" alt="" width="376" height="820" loading="lazy">
+            <img class="shot" src="/img/landing/rewards.jpg" alt="" width="376" height="820" loading="lazy">
           </div>
         </div>
       </div>

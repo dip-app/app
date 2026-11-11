@@ -10,10 +10,11 @@ fi
 rm -rf site-dist
 mkdir -p site-dist/admin
 cp apps/landing/index.html site-dist/index.html
+mkdir -p site-dist/img/landing && cp apps/landing/img/*.jpg site-dist/img/landing/
 cp -R apps/admin/out/. site-dist/admin/
 # Root-level public assets the share page, Universal Links and admin <img src="/img/..."> rely on.
 for d in aasa share img; do
-  [ -d "apps/admin/public/$d" ] && cp -R "apps/admin/public/$d" "site-dist/$d"
+  [ -d "apps/admin/public/$d" ] && mkdir -p "site-dist/$d" && cp -R "apps/admin/public/$d/." "site-dist/$d/" || true
 done
 # The admin export copies public/ into its out dir too; drop the duplicates under /admin.
 rm -rf site-dist/admin/aasa site-dist/admin/share
