@@ -115,6 +115,8 @@ struct DIPDetailPeopleRow: View {
     let emptyText: String
     /// When set, the header shows how full the event is ("2 of 15", or "Full"), so capacity needs no row of its own.
     var capacity: Int? = nil
+    /// Right-hand note when there is no capacity ("12 went", "Cancelled").
+    var trailingNote: String? = nil
     let identifierPrefix: String
     let onMore: () -> Void
 
@@ -127,6 +129,13 @@ struct DIPDetailPeopleRow: View {
                 Text(title)
                     .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                     .foregroundStyle(.black)
+                if capacity == nil, let trailingNote {
+                    Spacer(minLength: 8)
+                    Text(trailingNote)
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("\(identifierPrefix).attendeeNote")
+                }
                 if let capacity {
                     Spacer(minLength: 8)
                     Text(total >= capacity ? "Full" : "\(total) of \(capacity)")
@@ -170,6 +179,8 @@ struct DIPDetailActionRow: View {
     /// The coworker invite pill. When it is offered it takes the first slot of the pair; otherwise the slot falls back to
     /// Directions, so the page always shows exactly two pills (never a lone pill, never a disabled-looking Invite).
     struct InviteAction {
+        /// Spoken label, e.g. "Invite a coworker to Puppy Yoga".
+        var accessibilityLabel = "Invite a coworker"
         let action: () -> Void
     }
 
@@ -204,7 +215,7 @@ struct DIPDetailActionRow: View {
                     }
                     .buttonStyle(DIPPressFeedbackStyle())
                     .transition(.opacity)
-                    .accessibilityLabel("Invite a coworker")
+                    .accessibilityLabel(invite.accessibilityLabel)
                     .accessibilityHint("Choose a coworker from your company to invite")
                     .accessibilityIdentifier("\(identifierPrefix).invite")
                 } else if showsParticipation, let directionsURL {
@@ -214,6 +225,7 @@ struct DIPDetailActionRow: View {
                               background: DIPTokens.Color.actionPrimary.swiftUIColor)
                     }
                     .buttonStyle(DIPPressFeedbackStyle())
+                    .transition(.opacity)
                     .accessibilityLabel(directionsTitle)
                     .accessibilityIdentifier("\(identifierPrefix).directions")
                 }
@@ -249,7 +261,11 @@ struct DIPDetailActionRow: View {
             }
         }
         // Both first-slot pills have the same size, so a swap (e.g. the event fills up) cross-fades without moving anything.
-        .animation(.easeInOut(duration: 0.25), value: invite != nil)
+        .animation(.easeInOut(duration: 0.2), value: invite != nil)
+        .onChange(of: invite != nil) { _, available in
+            // The first pill swaps in place; tell VoiceOver users, who cannot see the cross-fade.
+            AccessibilityNotification.Announcement(available ? "Invite Coworker is available" : "Invite Coworker is no longer available. Directions is shown instead.").post()
+        }
     }
 
     private func textLabel(_ title: String, background: Color) -> some View {

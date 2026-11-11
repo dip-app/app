@@ -219,12 +219,14 @@ final class InvitesTests: XCTestCase {
         full.terminate()
         let cancelled = launch(["--screen=event", "--v1-event-fixtures", "--event-cancelled"])
         assertPair(cancelled, first: "event.directions", absent: "event.invite", "cancelled")
+        XCTAssertEqual(cancelled.staticTexts["event.attendeeNote"].label, "Cancelled", "a cancelled activity says so instead of a count")
         cancelled.terminate()
         let past = launch(["--screen=past-event", "--v1-event-fixtures"])
         XCTAssertTrue(past.buttons["event.primary"].waitForExistence(timeout: 20))
         XCTAssertFalse(past.buttons["event.invite"].exists)
         XCTAssertTrue(past.descendants(matching: .any)["event.directions"].waitForExistence(timeout: 5), "past: Directions is the first pill")
         XCTAssertTrue(past.buttons["event.share"].exists)
+        XCTAssertTrue(past.staticTexts["event.attendeeNote"].label.hasSuffix(" went"), "a past activity shows how many went")
         shot("event-pills-past")
     }
 }

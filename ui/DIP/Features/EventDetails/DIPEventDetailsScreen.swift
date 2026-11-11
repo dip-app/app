@@ -190,7 +190,8 @@ struct DIPEventDetailsScreen: View {
                 avatars: event.attendeeAvatars, total: event.attendeeCount,
                 emptyTitle: event.isPast ? "No attendance recorded" : "Be the first to join",
                 emptyText: event.isPast ? "No one checked in to this event." : "Coworkers who join will show up here.",
-                capacity: event.isPast ? nil : event.metadata?.capacity,
+                capacity: event.isPast || event.metadata?.status == .cancelled ? nil : event.metadata?.capacity,
+                trailingNote: event.metadata?.status == .cancelled ? "Cancelled" : event.isPast && event.attendeeCount > 0 ? "\(event.attendeeCount) went" : nil,
                 identifierPrefix: "event", onMore: onAttendees)
             DIPDetailActionRow(
                 invite: invitePill,
@@ -215,7 +216,7 @@ struct DIPEventDetailsScreen: View {
     /// not full, and an invitations adapter exists); otherwise the slot is Directions again.
     private var invitePill: DIPDetailActionRow.InviteAction? {
         guard let onInvite, !event.isPast, inviteDenial == nil else { return nil }
-        return .init(action: onInvite)
+        return .init(accessibilityLabel: "Invite a coworker to \(event.title)", action: onInvite)
     }
 
     /// Solid (pressable) pill, shown only when the organizer has edited the event.
