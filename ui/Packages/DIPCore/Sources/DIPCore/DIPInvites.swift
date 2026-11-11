@@ -172,11 +172,9 @@ public struct DIPInviteInbox: Equatable, Sendable {
         }
     }
 
-    /// Short one-liner for list rows ("Fri, Nov 13 · 4:03 PM"), so a row never needs a third line.
+    /// Date-only one-liner for list rows ("Fri, Nov 13"): the time lives on the activity page, so rows stay short.
     public static func shortWhenText(_ date: Date, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
-        let day = date.formatted(Date.FormatStyle(locale: locale, timeZone: timeZone).weekday(.abbreviated).month(.abbreviated).day())
-        let time = date.formatted(Date.FormatStyle(locale: locale, timeZone: timeZone).hour().minute())
-        return "\(day) · \(time)"
+        date.formatted(Date.FormatStyle(locale: locale, timeZone: timeZone).weekday(.abbreviated).month(.abbreviated).day())
     }
 
     /// One line for a row: "Thu, Nov 19 at 6:30 PM".

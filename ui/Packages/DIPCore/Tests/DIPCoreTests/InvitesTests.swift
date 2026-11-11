@@ -86,11 +86,10 @@ import Testing
         #expect(inbox.label(for: sent[3]) == .declined)
     }
 
-    @Test func shortWhenTextIsOneShortLine() {
+    @Test func shortWhenTextIsDateOnly() {
         let text = DIPInviteInbox.shortWhenText(Date(timeIntervalSince1970: 1_800_000_000), locale: Locale(identifier: "en_US"), timeZone: TimeZone(identifier: "UTC")!)
-        #expect(text.contains(" · "))
-        #expect(text.contains("Jan 15") && text.contains("8:00"))
-        #expect(text.count < 28)
+        #expect(text == "Fri, Jan 15")
+        #expect(!text.contains(":"))
     }
 
     @Test func whenTextIsOneLineWithDayAndTime() {
