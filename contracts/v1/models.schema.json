@@ -31,6 +31,14 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "membershipMode": {
+          "type": "string",
+          "enum": [
+            "open",
+            "rosterOnly"
+          ],
+          "description": "Server/admin-owned, optional; missing means open (any verified company-domain Google account joins as member). rosterOnly: only pre-provisioned roster entries (and existing members) may join."
         }
       },
       "required": [
@@ -110,6 +118,51 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Server-owned (admin tooling, roster, import). Office or site name, empty when unknown."
+        },
+        "teamIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "maxItems": 20,
+          "description": "Server-owned. Team catalog ids (companies/{c}/teams)."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "active",
+            "deactivated"
+          ],
+          "description": "Server-owned. Missing means active. deactivated blocks sign-in access and company reads."
+        },
+        "managerEmail": {
+          "type": "string",
+          "maxLength": 254,
+          "description": "Server-owned, optional (import)."
+        },
+        "startDate": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Server-owned, optional (import). YYYY-MM-DD."
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Server-owned, optional. Incremented by every admin edit; used for optimistic concurrency."
+        },
+        "statusUpdatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-owned, optional. When status last changed."
         }
       },
       "required": [
@@ -711,6 +764,18 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "self",
+            "admin"
+          ],
+          "description": "Server-owned, optional: who created the RSVP (missing means self)."
+        },
+        "managedBy": {
+          "type": "string",
+          "description": "Server-owned, optional: uid of the admin who added or removed the attendee."
         }
       },
       "required": [
@@ -1366,7 +1431,8 @@
           "type": "string",
           "enum": [
             "member",
-            "admin"
+            "admin",
+            "organizer"
           ]
         }
       },
@@ -1852,6 +1918,10 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "checkedIn": {
+          "type": "boolean",
+          "description": "Optional, default true. false marks a no-show and is refused once points were awarded (ATTENDANCE_LOCKED)."
         }
       },
       "required": [
@@ -1884,6 +1954,13 @@
         "pointsAwarded": {
           "type": "integer",
           "minimum": 0
+        },
+        "checkedIn": {
+          "type": "boolean"
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "False when the stored state already matched (idempotent replay)."
         }
       },
       "required": [
@@ -2019,6 +2096,2101 @@
         "contractVersion",
         "photoId",
         "created"
+      ]
+    },
+    "Team": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "companies/{c}/teams/{teamId}. Server-written (upsertTeamV1); same-company members read.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "companyId",
+        "name",
+        "archived",
+        "createdAt",
+        "updatedAt",
+        "revision"
+      ]
+    },
+    "AuditFieldChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Short, redacted string summaries; never secrets, tokens or full documents.",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "field",
+        "before",
+        "after"
+      ]
+    },
+    "AuditEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "companies/{c}/auditLog/{auditId}. Append-only, written in the same transaction as the command; admin-readable only.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "actorName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "actorRole": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ]
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Dotted verb, for example member.update, photo.remove, attendee.add, import.apply."
+        },
+        "targetType": {
+          "type": "string",
+          "enum": [
+            "member",
+            "event",
+            "photo",
+            "comment",
+            "attendee",
+            "roster",
+            "import",
+            "team",
+            "company",
+            "points"
+          ]
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 280
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuditFieldChange"
+          },
+          "maxItems": 30
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "actorId",
+        "actorName",
+        "actorRole",
+        "action",
+        "targetType",
+        "targetId",
+        "summary",
+        "changes",
+        "createdAt"
+      ]
+    },
+    "EmployeeRecordInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One employee row (roster entry or import row). Omitted optional fields are left unchanged on update and defaulted on create.",
+      "properties": {
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254,
+          "description": "Work email; lower-cased server-side and matched against the company's emailDomain."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Hint shown until first sign-in; Google's name wins afterwards (ADR 0007)."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ]
+        },
+        "teamIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "maxItems": 20,
+          "description": "Team catalog ids or exact team names (resolved server-side)."
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "jobTitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "managerEmail": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "startDate": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "YYYY-MM-DD"
+        }
+      },
+      "required": [
+        "email"
+      ]
+    },
+    "RosterEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "companies/{c}/roster/{emailHash}. Admin-readable only; server-written. resolveMembershipV1 claims an invited entry on first verified Google sign-in.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Lower-case hex SHA-256 of the lower-case email."
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ]
+        },
+        "teamIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "maxItems": 20
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "jobTitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "managerEmail": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "startDate": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "claimed",
+            "revoked"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "import"
+          ]
+        },
+        "importJobId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "claimedBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "claimedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "invitedBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "companyId",
+        "email",
+        "displayName",
+        "role",
+        "teamIds",
+        "workLocation",
+        "department",
+        "jobTitle",
+        "status",
+        "source",
+        "invitedBy",
+        "createdAt",
+        "updatedAt",
+        "revision"
+      ]
+    },
+    "AdminMemberSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "avatarId": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "active",
+            "deactivated"
+          ]
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "jobTitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "city": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "teamIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "maxItems": 20
+        },
+        "managerEmail": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "startDate": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "pointsBalance": {
+          "type": "integer",
+          "description": "Present for admins only."
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0 when the member was never admin-edited."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "email",
+        "displayName",
+        "avatarId",
+        "photoURL",
+        "role",
+        "status",
+        "department",
+        "jobTitle",
+        "city",
+        "workLocation",
+        "teamIds",
+        "revision",
+        "createdAt"
+      ]
+    },
+    "ImportFieldChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "field",
+        "before",
+        "after"
+      ]
+    },
+    "ImportRowError": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "field",
+        "code",
+        "message"
+      ]
+    },
+    "ImportRowPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rowNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based position in the submitted rows."
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "create",
+            "update",
+            "unchanged",
+            "invalid"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "member",
+            "roster",
+            "none"
+          ],
+          "description": "update/unchanged target an existing member; create targets a roster entry (no account yet)."
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportFieldChange"
+          },
+          "maxItems": 20
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportRowError"
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "rowNumber",
+        "email",
+        "action",
+        "target",
+        "changes",
+        "errors"
+      ]
+    },
+    "ImportTotals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "create": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "update": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unchanged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "total",
+        "create",
+        "update",
+        "unchanged",
+        "invalid"
+      ]
+    },
+    "ImportProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "processed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unchanged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "processed",
+        "total",
+        "created",
+        "updated",
+        "unchanged",
+        "failed"
+      ]
+    },
+    "ImportRowResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rowNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "created",
+            "updated",
+            "unchanged",
+            "failed"
+          ]
+        },
+        "errorCode": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "rowNumber",
+        "email",
+        "outcome"
+      ]
+    },
+    "ImportJob": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "companies/{c}/importJobs/{jobId}. Admin-readable summary and error-report data; rows and plan chunks are server-only.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "running",
+            "completed",
+            "completed_with_errors"
+          ]
+        },
+        "fileName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "totals": {
+          "$ref": "#/$defs/ImportTotals"
+        },
+        "progress": {
+          "$ref": "#/$defs/ImportProgress"
+        },
+        "planHash": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "chunkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nextChunk": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportRowResult"
+          },
+          "maxItems": 1000
+        },
+        "errorsTruncated": {
+          "type": "boolean"
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "companyId",
+        "status",
+        "totals",
+        "progress",
+        "planHash",
+        "chunkCount",
+        "nextChunk",
+        "errors",
+        "errorsTruncated",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RemoveEventPhotoRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "removeEventPhotoV1: hard-deletes the album photo, its comments and Storage object; audit entry. album.moderate.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "photoId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160,
+          "description": "Album photo document id."
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional free-text reason recorded in the audit log."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "photoId",
+        "requestId"
+      ]
+    },
+    "RemoveEventPhotoResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "photoId": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "removed": {
+          "type": "boolean",
+          "description": "False when the photo was already gone."
+        },
+        "commentsRemoved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "objectRemoved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "photoId",
+        "removed",
+        "commentsRemoved",
+        "objectRemoved"
+      ]
+    },
+    "RemoveEventPhotoCommentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "removeEventPhotoCommentV1: deletes one comment and recounts commentCount; audit entry. album.moderate.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "photoId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "commentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional free-text reason recorded in the audit log."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "photoId",
+        "commentId",
+        "requestId"
+      ]
+    },
+    "RemoveEventPhotoCommentResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "commentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "removed": {
+          "type": "boolean"
+        },
+        "commentCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "commentId",
+        "removed",
+        "commentCount"
+      ]
+    },
+    "AddEventAttendeeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "addEventAttendeeV1: RSVP an active same-company member as going. attendee.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "notify": {
+          "type": "boolean",
+          "description": "Default false: send an in-app notification to the member."
+        },
+        "capacityOverrideReason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Required to add beyond capacity: raises the event capacity to attendeeCount + 1 and is audited."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "userId",
+        "requestId"
+      ]
+    },
+    "AddEventAttendeeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "added": {
+          "type": "boolean",
+          "description": "False when the member was already going."
+        },
+        "attendeeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "capacityOverridden": {
+          "type": "boolean"
+        },
+        "notified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "eventId",
+        "userId",
+        "added",
+        "attendeeCount",
+        "capacity",
+        "capacityOverridden",
+        "notified"
+      ]
+    },
+    "RemoveEventAttendeeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "removeEventAttendeeV1: cancel a member's RSVP before the event ends. attendee.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "notify": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional free-text reason recorded in the audit log."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "userId",
+        "requestId"
+      ]
+    },
+    "RemoveEventAttendeeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "removed": {
+          "type": "boolean",
+          "description": "False when the member was not going."
+        },
+        "attendeeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "eventId",
+        "userId",
+        "removed",
+        "attendeeCount",
+        "notified"
+      ]
+    },
+    "ListMembersRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "listMembersV1: searchable company member directory. member.read (points only for admins).",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Case-insensitive substring of name, email, department, job title or work location."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "active",
+            "deactivated"
+          ]
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Default 50."
+        },
+        "pageToken": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId"
+      ]
+    },
+    "ListMembersResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AdminMemberSummary"
+          },
+          "maxItems": 100
+        },
+        "nextPageToken": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "contractVersion",
+        "members"
+      ]
+    },
+    "GetMemberRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "getMemberV1. member.read.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "userId"
+      ]
+    },
+    "GetMemberResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "member": {
+          "$ref": "#/$defs/AdminMemberSummary"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "member"
+      ]
+    },
+    "UpdateMemberRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "updateMemberV1: change role, teams and org attributes. member.manage (admin). Cannot demote the last admin; displayName/points/auth ids are not editable here.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional optimistic-concurrency guard; mismatch -> aborted REVISION_CONFLICT. 0 means never admin-edited."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ]
+        },
+        "teamIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "maxItems": 20
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "jobTitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "managerEmail": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "startDate": {
+          "type": "string",
+          "maxLength": 10
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "userId",
+        "requestId"
+      ]
+    },
+    "UpdateMemberResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "changedFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "contractVersion",
+        "userId",
+        "revision",
+        "changedFields"
+      ]
+    },
+    "ResetMemberProfileRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "resetMemberProfileV1: clears self-set profile data (photoURL, avatarId, city, interestTagIds, travelRadiusMiles, availability, favoritePhotoIds). Keeps identity, role, department, jobTitle, teams, location, status, points and friends. member.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional free-text reason recorded in the audit log."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "userId",
+        "requestId"
+      ]
+    },
+    "ResetMemberProfileResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "resetFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "maxItems": 20
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "userId",
+        "resetFields",
+        "revision"
+      ]
+    },
+    "SetMemberStatusRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "setMemberStatusV1: deactivate or reactivate. Deactivation revokes refresh tokens, cancels upcoming going RSVPs, and blocks resolveMembershipV1/rules/callables. member.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "deactivated"
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional free-text reason recorded in the audit log."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "userId",
+        "status",
+        "requestId"
+      ]
+    },
+    "SetMemberStatusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "deactivated"
+          ]
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "rsvpsCancelled": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "userId",
+        "status",
+        "changed",
+        "rsvpsCancelled",
+        "revision"
+      ]
+    },
+    "AdjustMemberPointsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "adjustMemberPointsV1: appends an admin_adjustment ledger entry and updates pointsBalance atomically. member.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "delta": {
+          "type": "integer",
+          "minimum": -100000,
+          "maximum": 100000,
+          "description": "Non-zero; the balance may not become negative."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "userId",
+        "requestId",
+        "delta",
+        "reason"
+      ]
+    },
+    "AdjustMemberPointsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "pointsBalance": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applied": {
+          "type": "boolean",
+          "description": "False on an idempotent replay."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "userId",
+        "pointsBalance",
+        "applied"
+      ]
+    },
+    "UpsertTeamRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "upsertTeamV1: create (no teamId) or rename/archive a team in the company catalog. team.manage (admin).",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "archived": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "name"
+      ]
+    },
+    "UpsertTeamResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "created": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "teamId",
+        "created",
+        "revision"
+      ]
+    },
+    "UpdateCompanySettingsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "updateCompanySettingsV1: company.settings (admin). Switching to rosterOnly never affects existing members.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "membershipMode": {
+          "type": "string",
+          "enum": [
+            "open",
+            "rosterOnly"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "membershipMode"
+      ]
+    },
+    "UpdateCompanySettingsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "membershipMode": {
+          "type": "string",
+          "enum": [
+            "open",
+            "rosterOnly"
+          ]
+        },
+        "changed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "membershipMode",
+        "changed"
+      ]
+    },
+    "UpsertRosterEntryRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "upsertRosterEntryV1: pre-provision one person who has not signed in. roster.manage (admin). An email that already belongs to a member is refused (EMAIL_ALREADY_MEMBER); use updateMemberV1.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "entry": {
+          "$ref": "#/$defs/EmployeeRecordInput"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "entry"
+      ]
+    },
+    "UpsertRosterEntryResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "created": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "claimed",
+            "revoked"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "entryId",
+        "created",
+        "status"
+      ]
+    },
+    "RevokeRosterEntryRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "revokeRosterEntryV1: revoke an invited entry. roster.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "entryId"
+      ]
+    },
+    "RevokeRosterEntryResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "claimed",
+            "revoked"
+          ]
+        },
+        "changed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "entryId",
+        "status",
+        "changed"
+      ]
+    },
+    "ImportEmployeesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "importEmployeesV1: validate and plan (dry run). Writes only the import job and plan chunks. import.run (admin). Max 2000 rows.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "fileName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EmployeeRecordInput"
+          },
+          "maxItems": 2000
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "rows"
+      ]
+    },
+    "ImportEmployeesResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "jobId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned"
+          ]
+        },
+        "totals": {
+          "$ref": "#/$defs/ImportTotals"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportRowPlan"
+          },
+          "maxItems": 2000
+        },
+        "planHash": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "chunkCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "jobId",
+        "status",
+        "totals",
+        "rows",
+        "planHash",
+        "chunkCount"
+      ]
+    },
+    "ApplyEmployeeImportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "applyEmployeeImportV1: processes the next unprocessed chunk (<= 100 rows) of a planned job; call repeatedly until done. Resumable and idempotent. import.run.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "jobId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "planHash": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "jobId",
+        "planHash"
+      ]
+    },
+    "ApplyEmployeeImportResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "jobId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "running",
+            "completed",
+            "completed_with_errors"
+          ]
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "progress": {
+          "$ref": "#/$defs/ImportProgress"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportRowResult"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "contractVersion",
+        "jobId",
+        "status",
+        "done",
+        "progress",
+        "results"
+      ]
+    },
+    "GetEmployeeImportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "getEmployeeImportV1: job summary and error-report data. import.run.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "jobId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "jobId"
+      ]
+    },
+    "GetEmployeeImportResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "job": {
+          "$ref": "#/$defs/ImportJob"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "job"
       ]
     }
   }
