@@ -19,12 +19,13 @@ export interface IdGenerator { eventId(): string }
  */
 async function requireOrganizer(tx: OrganizerTransaction, caller: Caller, companyId: string) {
   const membership = await tx.getMembership(caller.uid);
-  if (!membership || membership.role !== "admin") {
+  if (!membership || (membership.role !== "admin" && membership.role !== "organizer")) {
     throw new OrganizerError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage events.");
   }
   if (membership.companyId !== companyId) {
     throw new OrganizerError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's events.");
   }
+  return membership;
 }
 
 function requireCaller(caller: Caller | null): Caller {
@@ -82,11 +83,12 @@ export async function updateEvent(
   store: OrganizerStore,
   caller: Caller | null,
   data: unknown,
+  clock: Clock = { now: () => new Date() },
 ): Promise<UpdateEventResponse> {
   const authenticated = requireCaller(caller);
   const request = parseUpdateEventRequest(data);
   return store.runTransaction(async (tx) => {
-    await requireOrganizer(tx, authenticated, request.companyId);
+    const membership = await requireOrganizer(tx, authenticated, request.companyId);
     const current = await tx.getEvent(request.companyId, request.eventId);
     if (!current) throw new OrganizerError("not-found", "EVENT_NOT_FOUND", "That event doesn't exist.");
     if (current.revision !== request.expectedRevision) {
@@ -102,9 +104,30 @@ export async function updateEvent(
       throw new OrganizerError("failed-precondition", "TIME_CHANGE_BLOCKED",
         "The times can't be changed once anyone has responded. Cancel and recreate the event instead.", ["startTime", "endTime"]);
     }
+    if (request.status !== current.status) await checkStatusChange(tx, request, current.status, membership.role, clock.now());
     await requireKnownTags(tx, request.event.tagIds);
     const nextRevision = current.revision + 1;
     tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision, authenticated.uid);
     return { contractVersion: 1, eventId: request.eventId, revision: nextRevision };
   });
+}
+
+/**
+ * Status transitions. Only a scheduled event that has ended can be marked completed (a cancelled one cannot).
+ * Reopening or cancelling a completed event is free until the album has photos; after that only an admin with a
+ * `statusReason` may do it, because members' photos and attendance hang off the completed event.
+ */
+async function checkStatusChange(tx: OrganizerTransaction, request: { companyId: string; eventId: string; status: string; statusReason?: string; event: { endTime: Date } },
+  from: string, role: string, now: Date) {
+  if (request.status === "completed") {
+    if (from !== "scheduled") throw new OrganizerError("failed-precondition", "STATUS_TRANSITION_BLOCKED", "Only a scheduled event can be marked completed.", ["status"]);
+    if (request.event.endTime.getTime() > now.getTime()) throw new OrganizerError("failed-precondition", "EVENT_NOT_ENDED", "The event hasn't ended yet.", ["status"]);
+    return;
+  }
+  if (from === "completed" && await tx.hasAnyPhoto(request.companyId, request.eventId)) {
+    if (role !== "admin" || !request.statusReason) {
+      throw new OrganizerError("failed-precondition", "STATUS_TRANSITION_BLOCKED",
+        "A completed event with photos can only be reopened by an admin with a reason.", ["status", "statusReason"]);
+    }
+  }
 }

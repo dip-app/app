@@ -22,6 +22,8 @@ export type OrganizerErrorReason =
   | "REQUEST_REUSED"
   | "TAG_NOT_FOUND"
   | "TIME_CHANGE_BLOCKED"
+  | "EVENT_NOT_ENDED"
+  | "STATUS_TRANSITION_BLOCKED"
   | "INVALID_STORED_EVENT";
 
 export class OrganizerError extends Error {
