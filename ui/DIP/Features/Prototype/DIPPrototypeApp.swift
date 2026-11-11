@@ -128,7 +128,8 @@ struct DIPPrototypeApp: View {
             context.fill(CGRect(x: 0, y: 0, width: 120, height: 120))
             return (data, context.makeImage().flatMap { AlbumImageProcessing.jpeg($0, quality: 0.8) })
         })
-        queue.enqueue(eventID: "kayaking-memory", loaders: [{ Data([1]) }, { Data([2]) }, { Data([3]) }])
+        // Sent in order: the failure and the finished photo settle first, then one stays uploading.
+        queue.enqueue(eventID: "kayaking-memory", loaders: [{ Data([2]) }, { Data([3]) }, { Data([1]) }])
         return queue
         #else
         return nil

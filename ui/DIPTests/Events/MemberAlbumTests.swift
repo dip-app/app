@@ -79,13 +79,13 @@ import UniformTypeIdentifiers
         XCTAssertEqual(album.photos.first?.attribution, DIPPhotoAttribution(name: "Name other", avatar: .generatedAvatar(userID: "other")))
         repository.stop()
         XCTAssertTrue(albums.stopped, "sign-out disposes album listeners")
-        XCTAssertTrue(albums.photosTerminated)
+        try await waitFor { albums.photosTerminated }
     }
 
     func testNonAttendeeAndCancelledOrLiveEventsCannotUpload() async throws {
         for (joined, ev, reason) in [(false, event("boat", endsIn: -600), AlbumFailure.notAttendee), (true, event("boat", endsIn: 600), .notEnded),
                                      (true, event("boat", endsIn: -600, status: "cancelled"), .cancelled)] {
-            let reads = AlbumReadsStub(); reads.extra = [ev]; reads.page = ev.endTime > now ? [ev] : []
+            let reads = AlbumReadsStub(); reads.extra = [ev]
             let participation = AlbumParticipationStub(), albums = AlbumSourceStub()
             let repository = make(reads, participation, albums)
             let stream = await repository.observe(); var iterator = stream.makeAsyncIterator()
@@ -311,7 +311,9 @@ final class AlbumBarActionTests: XCTestCase {
 @MainActor private final class AlbumReadsStub: EventReadSource {
     var page: [DIPContracts.Event] = []
     var extra: [DIPContracts.Event] = []
-    func feed(scope: EventReadScope, query: EventFeedQuery, after: EventFeedCursor?) async throws -> [DIPContracts.Event] { page }
+    func feed(scope: EventReadScope, query: EventFeedQuery, after: EventFeedCursor?) async throws -> [DIPContracts.Event] {
+        page.filter { $0.startTime >= query.startsAtOrAfter }
+    }
     func detail(scope: EventReadScope, eventID: String) async throws -> DIPContracts.Event? { (page + extra).first { $0.id == eventID } }
     func observeDetail(scope: EventReadScope, eventID: String) -> AsyncThrowingStream<DIPContracts.Event?, Error> { AsyncThrowingStream { _ in } }
     func stop() {}

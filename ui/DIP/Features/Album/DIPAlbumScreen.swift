@@ -144,12 +144,8 @@ struct DIPAlbumScreen: View {
         if let error = album.loadError {
             DIPEmptyState(screen: "album-error", title: "Couldn’t load photos", message: error)
         } else if album.canAddPhotos && selectionLimit > 0 {
-            DIPEmptyState(
-                screen: "album", title: "No photos yet", message: "Be the first to add one.",
-                // Standalone, the page's own bottom picker is the add action; composed, this opens the
-                // shell's picker through the shared binding.
-                actionTitle: showsBottomBar ? nil : "Add photos",
-                action: showsBottomBar ? nil : { isPickerPresented = true })
+            // The solid Add Photos pill below is the single add action (no second button in the card).
+            DIPEmptyState(screen: "album", title: "No photos yet", message: "Be the first to add one.")
         } else {
             DIPEmptyState(screen: "album", title: "No photos yet", message: "Photos from this event will show up here.")
         }
