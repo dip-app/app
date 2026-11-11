@@ -10,6 +10,7 @@ struct ProfileHeaderCard: View {
     let catalogReady: Bool
     let onEdit: () -> Void
     let onAddInterests: () -> Void
+    @Environment(\.profileBadgeLink) private var badgeLink
 
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
 
@@ -18,10 +19,15 @@ struct ProfileHeaderCard: View {
             HStack(alignment: .top) {
                 photo(size: 88)
                     .overlay(alignment: .topTrailing) {
-                        // The app-assigned avatar (derived from the user id, not the Google photo).
-                        DIPAssignedAvatar(userID: profile.id, size: 38)
+                        // The app-assigned avatar (not the Google photo). The shell flies the same avatar
+                        // between the header capsule and this badge; it is hidden during the flight.
+                        DIPMedia(profile.avatar)
+                            .frame(width: ProfileBadgeLink.badgeSize, height: ProfileBadgeLink.badgeSize)
+                            .clipShape(Circle())
                             .overlay(Circle().strokeBorder(.white, lineWidth: 3))
                             .offset(x: 8, y: -6)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { badgeLink.report($0) }
+                            .opacity(badgeLink.isHidden ? 0 : 1)
                             .accessibilityLabel("Assigned avatar")
                             .accessibilityIdentifier("profile.avatar.badge")
                     }
