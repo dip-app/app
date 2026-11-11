@@ -583,8 +583,10 @@ public struct EventPhoto: Codable, Equatable, Sendable {
     public var caption: String
     public var commentCount: Int
     public var createdAt: Date
+    public var sizeBytes: Int?
+    public var contentType: String?
 
-    public init(id: String? = nil, companyId: String, eventId: String, eventTitle: String, eventDate: Date, uploaderId: String, uploaderName: String, uploaderAvatarId: String, storagePath: String, downloadURL: String, caption: String, commentCount: Int, createdAt: Date) {
+    public init(id: String? = nil, companyId: String, eventId: String, eventTitle: String, eventDate: Date, uploaderId: String, uploaderName: String, uploaderAvatarId: String, storagePath: String, downloadURL: String, caption: String, commentCount: Int, createdAt: Date, sizeBytes: Int? = nil, contentType: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.eventId = eventId
@@ -598,6 +600,8 @@ public struct EventPhoto: Codable, Equatable, Sendable {
         self.caption = caption
         self.commentCount = commentCount
         self.createdAt = createdAt
+        self.sizeBytes = sizeBytes
+        self.contentType = contentType
     }
 }
 
@@ -920,5 +924,35 @@ public struct ApproveChallengeResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.submissionId = submissionId
         self.pointsAwarded = pointsAwarded
+    }
+}
+
+public struct FinalizeEventPhotoRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var eventId: String
+    public var photoId: String
+    public var storagePath: String
+    public var caption: String?
+
+    public init(contractVersion: Int, companyId: String, eventId: String, photoId: String, storagePath: String, caption: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.eventId = eventId
+        self.photoId = photoId
+        self.storagePath = storagePath
+        self.caption = caption
+    }
+}
+
+public struct FinalizeEventPhotoResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var photoId: String
+    public var created: Bool
+
+    public init(contractVersion: Int, photoId: String, created: Bool) {
+        self.contractVersion = contractVersion
+        self.photoId = photoId
+        self.created = created
     }
 }

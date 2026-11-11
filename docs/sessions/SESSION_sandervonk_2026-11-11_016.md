@@ -2,38 +2,36 @@
 
 User: sandervonk
 Date: 2026-11-11
-Workstream: Stream D interest filter and points
+Workstream: Stream B live albums
 Agent: Claude Code
-Status: completed
+Status: active
 
 ## Summary
 
-F1 interest filtering on Home and F2 points balance display, on the integration branch `feature/v2-remaining` (branch `feature/v2-stream-d`).
+Stream B (FRONTEND_PLAN F5, V2-05) on `feature/v2-stream-b` from `feature/v2-remaining`. PR 1: the album backend slice (Storage rules, Firestore album/comment rules, `finalizeEventPhotoV1`, comment-count trigger, contracts, tests, docs). PRs 2-3 (iOS adapter/add flow, viewer/comments/empty states) follow in this session.
 
 ## Changes
 
-- DIPCore: `DIPInterestFilter` (active interests = stored ids the catalog still knows, any-match filter, order preserving, untagged events never match), `DIPHomeEventScope`, `DIPHomeScopeStore` (UserDefaults per uid, default All events), `DIPPointsFormat`; `tagIDs` on DIPEventSummary and DIPEventDetail; `pointsBalance` on DIPProfile. Tests: InterestFilterTests (filter, retired/unknown ids, many tags, stable order, store, tag propagation) and PointsFormatTests.
-- Home: "Matching your interests / All events" toggle (DIPSegmentedToggle, new `.soft` style, height, inset), outlined "Showing N of M" pill and tinted read-only interest chips, shared `DIPEmptyState` for no matches (`empty.home-filter`, "Show all events"; pagination-aware copy when more pages exist). The control appears only for account-backed members with at least one catalog-known interest; fixture Home keeps its reference layout. Default All events; scope saved per uid and read at init (no flash); no extra reads.
-- Rewards: "Your points" row with an outlined (informational) balance pill; real `pointsBalance` from the profile document, 520 for mock/fixture profiles; entries stay mock.
-- Repository/profile bridge: `tagIDs` from `Event.tagIds`, `pointsBalance` from `AppUser`.
-- Preview review states: `--home-filter=match|nomatch|unknown`, `--points=<n>`; UI tests in HomeFilterTests.
+- contracts/v1/models.schema.json (+ generated TS/Swift): `FinalizeEventPhotoRequest/Response`; optional server-owned `EventPhoto.sizeBytes`/`contentType`; descriptions on `downloadURL`, `storagePath`, `commentCount`. Additive only.
+- gcp/functions/src/modules/photos/** (domain policy, application service, Firestore/Storage adapters, transport); exported from gcp/functions/src/index.ts.
+- gcp/storage.rules (album slots), gcp/firestore.rules (photos + comments).
+- Tests: gcp/tests/unit/photos.test.ts, gcp/tests/rules/photos.test.ts, gcp/tests/integration/photos-callable.test.ts, contracts/tests/photos.test.mjs; `test:photos:integration` script and CI step.
+- Docs: docs/contracts/callables.md (Event photo albums), docs/contracts/data-ownership.md, CURRENT_STATE.md.
 
 ## Validation
 
-- `npm run test:swift`: 161 tests, 0 failures. DIPTests MemberProfileBridgeTests, MemberParticipationTests, AccountsStageTests: 44, 0 failures.
-- Preview UI: HomeFilterTests (5) and HomeReferenceTests (3) passed; MotionInteractionTests, MemberEventsFlowTests, ScreenFlowTests (testMyEventsMemories..., testProfileEditsAndMemoryNavigation) passed. `ScreenFlowTests.testJoinAttendeesAndChatKeepLocalState` fails at its first assertion ("Activity Chat" instead of "Join the Activity"); this is the join/chat flow, not touched here, and I did not check it on the branch baseline.
-- Screenshots: ui/ComponentPreview/Review/StreamD.
-
-## Quality rounds
-
-- R2 self-review: first fixture Home layout changed (filter control shifted the reference geometry); fixed by showing it to account-backed members only.
-- R3 design audit: round 1 REVISE (~7.6): Rewards pill placement, heavy toggle, spacing, chip wording; applied. Round 2 (REVISE, ~7.9, no criterion below 7; PASS needed loading/offline states and a clearer counter): counter now reads 'Showing N of M events' and is hidden when nothing matches, unselected toggle label darkened; not done: loading skeleton and offline variants (Home loads before the filter shows; no separate loading state exists), flexing the two matching cards to equal columns, a zero-points nudge.
-- R4 code review: APPROVE WITH FIXES, one MAJOR (empty state false while more pages exist: copy and count made pagination-aware), minors: scope read at init (done), explicit toggle inset (done); not done: clearing the saved scope on sign-out (key is a harmless preference), tokenising chip metrics.
+- `npm run check` (Node 24.12.0): generated in sync, sessions, docs, contracts, build, 178 unit tests pass.
+- `npm run test:rules`: 134/134 pass (15 new photo tests: Storage + Firestore).
+- `npm run test:photos:integration`: 7/7 pass (real client SDKs, Storage/Firestore/Functions/Auth emulators).
 
 ## Decisions
 
-- Default is All events so browse-all is never lost. Filtering is over loaded pages only.
+- Eligibility: going RSVP (proves same-company membership), event `scheduled` and ended; no attendance (`checkedIn`) requirement; no closing window.
+- Limits: 20 per member per event via 20 create-only Storage slots (`photos/{uid}/{0..19}`), 10 MiB, jpeg/png/heic with file-signature check in finalize. Slots bound orphans without a counter (Storage rules cannot count; cross-service rules are limited to two Firestore reads).
+- `photoId = {uid}_{slot}` (deterministic, idempotent); no download-token URLs (`downloadURL: ""`), authenticated SDK reads only.
+- Comments: client append under rules for any verified same-company member; `commentCount` recounted by a trigger (idempotent).
+- Favorites and photo deletion deferred (no designed control; `favoritePhotoIds` stays server-owned).
 
 ## Handoff
 
-Unverified: loading and offline states with the filter on a live feed; VoiceOver. The Rewards history is mock.
+Nothing deployed. Owner deploy: `firebase deploy --only storage,firestore:rules,functions:dip:finalizeEventPhotoV1,functions:dip:onPhotoCommentCreated` (accept the cross-service Storage->Firestore permission prompt).
