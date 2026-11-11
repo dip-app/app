@@ -331,10 +331,10 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 20 | Mock-data launch mode for the real app | Done | #67 |
 | 21 | Optimistic join/leave with reasonableness checks; full event shows a disabled "Activity full" bar (wording kept per owner; disabled state verified in EventBarActionTests) | Built on `feature/optimistic-rsvp`; unit-tested rules and reducer, not device-tested | Events agent |
 | 22 | Activity Chat live (Firestore adapter), fix "not working" on the phone build, bell menu in chat (All/Changes/Reminders/None) | In progress | Events agent |
-| 23 | Event change-history button and sheet | Held (owner: wait) | Events agent |
+| 23 | Event change-history button and sheet | PR 1 on `feature/v2-remaining` (quality rounds in progress); not merged to main | Events agent |
 | 24 | Push registration, permission priming, deep links | Held, cannot be device-tested without the paid team APNs key | Events agent |
 | 25 | Weekly-theme page polish to match the event page | Held | Events agent |
-| 26 | Reward points an event gives (show if it has them) | Held, owner said leave in the plan | see F2 |
+| 26 | Reward points an event gives (show if it has them) | Stream A PR 2 on `feature/v2-remaining`: `pointsValue` mapped into event metadata in PR 1; UI next | Events agent |
 | 27 | Shake-to-report bug screen (design exists) implementation | In review (`feature/v2-stream-c`); markup and shake prompt deferred | Backlog B |
 | 28 | TestFlight release | Not started, needs the paid team | F8 |
 | 29 | Known failing UI tests to repair after the owner's fix list (two demo-stage, interests search, chat/photo-comment retry, ScreenFlowTests join expectation) | Not started | F7 |
