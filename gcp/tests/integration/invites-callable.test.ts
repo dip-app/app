@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { createRequire } from "node:module";
-import { initializeApp } from "firebase/app";
+import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
 import { getFirestore, connectFirestoreEmulator, collection, getDocs, limit, query, where, doc, getDoc, setDoc } from "firebase/firestore";
@@ -43,7 +43,7 @@ test("SDK callables: invite, accept through the RSVP path, decline, directory, r
     const firestore = getFirestore(app);
     const [fsHost, fsPort] = firestoreHost!.split(":"); connectFirestoreEmulator(firestore, fsHost!, Number(fsPort));
     return {
-      auth, firestore,
+      app, auth, firestore,
       send: httpsCallable(functions, "sendInviteV1"), respond: httpsCallable(functions, "respondToInviteV1"),
       search: httpsCallable(functions, "listCoworkersV1"),
     };
@@ -64,6 +64,7 @@ test("SDK callables: invite, accept through the RSVP path, decline, directory, r
   const seed = async (overrides = {}) => {
     await db.recursiveDelete(eventRef);
     await db.recursiveDelete(db.collection(`companies/${companyId}/invites`));
+    for (const uid of uids) await db.recursiveDelete(db.collection(`users/${uid}/notifications`));
     await eventRef.set({
       companyId, title: "Pasta Night", status: "scheduled", capacity: 2, attendeeCount: 1,
       startTime: adminFirestore.Timestamp.fromMillis(Date.now() + 86_400_000), ...overrides,
@@ -147,5 +148,8 @@ test("SDK callables: invite, accept through the RSVP path, decline, directory, r
   } finally {
     await db.recursiveDelete(eventRef);
     await db.recursiveDelete(db.collection(`companies/${companyId}/invites`));
+    // Open SDK clients (gRPC streams) keep the process alive, which would hang emulators:exec.
+    await Promise.all(clients.map((client) => deleteApp(client.app)));
+    await adminApp.deleteApp(admin);
   }
 });
