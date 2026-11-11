@@ -11,12 +11,18 @@ class HostingShareLinks(unittest.TestCase):
     def setUp(self):
         self.hosting = json.loads((ROOT / "firebase.json").read_text())["hosting"]
 
-    def test_event_and_aasa_rewrites_exist_and_point_at_real_files(self):
-        rewrites = {r["source"]: r["destination"] for r in self.hosting["rewrites"]}
-        self.assertEqual(rewrites["/e/**"], "/share/event.html")
-        self.assertIn("/.well-known/apple-app-site-association", rewrites)
-        for destination in rewrites.values():
-            self.assertTrue((ROOT / "apps/admin/public" / destination.lstrip("/")).is_file(), destination)
+    def test_event_and_aasa_rewrites_exist(self):
+        rewrites = {r["source"]: r for r in self.hosting["rewrites"]}
+        self.assertEqual(rewrites["/e/**"]["function"], {"functionId": "eventSharePageV1", "region": "us-central1"})
+        aasa = rewrites["/.well-known/apple-app-site-association"]
+        self.assertTrue((ROOT / "apps/admin/public" / aasa["destination"].lstrip("/")).is_file())
+        self.assertEqual(len(rewrites), 2)  # no catch-all that would shadow the admin site
+
+    def test_share_function_is_exported_and_preview_images_exist(self):
+        index = (ROOT / "gcp/functions/src/index.ts").read_text()
+        self.assertIn('export { eventSharePageV1 } from "./modules/share";', index)
+        for name in ["default", "fitness", "outdoors", "hiking", "games", "cooking"]:
+            self.assertTrue((ROOT / f"apps/admin/public/share/og/{name}.jpg").is_file(), name)
 
     def test_aasa_headers_and_admin_rules_are_kept(self):
         sources = {h["source"] for h in self.hosting["headers"]}
@@ -38,9 +44,10 @@ class HostingShareLinks(unittest.TestCase):
         self.assertNotIn("associated-domains", (ROOT / "ui/Config/DIP.entitlements").read_text())
 
     def test_landing_page_has_unset_app_store_placeholder(self):
-        html = (ROOT / "apps/admin/public/share/event.html").read_text()
-        self.assertRegex(html, r'var APP_STORE_ID = "";')
-        self.assertIn("dip://events/", html)
+        ts = (ROOT / "gcp/functions/src/modules/share/domain/sharePage.ts").read_text()
+        self.assertRegex(ts, r'APP_STORE_ID = "";')
+        self.assertIn("dip://events/", ts)
+        self.assertNotIn("http-equiv", ts)
 
 
 if __name__ == "__main__":

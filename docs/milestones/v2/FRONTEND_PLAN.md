@@ -14,6 +14,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | V1-08 imagery | Event and catalog imagery | Done, merged | PR #44 | iOS |
 | Frontend plan | This plan | Done, merged | PR #50 | Plan steward |
 | Device build | App builds and runs on a phone with a personal bundle ID | Works (local only; paid-team bundle ID is F8) | none | iOS |
+| Share link rich previews | Server-rendered Open Graph / Twitter preview page for `/e/<id>` (`eventSharePageV1`, `eventShares` index, per-category 1200x630 images, backfill script). Title, short description, coarse date and image only | In PR `feature/share-link-previews`; deploy approved by the owner, see docs/design/share-links.md | this PR | Backend |
 | Weekly theme T1 | Contract (additive), `createChallengeV1`/`updateChallengeV1`, same-company read rules, seed script | Done, merged. Rules and both callables deployed to `team05-dip` | PR #53 | Backend |
 | Weekly theme production | Seeded: Fitness theme documents `weekly-fitness-20261109` and `weekly-fitness-20261116` for Arianne AI (`pNVpp3OusRvgfUV8hv5R`) and Globex (`zFKQd6KU14LqKr4a7yTb`) | Done in production | none | Orchestrator |
 | Weekly theme T2 | iOS Home card live and read-only detail | Draft. Its dependency (#53 deployed) is now met; needs simulator verification | PR #57 | iOS |
@@ -322,7 +323,7 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 15 | Home event cards: attendee avatars must load without opening the event; "N going" if tight | Done (background prefetch of 3 attendees per card; chip reads "N going") | #79 |
 | 16 | Rewards: original raffle layout with solid gift-box cards and small bows; badge tab; progress inside the raffle card; no "Discounted Experiences" header | Done | #65 |
 | 17 | Event page: calendar pill top-right of the PAGE (short date, solid); Directions pill left of Share; Leave Activity at the bottom once joined; no When/Where/Price labels | Done | #68, #70, #72 |
-| 18 | Share text as flowing paragraphs; tags wrap; share link (universal link) | Done (link not deployed: needs Team ID, App Store ID, hosting deploy approval) | #68, #75 |
+| 18 | Share text as flowing paragraphs; tags wrap; share link (universal link) | Done; rich preview card (title, description, image) built server-side, see docs/design/share-links.md. Team ID and App Store ID still placeholders | #68, #75, share-link-previews PR |
 | 19 | Outline = not pressable, solid = pressable (Goal/Reward outline pills, header title outlined) | Done (white informational chips and disabled bar left as is) | #72 |
 | 20 | Mock-data launch mode for the real app | Done | #67 |
 | 21 | Optimistic join/leave with reasonableness checks; disabled "Event is Full" button (today still "Activity full") | Queued | Events agent |

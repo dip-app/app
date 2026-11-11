@@ -92,6 +92,8 @@ export class FirestoreOrganizerStore implements OrganizerStore {
             createdAt: FieldValue.serverTimestamp(),
             revision: 1,
           });
+          // Server-owned lookup so the public share page can find the event from its opaque id alone.
+          transaction.create(db.collection("eventShares").doc(eventId), { companyId, createdAt: FieldValue.serverTimestamp() });
         },
         createReceipt(companyId, uid, requestId, receipt) {
           transaction.create(receipts(companyId).doc(`${uid}_${requestId}`), {
