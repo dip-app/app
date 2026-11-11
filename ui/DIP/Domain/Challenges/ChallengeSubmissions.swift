@@ -12,6 +12,8 @@ import SwiftUI
     /// different upload already holds the slot, so the caller tries the next one.
     func uploadEvidence(scope: ChallengeReadScope, challengeID: String, slot: Int, jpeg: Data,
                         progress: @escaping @Sendable (Double) -> Void) async throws -> AlbumUploadOutcome
+    /// The member's own evidence bytes (authenticated Storage read), for the status row thumbnail.
+    func evidenceData(scope: ChallengeReadScope, path: String) async throws -> Data
     /// submitChallengeV1. Idempotent for identical content, so a retry never double-submits.
     func submit(scope: ChallengeReadScope, challengeID: String, progress: Double, caption: String, storagePath: String?) async throws
     func stop()
@@ -22,6 +24,8 @@ import SwiftUI
 struct ChallengeSubmissionContext {
     let scope: ChallengeReadScope
     let makeSource: @MainActor () -> any SubmissionSource
+    /// Previews and tests only: a photo already picked when the sheet opens (the system picker cannot be driven).
+    var previewPhoto: Data? = nil
 }
 
 extension EnvironmentValues {

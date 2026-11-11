@@ -1,6 +1,9 @@
 import DIPCore
 import DIPDesignSystem
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// "Your entry" on the weekly-theme page: the member's submission status (informational outline pill), what happens
 /// next, and the one pressable action (solid button) when an action is possible. Loading, offline and error states use
@@ -23,7 +26,7 @@ struct DIPChallengeSubmissionSection: View {
                 .accessibilityIdentifier("submission.loading")
             case .failed(let message):
                 DIPEmptyState(screen: "submission-load", title: message, message: "Check your connection and try again.",
-                              style: .compact, faces: 1, actionTitle: "Try again", action: { DIPHaptics.select(); model.retryLoad() })
+                              actionTitle: "Try again", action: { DIPHaptics.select(); model.retryLoad() })
             case .ready: content
             }
         }
@@ -36,13 +39,7 @@ struct DIPChallengeSubmissionSection: View {
 
     @ViewBuilder private var content: some View {
         let state = model.state
-        DIPActionPill(title: state.statusLabel, color: pillColor(state), style: .outline, iconLeading: true) {
-            Image(systemName: icon(state)).resizable().scaledToFit().accessibilityHidden(true)
-        }
-        .frame(maxWidth: 260)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Entry status: \(state.statusLabel)")
-        .accessibilityIdentifier("submission.status")
+        statusPill(state)
         Text(state.detail)
             .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
             .foregroundStyle(ink)
@@ -59,11 +56,33 @@ struct DIPChallengeSubmissionSection: View {
         VStack(alignment: .leading, spacing: 6) {
             row("Progress", "\(DIPSubmissionDraft.format(entry.progress)) of \(model.goalText)")
             if !entry.caption.isEmpty { row("Note", entry.caption) }
-            if entry.hasPhoto { row("Photo", "Attached") }
+            if entry.hasPhoto { photoRow }
         }
         .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("submission.summary")
+    }
+
+    private var photoRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text("Photo").foregroundStyle(ink.opacity(0.72))
+            Spacer(minLength: 8)
+            #if canImport(UIKit)
+            if let data = model.evidenceImage, let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFill().frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityHidden(true)
+            } else {
+                Text("Attached").foregroundStyle(ink)
+            }
+            #else
+            Text("Attached").foregroundStyle(ink)
+            #endif
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Photo: attached")
+        .accessibilityIdentifier("submission.photo")
+        .task(id: model.submission?.storagePath) { await model.loadEvidence() }
     }
 
     private func row(_ label: String, _ value: String) -> some View {
@@ -85,5 +104,35 @@ struct DIPChallengeSubmissionSection: View {
         }
     }
 
-    private func pillColor(_ state: DIPSubmissionState) -> Color { accent }
+    /// Informational outline pill (never pressable): hugs its content and is tinted per status, with no icon circle
+    /// that could read as a button. Ink text keeps the contrast on every tint.
+    private func statusPill(_ state: DIPSubmissionState) -> some View {
+        let tint = pillColor(state)
+        return HStack(spacing: 8) {
+            Image(systemName: icon(state)).font(.system(size: 15, weight: .semibold)).foregroundStyle(tint == neutral ? ink.opacity(0.6) : (state.isApproved ? ink : tint))
+                .accessibilityHidden(true)
+            Text(state.statusLabel).font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline)).foregroundStyle(ink)
+        }
+        .padding(.horizontal, 14).frame(minHeight: 36)
+        .background(tint.opacity(0.14), in: Capsule())
+        .overlay(Capsule().strokeBorder(tint, lineWidth: 2))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Entry status: \(state.statusLabel)")
+        .accessibilityIdentifier("submission.status")
+    }
+
+    private var neutral: Color { ink.opacity(0.35) }
+
+    private func pillColor(_ state: DIPSubmissionState) -> Color {
+        switch state {
+        case .approved: DIPTokens.Color.notificationAccent.swiftUIColor
+        case .rejected: DIPTokens.Color.eventsAccent.swiftUIColor
+        case .pending: accent
+        case .notStarted, .upcoming, .missed: neutral
+        }
+    }
+}
+
+private extension DIPSubmissionState {
+    var isApproved: Bool { if case .approved = self { true } else { false } }
 }

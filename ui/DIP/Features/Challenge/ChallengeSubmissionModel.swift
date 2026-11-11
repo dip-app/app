@@ -47,6 +47,12 @@ final class ChallengeSubmissionModel {
     private(set) var photo: PickedPhoto?
     /// An existing photo kept as is while editing (nil once removed or replaced).
     private(set) var keepsExistingPhoto = false
+    /// True when the last failure happened while uploading the photo (not while sending the entry).
+    private(set) var uploadFailed = false
+
+    /// Small display copy of the submitted photo for the status row; nil until loaded or when there is none.
+    private(set) var evidenceImage: Data?
+    @ObservationIgnored private var evidencePath: String?
 
     @ObservationIgnored private let scope: ChallengeReadScope
     @ObservationIgnored private let source: any SubmissionSource
@@ -113,12 +119,28 @@ final class ChallengeSubmissionModel {
         source.stop()
     }
 
+    /// Loads the thumbnail of the submitted photo once per path; a failure just leaves the "Attached" text.
+    func loadEvidence() async {
+        guard let path = submission?.storagePath else { evidenceImage = nil; evidencePath = nil; return }
+        guard path != evidencePath else { return }
+        evidencePath = path
+        guard let data = try? await source.evidenceData(scope: scope, path: path),
+              let copy = AlbumImageProcessing.displayCopy(data, maxPixelSize: 400) else { return }
+        if submission?.storagePath == path { evidenceImage = copy }
+    }
+
+    /// Previews and tests only: puts an already prepared photo into the draft.
+    func attachPreparedPhoto(_ jpeg: Data) {
+        guard let picked = try? prepare(jpeg) else { return }
+        photo = picked; uploadedPath = nil; keepsExistingPhoto = false
+    }
+
     // MARK: Editing
 
     /// Opens the sheet: a fresh draft for a new entry, or the existing entry for an edit or resubmission.
     func beginEditing() {
         guard !phase.isBusy else { return }
-        showsIssues = false; phase = .idle
+        showsIssues = false; phase = .idle; uploadFailed = false
         photo = nil; uploadedPath = nil
         if let submission {
             draft = DIPSubmissionDraft(from: submission)
@@ -150,11 +172,18 @@ final class ChallengeSubmissionModel {
 
     func removePhoto() {
         guard !phase.isBusy else { return }
-        photo = nil; uploadedPath = nil; keepsExistingPhoto = false
+        photo = nil; uploadedPath = nil; keepsExistingPhoto = false; uploadFailed = false
         if case .failed = phase { phase = .idle }
     }
 
-    func dismissFailure() { if case .failed = phase { phase = .idle } }
+    func dismissFailure() { if case .failed = phase { phase = .idle }; uploadFailed = false }
+
+    /// After a failed upload: drops the photo and sends the entry as a note only.
+    @discardableResult
+    func sendWithoutPhoto() async -> Bool {
+        removePhoto()
+        return await send()
+    }
 
     // MARK: Sending
 
@@ -165,9 +194,10 @@ final class ChallengeSubmissionModel {
         guard !phase.isBusy, issues.isEmpty, let progress = draft.progress else { return false }
         guard state.actionTitle != nil else { phase = .failed(state.submission?.status == .approved ? .locked : .closed); return false }
         let path: String?
+        uploadFailed = false
         do { path = try await evidencePath() } catch let failure as DIPSubmissionFailure {
-            if !Task.isCancelled { phase = .failed(failure) }; return false
-        } catch { if !Task.isCancelled { phase = .failed(.unknown) }; return false }
+            if !Task.isCancelled { phase = .failed(failure); uploadFailed = true }; return false
+        } catch { if !Task.isCancelled { phase = .failed(.unknown); uploadFailed = true }; return false }
         phase = .sending
         do {
             try await source.submit(scope: scope, challengeID: challenge.id, progress: progress, caption: draft.trimmedCaption, storagePath: path)

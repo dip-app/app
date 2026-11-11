@@ -64,7 +64,9 @@ struct DIPChallengeDetailsScreen: View {
                             if let submission {
                                 DIPChallengeSubmissionSection(model: submission) {
                                     // Opening the sheet is navigation: silent.
-                                    submission.beginEditing(); showsEntrySheet = true
+                                    submission.beginEditing()
+                                    if let photo = submissionContext?.previewPhoto { submission.attachPreparedPhoto(photo) }
+                                    showsEntrySheet = true
                                 }
                             }
                         }

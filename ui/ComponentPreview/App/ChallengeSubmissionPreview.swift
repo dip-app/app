@@ -1,10 +1,13 @@
 import DIPCore
 import SwiftUI
+import UIKit
 
 /// Review host for the weekly-theme entry states (F3): `--challenge-submission=<state>` with
 /// `none | pending | approved | rejected | missed | loading | load-failed | upcoming`. The window is Mon-Sun,
 /// New York; entries go to the in-memory source (no network). `--submission-fail=<n>` makes the first n sends fail
-/// (retry review) and `--submission-offline` makes them fail as offline.
+/// (retry review) and `--submission-offline` makes them fail as offline. `--submission-photo` opens the sheet with a
+/// photo already picked, `--submission-slow` stretches the upload progress, `--submission-upload-fail` fails the
+/// first upload as offline.
 struct ChallengeSubmissionPreview: View {
     let state: String
 
@@ -39,6 +42,8 @@ struct ChallengeSubmissionPreview: View {
         }
         let mock = MockSubmissionSource(initial: entry, load: state == "loading" ? .never : (state == "load-failed" ? .fails : .normal))
         let failures = Int(Self.argument("submission-fail") ?? "") ?? 0
+        if ProcessInfo.processInfo.arguments.contains("--submission-slow") { mock.progressPause = .seconds(2) }
+        if ProcessInfo.processInfo.arguments.contains("--submission-upload-fail") { mock.uploadFailures = [.offline] }
         mock.failures = Array(repeating: ProcessInfo.processInfo.arguments.contains("--submission-offline") ? .offline : .unknown, count: failures)
         return mock
     }
@@ -52,6 +57,14 @@ struct ChallengeSubmissionPreview: View {
         let mock = source
         DIPChallengeDetailsScreen(challenge: DIPChallengeProjection.detail(weekly), onBack: {}, now: w.now)
             .environment(\.challengeSubmissionContext, ChallengeSubmissionContext(
-                scope: ChallengeReadScope(uid: "preview-member", companyID: "preview-company"), makeSource: { mock }))
+                scope: ChallengeReadScope(uid: "preview-member", companyID: "preview-company"), makeSource: { mock },
+                previewPhoto: ProcessInfo.processInfo.arguments.contains("--submission-photo") ? Self.samplePhoto : nil))
+    }
+
+    private static var samplePhoto: Data {
+        UIGraphicsImageRenderer(size: CGSize(width: 600, height: 450)).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor(red: 0.74, green: 0.78, blue: 1.0, alpha: 1).setFill(); context.fill(CGRect(x: 0, y: 0, width: 600, height: 450))
+            UIColor(red: 0.98, green: 0.76, blue: 0.18, alpha: 1).setFill(); context.cgContext.fillEllipse(in: CGRect(x: 225, y: 150, width: 150, height: 150))
+        }
     }
 }

@@ -88,6 +88,15 @@ import Foundation
         try Task.checkCancellation()
     }
 
+    func evidenceData(scope: ChallengeReadScope, path: String) async throws -> Data {
+        guard !stopped else { throw DIPSubmissionFailure.unauthenticated }
+        // Only the member's own evidence folder is ever read here.
+        guard path.hasPrefix("companies/\(scope.companyID)/challenges/"), path.contains("/submissions/\(scope.uid)/"), !path.contains("..")
+        else { throw DIPSubmissionFailure.invalidInput }
+        do { return try await storage.reference(withPath: path).data(maxSize: Int64(DIPSubmissionPolicy.maxBytes)) }
+        catch { throw Self.failure(error) }
+    }
+
     func submit(scope: ChallengeReadScope, challengeID: String, progress: Double, caption: String, storagePath: String?) async throws {
         guard !stopped else { throw DIPSubmissionFailure.unauthenticated }
         var request: [String: Any] = [

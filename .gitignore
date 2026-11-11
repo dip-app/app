@@ -27,3 +27,5 @@ ui/Config/DIP-Info.plist
 
 __pycache__/
 *.pyc
+.dd-*/
+*.xcresult

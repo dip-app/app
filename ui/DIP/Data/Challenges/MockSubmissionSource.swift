@@ -1,5 +1,8 @@
 import DIPCore
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// In-memory submission source for previews, unconfigured Debug builds and tests. It behaves like the server:
 /// identical content is an idempotent replay, status is never taken from the caller, and the test hooks below stand
@@ -18,6 +21,8 @@ import Foundation
     var occupied: Set<Int> = []
     var pointsReward = 50
     var delay: Duration = .zero
+    /// Pause between simulated upload progress steps (review captures of the progress state).
+    var progressPause: Duration = .zero
     private(set) var stopped = false
     /// How the first read answers: normally, never (skeleton review) or with an error (retry review).
     enum Load { case normal, never, fails }
@@ -45,9 +50,24 @@ import Foundation
         if !uploadFailures.isEmpty { throw uploadFailures.removeFirst() }
         guard (0..<DIPSubmissionPolicy.slots).contains(slot), jpeg.count <= DIPSubmissionPolicy.maxBytes else { throw DIPSubmissionFailure.invalidImage }
         if occupied.contains(slot) { return .slotOccupied }
+        if progressPause > .zero {
+            for step in 1...4 { progress(Double(step) * 0.2); try await Task.sleep(for: progressPause) }
+        }
         occupied.insert(slot); uploadedSlots.append(slot)
         progress(0.5); progress(1)
         return .stored
+    }
+
+    func evidenceData(scope: ChallengeReadScope, path: String) async throws -> Data {
+        #if canImport(UIKit)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 240))
+        return renderer.jpegData(withCompressionQuality: 0.8) { context in
+            UIColor(red: 0.74, green: 0.78, blue: 1.0, alpha: 1).setFill(); context.fill(CGRect(x: 0, y: 0, width: 240, height: 240))
+            UIColor(red: 0.98, green: 0.76, blue: 0.18, alpha: 1).setFill(); context.cgContext.fillEllipse(in: CGRect(x: 60, y: 60, width: 120, height: 120))
+        }
+        #else
+        return Data()
+        #endif
     }
 
     func submit(scope: ChallengeReadScope, challengeID: String, progress: Double, caption: String, storagePath: String?) async throws {
