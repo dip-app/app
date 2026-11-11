@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Open in DIP</title>
+<style>
+  :root { --ink:#1E212B; --white:#FFFFFF; --purple:#7B88FA; --pink:#F054A5; --gray:#ECECEC; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+         background:var(--purple); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif; }
+  main { width:100%; max-width:420px; background:var(--white); border-radius:20px; padding:30px 22px; text-align:center; }
+  .logo { font-size:34px; font-weight:800; letter-spacing:-0.02em; margin:0 0 6px; }
+  h1 { font-size:22px; margin:0 0 10px; }
+  p { font-size:16px; line-height:1.45; margin:0 0 18px; }
+  .note { font-size:14px; opacity:.75; }
+  .button { display:block; min-height:50px; line-height:50px; border-radius:25px; background:var(--pink); color:var(--white);
+            font-size:16px; font-weight:600; text-decoration:none; margin:0 0 10px; }
+  .button.secondary { background:var(--gray); color:var(--ink); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <p class="logo">DIP</p>
+  <h1 id="title">Opening your activity…</h1>
+
+  <!-- Shown when the App Store listing exists. -->
+  <section id="live" hidden>
+    <p>If DIP is installed, tap the button to open this activity. Otherwise we’ll take you to the App Store.</p>
+    <a id="open" class="button" href="dip://events/">Open in DIP</a>
+    <a id="store" class="button secondary" href="#">Get DIP on the App Store</a>
+  </section>
+
+  <!-- Shown while APP_STORE_ID below is not set. -->
+  <section id="soon" hidden>
+    <p>DIP is coming to the App Store. If you already have the app, open this activity with the button below.</p>
+    <a id="open-soon" class="button" href="dip://events/">Open in DIP</a>
+    <p class="note">The App Store listing isn’t live yet. Ask whoever shared this activity to let you know when it is, and we’ll point you to the download.</p>
+  </section>
+</main>
+<script>
+  // PLACEHOLDER: the numeric App Store ID of the DIP listing (the digits after "id" in its App Store URL).
+  // Leave empty until the listing exists; the page then shows the "coming to the App Store" message.
+  var APP_STORE_ID = "";
+
+  var match = location.pathname.match(/^\/e\/([^\/?#]+)\/?$/);
+  var eventID = null;
+  try { eventID = match ? decodeURIComponent(match[1]) : null; } catch (e) { eventID = null; }
+  if (eventID && !/^[^\s\/]{1,128}$/.test(eventID)) { eventID = null; }
+  var appLink = eventID ? "dip://events/" + encodeURIComponent(eventID) : "dip://";
+  var storeURL = /^[0-9]+$/.test(APP_STORE_ID) ? "https://apps.apple.com/app/id" + APP_STORE_ID : null;
+
+  document.getElementById("open").href = appLink;
+  document.getElementById("open-soon").href = appLink;
+  if (storeURL) {
+    document.getElementById("store").href = storeURL;
+    document.getElementById("live").hidden = false;
+    document.getElementById("title").textContent = "Join this activity on DIP";
+    var opened = false;
+    document.getElementById("open").addEventListener("click", function () { opened = true; });
+    // The Universal Link opens the app before this page loads; reaching here means the app is not handling it.
+    setTimeout(function () { if (!opened) { location.replace(storeURL); } }, 2500);
+  } else {
+    document.getElementById("soon").hidden = false;
+    document.getElementById("title").textContent = "DIP is coming to the App Store";
+  }
+</script>
+</body>
+</html>

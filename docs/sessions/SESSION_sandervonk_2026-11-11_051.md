@@ -2,42 +2,26 @@
 
 User: sandervonk
 Date: 2026-11-11
-Workstream: Onboarding CTA copy consistency
+Workstream: Share links and universal links
 Agent: Claude Code
-Status: completed
+Status: complete
 
 ## Summary
-
-Owner note: the onboarding step buttons didn't share one voice ("And after the event?" next to "Show me around"). Every step CTA is now a short first-person imperative (verb + object), with no questions or "And…" fragments.
+Event share links `https://team05-dip.web.app/e/<eventId>`, app routing for them and `dip://events/<id>`, hosting AASA and landing page (not deployed). Design: docs/design/share-links.md.
 
 ## Changes
-
-- `ui/DIP/Features/Onboarding/Tour/OnboardingCopy.swift`:
-  - B2 "What are challenges?" → "Show me challenges"; without B3 it reads "Show me memories".
-  - B3 "And after the event?" → "Show me memories".
-  - B4 "Make it yours" → "Pick my interests".
-  - String Catalog keys are unchanged.
-- Updated the same strings in `docs/milestones/v2/ONBOARDING_SPEC.md` (step copy and §7 frames), `ui/DIPTests/Onboarding/OnboardingTourTests.swift`, `ui/ComponentPreview/App/OnboardingDemoPreview.swift` and the Review README.
-
-Final labels:
-- B0 "Show me around"
-- B1 "See who's going"
-- B2 "Show me challenges" / "Show me memories"
-- B3 "Show me memories"
-- B4 "Pick my interests"
-- B5 "Save and start" (with a selection) / "Start exploring" (none) / "Try again" (after a failed save), with "Saving…" as the progress state
-- Handoff wait: "Getting your events…" (progress, not an action)
-- Header: "Skip" ("Done" in replay), Back, Sign out (icon, first first-run step). B5 secondary: "Skip for now".
+- DIPCore: DIPShareLink (+tests), shareText link param. App: EventLinkInbox, DIPApp, DIPMemberHome, DIPPrototypeApp, DIPDetailComponents, DIPEventDetailsScreen.
+- project.yml: dip URL scheme, entitlements now via DIP_ENTITLEMENTS (tracked Config/DIP.entitlements, Config/DIP-Paid.entitlements); Base.xcconfig, Local.example.xcconfig, .gitignore.
+- Hosting: firebase.json (2 rewrites, 1 header), apps/admin/public/aasa, apps/admin/public/share; scripts/tests/test_hosting_share_links.py; docs and FRONTEND_PLAN rows.
 
 ## Validation
-
-- `xcodebuild build-for-testing` (DIP scheme, generic iOS Simulator): TEST BUILD SUCCEEDED.
-- Test suites were not run, by owner instruction.
+- swift test DIPCore --filter DIPShareLinkTests (7) and EventMetadataTests pass; python3 -m unittest scripts/tests/test_hosting_share_links.py passes; xcodebuild DIP generic iOS Simulator build succeeded.
+- Simulator spot check: dip:// URL prompts to open DIP; with the onboarding tour showing the link stays queued. Universal Links untestable without paid team.
 
 ## Decisions
-
-- Skip, Done, Back, Sign out, "Skip for now" and B5's labels already fit and are kept. The handoff wait text is a status, not a CTA, so it stays.
+- ShareLink item is the URL with the text as message (avoids a duplicated link); cancelled events share no link.
+- Free-team safe: Associated Domains only in DIP-Paid.entitlements, selected via Local.xcconfig.
 
 ## Handoff
+Owner steps in docs/design/share-links.md: paid team, Team ID, App Store ID, approved hosting deploy.
 
-None.

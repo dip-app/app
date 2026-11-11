@@ -1,3 +1,7 @@
 // Copy to ui/Config/Local.xcconfig (gitignored) and fill in from your local
 // GoogleService-Info.plist (key REVERSED_CLIENT_ID). Never commit the real file.
 GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.REPLACE-WITH-REVERSED-CLIENT-ID
+
+// Paid Apple Developer team only: enables Universal Links (Associated Domains) for share links.
+// Free Personal Teams cannot sign this entitlement, so leave it commented out for local phone builds.
+// DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements

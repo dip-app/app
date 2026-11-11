@@ -5,4 +5,8 @@
 // return to the app, and the app reports that sign-in is not configured.
 GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.dip-not-configured
 
+// Entitlements file for the app target. The default has no Associated Domains so free Personal Team
+// builds sign. A paid team overrides this in Local.xcconfig with Config/DIP-Paid.entitlements.
+DIP_ENTITLEMENTS = Config/DIP.entitlements
+
 #include? "Local.xcconfig"
