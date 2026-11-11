@@ -7,6 +7,8 @@ import {
   getFirestore, limit, orderBy, query,
 } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
+import { createLiveOps } from "./adminLive";
+import { isStaff } from "./adminTypes";
 import type { AdminApi, CommandResult, Session } from "./api";
 import type { Tag } from "./catalog";
 import {
@@ -200,14 +202,14 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
       name: user.displayName ?? String(data?.displayName ?? user.email ?? ""),
       email: user.email ?? "",
       companyId: typeof data?.companyId === "string" ? data.companyId : "",
-      role: data?.role === "admin" ? "admin" : "member",
+      role: data?.role === "admin" ? "admin" : data?.role === "organizer" ? "organizer" : "member",
     };
   }
 
   async function organizer(): Promise<Session> {
     const session = await loadSession();
     if (!session) throw new ApiError("unauthenticated", "Sign in to continue.");
-    if (session.role !== "admin") throw new ApiError("permission-denied", "Only organizers can manage events.");
+    if (!isStaff(session.role)) throw new ApiError("permission-denied", "Only organizers can manage events.");
     return session;
   }
 
@@ -220,6 +222,7 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
   }
 
   return {
+    ...createLiveOps({ app, db, functions, organizer, run }),
     mode: "live",
     session: loadSession,
     async signIn() {
