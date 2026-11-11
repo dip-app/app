@@ -31,7 +31,11 @@ struct AccountsStageView: View {
     @State private var lastNotice: AccountsNotice?
     @AccessibilityFocusState private var titleFocused: Bool
 
-    private var route: AccountsRoute { AccountsRoute(session.state) }
+    /// Set by `AccountsRootView` while it holds "Finding your company" for its minimum display time; nil shows
+    /// the session's own route.
+    var heldRoute: AccountsRoute?
+
+    private var route: AccountsRoute { heldRoute ?? AccountsRoute(session.state) }
     private var scene: AccountsStageScene {
         AccountsStageScene.make(route: route, isSubmitting: session.isSubmitting, pendingLook: pendingLook)
             ?? AccountsStageScene.make(route: .pending)!

@@ -26,15 +26,31 @@ struct OnboardingTourSettings {
     /// arguments (spec §5 UI tests): `-onboarding.reset`, `-onboarding.timeScale <n>`,
     /// `-onboarding.reduceMotion`, `-onboarding.resumeAt <step>`, `-onboarding.freezeAt <scene>@<seconds|final>`
     /// and `-onboarding.features all|none`.
-    static func standard(
+    @MainActor static func standard(
         defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments
     ) -> OnboardingTourSettings {
         var settings = OnboardingTourSettings(store: UserDefaultsOnboardingRecordStore(defaults: defaults))
         #if DEBUG
         settings.apply(arguments: arguments)
+        if arguments.contains("--reset-onboarding") { Self.resetAllRecordsOnce(defaults) }
         #endif
         return settings
     }
+
+    #if DEBUG
+    /// `--reset-onboarding`: forget every account's tour record (`dip.onboarding.v1.*`) once per launch, so the
+    /// full tour plays again. Once, because hosts rebuild these settings on every view update.
+    @MainActor private static var didResetThisLaunch = false
+
+    @MainActor static func resetAllRecordsOnce(_ defaults: UserDefaults) {
+        guard !didResetThisLaunch else { return }
+        didResetThisLaunch = true
+        let prefix = UserDefaultsOnboardingRecordStore.key(for: "")
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
+            defaults.removeObject(forKey: key)
+        }
+    }
+    #endif
 
     mutating func apply(arguments: [String]) {
         func value(after flag: String) -> String? {
