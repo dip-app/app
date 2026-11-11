@@ -36,6 +36,8 @@ struct PreviewApp: App {
                     LongTitlesPreview(mode: mode)
                 } else if let state = ProfileStatesPreview.launchState() {
                     ProfileStatesPreview(state: state)
+                } else if let submission = ChallengeSubmissionPreview.launchMode() {
+                    ChallengeSubmissionPreview(state: submission)
                 } else if let phase = ChallengePhasePreview.launchMode() {
                     ChallengePhasePreview(phase: phase)
                 } else if let mode = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--changes-sheet=") }) {

@@ -71,7 +71,11 @@ public struct DIPChallengeDetail: Identifiable, Equatable, Sendable {
     /// Window bounds (end exclusive); nil when the source has none (the onboarding demo theme).
     public var startDate: Date?
     public var endDate: Date?
-    public init(id: String, title: String, image: MediaReference?, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = [], goalText: String? = nil, rewardText: String? = nil, accent: DIPThemeAccent = .challenge, startDate: Date? = nil, endDate: Date? = nil) {
+    /// Numeric goal and reward behind `goalText`/`rewardText`, used to validate and explain an entry; nil when unknown.
+    public var goal: Double?
+    public var pointsReward: Int
+    public init(id: String, title: String, image: MediaReference?, timing: String, description: String, tags: [String], isJoined: Bool = false, completedCount: Int = 0, completedAvatars: [MediaReference] = [], goalText: String? = nil, rewardText: String? = nil, accent: DIPThemeAccent = .challenge, startDate: Date? = nil, endDate: Date? = nil, goal: Double? = nil, pointsReward: Int = 0) {
+        self.goal = goal; self.pointsReward = pointsReward
         self.startDate = startDate; self.endDate = endDate
         self.id = id; self.title = title; self.image = image; self.timing = timing; self.description = description
         self.tags = tags; self.isJoined = isJoined; self.completedCount = completedCount; self.completedAvatars = completedAvatars
