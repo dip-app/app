@@ -72,7 +72,7 @@ struct DIPMemberHome: View {
                 .allowsHitTesting(tour == nil)
                 .accessibilityHidden(tour != nil)
             if let tour {
-                OnboardingTourView(model: tour, interests: tourInterests, firstName: firstName, youName: youName,
+                OnboardingTourView(model: tour, interests: tourInterests, firstName: firstName, you: you,
                                    onSignOut: onSignOut)
                     .onAppear { tour.reportSurface(currentSurface); tour.onFinished = { self.tour = nil } }
                     .transition(.identity)
@@ -92,7 +92,7 @@ struct DIPMemberHome: View {
         }
         .fullScreenCover(isPresented: Binding(get: { replay != nil }, set: { if !$0 { replay = nil } })) {
             if let replay {
-                OnboardingTourView(model: replay, interests: replayInterests, firstName: firstName, youName: youName)
+                OnboardingTourView(model: replay, interests: replayInterests, firstName: firstName, you: you)
                     .presentationBackground(.clear)
             }
         }
@@ -139,9 +139,11 @@ struct DIPMemberHome: View {
         context.profile.displayName.split(separator: " ").first.map(String.init)
     }
 
-    private var youName: String {
-        let name = context.profile.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "You" : name
+    /// The member in the tour: the same portrait Profile shows (stored photo, then the OAuth photo), else
+    /// their app-assigned avatar. Never initials.
+    private var you: OnboardingYou {
+        OnboardingYou(uid: context.uid,
+                      photo: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL).photo)
     }
 
     /// The shell's own surfaces; inside `DIPPrototypeApp` the app reports its surface instead (spec §3 H).

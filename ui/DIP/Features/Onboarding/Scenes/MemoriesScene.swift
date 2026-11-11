@@ -26,16 +26,29 @@ struct MemoriesScene: DemoScene {
         DemoAccessibilityRow(systemImage: "photo.badge.plus", text: "Add your own photos"),
     ]
 
-    func prepare() { DemoPeople.prepare(youName: OnboardingDemoFixtures.youPlaceholderName) }
+    var you = OnboardingYou.preview
+
+    func prepare() { DemoPeople.prepare() }
 
     func canvas(_ state: MemoriesState) -> some View {
-        MemoriesCanvas(state: state)
+        MemoriesCanvas(state: state, you: you)
     }
 }
 
 /// The fixtures B4 shows: the app's mock snapshot (fictional, bundled).
 enum MemoriesDemoFixtures {
     static let snapshot = DIPMockFixtures.reference
+
+    /// The fixture snapshot with the member as its profile, so My Events' header and the album show *their*
+    /// photo or assigned avatar, never the fixture person's.
+    static func snapshot(for you: OnboardingYou) -> DIPAppSnapshot {
+        var snapshot = Self.snapshot
+        snapshot.profile.id = you.uid
+        snapshot.profile.photo = you.photo
+        snapshot.profile.avatar = you.photo
+        snapshot.home.profileAvatar = you.photo
+        return snapshot
+    }
     static let lists = DIPEventLists(snapshot: snapshot, now: Date())
     static var pastEventID: String { lists.past.first?.id ?? "kayaking-memory" }
     static let newPhoto = DIPPhoto(id: "onboarding.new-photo", image: .asset("album_Rectangle937"))
@@ -43,6 +56,7 @@ enum MemoriesDemoFixtures {
 
 struct MemoriesCanvas: View {
     let state: MemoriesState
+    let you: OnboardingYou
     private typealias Fixtures = MemoriesDemoFixtures
 
     var body: some View {
@@ -70,7 +84,6 @@ struct MemoriesCanvas: View {
             if let ghost = state.ghost { GhostTouch(ghost: GhostState(ghost)) }
         }
         .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height, alignment: .topLeading)
-        .clipped()
     }
 
     /// The app's own resolver for each page: tabs on My Events, "View Album" on a past event, "Add Photos" in
@@ -92,7 +105,7 @@ struct MemoriesCanvas: View {
         DemoPhoneScreen {
             DIPMyEventsScreen(
                 activeEvents: Fixtures.lists.upcoming, memories: Fixtures.lists.past, unreadCount: 0,
-                profileAvatar: Fixtures.snapshot.home.profileAvatar, initialMemories: state.pastSection,
+                profileAvatar: you.photo, initialMemories: state.pastSection,
                 showsBottomBar: false, onSelectTab: { _ in }, onEvent: { _ in }, onAlbum: { _ in },
                 onNotifications: {}, onProfile: {})
         }
@@ -127,7 +140,7 @@ struct MemoriesCanvas: View {
         return DemoPhoneScreen {
             if let album = albumModel {
                 DIPAlbumScreen(
-                    album: album, commentsByPhoto: [:], currentUser: Fixtures.snapshot.profile, showsBottomBar: false,
+                    album: album, commentsByPhoto: [:], currentUser: Fixtures.snapshot(for: you).profile, showsBottomBar: false,
                     onBack: {}, onAddPhotos: { _ in }, onAddComment: { _, _, _ in })
             }
         }

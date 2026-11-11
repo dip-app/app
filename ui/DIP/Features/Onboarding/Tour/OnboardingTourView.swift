@@ -13,8 +13,8 @@ struct OnboardingTourView: View {
     let interests: OnboardingInterestsModel?
     /// For B0's title ("YOU'RE IN, SAM").
     let firstName: String?
-    /// For You's initials.
-    let youName: String
+    /// The member as the tour shows them: photo, else assigned avatar.
+    let you: OnboardingYou
     /// First run only: the leading "Sign out" on the first step (the step before it was sign-in).
     var onSignOut: (() async -> Void)?
     @State private var signingOut = false
@@ -127,16 +127,16 @@ struct OnboardingTourView: View {
     @ViewBuilder private func stageContent(_ step: OnboardingStep) -> some View {
         switch step {
         case .arrival:
-            ArrivalCrew(youName: youName, namespace: crew, speed: speed, reduceMotion: reduceMotion)
+            ArrivalCrew(you: you, namespace: crew, speed: speed, reduceMotion: reduceMotion)
                 .transition(.opacity)
         case .discover:
-            demo(DiscoverJoinScene(youName: youName))
+            demo(DiscoverJoinScene(you: you))
         case .people:
-            demo(PeopleInviteScene(features: features, youName: youName))
+            demo(PeopleInviteScene(features: features, you: you))
         case .challenges:
             demo(ChallengeScene(features: features))
         case .memories:
-            demo(MemoriesScene())
+            demo(MemoriesScene(you: you))
         case .interests:
             InterestsStrip(names: selectedInterestNames, failed: interests?.catalog == .failed || interests == nil,
                            reduceMotion: reduceMotion)
@@ -172,7 +172,7 @@ struct OnboardingTourView: View {
                         .lineLimit(1)
                         .padding(.horizontal, 16).frame(height: 44)
                         .background(OnboardingTheme.accent, in: Capsule())
-                    TourCrewStack(members: model.stackMembers, youName: youName,
+                    TourCrewStack(members: model.stackMembers, you: you,
                                   youSaved: model.interestsSaved, namespace: crew, hidesYou: revealStarted,
                                   host: model.isHandingOff ? nil : CrewMember.host(of: step))
                 }
@@ -332,7 +332,7 @@ struct OnboardingTourView: View {
     /// You (28 pt) flies to the Home header's profile button (spec §3 H at 0.20, `stage`).
     private func youFlight(_ layout: TourLayout, surface: OnboardingHomeSurface) -> some View {
         let target = OnboardingHandoff.profileButtonFrame(width: layout.width)
-        return TourYouAvatar(name: youName, size: 40)
+        return TourYouAvatar(you: you, size: 40)
             .matchedGeometryEffect(id: "crew.you", in: crew, isSource: false)
             .position(x: target.x + target.size / 2, y: target.y + target.size / 2)
             .opacity(surface.hasProfileButton ? 1 : 0)
@@ -429,14 +429,14 @@ struct OnboardingTourView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16).padding(.vertical, 8)
                             .background(OnboardingTheme.accent, in: Capsule())
-                        TourCrewStack(members: model.stackMembers, youName: youName,
+                        TourCrewStack(members: model.stackMembers, you: you,
                                       youSaved: model.interestsSaved, namespace: crew)
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(Text(model.progressLabel ?? step.pillTitle))
                     .accessibilityIdentifier("onboarding.tour.progress")
                 }
-                if step == .arrival { TourYouAvatar(name: youName, size: 56) }
+                if step == .arrival { TourYouAvatar(you: you, size: 56) }
                 Text(copy.title.uppercased())
                     .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 34, relativeTo: .largeTitle))
                     .accessibilityLabel(Text(copy.title))

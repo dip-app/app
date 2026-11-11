@@ -58,7 +58,8 @@ struct DemoMiniBar: View {
     var action: DIPBottomBarAction?
 
     var body: some View {
-        DIPFloatingNavigation(selected: selected, action: action, onSelect: { _ in })
+        // Tabs on tab pages, the action alone on pushed pages: the two never rest on top of each other.
+        DIPFloatingNavigation(selected: selected, action: action, showsTabs: action == nil, onSelect: { _ in })
             .padding(.horizontal, Self.inset)
             .frame(width: DemoCanvas.size.width)
             .position(x: DemoCanvas.size.width / 2, y: DemoCanvas.barCenterY)
@@ -67,14 +68,14 @@ struct DemoMiniBar: View {
 
 /// Fictional coworkers for B2's lists (spec open decision 4: names pending approval).
 enum DemoPeople {
-    @MainActor static func attendees(youName: String) -> [DIPParticipant] {
+    @MainActor static func attendees(you: OnboardingYou) -> [DIPParticipant] {
         [
             DIPParticipant(id: "maya", name: "Maya", department: "Design", avatar: CrewAvatarImages.reference(.purple, size: 50)),
             DIPParticipant(id: "theo", name: "Theo", department: "Engineering", avatar: CrewAvatarImages.reference(.white, size: 50)),
             DIPParticipant(id: "jun", name: "Jun", department: "Finance", avatar: CrewAvatarImages.reference(.yellow, size: 50)),
             DIPParticipant(id: "lena", name: "Lena", department: "Sales", avatar: CrewAvatarImages.reference(.gray, size: 50)),
             DIPParticipant(id: "omar", name: "Omar", department: "Product", avatar: CrewAvatarImages.reference(.purple, size: 50)),
-            DIPParticipant(id: "you", name: "You", department: "Going", avatar: CrewAvatarImages.you(name: youName, size: 50)),
+            DIPParticipant(id: "you", name: "You", department: "Going", avatar: you.photo),
         ]
     }
 
@@ -86,14 +87,12 @@ enum DemoPeople {
         ]
     }
 
-    @MainActor static func prepare(youName: String) {
+    @MainActor static func prepare() {
         for member in CrewMember.allCases {
             _ = CrewAvatarImages.reference(member)
             _ = CrewAvatarImages.reference(member, size: 50)
             _ = CrewAvatarImages.reference(member, size: 22)
         }
-        _ = CrewAvatarImages.you(name: youName)
-        _ = CrewAvatarImages.you(name: youName, size: 50)
     }
 }
 

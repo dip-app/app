@@ -161,8 +161,15 @@ final class DiscoverJoinSceneTests: XCTestCase {
         guard case .data(let data) = first else { return XCTFail("expected PNG data") }
         let image = try XCTUnwrap(UIImage(data: data))
         XCTAssertEqual(image.size.width * image.scale, 120, accuracy: 1, "40 pt at @3x")
-        guard case .data(let you) = CrewAvatarImages.you(name: "S") else { return XCTFail("expected PNG data") }
-        XCTAssertFalse(you.isEmpty)
+    }
+
+    /// "You" is the member's photo, else their app-assigned avatar; never initials (owner fix, Nov 11).
+    func testYouIsAPhotoOrTheAssignedAvatar() {
+        XCTAssertEqual(OnboardingYou(uid: "uid-1").photo, .generatedAvatar(userID: "uid-1"))
+        let portrait = MediaReference.remote(URL(string: "https://example.invalid/me.jpg")!)
+        XCTAssertEqual(OnboardingYou(uid: "uid-1", photo: portrait).photo, portrait)
+        XCTAssertEqual(DiscoverJoinScene(you: OnboardingYou(uid: "uid-2")).script.finalState.joined, true)
+        XCTAssertEqual(DemoPeople.attendees(you: OnboardingYou(uid: "uid-3")).last?.avatar, .generatedAvatar(userID: "uid-3"))
     }
 
     private func distinctColours(_ image: CGImage) -> Int {

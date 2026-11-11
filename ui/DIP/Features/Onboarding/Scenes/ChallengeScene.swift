@@ -72,7 +72,6 @@ struct ChallengeCanvas: View {
             if let ghost = state.ghost { GhostTouch(ghost: GhostState(ghost)) }
         }
         .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height, alignment: .topLeading)
-        .clipped()
     }
 
     // MARK: Card → details band
