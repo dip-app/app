@@ -55,7 +55,8 @@
   .admin a:hover { color: var(--purple); }
 
   /* Animated phone */
-  .stage { display: grid; place-items: center; position: relative; min-height: 560px; }
+  .stage { display: grid; place-items: center; position: relative; min-height: 560px; perspective: 900px; }
+  .device { position: relative; will-change: transform; }
   .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
   .blob.a { width: 280px; height: 280px; background: var(--purple); top: 4%; left: 6%; animation: drift 9s ease-in-out infinite; }
   .blob.b { width: 220px; height: 220px; background: var(--pink); bottom: 2%; right: 4%; animation: drift 11s ease-in-out infinite reverse; }
@@ -65,6 +66,9 @@
   .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; animation: shot 15s infinite; }
   .shot:nth-child(1) { animation-delay: 0s; } .shot:nth-child(2) { animation-delay: 3s; } .shot:nth-child(3) { animation-delay: 6s; }
   .shot:nth-child(4) { animation-delay: 9s; } .shot:nth-child(5) { animation-delay: 12s; }
+  /* Specular sheen ported from the case-study DeviceFrame: slides against the tilt, fades in with cursor proximity. */
+  .shimmer { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; pointer-events: none; z-index: 1; opacity: 0; will-change: transform, opacity;
+    background: linear-gradient(125deg, transparent 36%, rgba(40,50,90,.10) 42%, rgba(255,255,255,0) 46%, rgba(255,255,255,.75) 50%, rgba(255,255,255,0) 54%, rgba(40,50,90,.08) 58%, transparent 64%); }
   .bezel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
   .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-bottom: 56px; }
@@ -104,6 +108,7 @@
       </div>
       <div class="stage" aria-hidden="true">
         <div class="blob a"></div><div class="blob b"></div>
+        <div class="device">
         <div class="phone">
           <div class="screen">
             <img class="shot" src="/img/landing/home.webp" alt="" width="600" height="1305">
@@ -111,8 +116,10 @@
             <img class="shot" src="/img/landing/joined.webp" alt="" width="600" height="1305" loading="lazy">
             <img class="shot" src="/img/landing/album.webp" alt="" width="600" height="1305" loading="lazy">
             <img class="shot" src="/img/landing/rewards.webp" alt="" width="600" height="1305" loading="lazy">
+            <div class="shimmer" aria-hidden="true"></div>
           </div>
           <img class="bezel" src="/img/landing/iphone-frame.png" alt="" width="860" height="1751">
+        </div>
         </div>
       </div>
     </section>
@@ -124,5 +131,31 @@
   </div>
 </main>
 <footer><div class="wrap">© DIP</div></footer>
+<script>
+// Tilt toward the cursor and slide the screen sheen against it (ported from the case-study DeviceFrame).
+// Off for reduced motion and touch screens.
+(function () {
+  var dev = document.querySelector('.device'), shim = document.querySelector('.shimmer');
+  if (!dev || !shim) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || matchMedia('(pointer: coarse)').matches) { shim.remove(); return; }
+  var MAX = 7, tx = 0, ty = 0, x = 0, y = 0, raf = 0;
+  function frame() {
+    x += (tx - x) * 0.14; y += (ty - y) * 0.14;
+    dev.style.transform = 'rotateX(' + (-y * 2 * MAX).toFixed(3) + 'deg) rotateY(' + (x * 2 * MAX).toFixed(3) + 'deg)';
+    shim.style.transform = 'translate(' + (-x * 80).toFixed(2) + '%,' + (-y * 52).toFixed(2) + '%)';
+    shim.style.opacity = Math.min(0.6, Math.hypot(x, y) * 2.4).toFixed(3);
+    raf = (Math.abs(tx - x) > 0.0005 || Math.abs(ty - y) > 0.0005) ? requestAnimationFrame(frame) : 0;
+  }
+  function kick() { if (!raf) raf = requestAnimationFrame(frame); }
+  addEventListener('pointermove', function (e) {
+    if (e.pointerType !== 'mouse') return;
+    var r = dev.getBoundingClientRect();
+    var nx = (e.clientX - r.left) / r.width - 0.5, ny = (e.clientY - r.top) / r.height - 0.5;
+    var falloff = Math.max(0, 1 - Math.hypot(nx, ny) * 1.15);
+    tx = nx * falloff; ty = ny * falloff; kick();
+  }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', function () { tx = 0; ty = 0; kick(); });
+})();
+</script>
 </body>
 </html>
