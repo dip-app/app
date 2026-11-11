@@ -31,14 +31,6 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
-        },
-        "membershipMode": {
-          "type": "string",
-          "enum": [
-            "open",
-            "rosterOnly"
-          ],
-          "description": "Server/admin-owned, optional; missing means open (any verified company-domain Google account joins as member). rosterOnly: only pre-provisioned roster entries (and existing members) may join."
         }
       },
       "required": [
@@ -2427,7 +2419,7 @@
     "RosterEntry": {
       "type": "object",
       "additionalProperties": false,
-      "description": "companies/{c}/roster/{emailHash}. Admin-readable only; server-written. resolveMembershipV1 claims an invited entry on first verified Google sign-in.",
+      "description": "companies/{c}/roster/{emailHash}. Admin-readable only; server-written. Lists everyone: invited (pre-imported, not signed in yet), claimed (signed in) and revoked entries. resolveMembershipV1 claims an invited entry, or creates a claimed one, on every first join.",
       "properties": {
         "id": {
           "type": "string",
@@ -2498,7 +2490,8 @@
           "type": "string",
           "enum": [
             "manual",
-            "import"
+            "import",
+            "signup"
           ]
         },
         "importJobId": {
@@ -2515,7 +2508,8 @@
         },
         "invitedBy": {
           "type": "string",
-          "maxLength": 128
+          "maxLength": 128,
+          "description": "Admin who pre-provisioned the entry; absent for entries created by the person's own sign-in."
         },
         "createdAt": {
           "type": "string",
@@ -2528,6 +2522,14 @@
         "revision": {
           "type": "integer",
           "minimum": 1
+        },
+        "memberStatus": {
+          "type": "string",
+          "enum": [
+            "active",
+            "deactivated"
+          ],
+          "description": "Mirrors the member's status once claimed; kept in sync by setMemberStatusV1."
         }
       },
       "required": [
@@ -2541,7 +2543,6 @@
         "jobTitle",
         "status",
         "source",
-        "invitedBy",
         "createdAt",
         "updatedAt",
         "revision"
@@ -3879,68 +3880,6 @@
         "teamId",
         "created",
         "revision"
-      ]
-    },
-    "UpdateCompanySettingsRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "updateCompanySettingsV1: company.settings (admin). Switching to rosterOnly never affects existing members.",
-      "properties": {
-        "contractVersion": {
-          "type": "integer",
-          "const": 1
-        },
-        "companyId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z0-9_-]+$"
-        },
-        "requestId": {
-          "type": "string",
-          "minLength": 8,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z0-9_-]+$",
-          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
-        },
-        "membershipMode": {
-          "type": "string",
-          "enum": [
-            "open",
-            "rosterOnly"
-          ]
-        }
-      },
-      "required": [
-        "contractVersion",
-        "companyId",
-        "requestId",
-        "membershipMode"
-      ]
-    },
-    "UpdateCompanySettingsResponse": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "contractVersion": {
-          "type": "integer",
-          "const": 1
-        },
-        "membershipMode": {
-          "type": "string",
-          "enum": [
-            "open",
-            "rosterOnly"
-          ]
-        },
-        "changed": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "contractVersion",
-        "membershipMode",
-        "changed"
       ]
     },
     "UpsertRosterEntryRequest": {

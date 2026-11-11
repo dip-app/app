@@ -10,7 +10,6 @@ const MUTATING = [...BASE, "requestId"];
 const REQUIRED_ROLES = ROLES as readonly Role[];
 const STATUSES = ["invited", "active", "deactivated"] as const;
 const MEMBER_STATUS = ["active", "deactivated"] as const;
-const MODES = ["open", "rosterOnly"] as const;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Photo ids are `{uid}_{slot}`; validated as wire ids here, the slot is only used to derive the Storage path. */
@@ -125,13 +124,6 @@ export function parseAdjustPoints(data: unknown) {
 export function parseUpsertTeam(data: unknown) {
   const r = Reader.from(data, [...MUTATING, "teamId", "name", "archived"]);
   const req = { companyId: r.id("companyId"), requestId: r.requestId(), teamId: r.optId("teamId"), name: r.text("name", 80, 1), archived: r.optBool("archived") };
-  r.finish();
-  return req;
-}
-
-export function parseCompanySettings(data: unknown) {
-  const r = Reader.from(data, [...MUTATING, "membershipMode"]);
-  const req = { companyId: r.id("companyId"), requestId: r.requestId(), membershipMode: r.enum("membershipMode", MODES) };
   r.finish();
   return req;
 }
