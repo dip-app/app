@@ -1,4 +1,5 @@
 import DIPCore
+import DIPDesignSystem
 import SwiftUI
 import XCTest
 @testable import DIP
@@ -104,6 +105,19 @@ final class DemoStageLayoutTests: XCTestCase {
             let canvas = DemoStageLayout.canvasFrame(in: size)
             XCTAssertEqual(canvas.width / canvas.height, DemoCanvas.size.width / DemoCanvas.size.height, accuracy: 0.001)
         }
+    }
+}
+
+@MainActor
+final class DemoMiniBarTests: XCTestCase {
+    /// B4's "My Events" pointer and ghost aim at the real tab (3rd of 4), from the bar's own slot geometry.
+    func testMyEventsTargetMatchesTheRealTab() {
+        let target = DemoMiniBar.tabCenter(.events)
+        XCTAssertEqual(target.x, 240, accuracy: 0.5)
+        XCTAssertGreaterThan(target.x / DemoCanvas.size.width, 0.6, "about 5/8 of the way along, not the centre")
+        XCTAssertEqual(MemoriesTimeline.Point.myEventsTab.x, Double(target.x), accuracy: 0.5)
+        XCTAssertEqual(DIPFloatingNavigation.tabCenterX(.home, width: 350), 40)
+        XCTAssertEqual(DIPFloatingNavigation.tabCenterX(.profile, width: 350), 310)
     }
 }
 

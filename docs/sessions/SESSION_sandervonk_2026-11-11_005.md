@@ -2,26 +2,28 @@
 
 User: sandervonk
 Date: 2026-11-11
-Workstream: Share links and universal links
+Workstream: Edge swipe back
 Agent: Claude Code
-Status: complete
+Status: completed
 
 ## Summary
-Event share links `https://team05-dip.web.app/e/<eventId>`, app routing for them and `dip://events/<id>`, hosting AASA and landing page (not deployed). Design: docs/design/share-links.md.
+
+Restored the iOS interactive swipe-from-the-left-edge back gesture for every screen the shell pushes. The shell pushes all detail screens (event, challenge, participants, album with its photo viewer route) onto one SwiftUI NavigationStack whose navigation bar and back button are hidden, which had disabled the system pop gesture.
 
 ## Changes
-- DIPCore: DIPShareLink (+tests), shareText link param. App: EventLinkInbox, DIPApp, DIPMemberHome, DIPPrototypeApp, DIPDetailComponents, DIPEventDetailsScreen.
-- project.yml: dip URL scheme, entitlements now via DIP_ENTITLEMENTS (tracked Config/DIP.entitlements, Config/DIP-Paid.entitlements); Base.xcconfig, Local.example.xcconfig, .gitignore.
-- Hosting: firebase.json (2 rewrites, 1 header), apps/admin/public/aasa, apps/admin/public/share; scripts/tests/test_hosting_share_links.py; docs and FRONTEND_PLAN rows.
+
+- ui/DIP/Features/Prototype/DIPInteractivePop.swift (new): UINavigationController becomes the delegate of its interactivePopGestureRecognizer and allows it only while more than one controller is on the stack; it may run alongside inner scroll views.
+- ui/ComponentPreview/UITests/HomeReferenceTests.swift: testEdgeSwipeBackReturnsFromEventToHome (opens an event from Home, edge-drags back, expects Home).
 
 ## Validation
-- swift test DIPCore --filter DIPShareLinkTests (7) and EventMetadataTests pass; python3 -m unittest scripts/tests/test_hosting_share_links.py passes; xcodebuild DIP generic iOS Simulator build succeeded.
-- Simulator spot check: dip:// URL prompts to open DIP; with the onboarding tour showing the link stays queued. Universal Links untestable without paid team.
+
+- Preview scheme, `-only-testing:PreviewUITests/HomeReferenceTests/testEdgeSwipeBackReturnsFromEventToHome`: passed. I did not run the test before the fix, so I did not observe it failing first.
+- No other suites run (owner: one compile and one spot test).
 
 ## Decisions
-- ShareLink item is the URL with the text as message (avoids a duplicated link); cancelled events share no link.
-- Free-team safe: Associated Domains only in DIP-Paid.entitlements, selected via Local.xcconfig.
+
+- No custom DragGesture was needed: there are no custom push containers. The main tabs use DIPSlidingPages, which is not a navigation stack, so the gesture does not begin there and the tab swipe is untouched. Sheets (chat, edit profile, interest picker) dismiss with the system sheet swipe.
 
 ## Handoff
-Owner steps in docs/design/share-links.md: paid team, Team ID, App Store ID, approved hosting deploy.
 
+Untested by hand: the swipe on challenge, participants and album screens (same stack, same gesture); the onboarding tour is a separate flow and was not changed.

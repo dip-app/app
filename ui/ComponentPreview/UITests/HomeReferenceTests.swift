@@ -2,6 +2,22 @@ import XCTest
 
 final class HomeReferenceTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+
+    /// A pushed screen (custom back button, hidden navigation bar) still pops with the left-edge swipe.
+    @MainActor func testEdgeSwipeBackReturnsFromEventToHome() {
+        let app = XCUIApplication()
+        app.launch()
+        let event = app.buttons["home.event.EventCard"]
+        XCTAssertTrue(event.waitForExistence(timeout: 10))
+        event.tap()
+        XCTAssertTrue(app.buttons["event.back"].waitForExistence(timeout: 3))
+        let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
+        edge.withOffset(CGVector(dx: 2, dy: 0))
+            .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)))
+        XCTAssertTrue(app.buttons["home.challenge"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["event.back"].exists)
+    }
+
     @MainActor func testHomeReferenceGeometryAndFixtureActions() {
         let app = XCUIApplication()
         app.launchArguments = []
