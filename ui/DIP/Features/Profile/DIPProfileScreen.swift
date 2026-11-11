@@ -119,6 +119,7 @@ struct DIPProfileScreen: View {
                 }
             }
             .clipped()
+            .coordinateSpace(name: ProfileBadgeLink.pageSpace)
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
