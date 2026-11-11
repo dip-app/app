@@ -49,3 +49,7 @@ Added `letsdip.work` and `www.letsdip.work` to Firebase Auth authorized domains 
 ## Follow-up: redirect live
 
 Owner approved turning the legacy redirect on without waiting for letsdip.work's certificate (nothing had been shared). `hosting:team05-dip` deployed: every path (including `/`) answers 301 to https://letsdip.work/<path>. Until letsdip.work has an active certificate, the redirect target does not load over HTTPS; letsdip.web.app serves the same content meanwhile.
+
+## Follow-up: Get it now button
+
+The landing page's informational "Coming soon to the App Store" pill became a solid App Store blue (#0071E3, white text, hover/active/focus states) "Get it now" button. Its href is a placeholder (https://apps.apple.com/) with a TODO: replace with the real listing URL once the App Store ID exists.

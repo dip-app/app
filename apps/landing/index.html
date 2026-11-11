@@ -46,8 +46,10 @@
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .pill { display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 22px; border-radius: 26px; font: 700 17px Figtree, sans-serif; text-decoration: none; }
   /* solid = pressable, outline = informational */
-  .pill.info { border: 1.5px solid var(--line); background: var(--tint); color: var(--text); }
-  .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--yellow); animation: pulse 1.8s ease-in-out infinite; }
+  .pill.store { background: #0071E3; color: #FFFFFF; transition: background .15s, transform .1s; }
+  .pill.store:hover { background: #0A84FF; }
+  .pill.store:active { transform: scale(.97); }
+  .pill.store:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
   .admin { display: block; margin-top: 22px; font-size: 14px; color: var(--muted); }
   .admin a { color: inherit; text-underline-offset: 3px; }
   .admin a:hover { color: var(--purple); }
@@ -74,7 +76,6 @@
   @keyframes shot { 0% { opacity: 0; transform: scale(1.02); } 4% { opacity: 1; transform: scale(1); } 20% { opacity: 1; transform: scale(1); } 24%, 100% { opacity: 0; } }
   @keyframes float { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-12px) rotate(1.5deg); } }
   @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(24px, -18px); } }
-  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
 
   @media (max-width: 820px) {
     .hero { grid-template-columns: 1fr; padding-top: 20px; }
@@ -96,7 +97,8 @@
         <h1>Get out of the office. <em>Do something together.</em></h1>
         <p class="lead">DIP is the app for your company's events: find something to join, see who's going, share the photos afterwards and earn points as a team.</p>
         <div class="ctas">
-          <span class="pill info" role="status"><span class="dot" aria-hidden="true"></span>Coming soon to the App Store</span>
+          <!-- TODO: replace with the real App Store listing URL (https://apps.apple.com/app/id<APP_STORE_ID>) once the listing exists. -->
+          <a class="pill store" href="https://apps.apple.com/" rel="noopener">Get it now</a>
         </div>
         <span class="admin">Organizing events for your company? <a href="/admin/">Go to the admin portal</a></span>
       </div>
