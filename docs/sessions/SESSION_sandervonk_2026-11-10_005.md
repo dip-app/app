@@ -4,7 +4,7 @@ User: sandervonk
 Date: 2026-11-10
 Workstream: iOS fixups after merges
 Agent: Claude Code
-Status: active
+Status: completed
 
 ## Summary
 
