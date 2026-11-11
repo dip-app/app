@@ -76,7 +76,9 @@ struct DIPPrototypeApp: View {
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference),
+                ? DIPMockFixtures.photoCommentReview
+                : ["event", "event-joined", "past-event"].contains(screen)
+                ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures())))
     }

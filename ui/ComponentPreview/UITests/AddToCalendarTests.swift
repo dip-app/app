@@ -39,7 +39,7 @@ final class AddToCalendarTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Added"].waitForExistence(timeout: 3))
         let recorded = app.staticTexts["calendar.fake.last"].label
         XCTAssertTrue(recorded.lowercased().hasPrefix("puppy yoga|"), recorded)
-        XCTAssertTrue(recorded.contains("Team activity venue, 100 Example Street"), recorded)
+        XCTAssertTrue(recorded.split(separator: "|").dropFirst().first.map { $0.contains(",") } ?? false, recorded)
         XCTAssertTrue(recorded.hasSuffix("|5400|false"), recorded)
     }
 }

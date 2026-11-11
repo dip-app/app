@@ -49,6 +49,18 @@ final class CalendarEventTests: XCTestCase {
         XCTAssertEqual(metadata(venue: "Office", address: "", locality: "Office").calendarFields(title: "A", description: "").location, "Office")
     }
 
+    func testDirectionsFallBackToTitleOnlyWhenNoLocationText() throws {
+        let located = try XCTUnwrap(metadata().directionsURL(fallbackTitle: "Kayaking"))
+        XCTAssertTrue(located.absoluteString.contains("address="))
+        let bare = metadata(venue: "", address: " ", locality: "")
+        XCTAssertNil(bare.mapsURL)
+        let fallback = try XCTUnwrap(bare.directionsURL(fallbackTitle: "Kayaking"))
+        XCTAssertEqual(URLComponents(url: fallback, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "Kayaking")
+        XCTAssertNil(bare.directionsURL(fallbackTitle: "  "))
+        // Locality alone is still usable location text.
+        XCTAssertNotNil(metadata(venue: "", address: "", locality: "Boston").directionsURL(fallbackTitle: ""))
+    }
+
     func testCancelledAndPastEventsCannotBeAdded() {
         XCTAssertTrue(metadata().canAddToCalendar(now: start.addingTimeInterval(-10)))
         XCTAssertTrue(metadata().canAddToCalendar(now: start.addingTimeInterval(60)))

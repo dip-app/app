@@ -127,6 +127,17 @@ public struct DIPEventMetadata: Equatable, Sendable {
         return sentence.count > 160 ? String(sentence.prefix(159)) + "…" : sentence
     }
 
+    /// Directions link that falls back to searching the event title when no venue, address or locality is
+    /// known; nil only when there is no location text at all.
+    public func directionsURL(fallbackTitle: String) -> URL? {
+        if let url = mapsURL { return url }
+        let query = fallbackTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return nil }
+        var components = URLComponents(string: "https://maps.apple.com/")
+        components?.queryItems = [URLQueryItem(name: "q", value: query)]
+        return components?.url
+    }
+
     /// Apple Maps search for the venue (opens Maps or the web page); nil when there is no usable address.
     public var mapsURL: URL? {
         let place = [address, locality].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

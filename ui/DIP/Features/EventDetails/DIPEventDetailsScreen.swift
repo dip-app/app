@@ -151,7 +151,7 @@ struct DIPEventDetailsScreen: View {
             DIPDetailActionRow(
                 showsParticipation: !event.isPast,
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions before joining, Leave after.
-                joinInRow: false, directionsURL: event.metadata?.mapsURL,
+                joinInRow: false, directionsURL: event.metadata?.directionsURL(fallbackTitle: event.title),
                 isParticipating: joined, canChange: canChangeParticipation,
                 joinTitle: "Join Activity", leaveTitle: "Leave Activity",
                 shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title) — \(event.timing)",
@@ -208,7 +208,7 @@ struct DIPEventDetailsScreen: View {
                 Text(durationLabel(metadata))
                     .foregroundStyle(.secondary)
             }
-            metadataRow("mappin.and.ellipse", title: "Where") {
+            metadataRow("mappin.and.ellipse", title: "Where", trailing: directionsButton(metadata)) {
                 Text(metadata.venueName)
                 Text(metadata.address).foregroundStyle(.secondary)
                 if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
@@ -223,6 +223,25 @@ struct DIPEventDetailsScreen: View {
         .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event.metadata")
+    }
+
+    /// Once joined, the action row shows Leave instead of Directions, so Directions lives on the Where row.
+    @ViewBuilder private func directionsButton(_ metadata: DIPEventMetadata) -> some View {
+        if joined, !event.isPast, let url = metadata.directionsURL(fallbackTitle: event.title) {
+            Link(destination: url) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.turn.up.right.diamond").font(.system(size: 14, weight: .semibold))
+                    Text("Directions").font(DIPReferenceAssets.font("Figtree-Bold", size: 14)).lineLimit(1).fixedSize()
+                }
+                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .padding(.horizontal, 12).frame(height: 32)
+                .overlay(Capsule().stroke(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 1.5))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .accessibilityLabel("Directions")
+            .accessibilityIdentifier("event.whereDirections")
+        }
     }
 
     /// Pill label: generic by default (the card already shows the full date and time); `--calendar-label=date`
@@ -278,7 +297,6 @@ struct DIPEventDetailsScreen: View {
                     .frame(width: 24).padding(.top, 2)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(DIPReferenceAssets.font("Figtree-Bold", size: 16, relativeTo: .headline))
                     content().font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
