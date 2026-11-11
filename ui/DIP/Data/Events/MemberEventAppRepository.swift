@@ -32,11 +32,21 @@ import DIPAccounts
     /// Up to three attendees per event for Home card avatar stacks; never shown as a full attendee list.
     private var previews: [String: [DIPParticipant]] = [:]
     private var joinedTask: Task<Void, Never>?
+    /// In-flight optimistic RSVPs by event; they override the observed joined state and count while pending.
+    private var rsvpStates: [String: DIPOptimisticRSVP] = [:]
     var supportsParticipation: Bool { participation != nil }
+    // Live chat (the participation source also implements ChatSource). One listener, for the last opened joined event.
+    private let chat: (any ChatSource)?
+    private let chatAuthor: ChatAuthor?
+    private var messages: [String: [DIPMessage]] = [:]
+    private var chatTask: Task<Void, Never>?
+    private var chatCandidateID: String?
+    private var chatEventID: String?
 
     init(reads: MemberEventsRepository, profile: DIPProfile, participation: (any ParticipationSource)? = nil,
-         clock: @escaping () -> Date = Date.init) {
+         chatAuthor: ChatAuthor? = nil, clock: @escaping () -> Date = Date.init) {
         self.reads = reads; self.profile = profile; self.participation = participation; self.clock = clock
+        self.chat = participation as? any ChatSource; self.chatAuthor = chatAuthor
     }
     func observe() async -> AsyncThrowingStream<DIPAppSnapshot, Error> {
         let id = UUID()
@@ -85,6 +95,8 @@ import DIPAccounts
     }
     func selectDetail(_ id: String?) {
         detailTask?.cancel(); detailTask = nil; detailID = id
+        // Keep the chat listener while a chat sheet may still be open (nil = left the event page).
+        if let id { chatCandidateID = id; syncChat() }
         guard let id, !stopped else { return }
         Task { [weak self] in await self?.loadAttendees(id) }
         detailTask = Task { [weak self, reads] in
@@ -112,6 +124,7 @@ import DIPAccounts
     func stop() {
         guard !stopped else { return }; stopped = true; generation = UUID()
         detailTask?.cancel(); detailTask = nil; detailID = nil
+        chatTask?.cancel(); chatTask = nil; chatEventID = nil; chatCandidateID = nil; messages.removeAll(); rsvpStates.removeAll()
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
         joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
@@ -132,23 +145,44 @@ import DIPAccounts
             details[id] = DIPEventDetail(id: id, title: event.title,
                 image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds),
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
-                isJoined: joinedIDs.contains(id),
-                attendeeCount: event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
+                isJoined: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.isGoing : joinedIDs.contains(id),
+                attendeeCount: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.attendeeCount : event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
                 isPast: event.endTime <= clock(), metadata: metadata)
         }
         var snapshot = DIPAppSnapshot(home: DIPHomeSnapshot(unreadCount: 0, profileAvatar: profile.avatar,
             challenge: nil, events: [], recentAttendeeAvatars: []), activeEvents: [], memories: [], profile: profile,
-            eventDetails: details, participants: participants.filter { details[$0.key] != nil }, albums: [:], messages: [:])
+            eventDetails: details, participants: participants.filter { details[$0.key] != nil }, albums: [:], messages: messages)
         snapshot.home.events = DIPEventLists(snapshot: snapshot, now: clock()).discovery
         for observer in observers.values { observer.yield(snapshot) }
     }
+    /// Optimistic: after a local reasonableness check the UI flips at once (joined state, attendee count, My Events,
+    /// Home cards) and rolls back only if the server rejects or fails. The latest intent wins; the RSVP and event
+    /// listeners reconcile once the server state arrives.
     func setRSVP(eventID: String, going: Bool) async throws {
         guard let participation, !stopped else { throw DIPRepositoryError.invalidInput("RSVP isn’t available yet") }
+        let requestID = UUID().uuidString
+        if let event = records[eventID] ?? joinedRecords[eventID], let metadata = try? MemberEventsRepository.metadata(event) {
+            let state = rsvpStates[eventID] ?? DIPOptimisticRSVP(going: joinedIDs.contains(eventID), attendeeCount: event.attendeeCount)
+            if let denial = DIPParticipationRules.denial(going: going, metadata: metadata, attendeeCount: state.attendeeCount,
+                                                         isGoing: state.isGoing, now: clock()) {
+                throw DIPRepositoryError.invalidInput(denial.message)
+            }
+            var next = state
+            next.begin(going: going, requestID: requestID)
+            rsvpStates[eventID] = next
+            publish()
+        }
         let count: Int
         do { count = try await participation.setRsvp(scope: reads.scope, eventID: eventID, going: going) }
-        catch { throw DIPRepositoryError.invalidInput((error as? RsvpFailure ?? .unknown).message) }
+        catch {
+            if var state = rsvpStates[eventID], state.fail(requestID: requestID) { rsvpStates[eventID] = nil; publish() }
+            throw DIPRepositoryError.invalidInput((error as? RsvpFailure ?? .unknown).message)
+        }
         guard !stopped else { return }
-        // Acknowledgement only: show it now; the RSVP and event listeners confirm it.
+        // A newer intent replaced this request: its own result decides the final state.
+        if let state = rsvpStates[eventID], state.pending?.requestID != requestID { return }
+        rsvpStates[eventID] = nil
+        // Acknowledgement: the RSVP and event listeners confirm it.
         if going { joinedIDs.insert(eventID) } else { joinedIDs.remove(eventID) }
         if var event = records[eventID] ?? joinedRecords[eventID] {
             event.attendeeCount = count
@@ -170,6 +204,7 @@ import DIPAccounts
                     guard let self, !Task.isCancelled, !self.stopped else { return }
                     self.joinedIDs = ids
                     self.joinedRecords = self.joinedRecords.filter { ids.contains($0.key) }
+                    self.syncChat()
                     self.publish()
                     await self.loadJoinedDetails()
                 }
@@ -239,7 +274,50 @@ import DIPAccounts
     /// app-assigned avatar derived from their user id (never a fixture person's photo).
     nonisolated static func avatar(userID: String) -> MediaReference { .generatedAvatar(userID: userID) }
     func updateProfile(_ edit: ProfileEdit) async throws { throw DIPRepositoryError.invalidInput("Use your account profile editor") }
-    func sendMessage(eventID: String, messageID: String, text: String) async throws { throw DIPRepositoryError.invalidInput("Chat isn’t available yet") }
+    func sendMessage(eventID: String, messageID: String, text: String) async throws {
+        guard let chat, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput("Chat isn’t available yet") }
+        do {
+            try await chat.sendMessage(scope: reads.scope, eventID: eventID, messageID: messageID, text: text, author: chatAuthor)
+        } catch { throw DIPRepositoryError.invalidInput((error as? ChatFailure ?? .unknown).message) }
+    }
+    func notificationLevel(eventID: String) async throws -> DIPNotificationLevel? {
+        guard let chat, !stopped else { return nil }
+        return try? await chat.notificationLevel(scope: reads.scope, eventID: eventID)
+    }
+    func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws {
+        guard let chat, !stopped else { throw DIPRepositoryError.invalidInput("Notification settings aren’t available yet") }
+        do { try await chat.setNotificationLevel(scope: reads.scope, eventID: eventID, level: level) }
+        catch { throw DIPRepositoryError.invalidInput("Couldn’t save your notification setting. Please try again.") }
+    }
+
+    /// Listens to the messages of the last opened event while the member is going to it; the listener is
+    /// disposed when another event is opened, the member leaves it, or the repository stops (account switch).
+    private func syncChat() {
+        guard let chat, !stopped else { return }
+        let wanted = chatCandidateID.flatMap { joinedIDs.contains($0) ? $0 : nil }
+        if wanted == chatEventID, wanted == nil || chatTask != nil { return }
+        chatTask?.cancel(); chatTask = nil
+        if let old = chatEventID { messages[old] = nil }
+        chatEventID = wanted
+        guard let wanted else { publish(); return }
+        let stream = chat.observeMessages(scope: reads.scope, eventID: wanted)
+        chatTask = Task { [weak self] in
+            do {
+                for try await records in stream {
+                    guard let self, !Task.isCancelled, !self.stopped, self.chatEventID == wanted else { return }
+                    self.messages[wanted] = records.map {
+                        DIPMessage(id: $0.id, authorID: $0.authorID, text: $0.text, authorName: $0.authorName,
+                                   authorAvatar: Self.avatar(userID: $0.authorID), createdAt: $0.createdAt)
+                    }
+                    self.publish()
+                }
+            } catch {
+                // Read denied or offline: keep what is shown; reopening the event restarts the listener.
+                guard let self, !Task.isCancelled, self.chatEventID == wanted else { return }
+                self.chatTask = nil
+            }
+        }
+    }
     func addPhotos(eventID: String, photos: [PhotoUpload]) async throws { throw DIPRepositoryError.invalidInput("Photo uploads aren’t available yet") }
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws { throw DIPRepositoryError.invalidInput("Comments aren’t available yet") }
 }

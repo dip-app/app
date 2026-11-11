@@ -5,10 +5,12 @@ import Foundation
 /// Firestore/Functions adapter for RSVP. Inject the session's configured SDK instances
 /// (Functions MUST be the us-central1 instance used by the account callables).
 @MainActor final class FirebaseParticipationSource: ParticipationSource {
-    private let firestore: Firestore
+    let firestore: Firestore
     private let functions: Functions
     private var listeners: [UUID: ListenerRegistration] = [:]
-    private var stopped = false
+    /// Chat message listeners (see FirebaseChatSource.swift); removed by `stop()` too.
+    var chatListeners: [UUID: ListenerRegistration] = [:]
+    private(set) var stopped = false
 
     init(firestore: Firestore, functions: Functions) { self.firestore = firestore; self.functions = functions }
 
@@ -79,6 +81,7 @@ import Foundation
     func stop() {
         stopped = true
         listeners.values.forEach { $0.remove() }; listeners.removeAll()
+        stopChat()
     }
 
     /// Keeps only well-formed rows for this event; malformed rows are skipped, not fatal.

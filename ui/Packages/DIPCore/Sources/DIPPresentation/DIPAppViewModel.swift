@@ -57,6 +57,12 @@ public final class DIPAppViewModel {
             try await repository.sendMessage(eventID: eventID, messageID: messageID, text: text)
         }
     }
+    public func notificationLevel(eventID: String) async -> DIPNotificationLevel? {
+        try? await repository.notificationLevel(eventID: eventID)
+    }
+    public func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws {
+        try await repository.setNotificationLevel(eventID: eventID, level: level)
+    }
     public func addPhotos(eventID: String, photos: [PhotoUpload]) async throws {
         try await perform("photos:\(eventID)") { [repository] in
             try await repository.addPhotos(eventID: eventID, photos: photos)

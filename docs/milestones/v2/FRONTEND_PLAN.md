@@ -29,7 +29,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Onboarding P3 | DemoStage and scene B1 | Merged | PR #56 | iOS |
 | Onboarding P4 | Embedded interest picker | Merged; build fixed by PR #60 | PR #58 | iOS |
 | Onboarding P2, B2-B5 | Tour shell after member resolution (per-uid record, skip, resume, Profile replay, window handoff); scenes B2-B4 (placeholders for F2-F4 UI), B5 with the embedded picker | Built; unit and UI tests in the PR. Shipping flags drop B3 and B2's invite beats until F3/F4 land | `feature/onboarding-p2-tour` | iOS |
-| C2 iOS slice | Activity chat live adapter (V2-S01, selected; record it in its own issue) and bell menu (items A, C) | Not started | to be created | iOS |
+| C2 iOS slice | Activity chat live adapter (V2-S01, selected; record it in its own issue) and bell menu (items A, C) | Live adapter and bell menu built on `feature/live-activity-chat`; not tested against Firebase or on a device | `feature/live-activity-chat` | iOS |
 | C3 iOS slice | Push registration, permission priming, settings UI, history UI, add to calendar (items B, C, D, E) | Not started | to be created | iOS |
 | Add to calendar (E) | The outlined top-right header pill of the event page is the button: calendar icon + short date ("Monday, 11/23"; `--calendar-label=generic` shows "Add to Calendar"); system event editor (no permission needed); hidden for past/cancelled. Also: When/Where/Price labels removed, Directions fallback (title search) and a Directions pill on the Where row once joined | Done, merged (see PR) | `feature/add-to-calendar` | iOS |
 | Event share text | Share sheet text rewritten as two natural-language paragraphs with fallbacks (pure tested function in DIPCore) | In review, same PR | `feature/add-to-calendar` | iOS |
@@ -313,10 +313,10 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 5 | Sign-in "Finding your company" without dots + faces animation in the circle (alternatives behind `--progress-style`) | Done | #63 |
 | 6 | "Who's going" demo zoomed/cropped; My Events pointer at the tab's real position; no opacity snap at the end | Done (unverified on screen) | #73 |
 | 7 | Consistent onboarding button copy | Done | #77 |
-| 8 | Haptics: shared helper, actions vs navigation | Helper + bottom bar + interest picker + onboarding + segmented toggle done; **call sites in Events (join/leave/leave button), Profile (save, sign out), Rewards (redeem), Chat (send), Album (upload) not wired** | helper in #63; call sites Queued |
+| 8 | Haptics: shared helper, actions vs navigation | Done for bottom bar, interest picker, onboarding, toggle, Profile save/sign out, album upload, RSVP stored/failed (#81). **Remaining: chat send and optimistic join/leave (Events agent), Rewards redeem (page is still a mock notice). None felt on a device yet.** | helper in #63; call sites #81 |
 | 9 | Profile: About inside the coloured header, designed header, solid unioned shapes, no overline labels, empty state for memories | Done | #69 |
 | 10 | Tapping a memory opens the gallery on that exact photo | Done | #69 |
-| 11 | App-assigned avatar badge on the profile photo; shape + colour from a stable uid hash | Done on Profile; **not yet used on other screens (attendees, participants, Home chips)** | #69; app-wide use Queued |
+| 11 | App-assigned avatar badge on the profile photo; shape + colour from a stable uid hash, used app-wide | Done: Profile badge, Home header, Home cards, event page and participants (#69, #79, #81). Not converted: mock fixtures, weekly-challenge avatar row (no uids), chat authors (no uid plumbing; chat not live yet) | #69, #79, #81 |
 | 12 | Home recents empty state matches the memories format (all empty states consistent) | Done | #71 |
 | 13 | Swipe from the left edge goes back everywhere | Done (album photo viewer and sheets excluded) | #74 |
 | 14 | My Events Active/Memories toggle draggable and not clipped | Done | #78 |
@@ -326,7 +326,7 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 18 | Share text as flowing paragraphs; tags wrap; share link (universal link) | Done; rich preview card (title, description, image) built server-side, see docs/design/share-links.md. Team ID and App Store ID still placeholders | #68, #75, share-link-previews PR |
 | 19 | Outline = not pressable, solid = pressable (Goal/Reward outline pills, header title outlined) | Done (white informational chips and disabled bar left as is) | #72 |
 | 20 | Mock-data launch mode for the real app | Done | #67 |
-| 21 | Optimistic join/leave with reasonableness checks; disabled "Event is Full" button (today still "Activity full") | Queued | Events agent |
+| 21 | Optimistic join/leave with reasonableness checks; full event shows a disabled "Activity full" bar (wording kept per owner; disabled state verified in EventBarActionTests) | Built on `feature/optimistic-rsvp`; unit-tested rules and reducer, not device-tested | Events agent |
 | 22 | Activity Chat live (Firestore adapter), fix "not working" on the phone build, bell menu in chat (All/Changes/Reminders/None) | In progress | Events agent |
 | 23 | Event change-history button and sheet | Held (owner: wait) | Events agent |
 | 24 | Push registration, permission priming, deep links | Held, cannot be device-tested without the paid team APNs key | Events agent |
@@ -336,3 +336,4 @@ Every request the owner made while the V2 frontend was being built, with its sta
 | 28 | TestFlight release | Not started, needs the paid team | F8 |
 | 29 | Known failing UI tests to repair after the owner's fix list (two demo-stage, interests search, chat/photo-comment retry, ScreenFlowTests join expectation) | Not started | F7 |
 | 30 | Owner process rules: no large-text/accessibility work, no full test runs while landing, merge early, shared Claude-DIP simulator under the lock | Standing | all agents |
+| 31 | Rich link previews (og/twitter metadata: title, short description, image; no address/PII) for event share links | In progress (agent building a public function behind the hosting rewrite; not deployed) | share-link previews agent |

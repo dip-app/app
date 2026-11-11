@@ -128,6 +128,14 @@ public actor DIPMockRepository: DIPRepository {
         publish()
     }
 
+    private var notificationLevels: [String: DIPNotificationLevel] = [:]
+    public func notificationLevel(eventID: String) async throws -> DIPNotificationLevel? {
+        notificationLevels[eventID] ?? .changes
+    }
+    public func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws {
+        notificationLevels[eventID] = level
+    }
+
     public func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
         try consumeFailure(.comment)
         guard let album = snapshot.albums[eventID] else { throw DIPRepositoryError.notFound(eventID) }
