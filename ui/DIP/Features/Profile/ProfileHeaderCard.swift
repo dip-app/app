@@ -17,6 +17,14 @@ struct ProfileHeaderCard: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 photo(size: 88)
+                    .overlay(alignment: .topTrailing) {
+                        // The app-assigned avatar (derived from the user id, not the Google photo).
+                        DIPAssignedAvatar(userID: profile.id, size: 38)
+                            .overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                            .offset(x: 8, y: -6)
+                            .accessibilityLabel("Assigned avatar")
+                            .accessibilityIdentifier("profile.avatar.badge")
+                    }
                 Spacer(minLength: 12)
                 editButton
             }
@@ -165,7 +173,7 @@ struct ProfileHeaderBackdrop: View {
         ZStack(alignment: .topTrailing) {
             DIPTokens.Color.actionPrimary.swiftUIColor
             Circle().fill(lighter).frame(width: 260, height: 260).offset(x: 90, y: -110)
-            clover.fill(lightest).frame(width: 96, height: 96).offset(x: -40, y: 118)
+            clover.fill(lightest).frame(width: 96, height: 96).offset(x: -36, y: 84)
             Circle().fill(deeper).frame(width: 190, height: 190)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 .offset(x: -110, y: 130)
@@ -176,10 +184,10 @@ struct ProfileHeaderBackdrop: View {
     /// Four petals as one path: filled once, so overlaps are a single flat silhouette.
     private var clover: Path {
         Path { path in
-            let size: CGFloat = 96, petal: CGFloat = 50, center = size / 2
-            let reach = petal * 0.5
+            let size: CGFloat = 96, petal: CGFloat = 40, center = size / 2
+            let reach: CGFloat = 25
             for index in 0..<4 {
-                let angle = Double(index) * .pi / 2 + .pi / 9
+                let angle = Double(index) * .pi / 2 + .pi / 4
                 let x = center + CGFloat(cos(angle)) * reach, y = center + CGFloat(sin(angle)) * reach
                 path.addEllipse(in: CGRect(x: x - petal / 2, y: y - petal / 2, width: petal, height: petal))
             }
