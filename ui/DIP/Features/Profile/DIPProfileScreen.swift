@@ -20,6 +20,7 @@ struct DIPProfileScreen: View {
     @State private var isSigningOut = false
     @Environment(\.presentBugReport) private var presentBugReport
     @AppStorage(ShakeGate.enabledKey) private var shakeToReport = true
+    @AppStorage(ShakeGate.promptKey) private var askBeforeReporting = true
 
     @State private var isEditing = false
     @State private var isChoosingInterests = false
@@ -159,6 +160,22 @@ struct DIPProfileScreen: View {
             .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
                         in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
             .accessibilityIdentifier("profile.shakeToReport")
+            if shakeToReport {
+                Toggle(isOn: $askBeforeReporting) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Ask before opening the report")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                        Text("After a shake, DIP asks “Report a problem?” first. Turn off to open the report straight away.")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                            .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                    }
+                }
+                .tint(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .padding(16)
+                .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                            in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+                .accessibilityIdentifier("profile.shakeAskFirst")
+            }
             DIPButton("Report a problem", emphasis: .secondary) { present(.profile) }
                 .accessibilityIdentifier("profile.reportProblem")
         }

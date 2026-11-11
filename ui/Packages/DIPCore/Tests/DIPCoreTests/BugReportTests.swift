@@ -118,6 +118,67 @@ final class ShakeGateTests: XCTestCase {
     }
 }
 
+final class ShakePromptPreferenceTests: XCTestCase {
+    func testAskFirstDefaultsOnAndCanBeTurnedOff() {
+        let defaults = UserDefaults(suiteName: "shake.prompt.\(UUID().uuidString)")!
+        XCTAssertTrue(ShakeGate.asksFirst(defaults))
+        defaults.set(false, forKey: ShakeGate.promptKey)
+        XCTAssertFalse(ShakeGate.asksFirst(defaults))
+        XCTAssertNotEqual(ShakeGate.promptKey, ShakeGate.enabledKey)
+    }
+}
+
+final class ScreenshotMarkupTests: XCTestCase {
+    private func p(_ x: Double, _ y: Double) -> MarkupPoint { MarkupPoint(x: x, y: y) }
+
+    func testDrawUndoClear() {
+        var markup = ScreenshotMarkup()
+        XCTAssertTrue(markup.isEmpty); XCTAssertFalse(markup.canUndo)
+        XCTAssertTrue(markup.begin(at: p(0.1, 0.1)))
+        markup.extend(to: p(0.2, 0.2)); markup.extend(to: p(0.3, 0.3)); markup.end()
+        XCTAssertTrue(markup.begin(at: p(0.5, 0.5))); markup.end()
+        XCTAssertEqual(markup.strokes.count, 2)
+        XCTAssertEqual(markup.strokes[0].points.count, 3)
+        markup.undo()
+        XCTAssertEqual(markup.strokes.count, 1)
+        markup.clear()
+        XCTAssertTrue(markup.isEmpty)
+        markup.undo()
+        XCTAssertTrue(markup.isEmpty, "undo on an empty markup is a no-op")
+    }
+
+    func testPointsAreClampedAndTinyStepsDropped() {
+        var markup = ScreenshotMarkup()
+        markup.begin(at: p(-3, 7))
+        XCTAssertEqual(markup.strokes[0].points[0], p(0, 1))
+        markup.extend(to: p(0.0005, 1)); markup.end()
+        XCTAssertEqual(markup.strokes[0].points.count, 1, "movement under the minimum step is ignored")
+        XCTAssertEqual(MarkupPoint(x: .nan, y: .infinity), p(0, 0))
+    }
+
+    func testExtendWithoutBeginAndAfterEndDoesNothing() {
+        var markup = ScreenshotMarkup()
+        markup.extend(to: p(0.5, 0.5))
+        XCTAssertTrue(markup.isEmpty)
+        markup.begin(at: p(0.1, 0.1)); markup.end()
+        markup.extend(to: p(0.9, 0.9))
+        XCTAssertEqual(markup.strokes[0].points.count, 1)
+    }
+
+    func testStrokeAndPointLimits() {
+        var markup = ScreenshotMarkup()
+        for index in 0..<(ScreenshotMarkup.maxStrokes + 5) {
+            let accepted = markup.begin(at: p(Double(index % 10) / 10, 0.5)); markup.end()
+            XCTAssertEqual(accepted, index < ScreenshotMarkup.maxStrokes)
+        }
+        XCTAssertEqual(markup.strokes.count, ScreenshotMarkup.maxStrokes)
+        var long = ScreenshotMarkup()
+        long.begin(at: p(0, 0))
+        for index in 1...(ScreenshotMarkup.maxPointsPerStroke + 50) { long.extend(to: p(Double(index % 2), Double(index % 3) / 2 + 0.01 * Double(index % 7))) }
+        XCTAssertLessThanOrEqual(long.strokes[0].points.count, ScreenshotMarkup.maxPointsPerStroke)
+    }
+}
+
 final class BugReportValidationTests: XCTestCase {
     static func report(
         uid: String = "u1", category: BugReportCategory = .bug, description: String = "", id: String = UUID().uuidString.lowercased(),
