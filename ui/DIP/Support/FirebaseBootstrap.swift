@@ -91,11 +91,27 @@ enum FirebaseBootstrap {
         return FirebaseChallengeReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
     }
 
+    /// Challenge submissions (Storage evidence, submitChallengeV1, own submission reads) share the configured SDKs.
+    @MainActor static func makeSubmissionSource() -> (any SubmissionSource)? {
+        guard case .configured = status else { return nil }
+        return FirebaseSubmissionSource(firestore: Firestore.firestore(),
+                                        functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                        storage: Storage.storage())
+    }
+
     /// RSVP (setRsvpV1) and participation reads share the configured SDKs and emulator routing.
     @MainActor static func makeParticipationSource() -> (any ParticipationSource)? {
         guard case .configured = status else { return nil }
         return FirebaseParticipationSource(firestore: Firestore.firestore(),
                                            functions: Functions.functions(region: FirebaseAccountsRepository.region))
+    }
+
+    /// Coworker invitations (`sendInviteV1`, `respondToInviteV1`, `listCoworkersV1` and the invite listeners) share the configured SDKs.
+    @MainActor static func makeInvitesRepository(context: MembershipContext) -> (any DIPInvitesRepository)? {
+        guard case .configured = status else { return nil }
+        return FirebaseInvitesRepository(firestore: Firestore.firestore(),
+                                         functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                         scope: EventReadScope(uid: context.uid, companyID: context.companyID))
     }
 
     /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.

@@ -76,8 +76,9 @@ function setup() {
   store.seed("companies/alpha/events/boat", event("2030-01-01T12:00:00Z"));
   store.seed("companies/alpha/events/live", event("2030-01-02T13:00:00Z"));
   store.seed("companies/alpha/events/cancelled", event("2030-01-01T12:00:00Z", "cancelled"));
+  store.seed("companies/alpha/events/done", event("2030-01-01T12:00:00Z", "completed"));
   store.seed("companies/beta/events/boat", event("2030-01-01T12:00:00Z", "scheduled", "beta"));
-  for (const e of ["boat", "live", "cancelled"]) {
+  for (const e of ["boat", "live", "cancelled", "done"]) {
     store.seed(`companies/alpha/events/${e}/rsvps/alice`, { companyId: "alpha", eventId: e, userId: "alice", status: "going" });
   }
   store.seed("companies/alpha/events/boat/rsvps/bob", { companyId: "alpha", eventId: "boat", userId: "bob", status: "cancelled" });
@@ -168,6 +169,14 @@ test("eligibility: going RSVP, ended event, not cancelled, event exists", async 
   await rejects(finalizeEventPhoto(store, objects, caller(), at("cancelled"), now), "failed-precondition", "EVENT_CANCELLED");
   await rejects(finalizeEventPhoto(store, objects, caller(), at("missing"), now), "not-found", "EVENT_NOT_FOUND");
   assert.equal(store.writes, 0);
+});
+
+test("a completed event accepts uploads like a scheduled one; only cancelled is refused", async () => {
+  const { store, objects } = setup();
+  objects.put(photoStoragePath("alpha", "done", "alice", 0));
+  const response = await finalizeEventPhoto(store, objects, caller(),
+    request({ eventId: "done", storagePath: photoStoragePath("alpha", "done", "alice", 0) }), now);
+  assert.equal(response.created, true);
 });
 
 test("the uploaded object must exist and be a real accepted image; invalid objects are deleted", async () => {

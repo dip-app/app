@@ -67,7 +67,7 @@ struct EventFeedPage: Equatable, Sendable {
         var previous = cursor.map { ($0.startTime, $0.eventID) }
         for event in events {
             try validate(event)
-            guard let id = event.id, event.status == "scheduled", event.startTime >= query.startsAtOrAfter else { throw EventReadFailure.invalidDocument }
+            guard let id = event.id, ["scheduled", "completed"].contains(event.status), event.startTime >= query.startsAtOrAfter else { throw EventReadFailure.invalidDocument }
             if let previous { guard event.startTime > previous.0 || (event.startTime == previous.0 && id > previous.1) else { throw EventReadFailure.invalidDocument } }
             previous = (event.startTime, id)
         }

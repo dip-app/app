@@ -15,6 +15,7 @@ struct AccountsStageView: View {
 
     @State private var pendingLook: PendingLook = .cold
     @State private var stageVisible = false
+    @State private var footerShown = false
     @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
     // Reel.
     @State private var reelIndex = 0
@@ -67,6 +68,8 @@ struct AccountsStageView: View {
         .onChange(of: warnings) { _, _ in DIPHaptics.failure() }
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { stageVisible = true }
+            // The Bar rises into place just after the Stage (no travel with Reduce Motion).
+            withAnimation(reduceMotion ? nil : OnboardingMotion.bar(reduceMotion: false).delay(0.2)) { footerShown = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)
             .receive(on: RunLoop.main)) { _ in
@@ -281,6 +284,9 @@ struct AccountsStageView: View {
         .frame(maxWidth: OnboardingMetrics.readingWidth)
         .frame(maxWidth: .infinity)
         .background(OnboardingTheme.surface)
+        .offset(y: footerShown || reduceMotion ? 0 : 24)
+        .opacity(footerShown || reduceMotion ? 1 : 0)
+        .allowsHitTesting(footerShown || reduceMotion)
     }
 
     private func perform(_ intent: StageIntent) {

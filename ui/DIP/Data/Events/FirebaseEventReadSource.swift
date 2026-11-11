@@ -34,7 +34,7 @@ import DIPContracts
     func feed(scope: EventReadScope, query: EventFeedQuery, after cursor: EventFeedCursor?) async throws -> [DIPContracts.Event] {
         var request = firestore.collection("companies").document(scope.companyID).collection("events")
             .whereField("companyId", isEqualTo: scope.companyID)
-            .whereField("status", isEqualTo: "scheduled")
+            .whereField("status", in: ["scheduled", "completed"])
             .whereField("startTime", isGreaterThanOrEqualTo: Timestamp(date: query.startsAtOrAfter))
             .order(by: "startTime").order(by: FieldPath.documentID()).limit(to: query.pageSize)
         if let cursor { request = request.start(after: [Timestamp(date: cursor.startTime), cursor.eventID]) }

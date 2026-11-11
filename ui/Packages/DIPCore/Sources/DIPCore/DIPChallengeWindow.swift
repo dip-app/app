@@ -14,7 +14,7 @@ public extension DIPChallengeDetail {
     }
 
     /// Note under "How it works": what the member can do right now (the page is read-only until submissions ship).
-    func statusNote(now: Date, timeZone: TimeZone = DIPChallengeProjection.displayTimeZone, locale: Locale = .current) -> String {
+    func statusNote(now: Date, submissionsOpen: Bool = false, timeZone: TimeZone = DIPChallengeProjection.displayTimeZone, locale: Locale = .current) -> String {
         switch phase(now: now) {
         case .upcoming?:
             let formatter = DateFormatter()
@@ -22,7 +22,13 @@ public extension DIPChallengeDetail {
             formatter.setLocalizedDateFormatFromTemplate("EEEMMMd")
             return "Starts \(formatter.string(from: startDate ?? now))"
         case .ended?: return "This weekly theme has ended"
-        default: return DIPChallengeText.submissionsSoon
+        default:
+            guard submissionsOpen, let endDate else { return DIPChallengeText.submissionsSoon }
+            let formatter = DateFormatter()
+            formatter.locale = locale; formatter.timeZone = timeZone
+            formatter.setLocalizedDateFormatFromTemplate("EEEMMMd")
+            // The end is exclusive: name the last day entries are accepted.
+            return DIPSubmissionCopy.opensUntil(formatter.string(from: max(startDate ?? now, endDate.addingTimeInterval(-1))))
         }
     }
 

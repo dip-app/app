@@ -32,4 +32,11 @@ final class EventCoverTests: XCTestCase {
         XCTAssertEqual(DIPEventCover.resolve(coverImageURL: nil, tagIds: []), DIPEventCover.fallback)
         XCTAssertEqual(DIPEventCover.resolve(coverImageURL: "", tagIds: ["tag-unknown"]), DIPEventCover.fallback)
     }
+
+    func testFirstAlbumPhotoOverridesTheCatalogCoverOnlyWhenPresent() {
+        let photo = Data([1, 2, 3])
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/games", tagIds: [], photo: photo), .data(photo))
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/games", tagIds: [], photo: nil), .asset("cover_games"))
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/games", tagIds: [], photo: Data()), .asset("cover_games"))
+    }
 }

@@ -14,6 +14,7 @@ class FakeStore implements OrganizerStore {
   members = new Map<string, StoredOrganizer>([
     ["admin", { companyId: "acme", role: "admin" }],
     ["member", { companyId: "acme", role: "member" }],
+    ["organizer", { companyId: "acme", role: "organizer" }],
     ["other-admin", { companyId: "globex", role: "admin" }],
   ]);
   tags = new Set(["tag-fitness", "tag-games"]);
@@ -21,6 +22,8 @@ class FakeStore implements OrganizerStore {
   receipts = new Map<string, CommandReceipt>();
   /** Event paths (`company/event`) that have at least one RSVP record, active or cancelled. */
   rsvps = new Set<string>();
+  /** Event paths with at least one album photo. */
+  photos = new Set<string>();
   writes: string[] = [];
   async runTransaction<T>(work: (tx: OrganizerTransaction) => Promise<T>): Promise<T> {
     const staged: Array<() => void> = [];
@@ -29,6 +32,7 @@ class FakeStore implements OrganizerStore {
       getEvent: async (company, id) => this.events.get(`${company}/${id}`) ?? null,
       getReceipt: async (company, uid, requestId) => this.receipts.get(`${company}/${uid}_${requestId}`) ?? null,
       hasAnyRsvp: async (company, id) => this.rsvps.has(`${company}/${id}`),
+      hasAnyPhoto: async (company, id) => this.photos.has(`${company}/${id}`),
       missingTagIds: async (ids) => ids.filter((id) => !this.tags.has(id)),
       createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, startTime: draft.startTime, endTime: draft.endTime, status: "scheduled", draft, createdBy: uid }); }); },
       createReceipt: (company, uid, requestId, receipt) => { staged.push(() => this.receipts.set(`${company}/${uid}_${requestId}`, receipt)); },
@@ -218,6 +222,64 @@ describe("updateEvent", () => {
     await updateEvent(store, admin, updateRequest({ status: "scheduled", expectedRevision: 2 }));
     assert.equal(store.events.get("acme/evt-1")!.status, "scheduled");
     assert.equal(store.events.size, 1);
+  });
+});
+
+describe("completed status", () => {
+  const AFTER = { now: () => new Date("2026-11-11T00:00:00.000Z") }; // after the seeded event ends
+  const organizer: Caller = { ...admin, uid: "organizer" };
+  async function seeded() {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(), ids("evt-1"), clock);
+    return store;
+  }
+  const req = (overrides: Record<string, unknown> = {}) =>
+    ({ contractVersion: 1, companyId: "acme", eventId: "evt-1", expectedRevision: 1, event: draftJson(), status: "completed", ...overrides });
+
+  test("the request accepts completed and a statusReason", () => {
+    assert.equal(parseUpdateEventRequest(req()).status, "completed");
+    assert.equal(parseUpdateEventRequest(req({ statusReason: "Album was empty" })).statusReason, "Album was empty");
+    for (const patch of [{ statusReason: "no" }, { statusReason: " padded " }, { statusReason: 5 }, { status: "done" }]) {
+      assert.throws(() => parseUpdateEventRequest(req(patch)), OrganizerError, JSON.stringify(patch));
+    }
+  });
+  test("an organizer can mark an ended scheduled event completed", async () => {
+    const store = await seeded();
+    assert.deepEqual(await updateEvent(store, organizer, req(), AFTER), { contractVersion: 1, eventId: "evt-1", revision: 2 });
+    assert.equal(store.events.get("acme/evt-1")!.status, "completed");
+  });
+  test("an event that has not ended cannot be completed", async () => {
+    const store = await seeded();
+    const early = await failure(updateEvent(store, admin, req(), clock));
+    assert.equal(early.reason, "EVENT_NOT_ENDED");
+    assert.equal(store.events.get("acme/evt-1")!.status, "scheduled");
+  });
+  test("a cancelled event cannot be completed", async () => {
+    const store = await seeded();
+    await updateEvent(store, admin, req({ status: "cancelled" }), AFTER);
+    const blocked = await failure(updateEvent(store, admin, req({ expectedRevision: 2 }), AFTER));
+    assert.equal(blocked.reason, "STATUS_TRANSITION_BLOCKED");
+  });
+  test("reopening a completed event is free until photos exist", async () => {
+    const store = await seeded();
+    await updateEvent(store, organizer, req(), AFTER);
+    await updateEvent(store, organizer, req({ status: "scheduled", expectedRevision: 2 }), AFTER);
+    assert.equal(store.events.get("acme/evt-1")!.status, "scheduled");
+  });
+  test("with photos only an admin with a reason can leave completed", async () => {
+    const store = await seeded();
+    await updateEvent(store, organizer, req(), AFTER);
+    store.photos.add("acme/evt-1");
+    const reopen = (caller: Caller, extra: Record<string, unknown>) => updateEvent(store, caller, req({ status: "scheduled", expectedRevision: 2, ...extra }), AFTER);
+    assert.equal((await failure(reopen(organizer, { statusReason: "Wrong event" }))).reason, "STATUS_TRANSITION_BLOCKED");
+    assert.equal((await failure(reopen(admin, {}))).reason, "STATUS_TRANSITION_BLOCKED");
+    assert.equal(store.events.get("acme/evt-1")!.status, "completed");
+    await reopen(admin, { statusReason: "Wrong event" });
+    assert.equal(store.events.get("acme/evt-1")!.status, "scheduled");
+  });
+  test("plain members still cannot update", async () => {
+    const store = await seeded();
+    assert.equal((await failure(updateEvent(store, { ...admin, uid: "member" }, req(), AFTER))).reason, "NOT_ORGANIZER");
   });
 });
 

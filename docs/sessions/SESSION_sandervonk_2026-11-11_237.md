@@ -21,6 +21,12 @@ Backend (PR 1):
 - Tests: `gcp/tests/unit/invites.test.ts`, `gcp/tests/rules/invites.test.ts`, `gcp/tests/integration/invites-callable.test.ts`, `contracts/tests/invites.test.mjs`; `npm run test:invites:integration` in CI.
 - Docs: callables.md (Coworker invitations), data-ownership.md, FRONTEND_PLAN F4 row.
 
+iOS (PR 2):
+- `ui/Packages/DIPCore`: `DIPInvites.swift` (models, `DIPInvitesRepository`, `DIPInviteRules`, `DIPInviteInbox`, `DIPInviteFailure`), `DIPMockData/DIPMockInvitesRepository.swift`, `DIPPresentation/DIPInvitesModel.swift` (`DIPInvitesModel`, `DIPInvitePickerModel`); tests `InvitesTests.swift`, `DIPInvitesModelTests.swift`.
+- `ui/DIP/Data/Invites`: `FirebaseInvitesRepository`, `InviteDocumentMapper`; `FirebaseBootstrap.makeInvitesRepository`.
+- `ui/DIP/Features/Invites`: `DIPInviteSheet` (picker), `DIPInvitationsScreen` (Received / Sent). Event page: `onInvite` + pink "Invite a Coworker" pill. Shell (`DIPPrototypeApp`): bell opens Invitations, badge count, picker sheet, `--screen=invitations|invite-picker`, `--invites-state=...` Debug flags. `DIPMemberHome`/`DIPApp` pass the adapter.
+- Tests: `DIPTests/Invites/InviteDocumentMapperTests.swift`, Preview UI tests `ComponentPreview/UITests/InvitesTests.swift`.
+
 ## Validation
 
 - Run: `npx tsc --noEmit` (functions) clean; `node --import tsx --test` for `invites`, `participation` and `notifications` unit tests pass (19 + 36 tests).

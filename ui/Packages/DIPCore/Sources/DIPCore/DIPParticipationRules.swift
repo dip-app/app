@@ -23,7 +23,7 @@ public enum DIPParticipationRules {
     public static func joinDenial(_ metadata: DIPEventMetadata, attendeeCount: Int, isGoing: Bool, now: Date) -> DIPRsvpDenial? {
         if isGoing { return .alreadyGoing }
         if metadata.status == .cancelled { return .cancelled }
-        if metadata.endTime <= now { return .ended }
+        if metadata.status == .completed || metadata.endTime <= now { return .ended }
         if metadata.startTime <= now { return .started }
         if attendeeCount >= metadata.capacity { return .full }
         return nil
@@ -33,7 +33,7 @@ public enum DIPParticipationRules {
     public static func leaveDenial(_ metadata: DIPEventMetadata, isGoing: Bool, now: Date) -> DIPRsvpDenial? {
         if !isGoing { return .notGoing }
         if metadata.status == .cancelled { return .cancelled }
-        if metadata.endTime <= now { return .ended }
+        if metadata.status == .completed || metadata.endTime <= now { return .ended }
         if metadata.startTime <= now { return .started }
         return nil
     }

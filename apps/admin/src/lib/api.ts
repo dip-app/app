@@ -1,3 +1,6 @@
+import { createMockOps } from "./adminMock";
+import type { AdminOpsApi } from "./adminApi";
+import { type Role, can } from "./adminTypes";
 import { type Tag, TAGS } from "./catalog";
 import {
   THEME_REASONS, type ThemeCommandResult, type ThemeDraft, type WeeklyTheme, findOverlap, normalizeThemeDraft,
@@ -19,7 +22,7 @@ export interface Session {
   name: string;
   email: string;
   companyId: string;
-  role: "member" | "admin";
+  role: Role;
 }
 
 export interface CommandResult {
@@ -32,7 +35,7 @@ export interface CommandResult {
  * callables for the local preview; `createFirebaseApi` (firebaseAdapter.ts) talks to Auth, Firestore and
  * createEventV1/updateEventV1. The UI only depends on this interface.
  */
-export interface AdminApi {
+export interface AdminApi extends AdminOpsApi {
   /** "mock" keeps data in this browser; "live" uses Firebase. */
   readonly mode: "mock" | "live";
   session(): Promise<Session | null>;
@@ -54,11 +57,12 @@ export interface AdminApi {
   updateTheme(challengeId: string, expectedRevision: number, draft: ThemeDraft): Promise<ThemeCommandResult>;
 }
 
-export type PersonaId = "admin" | "member" | "otherAdmin";
+export type PersonaId = "admin" | "organizer" | "member" | "otherAdmin";
 
 export const PERSONAS: Record<PersonaId, Session> = {
   admin: { uid: "uid-admin", name: "Alex Admin", email: "alex@acme.com", companyId: "acme", role: "admin" },
   otherAdmin: { uid: "uid-other-admin", name: "Gale Globex", email: "gale@globex.com", companyId: "globex", role: "admin" },
+  organizer: { uid: "uid-casey-novak", name: "Casey Novak", email: "casey.novak@acme.com", companyId: "acme", role: "organizer" },
   member: { uid: "uid-member", name: "Pat Member", email: "pat@acme.com", companyId: "acme", role: "member" },
 };
 
@@ -130,7 +134,7 @@ function seed(): Persisted {
         costCents: 0, costNote: "", capacity: 12, attendeeCount: 12, status: "scheduled",
       },
       {
-        ...base, id: "game-cafe", title: "Game Café Night",
+        ...base, id: "game-cafe", title: "Game Café Night", pointsValue: 25,
         description: "Board games and snacks after work.",
         coverImageURL: "catalog://default/games", tagIds: ["tag-games", "tag-social"],
         startTime: iso(-14, 23), endTime: iso(-14, 25 - 1),
@@ -196,13 +200,30 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
 
   function requireAdmin(data: Persisted): Session {
     if (!data.session) throw new ApiError("unauthenticated", "Sign in to continue.");
-    if (data.session.role !== "admin") {
+    if (!can(data.session.role, "events.manage")) {
       throw new ApiError("permission-denied", "Only organizers can manage events.");
     }
     return data.session;
   }
 
+  const ops = createMockOps({
+    store, now,
+    themes: (companyId) => (load().themes ?? []).filter((t) => t.companyId === companyId).map((t) => ({ id: t.id, pointsReward: t.pointsReward, startDate: t.startDate })),
+    session: () => load().session,
+    findEvent: (companyId, eventId) => load().events.find((e) => e.id === eventId && e.companyId === companyId),
+    bumpAttendees: (companyId, eventId, delta, minCapacity) => {
+      const data = load();
+      const event = data.events.find((e) => e.id === eventId && e.companyId === companyId);
+      if (!event) return { attendeeCount: 0, capacity: 0 };
+      event.attendeeCount = Math.max(0, event.attendeeCount + delta);
+      if (minCapacity) event.capacity = Math.max(event.capacity, minCapacity);
+      save(data);
+      return { attendeeCount: event.attendeeCount, capacity: event.capacity };
+    },
+  });
+
   return {
+    ...ops,
     mode: "mock",
     async session() {
       return load().session;
