@@ -33,7 +33,7 @@ Set an Xcode scheme launch argument or simulator launch argument:
 
 ## Interaction boundaries
 
-Navigation is local UI state. Join/profile/message/photo data passes through the injected DIPRepository and is retained for the life of its mock adapter; these are not Firebase account, authorization, persistence, RSVP, chat or upload implementations. Native ShareLink/system sheets handle sharing. Notifications remain an explicit notice. Rewards is a mock-backed page (fixed catalogue and balance, no real redemption); review it with --screen=rewards and --rewards-state=loading|empty|detail|confirm|locked. The weekly challenge opens a read-only detail; submissions are V2.
+Navigation is local UI state. Join/profile/message/photo data passes through the injected DIPRepository and is retained for the life of its mock adapter; these are not Firebase account, authorization, persistence, RSVP, chat or upload implementations. Native ShareLink/system sheets handle sharing. Notifications remain an explicit notice. Rewards is a mock-backed page (local entries, no real redemption); review it with --screen=rewards and --rewards-state=empty. The weekly challenge opens a read-only detail; submissions are V2.
 
 Only Puppy Yoga has supplied detail/Joined frames. Other events use synthetic details in the same template, and memory IDs select explicitly keyed albums seeded with the provided reference photos. Supporting edit/chat/photo-viewer/system-picker UI has no corresponding supplied high-fidelity frame.
 

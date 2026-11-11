@@ -2,12 +2,10 @@ import DIPCore
 import DIPDesignSystem
 import SwiftUI
 
-/// Rewards tab: points balance, then gift cards split into "ready to redeem" and "keep earning".
-/// Mock-backed (V2-S03 stretch): the catalogue, the balance and redemption are all local and labelled
-/// as a preview; no contract, backend or ledger exists yet.
+/// Rewards tab, following the Figma Rewards frame (76:7200): the raffle entry (progress built into it), then
+/// "Discounted Experiences". The ticket-shaped cards are replaced by solid gift-box cards with a small
+/// bow. Mock-backed (V2-S03 stretch): entries are local and selecting one only shows a notice.
 struct DIPRewardsScreen: View {
-    enum ContentState: Equatable { case loaded, loading, empty }
-
     let unreadCount: Int
     let profileAvatar: MediaReference
     private let showsBottomBar: Bool
@@ -15,11 +13,8 @@ struct DIPRewardsScreen: View {
     let onNotifications: () -> Void
     let onProfile: () -> Void
 
-    @State private var balance = DIPRewardsMock.balance
-    @State private var selected: DIPReward?
-    private let contentState: ContentState
-    private let rewards: [DIPReward]
-    private let reviewConfirm: Bool
+    @State private var notice: DIPRewardEntry?
+    private let isEmpty: Bool
 
     init(
         unreadCount: Int, profileAvatar: MediaReference, showsBottomBar: Bool = true,
@@ -31,23 +26,16 @@ struct DIPRewardsScreen: View {
         self.onSelectTab = onSelectTab
         self.onNotifications = onNotifications
         self.onProfile = onProfile
-        // `--rewards-state=loading|empty|detail|confirm|locked` is for design review only.
-        let review = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--rewards-state=") }
-            .map { String($0.dropFirst("--rewards-state=".count)) }
-        let all = DIPRewardsMock.rewards
-        self.contentState = review == "loading" ? .loading : review == "empty" ? .empty : .loaded
-        self.rewards = all
-        self.reviewConfirm = review == "confirm"
-        switch review {
-        case "detail", "confirm": _selected = State(initialValue: all.first { $0.id == "squishmallow" })
-        case "locked": _selected = State(initialValue: all.first { $0.id == "projector" })
-        default: break
-        }
+        // `--rewards-state=empty` is for design review only.
+        isEmpty = ProcessInfo.processInfo.arguments.contains("--rewards-state=empty")
+    }
+
+    /// Type sizes from the Rewards frame.
+    private enum Metrics {
+        static let title: CGFloat = 20, subtitle: CGFloat = 18, body: CGFloat = 14, lead: CGFloat = 17
     }
 
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
-    private var ready: [DIPReward] { rewards.filter { $0.isAffordable(balance: balance) } }
-    private var locked: [DIPReward] { rewards.filter { !$0.isAffordable(balance: balance) } }
 
     var body: some View {
         GeometryReader { geometry in
@@ -61,10 +49,19 @@ struct DIPRewardsScreen: View {
                     )
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 22) {
-                            content
+                        VStack(alignment: .leading, spacing: 0) {
+                            if isEmpty {
+                                DIPEmptyState(
+                                    screen: "rewards", title: "No rewards yet",
+                                    message: "Rewards and discounts will show up here.",
+                                    actionTitle: "Find an event") { onSelectTab(.home) }
+                                    .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 360), alignment: .center)
+                            } else {
+                                raffleSection
+                                discountSection
+                            }
                         }
-                        .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 120)
+                        .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, 120)
                     }
                     .scrollIndicators(.hidden)
                     .accessibilityIdentifier("rewards.content")
@@ -79,168 +76,87 @@ struct DIPRewardsScreen: View {
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
-        .sheet(item: $selected) { reward in
-            DIPRewardDetailSheet(reward: reward, balance: balance, startsAtConfirm: reviewConfirm) { redeemed in
-                balance = max(0, balance - redeemed.cost)
-            }
+        .alert(notice?.title ?? "Rewards", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
+            Button("OK") { notice = nil }
+        } message: {
+            Text("This is a mock preview. Entering and redeeming are not connected yet.")
         }
     }
 
-    @ViewBuilder private var content: some View {
-        balanceCard
-        switch contentState {
-        case .loading:
-            loadingGrid
-        case .empty:
-            DIPEmptyState(
-                screen: "rewards", title: "No gifts to claim yet",
-                message: "Your organiser adds rewards here. Keep joining events to build up points.",
-                actionTitle: "Find an event") { onSelectTab(.home) }
-        case .loaded:
-            if !ready.isEmpty { section("Ready to redeem", "You have enough points for these.", ready) }
-            if !locked.isEmpty { section("Keep earning", "Join events and challenges to unlock these.", locked) }
-        }
+    // MARK: Raffle
+
+    private var raffleSection: some View {
+        entryCard(DIPRewardsMock.raffle, progress: true).padding(.top, 24)
     }
 
-    // MARK: Balance
+    // MARK: Discounts
 
-    private var balanceCard: some View {
-        let goal = DIPRewardsMock.nextGoal(balance: balance, in: rewards)
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Your points")
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
-                        .foregroundStyle(.white.opacity(0.75))
-                    Text("\(balance)")
-                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 56, relativeTo: .largeTitle))
-                        .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
-                        .accessibilityIdentifier("rewards.balance")
-                }
-                Spacer()
-                Text("MOCK DATA")
-                    .font(DIPReferenceAssets.font("Inter-Medium", size: 11))
-                    .foregroundStyle(.white.opacity(0.85)).padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(.white.opacity(0.14), in: Capsule())
-                    .accessibilityIdentifier("rewards.mock-badge")
+    private var discountSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Discounted Experiences")
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.lead, relativeTo: .body)).foregroundStyle(ink)
+                .accessibilityAddTraits(.isHeader)
+            Text("Receive discounts connected to the weekly challenge")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline)).foregroundStyle(ink)
+                .padding(.top, 4)
+            VStack(spacing: 38) {
+                ForEach(DIPRewardsMock.discounts) { entryCard($0) }
             }
-            if let goal {
-                VStack(alignment: .leading, spacing: 8) {
-                    Capsule().fill(.white.opacity(0.18)).frame(height: 10)
-                        .overlay(alignment: .leading) {
-                            GeometryReader { bar in
-                                Capsule().fill(DIPTokens.Color.challengeAccent.swiftUIColor)
-                                    .frame(width: max(10, bar.size.width * goal.progress))
-                            }
-                        }
-                    Text("\(goal.reward.pointsShort(balance: balance)) pts to go for \(goal.reward.title)")
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
-                        .foregroundStyle(.white)
-                }
-            }
+            .padding(.top, 36)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+        .padding(.top, 20)
     }
 
-    // MARK: Gift grid
-
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
-
-    private func section(_ title: String, _ subtitle: String, _ items: [DIPReward]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title.uppercased())
-                    .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 24, relativeTo: .title2))
-                    .foregroundStyle(ink).accessibilityAddTraits(.isHeader)
-                Text(subtitle)
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
-                    .foregroundStyle(ink.opacity(0.7))
-            }
-            LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(items) { reward in
-                    DIPRewardCard(reward: reward, balance: balance) { selected = reward }
+    /// Same content geometry as the ticket (38 pt text inset, 20 pt title, bold subtitle, 14 pt body),
+    /// on a gift-box card instead of the notched ticket shape.
+    private func entryCard(_ entry: DIPRewardEntry, progress: Bool = false) -> some View {
+        Button { notice = entry } label: {
+            DIPGiftBoxCard(style: entry.style, tag: entry.badge) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(entry.title.uppercased())
+                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: Metrics.title, relativeTo: .title3))
+                    Text(entry.subtitle)
+                        .font(DIPReferenceAssets.font("Figtree-Bold", size: Metrics.subtitle, relativeTo: .headline))
+                        .padding(.top, 5)
+                    Spacer(minLength: 12)
+                    Text(entry.body)
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline))
+                        .fixedSize(horizontal: false, vertical: true)
+                    if progress { raffleMeter.padding(.top, 14) }
                 }
+                .foregroundStyle(entry.style.usesDarkText ? ink : .white)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 24).padding(.top, 34).padding(.bottom, 22)
+                .frame(maxWidth: .infinity, minHeight: 165, alignment: .topLeading)
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(DIPGiftPressStyle())
+        .accessibilityLabel("\(entry.title). \(entry.subtitle). \(entry.body)")
+        .accessibilityIdentifier("rewards.entry.\(entry.id)")
     }
 
-    /// Skeleton tiles keep the grid's shape while rewards load; nothing animates.
-    private var loadingGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            RoundedRectangle(cornerRadius: 6).fill(DIPTokens.Color.surfaceMuted.swiftUIColor).frame(width: 150, height: 24)
-            LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(0..<4, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous)
-                        .fill(DIPTokens.Color.surfaceMuted.swiftUIColor).frame(height: 214)
+    /// Raffle progress built into the card: three segments and one short line.
+    private var raffleMeter: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                ForEach(0..<DIPRewardsMock.raffleNeeded, id: \.self) { index in
+                    Capsule().fill(ink.opacity(index < DIPRewardsMock.raffleAttended ? 1 : 0.18)).frame(height: 10)
                 }
             }
+            Text(DIPRewardsMock.raffleRemainingText)
+                .font(DIPReferenceAssets.font("Figtree-Bold", size: Metrics.body, relativeTo: .subheadline))
         }
-        .overlay(alignment: .top) { ProgressView().padding(.top, 60) }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Loading rewards")
-        .accessibilityIdentifier("rewards.loading")
+        .accessibilityLabel("\(DIPRewardsMock.raffleAttended) of \(DIPRewardsMock.raffleNeeded) events attended. \(DIPRewardsMock.raffleRemainingText)")
     }
 }
 
-/// One gift: tinted tile with the illustration, title and a points pill. Locked gifts are dimmed with
-/// a lock and the points still needed.
-struct DIPRewardCard: View {
-    let reward: DIPReward
-    let balance: Int
-    let onSelect: () -> Void
-
-    private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
-    private var affordable: Bool { reward.isAffordable(balance: balance) }
-
-    var body: some View {
-        Button(action: onSelect) {
-            VStack(spacing: 10) {
-                ZStack(alignment: .topTrailing) {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(reward.style.box.tileTint.opacity(affordable ? 0.18 : 0.08))
-                    DIPGiftIllustration(style: reward.style, size: 108, dimmed: !affordable)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if !affordable {
-                        Image(systemName: "lock.fill").font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white).frame(width: 28, height: 28)
-                            .background(ink.opacity(0.75), in: Circle()).padding(8)
-                    }
-                }
-                .frame(height: 128)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(reward.title.uppercased())
-                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 18, relativeTo: .headline))
-                        .foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.8)
-                    pill
-                }
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 4)
-            }
-            .padding(8).padding(.bottom, 4)
-            .background(DIPTokens.Color.surfaceDefault.swiftUIColor, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous).strokeBorder(ink.opacity(0.1), lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(reward.title), \(reward.cost) points, \(affordable ? "ready to redeem" : "\(reward.pointsShort(balance: balance)) more points needed")")
-        .accessibilityIdentifier("rewards.card.\(reward.id)")
-    }
-
-    @ViewBuilder private var pill: some View {
-        if affordable {
-            Label("\(reward.cost) pts", systemImage: "star.fill")
-                .font(DIPReferenceAssets.font("Figtree-Bold", size: 14)).foregroundStyle(ink)
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(DIPTokens.Color.notificationAccent.swiftUIColor, in: Capsule())
-        } else {
-            VStack(alignment: .leading, spacing: 2) {
-                Label("\(reward.cost) pts", systemImage: "star.fill")
-                    .font(DIPReferenceAssets.font("Figtree-Bold", size: 14)).foregroundStyle(ink.opacity(0.6))
-                Text("\(reward.pointsShort(balance: balance)) more to unlock")
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 12)).foregroundStyle(ink.opacity(0.6))
-            }
-            .padding(.vertical, 2)
-        }
+/// Subtle press feedback for the gift cards.
+private struct DIPGiftPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
     }
 }

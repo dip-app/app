@@ -9,7 +9,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Item | What | Status | PR / branch | Owner area |
 | --- | --- | --- | --- | --- |
 | Rewards icon | Rewards tab icon is a gift | Done, merged | PR #48 | iOS |
-| Rewards page (V2-S03 stretch) | Rewards tab opens a mock-backed gift page: points header, gift-illustration cards, detail sheet with confirm step, empty/loading states. Mock catalogue and balance only; no redemption, contract or backend | In PR | feature/rewards-gifts | iOS |
+| Rewards page (V2-S03 stretch) | Rewards tab opens the Figma Rewards frame (raffle entry with built-in progress meter, Discounted Experiences with corner tags) with the ticket shape swapped for solid gift-box cards with a small bow. Mock-backed: local entries, no redemption, contract or backend | In PR | feature/rewards-gifts | iOS |
 | Event Join | One clear Join action; Directions/Leave row; chat icon on the joined bar | Done, merged | PR #47 | iOS |
 | V1-08 imagery | Event and catalog imagery | Done, merged | PR #44 | iOS |
 | Frontend plan | This plan | Done, merged | PR #50 | Plan steward |
