@@ -124,4 +124,30 @@ final class ChallengeSubmissionTests: XCTestCase {
         XCTAssertTrue(detail.statusNote(now: start.addingTimeInterval(3_600), submissionsOpen: true, locale: locale).hasPrefix("Entries close "))
         XCTAssertEqual(detail.statusNote(now: end.addingTimeInterval(1), submissionsOpen: true, locale: locale), "This weekly theme has ended")
     }
+
+    // MARK: Touch control
+
+    func testStepFollowsTheGoal() {
+        XCTAssertEqual(DIPSubmissionPolicy.step(forGoal: 3), 1)
+        XCTAssertEqual(DIPSubmissionPolicy.step(forGoal: 100), 1)
+        XCTAssertEqual(DIPSubmissionPolicy.step(forGoal: 5000), 50)
+        XCTAssertEqual(DIPSubmissionPolicy.step(forGoal: 2.5), 0.5)
+        XCTAssertEqual(DIPSubmissionPolicy.step(forGoal: 30.5), 1.5)
+        XCTAssertEqual(DIPSubmissionPolicy.step(forGoal: 0), 1)
+    }
+
+    func testClampSnapsWithinOneStepAndTheGoal() {
+        XCTAssertEqual(DIPSubmissionPolicy.clamp(0, goal: 3), 1)
+        XCTAssertEqual(DIPSubmissionPolicy.clamp(2.4, goal: 3), 2)
+        XCTAssertEqual(DIPSubmissionPolicy.clamp(99, goal: 3), 3)
+        XCTAssertEqual(DIPSubmissionPolicy.clamp(.nan, goal: 3), 1)
+        XCTAssertEqual(DIPSubmissionPolicy.clamp(7, goal: 2.5), 2.5)
+        // Every clamped value passes the draft validation for its goal.
+        for goal in [1.0, 3, 7, 2.5, 120, 10_000] {
+            for raw in [-5.0, 0, 0.3, goal / 2, goal, goal * 3] {
+                let value = DIPSubmissionPolicy.clamp(raw, goal: goal)
+                XCTAssertTrue(DIPSubmissionDraft(progressText: DIPSubmissionDraft.format(value)).isValid(goal: goal, goalText: "g"), "\(raw) of \(goal) -> \(value)")
+            }
+        }
+    }
 }

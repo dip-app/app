@@ -49,7 +49,12 @@
             }
         }
         private var foreground: Color {
-            emphasis == .destructive ? DIPComponentTheme.inverse : DIPComponentTheme.onAccent
+            // White on the purple fill (owner rule), ink on the grey secondary fill, white on the ink destructive fill.
+            switch emphasis {
+            case .primary: DIPComponentTheme.onAccent
+            case .secondary: DIPTokens.Color.textPrimary.swiftUIColor
+            case .destructive: DIPComponentTheme.inverse
+            }
         }
 
     }

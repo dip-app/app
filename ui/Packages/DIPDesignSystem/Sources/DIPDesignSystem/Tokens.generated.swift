@@ -35,7 +35,7 @@ public enum DIPTokens {
         /// Source: figma.
         public static let textInverse = RGBColor(hex: "#FFFFFF", red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0)
         /// Source: proposal.
-        public static let textOnAccent = RGBColor(hex: "#1E212B", red: 30.0 / 255.0, green: 33.0 / 255.0, blue: 43.0 / 255.0)
+        public static let textOnAccent = RGBColor(hex: "#FFFFFF", red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0)
         /// Source: figma.
         public static let actionPrimary = RGBColor(hex: "#7B88FA", red: 123.0 / 255.0, green: 136.0 / 255.0, blue: 250.0 / 255.0)
         /// Source: figma.

@@ -22,6 +22,9 @@ import UIKit
     var occupied: Set<Int> = []
     var pointsReward = 50
     var delay: Duration = .zero
+    /// Evidence reads that fail first (retry review) and how many reads happened.
+    var evidenceFailures = 0
+    private(set) var evidenceReads = 0
     /// Pause between simulated upload progress steps (review captures of the progress state).
     var progressPause: Duration = .zero
     private(set) var stopped = false
@@ -60,11 +63,13 @@ import UIKit
     }
 
     func evidenceData(scope: ChallengeReadScope, path: String) async throws -> Data {
+        evidenceReads += 1
+        if evidenceFailures > 0 { evidenceFailures -= 1; throw DIPSubmissionFailure.offline }
         #if canImport(UIKit)
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 240))
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 640, height: 480))
         return renderer.jpegData(withCompressionQuality: 0.8) { context in
-            UIColor(red: 0.74, green: 0.78, blue: 1.0, alpha: 1).setFill(); context.fill(CGRect(x: 0, y: 0, width: 240, height: 240))
-            UIColor(red: 0.98, green: 0.76, blue: 0.18, alpha: 1).setFill(); context.cgContext.fillEllipse(in: CGRect(x: 60, y: 60, width: 120, height: 120))
+            UIColor(red: 0.74, green: 0.78, blue: 1.0, alpha: 1).setFill(); context.fill(CGRect(x: 0, y: 0, width: 640, height: 480))
+            UIColor(red: 0.98, green: 0.76, blue: 0.18, alpha: 1).setFill(); context.cgContext.fillEllipse(in: CGRect(x: 240, y: 160, width: 160, height: 160))
         }
         #else
         return Data()

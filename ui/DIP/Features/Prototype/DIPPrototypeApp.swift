@@ -164,6 +164,8 @@ struct DIPPrototypeApp: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
     @Environment(\.weeklyChallengeFeed) private var challengeFeed
+    /// The theme page publishes its entry action here; the shared bottom bar below renders it.
+    @State private var challengeBar = ChallengeEntryBar()
     @State private var albumPickerPresented = false
     /// The tab whose name the fixed header shows (the last non-Profile tab while Profile is selected).
     @State private var headerTab: DIPHomeTab = .home
@@ -205,6 +207,7 @@ struct DIPPrototypeApp: View {
                 .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
                 avatarFlyer
             }
+            .environment(\.challengeEntryBar, challengeBar)
             .background(.white)
             .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { shellOrigin = $0 }
             .onAppear { if flightFrame == .zero { flightFrame = idleAvatarFrame(for: selectedTab, in: geometry.size) } }
@@ -544,6 +547,7 @@ struct DIPPrototypeApp: View {
     }
 
     private var bottomAction: DIPBottomBarAction? {
+        if case .challenge? = routes.last { return challengeBar.action }
         if case .album(let id)? = routes.last, uploads.pendingCount(for: id) > 0 {
             return DIPBottomBarAction(title: "Adding photos…", identifier: "album.add-photos", showsProgress: true)
         }
@@ -561,7 +565,8 @@ struct DIPPrototypeApp: View {
             else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
         case .album: albumPickerPresented = true
-        case .challenge, nil: break
+        case .challenge: challengeBar.perform?()
+        case nil: break
         }
     }
 

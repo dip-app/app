@@ -55,6 +55,7 @@ final class ChallengeSubmissionModelTests: XCTestCase {
         let source = MockSubmissionSource()
         let model = await loaded(source)
         model.beginEditing()
+        model.draft.progressText = ""
         let sent = await model.send()
         XCTAssertFalse(sent)
         XCTAssertEqual(source.submitCalls, 0)
@@ -195,8 +196,77 @@ final class ChallengeSubmissionModelTests: XCTestCase {
         let model = await loaded(MockSubmissionSource())
         model.beginEditing()
         XCTAssertFalse(model.needsDiscardConfirmation)
-        model.draft.progressText = "1"
+        model.draft.progressText = "2"
         XCTAssertTrue(model.needsDiscardConfirmation)
+    }
+
+    func testCountControlStartsAtTheSmallestStepAndNeverLeavesTheRange() async {
+        let model = await loaded(MockSubmissionSource())
+        model.beginEditing()
+        XCTAssertEqual(model.progressValue, 1)
+        XCTAssertFalse(model.canDecrease)
+        model.nudge(-1)
+        XCTAssertEqual(model.progressValue, 1)
+        model.nudge(1); model.nudge(1); model.nudge(1); model.nudge(1)
+        XCTAssertEqual(model.progressValue, 5, "the goal is the maximum")
+        XCTAssertFalse(model.canIncrease)
+        model.progressValue = 99
+        XCTAssertEqual(model.draft.progressText, "5")
+        model.progressValue = 0
+        XCTAssertEqual(model.draft.progressText, "1")
+        XCTAssertTrue(model.issues.isEmpty, "the control can only produce valid values")
+    }
+
+    func testEditingStartsFromTheExistingProgress() async {
+        let model = await loaded(MockSubmissionSource(initial: DIPSubmission(id: id, status: .submitted, progress: 3)))
+        model.beginEditing()
+        XCTAssertEqual(model.progressValue, 3)
+        XCTAssertFalse(model.needsDiscardConfirmation)
+    }
+
+    func testBarActionsFollowTheState() async {
+        let source = MockSubmissionSource()
+        let page = await loaded(source)
+        XCTAssertEqual(page.pageBarAction?.title, "Add your entry")
+        XCTAssertEqual(page.pageBarAction?.kind, .navigate, "opening the sheet is silent")
+        XCTAssertEqual(page.sheetBarAction.title, "Send entry")
+        XCTAssertEqual(page.sheetBarAction.kind, .commit)
+        let entry = MockSubmissionSource(initial: DIPSubmission(id: id, status: .rejected, progress: 2, reviewNote: "x"))
+        let rejected = await loaded(entry)
+        XCTAssertEqual(rejected.pageBarAction?.title, "Update and resubmit")
+        XCTAssertEqual(rejected.sheetBarAction.title, "Resubmit entry")
+        let approved = await loaded(MockSubmissionSource(initial: DIPSubmission(id: id, status: .approved, progress: 3)))
+        XCTAssertNil(approved.pageBarAction, "nothing to press once approved")
+        let closed = await loaded(MockSubmissionSource(), now: end.addingTimeInterval(60))
+        XCTAssertNil(closed.pageBarAction)
+        let loading = self.model(MockSubmissionSource(load: .never))
+        XCTAssertNil(loading.pageBarAction, "no action while the entry loads")
+    }
+
+    func testSheetBarShowsProgressWhileWorking() async {
+        let source = MockSubmissionSource()
+        source.failures = [.offline]
+        let model = await loaded(source)
+        model.beginEditing()
+        _ = await model.send()
+        XCTAssertEqual(model.sheetBarAction.title, "Try again")
+        XCTAssertEqual(model.sheetBarAction.kind, .commit)
+    }
+
+    func testEvidenceLoadsFailsAndRetries() async {
+        let source = MockSubmissionSource(initial: DIPSubmission(id: id, status: .submitted, progress: 2, storagePath: "companies/alpha/challenges/w1/submissions/alice/0"))
+        source.evidenceFailures = 1
+        let model = await loaded(source)
+        await model.loadEvidence()
+        XCTAssertEqual(model.evidence, .failed)
+        await model.loadEvidence(force: true)
+        if case .loaded = model.evidence {} else { XCTFail("expected the photo after a retry, got \(model.evidence)") }
+        let reads = source.evidenceReads
+        await model.loadEvidence()
+        XCTAssertEqual(source.evidenceReads, reads, "a loaded photo is not read again")
+        let none = await loaded(MockSubmissionSource())
+        await none.loadEvidence()
+        XCTAssertEqual(none.evidence, .none)
     }
 
     func testStopEndsTheSource() async {

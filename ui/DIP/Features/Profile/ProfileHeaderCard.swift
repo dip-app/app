@@ -146,7 +146,7 @@ struct ProfileHeaderCard: View {
                 Spacer(minLength: 8)
                 Image(systemName: "plus")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(ink)
+                    .foregroundStyle(.white)
                     .frame(width: 26, height: 26)
                     .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Circle())
             }

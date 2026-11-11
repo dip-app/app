@@ -1,4 +1,5 @@
 import DIPCore
+import DIPDesignSystem
 import Foundation
 import Observation
 
@@ -51,7 +52,14 @@ final class ChallengeSubmissionModel {
     private(set) var uploadFailed = false
 
     /// Small display copy of the submitted photo for the status row; nil until loaded or when there is none.
-    private(set) var evidenceImage: Data?
+    enum Evidence: Equatable {
+        case none
+        case loading
+        case loaded(Data)
+        case failed
+    }
+    /// The submitted photo (large display copy) for the status card and the existing-photo row.
+    private(set) var evidence: Evidence = .none
     @ObservationIgnored private var evidencePath: String?
 
     @ObservationIgnored private let scope: ChallengeReadScope
@@ -74,14 +82,50 @@ final class ChallengeSubmissionModel {
 
     var state: DIPSubmissionState { DIPSubmissionState.state(phase: challenge.phase(now: clock()), submission: submission) }
     var goalText: String { challenge.goalText ?? DIPSubmissionDraft.format(goal) }
+    /// The touch control's grid: one step up to the goal.
+    var step: Double { DIPSubmissionPolicy.step(forGoal: goal) }
+    var progressValue: Double {
+        get { DIPSubmissionPolicy.clamp(draft.progress ?? step, goal: goal) }
+        set { draft.progressText = DIPSubmissionDraft.format(DIPSubmissionPolicy.clamp(newValue, goal: goal)) }
+    }
+    var canDecrease: Bool { progressValue > step + 0.0001 }
+    var canIncrease: Bool { progressValue < goal - 0.0001 }
+    func nudge(_ direction: Double) { progressValue += direction * step }
     var issues: [DIPSubmissionIssue] { draft.issues(goal: goal, goalText: goalText) }
     var canSend: Bool { !phase.isBusy && issues.isEmpty }
     var hasPhoto: Bool { photo != nil || keepsExistingPhoto }
     var failure: DIPSubmissionFailure? { if case .failed(let failure) = phase { failure } else { nil } }
     /// True when the sheet has something the member would lose by closing it.
     var needsDiscardConfirmation: Bool {
-        let base = submission.map(DIPSubmissionDraft.init(from:)) ?? DIPSubmissionDraft()
+        let base = submission.map(DIPSubmissionDraft.init(from:)) ?? DIPSubmissionDraft(progressText: DIPSubmissionDraft.format(step))
         return draft != base || photo != nil
+    }
+
+    /// The sheet's one action, in the shared bottom bar (same pill as "Activity Chat"): Send, in-flight, or retry.
+    var sheetBarAction: DIPBottomBarAction {
+        switch phase {
+        case .preparingPhoto: return .init(title: "Getting your photo ready…", identifier: "submission.sending", showsProgress: true)
+        case .uploading(let value): return .init(title: "Uploading photo \(Int((value * 100).rounded()))%", identifier: "submission.sending", showsProgress: true)
+        case .sending: return .init(title: "Sending…", identifier: "submission.sending", showsProgress: true)
+        case .failed(let failure):
+            if failure.isRetryable { return .init(title: uploadFailed ? "Retry upload" : "Try again", identifier: "submission.send", kind: .commit) }
+            return .init(title: sendTitle, identifier: "submission.send", kind: .commit)
+        case .idle: return .init(title: sendTitle, identifier: "submission.send", icon: "system:paperplane", kind: .commit)
+        }
+    }
+
+    var sendTitle: String {
+        switch submission?.status {
+        case .rejected?: "Resubmit entry"
+        case .submitted?, .approved?: "Save changes"
+        case nil: "Send entry"
+        }
+    }
+
+    /// The theme page's entry action for the shared bar (nil when there is nothing to press).
+    var pageBarAction: DIPBottomBarAction? {
+        guard load == .ready, let title = state.actionTitle else { return nil }
+        return .init(title: title, identifier: "submission.action")
     }
 
     // MARK: Lifecycle
@@ -117,14 +161,22 @@ final class ChallengeSubmissionModel {
         source.stop()
     }
 
-    /// Loads the thumbnail of the submitted photo once per path; a failure just leaves the "Attached" text.
-    func loadEvidence() async {
-        guard let path = submission?.storagePath else { evidenceImage = nil; evidencePath = nil; return }
-        guard path != evidencePath else { return }
+    /// Loads the submitted photo once per path (large display copy through the member's own Storage read); a failure
+    /// is shown with a retry (`force`), never silently.
+    func loadEvidence(force: Bool = false) async {
+        guard let path = submission?.storagePath else { evidence = .none; evidencePath = nil; return }
+        if !force, path == evidencePath, evidence != .failed { return }
         evidencePath = path
-        guard let data = try? await source.evidenceData(scope: scope, path: path),
-              let copy = AlbumImageProcessing.displayCopy(data, maxPixelSize: 400) else { return }
-        if submission?.storagePath == path { evidenceImage = copy }
+        evidence = .loading
+        do {
+            let data = try await source.evidenceData(scope: scope, path: path)
+            guard submission?.storagePath == path else { return }
+            if let copy = AlbumImageProcessing.displayCopy(data, maxPixelSize: 1200) { evidence = .loaded(copy) } else { evidence = .failed }
+        } catch is CancellationError {
+            if evidence == .loading { evidence = .failed }
+        } catch {
+            if submission?.storagePath == path { evidence = .failed }
+        }
     }
 
     /// Previews and tests only: puts an already prepared photo into the draft.
@@ -142,10 +194,12 @@ final class ChallengeSubmissionModel {
         photo = nil; uploadedPath = nil
         if let submission {
             draft = DIPSubmissionDraft(from: submission)
+            progressValue = submission.progress
             keepsExistingPhoto = submission.hasPhoto
             if let slot = DIPSubmissionPolicy.slot(of: submission.storagePath) { occupiedSlots.insert(slot) }
         } else {
-            draft = DIPSubmissionDraft(); keepsExistingPhoto = false
+            // A new entry starts at the smallest step: always valid, and the member moves it up.
+            draft = DIPSubmissionDraft(progressText: DIPSubmissionDraft.format(step)); keepsExistingPhoto = false
         }
     }
 
