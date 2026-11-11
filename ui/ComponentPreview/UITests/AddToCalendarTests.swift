@@ -11,6 +11,21 @@ final class AddToCalendarTests: XCTestCase {
         shot.name = "event-add-to-calendar-generic"; shot.lifetime = .keepAlways; add(shot)
     }
 
+    @MainActor func testDirectionsBesideShareAndLeaveAtBottom() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=event-joined", "--v1-event-fixtures"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["event.directions"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["event.share"].exists)
+        let row = XCTAttachment(screenshot: app.screenshot())
+        row.name = "event-action-row"; row.lifetime = .keepAlways; add(row)
+        app.swipeUp(); app.swipeUp()
+        XCTAssertTrue(app.buttons["event.leave"].exists)
+        let bottom = XCTAttachment(screenshot: app.screenshot())
+        bottom.name = "event-leave-bottom"; bottom.lifetime = .keepAlways; add(bottom)
+    }
+
     @MainActor func testManyLongTagsWrapAndStayVisible() {
         continueAfterFailure = false
         let app = XCUIApplication()
