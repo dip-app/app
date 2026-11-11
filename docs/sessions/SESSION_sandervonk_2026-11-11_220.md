@@ -15,12 +15,12 @@ Backend half of F3: members submit proof (progress, note, optional photo) to the
 - `contracts/v1/models.schema.json` (additions only) plus regenerated TS/Swift: `SubmitChallenge*`, `RejectChallenge*`, `ListChallengeSubmissions*`, optional server-owned `ChallengeSubmission` fields, `ApproveChallengeResponse.replayed`.
 - New module `gcp/functions/src/modules/submissions`: `submitChallengeV1`, `approveChallengeV1`, `rejectChallengeV1`, `listChallengeSubmissionsV1` (thin callables, application services, pure policy, Firestore adapter reusing the photo object inspector).
 - `gcp/firestore.rules`: own-submission get, own ledger reads, no client writes. `gcp/storage.rules`: create-only evidence slots 0..4 under the challenge, window-open and same-company checks, owner/organizer reads.
-- Tests: `gcp/tests/unit/challenge-submissions.test.ts` (18 passing locally), `gcp/tests/rules/challenge-submissions.test.ts`, `gcp/tests/integration/challenge-submissions-callable.test.ts` (new npm script and CI step), `contracts/tests/challenge-submissions.test.mjs`.
+- Tests: `gcp/tests/unit/challenge-submissions.test.ts` (20 passing locally), `gcp/tests/rules/challenge-submissions.test.ts`, `gcp/tests/integration/challenge-submissions-callable.test.ts` (new npm script and CI step), `contracts/tests/challenge-submissions.test.mjs`.
 - Docs: `docs/contracts/challenge-submissions.md`, callables and data-ownership pointers.
 
 ## Validation
 
-- `node --import tsx --test gcp/tests/unit/challenge-submissions.test.ts` passed (18 tests) and `tsc --noEmit` in `gcp/functions` is clean.
+- `node --import tsx --test gcp/tests/unit/challenge-submissions.test.ts` passed (20 tests, including SUBMISSION_CHANGED and deactivated accounts) and `tsc --noEmit` in `gcp/functions` is clean.
 - Not run (deferred by the owner until integration): rules tests, emulator integration test, contract test, `npm run check`.
 
 ## Decisions

@@ -100,7 +100,11 @@ export class FirestoreSubmissionStore implements SubmissionStore {
     if (cursor) query = query.startAfter(cursor);
     const snapshot = await query.limit(limit + 1).get();
     const docs = snapshot.docs.slice(0, limit);
-    const items = docs.map(doc => ({ id: doc.id, submission: readSubmission(doc.data()) as StoredSubmission }));
+    // One malformed document must not block the whole review queue: it is skipped (and left for tooling).
+    const items: { id: string; submission: StoredSubmission }[] = [];
+    for (const doc of docs) {
+      try { items.push({ id: doc.id, submission: readSubmission(doc.data()) as StoredSubmission }); } catch { /* skipped */ }
+    }
     return { items, nextCursor: snapshot.docs.length > limit ? docs[docs.length - 1]!.id : null };
   }
 }

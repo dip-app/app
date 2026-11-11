@@ -42,6 +42,8 @@ test('review requests and the organizer list are strict', () => {
   const approve = validate('ApproveChallengeRequest');
   assert.equal(approve({contractVersion: 1, companyId: 'c', challengeId: 'w1', userId: 'u'}), true);
   assert.equal(approve({contractVersion: 1, companyId: 'c', challengeId: 'w1', userId: 'u', points: 9999}), false);
+  assert.equal(approve({contractVersion: 1, companyId: 'c', challengeId: 'w1', userId: 'u', expectedUpdatedAt: '2026-11-12T10:00:00Z'}), true);
+  assert.equal(approve({contractVersion: 1, companyId: 'c', challengeId: 'w1', userId: 'u', expectedUpdatedAt: 'yesterday'}), false);
   assert.equal(validate('ApproveChallengeResponse')({contractVersion: 1, submissionId: 'w1_u', pointsAwarded: 0, replayed: true}), true);
   const reject = validate('RejectChallengeRequest');
   assert.equal(reject({contractVersion: 1, companyId: 'c', challengeId: 'w1', userId: 'u', reason: 'Blurry'}), true);

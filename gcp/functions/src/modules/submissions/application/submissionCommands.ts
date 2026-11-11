@@ -5,7 +5,7 @@ import type { PhotoObjects } from "../../photos/application/ports";
 import { validWireId, validateUpload, type PhotoContentType } from "../../photos/domain/photoPolicy";
 import { SubmissionError } from "../domain/errors";
 import {
-  awardId, parseApproveRequest, parseListRequest, parseRejectRequest, parseSubmitRequest, submissionId, toSubmissionDto,
+  awardId, iso, parseApproveRequest, parseListRequest, parseRejectRequest, parseSubmitRequest, submissionId, toSubmissionDto,
 } from "../domain/submissionPolicy";
 import type { SubmissionCaller, SubmissionStore, SubmissionTransaction, SubmissionWrite } from "./ports";
 
@@ -19,6 +19,8 @@ function requireCaller(caller: SubmissionCaller | null): SubmissionCaller {
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
+/** Server-owned account status (docs/contracts/admin.md): a deactivated account is refused everywhere. */
+const deactivated = (member: Record<string, unknown> | null) => member?.status === "deactivated";
 
 /**
  * submitChallengeV1: the caller's own submission `{challengeId}_{uid}`.
@@ -39,9 +41,10 @@ export async function submitChallenge(store: SubmissionStore, objects: PhotoObje
     return await store.runTransaction(async tx => {
       invalidObject = false;
       const member = await tx.getMember(uid);
-      if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
+      if (!member || member.companyId !== companyId || !["member", "organizer", "admin"].includes(member.role as string)) {
         throw new SubmissionError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
       }
+      if (deactivated(member)) throw new SubmissionError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
       const challenge = await tx.getChallenge(companyId, challengeId);
       if (!challenge) throw new SubmissionError("not-found", "CHALLENGE_NOT_FOUND", "Weekly theme not found.");
       const existing = await tx.getSubmission(companyId, challengeId, id);
@@ -97,6 +100,7 @@ export async function submitChallenge(store: SubmissionStore, objects: PhotoObje
 async function requireOrganizer(getMember: (uid: string) => Promise<Record<string, unknown> | null>, uid: string, companyId: string) {
   const member = await getMember(uid);
   if (!member || member.role !== "admin") throw new SubmissionError("permission-denied", "NOT_ORGANIZER", "Only organizers can review submissions.");
+  if (deactivated(member)) throw new SubmissionError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
   if (member.companyId !== companyId) throw new SubmissionError("permission-denied", "COMPANY_MISMATCH", "You can only review your own company's submissions.");
 }
 
@@ -111,6 +115,13 @@ async function loadForReview(tx: SubmissionTransaction, caller: SubmissionCaller
   return { challenge, id, submission };
 }
 
+/** The organizer decides on what they saw: a pending entry the member edited since (updatedAt differs) is refused. */
+function requireUnchanged(submission: { updatedAt: Date }, expectedUpdatedAt: string | null) {
+  if (expectedUpdatedAt !== null && iso(submission.updatedAt) !== expectedUpdatedAt) {
+    throw new SubmissionError("failed-precondition", "SUBMISSION_CHANGED", "The member changed this entry. Reload it and review again.");
+  }
+}
+
 /**
  * approveChallengeV1: pending -> approved, awarding the challenge's points once. The ledger entry ID is
  * deterministic (`challenge_{challengeId}_{uid}`), and the entry, the balance, the submission and the
@@ -118,13 +129,14 @@ async function loadForReview(tx: SubmissionTransaction, caller: SubmissionCaller
  */
 export async function approveChallenge(store: SubmissionStore, caller: SubmissionCaller | null, data: unknown): Promise<ApproveChallengeResponse> {
   const reviewer = requireCaller(caller);
-  const { companyId, challengeId, userId } = parseApproveRequest(data);
+  const { companyId, challengeId, userId, expectedUpdatedAt } = parseApproveRequest(data);
   return store.runTransaction(async tx => {
     const { challenge, id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
     if (submission.status === "approved") return { contractVersion: 1, submissionId: id, pointsAwarded: 0, replayed: true } satisfies ApproveChallengeResponse;
     if (submission.status !== "submitted") throw new SubmissionError("failed-precondition", "SUBMISSION_NOT_PENDING", "Only pending submissions can be approved.");
+    requireUnchanged(submission, expectedUpdatedAt);
     const submitter = await tx.getMember(userId);
-    if (!submitter || submitter.companyId !== companyId) throw new SubmissionError("not-found", "SUBMITTER_NOT_FOUND", "The member is no longer in this company.");
+    if (!submitter || submitter.companyId !== companyId || deactivated(submitter)) throw new SubmissionError("not-found", "SUBMITTER_NOT_FOUND", "The member is no longer in this company.");
     const alreadyAwarded = await tx.getAward(companyId, awardId(challengeId, userId));
     const points = alreadyAwarded ? 0 : challenge.pointsReward;
     tx.reviewSubmission(companyId, challengeId, id, { status: "approved", reviewedBy: reviewer.uid, reviewNote: null, pointsAwarded: points });
@@ -140,11 +152,12 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
 /** rejectChallengeV1: pending -> rejected with a reason. Approved entries are final; a repeat is a replay. */
 export async function rejectChallenge(store: SubmissionStore, caller: SubmissionCaller | null, data: unknown): Promise<RejectChallengeResponse> {
   const reviewer = requireCaller(caller);
-  const { companyId, challengeId, userId, reason } = parseRejectRequest(data);
+  const { companyId, challengeId, userId, reason, expectedUpdatedAt } = parseRejectRequest(data);
   return store.runTransaction(async tx => {
     const { id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
     if (submission.status === "rejected") return { contractVersion: 1, submissionId: id, status: "rejected", replayed: true } satisfies RejectChallengeResponse;
     if (submission.status === "approved") throw new SubmissionError("failed-precondition", "SUBMISSION_LOCKED", "This entry was already approved.");
+    requireUnchanged(submission, expectedUpdatedAt);
     tx.reviewSubmission(companyId, challengeId, id, { status: "rejected", reviewedBy: reviewer.uid, reviewNote: reason, pointsAwarded: 0 });
     return { contractVersion: 1, submissionId: id, status: "rejected", replayed: false } satisfies RejectChallengeResponse;
   });

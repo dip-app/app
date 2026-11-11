@@ -36,6 +36,8 @@ export function evidencePath(companyId: string, challengeId: string, uid: string
   return `companies/${companyId}/challenges/${challengeId}/submissions/${uid}/${slot}`;
 }
 
+export const iso = (date: Date) => date.toISOString().replace(/\.\d{3}Z$/, "Z");
+
 function invalid(fields: string[]): never {
   throw new SubmissionError("invalid-argument", "VALIDATION_FAILED", "Invalid request.", [...new Set(fields)].sort());
 }
@@ -80,25 +82,34 @@ export function parseSubmitRequest(data: unknown, uid: string): ParsedSubmit {
   return { companyId: request.companyId, challengeId: request.challengeId, progress: request.progress, caption: caption as string, storagePath };
 }
 
-export type ParsedReview = Pick<ApproveChallengeRequest, "companyId" | "challengeId" | "userId">;
+export type ParsedReview = Pick<ApproveChallengeRequest, "companyId" | "challengeId" | "userId"> & { expectedUpdatedAt: string | null };
+
+const RFC3339_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+function expected(value: unknown, fields: string[]): string | null {
+  if (value === undefined) return null;
+  if (typeof value !== "string" || !RFC3339_UTC.test(value) || !Number.isFinite(Date.parse(value))) { fields.push("expectedUpdatedAt"); return null; }
+  return iso(new Date(value));
+}
 
 export function parseApproveRequest(data: unknown): ParsedReview {
   const r = record(data);
-  const fields = unknownKeys(r, ["contractVersion", "companyId", "challengeId", "userId"]);
+  const fields = unknownKeys(r, ["contractVersion", "companyId", "challengeId", "userId", "expectedUpdatedAt"]);
   for (const key of ["companyId", "challengeId", "userId"]) if (!validWireId(r[key])) fields.push(key);
+  const expectedUpdatedAt = expected(r.expectedUpdatedAt, fields);
   if (fields.length) invalid(fields);
-  return { companyId: r.companyId as string, challengeId: r.challengeId as string, userId: r.userId as string };
+  return { companyId: r.companyId as string, challengeId: r.challengeId as string, userId: r.userId as string, expectedUpdatedAt };
 }
 
 export function parseRejectRequest(data: unknown): ParsedReview & { reason: string } {
   const r = record(data);
-  const fields = unknownKeys(r, ["contractVersion", "companyId", "challengeId", "userId", "reason"]);
+  const fields = unknownKeys(r, ["contractVersion", "companyId", "challengeId", "userId", "reason", "expectedUpdatedAt"]);
   for (const key of ["companyId", "challengeId", "userId"]) if (!validWireId(r[key])) fields.push(key);
   const reason = r.reason;
   if (typeof reason !== "string" || reason.trim() !== reason || reason.length < 1 || [...reason].length > MAX_REASON_LENGTH) fields.push("reason");
+  const expectedUpdatedAt = expected(r.expectedUpdatedAt, fields);
   if (fields.length) invalid(fields);
   const request = r as unknown as RejectChallengeRequest;
-  return { companyId: request.companyId, challengeId: request.challengeId, userId: request.userId, reason: request.reason };
+  return { companyId: request.companyId, challengeId: request.challengeId, userId: request.userId, reason: request.reason, expectedUpdatedAt };
 }
 
 export interface ParsedList {
@@ -146,8 +157,6 @@ export interface StoredSubmission {
   createdAt: Date;
   updatedAt: Date;
 }
-
-const iso = (date: Date) => date.toISOString().replace(/\.\d{3}Z$/, "Z");
 
 export function toSubmissionDto(id: string, s: StoredSubmission): ChallengeSubmission {
   return {

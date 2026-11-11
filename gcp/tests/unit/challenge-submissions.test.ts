@@ -29,6 +29,8 @@ class Store implements SubmissionStore {
   docs = new Map<string, { data: Record<string, unknown>; version: number }>();
   writes = 0;
   private version = 0;
+  private clock = 0;
+  private stamp() { return new Date(Date.UTC(2030, 0, 3, 0, 0, ++this.clock)); }
   put(p: string, data: Record<string, unknown>) { this.docs.set(p, { data: structuredClone(data), version: ++this.version }); }
   get(p: string) { return this.docs.get(p)?.data; }
   async getMember(uid: string): Promise<Document | null> { return (this.get(`users/${uid}`) as Document) ?? null; }
@@ -63,10 +65,10 @@ class Store implements SubmissionStore {
         getAward: async (c, a) => (await read(`companies/${c}/pointTransactions/${a}`)) !== null,
         createSubmission: (c, id, s, data: SubmissionWrite) => pending.push(() => {
           if (this.docs.has(sub(c, id, s))) throw new Error("ALREADY_EXISTS");
-          this.put(sub(c, id, s), { ...data, createdAt: new Date(0), updatedAt: new Date(0) }); this.writes++;
+          this.put(sub(c, id, s), { ...data, createdAt: this.stamp(), updatedAt: this.stamp() }); this.writes++;
         }),
-        replaceSubmission: (c, id, s, data: SubmissionWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { updatedAt: new Date(0) })),
-        reviewSubmission: (c, id, s, data: ReviewWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { reviewedAt: new Date(0) })),
+        replaceSubmission: (c, id, s, data: SubmissionWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { updatedAt: this.stamp() })),
+        reviewSubmission: (c, id, s, data: ReviewWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { reviewedAt: this.stamp(), updatedAt: this.stamp() })),
         incrementParticipants: (c, id) => patch(ch(c, id), d => { d.participantCount = Number(d.participantCount) + 1; }),
         incrementCompleted: (c, id) => patch(ch(c, id), d => { d.completedCount = Number(d.completedCount) + 1; }),
         createAward: (c, a, entry: LedgerEntry) => pending.push(() => {
@@ -320,4 +322,35 @@ test("transport maps domain errors to callable errors and hides internals", asyn
     auth: { uid: "alice", token: { email_verified: true, firebase: { sign_in_provider: "google.com" } } }, data: request(),
   } as never, now);
   assert.equal(ok.outcome, "created");
+});
+
+test("approval and rejection are refused when the member changed the entry after the organizer's list", async () => {
+  const { store, objects } = world();
+  await submitChallenge(store, objects, caller(), request(), now);
+  const queue = await listChallengeSubmissions(store, caller("boss"), { contractVersion: 1, companyId: "alpha", challengeId: "week1" });
+  const seen = queue.submissions[0].updatedAt;
+  await submitChallenge(store, objects, caller(), request({ progress: 4, caption: "Edited after listing" }), now);
+  assert.equal(await reason(approveChallenge(store, caller("boss"), review({ expectedUpdatedAt: seen }))), "SUBMISSION_CHANGED");
+  assert.equal(await reason(rejectChallenge(store, caller("boss"), review({ reason: "no", expectedUpdatedAt: seen }))), "SUBMISSION_CHANGED");
+  assert.equal(subDoc(store)!.status, "submitted");
+  assert.equal(store.get("users/alice")!.pointsBalance, 10);
+  const fresh = (await listChallengeSubmissions(store, caller("boss"), { contractVersion: 1, companyId: "alpha", challengeId: "week1" })).submissions[0].updatedAt;
+  assert.equal((await approveChallenge(store, caller("boss"), review({ expectedUpdatedAt: fresh }))).pointsAwarded, 50);
+  assert.equal(await reason(approveChallenge(store, caller("boss"), review({ expectedUpdatedAt: "not a date" }))), "VALIDATION_FAILED");
+});
+
+test("deactivated members and reviewers are refused; the organizer role may submit", async () => {
+  const { store, objects } = world();
+  store.put("users/gone", { companyId: "alpha", role: "member", status: "deactivated", displayName: "Gone", avatarId: "a", pointsBalance: 0 });
+  store.put("users/orga", { companyId: "alpha", role: "organizer", displayName: "Orga", avatarId: "a", pointsBalance: 0 });
+  assert.equal(await reason(submitChallenge(store, objects, caller("gone"), request(), now)), "ACCOUNT_DEACTIVATED");
+  assert.equal((await submitChallenge(store, objects, caller("orga"), request(), now)).outcome, "created");
+  await submitChallenge(store, objects, caller("alice"), request(), now);
+  store.put("users/boss", { ...store.get("users/boss")!, status: "deactivated" });
+  assert.equal(await reason(approveChallenge(store, caller("boss"), review())), "ACCOUNT_DEACTIVATED");
+  assert.equal(await reason(listChallengeSubmissions(store, caller("boss"), { contractVersion: 1, companyId: "alpha", challengeId: "week1" })), "ACCOUNT_DEACTIVATED");
+  store.put("users/boss", { ...store.get("users/boss")!, status: "active" });
+  store.put("users/alice", { ...store.get("users/alice")!, status: "deactivated" });
+  assert.equal(await reason(approveChallenge(store, caller("boss"), review())), "SUBMITTER_NOT_FOUND");
+  assert.equal(store.get("users/alice")!.pointsBalance, 10);
 });

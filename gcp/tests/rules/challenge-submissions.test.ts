@@ -40,6 +40,7 @@ before(async () => {
     await store.doc("users/sub-coworker").set(profile(company, "Coworker"));
     await store.doc("users/sub-admin").set(profile(company, "Admin", "admin"));
     await store.doc("users/sub-outsider").set(profile(other, "Outsider"));
+    await store.doc("users/sub-gone").set({ ...profile(company, "Gone"), status: "deactivated" });
     await store.doc("users/sub-outadmin").set(profile(other, "OutAdmin", "admin"));
     await store.doc(`companies/${company}/challenges/open`).set(challenge(company, -DAY, 5 * DAY));
     await store.doc(`companies/${company}/challenges/ended`).set(challenge(company, -9 * DAY, -2 * DAY));
@@ -132,4 +133,9 @@ test("the points ledger is readable by its owner only and never writable", async
   await assertFails(deleteDoc(doc(db, `${ledgerPath}/challenge_open_sub-member`)));
   await assertFails(getDoc(doc(fs("sub-outsider"), `${ledgerPath}/challenge_open_sub-member`)));
   await assertFails(updateDoc(doc(db, "users/sub-member"), { pointsBalance: 100000 }));
+});
+
+test("deactivated accounts can neither upload nor read evidence", async () => {
+  await assertFails(upload(st("sub-gone"), objectPath("open", "sub-gone", 0)));
+  await assertFails(st("sub-gone").ref(objectPath("open", "sub-gone", 1)).getMetadata());
 });
