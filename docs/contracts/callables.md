@@ -124,3 +124,7 @@ Module `gcp/functions/src/modules/photos` (V2-05, FRONTEND_PLAN F5). Implemented
 **Not included:** favorites (`AppUser.favoritePhotoIds` stays server-owned; no favorite control is designed yet), photo deletion/moderation (a member cannot remove or replace a published photo; an admin can delete the document and object with tooling), captions in the iOS flow (sent as `""`).
 
 **Deployment (owner).** `firebase deploy --only storage,firestore:rules,functions:dip:finalizeEventPhotoV1,functions:dip:onPhotoCommentCreated`. On the first deploy of Storage rules that call `firestore.get`, the CLI asks to grant the Storage service agent read access to Firestore (cross-service rules); accept it, or uploads and reads are denied.
+
+## Admin backend
+
+Album moderation, attendee management and attendance, member management, roster pre-provisioning, bulk import, audit log and the `organizer` role are specified in [admin.md](admin.md). `recordAttendanceV1` is implemented there (optional `checkedIn`); `updateEventV1` accepts `status: "completed"` and `statusReason`. Not deployed.

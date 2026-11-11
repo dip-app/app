@@ -76,7 +76,8 @@ export class FirestoreAdminStore implements AdminStore {
       const result = await work(this.tx(transaction, writes));
       for (const apply of writes) apply();
       return result;
-    });
+      // Hot documents (an event's attendeeCount, a member's balance) can see bursts of admin writes.
+    }, { maxAttempts: 10 });
   }
 
   runReadOnly<T>(work: (tx: AdminTransaction) => Promise<T>): Promise<T> {
