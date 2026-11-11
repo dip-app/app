@@ -9,7 +9,7 @@
 /** Public origin of the share links; must equal `DIPShareLink.baseURL` (checked by scripts/tests). */
 export const SHARE_ORIGIN = "https://letsdip.work";
 
-/** Previous default Hosting origin; still approved for stored preview images. */
+/** Previous default Hosting origin; still served, and still accepted for stored preview images. */
 export const LEGACY_SHARE_ORIGIN = "https://team05-dip.web.app";
 
 /** PLACEHOLDER: numeric App Store ID of the DIP listing. Empty until the listing exists. */
@@ -57,6 +57,8 @@ export interface SharePreview {
   imageIsStandard: boolean;
   imageAlt: string;
   eventId: string | null;
+  /** Coarse date ("Fri, Nov 20") for the page body; null when unknown or for the generic page. */
+  dateLabel: string | null;
   /** True when the preview describes a real, shareable event (false: generic DIP page). */
   isEvent: boolean;
 }
@@ -137,6 +139,7 @@ export function genericPreview(eventId: string | null): SharePreview {
     imageIsStandard: true,
     imageAlt: "DIP",
     eventId,
+    dateLabel: null,
     isEvent: false,
   };
 }
@@ -158,6 +161,7 @@ export function buildPreview(eventId: string | null, event: ShareEvent | null): 
     imageIsStandard: image.standard,
     imageAlt: `Cover image for ${title}`,
     eventId,
+    dateLabel: date,
     isEvent: true,
   };
 }
@@ -172,10 +176,9 @@ function metaProperty(property: string, content: string): string {
 /** Renders the complete server-side HTML page: preview tags for crawlers plus the human landing behaviour. */
 export function renderSharePage(preview: SharePreview, appStoreId: string = APP_STORE_ID): string {
   const pageURL = preview.eventId ? `${SHARE_ORIGIN}/e/${encodeURIComponent(preview.eventId)}` : `${SHARE_ORIGIN}/`;
-  const appLink = preview.eventId ? `dip://events/${encodeURIComponent(preview.eventId)}` : "dip://";
+  const appLink = preview.eventId && EVENT_ID.test(preview.eventId) ? `dip://events/${encodeURIComponent(preview.eventId)}` : "dip://";
   const storeURL = /^[0-9]+$/.test(appStoreId) ? `https://apps.apple.com/app/id${appStoreId}` : "";
   const bannerId = storeURL ? appStoreId : APP_STORE_ID_PLACEHOLDER;
-  const heading = preview.isEvent ? preview.title : storeURL ? "Join this activity on DIP" : "DIP is coming to the App Store";
   const tags = [
     `<title>${escapeHtml(preview.title)}</title>`,
     metaName("description", preview.description),
@@ -205,55 +208,83 @@ export function renderSharePage(preview: SharePreview, appStoreId: string = APP_
     metaName("twitter:image", preview.imageURL),
     metaName("twitter:image:alt", preview.imageAlt),
   ];
-  const body = storeURL
-    ? `  <p>If DIP is installed, tap the button to open this activity. Otherwise we’ll take you to the App Store.</p>
-  <a id="open" class="button" href="${escapeHtml(appLink)}">Open in DIP</a>
-  <a id="store" class="button secondary" href="${escapeHtml(storeURL)}">Get DIP on the App Store</a>`
-    : `  <p>DIP is coming to the App Store. If you already have the app, open this activity with the button below.</p>
-  <a id="open" class="button" href="${escapeHtml(appLink)}">Open in DIP</a>
-  <p class="note">The App Store listing isn’t live yet. Ask whoever shared this activity to let you know when it is, and we’ll point you to the download.</p>`;
-  const script = storeURL
-    ? `<script>
-  // Universal Links open the app before this page loads; reaching here means the app is not handling it.
-  // JS only (no meta refresh, no immediate redirect) so link-preview crawlers always read the tags above.
-  (function () {
-    var opened = false;
-    var open = document.getElementById("open");
-    if (open) { open.addEventListener("click", function () { opened = true; }); }
-    setTimeout(function () { if (!opened) { location.replace(${JSON.stringify(storeURL).replace(/</g, "\\u003c")}); } }, 2500);
-  })();
-</script>
-`
+  const note = storeURL
+    ? `<p class="note">Don’t have DIP yet? <a href="${escapeHtml(storeURL)}">Get it on the App Store</a>.</p>`
+    : `<p class="note">Don’t have DIP yet? It’s coming to the App Store.</p>`;
+  const card = preview.isEvent
+    ? `    <div class="cover"><img src="${escapeHtml(preview.imageURL)}" alt="${escapeHtml(preview.imageAlt)}" width="${PREVIEW_IMAGE.width}" height="${PREVIEW_IMAGE.height}"></div>
+${preview.dateLabel ? `    <p class="date">${escapeHtml(preview.dateLabel)}</p>\n` : ""}`
     : "";
+  const lead = preview.isEvent ? "" : `    <p class="lead">${escapeHtml(preview.description)}</p>\n`;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
 ${tags.join("\n")}
+<link rel="icon" href="/img/landing/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/img/landing/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/img/landing/apple-touch-icon.png" sizes="180x180">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#1E212B; --white:#FFFFFF; --purple:#7B88FA; --pink:#F054A5; --gray:#ECECEC; }
+  :root { --purple:#7B88FA; --pink:#FB72E4; --ink:#1E212B; --yellow:#FFCC3E; --bg:#FFFFFF; --accent:#4A56D6; --text:var(--ink); --muted:rgba(30,33,43,.70); --tint:rgba(123,136,250,.10); --line:rgba(123,136,250,.45); }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161D; --accent:#7B88FA; --text:#F4F5FA; --muted:rgba(244,245,250,.72); --tint:rgba(123,136,250,.16); --line:rgba(123,136,250,.55); } }
   * { box-sizing: border-box; }
-  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
-         background:var(--purple); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif; }
-  main { width:100%; max-width:420px; background:var(--white); border-radius:20px; padding:30px 22px; text-align:center; }
-  .logo { font-size:34px; font-weight:800; letter-spacing:-0.02em; margin:0 0 6px; }
-  h1 { font-size:22px; margin:0 0 10px; overflow-wrap:anywhere; }
-  p { font-size:16px; line-height:1.45; margin:0 0 18px; }
-  .note { font-size:14px; opacity:.75; }
-  .button { display:block; min-height:50px; line-height:50px; border-radius:25px; background:var(--pink); color:var(--white);
-            font-size:16px; font-weight:600; text-decoration:none; margin:0 0 10px; }
-  .button.secondary { background:var(--gray); color:var(--ink); }
+  html, body { margin: 0; }
+  body { background:var(--bg); color:var(--text); font:400 17px/1.5 Figtree,-apple-system,system-ui,sans-serif; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+  .wrap { width:min(520px,100%); margin:0 auto; padding:0 20px; }
+  header { padding:22px 0 0; }
+  .logo { display:inline-flex; align-items:center; gap:12px; font-family:"Fjalla One",Impact,sans-serif; font-size:34px; line-height:1; letter-spacing:.02em; text-decoration:none; color:var(--text); }
+  .logo img { width:46px; height:46px; display:block; border-radius:50%; }
+  main { flex:1; padding:28px 0 48px; }
+  .cover { margin:0 0 22px; border-radius:20px; overflow:hidden; border:1.5px solid var(--line); background:var(--tint); aspect-ratio:1200/630; }
+  .cover img { display:block; width:100%; height:100%; object-fit:cover; }
+  .date { margin:0 0 6px; font-size:17px; font-weight:600; color:var(--accent); }
+  h1 { font-family:"Fjalla One",Impact,sans-serif; font-weight:400; font-size:clamp(34px,9vw,48px); line-height:1.08; margin:0 0 24px; text-transform:uppercase; overflow-wrap:anywhere; }
+  .lead { font-size:20px; color:var(--muted); margin:0 0 24px; }
+  .pill { display:inline-flex; align-items:center; justify-content:center; gap:12px; min-height:56px; padding:0 26px 0 18px; border-radius:28px; font:400 20px/1 Figtree,sans-serif; text-decoration:none; white-space:nowrap; background:#0071E3; color:#FFFFFF; transition:background .15s, transform .1s; }
+  .pill:hover { background:#0A84FF; }
+  .pill:active { transform:scale(.97); }
+  .pill:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
+  .store-icon { display:block; flex:none; }
+  .note { margin:18px 0 0; font-size:14px; color:var(--muted); }
+  .note a { color:inherit; text-underline-offset:3px; }
+  @media (max-width:420px) { .pill { display:flex; width:100%; } }
+  @media (prefers-reduced-motion: reduce) { .pill { transition:none; } }
 </style>
 </head>
 <body>
+<header><div class="wrap"><a class="logo" href="/" aria-label="DIP home"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a></div></header>
 <main>
-  <p class="logo">DIP</p>
-  <h1>${escapeHtml(heading)}</h1>
-${body}
+  <div class="wrap">
+${card}    <h1>${escapeHtml(preview.title)}</h1>
+${lead}    <a class="pill" id="open-app" href="${escapeHtml(appLink)}" role="button"><img class="store-icon" src="/img/landing/app-store.svg" alt="" width="26" height="26">Get the app</a>
+    ${note}
+  </div>
 </main>
-${script}</body>
+<script>
+// "Get the app" opens the installed app; with no app installed nothing happens (a hidden frame avoids the
+// "address is invalid" alert that iOS Safari shows when navigating straight to an unhandled scheme).
+// Universal Links open the app before this page loads; no meta refresh or redirect, so crawlers always read the tags above.
+(function () {
+  var btn = document.getElementById('open-app');
+  if (!btn) return;
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    var f = document.createElement('iframe');
+    f.hidden = true; f.setAttribute('aria-hidden', 'true'); f.src = btn.getAttribute('href');
+    document.body.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1500);${storeURL ? `
+    // No app installed (page still visible after the tap): offer the listing. Only ever after a tap.
+    setTimeout(function () { if (!document.hidden) { location.href = ${JSON.stringify(storeURL).replace(/</g, "\\u003c")}; } }, 1500);` : ""}
+  });
+})();
+</script>
+</body>
 </html>
 `;
 }

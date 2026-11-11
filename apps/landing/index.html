@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DIP: the app for company events</title>
+<meta name="description" content="DIP is the app for your company's events: find something to join, see who's going, share the photos afterwards and earn points as a team.">
+<link rel="canonical" href="https://letsdip.work/">
+<!-- Pre-release: firebase.json sends X-Robots-Tag noindex, nofollow on every path, and that header is the only switch. To let search engines in, remove it (the landing carries no robots meta). The admin portal keeps its own noindex meta. -->
+<meta name="theme-color" content="#7B88FA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14161D" media="(prefers-color-scheme: dark)">
+<meta property="og:site_name" content="DIP">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://letsdip.work/">
+<meta property="og:title" content="DIP: get out of the office, do something together">
+<meta property="og:description" content="The app for your company's events: find something to join, see who's going, share the photos and earn points as a team.">
+<meta property="og:image" content="https://letsdip.work/img/landing/og.jpg">
+<meta property="og:image:secure_url" content="https://letsdip.work/img/landing/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The DIP logo and the headline Get out of the office. Do something together., next to the DIP app's Home screen on an iPhone.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DIP: get out of the office, do something together">
+<meta name="twitter:description" content="The app for your company's events: find something to join, see who's going, share the photos and earn points as a team.">
+<meta name="twitter:image" content="https://letsdip.work/img/landing/og.jpg">
+<meta name="twitter:image:alt" content="The DIP logo and the headline Get out of the office. Do something together., next to the DIP app's Home screen on an iPhone.">
+<link rel="icon" href="/img/landing/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/img/landing/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/img/landing/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="/img/landing/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --purple: #7B88FA; --pink: #FB72E4; --ink: #1E212B; --white: #FFFFFF;
+    --gray: #ECECEC; --yellow: #FFCC3E; --events-pink: #F054A5; --blue: #77C5FF;
+    --bg: #FFFFFF; --text: var(--ink); --muted: rgba(30,33,43,.62);
+    --card: #FFFFFF; --line: rgba(123,136,250,.45); --tint: rgba(123,136,250,.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161D; --text: #F4F5FA; --muted: rgba(244,245,250,.66);
+      --card: #1E212B; --line: rgba(123,136,250,.55); --tint: rgba(123,136,250,.16);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 400 17px/1.5 Figtree, -apple-system, system-ui, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
+  }
+  .wrap { width: min(1080px, 100%); margin: 0 auto; padding: 0 20px; }
+  header { padding: 22px 0 0; }
+  .logo { display: inline-flex; align-items: center; gap: 12px; font-family: "Fjalla One", Impact, sans-serif; font-size: 34px; line-height: 1; letter-spacing: .02em; text-decoration: none; color: var(--text); }
+  .logo img { width: 46px; height: 46px; display: block; }
+  main { flex: 1; }
+  .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding: 36px 0 56px; }
+  h1 { font-family: "Fjalla One", Impact, sans-serif; font-weight: 400; font-size: clamp(44px, 7vw, 84px); line-height: 1.02; margin: 0 0 18px; text-transform: uppercase; }
+  h1 em { font-style: normal; color: var(--purple); }
+  .lead { font-size: 20px; color: var(--muted); max-width: 30em; margin: 0 0 28px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 26px; border-radius: 28px; font: 400 20px/1 Figtree, sans-serif; text-decoration: none; white-space: nowrap; }
+  /* solid = pressable, outline = informational */
+  .store-icon { display: block; flex: none; }
+  .pill.store { gap: 12px; padding-left: 18px; background: #0071E3; color: #FFFFFF; transition: background .15s, transform .1s; }
+  .pill.store:hover { background: #0A84FF; }
+  .pill.store:active { transform: scale(.97); }
+  .pill.store:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+  .admin { display: block; margin-top: 22px; font-size: 14px; color: var(--muted); }
+  .admin a { color: inherit; text-underline-offset: 3px; }
+  .admin a:hover { color: var(--purple); }
+
+  /* Animated phone */
+  .stage { display: grid; place-items: center; position: relative; min-height: 560px; perspective: 900px; }
+  .device { position: relative; will-change: transform; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+  .blob.a { width: 280px; height: 280px; background: var(--purple); top: 4%; left: 6%; animation: drift 9s ease-in-out infinite; }
+  .blob.b { width: 220px; height: 220px; background: var(--pink); bottom: 2%; right: 4%; animation: drift 11s ease-in-out infinite reverse; }
+  /* iPhone 16 bezel (Apple Design Resources, 860x1751). Screen cutout inset and clip radius from the frame's alpha. */
+  .phone { position: relative; width: 280px; aspect-ratio: 860 / 1751; animation: float 6s ease-in-out infinite; filter: drop-shadow(0 28px 36px rgba(30,33,43,.28)); }
+  .screen { position: absolute; inset: 2.1698% 5.1028% 2.2073% 5.1028%; border-radius: 7.75% / 3.58%; background: #fff; overflow: hidden; }
+  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; animation: shot 15s infinite; }
+  .shot:nth-child(1) { animation-delay: 0s; } .shot:nth-child(2) { animation-delay: 3s; } .shot:nth-child(3) { animation-delay: 6s; }
+  .shot:nth-child(4) { animation-delay: 9s; } .shot:nth-child(5) { animation-delay: 12s; }
+  /* Specular sheen ported from the case-study DeviceFrame: slides against the tilt, fades in with cursor proximity. */
+  .shimmer { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; pointer-events: none; z-index: 1; opacity: 0; will-change: transform, opacity;
+    background: linear-gradient(125deg, transparent 36%, rgba(40,50,90,.10) 42%, rgba(255,255,255,0) 46%, rgba(255,255,255,.75) 50%, rgba(255,255,255,0) 54%, rgba(40,50,90,.08) 58%, transparent 64%); }
+  .bezel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-bottom: 56px; }
+  .card { border: 1.5px solid var(--line); background: var(--tint); border-radius: 20px; padding: 22px; }
+  .card h3 { margin: 0 0 6px; font-family: "Fjalla One", Impact, sans-serif; font-weight: 400; font-size: 22px; text-transform: uppercase; }
+  .card p { margin: 0; color: var(--muted); }
+  footer { padding: 24px 0 34px; font-size: 14px; color: var(--muted); }
+
+  @keyframes shot { 0% { opacity: 0; transform: scale(1.02); } 4% { opacity: 1; transform: scale(1); } 20% { opacity: 1; transform: scale(1); } 24%, 100% { opacity: 0; } }
+  @keyframes float { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-12px) rotate(1.5deg); } }
+  @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(24px, -18px); } }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; padding-top: 20px; }
+    .stage { min-height: 560px; }
+    .features { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+    .shot:nth-child(1) { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="/" aria-label="DIP home"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a></div></header>
+<main>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <h1>Get out of the office. <em>Do something together.</em></h1>
+        <p class="lead">DIP is the app for your company's events: find something to join, see who's going, share the photos afterwards and earn points as a team.</p>
+        <div class="ctas">
+          <!-- Opens the app if installed (dip:// is registered in the app's Info.plist); silently does nothing otherwise. Swap in the App Store listing link once it exists. -->
+          <a class="pill store" id="open-app" href="dip://" role="button">
+            <img class="store-icon" src="/img/landing/app-store.svg" alt="" width="26" height="26">
+            Get the app</a>
+        </div>
+        <span class="admin">Organizing events for your company? <a href="/admin/">Go to the admin portal</a></span>
+      </div>
+      <div class="stage" aria-hidden="true">
+        <div class="blob a"></div><div class="blob b"></div>
+        <div class="device">
+        <div class="phone">
+          <div class="screen">
+            <img class="shot" src="/img/landing/home.webp" alt="" width="600" height="1305">
+            <img class="shot" src="/img/landing/event.webp" alt="" width="600" height="1305" loading="lazy">
+            <img class="shot" src="/img/landing/joined.webp" alt="" width="600" height="1305" loading="lazy">
+            <img class="shot" src="/img/landing/album.webp" alt="" width="600" height="1305" loading="lazy">
+            <img class="shot" src="/img/landing/rewards.webp" alt="" width="600" height="1305" loading="lazy">
+            <div class="shimmer" aria-hidden="true"></div>
+          </div>
+          <img class="bezel" src="/img/landing/iphone-frame.png" alt="" width="860" height="1751">
+        </div>
+        </div>
+      </div>
+    </section>
+    <section class="features">
+      <div class="card"><h3>Find your thing</h3><p>Browse events from your company and filter by what you're into.</p></div>
+      <div class="card"><h3>Join in</h3><p>See who's going, chat with the group and get reminders before it starts.</p></div>
+      <div class="card"><h3>Share and earn</h3><p>Add photos to the event album and collect points together.</p></div>
+    </section>
+  </div>
+</main>
+<footer><div class="wrap">© DIP</div></footer>
+<script>
+// "Get the app" opens the installed app; with no app installed nothing happens (a hidden frame avoids the
+// "address is invalid" alert that iOS Safari shows when navigating straight to an unhandled scheme).
+(function () {
+  var btn = document.getElementById('open-app');
+  if (!btn) return;
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    var f = document.createElement('iframe');
+    f.hidden = true; f.setAttribute('aria-hidden', 'true'); f.src = 'dip://';
+    document.body.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1500);
+  });
+})();
+</script>
+<script>
+// Tilt toward the cursor and slide the screen sheen against it (ported from the case-study DeviceFrame).
+// Off for reduced motion and touch screens.
+(function () {
+  var dev = document.querySelector('.device'), shim = document.querySelector('.shimmer');
+  if (!dev || !shim) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || matchMedia('(pointer: coarse)').matches) { shim.remove(); return; }
+  var MAX = 7, tx = 0, ty = 0, x = 0, y = 0, raf = 0;
+  function frame() {
+    x += (tx - x) * 0.14; y += (ty - y) * 0.14;
+    dev.style.transform = 'rotateX(' + (-y * 2 * MAX).toFixed(3) + 'deg) rotateY(' + (x * 2 * MAX).toFixed(3) + 'deg)';
+    shim.style.transform = 'translate(' + (-x * 80).toFixed(2) + '%,' + (-y * 52).toFixed(2) + '%)';
+    shim.style.opacity = Math.min(0.6, Math.hypot(x, y) * 2.4).toFixed(3);
+    raf = (Math.abs(tx - x) > 0.0005 || Math.abs(ty - y) > 0.0005) ? requestAnimationFrame(frame) : 0;
+  }
+  function kick() { if (!raf) raf = requestAnimationFrame(frame); }
+  addEventListener('pointermove', function (e) {
+    if (e.pointerType !== 'mouse') return;
+    var r = dev.getBoundingClientRect();
+    var nx = (e.clientX - r.left) / r.width - 0.5, ny = (e.clientY - r.top) / r.height - 0.5;
+    var falloff = Math.max(0, 1 - Math.hypot(nx, ny) * 1.15);
+    tx = nx * falloff; ty = ny * falloff; kick();
+  }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', function () { tx = 0; ty = 0; kick(); });
+})();
+</script>
+</body>
+</html>

@@ -9,7 +9,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class HostingShareLinks(unittest.TestCase):
     def setUp(self):
-        self.hosting = json.loads((ROOT / "firebase.json").read_text())["hosting"]
+        sites = json.loads((ROOT / "firebase.json").read_text())["hosting"]
+        self.hosting = next(s for s in sites if s["site"] == "letsdip")  # main site: landing, admin, share links, AASA
+        self.legacy = next(s for s in sites if s["site"] == "team05-dip")  # redirect-only
 
     def test_event_and_aasa_rewrites_exist(self):
         rewrites = {r["source"]: r for r in self.hosting["rewrites"]}
@@ -36,7 +38,7 @@ class HostingShareLinks(unittest.TestCase):
         sources = {h["source"] for h in self.hosting["headers"]}
         self.assertIn("/.well-known/apple-app-site-association", sources)
         self.assertIn("**", sources)  # global noindex headers
-        self.assertEqual(self.hosting["public"], "apps/admin/out")
+        self.assertEqual(self.hosting["public"], "site-dist")  # built by scripts/build-site.sh: landing at /, admin at /admin/
 
     def test_aasa_is_valid_json_for_the_event_path(self):
         aasa = json.loads((ROOT / "apps/admin/public/aasa/apple-app-site-association.json").read_text())
@@ -56,6 +58,14 @@ class HostingShareLinks(unittest.TestCase):
         self.assertRegex(ts, r'APP_STORE_ID = "";')
         self.assertIn("dip://events/", ts)
         self.assertNotIn("http-equiv", ts)
+
+    def test_legacy_default_domain_only_redirects_to_the_public_domain(self):
+        self.assertEqual(self.legacy["public"], "apps/redirect")
+        rule = self.legacy["redirects"][0]
+        self.assertEqual((rule["source"], rule["type"]), ("/:path*", 301))
+        self.assertEqual(rule["destination"], "https://letsdip.work/:path*")
+        self.assertIn(("/", 301), [(r["source"], r["type"]) for r in self.legacy["redirects"]])  # the static fallback page must not win at /
+        self.assertNotIn("rewrites", self.legacy)
 
 
 if __name__ == "__main__":

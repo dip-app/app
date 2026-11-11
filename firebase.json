@@ -4,8 +4,16 @@
       "source": "gcp/functions",
       "codebase": "dip",
       "runtime": "nodejs22",
-      "ignore": ["node_modules", ".git", "tests", "**/*.test.ts", "**/*-debug.log"],
-      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "tests",
+        "**/*.test.ts",
+        "**/*-debug.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
   "firestore": {
@@ -15,40 +23,138 @@
   "storage": {
     "rules": "gcp/storage.rules"
   },
-  "hosting": {
-    "site": "team05-dip",
-    "appAssociation": "NONE",
-    "public": "apps/admin/out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "trailingSlash": true,
-    "rewrites": [
-      { "source": "/.well-known/apple-app-site-association", "destination": "/aasa/apple-app-site-association.json" },
-      { "source": "/e/**", "function": { "functionId": "eventSharePageV1", "region": "us-central1" } }
-    ],
-    "headers": [
-      {
-        "source": "**",
-        "headers": [
-          { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "X-Frame-Options", "value": "DENY" }
-        ]
-      },
-      {
-        "source": "/.well-known/apple-app-site-association",
-        "headers": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Cache-Control", "value": "public, max-age=300" }]
-      },
-      { "source": "/_next/static/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
-      { "source": "/img/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }
-    ]
-  },
+  "hosting": [
+    {
+      "site": "letsdip",
+      "appAssociation": "NONE",
+      "public": "site-dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "trailingSlash": true,
+      "rewrites": [
+        {
+          "source": "/.well-known/apple-app-site-association",
+          "destination": "/aasa/apple-app-site-association.json"
+        },
+        {
+          "source": "/e/**",
+          "function": {
+            "functionId": "eventSharePageV1",
+            "region": "us-central1"
+          }
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            }
+          ]
+        },
+        {
+          "source": "/.well-known/apple-app-site-association",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=300"
+            }
+          ]
+        },
+        {
+          "source": "/_next/static/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        },
+        {
+          "source": "/img/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=86400"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "team05-dip",
+      "public": "apps/redirect",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "redirects": [
+        {
+          "source": "/:path*",
+          "destination": "https://letsdip.work/:path*",
+          "type": 301
+        },
+        {
+          "source": "/",
+          "destination": "https://letsdip.work/",
+          "type": 301
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9099 },
-    "functions": { "host": "127.0.0.1", "port": 5001 },
-    "firestore": { "host": "127.0.0.1", "port": 8080 },
-    "storage": { "host": "127.0.0.1", "port": 9199 },
-    "ui": { "enabled": false },
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 5001
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "storage": {
+      "host": "127.0.0.1",
+      "port": 9199
+    },
+    "ui": {
+      "enabled": false
+    },
     "singleProjectMode": true
   }
 }

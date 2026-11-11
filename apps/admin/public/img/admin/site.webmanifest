@@ -1,0 +1,14 @@
+{
+  "name": "DIP Admin",
+  "short_name": "DIP Admin",
+  "description": "The organizer portal for DIP company events.",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#7B88FA",
+  "icons": [
+    { "src": "/img/admin/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/img/admin/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
