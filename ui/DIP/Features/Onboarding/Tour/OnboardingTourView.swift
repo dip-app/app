@@ -338,9 +338,7 @@ struct OnboardingTourView: View {
             .opacity(fadesOut && revealStarted ? 0 : 1)
             // The CTA label follows the Stage swap instead of leading it.
             .animation(reduceMotion ? nil : OnboardingMotion.bar(reduceMotion: false).delay(0.18 / speed), value: model.step)
-            // The bar rises into place with the header chrome on first entrance (no travel with Reduce Motion).
-            // (it follows the same delayed transaction that fades the header chrome in)
-            .offset(y: chromeShown || reduceMotion ? 0 : 28)
+            // The tour bar is already in place from the first frame: only the sign-in footer rises (once).
             .animation(.easeOut(duration: OnboardingHandoff.barFadeDuration / speed)
                 .delay(OnboardingHandoff.barAt / speed), value: revealStarted)
     }
