@@ -1660,8 +1660,16 @@
           "type": "string",
           "enum": [
             "scheduled",
-            "cancelled"
-          ]
+            "cancelled",
+            "completed"
+          ],
+          "description": "completed: only a scheduled event that has ended. Leaving completed after the album has photos needs an admin and statusReason."
+        },
+        "statusReason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Required (admin only) to reopen or cancel a completed event whose album has photos."
         }
       },
       "required": [

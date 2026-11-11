@@ -784,14 +784,16 @@ public struct UpdateEventRequest: Codable, Equatable, Sendable {
     public var expectedRevision: Int
     public var event: EventDraft
     public var status: String
+    public var statusReason: String?
 
-    public init(contractVersion: Int, companyId: String, eventId: String, expectedRevision: Int, event: EventDraft, status: String) {
+    public init(contractVersion: Int, companyId: String, eventId: String, expectedRevision: Int, event: EventDraft, status: String, statusReason: String? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.eventId = eventId
         self.expectedRevision = expectedRevision
         self.event = event
         self.status = status
+        self.statusReason = statusReason
     }
 }
 

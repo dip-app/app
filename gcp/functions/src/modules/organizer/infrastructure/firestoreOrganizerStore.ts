@@ -76,6 +76,10 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           const snap = await transaction.get(events(companyId).doc(eventId).collection("rsvps").limit(1));
           return !snap.empty;
         },
+        async hasAnyPhoto(companyId, eventId) {
+          const snap = await transaction.get(events(companyId).doc(eventId).collection("photos").limit(1));
+          return !snap.empty;
+        },
         async missingTagIds(tagIds) {
           if (tagIds.length === 0) return [];
           const snaps = await transaction.getAll(...tagIds.map((id) => db.collection("tags").doc(id)));

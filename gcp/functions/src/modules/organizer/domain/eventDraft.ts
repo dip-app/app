@@ -142,7 +142,9 @@ function companyIdOf(record: Record_): string {
 }
 
 export interface ParsedCreate { companyId: string; requestId: string; event: ParsedDraft }
-export interface ParsedUpdate { companyId: string; eventId: string; expectedRevision: number; event: ParsedDraft; status: "scheduled" | "cancelled" }
+export type EventStatus = "scheduled" | "cancelled" | "completed";
+export const EVENT_STATUSES: readonly EventStatus[] = ["scheduled", "cancelled", "completed"];
+export interface ParsedUpdate { companyId: string; eventId: string; expectedRevision: number; event: ParsedDraft; status: EventStatus; statusReason?: string }
 
 export function parseCreateEventRequest(data: unknown): ParsedCreate {
   const record = asRecord(data, "request");
@@ -155,19 +157,22 @@ export function parseCreateEventRequest(data: unknown): ParsedCreate {
 
 export function parseUpdateEventRequest(data: unknown): ParsedUpdate {
   const record = asRecord(data, "request");
-  exactKeys(record, ["contractVersion", "companyId", "eventId", "expectedRevision", "event", "status"], "");
+  exactKeys(record, ["contractVersion", "companyId", "eventId", "expectedRevision", "event", "status", "statusReason"], "");
   if (record.contractVersion !== 1) fail(["contractVersion"]);
   const eventId = record.eventId;
   if (typeof eventId !== "string" || !ID_PATTERN.test(eventId)) fail(["eventId"]);
   const expected = record.expectedRevision;
   if (!Number.isInteger(expected) || (expected as number) < 1) fail(["expectedRevision"]);
-  if (record.status !== "scheduled" && record.status !== "cancelled") fail(["status"]);
+  if (!EVENT_STATUSES.includes(record.status as EventStatus)) fail(["status"]);
+  const reason = record.statusReason;
+  if (reason !== undefined && (typeof reason !== "string" || reason.trim() !== reason || [...reason].length < 3 || [...reason].length > 200)) fail(["statusReason"]);
   return {
     companyId: companyIdOf(record),
     eventId: eventId as string,
     expectedRevision: expected as number,
     event: parseEventDraft(record.event),
-    status: record.status as "scheduled" | "cancelled",
+    status: record.status as EventStatus,
+    ...(typeof reason === "string" ? { statusReason: reason } : {}),
   };
 }
 
