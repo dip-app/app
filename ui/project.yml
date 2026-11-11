@@ -45,6 +45,7 @@ targets:
     info:
       path: Config/DIP-Info.plist
       properties:
+        NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)

@@ -65,14 +65,20 @@ struct DIPPrototypeApp: View {
         }
         _model = State(initialValue: DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
-                ?? (ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+                ?? (ProcessInfo.processInfo.arguments.contains("--many-tags")
+                ? DIPMockFixtures.manyTagsReview()
+                : ProcessInfo.processInfo.arguments.contains("--v1-event-fixtures")
+                ? DIPMockFixtures.v1Events()
+                : ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
                 ? DIPMockFixtures.chatGroupingReview
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview : DIPMockFixtures.reference),
+                ? DIPMockFixtures.photoCommentReview
+                : ["event", "event-joined", "past-event"].contains(screen)
+                ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures())))
     }
