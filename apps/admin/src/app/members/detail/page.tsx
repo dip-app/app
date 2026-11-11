@@ -8,7 +8,8 @@ import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
 import { Avatar, Info, LoadError, Loading, Notice, formatDate } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
-import { type Member, type MemberPatch, ROLE_LABEL, type Role } from "@/lib/adminTypes";
+import type { Session } from "@/lib/api";
+import { type Member, type MemberPatch, ROLE_LABEL, type Role, can } from "@/lib/adminTypes";
 import { ApiError } from "@/lib/contract";
 
 type Action = "deactivate" | "reactivate" | "reset" | "points" | null;
@@ -20,12 +21,12 @@ function MemberDetail() {
   const company = useLoad((a) => a.companyInfo(), "company");
   if (member.error) return <LoadError error={member.error} onRetry={member.reload} />;
   if (!member.data || !company.data) return <Loading label="Loading member" />;
-  return <Editor key={`${member.data.id}-${member.data.revision}`} member={member.data} teams={company.data.teams} self={session?.uid === member.data.id}
+  return <Editor key={`${member.data.id}-${member.data.revision}`} member={member.data} teams={company.data.teams} self={session?.uid === member.data.id} session={session}
     api={api} onSaved={(next) => member.setData(next)} onReload={member.reload} />;
 }
 
-function Editor({ member, teams, self, api, onSaved, onReload }: {
-  member: Member; teams: { id: string; name: string }[]; self: boolean; api: ReturnType<typeof useApp>["api"];
+function Editor({ member, teams, self, session, api, onSaved, onReload }: {
+  member: Member; teams: { id: string; name: string }[]; self: boolean; session: Session | null; api: ReturnType<typeof useApp>["api"];
   onSaved: (next: Member) => void; onReload: () => void;
 }) {
   const [draft, setDraft] = useState<Required<MemberPatch>>({
@@ -37,7 +38,8 @@ function Editor({ member, teams, self, api, onSaved, onReload }: {
   const [action, setAction] = useState<Action>(null);
   const [delta, setDelta] = useState("");
   const [resetPoints, setResetPoints] = useState(false);
-  const requestId = useState(() => crypto.randomUUID())[0];
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const editable = can(session?.role, "members.edit");
 
   const dirty = draft.role !== member.role || draft.workLocation !== member.workLocation || draft.department !== member.department ||
     draft.jobTitle !== member.jobTitle || draft.teamIds.join() !== member.teamIds.join();
@@ -66,7 +68,7 @@ function Editor({ member, teams, self, api, onSaved, onReload }: {
       <div className="toolbar">
         <Link className="pill-btn gray" href="/members/">All members</Link>
         <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? "Active" : member.status === "invited" ? "Invited" : "Deactivated"}</Info>
-        <Info>{member.pointsBalance} points</Info>
+        {member.pointsBalance !== null && <Info>{member.pointsBalance} points</Info>}
         <span className="muted">Joined {formatDate(member.createdAt)}</span>
       </div>
       {message && <Notice>{message}</Notice>}
@@ -80,9 +82,10 @@ function Editor({ member, teams, self, api, onSaved, onReload }: {
       <div className="detail-layout">
         <section className="panel" aria-labelledby="who">
           <div className="person big"><Avatar name={member.displayName} /><div><h2 id="who">{member.displayName}</h2><p className="muted">{member.email}</p></div></div>
+          <fieldset className="bare" disabled={!editable}>
           <div className="form single">
             <div className="field"><label htmlFor="m-role">Role</label>
-              <select id="m-role" value={draft.role} onChange={(e) => set("role", e.target.value as Role)} aria-invalid={!!fieldError("role")} disabled={self}>
+              <select id="m-role" value={draft.role} onChange={(e) => set("role", e.target.value as Role)} aria-invalid={!!fieldError("role")} disabled={self || !editable}>
                 {(["member", "organizer", "admin"] as const).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
               <span className="hint">{self ? "You can’t change your own role." : "Organizers manage events, themes, albums and attendees. Admins also manage people and imports."}</span>
@@ -97,13 +100,15 @@ function Editor({ member, teams, self, api, onSaved, onReload }: {
             </div>
             <div className="field"><label htmlFor="m-job">Job title</label><input id="m-job" value={draft.jobTitle} maxLength={80} onChange={(e) => set("jobTitle", e.target.value)} /></div>
           </div>
-          <div className="actions">
+          </fieldset>
+          {!editable && <p className="notice">Read-only. Only admins can change people.</p>}
+          {editable && <div className="actions">
             <button className="pill-btn purple" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save changes"}</button>
             <button className="pill-btn gray" disabled={!dirty || saving} onClick={() => setDraft({ role: member.role, teamIds: member.teamIds, workLocation: member.workLocation, department: member.department, jobTitle: member.jobTitle })}>Discard</button>
-          </div>
+          </div>}
         </section>
 
-        <aside className="stack">
+        {editable && <aside className="stack">
           <section className="panel" aria-labelledby="access">
             <h2 id="access">Access</h2>
             {member.status === "deactivated"
@@ -112,20 +117,19 @@ function Editor({ member, teams, self, api, onSaved, onReload }: {
           </section>
           <section className="panel" aria-labelledby="pts">
             <h2 id="pts">Points</h2>
-            <p className="big-number">{member.pointsBalance}</p>
+            <p className="big-number">{member.pointsBalance ?? 0}</p>
             <button className="pill-btn dark" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>Adjust or reset</button>
           </section>
           <section className="panel" aria-labelledby="prof">
             <h2 id="prof">Participant profile</h2>
             <dl className="facts">
-              <div><dt>Interests</dt><dd>{member.interestTagIds.length}</dd></div>
-              <div><dt>Favorites</dt><dd>{member.favoriteCount}</dd></div>
+              <div><dt>Avatar</dt><dd>{member.avatarId ? "Chosen" : "Default"}</dd></div>
               <div><dt>City</dt><dd>{member.city || "Not set"}</dd></div>
             </dl>
-            <p className="muted">Clears what they set themselves (interests, avatar, city, favorites). Identity, role and points stay.</p>
+            <p className="muted">Clears what they set themselves: photo, avatar, city, interests, travel radius, availability and favorites. Identity, role, teams and points stay.</p>
             <button className="pill-btn danger" onClick={() => setAction("reset")}>Reset profile</button>
           </section>
-        </aside>
+        </aside>}
       </div>
 
       {action === "deactivate" && (
@@ -143,22 +147,25 @@ function Editor({ member, teams, self, api, onSaved, onReload }: {
       {action === "reset" && (
         <Dialog danger title={`Reset ${member.displayName}’s profile?`} confirmLabel="Reset profile" reasonLabel="Why is the profile being reset?" onClose={() => setAction(null)}
           onConfirm={async (reason) => done(await api.resetMemberProfile(member.id, reason), "Profile reset to defaults.")}>
-          <p>Interests, avatar, city and favorites go back to defaults. This can’t be undone. Name, role, teams and points are kept.</p>
+          <p>Photo, avatar, city, interests, travel radius, availability and favorites go back to defaults. This can’t be undone. Name, role, teams, location and points are kept.</p>
         </Dialog>
       )}
       {action === "points" && (
-        <Dialog danger={resetPoints} title="Change points" confirmLabel={resetPoints ? "Reset to 0" : "Apply change"} reasonLabel="Reason for the change" confirmDisabled={!resetPoints && !deltaValid}
+        <Dialog danger={resetPoints} title="Change points" confirmLabel={resetPoints ? "Reset to 0" : "Apply change"} reasonLabel="Reason for the change" confirmDisabled={resetPoints ? !member.pointsBalance : !deltaValid}
           onClose={() => setAction(null)}
-          onConfirm={async (reason) => done(await api.adjustPoints(member.id, requestId, resetPoints ? { reset: true } : { delta: deltaValue }, reason),
-            resetPoints ? "Points reset to 0." : `Points changed by ${deltaValue > 0 ? "+" : ""}${deltaValue}.`)}>
+          onConfirm={async (reason) => {
+            const next = await api.adjustPoints(member.id, requestId, resetPoints ? -(member.pointsBalance ?? 0) : deltaValue, reason);
+            setRequestId(crypto.randomUUID()); // a later adjustment is a new request, never a replay
+            done(next, resetPoints ? "Points reset to 0." : `Points changed by ${deltaValue > 0 ? "+" : ""}${deltaValue}.`);
+          }}>
           <div className="tabs" role="group" aria-label="Kind of change">
             <button className="tab" aria-pressed={!resetPoints} onClick={() => setResetPoints(false)}>Adjust</button>
             <button className="tab" aria-pressed={resetPoints} onClick={() => setResetPoints(true)}>Reset to 0</button>
           </div>
-          {resetPoints ? <p>The balance of {member.pointsBalance} becomes 0.</p> : (
+          {resetPoints ? <p>The balance of {member.pointsBalance} is reduced to 0 by one adjustment.</p> : (
             <div className="field"><label htmlFor="delta">Points to add or take away</label>
               <input id="delta" inputMode="numeric" value={delta} placeholder="e.g. 50 or -25" onChange={(e) => setDelta(e.target.value)} aria-invalid={delta !== "" && !deltaValid} />
-              <span className="hint">Balance {member.pointsBalance}{deltaValid ? ` becomes ${Math.max(0, member.pointsBalance + deltaValue)}` : ""}. It can’t go below 0.</span>
+              <span className="hint">Balance {member.pointsBalance ?? 0}{deltaValid ? ` becomes ${Math.max(0, (member.pointsBalance ?? 0) + deltaValue)}` : ""}. It can’t go below 0.</span>
             </div>
           )}
         </Dialog>

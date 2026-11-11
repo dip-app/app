@@ -11,9 +11,9 @@ export type Capability =
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
   | "import.run" | "roster.manage" | "audit.view";
 
-const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "themes.manage", "albums.moderate", "attendees.manage"];
+const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "themes.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
-  ...ORGANIZER_CAPS, "members.view", "members.edit", "members.status", "members.reset", "points.adjust",
+  ...ORGANIZER_CAPS, "members.edit", "members.status", "members.reset", "points.adjust",
   "import.run", "roster.manage", "audit.view",
 ];
 
@@ -29,21 +29,24 @@ export function isStaff(role: Role | undefined): boolean {
 }
 export const ROLE_LABEL: Record<Role, string> = { member: "Member", organizer: "Organizer", admin: "Admin" };
 
+/** Callable names from docs/contracts/admin.md. */
 export const ADMIN_CALLABLES = {
   removePhoto: "removeEventPhotoV1",
   removePhotoComment: "removeEventPhotoCommentV1",
   addAttendee: "addEventAttendeeV1",
   removeAttendee: "removeEventAttendeeV1",
   recordAttendance: "recordAttendanceV1",
-  setAttendance: "setEventAttendanceV1",
+  listMembers: "listMembersV1",
+  getMember: "getMemberV1",
   updateMember: "updateMemberV1",
   setMemberStatus: "setMemberStatusV1",
   resetMemberProfile: "resetMemberProfileV1",
   adjustPoints: "adjustMemberPointsV1",
+  upsertRosterEntry: "upsertRosterEntryV1",
+  revokeRosterEntry: "revokeRosterEntryV1",
   planImport: "importEmployeesV1",
   applyImport: "applyEmployeeImportV1",
-  resendInvite: "resendRosterInviteV1",
-  revokeInvite: "revokeRosterInviteV1",
+  getImport: "getEmployeeImportV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -66,13 +69,12 @@ export interface Member {
   department: string;
   jobTitle: string;
   status: MemberStatus;
-  pointsBalance: number;
+  /** Present for admins only (organizers see people without balances). */
+  pointsBalance: number | null;
   createdAt: string;
-  /** Self-set profile data that "Reset participant profile" clears. */
-  interestTagIds: string[];
+  /** Self-set profile data that "Reset participant profile" clears (with interests, travel radius, availability and favorites). */
   avatarId: string;
   city: string;
-  favoriteCount: number;
   revision: number;
 }
 
@@ -86,6 +88,8 @@ export interface MemberPatch {
 }
 
 export interface RosterRow {
+  /** Roster document id (hash of the email); members without a roster entry use their uid. */
+  entryId: string;
   email: string;
   displayName: string;
   role: Role;
@@ -93,12 +97,12 @@ export interface RosterRow {
   workLocation: string;
   department: string;
   jobTitle: string;
+  managerEmail: string;
+  startDate: string;
   /** invited: no account yet; active/deactivated: the member exists; revoked: invite withdrawn. */
   state: "invited" | "active" | "deactivated" | "revoked";
   memberId?: string;
   invitedAt: string;
-  lastInvitedAt: string;
-  inviteCount: number;
 }
 
 export interface AlbumPhoto {
@@ -124,8 +128,6 @@ export interface AlbumComment {
   createdAt: string;
 }
 
-export type Attendance = "unmarked" | "checkedIn" | "noShow";
-
 export interface Attendee {
   memberId: string;
   name: string;
@@ -133,7 +135,7 @@ export interface Attendee {
   department: string;
   jobTitle: string;
   rsvpAt: string;
-  attendance: Attendance;
+  checkedIn: boolean;
   addedByAdmin: boolean;
 }
 
@@ -141,9 +143,8 @@ export interface AddAttendeeInput {
   eventId: string;
   memberId: string;
   requestId: string;
-  /** Allow going over capacity; requires a reason. */
-  overrideCapacity: boolean;
-  reason?: string;
+  /** Needed when the event is full: capacity grows by one and the reason is audited (3 to 200 characters). */
+  capacityOverrideReason?: string;
   notify: boolean;
 }
 
@@ -152,29 +153,31 @@ export interface AuditEntry {
   at: string;
   actorId: string;
   actorName: string;
+  actorRole: Role;
   action: string;
-  targetType: "member" | "event" | "photo" | "comment" | "roster" | "import" | "attendee";
+  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
   targetId: string;
-  targetLabel: string;
   summary: string;
   reason?: string;
-  before?: Record<string, string>;
-  after?: Record<string, string>;
+  changes: { field: string; before: string; after: string }[];
 }
 
 export const AUDIT_ACTIONS: Record<string, string> = {
   "member.update": "Member edited",
-  "member.deactivate": "Member deactivated",
-  "member.reactivate": "Member reactivated",
-  "member.resetProfile": "Profile reset",
-  "member.points": "Points changed",
+  "member.reset": "Profile reset",
+  "member.status": "Access changed",
+  "points.adjust": "Points changed",
   "photo.remove": "Photo removed",
-  "comment.remove": "Comment removed",
+  "photo.comment.remove": "Comment removed",
   "attendee.add": "Attendee added",
   "attendee.remove": "Attendee removed",
-  "attendee.attendance": "Attendance recorded",
-  "roster.resend": "Invite resent",
+  "attendance.record": "Attendance recorded",
+  "team.upsert": "Team saved",
+  "company.settings": "Settings changed",
+  "roster.upsert": "Roster entry saved",
   "roster.revoke": "Invite revoked",
+  "roster.claim": "Invite claimed",
+  "import.plan": "Import previewed",
   "import.apply": "Import applied",
 };
 
@@ -196,10 +199,11 @@ export interface ImportRow {
 export const IMPORT_FIELDS = ["email", "displayName", "role", "teams", "department", "jobTitle", "workLocation", "managerEmail", "startDate"] as const;
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 
-export const IMPORT_LIMITS = { maxRows: 2000, maxBytes: 2 * 1024 * 1024, chunkSize: 200 } as const;
+/** The server limit (importEmployeesV1 maxItems) and the size of its apply chunks. */
+export const IMPORT_LIMITS = { maxRows: 2000, maxBytes: 2 * 1024 * 1024, serverChunk: 100 } as const;
 
 export type PlanAction = "create" | "update" | "unchanged" | "invalid";
-export interface FieldChange { field: ImportField; before: string; after: string }
+export interface FieldChange { field: string; before: string; after: string }
 export interface PlanRow {
   /** 1-based spreadsheet line (the header is line 1). */
   line: number;
@@ -209,14 +213,26 @@ export interface PlanRow {
   errors: string[];
 }
 
-export interface ImportChunkRequest {
-  jobId: string;
-  chunkIndex: number;
-  chunkCount: number;
+export interface ImportPlanRequest {
+  /** One key per attempt; a retry with the same rows returns the same job. */
+  requestId: string;
+  fileName: string;
   rows: ImportRow[];
-  /** Spreadsheet line of each row (same length as rows), so row numbers stay global. */
-  lines: number[];
+}
+/** Row numbers are 1-based positions in the submitted rows (importEmployeesV1). */
+export interface ImportPlanResponse {
+  jobId: string;
+  planHash: string;
+  chunkCount: number;
+  rows: { rowNumber: number; email: string; action: PlanAction; target: "member" | "roster" | "none"; changes: FieldChange[]; errors: { field?: string; code: string; message: string }[] }[];
 }
 
 export type ApplyOutcome = "created" | "updated" | "unchanged" | "failed";
-export interface ApplyRowResult { line: number; email: string; outcome: ApplyOutcome; error?: string }
+export interface ApplyRowResult { rowNumber: number; email: string; outcome: ApplyOutcome; message?: string }
+export interface ImportProgress { processed: number; total: number; created: number; updated: number; unchanged: number; failed: number }
+export interface ApplyStepResponse {
+  status: "planned" | "running" | "completed" | "completed_with_errors";
+  done: boolean;
+  progress: ImportProgress;
+  results: ApplyRowResult[];
+}

@@ -49,8 +49,8 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, danger, con
       {needsReason && (
         <div className="field">
           <label htmlFor={`${id}-r`}>{reasonLabel}</label>
-          <textarea id={`${id}-r`} value={reason} maxLength={300} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
-          <span className="hint" id={`${id}-h`}>Saved in the audit log. {reason.trim().length}/300</span>
+          <textarea id={`${id}-r`} value={reason} maxLength={200} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
+          <span className="hint" id={`${id}-h`}>Saved in the audit log. {reason.trim().length}/200</span>
         </div>
       )}
       {error && <p className="error" role="alert">{error}</p>}

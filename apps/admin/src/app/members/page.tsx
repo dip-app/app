@@ -25,6 +25,8 @@ export default function MembersPage() {
   const [shown, setShown] = useState(PAGE);
 
   const teams = company.data?.teams ?? [];
+  // Organizers read people without balances (the backend leaves points out for them).
+  const showPoints = (members.data ?? []).some((m) => m.pointsBalance !== null);
   const locations = useMemo(() => [...new Set((members.data ?? []).map((m) => m.workLocation).filter(Boolean))].sort(), [members.data]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -36,7 +38,7 @@ export default function MembersPage() {
   const reset = (set: () => void) => { set(); setShown(PAGE); };
 
   return (
-    <Shell title="Members" subtitle="Everyone at your company. Open a person to edit their details." requires="members.view"
+    <Shell title="Members" subtitle="Everyone at your company. Admins can open a person to edit their details." requires="members.view"
       action={<button className="pill-btn gray" disabled={!filtered.length} onClick={() => downloadText("members.csv", membersCsv(filtered, teams))}>Export CSV</button>}>
       {members.error ? <LoadError error={members.error} onRetry={members.reload} />
         : !members.data ? <Loading label="Loading members" />
@@ -72,7 +74,7 @@ export default function MembersPage() {
                 <div className="table-wrap">
                   <table className="table">
                     <caption className="sr-only">Company members</caption>
-                    <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Teams</th><th scope="col">Work location</th><th scope="col">Status</th><th scope="col" className="right">Points</th></tr></thead>
+                    <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Teams</th><th scope="col">Work location</th><th scope="col">Status</th>{showPoints && <th scope="col" className="right">Points</th>}</tr></thead>
                     <tbody>
                       {filtered.slice(0, shown).map((m) => (
                         <tr key={m.id}>
@@ -81,7 +83,7 @@ export default function MembersPage() {
                           <td>{m.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
                           <td>{m.workLocation || <span className="muted">Not set</span>}</td>
                           <td><Info tone={m.status === "active" ? "ok" : "warn"}>{m.status === "active" ? "Active" : m.status === "invited" ? "Invited" : "Deactivated"}</Info></td>
-                          <td className="right">{m.pointsBalance}</td>
+                          {showPoints && <td className="right">{m.pointsBalance}</td>}
                         </tr>
                       ))}
                     </tbody>

@@ -51,7 +51,7 @@ export function readLiveConfig(): LiveConfig | null {
 }
 
 const API_CODES: readonly ApiErrorCode[] = [
-  "unauthenticated", "permission-denied", "invalid-argument", "not-found", "aborted", "failed-precondition",
+  "unauthenticated", "permission-denied", "invalid-argument", "not-found", "aborted", "failed-precondition", "resource-exhausted",
 ];
 
 /**

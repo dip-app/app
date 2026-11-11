@@ -109,17 +109,16 @@ export async function readImportFile(file: File, domain: string): Promise<Parsed
   }
 }
 
-export interface Chunk { chunkIndex: number; firstLine: number; rows: ImportRow[]; lines: number[] }
-
-/** Splits the valid rows into server-sized chunks, keeping each row's spreadsheet line. */
-export function chunkRows(parsed: ParsedImport, size: number = IMPORT_LIMITS.chunkSize): Chunk[] {
-  const valid = parsed.rows.map((row, i) => ({ row, line: parsed.lines[i] })).filter((item) => !parsed.localErrors.has(item.line));
-  const chunks: Chunk[] = [];
-  for (let start = 0; start < valid.length; start += size) {
-    const part = valid.slice(start, start + size);
-    chunks.push({ chunkIndex: chunks.length, firstLine: part[0].line, rows: part.map((p) => p.row), lines: part.map((p) => p.line) });
-  }
-  return chunks;
+/** The rows worth sending to the server (the browser already rejected the rest), with their spreadsheet lines. */
+export function validRows(parsed: ParsedImport): { rows: ImportRow[]; lines: number[] } {
+  const rows: ImportRow[] = [];
+  const lines: number[] = [];
+  parsed.rows.forEach((row, i) => {
+    if (parsed.localErrors.has(parsed.lines[i])) return;
+    rows.push(row);
+    lines.push(parsed.lines[i]);
+  });
+  return { rows, lines };
 }
 
 export function errorCsv(rows: { line: number; email: string; errors: string[] }[]): string {

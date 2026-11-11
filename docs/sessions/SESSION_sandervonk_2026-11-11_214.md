@@ -8,7 +8,7 @@ Status: active
 
 ## Summary
 
-Built the admin portal screens for tickets #121 to #126 in `apps/admin`: event album viewer with photo and comment removal, attendee management per event, member directory and detail, bulk import with dry-run preview, roster, audit log viewer, and role gating (admin vs organizer). Everything runs in mock mode with the same rules as the callables; the live adapter is written against the ticket callable names and still has to be aligned with `docs/contracts/admin.md` when the backend spec lands.
+Built the admin portal screens for tickets #121 to #126 in `apps/admin`: event album viewer with photo and comment removal, attendee management per event, member directory and detail, bulk import with dry-run preview, roster, audit log viewer, and role gating (admin vs organizer). Everything runs in mock mode with the same rules as the callables; the live adapter follows `docs/contracts/admin.md` (callable names, shapes, matrix) and is unverified against any backend.
 
 ## Changes
 
@@ -29,9 +29,10 @@ Built the admin portal screens for tickets #121 to #126 in `apps/admin`: event a
 - XLSX: fflate plus DOMParser (first sheet, text cells) instead of SheetJS (stale npm releases with known advisories) or a heavy dependency.
 - Blank import cells keep the current value; a blank role keeps the role (new people become members).
 - Organizers get events, themes, albums and attendees; admins also get members, roster, import, audit. The attendee picker needs a member list, so `listMembers` is allowed for organizers (backend decides).
-- Check-in uses `recordAttendanceV1`; no-show and un-mark use a proposed `setEventAttendanceV1` (not in the contract yet).
+- Attendance: `recordAttendanceV1` with `checkedIn` true or false; the UI offers Check in and Undo (refused by the backend once points were awarded). Resend invite is not in the contract, so the roster offers revoke and invite again (`upsertRosterEntryV1`).
+- Import: one `importEmployeesV1` plan call for the whole file (rows the browser already rejected are not sent), then `applyEmployeeImportV1` per server chunk until done.
 
 ## Handoff
 
-- Align `ADMIN_CALLABLES`, request and response shapes, Firestore paths (`members`, `roster`, `teams`, `auditLog`) and the permission matrix with `docs/contracts/admin.md` once it lands; live mode is unverified against any backend.
+- Live mode is unverified against any backend (nothing is deployed). Firestore reads assume the paths and rules in admin.md (`roster`, `teams`, `auditLog` with `createdAt`, album and RSVP lists).
 - Design audit and code review rounds are tracked in the PR.

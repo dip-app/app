@@ -134,7 +134,7 @@ function seed(): Persisted {
         costCents: 0, costNote: "", capacity: 12, attendeeCount: 12, status: "scheduled",
       },
       {
-        ...base, id: "game-cafe", title: "Game Café Night",
+        ...base, id: "game-cafe", title: "Game Café Night", pointsValue: 25,
         description: "Board games and snacks after work.",
         coverImageURL: "catalog://default/games", tagIds: ["tag-games", "tag-social"],
         startTime: iso(-14, 23), endTime: iso(-14, 25 - 1),
@@ -210,13 +210,14 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
     store, now,
     session: () => load().session,
     findEvent: (companyId, eventId) => load().events.find((e) => e.id === eventId && e.companyId === companyId),
-    bumpAttendees: (companyId, eventId, delta) => {
+    bumpAttendees: (companyId, eventId, delta, minCapacity) => {
       const data = load();
       const event = data.events.find((e) => e.id === eventId && e.companyId === companyId);
-      if (!event) return 0;
+      if (!event) return { attendeeCount: 0, capacity: 0 };
       event.attendeeCount = Math.max(0, event.attendeeCount + delta);
+      if (minCapacity) event.capacity = Math.max(event.capacity, minCapacity);
       save(data);
-      return event.attendeeCount;
+      return { attendeeCount: event.attendeeCount, capacity: event.capacity };
     },
   });
 

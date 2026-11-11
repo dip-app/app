@@ -7,14 +7,15 @@ import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
 import { Empty, Info, Loading, Notice } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
-import { type ApplyRowResult, IMPORT_LIMITS, type PlanAction, type PlanRow } from "@/lib/adminTypes";
+import { IMPORT_LIMITS, type PlanAction, type PlanRow } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
-import { FIELD_LABEL, type ParsedImport, errorCsv, planCounts, readImportFile, templateCsv } from "@/lib/importFile";
+import { FIELD_LABEL, type ParsedImport, errorCsv, planCounts, readImportFile, templateCsv, validRows } from "@/lib/importFile";
 import { applyAll, planAll } from "@/lib/importRun";
 
 type Phase = "choose" | "checking" | "preview" | "applying" | "done";
 const ACTION_LABEL: Record<PlanAction, string> = { create: "New", update: "Update", unchanged: "No change", invalid: "Invalid" };
 const PREVIEW_PAGE = 50;
+interface ResultRow { line: number; email: string; outcome: "created" | "updated" | "unchanged" | "failed"; message?: string }
 
 export default function ImportPage() {
   const { api } = useApp();
@@ -24,15 +25,15 @@ export default function ImportPage() {
   const [fileName, setFileName] = useState("");
   const [parsed, setParsed] = useState<ParsedImport | null>(null);
   const [rows, setRows] = useState<PlanRow[]>([]);
-  const [chunkCount, setChunkCount] = useState(0);
   const [jobId, setJobId] = useState("");
+  const [planHash, setPlanHash] = useState("");
+  const [finished, setFinished] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<PlanAction | "all">("all");
   const [shown, setShown] = useState(PREVIEW_PAGE);
   const [confirming, setConfirming] = useState(false);
-  const [results, setResults] = useState<ApplyRowResult[]>([]);
-  const [nextChunk, setNextChunk] = useState(0);
+  const [results, setResults] = useState<ResultRow[]>([]);
   const [dragging, setDragging] = useState(false);
 
   const domain = company.data?.emailDomain ?? "";
@@ -41,7 +42,7 @@ export default function ImportPage() {
   const changes = counts.create + counts.update;
 
   function startOver() {
-    setPhase("choose"); setParsed(null); setRows([]); setResults([]); setError(""); setFilter("all"); setShown(PREVIEW_PAGE); setNextChunk(0); setFileName("");
+    setPhase("choose"); setParsed(null); setRows([]); setResults([]); setFinished(false); setError(""); setFilter("all"); setShown(PREVIEW_PAGE); setFileName("");
     if (input.current) input.current.value = "";
   }
 
@@ -53,12 +54,13 @@ export default function ImportPage() {
     const result = await readImportFile(file, domain);
     if (result.fatal) { setError(result.fatal); setPhase("choose"); return; }
     setParsed(result);
-    const id = crypto.randomUUID();
-    setJobId(id);
+    setProgress({ done: 0, total: result.rows.length });
     try {
-      const plan = await planAll(api, result, id, (done, total) => setProgress({ done, total }));
+      // One requestId per attempt: a retry with the same rows returns the same job.
+      const plan = await planAll(api, result, crypto.randomUUID(), file.name);
       setRows(plan.rows);
-      setChunkCount(plan.chunkCount);
+      setJobId(plan.jobId);
+      setPlanHash(plan.planHash);
       setPhase("preview");
     } catch (failure) {
       setError(describe(failure, "The preview couldn’t be built. Nothing was changed. Try again."));
@@ -66,20 +68,21 @@ export default function ImportPage() {
     }
   }
 
-  async function apply(from: number) {
+  async function apply(resume: boolean) {
     setConfirming(false);
     setPhase("applying");
     setError("");
-    setProgress({ done: from, total: chunkCount });
+    if (!resume) { setResults([]); setProgress({ done: 0, total: counts.create + counts.update + counts.unchanged }); }
+    const lines = parsed ? validRows(parsed).lines : [];
     try {
-      await applyAll(api, jobId, chunkCount, from, (index, chunk) => {
-        setResults((previous) => [...previous.filter((r) => !chunk.some((c) => c.line === r.line)), ...chunk]);
-        setNextChunk(index + 1);
-        setProgress({ done: index + 1, total: chunkCount });
+      await applyAll(api, jobId, planHash, (step) => {
+        setResults((previous) => [...previous, ...step.results.map((r) => ({ line: lines[r.rowNumber - 1] ?? r.rowNumber, email: r.email, outcome: r.outcome, message: r.message }))]);
+        setProgress({ done: step.progress.processed, total: step.progress.total });
       });
+      setFinished(true);
       setPhase("done");
     } catch (failure) {
-      // Finished chunks are kept; "Continue" retries from the next one and is safe to repeat.
+      // Finished chunks are kept; "Continue" asks the server for the next one and is safe to repeat.
       setError(describe(failure, "The import stopped part-way. Finished rows are saved. Continue to retry the rest."));
     }
   }
@@ -87,7 +90,7 @@ export default function ImportPage() {
   // Rows the preview already called invalid come back "failed" too; count each row once.
   const previewInvalid = new Set(rows.filter((r) => r.action === "invalid").map((r) => r.line));
   const failed = results.filter((r) => r.outcome === "failed" && !previewInvalid.has(r.line));
-  const outcome = (name: ApplyRowResult["outcome"]) => results.filter((r) => r.outcome === name).length;
+  const outcome = (name: ResultRow["outcome"]) => results.filter((r) => r.outcome === name).length;
 
   return (
     <Shell title="Import people" subtitle="Add or update many people from a spreadsheet. You see exactly what changes before anything is saved." requires="import.run"
@@ -135,8 +138,8 @@ export default function ImportPage() {
       {phase === "checking" && (
         <section className="panel" aria-live="polite">
           <h2>Checking {fileName}</h2>
-          <progress className="progress" value={progress.done} max={Math.max(progress.total, 1)} aria-label="Rows checked" />
-          <p className="muted">{progress.total ? `${progress.done} of ${progress.total} rows checked` : "Reading the file…"}</p>
+          <progress className="progress" aria-label="Checking rows" />
+          <p className="muted">{progress.total ? `Checking ${progress.total} rows with the server…` : "Reading the file…"}</p>
           <Loading label="Checking rows" />
         </section>
       )}
@@ -176,7 +179,7 @@ export default function ImportPage() {
                           {r.changes.length > 0 && (
                             <ul className="diff">
                               {r.changes.map((c) => (
-                                <li key={c.field}><strong>{FIELD_LABEL[c.field]}</strong> <span className="before">{c.before || "empty"}</span> <span aria-label="becomes">→</span> <span className="after">{c.after}</span></li>
+                                <li key={c.field}><strong>{FIELD_LABEL[c.field as keyof typeof FIELD_LABEL] ?? c.field}</strong> <span className="before">{c.before || "empty"}</span> <span aria-label="becomes">→</span> <span className="after">{c.after}</span></li>
                               ))}
                             </ul>
                           )}
@@ -197,12 +200,12 @@ export default function ImportPage() {
         <section className="panel" aria-live="polite">
           <h2>Applying changes</h2>
           <progress className="progress" value={progress.done} max={Math.max(progress.total, 1)} aria-label="Import progress" />
-          <p className="muted">{progress.done} of {progress.total} batches finished. Keep this page open.</p>
+          <p className="muted">{progress.done} of {progress.total} rows processed. Keep this page open.</p>
           {error && (
             <>
               <div className="banner error" role="alert"><span>{error}</span></div>
               <div className="actions">
-                <button className="pill-btn dark" onClick={() => void apply(nextChunk)}>Continue</button>
+                <button className="pill-btn dark" onClick={() => void apply(true)}>Continue</button>
                 <button className="pill-btn gray" onClick={() => setPhase("done")}>Stop here</button>
               </div>
             </>
@@ -212,19 +215,19 @@ export default function ImportPage() {
 
       {phase === "done" && (
         <section className="panel" aria-labelledby="done">
-          <h2 id="done">{failed.length || nextChunk < chunkCount ? "Import finished with problems" : "Import complete"}</h2>
+          <h2 id="done">{failed.length || !finished ? "Import finished with problems" : "Import complete"}</h2>
           <div className="stats" role="group" aria-label="Import result">
             <div className="stat"><span className="stat-n">{outcome("created")}</span><span>Added to roster</span></div>
             <div className="stat"><span className="stat-n">{outcome("updated")}</span><span>Updated</span></div>
             <div className="stat"><span className="stat-n">{outcome("unchanged")}</span><span>Unchanged</span></div>
             <div className="stat"><span className="stat-n">{failed.length + previewInvalid.size}</span><span>Skipped</span></div>
           </div>
-          {nextChunk < chunkCount && <p className="notice">The import stopped after {nextChunk} of {chunkCount} batches. Run it again with the same file: finished rows won’t change.</p>}
+          {!finished && <p className="notice">The import stopped early. Choose the same file again to run it once more: finished rows won’t change.</p>}
           <div className="actions">
             <Link className="pill-btn dark" href="/roster/">See the roster</Link>
             {(failed.length > 0 || counts.invalid > 0) && (
               <button className="pill-btn gray" onClick={() => downloadText("import-errors.csv", errorCsv([
-                ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.error ?? "Failed"] })),
+                ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.message ?? "Failed"] })),
               ]))}>Download error CSV</button>
             )}
             <button className="pill-btn gray" onClick={startOver}>Import another file</button>
@@ -233,7 +236,7 @@ export default function ImportPage() {
       )}
 
       {confirming && (
-        <Dialog title="Apply this import?" confirmLabel={`Apply ${changes} ${changes === 1 ? "change" : "changes"}`} onClose={() => setConfirming(false)} onConfirm={async () => { void apply(0); }}>
+        <Dialog title="Apply this import?" confirmLabel={`Apply ${changes} ${changes === 1 ? "change" : "changes"}`} onClose={() => setConfirming(false)} onConfirm={async () => { void apply(false); }}>
           <p>{counts.create} new {counts.create === 1 ? "person is" : "people are"} added to the roster and {counts.update} existing {counts.update === 1 ? "record is" : "records are"} updated.
             {counts.invalid > 0 && <> {counts.invalid} invalid {counts.invalid === 1 ? "row is" : "rows are"} skipped.</>} The import is recorded in the audit log.</p>
         </Dialog>

@@ -95,3 +95,5 @@ a.person:hover strong { text-decoration: underline; }
   .nav-item { min-height: 44px; padding: 0 16px; font-size: 17px; }
   .page-header { flex-wrap: wrap; }
 }
+fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
+.attendance { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }

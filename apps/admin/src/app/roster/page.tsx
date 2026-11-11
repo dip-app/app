@@ -38,12 +38,12 @@ export default function RosterPage() {
     return (roster.data ?? []).filter((r) => (filter === "all" || r.state === filter) && (!q || `${r.displayName} ${r.email}`.toLowerCase().includes(q)));
   }, [roster.data, filter, search]);
 
-  async function resend(row: RosterRow) {
+  async function reinvite(row: RosterRow) {
     setBusy(row.email);
     setError("");
     try {
-      const next = await api.resendInvite(row.email);
-      setMessage(`Invite sent to ${row.email} (${next.inviteCount} so far).`);
+      await api.reinvite(row);
+      setMessage(`${row.displayName} is invited again. They get the role and teams set here when they sign up.`);
       roster.reload();
     } catch (failure) {
       setError(describe(failure));
@@ -53,7 +53,7 @@ export default function RosterPage() {
   }
 
   return (
-    <Shell title="Roster" subtitle="People added before they sign in. Pending ones join with the role and teams you set here." requires="roster.manage"
+    <Shell title="Roster" subtitle="People added before they sign in. When they sign in with their work account they get the role and teams you set here." requires="roster.manage"
       action={<Link className="pill-btn purple" href="/import/">Import people</Link>}>
       {roster.error ? <LoadError error={roster.error} onRetry={roster.reload} />
         : !roster.data ? <Loading label="Loading roster" />
@@ -75,7 +75,7 @@ export default function RosterPage() {
               <div className="table-wrap">
                 <table className="table">
                   <caption className="sr-only">Roster</caption>
-                  <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Teams</th><th scope="col">Status</th><th scope="col">Invited</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+                  <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Teams</th><th scope="col">Status</th><th scope="col">Added</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody>
                     {shown.map((r) => (
                       <tr key={r.email}>
@@ -87,14 +87,10 @@ export default function RosterPage() {
                         <td>{ROLE_LABEL[r.role]}</td>
                         <td>{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
                         <td><Info tone={r.state === "active" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info></td>
-                        <td>{formatDate(r.invitedAt)}{r.state === "invited" && <><br /><span className="muted">Last sent {formatDate(r.lastInvitedAt)}, {r.inviteCount}×</span></>}</td>
+                        <td>{formatDate(r.invitedAt)}</td>
                         <td className="right">
-                          {r.state === "invited" && (
-                            <span className="row-actions">
-                              <button className="pill-btn dark small" disabled={busy === r.email} onClick={() => void resend(r)} aria-label={`Resend invite to ${r.displayName}`}>Resend</button>
-                              <button className="pill-btn gray small" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>
-                            </span>
-                          )}
+                          {r.state === "invited" && <button className="pill-btn gray small" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}
+                          {r.state === "revoked" && <button className="pill-btn dark small" disabled={busy === r.email} onClick={() => void reinvite(r)} aria-label={`Invite ${r.displayName} again`}>Invite again</button>}
                         </td>
                       </tr>
                     ))}
@@ -107,7 +103,7 @@ export default function RosterPage() {
       {revoking && (
         <Dialog danger title={`Revoke ${revoking.displayName}’s invite?`} confirmLabel="Revoke invite" onClose={() => setRevoking(null)}
           onConfirm={async () => {
-            await api.revokeInvite(revoking.email);
+            await api.revokeRosterEntry(revoking.entryId);
             setRevoking(null);
             setMessage(`Invite for ${revoking.email} revoked. They won’t get the role and teams set here when they sign up.`);
             roster.reload();

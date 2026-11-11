@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Shell } from "@/components/Shell";
 import { Empty, Info, LoadError, Loading, SearchBox, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
-import { AUDIT_ACTIONS } from "@/lib/adminTypes";
+import { AUDIT_ACTIONS, ROLE_LABEL } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
 import { auditCsv } from "@/lib/exports";
 
@@ -20,11 +20,11 @@ export default function AuditPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (audit.data ?? []).filter((e) => (action === "all" || e.action === action) &&
-      (!q || `${e.actorName} ${e.targetLabel} ${e.summary} ${e.reason ?? ""}`.toLowerCase().includes(q)));
+      (!q || `${e.actorName} ${e.targetId} ${e.summary} ${e.reason ?? ""}`.toLowerCase().includes(q)));
   }, [audit.data, search, action]);
 
   return (
-    <Shell title="Audit log" subtitle="Every admin change: who did it, to what, and why. Read-only." requires="audit.view"
+    <Shell title="Audit log" subtitle="Every admin change: who did it, to what, and why. Read-only; the latest 100 entries." requires="audit.view"
       action={<button className="pill-btn gray" disabled={!filtered.length} onClick={() => downloadText("audit-log.csv", auditCsv(filtered))}>Export CSV</button>}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
         : !audit.data ? <Loading label="Loading audit log" />
@@ -43,21 +43,21 @@ export default function AuditPage() {
               <>
                 <ol className="audit-list">
                   {filtered.slice(0, shown).map((e) => {
-                    const expandable = !!(e.before || e.after || e.reason);
+                    const expandable = e.changes.length > 0 || !!e.reason;
                     return (
                       <li key={e.id} className="audit-row">
                         <div className="audit-main">
                           <Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info>
-                          <p><strong>{e.actorName}</strong> · {e.summary}</p>
-                          <p className="muted">{e.targetLabel} · <time dateTime={e.at}>{formatDateTime(e.at)}</time></p>
+                          <p><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span> · {e.summary}</p>
+                          <p className="muted">{e.targetType} {e.targetId} · <time dateTime={e.at}>{formatDateTime(e.at)}</time></p>
                         </div>
                         {expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}
                         {open === e.id && (
                           <div className="audit-detail">
                             {e.reason && <p><strong>Reason:</strong> {e.reason}</p>}
-                            {(e.before || e.after) && (
+                            {e.changes.length > 0 && (
                               <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
-                                <tbody>{[...new Set([...Object.keys(e.before ?? {}), ...Object.keys(e.after ?? {})])].map((k) => <tr key={k}><th scope="row">{k}</th><td>{e.before?.[k] || "—"}</td><td>{e.after?.[k] || "—"}</td></tr>)}</tbody></table>
+                                <tbody>{e.changes.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || "—"}</td><td>{c.after || "—"}</td></tr>)}</tbody></table>
                             )}
                           </div>
                         )}

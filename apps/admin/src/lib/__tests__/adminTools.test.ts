@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type KeyValueStore, createMockApi } from "../api";
 import { can, isStaff } from "../adminTypes";
 import { neutralizeFormula, parseCsv, toCsv } from "../csv";
-import { chunkRows, planCounts, rowsFromTable, templateCsv } from "../importFile";
+import { planCounts, rowsFromTable, templateCsv, validRows } from "../importFile";
 import { applyAll, planAll } from "../importRun";
 import { columnIndex } from "../xlsx";
 
@@ -18,8 +18,9 @@ async function as(persona: "admin" | "organizer" | "member" | "otherAdmin") {
 }
 
 describe("permissions", () => {
-  it("gives organizers events, themes, albums and attendees only", () => {
+  it("gives organizers events, themes, albums, attendees and read-only people", () => {
     expect(can("organizer", "albums.moderate")).toBe(true);
+    expect(can("organizer", "members.view")).toBe(true);
     expect(can("organizer", "members.edit")).toBe(false);
     expect(can("organizer", "import.run")).toBe(false);
     expect(can("admin", "audit.view")).toBe(true);
@@ -66,11 +67,11 @@ describe("import file", () => {
     expect(rowsFromTable([["Email"], ...Array.from({ length: 2001 }, (_, i) => [`u${i}@acme.com`])], "acme.com").fatal).toMatch(/2000/);
     expect(rowsFromTable([], "acme.com").fatal).toBeTruthy();
   });
-  it("chunks only valid rows", () => {
-    const rows = [["email"], ...Array.from({ length: 5 }, (_, i) => [`u${i}@acme.com`]), ["nope"]];
-    const chunks = chunkRows(rowsFromTable(rows, "acme.com"), 2);
-    expect(chunks.map((c) => c.rows.length)).toEqual([2, 2, 1]);
-    expect(chunks[1].lines).toEqual([4, 5]);
+  it("keeps spreadsheet lines for the valid rows only", () => {
+    const rows = [["email"], ...Array.from({ length: 3 }, (_, i) => [`u${i}@acme.com`]), ["nope"], ["u9@acme.com"]];
+    const valid = validRows(rowsFromTable(rows, "acme.com"));
+    expect(valid.rows).toHaveLength(4);
+    expect(valid.lines).toEqual([2, 3, 4, 6]);
   });
   it("offers a template with the company domain", () => {
     expect(templateCsv("acme.com")).toContain("sam.rivera@acme.com");
@@ -81,37 +82,49 @@ describe("import flow (mock callables)", () => {
   const sheet = [
     ["email", "displayName", "role", "teams", "department", "jobTitle", "workLocation"],
     ["new.person@acme.com", "New Person", "member", "Platform", "Eng", "Dev", "Remote"], // create
-    ["pat@acme.com", "Pat Member", "member", "", "", "", "Berlin"], // update location
-    ["casey.novak@acme.com", "", "", "", "", "", ""], // blank role keeps the current role: unchanged
+    ["pat@acme.com", "Pat Member", "", "", "", "", "Berlin"], // update location
+    ["casey.novak@acme.com", "", "", "", "", "", ""], // blank cells keep everything: unchanged
     ["new.two@acme.com", "Two", "member", "Nope", "", "", ""], // unknown team
+    ["bad-email", "X", "", "", "", "", ""], // rejected in the browser
   ];
-  it("previews without writing, then applies idempotently", async () => {
+  it("previews without writing, then applies chunk by chunk and idempotently", async () => {
     const api = await as("admin");
     const parsed = rowsFromTable(sheet, "acme.com");
-    const { rows, chunkCount } = await planAll(api, parsed, "job-1");
-    expect(planCounts(rows)).toMatchObject({ create: 1, invalid: 1 });
-    expect(rows.find((r) => r.email === "pat@acme.com")?.changes).toEqual([{ field: "workLocation", before: expect.any(String), after: "Berlin" }]);
+    const plan = await planAll(api, parsed, "request-0001", "people.csv");
+    expect(planCounts(plan.rows)).toEqual({ create: 1, update: 1, unchanged: 1, invalid: 2 });
+    expect(plan.rows.find((r) => r.email === "pat@acme.com")).toMatchObject({ line: 3, changes: [{ field: "workLocation", after: "Berlin" }] });
+    expect(plan.rows.find((r) => r.email === "new.two@acme.com")?.errors[0]).toMatch(/Unknown team/);
     expect((await api.listRoster()).some((r) => r.email === "new.person@acme.com")).toBe(false);
+    // Same request and rows returns the same job; the same request with other rows is refused.
+    expect((await planAll(api, parsed, "request-0001", "people.csv")).jobId).toBe(plan.jobId);
+    await expect(planAll(api, rowsFromTable([["email", "name"], ["x@acme.com", "X"]], "acme.com"), "request-0001", "other.csv")).rejects.toMatchObject({ reason: "REQUEST_REUSED" });
 
-    const results: string[] = [];
-    await applyAll(api, "job-1", chunkCount, 0, (_, chunk) => results.push(...chunk.map((r) => `${r.email}:${r.outcome}`)));
-    expect(results).toContain("new.person@acme.com:created");
-    expect(results).toContain("new.two@acme.com:failed");
+    const steps: number[] = [];
+    await applyAll(api, plan.jobId, plan.planHash, (step) => steps.push(step.results.length));
+    expect(steps).toEqual([4]);
     const roster = await api.listRoster();
     expect(roster.find((r) => r.email === "new.person@acme.com")?.state).toBe("invited");
     expect((await api.getMember("uid-member")).workLocation).toBe("Berlin");
-
-    // Retrying a finished chunk returns the same result and does not repeat the change.
-    const again = await api.applyImportChunk("job-1", 0);
-    expect(again.map((r) => r.outcome)).toEqual(results.map((r) => r.split(":")[1]));
-    const audit = await api.listAudit();
-    expect(audit.filter((a) => a.action === "import.apply")).toHaveLength(1);
+    const before = (await api.listAudit()).length;
+    // A finished job is a no-op.
+    expect((await api.applyImportStep(plan.jobId, plan.planHash)).done).toBe(true);
+    expect((await api.listAudit()).length).toBe(before);
+    await expect(api.applyImportStep(plan.jobId, "0".repeat(64))).rejects.toMatchObject({ reason: "IMPORT_PLAN_MISMATCH" });
+  });
+  it("processes large files in server-sized chunks", async () => {
+    const api = await as("admin");
+    const big = [["email", "name"], ...Array.from({ length: 250 }, (_, i) => [`bulk${i}@acme.com`, `Bulk ${i}`])];
+    const plan = await planAll(api, rowsFromTable(big, "acme.com"), "request-0002", "big.csv");
+    expect(plan.chunkCount).toBe(3);
+    const sizes: number[] = [];
+    await applyAll(api, plan.jobId, plan.planHash, (step) => sizes.push(step.results.length));
+    expect(sizes).toEqual([100, 100, 50]);
   });
   it("blocks other companies and organizers", async () => {
     const other = await as("otherAdmin");
-    await expect(other.applyImportChunk("job-x", 0)).rejects.toMatchObject({ code: "not-found" });
+    await expect(other.applyImportStep("job-x", "0".repeat(64))).rejects.toMatchObject({ code: "not-found" });
     const organizer = await as("organizer");
-    await expect(organizer.planImportChunk({ jobId: "j", chunkIndex: 0, chunkCount: 1, rows: [], lines: [] })).rejects.toMatchObject({ code: "permission-denied" });
+    await expect(organizer.planImport({ requestId: "request-0003", fileName: "a.csv", rows: [] })).rejects.toMatchObject({ code: "permission-denied" });
   });
 });
 
@@ -120,11 +133,11 @@ describe("member safety rules", () => {
     const api = await as("admin");
     const me = await api.getMember("uid-admin");
     await expect(api.updateMember("uid-admin", me.revision, { role: "member" })).rejects.toMatchObject({ reason: "LAST_ADMIN" });
-    await expect(api.setMemberStatus("uid-admin", "deactivated", "bye")).rejects.toMatchObject({ code: "failed-precondition" });
+    await expect(api.setMemberStatus("uid-admin", "deactivated", "bye now")).rejects.toMatchObject({ reason: "CANNOT_DEACTIVATE_SELF" });
     await expect(api.setMemberStatus("uid-member", "deactivated", " ")).rejects.toMatchObject({ code: "invalid-argument" });
     const off = await api.setMemberStatus("uid-member", "deactivated", "left the company");
     expect(off.status).toBe("deactivated");
-    expect((await api.listAudit())[0]).toMatchObject({ action: "member.deactivate", reason: "left the company" });
+    expect((await api.listAudit())[0]).toMatchObject({ action: "member.status", reason: "left the company", actorRole: "admin" });
   });
   it("rejects stale revisions and keeps tenants apart", async () => {
     const api = await as("admin");
@@ -135,47 +148,70 @@ describe("member safety rules", () => {
   });
   it("adjusts points once per request and resets the profile but keeps points", async () => {
     const api = await as("admin");
-    const before = (await api.getMember("uid-member")).pointsBalance;
-    await api.adjustPoints("uid-member", "req-1", { delta: 50 }, "bonus");
-    await api.adjustPoints("uid-member", "req-1", { delta: 50 }, "bonus");
+    const before = (await api.getMember("uid-member")).pointsBalance!;
+    await api.adjustPoints("uid-member", "req-0001", 50, "bonus");
+    await api.adjustPoints("uid-member", "req-0001", 50, "bonus");
     expect((await api.getMember("uid-member")).pointsBalance).toBe(before + 50);
-    await expect(api.adjustPoints("uid-member", "req-2", { delta: -100000 }, "oops")).rejects.toMatchObject({ code: "invalid-argument" });
+    await expect(api.adjustPoints("uid-member", "req-0002", -100000, "oops")).rejects.toMatchObject({ reason: "INSUFFICIENT_POINTS" });
+    await expect(api.adjustPoints("uid-member", "req-0003", 0, "nothing")).rejects.toMatchObject({ code: "invalid-argument" });
     const reset = await api.resetMemberProfile("uid-member", "requested by member");
-    expect(reset).toMatchObject({ interestTagIds: [], favoriteCount: 0, pointsBalance: before + 50 });
+    expect(reset).toMatchObject({ avatarId: "", city: "", pointsBalance: before + 50 });
+  });
+  it("lets organizers read people but hides balances and blocks edits", async () => {
+    const organizer = await as("organizer");
+    expect((await organizer.getMember("uid-member")).pointsBalance).toBeNull();
+    await expect(organizer.updateMember("uid-member", 1, { jobTitle: "Boss" })).rejects.toMatchObject({ reason: "INSUFFICIENT_ROLE" });
+    await expect(organizer.adjustPoints("uid-member", "req-0004", 5, "nope")).rejects.toMatchObject({ code: "permission-denied" });
   });
 });
 
 describe("albums and attendees", () => {
-  it("removing a photo removes its comments and audits; double removal is not-found", async () => {
+  it("removing a photo removes its comments and audits; removing it again converges", async () => {
     const api = await as("organizer");
     const photos = await api.listPhotos("game-cafe");
     const withComments = photos.find((p) => p.commentCount > 0)!;
     expect(await api.listPhotoComments("game-cafe", withComments.id)).toHaveLength(withComments.commentCount);
     await expect(api.removePhoto("game-cafe", withComments.id, "")).rejects.toMatchObject({ code: "invalid-argument" });
     await api.removePhoto("game-cafe", withComments.id, "off topic");
-    await expect(api.removePhoto("game-cafe", withComments.id, "off topic")).rejects.toMatchObject({ code: "not-found" });
+    await expect(api.removePhoto("game-cafe", withComments.id, "off topic")).resolves.toBeUndefined();
     expect(await api.listPhotoComments("game-cafe", withComments.id)).toHaveLength(0);
+    expect(await api.listPhotos("game-cafe")).toHaveLength(photos.length - 1);
   });
-  it("respects capacity, idempotent adds and updates counts", async () => {
+  it("removes one comment and fixes the count", async () => {
+    const api = await as("organizer");
+    const photo = (await api.listPhotos("game-cafe")).find((p) => p.commentCount === 2)!;
+    const [first] = await api.listPhotoComments("game-cafe", photo.id);
+    await api.removePhotoComment("game-cafe", photo.id, first.id, "spam");
+    expect((await api.listPhotos("game-cafe")).find((p) => p.id === photo.id)?.commentCount).toBe(1);
+  });
+  it("respects capacity with an audited override, idempotent adds and counts", async () => {
     const api = await as("organizer");
     const kayaking = await api.getEvent("kayaking"); // full: 12 of 12
     const members = await api.listMembers();
     const attendees = await api.listAttendees("kayaking");
     const outsider = members.find((m) => m.status === "active" && !attendees.some((a) => a.memberId === m.id))!;
-    const base = { eventId: "kayaking", memberId: outsider.id, requestId: "r1", overrideCapacity: false, notify: true };
-    await expect(api.addAttendee(base)).rejects.toMatchObject({ reason: "EVENT_FULL" });
-    await expect(api.addAttendee({ ...base, overrideCapacity: true })).rejects.toMatchObject({ code: "invalid-argument" });
-    const added = await api.addAttendee({ ...base, overrideCapacity: true, reason: "VIP" });
-    expect(added.attendeeCount).toBe(kayaking.attendeeCount + 1);
-    expect((await api.addAttendee({ ...base, overrideCapacity: true, reason: "VIP" })).attendeeCount).toBe(kayaking.attendeeCount + 1);
+    const base = { eventId: "kayaking", memberId: outsider.id, requestId: "r0000001", notify: true };
+    await expect(api.addAttendee(base)).rejects.toMatchObject({ reason: "EVENT_FULL", code: "resource-exhausted" });
+    await expect(api.addAttendee({ ...base, capacityOverrideReason: "x" })).rejects.toMatchObject({ code: "invalid-argument" });
+    const added = await api.addAttendee({ ...base, capacityOverrideReason: "VIP guest" });
+    expect(added).toEqual({ attendeeCount: kayaking.attendeeCount + 1, capacity: kayaking.capacity + 1 });
+    expect((await api.addAttendee({ ...base, capacityOverrideReason: "VIP guest" })).attendeeCount).toBe(kayaking.attendeeCount + 1);
     expect((await api.getEvent("kayaking")).attendeeCount).toBe(kayaking.attendeeCount + 1);
     const removed = await api.removeAttendee("kayaking", outsider.id, false, "mistake");
     expect(removed.attendeeCount).toBe(kayaking.attendeeCount);
+    expect(await api.removeAttendee("kayaking", outsider.id, false, "again")).toEqual({ attendeeCount: kayaking.attendeeCount });
   });
-  it("awards points once on check-in", async () => {
+  it("refuses to add people to a closed event", async () => {
     const api = await as("organizer");
-    const target = (await api.listAttendees("puppy-yoga")).find((a) => a.attendance === "unmarked")!;
-    expect((await api.setAttendance("puppy-yoga", target.memberId, "checkedIn")).pointsAwarded).toBeGreaterThan(0);
-    expect((await api.setAttendance("puppy-yoga", target.memberId, "checkedIn")).pointsAwarded).toBe(0);
+    const outsider = (await api.listMembers()).find((m) => m.status === "active")!;
+    await expect(api.addAttendee({ eventId: "game-cafe", memberId: outsider.id, requestId: "r0000002", notify: false })).rejects.toMatchObject({ reason: "EVENT_CLOSED" });
+  });
+  it("records attendance, awards points once and locks undo afterwards", async () => {
+    const api = await as("organizer");
+    const target = (await api.listAttendees("game-cafe")).find((a) => !a.checkedIn)!;
+    await expect(api.recordAttendance("puppy-yoga", "uid-admin", true)).rejects.toMatchObject({ reason: "EVENT_NOT_STARTED" });
+    expect((await api.recordAttendance("game-cafe", target.memberId, true)).pointsAwarded).toBe(25);
+    expect((await api.recordAttendance("game-cafe", target.memberId, true)).pointsAwarded).toBe(0);
+    await expect(api.recordAttendance("game-cafe", target.memberId, false)).rejects.toMatchObject({ reason: "ATTENDANCE_LOCKED" });
   });
 });

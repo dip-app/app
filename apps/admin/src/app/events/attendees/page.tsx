@@ -9,9 +9,9 @@ import { Shell } from "@/components/Shell";
 import { Toggle } from "@/components/Toggle";
 import { Avatar, Empty, Info, LoadError, Loading, Notice, SearchBox, formatDate } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
-import type { Attendance, Attendee, Member } from "@/lib/adminTypes";
+import type { Attendee, Member } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
-import { ATTENDANCE_LABEL, attendeesCsv } from "@/lib/exports";
+import { attendanceLabel, attendeesCsv } from "@/lib/exports";
 import { classify } from "@/lib/contract";
 
 function Attendees() {
@@ -26,8 +26,7 @@ function Attendees() {
   const [candidate, setCandidate] = useState<Member | null>(null);
   const [removing, setRemoving] = useState<Attendee | null>(null);
   const [notify, setNotify] = useState(true);
-  const [override, setOverride] = useState(false);
-  const [message, setMessage] = useState("");
+    const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   // One requestId per add attempt: a retry after a lost response never adds twice.
@@ -35,6 +34,8 @@ function Attendees() {
 
   const full = !!event.data && !!attendees.data && attendees.data.length >= event.data.capacity;
   const kind = event.data ? classify(event.data) : "upcoming";
+  const ended = kind === "past";
+  const started = !!event.data && Date.parse(event.data.startTime) <= Date.now();
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (attendees.data ?? []).filter((a) => !q || `${a.name} ${a.email} ${a.department}`.toLowerCase().includes(q));
@@ -47,14 +48,14 @@ function Attendees() {
 
   if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} />;
   if (!attendees.data || !event.data) return <Loading label="Loading attendees" />;
-  const checkedIn = attendees.data.filter((a) => a.attendance === "checkedIn").length;
+  const checkedIn = attendees.data.filter((a) => a.checkedIn).length;
 
-  async function mark(attendee: Attendee, attendance: Attendance) {
+  async function mark(attendee: Attendee, next: boolean) {
     setBusyId(attendee.memberId);
     setError("");
     try {
-      const { pointsAwarded } = await api.setAttendance(eventId, attendee.memberId, attendance);
-      setMessage(`${attendee.name}: ${ATTENDANCE_LABEL[attendance].toLowerCase()}.${pointsAwarded ? ` ${pointsAwarded} points awarded.` : ""}`);
+      const { pointsAwarded } = await api.recordAttendance(eventId, attendee.memberId, next);
+      setMessage(`${attendee.name}: ${next ? "checked in" : "marked as not checked in"}.${pointsAwarded ? ` ${pointsAwarded} points awarded.` : ""}`);
       attendees.reload();
     } catch (failure) {
       setError(describe(failure));
@@ -70,8 +71,8 @@ function Attendees() {
         <Info>{attendees.data.length} of {event.data.capacity} going</Info>
         <Info>{checkedIn} checked in</Info>
         <span className="spacer" />
-        <button className="pill-btn gray" onClick={() => downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, attendees.data!))} disabled={attendees.data.length === 0}>Export CSV</button>
-        {kind !== "cancelled" && <button className="pill-btn purple" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>Add attendee</button>}
+        <button className="pill-btn gray" onClick={() => downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, attendees.data!, ended))} disabled={attendees.data.length === 0}>Export CSV</button>
+        {kind === "upcoming" && <button className="pill-btn purple" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>Add attendee</button>}
       </div>
       {message && <Notice>{message}</Notice>}
       {error && <div className="banner error" role="alert"><span>{error}</span></div>}
@@ -87,7 +88,7 @@ function Attendees() {
                   <li key={m.id}>
                     <Avatar name={m.displayName} />
                     <span className="grow"><strong>{m.displayName}</strong><span className="muted"> {m.email}</span></span>
-                    <button className="pill-btn dark small" onClick={() => { setCandidate(m); setNotify(true); setOverride(false); }}>Add</button>
+                    <button className="pill-btn dark small" onClick={() => { setCandidate(m); setNotify(true); }}>Add</button>
                   </li>
                 ))}
                 {candidates.length === 0 && <li className="muted">{members.data ? "No active members match." : "Loading members…"}</li>}
@@ -114,12 +115,12 @@ function Attendees() {
                   <td>{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
                   <td>{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>Added by staff</Info></>}</td>
                   <td>
-                    <div className="segmented" role="group" aria-label={`Attendance for ${a.name}`}>
-                      {(["checkedIn", "noShow"] as const).map((state) => (
-                        <button key={state} className="seg" aria-pressed={a.attendance === state} disabled={busyId === a.memberId}
-                          onClick={() => void mark(a, a.attendance === state ? "unmarked" : state)}>{state === "checkedIn" ? "Checked in" : "No-show"}</button>
-                      ))}
-                    </div>
+                    <span className="attendance">
+                      <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{attendanceLabel(a.checkedIn, ended)}</Info>
+                      <button className={`pill-btn small ${a.checkedIn ? "gray" : "dark"}`} disabled={busyId === a.memberId || (!started && !a.checkedIn)}
+                        title={!started ? "Attendance opens when the event starts" : undefined} onClick={() => void mark(a, !a.checkedIn)}
+                        aria-label={`${a.checkedIn ? "Undo check-in for" : "Check in"} ${a.name}`}>{a.checkedIn ? "Undo" : "Check in"}</button>
+                    </span>
                   </td>
                   <td className="right"><button className="pill-btn gray small" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={`Remove ${a.name}`}>Remove</button></td>
                 </tr>
@@ -133,10 +134,10 @@ function Attendees() {
         <Dialog
           title={`Add ${candidate.displayName}?`}
           confirmLabel="Add as going"
-          reasonLabel={override || full ? "Why is the event going over capacity?" : undefined}
+          reasonLabel={full ? "Why is the event going over capacity?" : undefined}
           onClose={() => setCandidate(null)}
           onConfirm={async (reason) => {
-            await api.addAttendee({ eventId, memberId: candidate.id, requestId: requestId.current, overrideCapacity: full || override, reason: reason || undefined, notify });
+            await api.addAttendee({ eventId, memberId: candidate.id, requestId: requestId.current, ...(full ? { capacityOverrideReason: reason } : {}), notify });
             requestId.current = crypto.randomUUID();
             setCandidate(null);
             setMessage(`${candidate.displayName} is now going.`);
@@ -145,7 +146,7 @@ function Attendees() {
           }}
         >
           <p>They are marked as going and get the event’s default notifications.</p>
-          {full && <p className="notice">The event is full ({event.data.capacity} places). Adding them goes over capacity and needs a reason.</p>}
+          {full && <p className="notice">The event is full ({event.data.capacity} places). Adding them raises the capacity by one and needs a reason.</p>}
           <Toggle checked={notify} onChange={setNotify} label="Tell them" hint="Sends a notification that they were added." />
         </Dialog>
       )}
@@ -164,7 +165,7 @@ function Attendees() {
             event.reload();
           }}
         >
-          <p>Their RSVP is cancelled and the going count drops by one.</p>
+          <p>Their RSVP is cancelled and the going count drops by one. Attendance already recorded is kept.</p>
           <Toggle checked={notify} onChange={setNotify} label="Tell them" hint="Sends a notification that they were removed." />
         </Dialog>
       )}
