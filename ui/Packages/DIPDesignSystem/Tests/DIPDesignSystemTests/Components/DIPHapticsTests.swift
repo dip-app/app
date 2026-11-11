@@ -15,6 +15,7 @@ final class DIPHapticsTests: XCTestCase {
         XCTAssertGreaterThan(intensity, 0.3, "felt, but slight")
         XCTAssertEqual(DIPHapticTuning.pattern(for: .success), .notification(.success))
         XCTAssertEqual(DIPHapticTuning.pattern(for: .failure), .notification(.warning))
+        XCTAssertEqual(DIPHapticTuning.pattern(for: .shake), .impact(style: .soft, intensity: 0.8), "a soft impact")
         XCTAssertEqual(Set(DIPHapticTuning.table.keys), Set(DIPHapticEvent.allCases), "every event is tuned")
     }
 

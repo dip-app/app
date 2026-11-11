@@ -37,4 +37,11 @@ public enum DIPEventCover: String, CaseIterable, Sendable {
     public static func media(coverImageURL: String?, tagIds: [String]) -> MediaReference {
         .asset(resolve(coverImageURL: coverImageURL, tagIds: tagIds).assetName)
     }
+
+    /// A real per-event cover (the event's first album photo, already downloaded) wins over the catalog image;
+    /// without one, or with empty bytes, the catalog cover applies so a card never renders blank.
+    public static func media(coverImageURL: String?, tagIds: [String], photo: Data?) -> MediaReference {
+        if let photo, !photo.isEmpty { return .data(photo) }
+        return media(coverImageURL: coverImageURL, tagIds: tagIds)
+    }
 }

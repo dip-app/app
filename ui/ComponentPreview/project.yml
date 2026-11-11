@@ -27,7 +27,11 @@ targets:
       - ../DIP/Data/Accounts/PreviewAccountsRepository.swift
       - ../DIP/Domain/Events
       - ../DIP/Domain/Challenges
+      # In-memory submission source for the review states (never a network).
+      - ../DIP/Data/Challenges/MockSubmissionSource.swift
       - ../DIP/Data/Events/MemberEventAppRepository.swift
+      # Album image preparation (ImageIO only); the Firebase album adapter stays out of the Preview app.
+      - ../DIP/Support/AlbumImageProcessing.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features
         excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]

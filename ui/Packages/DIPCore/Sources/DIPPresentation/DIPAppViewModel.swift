@@ -68,6 +68,16 @@ public final class DIPAppViewModel {
             try await repository.addPhotos(eventID: eventID, photos: photos)
         }
     }
+    /// One photo of an album upload. The key is the upload's stable ID, so the same photo is never sent twice
+    /// at once; a retry after a failure reuses the ID and the repository keeps it idempotent.
+    public func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        var photoID = photo.id
+        try await perform("photo:\(eventID):\(photo.id)") { [repository] in
+            photoID = try await repository.uploadPhoto(eventID: eventID, photo: photo, progress: progress)
+        }
+        return photoID
+    }
+    public func discardUpload(uploadID: String) async { await repository.discardUpload(uploadID: uploadID) }
     public func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
         try await perform("comment:\(eventID):\(photoID):\(commentID)") { [repository] in
             try await repository.addPhotoComment(eventID: eventID, photoID: photoID, commentID: commentID, text: text)

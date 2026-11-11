@@ -11,7 +11,7 @@ function stored(condition: boolean): asserts condition {
 /**
  * finalizeEventPhotoV1: publishes an uploaded object as an album photo.
  *
- * Authorization (membership, going RSVP, ended scheduled event) and the idempotency read run in one
+ * Authorization (membership, going RSVP, ended, non-cancelled event) and the idempotency read run in one
  * transaction before the object is inspected, so an outsider learns nothing about another tenant's
  * objects. A replay of an already-finalized photoId returns `created: false` without writing.
  * An object that fails validation is deleted after the transaction, which frees the member's slot.
@@ -48,7 +48,7 @@ export async function finalizeEventPhoto(store: PhotoStore, objects: PhotoObject
       if (!rsvp || rsvp.companyId !== companyId || rsvp.eventId !== eventId || rsvp.userId !== uid || rsvp.status !== "going") {
         throw new PhotoError("permission-denied", "NOT_ATTENDEE", "Only members who went to this event can add photos.");
       }
-      if (event.status !== "scheduled") throw new PhotoError("failed-precondition", "EVENT_CANCELLED", "This event was cancelled.");
+      if (event.status === "cancelled") throw new PhotoError("failed-precondition", "EVENT_CANCELLED", "This event was cancelled.");
       if ((event.endTime as Date).getTime() > now().getTime()) {
         throw new PhotoError("failed-precondition", "EVENT_NOT_ENDED", "Photos can be added after the event ends.");
       }

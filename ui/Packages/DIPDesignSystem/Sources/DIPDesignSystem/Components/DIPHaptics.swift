@@ -10,12 +10,13 @@ import Foundation
 ///   A clearly felt but slight impact.
 /// - `success`: the change was confirmed (RSVP stored, interests saved, membership resolved).
 /// - `failure`: it was refused or failed (save failed, blocked account).
+/// - `shake`: a deliberate device shake was recognised (shake to report). A soft impact, felt before any UI.
 ///
 /// Every intensity lives in `DIPHapticTuning.table`, so tuning happens in one place. The single switch is the
 /// `dip.haptics.enabled` UserDefaults flag (default on). Reduce Motion does not silence haptics: they are not
 /// motion, and the commit and outcome cues carry information.
 public enum DIPHapticEvent: String, CaseIterable, Hashable, Sendable {
-    case navigate, select, commit, success, failure
+    case navigate, select, commit, success, failure, shake
 }
 
 /// What a generator plays for an event.
@@ -38,6 +39,7 @@ public enum DIPHapticTuning {
         .commit: .impact(style: .light, intensity: 0.7),
         .success: .notification(.success),
         .failure: .notification(.warning),
+        .shake: .impact(style: .soft, intensity: 0.8),
     ]
 
     /// The same event never plays twice within this interval (no spam from repeated taps or rebuilt views).
@@ -88,6 +90,7 @@ public struct DIPHapticGate: Sendable {
         public static func commit() { play(.commit) }
         public static func success() { play(.success) }
         public static func failure() { play(.failure) }
+        public static func shake() { play(.shake) }
 
         /// Warms the generator for an event that is about to happen (e.g. on touch-down).
         public static func prepare(_ event: DIPHapticEvent) {
@@ -136,6 +139,7 @@ public struct DIPHapticGate: Sendable {
         public static func commit() {}
         public static func success() {}
         public static func failure() {}
+        public static func shake() {}
         public static func prepare(_ event: DIPHapticEvent) {}
         public static func play(_ event: DIPHapticEvent, defaults: UserDefaults = .standard) {}
     }

@@ -44,7 +44,8 @@ export type ApiErrorCode =
   | "invalid-argument"
   | "not-found"
   | "aborted"
-  | "failed-precondition";
+  | "failed-precondition"
+  | "resource-exhausted";
 
 /** Mirrors the callable error mapping in docs/contracts/callables.md. */
 export class ApiError extends Error {

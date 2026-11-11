@@ -35,7 +35,7 @@ public enum ChallengeTimeline {
         public static let send = DemoCoordinate(195, 383)
         /// The status pill grows from the Send button's frame.
         public static let statusPill = DemoCoordinate(195, 383)
-        public static let pointsPill = DemoCoordinate(318, 44)
+        public static let pointsPill = DemoCoordinate(290, 44)
     }
 
     public static let caption = "Met Jun from Design"

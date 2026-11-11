@@ -12,14 +12,19 @@ struct DIPRewardsScreen: View {
     let onSelectTab: (DIPHomeTab) -> Void
     let onNotifications: () -> Void
     let onProfile: () -> Void
+    /// The points pill: the member's real balance, or the design's mock 520 for fixture profiles.
+    private let pointsDisplay: DIPPointsDisplay
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var notice: DIPRewardEntry?
     private let isEmpty: Bool
 
     init(
         unreadCount: Int, profileAvatar: MediaReference, showsBottomBar: Bool = true,
-        onSelectTab: @escaping (DIPHomeTab) -> Void, onNotifications: @escaping () -> Void, onProfile: @escaping () -> Void
+        onSelectTab: @escaping (DIPHomeTab) -> Void, onNotifications: @escaping () -> Void, onProfile: @escaping () -> Void,
+        pointsDisplay: DIPPointsDisplay = .balance(520)
     ) {
+        self.pointsDisplay = pointsDisplay
         self.unreadCount = unreadCount
         self.profileAvatar = profileAvatar
         self.showsBottomBar = showsBottomBar
@@ -28,6 +33,77 @@ struct DIPRewardsScreen: View {
         self.onProfile = onProfile
         // `--rewards-state=empty` is for design review only.
         isEmpty = ProcessInfo.processInfo.arguments.contains("--rewards-state=empty")
+    }
+
+    /// "Your points" with the balance as an outlined (informational, not pressable) pill on the right. The
+    /// page is mock-backed, so fixture profiles without a real balance show the design's 520. While loading the
+    /// pill is a skeleton of the same size; unavailable shows a dash; a cached value offline carries a wifi.slash.
+    private var balancePill: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("Your points")
+                    .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.subtitle))
+                    .foregroundStyle(ink)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                pillContent
+                    .animation(reduceMotion ? nil : .smooth, value: pointsDisplay)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(pointsDisplay.accessibilityLabel())
+            .accessibilityIdentifier("rewards.balance")
+            if pointsDisplay.showsZeroNudge { zeroNudge }
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: pointsDisplay.showsZeroNudge)
+    }
+
+    @ViewBuilder private var pillContent: some View {
+        switch pointsDisplay {
+        case .loading:
+            DIPSkeleton(cornerRadius: -1).frame(width: 92, height: 36)
+        case .unavailable:
+            pill { Text("—").font(DIPReferenceAssets.font("Figtree-Regular", size: 16)) }
+        case .balance(let balance):
+            pill { balanceLabel(balance) }
+        case .stale(let balance):
+            pill {
+                Image(systemName: "wifi.slash").font(.system(size: 12)).accessibilityHidden(true)
+                balanceLabel(balance)
+            }
+        }
+    }
+
+    private func balanceLabel(_ balance: Int) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "star.fill").font(.system(size: 13)).accessibilityHidden(true)
+            Text(DIPPointsFormat.balance(balance))
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 16))
+                .contentTransition(.numericText(value: Double(balance)))
+        }
+    }
+
+    private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 6) { content() }
+            .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .padding(.horizontal, 14).frame(height: 36)
+            .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
+    }
+
+    /// A confirmed zero balance: one line on how to earn the first points and the one pressable way there.
+    private var zeroNudge: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Join an event to earn your first points.")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline))
+                .foregroundStyle(ink.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+            DIPButton("Find an event") { DIPHaptics.select(); onSelectTab(.home) }
+                .accessibilityIdentifier("rewards.zero.action")
+        }
+        .padding(16)
+        .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("rewards.zero")
+        .transition(.opacity)
     }
 
     /// Type sizes from the Rewards frame.
@@ -50,6 +126,7 @@ struct DIPRewardsScreen: View {
                     .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
+                            balancePill.padding(.bottom, 16)
                             if isEmpty {
                                 DIPEmptyState(
                                     screen: "rewards", title: "No rewards yet",

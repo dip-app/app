@@ -1,10 +1,12 @@
 import Foundation
 import DIPAccounts
+import DIPCore
 @preconcurrency import FirebaseAppCheck
 @preconcurrency import FirebaseAuth
 @preconcurrency import FirebaseCore
 @preconcurrency import FirebaseFirestore
 @preconcurrency import FirebaseFunctions
+@preconcurrency import FirebaseStorage
 @preconcurrency import GoogleSignIn
 
 /// Single place where the app attaches to Firebase (ADR 0007).
@@ -15,7 +17,7 @@ import DIPAccounts
 /// the in-memory preview repository. Nothing here embeds project IDs or keys.
 ///
 /// Debug builds route to the local emulators (Auth 9099, Firestore 8080,
-/// Functions 5001 on 127.0.0.1) when the scheme sets `DIP_USE_EMULATORS=1`.
+/// Functions 5001, Storage 9199 on 127.0.0.1) when the scheme sets `DIP_USE_EMULATORS=1`.
 /// Never point a development build at production by accident: emulator routing
 /// is opt-in and Release builds ignore it.
 ///
@@ -59,6 +61,7 @@ enum FirebaseBootstrap {
             settings.cacheSettings = MemoryCacheSettings()
             Firestore.firestore().settings = settings
             Functions.functions(region: FirebaseAccountsRepository.region).useEmulator(withHost: host, port: 5001)
+            Storage.storage().useEmulator(withHost: host, port: 9199)
             usingEmulators = true
         }
         #endif
@@ -88,11 +91,41 @@ enum FirebaseBootstrap {
         return FirebaseChallengeReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
     }
 
+    /// Challenge submissions (Storage evidence, submitChallengeV1, own submission reads) share the configured SDKs.
+    @MainActor static func makeSubmissionSource() -> (any SubmissionSource)? {
+        guard case .configured = status else { return nil }
+        return FirebaseSubmissionSource(firestore: Firestore.firestore(),
+                                        functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                        storage: Storage.storage())
+    }
+
     /// RSVP (setRsvpV1) and participation reads share the configured SDKs and emulator routing.
     @MainActor static func makeParticipationSource() -> (any ParticipationSource)? {
         guard case .configured = status else { return nil }
         return FirebaseParticipationSource(firestore: Firestore.firestore(),
                                            functions: Functions.functions(region: FirebaseAccountsRepository.region))
+    }
+
+    /// Coworker invitations (`sendInviteV1`, `respondToInviteV1`, `listCoworkersV1` and the invite listeners) share the configured SDKs.
+    @MainActor static func makeInvitesRepository(context: MembershipContext) -> (any DIPInvitesRepository)? {
+        guard case .configured = status else { return nil }
+        return FirebaseInvitesRepository(firestore: Firestore.firestore(),
+                                         functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                         scope: EventReadScope(uid: context.uid, companyID: context.companyID))
+    }
+
+    /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.
+    @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
+        guard case .configured = status else { return nil }
+        return FirebaseBugReportSubmitter(firestore: Firestore.firestore(), storage: Storage.storage())
+    }
+
+    /// Event photo albums (Storage uploads, finalizeEventPhotoV1, album/comment reads) share the configured SDKs.
+    @MainActor static func makePhotoAlbumSource() -> (any PhotoAlbumSource)? {
+        guard case .configured = status else { return nil }
+        return FirebasePhotoAlbumSource(firestore: Firestore.firestore(),
+                                        functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                        storage: Storage.storage())
     }
 
     /// Completes the Google sign-in redirect. Wire to `.onOpenURL` in the app.

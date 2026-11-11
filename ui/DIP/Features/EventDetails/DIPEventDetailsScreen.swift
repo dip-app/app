@@ -14,9 +14,15 @@ struct DIPEventDetailsScreen: View {
     let photos: [DIPPhoto]
     let onAlbum: () -> Void
     let onLeave: () -> Void
+    /// Opens the coworker picker; nil hides the action (no invitations adapter, or read-only live events).
+    let onInvite: (() -> Void)?
     @State private var confirmingLeave = false
+    @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.eventCalendarAdder) private var calendarAdder
+    @Environment(\.openURL) private var openURL
+    /// True while the calendar editor is being presented, so a second tap (row or pill) cannot open another one.
+    @State private var addingToCalendar = false
 
     init(
         event: DIPEventDetail,
@@ -28,8 +34,10 @@ struct DIPEventDetailsScreen: View {
         onChat: @escaping () -> Void,
         photos: [DIPPhoto] = [],
         onAlbum: @escaping () -> Void = {},
-        onLeave: @escaping () -> Void = {}
+        onLeave: @escaping () -> Void = {},
+        onInvite: (() -> Void)? = nil
     ) {
+        self.onInvite = onInvite
         self.onLeave = onLeave
         self.photos = photos
         self.onAlbum = onAlbum
@@ -55,6 +63,7 @@ struct DIPEventDetailsScreen: View {
                                 activityDetails
                                 attendeeDetails
                                 if let metadata = event.metadata { eventMetadata(metadata) }
+                                if let log = event.metadata?.changeLog, DIPChangeLogText.visibleCount(log) > 0 { changesButton(log) }
                                 if joined, !event.isPast, event.metadata?.status != .cancelled { leaveButton }
                                 if event.isPast { albumPreview }
                             }
@@ -106,6 +115,14 @@ struct DIPEventDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        // Joining and leaving change the bottom bar and the Leave button: say so, once, for VoiceOver.
+        .onChange(of: joined) { old, new in
+            guard old != new else { return }
+            AccessibilityNotification.Announcement(new ? "You joined \(event.title)" : "You left \(event.title)").post()
+        }
+        .sheet(isPresented: $showingChanges) {
+            DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? [])
+        }
         .confirmationDialog("Leave this activity?", isPresented: $confirmingLeave, titleVisibility: .visible) {
             Button("Leave activity", role: .destructive, action: onLeave)
             Button("Keep my place", role: .cancel) {}
@@ -115,21 +132,32 @@ struct DIPEventDetailsScreen: View {
     }
 
     private var header: some View {
-        let addable = event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
         return DIPDetailHeader(
             timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
-            calendarLabel: addable.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
-            onCalendar: {
-                guard let metadata = addable else { return }
-                let fields = metadata.calendarFields(title: event.title, description: event.description)
-                Task { calendarResult = await calendarAdder.add(fields) }
-            })
+            calendarLabel: addableMetadata.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
+            onCalendar: addToCalendar)
         .alert("Couldn’t add to calendar", isPresented: Binding(
             get: { if case .failed = calendarResult { return true } else { return false } },
             set: { if !$0 { calendarResult = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             if case .failed(let message) = calendarResult { Text(message) }
+        }
+    }
+
+    /// Metadata when the event can still be added to a calendar (not past, not cancelled); the header pill and the When row share this gate.
+    private var addableMetadata: DIPEventMetadata? {
+        event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
+    }
+
+    /// The one add-to-calendar action, used by the header pill and the When row.
+    private func addToCalendar() {
+        guard let metadata = addableMetadata, !addingToCalendar else { return }
+        let fields = metadata.calendarFields(title: event.title, description: event.description)
+        addingToCalendar = true
+        Task {
+            defer { addingToCalendar = false }
+            calendarResult = await calendarAdder.add(fields)
         }
     }
 
@@ -164,6 +192,7 @@ struct DIPEventDetailsScreen: View {
                 emptyText: event.isPast ? "No one checked in to this event." : "Coworkers who join will show up here.",
                 capacity: event.isPast ? nil : event.metadata?.capacity,
                 identifierPrefix: "event", onMore: onAttendees)
+            if onInvite != nil, canOfferInvite { inviteButton }
             DIPDetailActionRow(
                 showsParticipation: !event.isPast,
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions (always, when there is a location); Leave sits at the bottom of the page.
@@ -177,6 +206,50 @@ struct DIPEventDetailsScreen: View {
         }
     }
 
+    /// Cancelled, started and finished activities have nothing to invite to; a full one shows the action disabled with the reason.
+    private var inviteDenial: DIPInviteDenial? {
+        guard let metadata = event.metadata else { return nil }
+        return DIPInviteRules.denial(metadata, attendeeCount: event.attendeeCount, now: Date())
+    }
+    private var canOfferInvite: Bool {
+        guard !event.isPast else { return false }
+        switch inviteDenial { case nil, .full?: return true; default: return false }
+    }
+
+    /// Solid (pressable) ink pill under the attendees, like "See what changed" (a separate action from the iOS share sheet).
+    private var inviteButton: some View {
+        let denial = inviteDenial
+        return VStack(alignment: .leading, spacing: 6) {
+            Button { onInvite?() } label: {
+                DIPActionPill(title: "Invite a Coworker", color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
+                    Image(systemName: "person.badge.plus").resizable().scaledToFit()
+                }
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .disabled(denial != nil)
+            .opacity(denial == nil ? 1 : 0.5)
+            .accessibilityLabel("Invite a coworker")
+            .accessibilityHint(denial?.message ?? "Choose a coworker from your company to invite")
+            .accessibilityIdentifier("event.invite")
+            if let denial {
+                Text(denial.message).font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote)).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Solid (pressable) pill, shown only when the organizer has edited the event.
+    private func changesButton(_ log: [DIPChangeLogEntry]) -> some View {
+        Button { showingChanges = true } label: {
+            // Dark solid like the other quiet actions ("+ N More", "See All"), so it does not compete with Directions/Share.
+            DIPActionPill(title: DIPChangeLogText.visibleCount(log) == 1 ? "See what changed" : "See what changed (\(DIPChangeLogText.visibleCount(log)))",
+                          color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
+                Image(systemName: "clock.arrow.circlepath").resizable().scaledToFit()
+            }
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .accessibilityIdentifier("event.changes")
+    }
+
     /// Quiet destructive-secondary text button at the very bottom of the page.
     private var leaveButton: some View {
         Button { confirmingLeave = true } label: {
@@ -186,9 +259,12 @@ struct DIPEventDetailsScreen: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(Rectangle())
         }
+        // The column spaces sections by 20; 4 more above and below makes ~24pt of air around the button.
+        .padding(.vertical, 4)
         .buttonStyle(DIPPressFeedbackStyle())
         .disabled(!canChangeParticipation)
         .opacity(canChangeParticipation ? 1 : 0.5)
+        .accessibilityHint("Asks you to confirm before giving up your place")
         .accessibilityIdentifier("event.leave")
     }
 
@@ -233,21 +309,21 @@ struct DIPEventDetailsScreen: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("event.cancelled")
             }
-            metadataRow("calendar", title: "When") {
-                Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
-                let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime)
-                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(metadata.endTime.formatted(.dateTime.month(.abbreviated).day())))" : "")")
-                Text(durationLabel(metadata))
-                    .foregroundStyle(.secondary)
-            }
-            metadataRow("mappin.and.ellipse", title: "Where") {
-                Text(metadata.venueName)
-                Text(metadata.address).foregroundStyle(.secondary)
-                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
-            }
+            whenRow(metadata)
+            whereRow(metadata)
             metadataRow("ticket", title: "Price") {
                 Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
                 if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
+            }
+            .accessibilityIdentifier("event.price")
+            if metadata.status != .cancelled,
+               let text = DIPPointsFormat.eventRow(metadata.pointsValue, isPast: event.isPast, attended: joined) {
+                metadataRow("star.fill", title: "Points", tint: DIPTokens.Color.notificationAccent.swiftUIColor) {
+                    Text(text)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(event.isPast ? text : (DIPPointsFormat.rewardAccessibility(metadata.pointsValue) ?? text))
+                .accessibilityIdentifier("event.points")
             }
         }
         .padding(18)
@@ -255,6 +331,61 @@ struct DIPEventDetailsScreen: View {
         .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event.metadata")
+    }
+
+    /// Tappable (adds to calendar, like the header pill) while the event can be added; otherwise informational.
+    @ViewBuilder private func whenRow(_ metadata: DIPEventMetadata) -> some View {
+        let row = { (trailing: AnyView) in
+            metadataRow("calendar", title: "When", trailing: trailing) {
+                Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
+                let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime)
+                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(metadata.endTime.formatted(.dateTime.month(.abbreviated).day())))" : "")")
+                Text(durationLabel(metadata))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        if addableMetadata != nil {
+            let added = calendarResult == .added
+            Button(action: addToCalendar) {
+                row(AnyView(rowGlyph(added ? "checkmark" : "calendar.badge.plus")))
+                    .frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
+            .disabled(added || addingToCalendar)
+            .accessibilityHint(added ? "Added to calendar" : "Add to calendar")
+            .accessibilityIdentifier("event.when")
+        } else {
+            row(AnyView(EmptyView())).accessibilityIdentifier("event.when")
+        }
+    }
+
+    /// Tappable (opens directions, like the Directions pill) when there is a venue or address and the event is not past.
+    @ViewBuilder private func whereRow(_ metadata: DIPEventMetadata) -> some View {
+        let row = { (trailing: AnyView) in
+            metadataRow("mappin.and.ellipse", title: "Where", trailing: trailing) {
+                Text(metadata.venueName)
+                Text(metadata.address).foregroundStyle(.secondary)
+                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+            }
+        }
+        if !event.isPast, let url = metadata.mapsURL {
+            Button { openURL(url) } label: {
+                row(AnyView(rowGlyph("arrow.up.right"))).frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
+            .accessibilityHint("Get directions")
+            .accessibilityIdentifier("event.where")
+        } else {
+            row(AnyView(EmptyView())).accessibilityIdentifier("event.where")
+        }
+    }
+
+    /// Minimal trailing affordance for a tappable row (the chevron the Profile rows use).
+    private func rowGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol).font(.callout.weight(.semibold))
+            .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .frame(width: 24, height: 24)
+            .accessibilityHidden(true)
     }
 
     /// Pill label: short date by default ("Monday, 11/23", no time; the card has the full details);
@@ -265,12 +396,13 @@ struct DIPEventDetailsScreen: View {
     }
 
     private func metadataRow<Content: View, Trailing: View>(
-        _ symbol: String, title: String, trailing: Trailing = EmptyView(), @ViewBuilder content: () -> Content
+        _ symbol: String, title: String, tint: Color = DIPTokens.Color.actionPrimary.swiftUIColor,
+        trailing: Trailing = EmptyView(), @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: symbol)
-                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .foregroundStyle(tint)
                     .frame(width: 24).padding(.top, 2)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {

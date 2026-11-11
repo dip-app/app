@@ -33,6 +33,19 @@ public enum DIPMockFixtures {
                 startTime: start, endTime: start.addingTimeInterval(5_400),
                 venueName: venue.0, address: venue.1, locality: locality,
                 costCents: index.isMultiple(of: 2) ? 0 : 2_000, costNote: "", capacity: 30)
+            event.metadata?.pointsValue = id == "puppy-yoga" ? 50 : (index.isMultiple(of: 2) ? 25 : 0)
+            if id == "puppy-yoga" {
+                // Preview history: a time move and a venue/cost change (oldest first, as stored).
+                func iso(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }
+                event.metadata?.changeLog = [
+                    DIPChangeLogEntry(at: now.addingTimeInterval(-86_400 * 2), revision: 2, changes: [
+                        DIPFieldChange(field: "startTime", from: iso(start.addingTimeInterval(-3_600)), to: iso(start)),
+                        DIPFieldChange(field: "endTime", from: iso(start.addingTimeInterval(1_800)), to: iso(start.addingTimeInterval(5_400)))]),
+                    DIPChangeLogEntry(at: now.addingTimeInterval(-3_600), revision: 3, changes: [
+                        DIPFieldChange(field: "venue.name", from: "Phipps Conservatory", to: venue.0),
+                        DIPFieldChange(field: "costCents", from: "0", to: "2000"),
+                        DIPFieldChange(field: "capacity", from: "20", to: "30")])]
+            }
             event.isJoined = joinedIDs.contains(id)
             event.timing = start.formatted(date: .abbreviated, time: .shortened)
             snapshot.eventDetails[id] = event
@@ -91,9 +104,9 @@ public enum DIPMockFixtures {
 
     public static var reference: DIPAppSnapshot {
         let homeEvents: [DIPEventSummary] = [
-            .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("EventCard"), avatars: assets(["AvatarPink", "CoworkerProfilePicture1", "AvatarTeal"]), attendeeCount: 7, imageShade: 0.1),
-            .init(id: "kayaking", title: "Kayaking", locality: "Delaware River, NJ", image: .asset("EventCard1"), avatars: assets(["CoworkerProfilePicture2", "AvatarRed", "CoworkerProfilePicture1"]), attendeeCount: 13, imageShade: 0.2),
-            .init(id: "hike", title: "Hike", locality: "Poconos, PA", image: .asset("EventCard2"), avatars: assets(["CoworkerProfilePicture", "CoworkerProfilePicture2", "AvatarTeal"]), attendeeCount: 10, imageShade: 0.08)
+            .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("EventCard"), avatars: assets(["AvatarPink", "CoworkerProfilePicture1", "AvatarTeal"]), attendeeCount: 7, imageShade: 0.1, tagIDs: ["tag-animals"]),
+            .init(id: "kayaking", title: "Kayaking", locality: "Delaware River, NJ", image: .asset("EventCard1"), avatars: assets(["CoworkerProfilePicture2", "AvatarRed", "CoworkerProfilePicture1"]), attendeeCount: 13, imageShade: 0.2, tagIDs: ["tag-outdoors"]),
+            .init(id: "hike", title: "Hike", locality: "Poconos, PA", image: .asset("EventCard2"), avatars: assets(["CoworkerProfilePicture", "CoworkerProfilePicture2", "AvatarTeal"]), attendeeCount: 10, imageShade: 0.08, tagIDs: ["tag-outdoors", "tag-fitness"])
         ]
         let active: [DIPEventSummary] = [
             .init(id: "puppy-yoga", title: "Puppy Yoga", locality: "Lawrenceville, PA", image: .asset("events_Rectangle930"), imageShade: 0.2),

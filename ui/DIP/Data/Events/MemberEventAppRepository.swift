@@ -37,16 +37,45 @@ import DIPAccounts
     var supportsParticipation: Bool { participation != nil }
     // Live chat (the participation source also implements ChatSource). One listener, for the last opened joined event.
     private let chat: (any ChatSource)?
-    private let chatAuthor: ChatAuthor?
+    /// Chat and comment author fields; rules require them to equal the current server profile, so the host
+    /// refreshes them when the membership profile changes (`updateAuthor`).
+    private var chatAuthor: ChatAuthor?
     private var messages: [String: [DIPMessage]] = [:]
     private var chatTask: Task<Void, Never>?
     private var chatCandidateID: String?
     private var chatEventID: String?
+    // Live album (nil = albums unavailable). One photo listener, for the last opened event; one comment
+    // listener, for the photo open in the viewer. Disposed by `stop()` (sign-out / account switch).
+    private let albums: (any PhotoAlbumSource)?
+    private var albumEventID: String?
+    private var albumTask: Task<Void, Never>?
+    private var albumRecords: [AlbumPhotoRecord] = []
+    private var albumLoaded = false
+    private var albumError: String?
+    /// Display JPEGs by photo ID for the open album (bounded by the album listener size).
+    private var albumImages: [String: Data] = [:]
+    private var albumImagesLoading: Set<String> = []
+    /// Real per-event covers (display copy of the event's first album photo) and the events already asked for.
+    /// At most `coverLimit` past joined events are fetched per session: one limit-1 query plus one download each.
+    private var coverImages: [String: Data] = [:]
+    private var coverRequested: Set<String> = []
+    static let coverLimit = 6
+    /// The member's own published slots per event (from a one-shot query plus the listener).
+    private var ownSlots: [String: Set<Int>] = [:]
+    /// Slots held by abandoned, never-finalized uploads (create-only, so they stay used).
+    private var occupiedSlots: [String: Set<Int>] = [:]
+    /// Slot of each in-flight or failed upload by its stable ID, so a retry reuses its slot.
+    private var uploadSlots: [String: (eventID: String, slot: Int)] = [:]
+    /// Uploads whose bytes are stored (only the finalize is missing): removing one keeps its slot used.
+    private var landedUploads: Set<String> = []
+    private var commentTask: Task<Void, Never>?
+    private var commentKey: (eventID: String, photoID: String)?
+    private var photoComments: [String: [String: [DIPPhotoComment]]] = [:]
 
     init(reads: MemberEventsRepository, profile: DIPProfile, participation: (any ParticipationSource)? = nil,
-         chatAuthor: ChatAuthor? = nil, clock: @escaping () -> Date = Date.init) {
+         albums: (any PhotoAlbumSource)? = nil, chatAuthor: ChatAuthor? = nil, clock: @escaping () -> Date = Date.init) {
         self.reads = reads; self.profile = profile; self.participation = participation; self.clock = clock
-        self.chat = participation as? any ChatSource; self.chatAuthor = chatAuthor
+        self.chat = participation as? any ChatSource; self.chatAuthor = chatAuthor; self.albums = albums
     }
     func observe() async -> AsyncThrowingStream<DIPAppSnapshot, Error> {
         let id = UUID()
@@ -96,7 +125,7 @@ import DIPAccounts
     func selectDetail(_ id: String?) {
         detailTask?.cancel(); detailTask = nil; detailID = id
         // Keep the chat listener while a chat sheet may still be open (nil = left the event page).
-        if let id { chatCandidateID = id; syncChat() }
+        if let id { chatCandidateID = id; syncChat(); syncAlbum(id) }
         guard let id, !stopped else { return }
         Task { [weak self] in await self?.loadAttendees(id) }
         detailTask = Task { [weak self, reads] in
@@ -120,13 +149,18 @@ import DIPAccounts
             }
         }
     }
+    func updateAuthor(_ author: ChatAuthor) { if chatAuthor != nil { chatAuthor = author } }
     func updateTagLabels(_ labels: [String: String]) { tagLabels = labels; if query != nil { publish() } }
     func stop() {
         guard !stopped else { return }; stopped = true; generation = UUID()
         detailTask?.cancel(); detailTask = nil; detailID = nil
         chatTask?.cancel(); chatTask = nil; chatEventID = nil; chatCandidateID = nil; messages.removeAll(); rsvpStates.removeAll()
+        albumTask?.cancel(); albumTask = nil; albumEventID = nil; albumRecords.removeAll(); albumImages.removeAll()
+        commentTask?.cancel(); commentTask = nil; commentKey = nil; photoComments.removeAll()
+        ownSlots.removeAll(); occupiedSlots.removeAll(); uploadSlots.removeAll(); landedUploads.removeAll(); albums?.stop()
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
         joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
+        coverImages.removeAll(); coverRequested.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
         fail(EventReadFailure.unauthenticated)
     }
@@ -143,17 +177,45 @@ import DIPAccounts
             guard let metadata = try? MemberEventsRepository.metadata(event) else { continue }
             // V1-08: category-based default image from the approved catalog URL (falls back to tags).
             details[id] = DIPEventDetail(id: id, title: event.title,
-                image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds),
+                image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds, photo: coverData(id)),
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
                 isJoined: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.isGoing : joinedIDs.contains(id),
                 attendeeCount: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.attendeeCount : event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
-                isPast: event.endTime <= clock(), metadata: metadata)
+                isPast: event.endTime <= clock() || event.status == "completed", metadata: metadata, tagIDs: event.tagIds)
         }
         var snapshot = DIPAppSnapshot(home: DIPHomeSnapshot(unreadCount: 0, profileAvatar: profile.avatar,
             challenge: nil, events: [], recentAttendeeAvatars: []), activeEvents: [], memories: [], profile: profile,
-            eventDetails: details, participants: participants.filter { details[$0.key] != nil }, albums: [:], messages: messages)
-        snapshot.home.events = DIPEventLists(snapshot: snapshot, now: clock()).discovery
+            eventDetails: details, participants: participants.filter { details[$0.key] != nil }, albums: albumProjection(details),
+            messages: messages, photoComments: photoComments)
+        let lists = DIPEventLists(snapshot: snapshot, now: clock())
+        snapshot.home.events = lists.discovery
         for observer in observers.values { observer.yield(snapshot) }
+        requestCovers(for: lists.past.map(\.eventID))
+    }
+
+    /// The cover photo bytes known for an event: the open album's oldest photo, else the fetched cover.
+    private func coverData(_ id: String) -> Data? {
+        if id == albumEventID, let oldest = albumRecords.last, let data = albumImages[oldest.id] { return data }
+        return coverImages[id]
+    }
+
+    /// Memories (most recent first) get their first album photo as the card image. Each event is asked for once;
+    /// events without photos, or when the read fails, keep the catalog cover.
+    private func requestCovers(for pastIDs: [String]) {
+        guard let albums, !stopped else { return }
+        let wanted = pastIDs.filter { !coverRequested.contains($0) }.prefix(max(0, Self.coverLimit - coverRequested.count))
+        let scope = reads.scope, token = generation
+        for id in wanted {
+            coverRequested.insert(id)
+            Task { [weak self] in
+                guard let record = await albums.coverPhoto(scope: scope, eventID: id),
+                      let raw = try? await albums.imageData(path: record.storagePath),
+                      let data = await Task.detached(priority: .utility, operation: { AlbumImageProcessing.displayCopy(raw, maxPixelSize: 600) }).value,
+                      let self, self.generation == token, !self.stopped else { return }
+                self.coverImages[id] = data
+                self.publish()
+            }
+        }
     }
     /// Optimistic: after a local reasonableness check the UI flips at once (joined state, attendee count, My Events,
     /// Home cards) and rolls back only if the server rejects or fails. The latest intent wins; the RSVP and event
@@ -319,6 +381,186 @@ import DIPAccounts
             }
         }
     }
-    func addPhotos(eventID: String, photos: [PhotoUpload]) async throws { throw DIPRepositoryError.invalidInput("Photo uploads aren’t available yet") }
-    func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws { throw DIPRepositoryError.invalidInput("Comments aren’t available yet") }
+    // MARK: Album
+
+    /// The album of the open event once it has ended. Upload rights mirror gcp/storage.rules: a going RSVP to an
+    /// ended, scheduled event; the remaining count subtracts published and abandoned slots.
+    private func albumProjection(_ details: [String: DIPEventDetail]) -> [String: DIPAlbum] {
+        guard albums != nil, let id = albumEventID, let detail = details[id], detail.isPast,
+              let event = joinedRecords[id] ?? records[id] else { return [:] }
+        let mine = ownSlots[id, default: []].union(albumRecords.compactMap { AlbumPolicy.slot(photoID: $0.id, uid: reads.scope.uid) })
+        let remaining = max(0, AlbumPolicy.slotsPerMember - mine.union(occupiedSlots[id, default: []]).count)
+        let photos = albumRecords.map { record in
+            DIPPhoto(id: record.id, image: albumImages[record.id].map(MediaReference.data) ?? .data(Data()),
+                     attribution: DIPPhotoAttribution(name: record.uploaderName, avatar: Self.avatar(userID: record.uploaderID)))
+        }
+        return [id: DIPAlbum(id: id, eventID: id, title: event.title, photos: photos,
+                             canAddPhotos: canUpload(id),
+                             remainingUploads: remaining, isLoaded: albumLoaded, loadError: albumError)]
+    }
+
+    /// Follows the last opened event; the listener is replaced when another event is opened.
+    private func syncAlbum(_ eventID: String) {
+        guard let albums, !stopped, eventID != albumEventID || albumTask == nil else { return }
+        albumTask?.cancel()
+        if albumEventID != eventID { albumRecords = []; albumImages = [:]; albumImagesLoading = []; albumLoaded = false }
+        albumEventID = eventID; albumError = nil
+        let stream = albums.observePhotos(scope: reads.scope, eventID: eventID)
+        albumTask = Task { [weak self] in
+            do {
+                for try await records in stream {
+                    guard let self, !Task.isCancelled, !self.stopped, self.albumEventID == eventID else { return }
+                    self.albumRecords = records; self.albumLoaded = true; self.albumError = nil
+                    self.publish()
+                    self.loadAlbumImages(eventID: eventID)
+                }
+            } catch {
+                guard let self, !Task.isCancelled, !self.stopped, self.albumEventID == eventID else { return }
+                // Keep what is shown; reopening the event restarts the listener.
+                self.albumTask = nil; self.albumLoaded = true
+                self.albumError = Self.albumLoadMessage(error)
+                self.publish()
+            }
+        }
+    }
+
+    /// Shared wording for a failed album listener (same offline text as upload and comment failures).
+    nonisolated static func albumLoadMessage(_ error: Error) -> String {
+        (error as? AlbumFailure) == .unavailable ? AlbumFailure.unavailable.message : "This album couldn’t be loaded. Go back and open it again."
+    }
+
+    /// Downloads missing photo bytes through the authenticated SDK, four at a time, newest first.
+    private func loadAlbumImages(eventID: String) {
+        guard let albums else { return }
+        let wanted = albumRecords.filter { albumImages[$0.id] == nil && !albumImagesLoading.contains($0.id) }
+        guard !wanted.isEmpty else { return }
+        wanted.forEach { albumImagesLoading.insert($0.id) }
+        Task { [weak self] in
+            var index = 0
+            while index < wanted.count {
+                let batch = wanted[index..<min(index + 4, wanted.count)]
+                index += 4
+                let downloads = batch.map { record in
+                    (record.id, Task { @MainActor () -> Data? in
+                        guard let data = try? await albums.imageData(path: record.storagePath) else { return nil }
+                        return await Task.detached(priority: .utility) { AlbumImageProcessing.displayCopy(data) }.value
+                    })
+                }
+                var loaded: [(String, Data)] = []
+                for (id, task) in downloads { if let data = await task.value { loaded.append((id, data)) } }
+                guard let self, !self.stopped, self.albumEventID == eventID else { return }
+                for (id, data) in loaded { self.albumImages[id] = data }
+                // A failed download is retried on the next album snapshot or reopen.
+                batch.forEach { self.albumImagesLoading.remove($0.id) }
+                if !loaded.isEmpty { self.publish() }
+            }
+        }
+    }
+
+    /// The photo open in the viewer (nil when it closes): its comment thread is observed live.
+    func selectPhoto(eventID: String, photoID: String?) {
+        guard let albums, !stopped else { return }
+        if let key = commentKey, key.eventID == eventID, key.photoID == photoID, commentTask != nil { return }
+        commentTask?.cancel(); commentTask = nil
+        if let old = commentKey { photoComments[old.eventID]?[old.photoID] = nil }
+        guard let photoID else { commentKey = nil; publish(); return }
+        commentKey = (eventID, photoID)
+        let stream = albums.observeComments(scope: reads.scope, eventID: eventID, photoID: photoID)
+        commentTask = Task { [weak self] in
+            do {
+                for try await records in stream {
+                    guard let self, !Task.isCancelled, !self.stopped, self.commentKey?.photoID == photoID else { return }
+                    self.photoComments[eventID, default: [:]][photoID] = records.map {
+                        DIPPhotoComment(id: $0.id, authorID: $0.authorID, authorName: $0.authorName,
+                                        authorAvatar: Self.avatar(userID: $0.authorID), text: $0.text, createdAt: $0.createdAt)
+                    }
+                    self.publish()
+                }
+            } catch {
+                guard let self, !Task.isCancelled, self.commentKey?.photoID == photoID else { return }
+                self.commentTask = nil
+            }
+        }
+    }
+
+    func addPhotos(eventID: String, photos: [PhotoUpload]) async throws {
+        for photo in photos { _ = try await uploadPhoto(eventID: eventID, photo: photo, progress: { _ in }) }
+    }
+
+    /// Uploads one prepared JPEG into a free slot and publishes it with finalizeEventPhotoV1. A retry with the same
+    /// upload ID reuses its slot: if the bytes already landed, the create-only write is recognized by checksum and
+    /// only the (idempotent) finalize runs again, so a photo is never published twice.
+    func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        guard let albums, !stopped else { throw DIPRepositoryError.invalidInput("Photo uploads aren’t available yet") }
+        let scope = reads.scope
+        if let denial = uploadDenial(eventID) { throw DIPRepositoryError.invalidInput(denial.message) }
+        do {
+            if ownSlots[eventID] == nil {
+                let ids = try await albums.ownPhotoIDs(scope: scope, eventID: eventID)
+                ownSlots[eventID, default: []].formUnion(ids.compactMap { AlbumPolicy.slot(photoID: $0, uid: scope.uid) })
+            }
+            var slot = try reserveSlot(eventID: eventID, uploadID: photo.id)
+            while try await albums.upload(scope: scope, eventID: eventID, slot: slot, jpeg: photo.data, progress: progress) == .slotOccupied {
+                occupiedSlots[eventID, default: []].insert(slot)
+                uploadSlots[photo.id] = nil
+                slot = try reserveSlot(eventID: eventID, uploadID: photo.id)
+            }
+            landedUploads.insert(photo.id)
+            let photoID = try await albums.finalize(scope: scope, eventID: eventID, slot: slot)
+            uploadSlots[photo.id] = nil; landedUploads.remove(photo.id)
+            ownSlots[eventID, default: []].insert(slot)
+            // Our own bytes are already here: show them without a download.
+            if albumEventID == eventID, albumImages[photoID] == nil,
+               let display = await Task.detached(priority: .utility, operation: { AlbumImageProcessing.displayCopy(photo.data) }).value {
+                albumImages[photoID] = display
+            }
+            publish()
+            return photoID
+        } catch {
+            // Sources map SDK errors to AlbumFailure; the bridge stays independent of the Firebase adapter.
+            let failure = error as? AlbumFailure ?? .unknown
+            // The server deleted an invalid object, so its slot is free again.
+            if failure == .invalidImage { uploadSlots[photo.id] = nil; landedUploads.remove(photo.id) }
+            publish()
+            throw DIPRepositoryError.invalidInput(failure.message)
+        }
+    }
+
+    /// A failed upload the member removed: when its bytes never landed the slot is free again; when they did,
+    /// the stored object keeps the slot used (create-only), so it moves to the abandoned set.
+    func discardUpload(uploadID: String) async {
+        guard let reserved = uploadSlots.removeValue(forKey: uploadID) else { return }
+        if landedUploads.remove(uploadID) != nil { occupiedSlots[reserved.eventID, default: []].insert(reserved.slot) }
+        publish()
+    }
+
+    private func reserveSlot(eventID: String, uploadID: String) throws -> Int {
+        if let reserved = uploadSlots[uploadID], reserved.eventID == eventID { return reserved.slot }
+        let inFlight = Set(uploadSlots.values.filter { $0.eventID == eventID }.map(\.slot))
+        let published = albumRecords.compactMap { AlbumPolicy.slot(photoID: $0.id, uid: reads.scope.uid) }
+        let taken = ownSlots[eventID, default: []].union(occupiedSlots[eventID, default: []]).union(inFlight).union(published)
+        guard let slot = AlbumPolicy.freeSlot(taken: taken) else { throw AlbumFailure.limitReached }
+        uploadSlots[uploadID] = (eventID, slot)
+        return slot
+    }
+
+    /// Mirrors the Storage upload rule: going RSVP, event not cancelled and ended.
+    private func canUpload(_ eventID: String) -> Bool { uploadDenial(eventID) == nil }
+
+    private func uploadDenial(_ eventID: String) -> AlbumFailure? {
+        guard albums != nil, joinedIDs.contains(eventID), let event = joinedRecords[eventID] ?? records[eventID] else { return .notAttendee }
+        if event.status == "cancelled" { return .cancelled }
+        return event.endTime <= clock() ? nil : .notEnded
+    }
+
+    func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
+        guard let albums, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput("Comments aren’t available yet") }
+        do {
+            try await albums.addComment(scope: reads.scope, eventID: eventID, photoID: photoID, commentID: commentID,
+                                        text: text, author: chatAuthor)
+        } catch {
+            throw DIPRepositoryError.invalidInput((error as? AlbumFailure) == .unavailable
+                ? AlbumFailure.unavailable.message : "Your comment could not be sent. Try again.")
+        }
+    }
 }

@@ -1,7 +1,8 @@
+import { emailHash } from "../../admin/domain/employee";
 import { AccountsError } from "./errors";
 import { isPersonalEmailDomain, rootDomainOfEmail } from "./emailDomain";
 
-export type MembershipRole = "member" | "admin";
+export type MembershipRole = "member" | "organizer" | "admin";
 
 /** V1 sign-in providers that may resolve a company (ADR 0007: Google only). */
 export const ALLOWED_SIGN_IN_PROVIDERS: ReadonlySet<string> = new Set(["google.com"]);
@@ -30,7 +31,28 @@ export interface StoredMembership {
   companyId: string;
   role: string;
   displayName: string;
+  /** "deactivated" blocks the account; missing means active. */
+  status?: string;
 }
+
+/** A pre-provisioned roster entry (companies/{c}/roster/{sha256(email)}), as read by the claim step. */
+export interface RosterClaim {
+  entryId: string;
+  email: string;
+  status: string;
+  displayName: string;
+  role: string;
+  teamIds: string[];
+  workLocation: string;
+  department: string;
+  jobTitle: string;
+  managerEmail?: string;
+  startDate?: string;
+}
+
+/** What the join does to the company roster (everyone who joins is listed there). */
+export type RosterAction = "claim" | "create" | "overwrite";
+export interface RosterJoin { entryId: string; action: RosterAction }
 
 /** Profile written for a first-time member. createdAt is assigned by the store (server time). */
 export interface NewMemberProfile {
@@ -42,13 +64,19 @@ export interface NewMemberProfile {
   department: string;
   jobTitle: string;
   city: string;
-  role: "member";
+  role: MembershipRole;
   interestTagIds: string[];
   travelRadiusMiles: number;
   availability: string[];
   friendIds: string[];
   favoritePhotoIds: string[];
   pointsBalance: number;
+  /** Set only when a roster entry is claimed; the default path leaves these absent. */
+  workLocation?: string;
+  teamIds?: string[];
+  status?: "active";
+  managerEmail?: string;
+  startDate?: string;
 }
 
 /** Documented default travel radius for new profiles (miles). */
@@ -89,11 +117,11 @@ export function assertEligible(identity: AuthIdentity): EligibleIdentity {
 }
 
 function isRole(value: string): value is MembershipRole {
-  return value === "member" || value === "admin";
+  return value === "member" || value === "organizer" || value === "admin";
 }
 
 export type MembershipDecision =
-  | { kind: "create"; profile: NewMemberProfile }
+  | { kind: "create"; profile: NewMemberProfile; roster: RosterJoin }
   | { kind: "existing"; companyId: string; role: MembershipRole; refreshDisplayName: string | null };
 
 /**
@@ -106,8 +134,12 @@ export function decideMembership(
   identity: EligibleIdentity,
   targetCompanyId: string,
   existing: StoredMembership | null,
+  entry: RosterClaim | null = null,
 ): MembershipDecision {
   if (existing) {
+    if (existing.status === "deactivated") {
+      throw new AccountsError("permission-denied", "ACCOUNT_DEACTIVATED", "This account has been deactivated. Contact your organizer.");
+    }
     if (existing.companyId !== targetCompanyId) {
       throw new AccountsError("failed-precondition", "MEMBERSHIP_CONFLICT", "This account already belongs to a different company.");
     }
@@ -117,24 +149,46 @@ export function decideMembership(
     const refreshDisplayName = existing.displayName === identity.displayName ? null : identity.displayName;
     return { kind: "existing", companyId: existing.companyId, role: existing.role, refreshDisplayName };
   }
+  // First sign-in: anyone with a verified company-domain email joins (today's behaviour). An invited roster entry whose
+  // email equals the verified token email is claimed (its role, teams and org attributes apply). Everyone else gets the
+  // default member profile, and every join is recorded on the roster: a claim marks the invited entry claimed, a person
+  // who was never pre-imported gets a new claimed entry, and a revoked or odd entry is overwritten with the real member.
+  const entryId = entry?.entryId ?? emailHash(identity.email);
+  const claimable = entry !== null && entry.status === "invited" && entry.email === identity.email.toLowerCase() && isRole(entry.role);
+  if (claimable && entry) {
+    // Google's name wins; the roster name is only a fallback when the token carries none.
+    const hint = Array.from(entry.displayName.trim()).slice(0, MAX_DISPLAY_NAME_LENGTH).join("");
+    return {
+      kind: "create", roster: { entryId, action: "claim" },
+      profile: {
+        ...defaultProfile(identity, targetCompanyId),
+        displayName: identity.name && identity.name.trim() ? identity.displayName : (hint || identity.displayName),
+        role: entry.role as MembershipRole, department: entry.department, jobTitle: entry.jobTitle,
+        workLocation: entry.workLocation, teamIds: entry.teamIds, status: "active",
+        ...(entry.managerEmail !== undefined ? { managerEmail: entry.managerEmail } : {}),
+        ...(entry.startDate !== undefined ? { startDate: entry.startDate } : {}),
+      },
+    };
+  }
+  return { kind: "create", profile: defaultProfile(identity, targetCompanyId), roster: { entryId, action: entry ? "overwrite" : "create" } };
+}
+
+function defaultProfile(identity: EligibleIdentity, targetCompanyId: string): NewMemberProfile {
   return {
-    kind: "create",
-    profile: {
-      companyId: targetCompanyId,
-      displayName: identity.displayName,
-      email: identity.email,
-      photoURL: "",
-      avatarId: "",
-      department: "",
-      jobTitle: "",
-      city: "",
-      role: "member",
-      interestTagIds: [],
-      travelRadiusMiles: DEFAULT_TRAVEL_RADIUS_MILES,
-      availability: [],
-      friendIds: [],
-      favoritePhotoIds: [],
-      pointsBalance: 0,
-    },
+    companyId: targetCompanyId,
+    displayName: identity.displayName,
+    email: identity.email,
+    photoURL: "",
+    avatarId: "",
+    department: "",
+    jobTitle: "",
+    city: "",
+    role: "member",
+    interestTagIds: [],
+    travelRadiusMiles: DEFAULT_TRAVEL_RADIUS_MILES,
+    availability: [],
+    friendIds: [],
+    favoritePhotoIds: [],
+    pointsBalance: 0,
   };
 }

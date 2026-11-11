@@ -29,6 +29,13 @@ export interface AppUser {
   favoritePhotoIds: Array<string>;
   pointsBalance: number;
   createdAt: string;
+  workLocation?: string;
+  teamIds?: Array<string>;
+  status?: "invited" | "active" | "deactivated";
+  managerEmail?: string;
+  startDate?: string;
+  revision?: number;
+  statusUpdatedAt?: string;
 }
 
 export interface AppNotification {
@@ -170,6 +177,8 @@ export interface RSVP {
   checkedIn: boolean;
   checkedInAt?: string | null;
   createdAt: string;
+  source?: "self" | "admin";
+  managedBy?: string;
 }
 
 export interface EventMessage {
@@ -214,9 +223,17 @@ export interface ChallengeSubmission {
   photoURL?: string | null;
   caption: string;
   progress: number;
-  status: string;
+  status: "submitted" | "approved" | "rejected";
   createdAt: string;
   updatedAt: string;
+  storagePath?: string | null;
+  contentType?: "image/jpeg" | "image/png" | "image/heic";
+  sizeBytes?: number;
+  attempt?: number;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  pointsAwarded?: number;
 }
 
 export interface PointTransaction {
@@ -325,6 +342,11 @@ export interface EventInvite {
   message: string;
   status: string;
   createdAt: string;
+  fromUserAvatarId?: string;
+  toUserName?: string;
+  toUserAvatarId?: string;
+  requestId?: string;
+  respondedAt?: string;
 }
 
 export interface ResolveMembershipRequest {
@@ -334,7 +356,7 @@ export interface ResolveMembershipRequest {
 export interface ResolveMembershipResponse {
   contractVersion: number;
   companyId: string;
-  role: "member" | "admin";
+  role: "member" | "admin" | "organizer";
 }
 
 export interface SetRsvpRequest {
@@ -384,7 +406,8 @@ export interface UpdateEventRequest {
   eventId: string;
   expectedRevision: number;
   event: EventDraft;
-  status: "scheduled" | "cancelled";
+  status: "scheduled" | "cancelled" | "completed";
+  statusReason?: string;
 }
 
 export interface UpdateEventResponse {
@@ -441,6 +464,7 @@ export interface RecordAttendanceRequest {
   companyId: string;
   eventId: string;
   userId: string;
+  checkedIn?: boolean;
 }
 
 export interface RecordAttendanceResponse {
@@ -448,6 +472,8 @@ export interface RecordAttendanceResponse {
   eventId: string;
   userId: string;
   pointsAwarded: number;
+  checkedIn?: boolean;
+  changed?: boolean;
 }
 
 export interface ApproveChallengeRequest {
@@ -455,12 +481,14 @@ export interface ApproveChallengeRequest {
   companyId: string;
   challengeId: string;
   userId: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface ApproveChallengeResponse {
   contractVersion: number;
   submissionId: string;
   pointsAwarded: number;
+  replayed?: boolean;
 }
 
 export interface FinalizeEventPhotoRequest {
@@ -476,4 +504,519 @@ export interface FinalizeEventPhotoResponse {
   contractVersion: number;
   photoId: string;
   created: boolean;
+}
+
+export interface Team {
+  id?: string;
+  companyId: string;
+  name: string;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  revision: number;
+}
+
+export interface AuditFieldChange {
+  field: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface AuditEntry {
+  id?: string;
+  companyId: string;
+  actorId: string;
+  actorName: string;
+  actorRole: "member" | "organizer" | "admin";
+  action: string;
+  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
+  targetId: string;
+  summary: string;
+  changes: Array<AuditFieldChange>;
+  reason?: string;
+  requestId?: string;
+  createdAt: string;
+}
+
+export interface EmployeeRecordInput {
+  email: string;
+  displayName?: string;
+  role?: "member" | "organizer" | "admin";
+  teamIds?: Array<string>;
+  workLocation?: string;
+  department?: string;
+  jobTitle?: string;
+  managerEmail?: string;
+  startDate?: string;
+}
+
+export interface RosterEntry {
+  id?: string;
+  companyId: string;
+  email: string;
+  displayName: string;
+  role: "member" | "organizer" | "admin";
+  teamIds: Array<string>;
+  workLocation: string;
+  department: string;
+  jobTitle: string;
+  managerEmail?: string;
+  startDate?: string;
+  status: "invited" | "claimed" | "revoked";
+  source: "manual" | "import" | "signup";
+  importJobId?: string;
+  claimedBy?: string;
+  claimedAt?: string;
+  invitedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  revision: number;
+  memberStatus?: "active" | "deactivated";
+}
+
+export interface AdminMemberSummary {
+  userId: string;
+  email: string;
+  displayName: string;
+  avatarId: string;
+  photoURL: string;
+  role: "member" | "organizer" | "admin";
+  status: "invited" | "active" | "deactivated";
+  department: string;
+  jobTitle: string;
+  city: string;
+  workLocation: string;
+  teamIds: Array<string>;
+  managerEmail?: string;
+  startDate?: string;
+  pointsBalance?: number;
+  revision: number;
+  createdAt: string;
+}
+
+export interface ImportFieldChange {
+  field: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface ImportRowError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+export interface ImportRowPlan {
+  rowNumber: number;
+  email: string;
+  action: "create" | "update" | "unchanged" | "invalid";
+  target: "member" | "roster" | "none";
+  changes: Array<ImportFieldChange>;
+  errors: Array<ImportRowError>;
+}
+
+export interface ImportTotals {
+  total: number;
+  create: number;
+  update: number;
+  unchanged: number;
+  invalid: number;
+}
+
+export interface ImportProgress {
+  processed: number;
+  total: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  failed: number;
+}
+
+export interface ImportRowResult {
+  rowNumber: number;
+  email: string;
+  outcome: "created" | "updated" | "unchanged" | "failed";
+  errorCode?: string;
+  message?: string;
+}
+
+export interface ImportJob {
+  id?: string;
+  companyId: string;
+  status: "planned" | "running" | "completed" | "completed_with_errors";
+  fileName?: string;
+  totals: ImportTotals;
+  progress: ImportProgress;
+  planHash: string;
+  chunkCount: number;
+  nextChunk: number;
+  errors: Array<ImportRowResult>;
+  errorsTruncated: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RemoveEventPhotoRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  photoId: string;
+  requestId: string;
+  reason?: string;
+}
+
+export interface RemoveEventPhotoResponse {
+  contractVersion: number;
+  photoId: string;
+  removed: boolean;
+  commentsRemoved: number;
+  objectRemoved: boolean;
+}
+
+export interface RemoveEventPhotoCommentRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  photoId: string;
+  commentId: string;
+  requestId: string;
+  reason?: string;
+}
+
+export interface RemoveEventPhotoCommentResponse {
+  contractVersion: number;
+  commentId: string;
+  removed: boolean;
+  commentCount: number;
+}
+
+export interface AddEventAttendeeRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  userId: string;
+  requestId: string;
+  notify?: boolean;
+  capacityOverrideReason?: string;
+}
+
+export interface AddEventAttendeeResponse {
+  contractVersion: number;
+  eventId: string;
+  userId: string;
+  added: boolean;
+  attendeeCount: number;
+  capacity: number;
+  capacityOverridden: boolean;
+  notified: boolean;
+}
+
+export interface RemoveEventAttendeeRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  userId: string;
+  requestId: string;
+  notify?: boolean;
+  reason?: string;
+}
+
+export interface RemoveEventAttendeeResponse {
+  contractVersion: number;
+  eventId: string;
+  userId: string;
+  removed: boolean;
+  attendeeCount: number;
+  notified: boolean;
+}
+
+export interface ListMembersRequest {
+  contractVersion: number;
+  companyId: string;
+  query?: string;
+  role?: "member" | "organizer" | "admin";
+  status?: "invited" | "active" | "deactivated";
+  teamId?: string;
+  workLocation?: string;
+  pageSize?: number;
+  pageToken?: string;
+}
+
+export interface ListMembersResponse {
+  contractVersion: number;
+  members: Array<AdminMemberSummary>;
+  nextPageToken?: string;
+}
+
+export interface GetMemberRequest {
+  contractVersion: number;
+  companyId: string;
+  userId: string;
+}
+
+export interface GetMemberResponse {
+  contractVersion: number;
+  member: AdminMemberSummary;
+}
+
+export interface UpdateMemberRequest {
+  contractVersion: number;
+  companyId: string;
+  userId: string;
+  requestId: string;
+  expectedRevision?: number;
+  role?: "member" | "organizer" | "admin";
+  teamIds?: Array<string>;
+  workLocation?: string;
+  department?: string;
+  jobTitle?: string;
+  managerEmail?: string;
+  startDate?: string;
+}
+
+export interface UpdateMemberResponse {
+  contractVersion: number;
+  userId: string;
+  revision: number;
+  changedFields: Array<string>;
+}
+
+export interface ResetMemberProfileRequest {
+  contractVersion: number;
+  companyId: string;
+  userId: string;
+  requestId: string;
+  reason?: string;
+}
+
+export interface ResetMemberProfileResponse {
+  contractVersion: number;
+  userId: string;
+  resetFields: Array<string>;
+  revision: number;
+}
+
+export interface SetMemberStatusRequest {
+  contractVersion: number;
+  companyId: string;
+  userId: string;
+  status: "active" | "deactivated";
+  requestId: string;
+  reason?: string;
+}
+
+export interface SetMemberStatusResponse {
+  contractVersion: number;
+  userId: string;
+  status: "active" | "deactivated";
+  changed: boolean;
+  rsvpsCancelled: number;
+  revision: number;
+}
+
+export interface AdjustMemberPointsRequest {
+  contractVersion: number;
+  companyId: string;
+  userId: string;
+  requestId: string;
+  delta: number;
+  reason: string;
+}
+
+export interface AdjustMemberPointsResponse {
+  contractVersion: number;
+  userId: string;
+  pointsBalance: number;
+  applied: boolean;
+}
+
+export interface UpsertTeamRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  teamId?: string;
+  name: string;
+  archived?: boolean;
+}
+
+export interface UpsertTeamResponse {
+  contractVersion: number;
+  teamId: string;
+  created: boolean;
+  revision: number;
+}
+
+export interface UpsertRosterEntryRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  entry: EmployeeRecordInput;
+}
+
+export interface UpsertRosterEntryResponse {
+  contractVersion: number;
+  entryId: string;
+  created: boolean;
+  status: "invited" | "claimed" | "revoked";
+}
+
+export interface RevokeRosterEntryRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  entryId: string;
+}
+
+export interface RevokeRosterEntryResponse {
+  contractVersion: number;
+  entryId: string;
+  status: "invited" | "claimed" | "revoked";
+  changed: boolean;
+}
+
+export interface ImportEmployeesRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  fileName?: string;
+  rows: Array<EmployeeRecordInput>;
+}
+
+export interface ImportEmployeesResponse {
+  contractVersion: number;
+  jobId: string;
+  status: "planned";
+  totals: ImportTotals;
+  rows: Array<ImportRowPlan>;
+  planHash: string;
+  chunkCount: number;
+}
+
+export interface ApplyEmployeeImportRequest {
+  contractVersion: number;
+  companyId: string;
+  jobId: string;
+  planHash: string;
+}
+
+export interface ApplyEmployeeImportResponse {
+  contractVersion: number;
+  jobId: string;
+  status: "planned" | "running" | "completed" | "completed_with_errors";
+  done: boolean;
+  progress: ImportProgress;
+  results: Array<ImportRowResult>;
+}
+
+export interface GetEmployeeImportRequest {
+  contractVersion: number;
+  companyId: string;
+  jobId: string;
+}
+
+export interface GetEmployeeImportResponse {
+  contractVersion: number;
+  job: ImportJob;
+}
+
+export interface SubmitChallengeRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  progress: number;
+  caption?: string;
+  storagePath?: string;
+}
+
+export interface SubmitChallengeResponse {
+  contractVersion: number;
+  submissionId: string;
+  status: "submitted" | "approved" | "rejected";
+  outcome: "created" | "updated" | "resubmitted" | "unchanged";
+  attempt: number;
+}
+
+export interface RejectChallengeRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  userId: string;
+  reason: string;
+  expectedUpdatedAt?: string;
+}
+
+export interface RejectChallengeResponse {
+  contractVersion: number;
+  submissionId: string;
+  status: "rejected";
+  replayed: boolean;
+}
+
+export interface ListChallengeSubmissionsRequest {
+  contractVersion: number;
+  companyId: string;
+  challengeId: string;
+  status?: "submitted" | "approved" | "rejected";
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ListChallengeSubmissionsResponse {
+  contractVersion: number;
+  submissions: Array<ChallengeSubmission>;
+  nextCursor: string | null;
+}
+
+export interface SendInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  toUserId: string;
+  message?: string;
+  requestId: string;
+}
+
+export interface SendInviteResponse {
+  contractVersion: number;
+  inviteId: string;
+  status: "pending" | "accepted" | "declined";
+  created: boolean;
+}
+
+export interface RespondToInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  inviteId: string;
+  response: "accepted" | "declined";
+}
+
+export interface RespondToInviteResponse {
+  contractVersion: number;
+  inviteId: string;
+  status: "accepted" | "declined";
+  rsvpStatus?: "going";
+  attendeeCount?: number;
+}
+
+export interface Coworker {
+  userId: string;
+  displayName: string;
+  avatarId: string;
+  department: string;
+  state: "available" | "going" | "invited";
+}
+
+export interface ListCoworkersRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  query: string;
+  limit?: number;
+}
+
+export interface ListCoworkersResponse {
+  contractVersion: number;
+  coworkers: Array<Coworker>;
+  truncated: boolean;
 }

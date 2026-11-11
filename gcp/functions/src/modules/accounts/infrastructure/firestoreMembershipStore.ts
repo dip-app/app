@@ -1,7 +1,9 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import type { MembershipStore, MembershipTransaction } from "../application/ports";
-import type { StoredMembership } from "../domain/membership";
+import { auditDocument } from "../../admin/domain/audit";
+import { emailHash } from "../../admin/domain/employee";
+import type { RosterClaim, StoredMembership } from "../domain/membership";
 
 /**
  * Admin SDK adapter. Admin access bypasses Security Rules, so authorization is
@@ -41,7 +43,49 @@ export class FirestoreMembershipStore implements MembershipStore {
             return typeof value === "string" ? value : "";
           };
           const membership: StoredMembership = { companyId: field("companyId"), role: field("role"), displayName: field("displayName") };
+          const status: unknown = snap.get("status");
+          if (typeof status === "string") membership.status = status;
           return membership;
+        },
+        async getRosterEntry(companyId, email) {
+          const entryId = emailHash(email);
+          const snap = await transaction.get(db.collection("companies").doc(companyId).collection("roster").doc(entryId));
+          if (!snap.exists) return null;
+          const text = (name: string) => { const v: unknown = snap.get(name); return typeof v === "string" ? v : ""; };
+          const teams: unknown = snap.get("teamIds");
+          const claim: RosterClaim = {
+            entryId, email: text("email"), status: text("status"), displayName: text("displayName"), role: text("role"),
+            teamIds: Array.isArray(teams) ? teams.filter((t): t is string => typeof t === "string") : [],
+            workLocation: text("workLocation"), department: text("department"), jobTitle: text("jobTitle"),
+          };
+          if (text("managerEmail")) claim.managerEmail = text("managerEmail");
+          if (text("startDate")) claim.startDate = text("startDate");
+          return claim;
+        },
+        recordRosterJoin(companyId, entryId, action, uid, profile) {
+          const entry = db.collection("companies").doc(companyId).collection("roster").doc(entryId);
+          const memberFields = {
+            email: profile.email.toLowerCase(), displayName: profile.displayName, role: profile.role, teamIds: profile.teamIds ?? [],
+            workLocation: profile.workLocation ?? "", department: profile.department, jobTitle: profile.jobTitle,
+            ...(profile.managerEmail !== undefined ? { managerEmail: profile.managerEmail } : {}),
+            ...(profile.startDate !== undefined ? { startDate: profile.startDate } : {}),
+          };
+          const claimed = { status: "claimed", memberStatus: "active", claimedBy: uid, claimedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
+          if (action === "claim") {
+            transaction.update(entry, claimed);
+            transaction.create(db.collection("companies").doc(companyId).collection("auditLog").doc(`claim_${entryId}`), {
+              ...auditDocument(companyId, { uid, name: profile.displayName, role: profile.role }, {
+                id: `claim_${entryId}`, action: "roster.claim", targetType: "roster", targetId: entryId, summary: "Claimed a roster invitation on first sign-in",
+                changes: [{ field: "status", before: "invited", after: "claimed" }],
+              }),
+              createdAt: FieldValue.serverTimestamp(),
+            });
+          } else if (action === "create") {
+            transaction.create(entry, { companyId, ...memberFields, ...claimed, source: "signup", createdAt: FieldValue.serverTimestamp(), revision: 1 });
+          } else {
+            // A revoked entry no longer describes the person: record the member they actually became.
+            transaction.update(entry, { ...memberFields, ...claimed, source: "signup" });
+          }
         },
         createMember(uid, profile) {
           // create() fails if a concurrent request already wrote the profile;

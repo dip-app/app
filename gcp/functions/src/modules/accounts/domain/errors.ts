@@ -21,6 +21,7 @@ export type AccountsErrorReason =
   | "PERSONAL_EMAIL_DOMAIN"
   | "NO_COMPANY_FOR_DOMAIN"
   | "MEMBERSHIP_CONFLICT"
+  | "ACCOUNT_DEACTIVATED"
   | "INVALID_STORED_MEMBERSHIP";
 
 export class AccountsError extends Error {

@@ -16,15 +16,24 @@ struct DIPMemberHome: View {
     /// Queued event link target; opened once the shell is ready and the onboarding tour is not showing.
     private let deepLinkEventID: String?
     private let onDeepLinkHandled: ((String) -> Void)?
+    private let deepLinkOpensChat: Bool
+    private let onJoined: (() -> Void)?
     @State private var editor: ProfileEditor
     @State private var catalog: InterestCatalog
     private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
     private let participationFactory: (() -> (any ParticipationSource)?)?
+    private let albumFactory: (() -> (any PhotoAlbumSource)?)?
+    private let invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)?
+    /// Created with the home (like the other live sources), so the shell never starts without it.
+    @State private var liveInvites: (any DIPInvitesRepository)?
     @State private var liveEvents: MemberEventAppRepository?
     @State private var eventConfigurationError = false
     @State private var prototypeRepository: DIPMockRepository
     /// Onboarding tour (spec §2): first run for a uid without a finished record, and replay from Profile.
     private let onboarding: OnboardingTourSettings?
+    /// Where bug reports go (Firebase when configured, the in-memory mock in unconfigured Debug builds). Nil: off.
+    @State private var bugReporting: BugReportContext?
+    private let bugReportSubmitter: (() -> (any BugReportSubmitting)?)?
     @State private var tour: OnboardingTourModel?
     @State private var tourInterests: OnboardingInterestsModel?
     @State private var replay: OnboardingTourModel?
@@ -37,17 +46,28 @@ struct DIPMemberHome: View {
         oauthPhotoURL: String = "",
         eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
+        albumFactory: (() -> (any PhotoAlbumSource)?)? = nil,
+        invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
+        bugReportSubmitter: (() -> (any BugReportSubmitting)?)? = nil,
         deepLinkEventID: String? = nil,
         onDeepLinkHandled: ((String) -> Void)? = nil,
+        deepLinkOpensChat: Bool = false,
+        onJoined: (() -> Void)? = nil,
         onSignOut: @escaping () async -> Void
     ) {
         self.onboarding = onboarding
+        self.bugReportSubmitter = bugReportSubmitter
         self.deepLinkEventID = deepLinkEventID
         self.onDeepLinkHandled = onDeepLinkHandled
+        self.deepLinkOpensChat = deepLinkOpensChat
+        self.onJoined = onJoined
         self.eventReadFactory = eventReadFactory
         self.participationFactory = participationFactory
+        self.albumFactory = albumFactory
+        self.invitesFactory = invitesFactory
+        _liveInvites = State(initialValue: eventReadFactory == nil ? nil : invitesFactory?(context))
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
@@ -68,6 +88,8 @@ struct DIPMemberHome: View {
         ZStack {
             // The shell stays transparent until the window reveal starts uncovering it.
             shell
+                .environment(\.bugReporting, bugReporting)
+                .environment(\.bugReportSuppressed, tour != nil || replay != nil)
                 .opacity(tourCoversShell ? 0 : 1)
                 .allowsHitTesting(tour == nil)
                 .accessibilityHidden(tour != nil)
@@ -76,6 +98,11 @@ struct DIPMemberHome: View {
                                    onSignOut: { await signOut() })
                     .onAppear { tour.reportSurface(currentSurface); tour.onFinished = { self.tour = nil } }
                     .transition(.identity)
+            }
+        }
+        .task {
+            if bugReporting == nil, let submitter = bugReportSubmitter?() {
+                bugReporting = BugReportContext.make(uid: context.uid, submitter: submitter)
             }
         }
         .onChange(of: currentSurface) { _, surface in
@@ -113,7 +140,7 @@ struct DIPMemberHome: View {
                 if let reads = eventReadFactory(context) {
                     liveEvents = MemberEventAppRepository(reads: reads,
                         profile: MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL),
-                        participation: participationFactory?(),
+                        participation: participationFactory?(), albums: albumFactory?(),
                         chatAuthor: ChatAuthor(name: context.profile.displayName, avatarID: context.profile.avatarId))
                 } else { eventConfigurationError = true }
             }
@@ -121,7 +148,10 @@ struct DIPMemberHome: View {
             liveEvents?.updateTagLabels(Dictionary(catalog.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first }))
         }
         .onDisappear { liveEvents?.stop(); liveEvents = nil }
-        .onChange(of: context.profile) { _, _ in editor.receive(context) }
+        .onChange(of: context.profile) { _, profile in
+            editor.receive(context)
+            liveEvents?.updateAuthor(ChatAuthor(name: profile.displayName, avatarID: profile.avatarId))
+        }
     }
 
     // MARK: Onboarding
@@ -132,6 +162,8 @@ struct DIPMemberHome: View {
         #if DEBUG
         (onboarding?.store as? UserDefaultsOnboardingRecordStore)?.removeRecord(for: context.uid)
         #endif
+        // Queued reports belong to this account on this device; they are not kept for the next person.
+        await bugReporting?.sender.discardQueue(uid: context.uid)
         await onSignOut()
     }
 
@@ -191,11 +223,14 @@ struct DIPMemberHome: View {
             onLoadMoreEvents: live && (liveEvents?.hasMore == true) ? { Task { await liveEvents?.loadMore() } } : nil,
             loadingMoreEvents: liveEvents?.isLoadingMore == true, eventPaginationError: liveEvents?.paginationError,
             onRefreshEvents: live ? { await liveEvents?.refresh() } : nil,
+            onPhotoViewed: live ? { eventID, photoID in liveEvents?.selectPhoto(eventID: eventID, photoID: photoID) } : nil,
             onSurfaceChange: { homeSurface = $0 },
             onReplayTour: onboarding == nil ? nil : { startReplay() },
             // Held while the onboarding tour (or its replay) covers the shell.
             deepLinkEventID: tour == nil && replay == nil ? deepLinkEventID : nil,
-            onDeepLinkHandled: onDeepLinkHandled)
+            onDeepLinkHandled: onDeepLinkHandled, deepLinkOpensChat: deepLinkOpensChat, onJoined: onJoined,
+            // Live members use the Firebase adapter; fixture members (unconfigured Debug) get fixture invitations.
+            invitesRepository: live ? liveInvites : DIPPrototypeApp.fixtureInvites())
     }
 
     private var catalogIsLoading: Bool {
@@ -237,7 +272,7 @@ enum MemberProfileBridge {
             interestTagIDs: stored.interestTagIds, interestCatalog: interests,
             photo: photo, avatar: avatar, favoriteMemories: [],
             jobTitle: stored.jobTitle, availability: stored.availability,
-            travelRadiusMiles: stored.travelRadiusMiles
+            travelRadiusMiles: stored.travelRadiusMiles, pointsBalance: stored.pointsBalance
         )
     }
 

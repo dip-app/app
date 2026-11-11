@@ -67,7 +67,7 @@ struct EventFeedPage: Equatable, Sendable {
         var previous = cursor.map { ($0.startTime, $0.eventID) }
         for event in events {
             try validate(event)
-            guard let id = event.id, event.status == "scheduled", event.startTime >= query.startsAtOrAfter else { throw EventReadFailure.invalidDocument }
+            guard let id = event.id, ["scheduled", "completed"].contains(event.status), event.startTime >= query.startsAtOrAfter else { throw EventReadFailure.invalidDocument }
             if let previous { guard event.startTime > previous.0 || (event.startTime == previous.0 && id > previous.1) else { throw EventReadFailure.invalidDocument } }
             previous = (event.startTime, id)
         }
@@ -117,6 +117,11 @@ struct EventFeedPage: Equatable, Sendable {
               event.costCents >= 0, event.capacity >= 1, event.revision >= 1 else { throw EventReadFailure.invalidDocument }
         return DIPEventMetadata(startTime: event.startTime, endTime: event.endTime, venueName: event.venue.name,
             address: event.venue.address, locality: event.venue.locality, costCents: event.costCents,
-            costNote: event.costNote, capacity: event.capacity, status: status, revision: event.revision)
+            costNote: event.costNote, capacity: event.capacity, status: status, revision: event.revision,
+            pointsValue: max(0, event.pointsValue),
+            changeLog: (event.changeLog ?? []).map {
+                DIPChangeLogEntry(at: $0.at, revision: $0.revision,
+                                  changes: $0.changes.map { DIPFieldChange(field: $0.field, from: $0.from, to: $0.to) })
+            })
     }
 }

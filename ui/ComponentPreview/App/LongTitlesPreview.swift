@@ -26,6 +26,7 @@ struct LongTitlesPreview: View {
                     ForEach(Array(Self.titles.prefix(4).enumerated()), id: \.offset) { index, title in
                         DIPPhotoEventCard(
                             title: title, locality: "Lawrenceville, PA · Pittsburgh", identifier: "long-\(index)", attendeeCount: 7,
+                            rewardText: index.isMultiple(of: 2) ? "+25 pts" : nil,
                             artwork: { DIPMedia(.asset(Self.images[index % 4])).resizable().scaledToFill() },
                             avatarStack: { DIPMediaStack(avatars) }, onSelect: {})
                     }

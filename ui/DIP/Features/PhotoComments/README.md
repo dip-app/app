@@ -8,7 +8,7 @@ The album passes an observed photo/thread/current-user projection and an asynchr
 
 Native keyboard avoidance keeps a single composer outside scrolling photo/thread content. No keyboard image, OS chrome replica or keyboard-height notification choreography belongs here. Parent flows verify the send control remains above the keyboard, failure/retry, close/reopen and photo isolation before frontend status is unflagged.
 
-These are in-memory local features; authorization, production persistence and cross-device delivery remain future Firebase adapter/rules work. See [repository contract](../../../../docs/contracts/ui-repositories.md) and [feature status](../../../../docs/milestones/v2/FEATURE_STATUS.md).
+Configured member builds now read and write comments live (`companies/{c}/events/{e}/photos/{photoId}/comments`, own-author append under rules, see [event photo albums](../../../../docs/contracts/callables.md#event-photo-albums)); the album reports the open photo so only its thread is observed. Fixtures and `--mock-member` keep the in-memory repository. See [repository contract](../../../../docs/contracts/ui-repositories.md) and [feature status](../../../../docs/milestones/v2/FEATURE_STATUS.md).
 
 ## Deferred design work: comment placement
 

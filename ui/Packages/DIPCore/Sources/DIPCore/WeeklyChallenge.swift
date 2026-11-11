@@ -57,8 +57,8 @@ public enum DIPChallengeText {
         default: "\(count) others participating"
         }
     }
-    /// Shown before any submission UI exists, so members know how entries will work.
-    public static let howItWorks = "Do the activity with coworkers during this week, then add a photo and a short note as your entry. Entries are reviewed before points are awarded."
+    /// How entries work, shown above the entry action (the testing finding: explain before submit).
+    public static let howItWorks = "Do the activity with coworkers during this week, then add how much you did, a short note and optionally a photo as your entry. Entries are reviewed before points are awarded."
     public static let submissionsSoon = "Submissions open soon"
     public static let noneTitle = "No weekly theme right now."
     public static let noneBody = "A new one starts Monday."
@@ -85,7 +85,8 @@ public enum DIPChallengeProjection {
             timing: windowText(start: challenge.startDate, end: challenge.endDate, timeZone: timeZone, locale: locale),
             description: challenge.description, tags: [], completedCount: max(0, challenge.completedCount),
             goalText: goalText(goal: challenge.goal, unit: challenge.goalUnit),
-            rewardText: rewardText(challenge.pointsReward), accent: theme.accent)
+            rewardText: rewardText(challenge.pointsReward), accent: theme.accent,
+            startDate: challenge.startDate, endDate: challenge.endDate, goal: challenge.goal, pointsReward: challenge.pointsReward)
     }
 
     /// "Nov 9 - Nov 15". The end is inclusive: a window ending Monday 00:00 (or Sunday 23:59:59)

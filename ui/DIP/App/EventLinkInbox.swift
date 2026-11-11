@@ -9,16 +9,19 @@ import Observation
 @Observable @MainActor
 final class EventLinkInbox {
     private(set) var pendingEventID: String?
+    /// `dip://events/<id>/chat` (push taps) asks for the chat once the event is open.
+    private(set) var pendingOpensChat = false
 
     /// Queues the event id of `url`. Returns false (and queues nothing) when it is not an event link.
     @discardableResult
     func receive(_ url: URL) -> Bool {
-        guard let id = DIPShareLink.eventID(from: url) else { return false }
-        pendingEventID = id
+        guard let destination = DIPShareLink.destination(from: url) else { return false }
+        pendingEventID = destination.eventID
+        pendingOpensChat = destination.opensChat
         return true
     }
 
     func consume(_ id: String) {
-        if pendingEventID == id { pendingEventID = nil }
+        if pendingEventID == id { pendingEventID = nil; pendingOpensChat = false }
     }
 }

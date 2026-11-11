@@ -12,7 +12,11 @@ public protocol DIPRepository: Sendable {
     func notificationLevel(eventID: String) async throws -> DIPNotificationLevel?
     func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws
     func addPhotos(eventID: String, photos: [PhotoUpload]) async throws
+    /// Uploads one prepared photo, reporting progress in 0...1, and returns the published album photo ID.
+    /// Retrying with the same `PhotoUpload.id` must never publish the photo twice.
+    func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws
+    func discardUpload(uploadID: String) async
 }
 
 public enum DIPRepositoryError: Error, Equatable, Sendable {
@@ -25,5 +29,15 @@ public extension DIPRepository {
     /// Adapters without challenge support refuse instead of pretending to join.
     func setChallengeJoined(challengeID: String, joined: Bool) async throws {
         throw DIPRepositoryError.invalidInput("Challenges aren’t available yet")
+    }
+
+    /// The member removed a failed upload draft: adapters that reserve a slot per upload release it.
+    func discardUpload(uploadID: String) async {}
+
+    /// Adapters without a per-photo pipeline import the photo through `addPhotos` (in-memory fixtures).
+    func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        try await addPhotos(eventID: eventID, photos: [photo])
+        progress(1)
+        return photo.id
     }
 }

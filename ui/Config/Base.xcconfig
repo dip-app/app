@@ -9,4 +9,8 @@ GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.dip-not-configured
 // builds sign. A paid team overrides this in Local.xcconfig with Config/DIP-Paid.entitlements.
 DIP_ENTITLEMENTS = Config/DIP.entitlements
 
+// Push client feature flag. Real delivery additionally needs the paid team's APNs key and the aps-environment
+// entitlement; leave NO until then (docs/design/push-client.md).
+DIP_PUSH_ENABLED = NO
+
 #include? "Local.xcconfig"
