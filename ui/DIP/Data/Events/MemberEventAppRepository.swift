@@ -61,6 +61,8 @@ import DIPAccounts
     private var occupiedSlots: [String: Set<Int>] = [:]
     /// Slot of each in-flight or failed upload by its stable ID, so a retry reuses its slot.
     private var uploadSlots: [String: (eventID: String, slot: Int)] = [:]
+    /// Uploads whose bytes are stored (only the finalize is missing): removing one keeps its slot used.
+    private var landedUploads: Set<String> = []
     private var commentTask: Task<Void, Never>?
     private var commentKey: (eventID: String, photoID: String)?
     private var photoComments: [String: [String: [DIPPhotoComment]]] = [:]
@@ -150,7 +152,7 @@ import DIPAccounts
         chatTask?.cancel(); chatTask = nil; chatEventID = nil; chatCandidateID = nil; messages.removeAll(); rsvpStates.removeAll()
         albumTask?.cancel(); albumTask = nil; albumEventID = nil; albumRecords.removeAll(); albumImages.removeAll()
         commentTask?.cancel(); commentTask = nil; commentKey = nil; photoComments.removeAll()
-        ownSlots.removeAll(); occupiedSlots.removeAll(); uploadSlots.removeAll(); albums?.stop()
+        ownSlots.removeAll(); occupiedSlots.removeAll(); uploadSlots.removeAll(); landedUploads.removeAll(); albums?.stop()
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
         joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
@@ -383,11 +385,15 @@ import DIPAccounts
                 guard let self, !Task.isCancelled, !self.stopped, self.albumEventID == eventID else { return }
                 // Keep what is shown; reopening the event restarts the listener.
                 self.albumTask = nil; self.albumLoaded = true
-                self.albumError = (error as? AlbumFailure) == .unavailable
-                    ? "Couldn’t load photos. Check your connection." : "Couldn’t load this album."
+                self.albumError = Self.albumLoadMessage(error)
                 self.publish()
             }
         }
+    }
+
+    /// Shared wording for a failed album listener (same offline text as upload and comment failures).
+    nonisolated static func albumLoadMessage(_ error: Error) -> String {
+        (error as? AlbumFailure) == .unavailable ? AlbumFailure.unavailable.message : "This album couldn’t be loaded. Go back and open it again."
     }
 
     /// Downloads missing photo bytes through the authenticated SDK, four at a time, newest first.
@@ -466,8 +472,9 @@ import DIPAccounts
                 uploadSlots[photo.id] = nil
                 slot = try reserveSlot(eventID: eventID, uploadID: photo.id)
             }
+            landedUploads.insert(photo.id)
             let photoID = try await albums.finalize(scope: scope, eventID: eventID, slot: slot)
-            uploadSlots[photo.id] = nil
+            uploadSlots[photo.id] = nil; landedUploads.remove(photo.id)
             ownSlots[eventID, default: []].insert(slot)
             // Our own bytes are already here: show them without a download.
             if albumEventID == eventID, albumImages[photoID] == nil,
@@ -480,10 +487,18 @@ import DIPAccounts
             // Sources map SDK errors to AlbumFailure; the bridge stays independent of the Firebase adapter.
             let failure = error as? AlbumFailure ?? .unknown
             // The server deleted an invalid object, so its slot is free again.
-            if failure == .invalidImage { uploadSlots[photo.id] = nil }
+            if failure == .invalidImage { uploadSlots[photo.id] = nil; landedUploads.remove(photo.id) }
             publish()
             throw DIPRepositoryError.invalidInput(failure.message)
         }
+    }
+
+    /// A failed upload the member removed: when its bytes never landed the slot is free again; when they did,
+    /// the stored object keeps the slot used (create-only), so it moves to the abandoned set.
+    func discardUpload(uploadID: String) async {
+        guard let reserved = uploadSlots.removeValue(forKey: uploadID) else { return }
+        if landedUploads.remove(uploadID) != nil { occupiedSlots[reserved.eventID, default: []].insert(reserved.slot) }
+        publish()
     }
 
     private func reserveSlot(eventID: String, uploadID: String) throws -> Int {

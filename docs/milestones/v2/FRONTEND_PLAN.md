@@ -46,6 +46,7 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | TestFlight | Release build | Not started; needs the paid team (F8) | none | All |
 | F0-F5 | Cleanup, interest filter, points, challenges submissions, invitations, live albums | Not started | to be created | iOS |
 | F5 (Stream B) | Live event albums: storage rules, `finalizeEventPhotoV1`, comments, iOS upload/grid/viewer | Backend merged to `feature/v2-remaining` (#96, not deployed); iOS in review. Device upload not yet verified | #96 + iOS PR | Backend / iOS |
+| Album upload tile fix + follow-ups | A finished upload tile no longer lingers (success state about 1 s, then the real photo; leaves when the album lists it, at the latest 3 s later). Removing a failed upload whose bytes never landed frees its slot at once. Album load error wording shared with upload/comment failures and shown also while drafts are listed. Captions stay empty (no design for a caption field) | In review on `fix/album-finished-tile` | `fix/album-finished-tile` | iOS |
 | A1-A3 | Admin attendance, review, points | Not started (A4 is covered by weekly themes) | to be created | Admin portal |
 | F6-F8 | Accessibility, tests, release | Not started | none | All |
 

@@ -115,6 +115,7 @@ struct DIPPrototypeApp: View {
             try await model.uploadPhoto(eventID: eventID, photo: photo, progress: progress)
         })
         uploads.onRunFinished = DIPAlbumScreen.feelRun
+        uploads.onDiscard = { id in Task { await model.discardUpload(uploadID: id) } }
         _uploads = State(initialValue: Self.uploadReview() ?? uploads)
     }
 
