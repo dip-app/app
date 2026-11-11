@@ -20,6 +20,7 @@ struct DIPAlbumScreen: View {
     @State private var ownUploads: AlbumUploadQueue
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var viewedPhotoID: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         album: DIPAlbum,
@@ -218,18 +219,20 @@ struct DIPAlbumScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 6)
+        // Finished drafts fade out instead of making the strip jump.
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: drafts.map(\.id))
     }
 
     private var retryableFailures: [AlbumUploadQueue.Item] {
         drafts.filter { if case .failed = $0.state { $0.upload != nil } else { false } }
     }
 
-    /// Counts every state shown in the strip, e.g. "2 not added · 1 uploading".
+    /// Counts every state shown in the strip, e.g. "2 couldn’t be added · 1 uploading".
     private var uploadStatus: String {
         let pending = uploads.pendingCount(for: album.eventID)
         let failed = uploads.failedCount(for: album.eventID)
         var parts: [String] = []
-        if failed > 0 { parts.append("\(failed) not added") }
+        if failed > 0 { parts.append(failed == 1 ? "1 couldn’t be added" : "\(failed) couldn’t be added") }
         if pending > 0 { parts.append(pending == 1 ? "1 uploading" : "\(pending) uploading") }
         return parts.isEmpty ? "Photos added" : parts.joined(separator: " · ")
     }
