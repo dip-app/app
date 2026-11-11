@@ -167,6 +167,13 @@ struct DIPDetailPeopleRow: View {
 /// When the page already has its own primary Join (the event page's bottom bar), pass `joinInRow: false`:
 /// the slot then shows Leave once joined and Directions before, so there is one clear Join action.
 struct DIPDetailActionRow: View {
+    /// The coworker invite pill. When it is offered it takes the first slot of the pair; otherwise the slot falls back to
+    /// Directions, so the page always shows exactly two pills (never a lone pill, never a disabled-looking Invite).
+    struct InviteAction {
+        let action: () -> Void
+    }
+
+    var invite: InviteAction? = nil
     var showsParticipation = true
     var joinInRow = true
     var directionsURL: URL? = nil
@@ -188,8 +195,20 @@ struct DIPDetailActionRow: View {
     var body: some View {
         HStack(spacing: 10) {
             if !joinInRow {
-                // Directions sits beside Share, in both joined and unjoined states; Leave lives at the page bottom.
-                if showsParticipation, let directionsURL {
+                if showsParticipation, let invite {
+                    Button(action: invite.action) {
+                        label("Invite Coworker", background: DIPTokens.Color.actionPrimary.swiftUIColor) {
+                            Image(systemName: "person.badge.plus").resizable().scaledToFit()
+                                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                        }
+                    }
+                    .buttonStyle(DIPPressFeedbackStyle())
+                    .transition(.opacity)
+                    .accessibilityLabel("Invite a coworker")
+                    .accessibilityHint("Choose a coworker from your company to invite")
+                    .accessibilityIdentifier("\(identifierPrefix).invite")
+                } else if showsParticipation, let directionsURL {
+                // Directions (when a page still passes one) sits beside Share; Leave lives at the page bottom.
                     Link(destination: directionsURL) {
                         label(directionsTitle, systemImage: "mappin.and.ellipse",
                               background: DIPTokens.Color.actionPrimary.swiftUIColor)
@@ -229,6 +248,8 @@ struct DIPDetailActionRow: View {
             .accessibilityIdentifier("\(identifierPrefix).share")
             }
         }
+        // Both first-slot pills have the same size, so a swap (e.g. the event fills up) cross-fades without moving anything.
+        .animation(.easeInOut(duration: 0.25), value: invite != nil)
     }
 
     private func textLabel(_ title: String, background: Color) -> some View {

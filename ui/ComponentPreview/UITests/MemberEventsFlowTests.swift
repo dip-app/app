@@ -15,7 +15,8 @@ final class MemberEventsFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["event.title"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["event.title"].label, "COMPANY LUNCH")
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "1 Test Street")).firstMatch.exists)
-        XCTAssertTrue(app.descendants(matching: .any)["event.directions"].exists, "Directions fills the slot beside Share before joining")
+        XCTAssertTrue(app.descendants(matching: .any)["event.directions"].exists, "Directions fills the slot beside Share when inviting is unavailable")
+        XCTAssertFalse(app.buttons["event.invite"].exists, "Live read-only events cannot invite yet")
         XCTAssertFalse(app.buttons["event.join"].exists, "The bottom bar is the only Join action")
         let join = app.buttons["event.primary"]
         XCTAssertTrue(join.exists); join.tap()
