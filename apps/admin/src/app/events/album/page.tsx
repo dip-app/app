@@ -118,7 +118,7 @@ function Album() {
   const [open, setOpen] = useState<AlbumPhoto | null>(null);
   const [message, setMessage] = useState("");
 
-  if (photos.error) return <LoadError error={photos.error} onRetry={photos.reload} />;
+  if (photos.error) return <LoadError error={photos.error} onRetry={photos.reload} backHref="/events/" backLabel="Back to events" />;
   if (!photos.data) return <Loading label="Loading album" />;
   return (
     <>

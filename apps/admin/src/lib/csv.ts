@@ -1,7 +1,7 @@
 // Dependency-free CSV reading and writing (RFC 4180: quoted fields, doubled quotes, CRLF or LF, BOM).
 
 /** Parses CSV text into rows of cells. Blank lines are skipped. Delimiter is detected (comma or semicolon). */
-export function parseCsv(input: string): string[][] {
+export function parseCsv(input: string, keepBlank = false): string[][] {
   const text = input.replace(/^﻿/, "");
   const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
   const delimiter = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ";" : ",";
@@ -12,7 +12,7 @@ export function parseCsv(input: string): string[][] {
   const endRow = () => {
     row.push(cell);
     cell = "";
-    if (row.some((value) => value.trim() !== "")) rows.push(row);
+    if (keepBlank || row.some((value) => value.trim() !== "")) rows.push(row);
     row = [];
   };
   for (let i = 0; i < text.length; i += 1) {

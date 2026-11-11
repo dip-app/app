@@ -46,7 +46,7 @@ function Attendees() {
     return (members.data ?? []).filter((m) => m.status === "active" && !going.has(m.id) && (!q || `${m.displayName} ${m.email}`.toLowerCase().includes(q))).slice(0, 8);
   }, [members.data, attendees.data, pickerSearch]);
 
-  if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} />;
+  if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel="Back to events" />;
   if (!attendees.data || !event.data) return <Loading label="Loading attendees" />;
   const checkedIn = attendees.data.filter((a) => a.checkedIn).length;
 

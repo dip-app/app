@@ -1,18 +1,6 @@
 import { type ImportField, type ImportRow, IMPORT_FIELDS, IMPORT_LIMITS, type PlanRow, type Role } from "./adminTypes";
 import { parseCsv, toCsv } from "./csv";
 
-const HEADER_ALIASES: Record<string, ImportField> = {
-  email: "email", emailaddress: "email", workemail: "email",
-  displayname: "displayName", name: "displayName", fullname: "displayName",
-  role: "role", accessrole: "role",
-  team: "teams", teams: "teams", teamnames: "teams",
-  department: "department", dept: "department",
-  jobtitle: "jobTitle", title: "jobTitle", position: "jobTitle",
-  worklocation: "workLocation", location: "workLocation", office: "workLocation",
-  manageremail: "managerEmail", manager: "managerEmail",
-  startdate: "startDate", start: "startDate", hiredate: "startDate",
-};
-
 export const FIELD_LABEL: Record<ImportField, string> = {
   email: "Email", displayName: "Name", role: "Role", teams: "Teams", department: "Department",
   jobTitle: "Job title", workLocation: "Work location", managerEmail: "Manager email", startDate: "Start date",
@@ -38,7 +26,6 @@ export interface ParsedImport {
   fatal?: string;
 }
 
-const norm = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
 const ROLES: Role[] = ["member", "organizer", "admin"];
 
 /** Local, field-level checks that spare a round trip; the server re-validates everything. */
@@ -57,52 +44,29 @@ export function validateRow(row: ImportRow, domain: string): string[] {
   return errors;
 }
 
-/** Turns the cells of a CSV or the first XLSX sheet into import rows and flags duplicates and bad rows. */
-export function rowsFromTable(table: string[][], domain: string): ParsedImport {
-  const empty: ParsedImport = { rows: [], lines: [], localErrors: new Map(), unknownColumns: [] };
-  if (table.length === 0) return { ...empty, fatal: "The file is empty." };
-  const header = table[0].map((cell) => HEADER_ALIASES[norm(cell)]);
-  const unknownColumns = table[0].filter((_, index) => !header[index]).map((cell) => cell.trim()).filter(Boolean);
-  if (!header.includes("email")) return { ...empty, unknownColumns, fatal: "There is no Email column. Use the template’s header row." };
-  const dataRows = table.slice(1);
-  if (dataRows.length === 0) return { ...empty, unknownColumns, fatal: "The file has a header but no rows." };
-  if (dataRows.length > IMPORT_LIMITS.maxRows) return { ...empty, unknownColumns, fatal: `Files are limited to ${IMPORT_LIMITS.maxRows} rows; this one has ${dataRows.length}. Split it and import in parts.` };
-
-  const rows: ImportRow[] = [];
-  const lines: number[] = [];
-  const localErrors = new Map<number, string[]>();
-  const seen = new Map<string, number>();
-  dataRows.forEach((cells, index) => {
-    const line = index + 2;
-    const get = (field: ImportField) => (cells[header.indexOf(field)] ?? "").trim();
-    const role = get("role").toLowerCase() as Role | "";
-    const row: ImportRow = {
-      email: get("email").toLowerCase(), displayName: get("displayName"), role,
-      teams: get("teams").split(/[;|]/).map((team) => team.trim()).filter(Boolean),
-      department: get("department"), jobTitle: get("jobTitle"), workLocation: get("workLocation"),
-      managerEmail: get("managerEmail").toLowerCase(), startDate: get("startDate"),
-    };
-    const errors = validateRow(row, domain);
-    const first = seen.get(row.email);
-    if (row.email && first !== undefined) errors.push(`Duplicate of line ${first}.`);
-    else if (row.email) seen.set(row.email, line);
-    rows.push(row);
-    lines.push(line);
-    if (errors.length) localErrors.set(line, errors);
-  });
-  return { rows, lines, localErrors, unknownColumns };
+export interface RawFile {
+  fileName: string;
+  /** CSV files have one sheet; workbooks have one entry per tab. Row positions match the spreadsheet (row 1 = index 0). */
+  sheets: { name: string; rows: string[][] }[];
+  fatal?: string;
 }
 
-export async function readImportFile(file: File, domain: string): Promise<ParsedImport> {
-  const base: ParsedImport = { rows: [], lines: [], localErrors: new Map(), unknownColumns: [] };
+/** Reads the file into raw rows without interpreting columns; the mapping step does that. */
+export async function readRawFile(file: File): Promise<RawFile> {
+  const base: RawFile = { fileName: file.name, sheets: [] };
   if (file.size > IMPORT_LIMITS.maxBytes) return { ...base, fatal: `Files are limited to ${IMPORT_LIMITS.maxBytes / 1024 / 1024} MB.` };
   const name = file.name.toLowerCase();
   try {
     if (name.endsWith(".xlsx")) {
-      const { readXlsx } = await import("./xlsx");
-      return rowsFromTable(await readXlsx(await file.arrayBuffer()), domain);
+      const { readXlsxWorkbook } = await import("./xlsx");
+      const sheets = (await readXlsxWorkbook(await file.arrayBuffer())).filter((sheet) => sheet.rows.some((row) => row.some((cell) => cell.trim() !== "")));
+      return sheets.length ? { ...base, sheets } : { ...base, fatal: "The workbook is empty." };
     }
-    if (name.endsWith(".csv") || name.endsWith(".txt") || file.type === "text/csv") return rowsFromTable(parseCsv(await file.text()), domain);
+    if (name.endsWith(".csv") || name.endsWith(".txt") || file.type === "text/csv") {
+      // Blank lines are kept so row numbers match the file.
+      const rows = parseCsv(await file.text(), true);
+      return rows.some((row) => row.some((cell) => cell.trim() !== "")) ? { ...base, sheets: [{ name: "CSV", rows }] } : { ...base, fatal: "The file is empty." };
+    }
     return { ...base, fatal: "Upload a .csv or .xlsx file." };
   } catch {
     return { ...base, fatal: "That file couldn’t be read. Save it as .csv or .xlsx and try again." };
