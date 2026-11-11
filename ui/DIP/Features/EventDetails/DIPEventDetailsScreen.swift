@@ -18,6 +18,9 @@ struct DIPEventDetailsScreen: View {
     @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.eventCalendarAdder) private var calendarAdder
+    @Environment(\.openURL) private var openURL
+    /// True while the calendar editor is being presented, so a second tap (row or pill) cannot open another one.
+    @State private var addingToCalendar = false
 
     init(
         event: DIPEventDetail,
@@ -120,21 +123,32 @@ struct DIPEventDetailsScreen: View {
     }
 
     private var header: some View {
-        let addable = event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
         return DIPDetailHeader(
             timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
-            calendarLabel: addable.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
-            onCalendar: {
-                guard let metadata = addable else { return }
-                let fields = metadata.calendarFields(title: event.title, description: event.description)
-                Task { calendarResult = await calendarAdder.add(fields) }
-            })
+            calendarLabel: addableMetadata.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
+            onCalendar: addToCalendar)
         .alert("Couldn’t add to calendar", isPresented: Binding(
             get: { if case .failed = calendarResult { return true } else { return false } },
             set: { if !$0 { calendarResult = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             if case .failed(let message) = calendarResult { Text(message) }
+        }
+    }
+
+    /// Metadata when the event can still be added to a calendar (not past, not cancelled); the header pill and the When row share this gate.
+    private var addableMetadata: DIPEventMetadata? {
+        event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
+    }
+
+    /// The one add-to-calendar action, used by the header pill and the When row.
+    private func addToCalendar() {
+        guard let metadata = addableMetadata, !addingToCalendar else { return }
+        let fields = metadata.calendarFields(title: event.title, description: event.description)
+        addingToCalendar = true
+        Task {
+            defer { addingToCalendar = false }
+            calendarResult = await calendarAdder.add(fields)
         }
     }
 
@@ -251,22 +265,13 @@ struct DIPEventDetailsScreen: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("event.cancelled")
             }
-            metadataRow("calendar", title: "When") {
-                Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
-                let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime)
-                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(metadata.endTime.formatted(.dateTime.month(.abbreviated).day())))" : "")")
-                Text(durationLabel(metadata))
-                    .foregroundStyle(.secondary)
-            }
-            metadataRow("mappin.and.ellipse", title: "Where") {
-                Text(metadata.venueName)
-                Text(metadata.address).foregroundStyle(.secondary)
-                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
-            }
+            whenRow(metadata)
+            whereRow(metadata)
             metadataRow("ticket", title: "Price") {
                 Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
                 if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
             }
+            .accessibilityIdentifier("event.price")
             if metadata.status == .scheduled, let reward = DIPPointsFormat.reward(metadata.pointsValue) {
                 metadataRow("star.fill", title: "Points") {
                     Text(event.isPast ? "Worth \(reward.dropFirst())" : "Earn \(reward)")
@@ -283,6 +288,61 @@ struct DIPEventDetailsScreen: View {
         .accessibilityIdentifier("event.metadata")
     }
 
+    /// Tappable (adds to calendar, like the header pill) while the event can be added; otherwise informational.
+    @ViewBuilder private func whenRow(_ metadata: DIPEventMetadata) -> some View {
+        let row = { (trailing: AnyView) in
+            metadataRow("calendar", title: "When", trailing: trailing) {
+                Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
+                let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime)
+                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(metadata.endTime.formatted(.dateTime.month(.abbreviated).day())))" : "")")
+                Text(durationLabel(metadata))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        if addableMetadata != nil {
+            let added = calendarResult == .added
+            Button(action: addToCalendar) {
+                row(AnyView(rowGlyph(added ? "checkmark" : "calendar.badge.plus")))
+                    .frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
+            .disabled(added || addingToCalendar)
+            .accessibilityHint(added ? "Added to calendar" : "Add to calendar")
+            .accessibilityIdentifier("event.when")
+        } else {
+            row(AnyView(EmptyView())).accessibilityIdentifier("event.when")
+        }
+    }
+
+    /// Tappable (opens directions, like the Directions pill) when there is a venue or address and the event is not past.
+    @ViewBuilder private func whereRow(_ metadata: DIPEventMetadata) -> some View {
+        let row = { (trailing: AnyView) in
+            metadataRow("mappin.and.ellipse", title: "Where", trailing: trailing) {
+                Text(metadata.venueName)
+                Text(metadata.address).foregroundStyle(.secondary)
+                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+            }
+        }
+        if !event.isPast, let url = metadata.mapsURL {
+            Button { openURL(url) } label: {
+                row(AnyView(rowGlyph("arrow.up.right"))).frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
+            .accessibilityHint("Get directions")
+            .accessibilityIdentifier("event.where")
+        } else {
+            row(AnyView(EmptyView())).accessibilityIdentifier("event.where")
+        }
+    }
+
+    /// Minimal trailing affordance for a tappable row (the chevron the Profile rows use).
+    private func rowGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol).font(.callout.weight(.semibold))
+            .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .frame(width: 24, height: 24)
+            .accessibilityHidden(true)
+    }
+
     /// Pill label: short date by default ("Monday, 11/23", no time; the card has the full details);
     /// `--calendar-label=generic` switches to "Add to Calendar" for owner comparison.
     private static func calendarLabel(_ metadata: DIPEventMetadata) -> String {
@@ -293,7 +353,7 @@ struct DIPEventDetailsScreen: View {
     private func metadataRow<Content: View, Trailing: View>(
         _ symbol: String, title: String, trailing: Trailing = EmptyView(), @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: symbol)
                     .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)

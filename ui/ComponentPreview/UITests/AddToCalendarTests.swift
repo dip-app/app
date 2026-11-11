@@ -55,4 +55,64 @@ final class AddToCalendarTests: XCTestCase {
         XCTAssertTrue(recorded.split(separator: "|").dropFirst().first.map { $0.contains(",") } ?? false, recorded)
         XCTAssertTrue(recorded.hasSuffix("|5400|false"), recorded)
     }
+
+    @MainActor func testWhenRowAddsToCalendarLikeTheHeaderPill() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=event", "--v1-event-fixtures", "--fake-calendar"]
+        app.launch()
+        let row = app.buttons["event.when"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        app.swipeUp()
+        XCTAssertGreaterThanOrEqual(row.frame.height, 44)
+        XCTAssertEqual(app.staticTexts["calendar.fake.last"].label, "none")
+        let before = XCTAttachment(screenshot: app.screenshot())
+        before.name = "event-info-rows"; before.lifetime = .keepAlways; add(before)
+        row.tap()
+        XCTAssertTrue(app.buttons["Added to calendar"].waitForExistence(timeout: 3))
+        let recorded = app.staticTexts["calendar.fake.last"].label
+        XCTAssertTrue(recorded.lowercased().hasPrefix("puppy yoga|"), recorded)
+        XCTAssertTrue(recorded.hasSuffix("|5400|false"), recorded)
+        XCTAssertFalse(app.buttons["event.when"].isEnabled, "Row is spent once added, like the header pill")
+    }
+
+    @MainActor func testWhereRowOpensTheSameDirectionsLinkAsThePill() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=event", "--v1-event-fixtures", "--fake-directions"]
+        app.launch()
+        let row = app.descendants(matching: .any)["event.where"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        app.swipeUp()
+        XCTAssertGreaterThanOrEqual(row.frame.height, 44)
+        row.tap()
+        let rowTarget = app.staticTexts["directions.fake.last"].label
+        XCTAssertTrue(rowTarget.hasPrefix("https://maps.apple.com/"), rowTarget)
+        let pill = app.descendants(matching: .any)["event.directions"]
+        XCTAssertTrue(pill.exists)
+        pill.tap()
+        XCTAssertEqual(app.staticTexts["directions.fake.last"].label, rowTarget)
+    }
+
+    @MainActor func testPriceRowStaysInformational() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=event", "--v1-event-fixtures"]
+        app.launch()
+        XCTAssertTrue(app.buttons["event.when"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["event.price"].exists)
+        XCTAssertFalse(app.buttons["event.price"].exists)
+        XCTAssertFalse(app.links["event.price"].exists)
+    }
+
+    @MainActor func testPastEventRowsAreInformational() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=past-event"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["event.metadata"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["event.when"].exists)
+        XCTAssertFalse(app.buttons["event.where"].exists)
+        XCTAssertFalse(app.links["event.where"].exists)
+    }
 }
