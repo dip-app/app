@@ -6,7 +6,7 @@ import Foundation
 public enum DIPShareLink {
     /// The ONE place that names the public domain. Swap in a custom subdomain here (and in
     /// `ui/project.yml` associated domains and the hosting AASA file, see docs/design/share-links.md).
-    public static let baseURL = URL(string: "https://team05-dip.web.app")!
+    public static let baseURL = URL(string: "https://letsdip.work")!
 
     /// Custom scheme of push-payload deep links (`dip://events/{id}`).
     public static let appScheme = "dip"

@@ -7,7 +7,10 @@
  */
 
 /** Public origin of the share links; must equal `DIPShareLink.baseURL` (checked by scripts/tests). */
-export const SHARE_ORIGIN = "https://team05-dip.web.app";
+export const SHARE_ORIGIN = "https://letsdip.work";
+
+/** Previous default Hosting origin; still approved for stored preview images. */
+export const LEGACY_SHARE_ORIGIN = "https://team05-dip.web.app";
 
 /** PLACEHOLDER: numeric App Store ID of the DIP listing. Empty until the listing exists. */
 export const APP_STORE_ID = "";
@@ -28,6 +31,7 @@ const CATALOG_PREFIX = "catalog://default/";
 /** Origins and Firebase Storage buckets of this project whose https URLs may be used as preview images. */
 const APPROVED_IMAGE_PREFIXES: readonly string[] = [
   `${SHARE_ORIGIN}/`,
+  `${LEGACY_SHARE_ORIGIN}/`,
   "https://team05-dip.firebaseapp.com/",
   "https://firebasestorage.googleapis.com/v0/b/team05-dip.appspot.com/",
   "https://firebasestorage.googleapis.com/v0/b/team05-dip.firebasestorage.app/",

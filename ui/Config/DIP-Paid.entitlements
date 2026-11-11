@@ -6,7 +6,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<!-- Must match DIPShareLink.baseURL's host (ui/Packages/DIPCore/Sources/DIPCore/DIPShareLink.swift). -->
-		<string>applinks:team05-dip.web.app</string>
+		<string>applinks:letsdip.work</string>
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
