@@ -31,6 +31,7 @@ struct OnboardingTourView: View {
     @State private var stageContentFaded = false
     @State private var barDissolved = false
 
+    private var isResume: Bool { if case .resume = model.entrance { true } else { false } }
     private var reduceMotion: Bool { systemReduceMotion || model.configuration.forceReduceMotion }
     private var speed: Double { max(0.01, model.configuration.timeScale) }
     private var features: OnboardingFeatures { model.configuration.features }
@@ -95,7 +96,7 @@ struct OnboardingTourView: View {
     }
 
     private func stageFrame(_ layout: TourLayout, step: OnboardingStep) -> CGRect {
-        guard landed else { return layout.welcome }
+        guard landed || isResume else { return layout.welcome }
         return step == .interests ? layout.strip : layout.stage
     }
 
@@ -115,9 +116,13 @@ struct OnboardingTourView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous).fill(stageFill(step))
             stageContent(step)
                 .opacity(landed ? 1 : 0)
+                // Content fades in after the Stage has started to land, so a drawn phone is never empty for long.
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.3 / speed).delay((landed ? 0.15 : 0) / speed), value: landed)
         }
         .frame(width: frame.width, height: frame.height)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // Resume: the card fades in at its frame after the header is fully shown, never rising under the pill.
+        .opacity(isResume && !landed ? 0 : 1)
         .position(x: frame.midX, y: frame.midY)
         .animation(motion(OnboardingMotion.stage), value: frame)
         .animation(motion(OnboardingMotion.stage), value: step)
@@ -128,7 +133,7 @@ struct OnboardingTourView: View {
         switch step {
         case .arrival:
             ArrivalCrew(you: you, namespace: crew, speed: speed, reduceMotion: reduceMotion)
-                .transition(.opacity)
+                .transition(stageContentTransition)
         case .discover:
             demo(DiscoverJoinScene(you: you))
         case .people:
@@ -147,7 +152,13 @@ struct OnboardingTourView: View {
     private func demo<Scene: DemoScene>(_ scene: Scene) -> some View {
         DemoStage(scene: scene, configuration: model.configuration.demo(sceneID: Scene.id))
             .id(Scene.id)
-            .transition(.opacity)
+            .transition(stageContentTransition)
+    }
+
+    /// Step content eases in with a slight scale-up (and out with the reverse) while the Stage card morphs;
+    /// Reduce Motion keeps the plain cross-fade.
+    private var stageContentTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96))
     }
 
     private var selectedInterestNames: [String] {
@@ -172,10 +183,12 @@ struct OnboardingTourView: View {
                         .lineLimit(1)
                         .padding(.horizontal, 16).frame(height: 44)
                         .background(OnboardingTheme.accent, in: Capsule())
+                        .contentTransition(.opacity)
                     TourCrewStack(members: model.stackMembers, you: you,
                                   youSaved: model.interestsSaved, namespace: crew, hidesYou: revealStarted,
                                   host: model.isHandingOff ? nil : CrewMember.host(of: step))
                 }
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.28 / speed), value: step)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(model.progressLabel ?? step.pillTitle))
                 .accessibilityAddTraits(.isHeader)
@@ -323,6 +336,11 @@ struct OnboardingTourView: View {
             // style), and the shell's enabled bar underneath would then snap brighter when the tour is removed.
             .allowsHitTesting(!model.isHandingOff)
             .opacity(fadesOut && revealStarted ? 0 : 1)
+            // The CTA label follows the Stage swap instead of leading it.
+            .animation(reduceMotion ? nil : OnboardingMotion.bar(reduceMotion: false).delay(0.18 / speed), value: model.step)
+            // The bar rises into place with the header chrome on first entrance (no travel with Reduce Motion).
+            // (it follows the same delayed transaction that fades the header chrome in)
+            .offset(y: chromeShown || reduceMotion ? 0 : 28)
             .animation(.easeOut(duration: OnboardingHandoff.barFadeDuration / speed)
                 .delay(OnboardingHandoff.barAt / speed), value: revealStarted)
     }
@@ -372,8 +390,11 @@ struct OnboardingTourView: View {
                 withAnimation(.easeInOut(duration: 0.3 / speed)) { landed = true; chromeShown = true }
                 return
             }
-            withAnimation(motion(OnboardingMotion.stage).delay(0.05 / speed)) { landed = true }
-            let chromeDelay = model.entrance == .fresh ? 0.70 : 0.15
+            // Resume: header (0.05 s), then the Stage morph (0.20 s), then its content (0.35 s, see `stageCard`).
+            // Fresh: the Stage lands first, the chrome follows at 0.70 s (B0 has no header to lead with).
+            let stageDelay = model.entrance == .fresh ? 0.05 : 0.32
+            withAnimation(motion(OnboardingMotion.stage).delay(stageDelay / speed)) { landed = true }
+            let chromeDelay = model.entrance == .fresh ? 0.70 : 0.05
             withAnimation(.easeOut(duration: 0.25 / speed).delay(chromeDelay / speed)) { chromeShown = true }
         }
     }

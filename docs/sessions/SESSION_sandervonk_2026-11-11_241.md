@@ -19,11 +19,14 @@ Hardening and leftover features on `feature/v2-hardening` (from `origin/feature/
 - Covers: `PhotoAlbumSource.coverPhoto` (limit-1 query), `DIPEventCover.media(..., photo:)`, repository keeps display copies (max 6 past joined events per session).
 - Accessibility: card labels and hints, join/leave announcements, Leave hint.
 - UI test repairs: `MockMemberLaunchUITests`, `ScreenFlowTests`; `HomeThemeTests.testErrorRetries...` reviewed, no change found.
+- Onboarding motion (additive, unverified): idle float on the B0 crew (off with Reduce Motion), a slight scale on Stage content transitions, the bar rising in with the header chrome, a cross-fade on the step pill. The tour already had the spec v4 motion system (staggered title entrances, crew morphs, window reveal), so nothing else was added; there is no paging carousel, so no parallax or page indicator (the crew stack is the progress).
 - Docs: `docs/milestones/v2/FRONTEND_PLAN.md` status rows.
 
 ## Validation
 
 - `swift test --filter` in `ui/Packages/DIPCore` for EventCover, EventLists, ParticipationRules, EventMetadata, ScreenshotMarkup, ShakeGate, EventRewardPoints: passed. Nothing else was run.
+
+- Onboarding motion: Preview scheme built and screenshot-checked on Claude-DIP under the sim lock (slowed 0.2x frames per step, entry stagger, people to challenges transition, float diff); `OnboardingTourTests/testFirstRunToHome` passed once (first attempt failed before reporting a reason, second passed). Shots in the scratchpad `shots/onboarding/`.
 
 ## Decisions
 

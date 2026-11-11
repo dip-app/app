@@ -149,6 +149,11 @@ struct PeopleInviteCanvas: View {
             DIPParticipantsScreen(people: people, participantCount: people.count, showsBottomBar: false,
                                   onBack: {}, onChat: {})
         }
+        // The phone is bottom-aligned, so the list's top rows sit above the canvas: fade that edge instead of
+        // slicing a row in half.
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
+                                     .init(color: .black, location: 40 / DemoCanvas.size.height)],
+                             startPoint: .top, endPoint: .bottom))
         .background(.white)
         .shadow(color: .black.opacity(state.panelShown ? 0.12 : 0), radius: 12, x: -4)
         .offset(x: state.panelShown ? 0 : DemoCanvas.size.width + 12)
