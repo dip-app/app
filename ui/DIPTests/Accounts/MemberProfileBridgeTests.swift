@@ -137,8 +137,8 @@ final class MemberProfileBridgeTests: XCTestCase {
         for photoURL in ["", "not-a-url", "file:///private/photo.jpg", "https:missing-host"] {
             let context = try MembershipContext(uid: "member-1", profile: stored(photoURL: photoURL))
             let profile = MemberProfileBridge.profile(context: context, tags: [])
-            XCTAssertEqual(profile.photo, .asset("AvatarTeal"))
-            XCTAssertEqual(profile.avatar, .asset("AvatarTeal"))
+            XCTAssertEqual(profile.photo, .generatedAvatar(userID: "member-1"))
+            XCTAssertEqual(profile.avatar, .generatedAvatar(userID: "member-1"))
             XCTAssertEqual(profile.interestTagIDs, stored().interestTagIds)
         }
     }
@@ -150,7 +150,7 @@ final class MemberProfileBridgeTests: XCTestCase {
             availability: [], friendIds: [], favoritePhotoIds: [], pointsBalance: 0, createdAt: Date())))
         let profile = MemberProfileBridge.profile(context: context, tags: [], oauthPhotoURL: "https://lh3.example.com/a=s400-c")
         XCTAssertEqual(profile.photo, .remote(URL(string: "https://lh3.example.com/a=s400-c")!))
-        XCTAssertEqual(profile.avatar, .asset("AvatarTeal"), "Small avatars never use the real photo")
+        XCTAssertEqual(profile.avatar, .generatedAvatar(userID: "u"), "Small avatars never use the real photo")
     }
 
     func testProfileCommandPreservesOtherEditableAndServerOwnedValues() {
