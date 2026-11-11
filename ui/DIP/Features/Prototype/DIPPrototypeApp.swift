@@ -32,6 +32,10 @@ struct DIPPrototypeApp: View {
     private let loadingMoreEvents: Bool
     private let eventPaginationError: String?
     private let onProfileSave: ((ProfileEdit) async throws -> Void)?
+    /// Reports what is on screen for the onboarding handoff (spec §3 H "Surface signal").
+    private let onSurfaceChange: ((OnboardingHomeSurface) -> Void)?
+    /// Profile's "How DIP works" row; nil hides it.
+    private let onReplayTour: (() -> Void)?
 
     init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil,
          accountProfile: DIPProfile? = nil, interestCatalogLoading: Bool = false,
@@ -39,7 +43,10 @@ struct DIPPrototypeApp: View {
          onProfileSave: ((ProfileEdit) async throws -> Void)? = nil,
          eventReadsOnly: Bool = false, liveParticipation: Bool = false, onEventOpened: ((String?) -> Void)? = nil,
          onLoadMoreEvents: (() -> Void)? = nil, loadingMoreEvents: Bool = false,
-         eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil) {
+         eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil,
+         onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil) {
+        self.onSurfaceChange = onSurfaceChange
+        self.onReplayTour = onReplayTour
         self.onRefreshEvents = onRefreshEvents
         self.eventReadsOnly = eventReadsOnly; self.liveParticipation = liveParticipation; self.onEventOpened = onEventOpened
         self.onLoadMoreEvents = onLoadMoreEvents; self.loadingMoreEvents = loadingMoreEvents
@@ -149,6 +156,7 @@ struct DIPPrototypeApp: View {
             if case .event(let id) = path.last { onEventOpened?(id) } else { onEventOpened?(nil) }
         }
         .task(id: observationID) { await model.observe() }
+        .onChange(of: surface, initial: true) { _, surface in onSurfaceChange?(surface) }
         .alert("Couldn’t save", isPresented: Binding(
             get: { rsvpError != nil },
             set: { if !$0 { rsvpError = nil } }
@@ -214,7 +222,8 @@ struct DIPPrototypeApp: View {
                         if let onProfileSave { try await onProfileSave(edit) }
                         else { try await model.updateProfile(edit) }
                     }, onSignOut: onSignOut, interestCatalogLoading: interestCatalogLoading,
-                    interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog))
+                    interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog,
+                    onReplayTour: onReplayTour))
             case .rewards:
                 AnyView(DIPRewardsScreen(
                     unreadCount: snapshot.home.unreadCount, profileAvatar: snapshot.home.profileAvatar,
@@ -222,6 +231,12 @@ struct DIPPrototypeApp: View {
                     onNotifications: { notice = "Notifications" }, onProfile: { selectTab(.profile) }))
             }
         }
+    }
+
+    /// The onboarding handoff's view of this shell: loading, failed, or showing a snapshot.
+    private var surface: OnboardingHomeSurface {
+        if model.snapshot != nil { return .ready }
+        return model.isLoading ? .activitiesLoading : .activitiesError
     }
 
     private var isRSVPPending: Bool {

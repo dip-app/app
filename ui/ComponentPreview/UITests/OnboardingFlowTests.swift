@@ -165,7 +165,7 @@ final class OnboardingFlowTests: XCTestCase {
         app.buttons["onboarding.google"].tap()
         let progress = app.buttons["onboarding.progress"]
         XCTAssertTrue(progress.waitForExistence(timeout: 5))
-        let finding = NSPredicate(format: "label == %@", "Finding your company…")
+        let finding = NSPredicate(format: "label == %@", "Finding your company")
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: finding, object: progress)], timeout: 5),
                        .completed)
         XCTAssertEqual(progress.value as? String, "In progress")

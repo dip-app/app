@@ -59,8 +59,8 @@ struct AccountsStageView: View {
         .background(OnboardingTheme.surface.ignoresSafeArea())
         .foregroundStyle(OnboardingTheme.ink)
         .preferredColorScheme(.light)
-        .sensoryFeedback(.impact(weight: .light), trigger: signInTaps)
-        .sensoryFeedback(.warning, trigger: warnings)
+        // The sign-in press is a `commit` on its Bar action (DIPHaptics); blocked arrivals warn once.
+        .onChange(of: warnings) { _, _ in DIPHaptics.failure() }
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { stageVisible = true }
         }

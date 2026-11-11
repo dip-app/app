@@ -62,7 +62,7 @@ The Crew is the four existing `OnboardingFace` characters (purple round, white p
    - "Past events" spelled out
    - challenge requirements, how to submit, the deadline and the reward, shown before the submit action
 6. **Honest demos.**
-   - Every Stage carries an `EXAMPLE` chip.
+   - Demos are fictional and built from the real screens in a device frame (owner revision, Nov 10: the `EXAMPLE` chip was dropped).
    - Names, events and photos are fictional and bundled.
    - The joined bar is drawn exactly as shipped ("Activity Chat"), and the copy never promises chat.
    - Each feature step drops out cleanly if its feature slips.
@@ -182,12 +182,13 @@ launch ─▶ A0 Pending (authenticationPending)   bar: "Just a moment…"
 | Element | Geometry and type |
 |---|---|
 | Header row | y 70–114. Back is a 44 pt circle at x 20 (`surfaceMuted`, ink chevron). The **step pill** starts at x 72: height 44, `actionPrimary`, Figtree 20 `relativeTo: .headline`, white, 16 pt horizontal padding, `lineLimit(1)`. The **Crew stack** sits 10 pt after the pill: 28 pt faces at an 18 pt step (−10 overlap), at most **3 faces then a "+n" disc** (28 pt, `surfaceMuted`, Inter Medium 12, ink), so it is never wider than 82 pt. **Skip** is Figtree 17 `relativeTo: .body`, ink at 70%, trailing-aligned to x 382, 44 pt tall. Its hit area is `max(44, labelWidth + 16)` wide, so it grows with the label, its Dynamic Type size and its localization. "Skip" at default size is ≈ 33 + 16 = 49 pt, so its hit area runs x 333–382. |
+| Leading control (owner revision, Nov 10) | Steps with Back show the 44 pt Back circle. The first step of a first run (right after sign-in) shows a 44 pt Sign out circle with the same styling (`onboarding.signOut`), which signs out through the accounts session. Replay shows no leading control and the pill starts flush at x 20; no gap is reserved. |
 | Header overflow rule | Keep `pill.maxX + 10 + stackWidth ≤ skip.minX − 8`. At default size that limit is ≈ 325. (1) The stack already caps at 3 faces + "+n". (2) If it still overflows, the pill truncates (tail) down to a minimum width of 88. (3) At accessibility sizes the header becomes two rows: back + Skip, then pill + stack. Pill labels are short so the default size never truncates ("Find events", "Who's going", "Challenges", "Memories", "Interests"; the widest ≈ 144 pt). The worst case is B4, "Memories" + 4 stack slots, which ends at x 284. |
 | Stage | x 20, y 134, width 362, height = (title top − 22) − 134. That is 429 at default sizes. If larger text pushes the title down and the Stage would drop below 300 pt, the step switches to its accessibility-size layout. |
-| `EXAMPLE` chip | top-left inside the Stage at x 32, y 145. Height 22, Inter Medium 11, tracking 0.6, ink on white at 85%. |
-| Host face | 40 pt at x 322–362, y 114–154. It is centred on the Stage's top edge and drawn in front of it. |
-| Demo canvas | 390 × 540 logical, white, radius 23 (16 pt on screen). Scaled by 0.691 to 269.5 × 373 at x 66, y 174 (40 pt gutter on top, 16 pt below). |
-| Replay | 44 pt white circle with an ink `arrow.counterclockwise`, at x 336, y 507. |
+| Device frame (owner revision, Nov 10) | No `EXAMPLE` chip. The canvas sits in an iPhone-style body (ink bezel 9 pt, outer radius 46) that fills the Stage's height and bleeds off its top and bottom edges, so the Stage shows the lower part of a phone. Side inset ≥ 12 pt. |
+| Host face | Owner revision (Nov 10): no perch on the Stage (the device frame owns its top edge). The step's host is a 28 pt face after the Crew stack in the header, ringed 2 pt `actionPrimary`, 6 pt after the stack; it joins the stack when the step ends (matched geometry). |
+| Demo canvas | 390 × 540 logical, white: the lower 540 pt of a 390 × 844 phone screen. Real screens are laid out at 390 × 844 and offset up by 304 (`DemoPhoneScreen`). Scaled to the Stage height (429 / 540 ≈ 0.794, 310 × 429), bottom on the Stage's bottom edge, centred. Beat tables and canvas coordinates are unchanged. |
+| Replay | 44 pt white circle with an ink `arrow.counterclockwise`, top-right of the visible screen (10 pt in, 16 pt down). |
 | Title | x 20, y 585. Fjalla One 34 `relativeTo: .largeTitle`, uppercase, ink, at most 2 lines at default sizes. |
 | Body | Inter 16 `relativeTo: .body`, ink, at most 2 lines at default sizes, 10 pt below the title. |
 | Secondary text action | Figtree 17 `relativeTo: .body`, centred, y 717–761. |
@@ -302,7 +303,7 @@ The scene tables below are written for the engine as built:
    - The Bar reads "Connecting…" (existing behaviour).
    - The reel pauses.
 5. **A2 Resolving.**
-   - The Bar title becomes "Finding your company…" with the progress accessory (NEW, §5). That accessory is a white `LinearGradient` band at 25% opacity, 80 pt wide. Its x offset animates −80 → bar width with `.linear(duration: 1.4).repeatForever(autoreverses: false)`. SwiftUI re-evaluates that offset every frame on the main thread; it is one cheap layer and runs only while A0 or A2 is visible.
+   - The Bar title becomes "Finding your company…" with the progress accessory (NEW, §5). That accessory (owner revision, Nov 10: a soft pulse, not a shimmer) is three 8 pt ink dots in the trailing 64 pt white circle that breathe in turn (scale 0.6 → 1, opacity 0.35 → 1, easeInOut 0.6 s, a third of a cycle apart), while the label breathes 1 ↔ 0.7 over 0.9 s. Under Reduce Motion the dots rest, with no loop. It runs only while progress is shown.
    - The Crew look around: the rig's `gaze` goes −1 → +1 → 0 over 1.2 s easeInOut, repeating only while A2 is visible. All four eye paths are recomputed per frame during this loop.
    - The body dims to 45% (0.3 s).
    - The pill becomes **"Looking for your team…"**.
@@ -508,7 +509,7 @@ Element names: `canvasZoom`, `peopleRow`, `moreCapsule`, `participantPanel`, `in
 | `b2.zoom` | 0.00 | `stage` | canvasZoom, peopleRow, moreCapsule, inviteChip | peopleRow | Canvas scale 1 → 1.35, anchored at the people row (195, 300). Settles at 0.946. |
 | `b2.ghostMore` | 0.96 | `.easeOut(0.15)` | ghost | moreCapsule | The ghost appears on "+ 2 More". |
 | `b2.pressMore` | 1.00 | `.easeInOut(0.22)` | ghost | moreCapsule | Press. |
-| `b2.panel` | 1.15 | `expand` | participantPanel | moreCapsule | The participant panel grows out of the capsule (scale 0.3 → 1, anchored on it, with opacity). Rows: **Maya · Design**, **Theo · Engineering**, **Jun · Finance**, **You**. Settles at 2.018. |
+| `b2.panel` | 1.15 | `expand` | participantPanel | moreCapsule | Owner revision (Nov 10): the app's real `DIPParticipantsScreen` pushes in from the trailing edge, as the `.participants` route does; the bar resolves to that route's "Activity Chat". Six rows: **Maya · Design**, **Theo · Engineering**, **Jun · Finance**, **Lena · Sales**, **Omar · Product**, **You**. Settles at 2.018. `b2.panelBack` pops it. |
 | `b2.unzoom` | 1.15 | `stage` | canvasZoom, peopleRow, moreCapsule, inviteChip | — | The zoom eases back to 1.0. Settles at 2.096. |
 | `b2.panelBack` | 2.70 | `.easeIn(0.5)` | participantPanel | moreCapsule | The panel shrinks back into the capsule. Ends 3.20. |
 | `b2.ghostChip` | 3.25 | `ghost` | ghost | inviteChip | The ghost travels to the invite control. **NEW, owned by F4:** there is no `InviteEntryPoint` today. Until F4 ships one, `DemoInviteChip` stands in: a purple capsule, Inter 14, white, 50 pt, labelled "Invite a coworker", below the action row. |
@@ -1215,7 +1216,7 @@ Captures refer to `-onboarding.freezeAt`.
 - **You** = `DIPAvatar` with initials "S" on #ECECEC and a 3 pt white ring.
 
 **Tab-bar rule (no mixing).** The tab icons are, in order: Home (`HeroiconsSolidHome` / `profile_HeroiconsOutlineHome`), **Rewards = gift** (`HeroiconsOutlineGift`, `navigation_HeroiconsSolidGift` when selected), My Events (squares), Profile (user circle).
-- **Demo mini bars** inside the canvas (B1, B4) always pass `tabs: [.home, .events, .profile]`. They show **three tabs and no gift**, in every frame.
+- **Demo mini bars** (owner revision, Nov 10): the real `DIPFloatingNavigation` with its default tab list, so all **four tabs including the gift** in the app's order and icons.
 - **The real Bar** (A frames when tabs show, every H frame) is drawn **as built**. Until F0 lands that is four tabs including the outline gift; after F0 it is three.
 - All real-bar frames in the file must use the same choice. Mark the choice in the page's cover note, and never mix the two on one page.
 

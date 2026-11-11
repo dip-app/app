@@ -20,11 +20,11 @@ Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed m
 | Weekly theme T3 | Admin portal "Weekly themes" list/create/edit | Open. Mock mode verified; live emulator test was skipped until #53, which is now merged | PR #52 | Admin portal |
 | Empty states T4 | Reusable `DIPEmptyState` and its uses | Draft; simulator tests pending | PR #51 | iOS |
 | Chat/push/settings/history/reminders backend (C1) | Chat rules, push functions, subscription preferences, change log trigger, reminders | Open, nothing deployed. Needs APNs key and paid team for real pushes. Open questions: level semantics, chat closing 24 h after the event end, organizer chat access, trigger region check | PR #54 | Backend |
-| Onboarding P0 + spec | Core logic and ONBOARDING_SPEC v4 | Open, waiting for team approval of onboarding | PR #49 | iOS / Design |
-| Onboarding P1 | Sign-in stage | Draft. Unit tests passed; the locked UI test run did not finish | PR #55 | iOS |
-| Onboarding P3 | DemoStage and scene B1 | Draft, stacked on #49. 74 DIPTests pass; UI tests unfinished | PR #56 | iOS |
-| Onboarding P4 | Embedded interest picker | Draft. Not built or tested (disk filled) | PR #58 | iOS |
-| Onboarding P2, B2-B5 | Tour shell (after P1); scenes B2-B5 (after P3) | Not started | to be created | iOS |
+| Onboarding P0 + spec | Core logic and ONBOARDING_SPEC v4 | Merged | PR #49 | iOS / Design |
+| Onboarding P1 | Sign-in stage | Merged | PR #55 | iOS |
+| Onboarding P3 | DemoStage and scene B1 | Merged | PR #56 | iOS |
+| Onboarding P4 | Embedded interest picker | Merged; build fixed by PR #60 | PR #58 | iOS |
+| Onboarding P2, B2-B5 | Tour shell after member resolution (per-uid record, skip, resume, Profile replay, window handoff); scenes B2-B4 (placeholders for F2-F4 UI), B5 with the embedded picker | Built; unit and UI tests in the PR. Shipping flags drop B3 and B2's invite beats until F3/F4 land | `feature/onboarding-p2-tour` | iOS |
 | C2 iOS slice | Activity chat live adapter (V2-S01, selected; record it in its own issue) and bell menu (items A, C) | Not started | to be created | iOS |
 | C3 iOS slice | Push registration, permission priming, settings UI, history UI, add to calendar (items B, C, D, E) | Not started | to be created | iOS |
 | Add to calendar (E) | The outlined top-right header pill of the event page is the button: calendar icon + short date ("Monday, 11/23"; `--calendar-label=generic` shows "Add to Calendar"); system event editor (no permission needed); hidden for past/cancelled. Also: When/Where/Price labels removed, Directions fallback (title search) and a Directions pill on the Where row once joined | Done, merged (see PR) | `feature/add-to-calendar` | iOS |
@@ -203,10 +203,10 @@ The design for this item is in [ONBOARDING_SPEC.md](ONBOARDING_SPEC.md) (PR #49,
 | --- | --- | --- | --- |
 | P0 | Core logic: flow, record store, demo timeline | Open PR, not merged (waiting for team approval) | #49 |
 | P1 | Sign-in stage | Draft; UI test run unfinished | #55 |
-| P2 | Tour shell | Next, after P1 | to be created |
+| P2 | Tour shell | Built (see status board) | `feature/onboarding-p2-tour` |
 | P3 | Demo stage and scene B1 | Draft, stacked on #49 | #56 |
 | P4 | Embedded interests (B5 step) | Draft; not built or tested | #58 |
-| B2-B5 | Remaining demo scenes | Next, after P3 | to be created |
+| B2-B5 | Remaining demo scenes | Built; B3 hidden until F3 (`OnboardingFeatures.shipping`) | `feature/onboarding-p2-tour` |
 
 ## A — Admin portal V2 screens (web, `apps/admin`)
 

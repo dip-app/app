@@ -32,7 +32,7 @@ enum EventBarAction {
             return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
                 identifier: joined ? "participants.chat" : "participants.join",
-                icon: joined ? chatIcon : nil)
+                icon: joined ? chatIcon : nil, kind: joined ? .navigate : .commit)
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
         // Read-only until submissions ship (F3/V2): the page has no entry action, so the tabs stay.
@@ -62,7 +62,7 @@ enum EventBarAction {
             title: joined ? "Activity Chat" : "Join the Activity",
             style: joined ? .accent : .standard,
             identifier: "event.primary", value: joined ? "Joined" : "Not joined",
-            icon: joined ? chatIcon : nil)
+            icon: joined ? chatIcon : nil, kind: joined ? .navigate : .commit)
     }
 
     static let chatIcon = "event_HeroiconsOutlineChatBubbleOvalLeft"

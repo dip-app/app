@@ -32,7 +32,8 @@ final class EventBarActionTests: XCTestCase {
                 title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
                 identifier: "event.primary", value: joined ? "Joined" : "Not joined",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
+                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil,
+                kind: joined ? .navigate : .commit)  // Nov 10: haptic kind added on purpose; looks unchanged.
         case .participants(let id) where snapshot?.eventDetails[id]?.isPast == true:
             return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
         case .participants(let id):
@@ -40,7 +41,8 @@ final class EventBarActionTests: XCTestCase {
             return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
                 style: joined ? .accent : .standard,
                 identifier: joined ? "participants.chat" : "participants.join",
-                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil)
+                icon: joined ? "event_HeroiconsOutlineChatBubbleOvalLeft" : nil,
+                kind: joined ? .navigate : .commit)
         case .album:
             return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
         case .challenge, nil: return nil
@@ -107,11 +109,13 @@ final class EventBarActionTests: XCTestCase {
         XCTAssertNil(resolve(nil))
         XCTAssertEqual(resolve(.event("available"))?.title, "Join the Activity")
         XCTAssertEqual(resolve(.event("available"))?.style, .standard)
+        XCTAssertEqual(resolve(.event("available"))?.kind, .commit, "Join changes something: a slight haptic")
         let joined = resolve(.event("joined"))
         XCTAssertEqual(joined?.title, "Activity Chat")
         XCTAssertEqual(joined?.style, .accent)
         XCTAssertEqual(joined?.icon, "event_HeroiconsOutlineChatBubbleOvalLeft")
         XCTAssertEqual(joined?.value, "Joined")
+        XCTAssertEqual(joined?.kind, .navigate, "opening chat is navigation: silent")
         XCTAssertEqual(resolve(.event("full"))?.title, "Activity full")
         XCTAssertEqual(resolve(.event("full-joined"))?.title, "Activity Chat", "joined beats full")
         XCTAssertEqual(resolve(.event("cancelled-joined"))?.title, "Activity cancelled")
