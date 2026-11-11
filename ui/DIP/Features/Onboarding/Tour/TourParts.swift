@@ -28,7 +28,8 @@ struct TourLayout: Equatable {
     /// B5's Stage strip (y 134–330).
     var strip: CGRect { CGRect(x: Self.side, y: Self.stageTop, width: width - 2 * Self.side, height: Self.stripHeight) }
     var welcome: CGRect { CGRect(x: Self.side, y: 60, width: width - 2 * Self.side, height: 225) }
-    var perch: CGPoint { CGPoint(x: width - Self.side - Self.perchSize / 2, y: Self.stageTop) }
+    /// Perch: 40 pt at x 322–362 on 402, centred on the Stage top edge.
+    var perch: CGPoint { CGPoint(x: width - 60, y: Self.stageTop) }
     var barCenterY: CGFloat { size.height - DIPFloatingNavigation.barCenterInset }
     /// B5's secondary text action (y 717–761 on 874).
     var secondaryCenterY: CGFloat { size.height - 135 }
@@ -289,34 +290,36 @@ struct ArrivalCrew: View {
     @State private var youShown = false
     @State private var winking = false
 
+    /// Figma B0: P and W on the left, Y and G on the right (112 pt either side, 56 pt above and below the
+    /// centre), You in the middle. The cheer drops each face 12 pt with `hop`, 70 ms apart.
     var body: some View {
-        let order: [CrewMember] = [.purple, .white, .yellow, .gray]
-        HStack(spacing: -30) {
-            ForEach(Array(order.enumerated()), id: \.element) { index, member in
+        let seats: [(CrewMember, CGSize)] = [
+            (.purple, CGSize(width: -112, height: -56)), (.white, CGSize(width: -112, height: 56)),
+            (.yellow, CGSize(width: 112, height: -56)), (.gray, CGSize(width: 112, height: 56)),
+        ]
+        ZStack {
+            ForEach(Array(seats.enumerated()), id: \.offset) { index, seat in
+                let member = seat.0
                 Group {
                     if member == .purple {
                         member.face(size: 88, mood: .happy).matchedGeometryEffect(id: "crew.purple", in: namespace)
                     } else {
                         OnboardingFace(fill: member.fill.color, figure: member.figure,
-                                       rig: member == .yellow && winking ? .wink : .happy, size: 88)
+                                       rig: member == .yellow ? (winking ? .wink : .happy) : (member == .gray ? .calm : .happy),
+                                       size: 88)
                     }
                 }
-                .offset(y: cheered ? 0 : -12)
+                .offset(x: seat.1.width, y: seat.1.height + (cheered ? 0 : -12))
                 .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed).delay((0.10 + 0.07 * Double(index)) / speed),
                            value: cheered)
-                .zIndex(Double(index == 1 || index == 2 ? 1 : 0))
-                if index == 1 {
-                    ZStack {
-                        Circle().fill(OnboardingTheme.notification).frame(width: 88, height: 88)
-                            .scaleEffect(youShown ? 1 : 0.4)
-                        TourYouAvatar(name: youName, size: 88).opacity(youShown ? 1 : 0)
-                    }
-                    .matchedGeometryEffect(id: "crew.you", in: namespace)
-                    .zIndex(3)
-                    .padding(.horizontal, 6)
-                    .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed).delay(0.25 / speed), value: youShown)
-                }
             }
+            ZStack {
+                Circle().fill(OnboardingTheme.notification).frame(width: 88, height: 88)
+                    .scaleEffect(youShown ? 1 : 0.4)
+                TourYouAvatar(name: youName, size: 88).opacity(youShown ? 1 : 0)
+            }
+            .matchedGeometryEffect(id: "crew.you", in: namespace)
+            .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed).delay(0.25 / speed), value: youShown)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("You and four coworkers, celebrating."))

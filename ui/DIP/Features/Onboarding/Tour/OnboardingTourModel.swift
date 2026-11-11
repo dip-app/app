@@ -96,7 +96,8 @@ final class OnboardingTourModel {
     // MARK: Derived
 
     var step: OnboardingStep? { flow.currentStep }
-    var isHandingOff: Bool { handoff != .none }
+    /// True from the moment the outcome is written (the reveal task may not have started yet).
+    var isHandingOff: Bool { flow.isHandingOff || handoff != .none }
     var nextStep: OnboardingStep? {
         guard let step, let index = flow.steps.firstIndex(of: step), index + 1 < flow.steps.count else { return nil }
         return flow.steps[index + 1]

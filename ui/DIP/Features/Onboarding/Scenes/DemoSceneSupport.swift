@@ -36,7 +36,7 @@ enum DemoPeople {
             DIPParticipant(id: "maya", name: "Maya", department: "Design", avatar: CrewAvatarImages.reference(.purple, size: 50)),
             DIPParticipant(id: "theo", name: "Theo", department: "Engineering", avatar: CrewAvatarImages.reference(.white, size: 50)),
             DIPParticipant(id: "jun", name: "Jun", department: "Finance", avatar: CrewAvatarImages.reference(.yellow, size: 50)),
-            DIPParticipant(id: "you", name: "You", department: "", avatar: CrewAvatarImages.you(name: youName, size: 50)),
+            DIPParticipant(id: "you", name: "You", department: "Going", avatar: CrewAvatarImages.you(name: youName, size: 50)),
         ]
     }
 

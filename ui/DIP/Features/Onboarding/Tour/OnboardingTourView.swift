@@ -413,6 +413,7 @@ struct OnboardingTourView: View {
                 if step == .arrival { TourYouAvatar(name: youName, size: 56) }
                 Text(copy.title.uppercased())
                     .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 34, relativeTo: .largeTitle))
+                    .accessibilityLabel(Text(copy.title))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("onboarding.tour.title")
                     .accessibilityFocused($titleFocused)

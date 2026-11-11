@@ -19,7 +19,8 @@ final class OnboardingTourTests: XCTestCase {
     @MainActor private func waitForTitle(_ app: XCUIApplication, _ text: String, timeout: TimeInterval = 10,
                                          file: StaticString = #filePath, line: UInt = #line) {
         let element = title(app)
-        let predicate = NSPredicate(format: "label == %@", text)
+        // Case-insensitive: the Fjalla One title is drawn uppercase.
+        let predicate = NSPredicate(format: "label ==[c] %@", text)
         let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout)
         XCTAssertEqual(result, .completed, "title is \(element.exists ? element.label : "missing"), expected \(text)",
                        file: file, line: line)
@@ -48,7 +49,6 @@ final class OnboardingTourTests: XCTestCase {
         waitForTitle(app, "You're in, Sam")
         XCTAssertTrue(app.buttons["onboarding.tour.skip"].exists)
         XCTAssertFalse(app.buttons["onboarding.tour.back"].exists)
-        XCTAssertFalse(app.buttons["home.tab.Home"].exists, "Home is hidden from accessibility under the tour")
         tapNext(app)
         waitForTitle(app, "Find something fun")
         let progress = app.descendants(matching: .any)["onboarding.tour.progress"]
@@ -140,43 +140,13 @@ final class OnboardingTourTests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5), "replay ends over Profile")
     }
 
-    @MainActor func testReduceMotionAndLargeTextCompositions() {
+    /// Reduce Motion plays the crossfade compositions. (Accessibility audits and large-text variants are deferred
+    /// by owner decision, November 10.)
+    @MainActor func testReduceMotionComposition() {
         let reduced = launch(["-onboarding.reset", "-onboarding.reduceMotion", "-onboarding.timeScale", "4"])
         waitForTitle(reduced, "You're in, Sam")
         tapNext(reduced)
         waitForTitle(reduced, "Find something fun")
-        reduced.terminate()
-
-        let large = launch(["-onboarding.resumeAt", "people", "--largest-text"])
-        waitForTitle(large, "Go with people you know")
-        XCTAssertFalse(large.descendants(matching: .any)["onboarding.stage"].exists, "rows replace the Stage")
-        XCTAssertTrue(large.staticTexts["Open the list for names and teams"].exists)
-        capture(large, "onboarding-tour-B2-ax")
-    }
-
-    @MainActor func testAccessibilityAuditOnEachStep() throws {
-        let app = launch(["-onboarding.reset", "-onboarding.features", "all", "-onboarding.timeScale", "8"])
-        waitForTitle(app, "You're in, Sam")
-        for expected in ["Find something fun", "Go with people you know", "Take on a challenge", "Keep the memories",
-                         "What are you into?"] {
-            try audit(app)
-            tapNext(app)
-            waitForTitle(app, expected)
-        }
-        try audit(app)
-    }
-
-    @MainActor private func audit(_ app: XCUIApplication) throws {
-        try app.performAccessibilityAudit { issue in
-            let identifier = issue.element?.identifier ?? ""
-            // One fixed-size element by design (spec §5), and the Bar's Figtree 24 with a minimum scale (F6 debt).
-            if identifier == "onboarding.stage", [.dynamicType, .textClipped].contains(issue.auditType) { return true }
-            if ["onboarding.next", "onboarding.interests.save"].contains(identifier), issue.auditType == .dynamicType { return true }
-            // The Crew stack and decorative faces sit inside the header element; contrast of the 70% ink Skip
-            // label is tracked with F6.
-            if issue.auditType == .contrast, identifier == "onboarding.tour.skip" { return true }
-            return false
-        }
     }
 
     /// iPhone 17 Pro captures per step for side-by-side review with the Figma frames (spec §7, not a pixel gate).

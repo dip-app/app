@@ -58,7 +58,9 @@ struct DIPMemberHome: View {
 
     var body: some View {
         ZStack {
+            // The shell stays transparent until the window reveal starts uncovering it.
             shell
+                .opacity(tourCoversShell ? 0 : 1)
                 .allowsHitTesting(tour == nil)
                 .accessibilityHidden(tour != nil)
             if let tour {
@@ -113,6 +115,15 @@ struct DIPMemberHome: View {
     }
 
     // MARK: Onboarding
+
+    /// True while the tour hides the shell completely (before its window reveal starts).
+    private var tourCoversShell: Bool {
+        guard let tour else { return false }
+        switch tour.handoff {
+        case .none, .waiting: return true
+        case .revealing, .finished: return false
+        }
+    }
 
     private var firstName: String? {
         context.profile.displayName.split(separator: " ").first.map(String.init)
