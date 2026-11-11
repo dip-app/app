@@ -94,51 +94,12 @@ struct DIPMyEventsScreen: View {
     }
 
     private var sectionPicker: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Capsule().fill(segmentAccent)
-                Capsule().fill(.white)
-                    .frame(width: section == .active ? 141 : 111, height: 40)
-                    .offset(x: section == .active ? 5 : geometry.size.width - 116)
-                    // One persistent marker morphs between both source variants.
-                    // Reduced Motion replaces its position change with a short dissolve.
-                    .id(reduceMotion ? section.rawValue : "selection")
-                    .transition(.opacity)
-                    .accessibilityHidden(true)
-                HStack(spacing: 0) {
-                    Button {
-                        selectSection(.active)
-                    } label: {
-                        Text("Active Events")
-                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                            .foregroundStyle(section == .active ? segmentAccent : .white)
-                            .frame(width: 112, height: 40, alignment: .leading)
-                            .frame(height: 50)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityIdentifier("events.segment.active")
-                    .accessibilityAddTraits(section == .active ? .isSelected : [])
-                    Spacer(minLength: 0)
-                    Button {
-                        selectSection(.memories)
-                    } label: {
-                        Text("Memories")
-                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                            .foregroundStyle(section == .memories ? segmentAccent : .white)
-                            .frame(width: 80, height: 40)
-                            .frame(height: 50)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityIdentifier("events.segment.memories")
-                    .accessibilityAddTraits(section == .memories ? .isSelected : [])
-                }
-                .padding(.horizontal, 20)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(height: 50)
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .contain)
+        DIPSegmentedToggle(
+            segments: [
+                .init(id: Section.active, title: "Active Events", identifier: "events.segment.active"),
+                .init(id: Section.memories, title: "Memories", identifier: "events.segment.memories"),
+            ],
+            selection: section, accent: segmentAccent, onSelect: selectSection)
     }
 
     private var sectionAnimation: Animation {
