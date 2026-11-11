@@ -100,10 +100,13 @@ public struct BugReportDraft: Equatable, Sendable {
         category != .unspecified || trimmed.count >= Self.minimumCharacters
     }
 
-    /// Truncates by grapheme cluster. Returns the limited text and whether anything was cut.
+    /// Truncates to 1,000 characters (grapheme clusters) and also to 1,000 Unicode scalars, because firestore.rules
+    /// counts code points: a string of multi-scalar emoji could otherwise pass here and fail there.
+    /// Returns the limited text and whether anything was cut.
     public static func limited(_ text: String) -> (text: String, truncated: Bool) {
-        guard text.count > maximumCharacters else { return (text, false) }
-        return (String(text.prefix(maximumCharacters)), true)
+        var result = text.count > maximumCharacters ? String(text.prefix(maximumCharacters)) : text
+        while result.unicodeScalars.count > maximumCharacters { result.removeLast() }
+        return (result, result != text)
     }
 }
 
@@ -111,7 +114,8 @@ public enum BugReportValidation {
     /// The same bounds as firestore.rules; a report that fails this is never sent.
     public static func isValid(_ report: BugReport) -> Bool {
         let description = report.description
-        guard description.count <= BugReportDraft.maximumCharacters else { return false }
+        guard description.count <= BugReportDraft.maximumCharacters,
+              description.unicodeScalars.count <= BugReportDraft.maximumCharacters else { return false }
         guard report.category != .unspecified
                 || description.trimmingCharacters(in: .whitespacesAndNewlines).count >= BugReportDraft.minimumCharacters
         else { return false }

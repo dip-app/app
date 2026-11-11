@@ -17,11 +17,15 @@ final class BugReportDraftTests: XCTestCase {
         XCTAssertTrue(draft.canSend)
     }
 
-    func testLimitCountsGraphemeClusters() {
-        let family = String(repeating: "👨‍👩‍👧", count: 1_001)
-        let result = BugReportDraft.limited(family)
-        XCTAssertTrue(result.truncated)
-        XCTAssertEqual(result.text.count, 1_000)
+    func testLimitCountsGraphemeClustersAndUnicodeScalars() {
+        let plain = BugReportDraft.limited(String(repeating: "a", count: 1_001))
+        XCTAssertTrue(plain.truncated)
+        XCTAssertEqual(plain.text.count, 1_000)
+        // Each family emoji is one grapheme but five scalars; the rules count scalars, so the limit is 200 of them.
+        let family = BugReportDraft.limited(String(repeating: "👨‍👩‍👧", count: 600))
+        XCTAssertTrue(family.truncated)
+        XCTAssertLessThanOrEqual(family.text.unicodeScalars.count, 1_000)
+        XCTAssertEqual(family.text.count, 200)
         XCTAssertEqual(BugReportDraft.limited("short").text, "short")
         XCTAssertFalse(BugReportDraft.limited("short").truncated)
     }

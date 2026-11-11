@@ -100,6 +100,15 @@ test("size and shape limits", async () => {
   await assertFails(setDoc(reportDoc(member(), over), valid("member", { screenshotBytes: 1000 })));
 });
 
+test("the description limit counts characters, not bytes (the client trims by Unicode scalars)", async () => {
+  await assertSucceeds(setDoc(reportDoc(member(), "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    valid("member", { description: "😀".repeat(1000) })));
+  await assertSucceeds(setDoc(reportDoc(member(), "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
+    valid("member", { description: "é".repeat(1000) })));
+  await assertFails(setDoc(reportDoc(member(), "dddddddd-dddd-4ddd-8ddd-dddddddddddd"),
+    valid("member", { description: "😀".repeat(1001) })));
+});
+
 test("createdAt must be the server time and the document id must be a UUID", async () => {
   const id = "99999999-9999-4999-8999-999999999999";
   await assertFails(setDoc(reportDoc(member(), id), valid("member", { createdAt: Timestamp.fromMillis(1000) })));
