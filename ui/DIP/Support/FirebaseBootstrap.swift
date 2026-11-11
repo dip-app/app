@@ -91,6 +91,14 @@ enum FirebaseBootstrap {
         return FirebaseChallengeReadSource.repository(context: context, auth: Auth.auth(), firestore: Firestore.firestore())
     }
 
+    /// Challenge submissions (Storage evidence, submitChallengeV1, own submission reads) share the configured SDKs.
+    @MainActor static func makeSubmissionSource() -> (any SubmissionSource)? {
+        guard case .configured = status else { return nil }
+        return FirebaseSubmissionSource(firestore: Firestore.firestore(),
+                                        functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                        storage: Storage.storage())
+    }
+
     /// RSVP (setRsvpV1) and participation reads share the configured SDKs and emulator routing.
     @MainActor static func makeParticipationSource() -> (any ParticipationSource)? {
         guard case .configured = status else { return nil }

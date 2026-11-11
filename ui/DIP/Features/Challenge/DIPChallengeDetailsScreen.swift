@@ -4,8 +4,9 @@ import SwiftUI
 
 /// Read-only weekly-theme page, built on the event page layout (Figma 160:6357): window pill,
 /// theme illustration on its accent, title, description, goal and reward, and how entries will
-/// work. Submitting an entry is F3/V2, so the page shows a quiet "Submissions open soon" note
-/// instead of an entry action, and the completed list stays hidden until it exists.
+/// work. With a submission context (configured builds, Debug fixtures) it shows "Your entry" and the entry
+/// sheet (F3); without one (standalone previews) it keeps the quiet "Submissions open soon" note. The
+/// completed list stays hidden until it exists.
 struct DIPChallengeDetailsScreen: View {
     let challenge: DIPChallengeDetail
     let onBack: () -> Void
@@ -13,6 +14,9 @@ struct DIPChallengeDetailsScreen: View {
     var now: Date = Date()
     @Environment(\.eventCalendarAdder) private var calendarAdder
     @State private var calendarResult: DIPCalendarAddResult?
+    @Environment(\.challengeSubmissionContext) private var submissionContext
+    @State private var submission: ChallengeSubmissionModel?
+    @State private var showsEntrySheet = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -57,6 +61,14 @@ struct DIPChallengeDetailsScreen: View {
                             .padding(.top, 10)
                             facts
                             infoCard
+                            if let submission {
+                                DIPChallengeSubmissionSection(model: submission) {
+                                    // Opening the sheet is navigation: silent.
+                                    submission.beginEditing()
+                                    if let photo = submissionContext?.previewPhoto { submission.attachPreparedPhoto(photo) }
+                                    showsEntrySheet = true
+                                }
+                            }
                         }
                         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     }
@@ -70,6 +82,19 @@ struct DIPChallengeDetailsScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
+        .task(id: challenge.id) { startSubmissions() }
+        .onDisappear { submission?.stop(); submission = nil }
+        .sheet(isPresented: $showsEntrySheet) {
+            if let submission { DIPChallengeSubmissionSheet(model: submission) }
+        }
+    }
+
+    /// One model per page appearance; read-only (no model) when there is no context or the theme has no numeric goal.
+    private func startSubmissions() {
+        guard submission == nil, let context = submissionContext, let goal = challenge.goal, goal > 0, let source = context.makeSource() else { return }
+        let model = ChallengeSubmissionModel(challenge: challenge, goal: goal, scope: context.scope, source: source, clock: { now })
+        submission = model
+        model.start()
     }
 
     /// Same tinted card as the event page: how entries work and where the theme stands right now.
@@ -90,7 +115,7 @@ struct DIPChallengeDetailsScreen: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "clock").foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
                     .frame(width: 24).accessibilityHidden(true)
-                Text(challenge.statusNote(now: now))
+                Text(challenge.statusNote(now: now, submissionsOpen: submissionContext != nil && challenge.goal != nil))
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     .accessibilityIdentifier("challenge.submissions")

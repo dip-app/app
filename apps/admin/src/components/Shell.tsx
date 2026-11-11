@@ -56,6 +56,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
             </svg>
             Weekly themes
           </Link>
+          {can(session.role, "challenges.review") && <NavLink href="/challenges/" current={pathname.startsWith("/challenges")} label="Challenges" d="M12 3.5l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.7 5.4-.7z" />}
           {can(session.role, "members.view") && <NavLink href="/members/" current={pathname.startsWith("/members")} label="Members" d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.7a3.5 3.5 0 0 1 0 6.6" />}
           {can(session.role, "roster.manage") && <NavLink href="/roster/" current={pathname.startsWith("/roster")} label="Roster" d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />}
           {can(session.role, "import.run") && <NavLink href="/import/" current={pathname.startsWith("/import")} label="Import" d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" />}

@@ -114,13 +114,30 @@ service cloud.firestore {
     // (a missing one is observable) and list with a limit <= 20; organizers may list without a limit.
     // The path scopes the tenant and only the server writes these documents, so list queries need no
     // companyId filter (the iOS Home query is a single-field endDate range, no composite index).
-    // Submissions and participant rows stay denied until their V2 commands exist.
+    // Participant rows stay denied.
     match /companies/{companyId}/challenges/{challengeId} {
       allow get: if sameCompany(companyId) &&
         (!exists(/databases/$(database)/documents/companies/$(companyId)/challenges/$(challengeId))
           || resource.data.companyId == companyId);
       allow list: if sameCompany(companyId)
         && (organizer(companyId) || (request.query.limit != null && request.query.limit <= 20));
+    }
+    // Challenge submissions (F3, docs/contracts/challenge-submissions.md): the document ID is
+    // `{challengeId}_{uid}`, so a member can read only their own submission (a missing one is observable,
+    // so a listener can show "not started"). Every write (status, progress, points) goes through
+    // submitChallengeV1/approveChallengeV1/rejectChallengeV1 (Admin SDK); organizers read the review
+    // queue through listChallengeSubmissionsV1, not through the client SDK. No lists.
+    match /companies/{companyId}/challenges/{challengeId}/submissions/{submissionId} {
+      allow get: if sameCompany(companyId)
+        && submissionId == challengeId + '_' + request.auth.uid
+        && (!exists(/databases/$(database)/documents/companies/$(companyId)/challenges/$(challengeId)/submissions/$(submissionId))
+          || (resource.data.companyId == companyId && resource.data.userId == request.auth.uid));
+    }
+    // Points ledger: server-only appends with deterministic award IDs; a member may list their own entries.
+    match /companies/{companyId}/pointTransactions/{transactionId} {
+      allow get: if sameCompany(companyId) && resource.data.companyId == companyId && resource.data.userId == request.auth.uid;
+      allow list: if sameCompany(companyId) && request.query.limit != null && request.query.limit <= 100
+        && resource.data.companyId == companyId && resource.data.userId == request.auth.uid;
     }
     // --- Admin backend (docs/contracts/admin.md): all writes are server-only (Admin SDK callables) ---
     // Team catalog: same-company members read; only upsertTeamV1 writes.
