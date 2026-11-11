@@ -144,6 +144,7 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
       if (decision.action === "unchanged") return { ...base, outcome: "unchanged" as const };
       if (decision.kind === "member" && member) {
         tx.update(paths.user(member.id), { ...decision.patch, revision: revisionOf(member.data) + 1 });
+        if (entry) tx.update(paths.rosterEntry(actor.companyId, hash), { ...decision.patch, updatedAt: SERVER_TIME }); // roster lists everyone
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "member", targetId: member.id,
           summary: `Import updated ${record.email}`, changes: decision.changes, requestId: jobId });
         return { ...base, outcome: "updated" as const };

@@ -9,7 +9,6 @@ export interface Company {
   officeLatitude: number;
   officeLongitude: number;
   createdAt: string;
-  membershipMode?: "open" | "rosterOnly";
 }
 
 export interface AppUser {
@@ -564,14 +563,15 @@ export interface RosterEntry {
   managerEmail?: string;
   startDate?: string;
   status: "invited" | "claimed" | "revoked";
-  source: "manual" | "import";
+  source: "manual" | "import" | "signup";
   importJobId?: string;
   claimedBy?: string;
   claimedAt?: string;
-  invitedBy: string;
+  invitedBy?: string;
   createdAt: string;
   updatedAt: string;
   revision: number;
+  memberStatus?: "active" | "deactivated";
 }
 
 export interface AdminMemberSummary {
@@ -845,19 +845,6 @@ export interface UpsertTeamResponse {
   teamId: string;
   created: boolean;
   revision: number;
-}
-
-export interface UpdateCompanySettingsRequest {
-  contractVersion: number;
-  companyId: string;
-  requestId: string;
-  membershipMode: "open" | "rosterOnly";
-}
-
-export interface UpdateCompanySettingsResponse {
-  contractVersion: number;
-  membershipMode: "open" | "rosterOnly";
-  changed: boolean;
 }
 
 export interface UpsertRosterEntryRequest {

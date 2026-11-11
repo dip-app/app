@@ -13,9 +13,9 @@ Built the admin backend for tickets #121 to #126 on `feature/admin-backend` (fro
 ## Changes
 
 - `docs/contracts/admin.md` (new): callables, permission matrix, error reasons, audit shape, roster/import models, implementation notes.
-- `contracts/v1/models.schema.json` + generated TS/Swift: additions only (member `workLocation/teamIds/status/...`, `Company.membershipMode`, `Team`, `AuditEntry`, `RosterEntry`, import types, admin requests/responses, `organizer` role, `UpdateEventRequest.status=completed` + `statusReason`, `RecordAttendanceRequest.checkedIn`).
+- `contracts/v1/models.schema.json` + generated TS/Swift: additions only (member `workLocation/teamIds/status/...`, `Team`, `AuditEntry`, `RosterEntry`, import types, admin requests/responses, `organizer` role, `UpdateEventRequest.status=completed` + `statusReason`, `RecordAttendanceRequest.checkedIn`).
 - `gcp/functions/src/modules/admin/**` (new module) and exports in `gcp/functions/src/index.ts`: 18 callables.
-- `gcp/functions/src/modules/accounts/**`: roster claim, `membershipMode`, deactivated and `organizer` handling in `resolveMembershipV1`.
+- `gcp/functions/src/modules/accounts/**`: roster claim/record (no roster-only mode), deactivated and `organizer` handling in `resolveMembershipV1`.
 - `gcp/functions/src/modules/organizer/**`: `completed` status transitions (`EVENT_NOT_ENDED`, `STATUS_TRANSITION_BLOCKED`), `organizer` role accepted, `hasAnyPhoto` port.
 - `gcp/firestore.rules`: deactivated members lose same-company reads; `organizer` role; admin-only `auditLog`, `roster`, `importJobs`; `teams` for members; new server-owned member keys.
 - Tests: `gcp/tests/unit/admin-*.test.ts`, `accounts-roster-claim.test.ts`, `organizer-events.test.ts` additions, `gcp/tests/rules/admin.test.ts`, `gcp/tests/integration/admin-adapter.test.ts`, `contracts/tests/admin.test.mjs`; script `test:adminapi:integration` and its CI step.
@@ -31,7 +31,7 @@ Run locally (Node 24): `tsc -p gcp/functions --noEmit` clean; all `gcp/tests/uni
 - Photo removal is a hard delete (no undo window); audit keeps uploader, path and caption snapshot.
 - Admin add beyond capacity raises the event capacity to attendeeCount + 1 (keeps `attendeeCount <= capacity` that `setRsvpV1` asserts) with a mandatory reason.
 - Member directory is a callable (`listMembersV1`); `users/{uid}` stays self-read only.
-- Roster is keyed by SHA-256 of the lower-case email; `membershipMode` (`open` default, `rosterOnly`) lives on the company document.
+- Roster is keyed by SHA-256 of the lower-case email; there is no roster-only mode (owner decision, follow-up branch feature/roster-everyone): everyone who joins is on the roster.
 - Import: client parses CSV/XLSX, server plans (dry run) then applies one 100-row chunk per call under a lease; counters can be approximate after an interrupted chunk.
 - Ledger path is `companies/{c}/pointTransactions/{id}` (deterministic ids).
 

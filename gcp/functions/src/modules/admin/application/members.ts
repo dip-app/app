@@ -1,13 +1,14 @@
 import type {
   AdjustMemberPointsResponse, GetMemberResponse, ListMembersResponse, ResetMemberProfileResponse, SetMemberStatusResponse,
-  UpdateCompanySettingsResponse, UpdateMemberResponse, UpsertTeamResponse,
+  UpdateMemberResponse, UpsertTeamResponse,
 } from "../../../generated/models";
 import { change, diffFields } from "../domain/audit";
 import { AdminError, stored } from "../domain/errors";
+import { emailHash } from "../domain/employee";
 import { hasOtherActiveAdmin, matchesFilter, resetPatch, revisionOf, statusOf, toSummary, type MemberSummary } from "../domain/member";
 import { paths, SERVER_TIME, increment } from "../domain/ops";
 import {
-  parseAdjustPoints, parseCompanySettings, parseGetMember, parseListMembers, parseResetProfile, parseSetStatus, parseUpdateMember, parseUpsertTeam,
+  parseAdjustPoints, parseGetMember, parseListMembers, parseResetProfile, parseSetStatus, parseUpdateMember, parseUpsertTeam,
 } from "../domain/requests";
 import { cancelAttendance } from "./attendees";
 import { authorize, loadMember, once, requireCaller, writeAudit, type Actor } from "./context";
@@ -16,6 +17,11 @@ import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 const SCAN_BATCH = 250;
 const MAX_SCAN = 1000;
 const MAX_RSVP_CLEANUP = 200;
+
+/** The member's roster entry path (everyone who joins is on the roster), or null when the member has no email. */
+function rosterPathOf(actor: Actor, member: Doc): string | null {
+  return typeof member.email === "string" && member.email !== "" ? paths.rosterEntry(actor.companyId, emailHash(member.email)) : null;
+}
 
 /** Active admins other than `exceptUid` (the last-admin guard). Reads the admin role index, never the whole company. */
 async function otherActiveAdminExists(tx: AdminTransaction, actor: Actor, exceptUid: string): Promise<boolean> {
@@ -98,7 +104,11 @@ export async function updateMember(deps: AdminDeps, caller: Caller | null, data:
       const patch: Doc = {};
       for (const c of changes) patch[c.field] = wanted[c.field];
       const nextRevision = revision + 1;
+      const rosterPath = rosterPathOf(actor, member);
+      const entry = rosterPath ? await tx.get(rosterPath) : null;
       tx.update(paths.user(userId), { ...patch, revision: nextRevision });
+      // The roster lists everyone: keep the member's entry in step with the admin edit.
+      if (rosterPath && entry) tx.update(rosterPath, { ...patch, updatedAt: SERVER_TIME });
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "member.update", targetType: "member", targetId: userId,
         summary: `Updated ${typeof member.displayName === "string" ? member.displayName : "a member"}: ${changes.map(c => c.field).join(", ")}`,
@@ -163,7 +173,10 @@ export async function setMemberStatus(deps: AdminDeps, caller: Caller | null, da
         }
       }
       const nextRevision = revision + 1;
+      const rosterPath = rosterPathOf(actor, member);
+      const entry = rosterPath ? await tx.get(rosterPath) : null;
       tx.update(paths.user(req.userId), { status: req.status, statusUpdatedAt: SERVER_TIME, revision: nextRevision });
+      if (rosterPath && entry) tx.update(rosterPath, { memberStatus: req.status, updatedAt: SERVER_TIME });
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "member.status", targetType: "member", targetId: req.userId,
         summary: `${req.status === "deactivated" ? "Deactivated" : "Reactivated"} ${typeof member.displayName === "string" ? member.displayName : "a member"}`,
@@ -252,25 +265,5 @@ export async function upsertTeam(deps: AdminDeps, caller: Caller | null, data: u
         summary: `Updated team ${req.name}`, changes, requestId: req.requestId });
       return { contractVersion: 1, teamId: existing.id, created: false, revision: revision + 1 } satisfies UpsertTeamResponse;
     }, now);
-  })).value;
-}
-
-/** updateCompanySettingsV1: open vs roster-only membership. Existing members are never affected. */
-export async function updateCompanySettings(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<UpdateCompanySettingsResponse> {
-  const authenticated = requireCaller(caller);
-  const req = parseCompanySettings(data);
-  await deps.limiter?.consume(authenticated.uid);
-  return (await deps.store.runTransaction(async tx => {
-    const actor = await authorize(tx, authenticated, req.companyId, "company.settings");
-    return once(tx, actor, "updateCompanySettingsV1", req.requestId, { membershipMode: req.membershipMode }, async () => {
-      const company = await tx.get(paths.company(actor.companyId));
-      if (!company) throw new AdminError("not-found", "COMPANY_NOT_FOUND", "Company not found.");
-      const current = company.membershipMode === "rosterOnly" ? "rosterOnly" : "open";
-      if (current === req.membershipMode) return { contractVersion: 1, membershipMode: current, changed: false } satisfies UpdateCompanySettingsResponse;
-      tx.update(paths.company(actor.companyId), { membershipMode: req.membershipMode });
-      writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "company.settings", targetType: "company", targetId: actor.companyId,
-        summary: `Membership mode set to ${req.membershipMode}`, changes: [change("membershipMode", current, req.membershipMode)], requestId: req.requestId });
-      return { contractVersion: 1, membershipMode: req.membershipMode, changed: true } satisfies UpdateCompanySettingsResponse;
-    }, deps.now());
   })).value;
 }

@@ -33,8 +33,7 @@ test('additive fields keep existing AppUser, Company, RSVP and attendance docume
   rejects('AppUser', {...user, status: 'banned'});
   rejects('AppUser', {...user, teamIds: Array(21).fill('t')});
   accepts('Company', company);
-  accepts('Company', {...company, membershipMode: 'rosterOnly'});
-  rejects('Company', {...company, membershipMode: 'closed'});
+  rejects('Company', {...company, membershipMode: 'rosterOnly'}, 'there is no roster-only mode');
   accepts('RSVP', rsvp);
   accepts('RSVP', {...rsvp, source: 'admin', managedBy: 'admin-uid'});
   rejects('RSVP', {...rsvp, source: 'bot'});
@@ -69,6 +68,9 @@ test('documents: Team, AuditEntry, RosterEntry and ImportJob are strict', () => 
     status: 'invited', source: 'manual', invitedBy: 'u', createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z', revision: 1};
   accepts('RosterEntry', entry);
   rejects('RosterEntry', {...entry, status: 'pending'});
+  const {invitedBy, ...signup} = entry;
+  accepts('RosterEntry', {...signup, status: 'claimed', source: 'signup', memberStatus: 'deactivated', claimedBy: 'u'});
+  rejects('RosterEntry', {...entry, memberStatus: 'invited'});
   const job = {companyId: 'acme', status: 'planned', totals: {total: 1, create: 1, update: 0, unchanged: 0, invalid: 0},
     progress: {processed: 0, total: 1, created: 0, updated: 0, unchanged: 0, failed: 0}, planHash: 'a'.repeat(64), chunkCount: 1, nextChunk: 0,
     errors: [], errorsTruncated: false, createdBy: 'u', createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z'};
@@ -88,7 +90,6 @@ test('every mutating admin request needs a requestId and rejects unknown fields'
     SetMemberStatusRequest: {userId: 'u', status: 'deactivated'},
     AdjustMemberPointsRequest: {userId: 'u', delta: -5, reason: 'Correction'},
     UpsertTeamRequest: {name: 'Platform'},
-    UpdateCompanySettingsRequest: {membershipMode: 'rosterOnly'},
     UpsertRosterEntryRequest: {entry: {email: 'a@acme.com', teamIds: ['Platform']}},
     RevokeRosterEntryRequest: {entryId: 'a'.repeat(64)},
     ImportEmployeesRequest: {rows: [{email: 'a@acme.com'}]},

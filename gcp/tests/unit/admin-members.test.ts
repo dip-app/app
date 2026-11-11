@@ -1,8 +1,10 @@
 import { strict as assert } from "node:assert";
+import { createHash } from "node:crypto";
 import { describe, test } from "node:test";
+import { backfillRoster } from "../../functions/src/modules/admin/application/backfillRoster";
 import { addEventAttendee } from "../../functions/src/modules/admin/application/attendees";
 import {
-  adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateCompanySettings, updateMember, upsertTeam,
+  adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../../functions/src/modules/admin/application/members";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { caller, makeDeps, rid, seedCompany, type FakeAdminStore } from "./helpers/adminFakes";
@@ -282,7 +284,7 @@ describe("adjustMemberPointsV1", () => {
   });
 });
 
-describe("teams and company settings", () => {
+describe("teams", () => {
   test("creates, renames and archives teams; names are unique case-insensitively", async () => {
     const { deps, store } = makeDeps();
     seedCompany(store);
@@ -298,15 +300,48 @@ describe("teams and company settings", () => {
     await fails(upsertTeam(deps, admin, { ...base, requestId: rid(), teamId: "ghost", name: "X" }), "not-found", "TEAM_NOT_FOUND");
     assert.equal(audits(store).filter(a => a.action === "team.upsert").length, 2);
   });
+});
 
-  test("membership mode defaults to open and switches to rosterOnly with an audit entry", async () => {
+describe("the roster follows member edits", () => {
+  const entryPath = (email: string) => `companies/alpha/roster/${createHash("sha256").update(email).digest("hex")}`;
+  const claimed = (extra: Record<string, unknown> = {}) => ({ companyId: "alpha", email: "mia@alpha.test", displayName: "Mia Member", role: "member", teamIds: [], workLocation: "", department: "Eng",
+    jobTitle: "", status: "claimed", memberStatus: "active", source: "signup", claimedBy: "m1", revision: 1, ...extra });
+
+  test("updateMemberV1 mirrors role, teams and org attributes onto the claimed entry; members without an entry still update", async () => {
     const { deps, store } = makeDeps();
     seedCompany(store);
-    assert.deepEqual(await updateCompanySettings(deps, admin, { ...base, requestId: rid(), membershipMode: "open" }), { contractVersion: 1, membershipMode: "open", changed: false });
-    assert.deepEqual(await updateCompanySettings(deps, admin, { ...base, requestId: rid(), membershipMode: "rosterOnly" }), { contractVersion: 1, membershipMode: "rosterOnly", changed: true });
-    assert.equal(store.get("companies/alpha")!.membershipMode, "rosterOnly");
-    assert.equal(store.get("companies/beta")!.membershipMode, undefined, "other tenants untouched");
-    await fails(updateCompanySettings(deps, admin, { ...base, requestId: rid(), membershipMode: "closed" }), "invalid-argument", "VALIDATION_FAILED");
-    assert.equal(audits(store).length, 1);
+    store.seed("companies/alpha/teams/t1", { companyId: "alpha", name: "Platform", archived: false, revision: 1 });
+    store.seed(entryPath("mia@alpha.test"), claimed());
+    await updateMember(deps, admin, { ...base, requestId: rid(), userId: "m1", role: "organizer", teamIds: ["t1"], workLocation: "HQ" });
+    const entry = store.get(entryPath("mia@alpha.test"))!;
+    assert.deepEqual([entry.role, entry.teamIds, entry.workLocation, entry.status], ["organizer", ["t1"], "HQ", "claimed"]);
+    assert.equal((await updateMember(deps, admin, { ...base, requestId: rid(), userId: "m2", workLocation: "Remote" })).changedFields[0], "workLocation");
+  });
+
+  test("setMemberStatusV1 mirrors the member status on the roster entry", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    store.seed(entryPath("mia@alpha.test"), claimed());
+    await setMemberStatus(deps, admin, { ...base, requestId: rid(), userId: "m1", status: "deactivated" });
+    assert.equal(store.get(entryPath("mia@alpha.test"))!.memberStatus, "deactivated");
+    await setMemberStatus(deps, admin, { ...base, requestId: rid(), userId: "m1", status: "active" });
+    assert.equal(store.get(entryPath("mia@alpha.test"))!.memberStatus, "active");
+  });
+});
+
+describe("backfillRoster (emulator/test helper)", () => {
+  test("creates a claimed entry for every member without one, is idempotent and never touches existing entries or other tenants", async () => {
+    const { store } = makeDeps();
+    seedCompany(store);
+    const hash = (email: string) => createHash("sha256").update(email).digest("hex");
+    store.seed(`companies/alpha/roster/${hash("max@alpha.test")}`, { companyId: "alpha", email: "max@alpha.test", status: "invited", role: "admin", revision: 4 });
+    const first = await backfillRoster(store, "alpha", new Date("2030-01-02T12:00:00Z"));
+    assert.deepEqual(first, { scanned: 7, created: 6, existing: 1, skipped: 0 });
+    const mia = store.get(`companies/alpha/roster/${hash("mia@alpha.test")}`)!;
+    assert.deepEqual([mia.status, mia.claimedBy, mia.source, mia.role, mia.memberStatus, mia.department], ["claimed", "m1", "signup", "member", "active", "Eng"]);
+    assert.equal(store.get(`companies/alpha/roster/${hash("dee@alpha.test")}`)!.memberStatus, "deactivated");
+    assert.equal(store.get(`companies/alpha/roster/${hash("max@alpha.test")}`)!.status, "invited", "existing entries are untouched");
+    assert.equal(store.get(`companies/beta/roster/${hash("bo@beta.test")}`), undefined);
+    assert.deepEqual(await backfillRoster(store, "alpha"), { scanned: 7, created: 0, existing: 7, skipped: 0 });
   });
 });

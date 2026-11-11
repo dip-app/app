@@ -3,7 +3,7 @@ import { logger } from "firebase-functions/v2";
 import type { MembershipStore, MembershipTransaction } from "../application/ports";
 import { auditDocument } from "../../admin/domain/audit";
 import { emailHash } from "../../admin/domain/employee";
-import type { MembershipMode, RosterClaim, StoredMembership } from "../domain/membership";
+import type { RosterClaim, StoredMembership } from "../domain/membership";
 
 /**
  * Admin SDK adapter. Admin access bypasses Security Rules, so authorization is
@@ -47,11 +47,6 @@ export class FirestoreMembershipStore implements MembershipStore {
           if (typeof status === "string") membership.status = status;
           return membership;
         },
-        async getMembershipMode(companyId) {
-          const snap = await transaction.get(db.collection("companies").doc(companyId));
-          const mode: unknown = snap.get("membershipMode");
-          return (mode === "rosterOnly" ? "rosterOnly" : "open") satisfies MembershipMode;
-        },
         async getRosterEntry(companyId, email) {
           const entryId = emailHash(email);
           const snap = await transaction.get(db.collection("companies").doc(companyId).collection("roster").doc(entryId));
@@ -67,16 +62,30 @@ export class FirestoreMembershipStore implements MembershipStore {
           if (text("startDate")) claim.startDate = text("startDate");
           return claim;
         },
-        claimRosterEntry(companyId, entryId, uid, displayName) {
+        recordRosterJoin(companyId, entryId, action, uid, profile) {
           const entry = db.collection("companies").doc(companyId).collection("roster").doc(entryId);
-          transaction.update(entry, { status: "claimed", claimedBy: uid, claimedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
-          transaction.create(db.collection("companies").doc(companyId).collection("auditLog").doc(`claim_${entryId}`), {
-            ...auditDocument(companyId, { uid, name: displayName, role: "member" }, {
-              id: `claim_${entryId}`, action: "roster.claim", targetType: "roster", targetId: entryId, summary: "Claimed a roster invitation on first sign-in",
-              changes: [{ field: "status", before: "invited", after: "claimed" }],
-            }),
-            createdAt: FieldValue.serverTimestamp(),
-          });
+          const memberFields = {
+            email: profile.email.toLowerCase(), displayName: profile.displayName, role: profile.role, teamIds: profile.teamIds ?? [],
+            workLocation: profile.workLocation ?? "", department: profile.department, jobTitle: profile.jobTitle,
+            ...(profile.managerEmail !== undefined ? { managerEmail: profile.managerEmail } : {}),
+            ...(profile.startDate !== undefined ? { startDate: profile.startDate } : {}),
+          };
+          const claimed = { status: "claimed", memberStatus: "active", claimedBy: uid, claimedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
+          if (action === "claim") {
+            transaction.update(entry, claimed);
+            transaction.create(db.collection("companies").doc(companyId).collection("auditLog").doc(`claim_${entryId}`), {
+              ...auditDocument(companyId, { uid, name: profile.displayName, role: profile.role }, {
+                id: `claim_${entryId}`, action: "roster.claim", targetType: "roster", targetId: entryId, summary: "Claimed a roster invitation on first sign-in",
+                changes: [{ field: "status", before: "invited", after: "claimed" }],
+              }),
+              createdAt: FieldValue.serverTimestamp(),
+            });
+          } else if (action === "create") {
+            transaction.create(entry, { companyId, ...memberFields, ...claimed, source: "signup", createdAt: FieldValue.serverTimestamp(), revision: 1 });
+          } else {
+            // A revoked entry no longer describes the person: record the member they actually became.
+            transaction.update(entry, { ...memberFields, ...claimed, source: "signup" });
+          }
         },
         createMember(uid, profile) {
           // create() fails if a concurrent request already wrote the profile;
