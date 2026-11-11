@@ -134,6 +134,30 @@ import UniformTypeIdentifiers
         repository.stop()
     }
 
+    func testRemovingAFailedUploadFreesItsSlotUnlessTheBytesLanded() async throws {
+        let reads = AlbumReadsStub(); reads.extra = [event("boat", endsIn: -600)]
+        let participation = AlbumParticipationStub(), albums = AlbumSourceStub()
+        let repository = make(reads, participation, albums)
+        try await openAlbum(repository, participation, albums)
+        // Bytes never uploaded (offline): slot 0 is reserved, removing the draft frees it for the next photo.
+        albums.uploadFailure = .unavailable
+        do { _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u1", data: Data([1])), progress: { _ in })
+             XCTFail("upload failed") } catch {}
+        await repository.discardUpload(uploadID: "u1")
+        albums.uploadFailure = nil
+        _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u2", data: Data([2])), progress: { _ in })
+        XCTAssertEqual(albums.uploads.map(\.slot), [0], "the freed slot is reused without a restart")
+        // Bytes landed but finalize failed: removing keeps the stored object's slot used.
+        albums.finalizeFailure = .unavailable
+        do { _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u3", data: Data([3])), progress: { _ in })
+             XCTFail("finalize failed") } catch {}
+        await repository.discardUpload(uploadID: "u3")
+        albums.finalizeFailure = nil
+        _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u4", data: Data([4])), progress: { _ in })
+        XCTAssertEqual(albums.uploads.map(\.slot), [0, 1, 2])
+        repository.stop()
+    }
+
     func testLimitReachedWhenAllSlotsAreUsed() async throws {
         let reads = AlbumReadsStub(); reads.extra = [event("boat", endsIn: -600)]
         let participation = AlbumParticipationStub(), albums = AlbumSourceStub()
@@ -245,7 +269,7 @@ import UniformTypeIdentifiers
         var runs: [(Int, Int)] = []
         let queue = AlbumUploadQueue(send: { _, photo, progress in
             sent.append(photo.id); progress(0.5); progress(1); return "published-\(photo.id)"
-        }, prepare: { ($0, $0) })
+        }, prepare: { ($0, $0) }, successDuration: .milliseconds(60), graceDuration: .milliseconds(200))
         queue.onRunFinished = { runs.append(($0, $1)) }
         queue.enqueue(eventID: "boat", loaders: [{ Data([1]) }, { Data([2]) }])
         try await waitFor { runs.count == 1 }
@@ -256,7 +280,46 @@ import UniformTypeIdentifiers
         XCTAssertEqual(queue.pendingCount(for: "boat"), 0)
         XCTAssertEqual(queue.reservedCount(for: "boat"), 0, "published drafts no longer hold a slot")
         queue.reconcile(eventID: "boat", publishedPhotoIDs: Set(sent.map { "published-\($0)" }))
-        XCTAssertTrue(queue.items.isEmpty)
+        XCTAssertEqual(queue.items.count, 2, "the success state is shown briefly before the real photo takes over")
+        try await waitFor { queue.items.isEmpty }
+    }
+
+    /// Regression: the album listed the photo before the draft flipped to done, then never updated again.
+    /// The finished tile used to stay on screen forever (it was only removed by a later album update).
+    func testFinishedDraftLeavesEvenWhenTheAlbumAlreadyListedItAndNeverUpdatesAgain() async throws {
+        let queue = AlbumUploadQueue(send: { _, photo, _ in
+            return "published-\(photo.id)"
+        }, prepare: { ($0, nil) }, successDuration: .milliseconds(60), graceDuration: .seconds(30))
+        queue.enqueue(eventID: "boat", loaders: [{ Data([1]) }])
+        try await waitFor { queue.items.first?.state != nil && queue.items.first?.upload != nil }
+        let id = try XCTUnwrap(queue.items.first?.id)
+        queue.reconcile(eventID: "boat", publishedPhotoIDs: ["published-\(id)"]) // listed while still uploading
+        try await waitFor { queue.items.isEmpty }
+    }
+
+    func testFinishedDraftLeavesAfterTheGraceWhenTheAlbumNeverListsIt() async throws {
+        let queue = AlbumUploadQueue(send: { _, photo, _ in photo.id }, prepare: { ($0, nil) },
+                                     successDuration: .milliseconds(30), graceDuration: .milliseconds(120))
+        queue.enqueue(eventID: "boat", loaders: [{ Data([1]) }])
+        try await waitFor { if case .done? = queue.items.first?.state { true } else { false } }
+        XCTAssertEqual(queue.reservedCount(for: "boat"), 0)
+        try await waitFor { queue.items.isEmpty }
+    }
+
+    func testRemovingAFailedDraftReleasesItsSlotHook() async throws {
+        var released: [String] = []
+        let queue = AlbumUploadQueue(send: { _, _, _ in throw DIPRepositoryError.invalidInput("offline") }, prepare: { data in
+            guard data != Data([0]) else { throw AlbumImageProcessing.Failure.unreadable }
+            return (data, nil)
+        })
+        queue.onDiscard = { released.append($0) }
+        queue.enqueue(eventID: "boat", loaders: [{ Data([1]) }, { Data([0]) }])
+        try await waitFor { queue.failedCount(for: "boat") == 2 }
+        let unreadable = queue.items.first { $0.upload == nil }, uploaded = queue.items.first { $0.upload != nil }
+        queue.remove(try XCTUnwrap(unreadable).id)
+        XCTAssertTrue(released.isEmpty, "an unreadable pick never reserved a slot")
+        queue.remove(try XCTUnwrap(uploaded).id)
+        XCTAssertEqual(released, [uploaded?.id])
     }
 
     func testFailedDraftKeepsItsIdentityForRetryAndUnreadablePicksFail() async throws {
@@ -346,6 +409,7 @@ final class AlbumBarActionTests: XCTestCase {
     var uploads: [(slot: Int, size: Int)] = []
     var finalized: [Int] = []
     var finalizeFailure: AlbumFailure?
+    var uploadFailure: AlbumFailure?
     var sentComments: [(id: String, author: ChatAuthor)] = []
     var stopped = false
 
@@ -359,6 +423,7 @@ final class AlbumBarActionTests: XCTestCase {
     func imageData(path: String) async throws -> Data { Data() }
     func upload(scope: EventReadScope, eventID: String, slot: Int, jpeg: Data,
                 progress: @escaping @Sendable (Double) -> Void) async throws -> AlbumUploadOutcome {
+        if let uploadFailure { throw uploadFailure }
         uploads.append((slot, jpeg.count))
         if occupied.contains(slot) { return .slotOccupied }
         stored.insert(slot); progress(1)

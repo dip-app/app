@@ -16,6 +16,7 @@ public protocol DIPRepository: Sendable {
     /// Retrying with the same `PhotoUpload.id` must never publish the photo twice.
     func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws
+    func discardUpload(uploadID: String) async
 }
 
 public enum DIPRepositoryError: Error, Equatable, Sendable {
@@ -29,6 +30,9 @@ public extension DIPRepository {
     func setChallengeJoined(challengeID: String, joined: Bool) async throws {
         throw DIPRepositoryError.invalidInput("Challenges aren’t available yet")
     }
+
+    /// The member removed a failed upload draft: adapters that reserve a slot per upload release it.
+    func discardUpload(uploadID: String) async {}
 
     /// Adapters without a per-photo pipeline import the photo through `addPhotos` (in-memory fixtures).
     func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {

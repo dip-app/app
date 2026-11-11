@@ -77,6 +77,7 @@ public final class DIPAppViewModel {
         }
         return photoID
     }
+    public func discardUpload(uploadID: String) async { await repository.discardUpload(uploadID: uploadID) }
     public func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
         try await perform("comment:\(eventID):\(photoID):\(commentID)") { [repository] in
             try await repository.addPhotoComment(eventID: eventID, photoID: photoID, commentID: commentID, text: text)

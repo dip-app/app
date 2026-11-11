@@ -4,8 +4,10 @@ import Observation
 
 /// Transient upload drafts for album photos: picked bytes are prepared (JPEG, <= 2048 px), then sent one at a
 /// time with per-photo progress. Each photo keeps one stable `PhotoUpload` ID across retries, so a retry can
-/// never publish it twice. Published photos come only from repository observation; a finished draft disappears
-/// once the album shows its photo. Owned by the shell, so uploads continue while the member navigates.
+/// never publish it twice. Published photos come only from repository observation. A finished draft shows its
+/// success state for `successDuration`, then is replaced by the real photo: it leaves as soon as the album lists
+/// the photo, and at the latest after `graceDuration` more, so a finished tile can never linger when the album
+/// stops updating. Owned by the shell, so uploads continue while the member navigates.
 @MainActor @Observable
 final class AlbumUploadQueue {
     enum State: Equatable {
@@ -13,7 +15,7 @@ final class AlbumUploadQueue {
         case waiting
         case uploading(Double)
         case failed(String)
-        /// Published as `photoID`; shown until observation delivers the photo.
+        /// Published as `photoID`; shown briefly, then replaced by the album's own photo.
         case done(photoID: String)
     }
 
@@ -42,12 +44,25 @@ final class AlbumUploadQueue {
     @ObservationIgnored private var workerGeneration = 0
     @ObservationIgnored private var runSucceeded = 0
     @ObservationIgnored private var runFailed = 0
+    @ObservationIgnored private let successDuration: Duration
+    @ObservationIgnored private let graceDuration: Duration
+    /// Photo IDs the album last listed per event (the latest `reconcile`), so a draft that finishes after its
+    /// photo was already observed can leave without waiting for another album update.
+    @ObservationIgnored private var published: [String: Set<String>] = [:]
+    @ObservationIgnored private var settlers: [String: Task<Void, Never>] = [:]
+    /// Finished drafts whose success state has been shown for `successDuration`.
+    @ObservationIgnored private var shown: Set<String> = []
+    /// A removed failed draft whose upload had reserved a slot: the host releases it.
+    @ObservationIgnored var onDiscard: ((_ uploadID: String) -> Void)?
     /// Called when the queue drains after a run: felt success when everything landed, failure otherwise.
     @ObservationIgnored var onRunFinished: ((_ succeeded: Int, _ failed: Int) -> Void)?
 
-    init(send: @escaping Send, prepare: @escaping Prepare = AlbumUploadQueue.preparePhoto) {
+    init(send: @escaping Send, prepare: @escaping Prepare = AlbumUploadQueue.preparePhoto,
+         successDuration: Duration = .seconds(1), graceDuration: Duration = .seconds(3)) {
         self.send = send
         self.prepare = prepare
+        self.successDuration = successDuration
+        self.graceDuration = graceDuration
     }
 
     func items(for eventID: String) -> [Item] { items.filter { $0.eventID == eventID } }
@@ -98,20 +113,42 @@ final class AlbumUploadQueue {
 
     func remove(_ id: String) {
         guard let index = items.firstIndex(where: { $0.id == id }), !items[index].isPending else { return }
-        items.remove(at: index)
+        let removed = items.remove(at: index)
+        settlers.removeValue(forKey: id)?.cancel(); shown.remove(id)
+        if removed.upload != nil, case .failed = removed.state { onDiscard?(id) }
     }
 
-    /// Drops finished drafts whose photo the album now shows.
+    /// Records what the album lists. A finished draft whose photo is listed leaves once its success state has
+    /// been shown, so the real photo takes its place without another album update.
     func reconcile(eventID: String, publishedPhotoIDs: Set<String>) {
+        published[eventID] = publishedPhotoIDs
         items.removeAll { item in
-            guard item.eventID == eventID, case .done(let photoID) = item.state else { return false }
+            guard item.eventID == eventID, case .done(let photoID) = item.state, shown.contains(item.id) else { return false }
             return publishedPhotoIDs.contains(photoID)
+        }
+    }
+
+    /// Success state for `successDuration`, then the tile leaves if its photo is listed; otherwise it waits
+    /// `graceDuration` for the album and leaves regardless.
+    private func settle(_ id: String, eventID: String, photoID: String) {
+        settlers[id]?.cancel()
+        settlers[id] = Task { [weak self, successDuration, graceDuration] in
+            try? await Task.sleep(for: successDuration)
+            guard !Task.isCancelled, let self else { return }
+            self.shown.insert(id)
+            if self.published[eventID]?.contains(photoID) != true {
+                try? await Task.sleep(for: graceDuration)
+                guard !Task.isCancelled else { return }
+            }
+            self.items.removeAll { $0.id == id }
+            self.shown.remove(id); self.settlers[id] = nil
         }
     }
 
     /// Sign-out or account switch: drafts belong to that session only.
     func cancelAll() {
         worker?.cancel(); worker = nil; workerGeneration += 1
+        settlers.values.forEach { $0.cancel() }; settlers.removeAll(); shown.removeAll(); published.removeAll()
         items.removeAll()
     }
 
@@ -131,6 +168,7 @@ final class AlbumUploadQueue {
                         Task { @MainActor [weak self] in self?.progress(item.id, value) }
                     }
                     self.update(item.id, .done(photoID: photoID))
+                    self.settle(item.id, eventID: item.eventID, photoID: photoID)
                     self.runSucceeded += 1
                 } catch is CancellationError {
                     return

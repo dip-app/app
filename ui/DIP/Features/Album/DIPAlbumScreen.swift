@@ -129,7 +129,8 @@ struct DIPAlbumScreen: View {
                 .frame(maxWidth: .infinity).padding(.top, 40)
                 .accessibilityIdentifier("album.loading")
         } else if album.photos.isEmpty {
-            if drafts.isEmpty { emptyState.padding(.top, 8) }
+            // A load error is shown even while drafts are listed above; the plain empty state is not.
+            if drafts.isEmpty || album.loadError != nil { emptyState.padding(.top, 8) }
         } else {
             mosaic(width: width)
             if album.photos.count > 12 {
