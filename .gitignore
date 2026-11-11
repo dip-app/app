@@ -27,3 +27,4 @@ ui/Config/DIP-Info.plist
 
 __pycache__/
 *.pyc
+site-dist/
