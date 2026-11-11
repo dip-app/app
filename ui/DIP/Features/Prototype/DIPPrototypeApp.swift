@@ -15,6 +15,7 @@ struct DIPPrototypeApp: View {
     @State private var notice: String?
     @State private var rsvpError: String?
     @State private var showChat = false
+    @State private var chatNotificationLevel: DIPNotificationLevel?
     @State private var chatEventID = "puppy-yoga"
     private let initialMemories: Bool
     private let onSignOut: (() async -> Void)?
@@ -158,7 +159,15 @@ struct DIPPrototypeApp: View {
                 eventTitle: model.snapshot?.eventDetails[chatEventID]?.title ?? "Activity Chat",
                 messages: model.snapshot?.messages[chatEventID] ?? [],
                 currentUserID: model.snapshot?.profile.id ?? "",
-                onSend: { try await model.sendMessage(eventID: chatEventID, messageID: $0, text: $1) })
+                onSend: { try await model.sendMessage(eventID: chatEventID, messageID: $0, text: $1) },
+                notificationLevel: chatNotificationLevel,
+                onSetNotificationLevel: { level in
+                    let previous = chatNotificationLevel
+                    chatNotificationLevel = level
+                    do { try await model.setNotificationLevel(eventID: chatEventID, level: level) }
+                    catch { chatNotificationLevel = previous }
+                })
+            .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
         }
         .onChange(of: routes, initial: true) { _, path in
             if case .event(let id) = path.last { onEventOpened?(id) } else { onEventOpened?(nil) }

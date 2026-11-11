@@ -8,6 +8,9 @@ public protocol DIPRepository: Sendable {
     func setChallengeJoined(challengeID: String, joined: Bool) async throws
     func updateProfile(_ edit: ProfileEdit) async throws
     func sendMessage(eventID: String, messageID: String, text: String) async throws
+    /// Per-event notification preference; nil when the adapter has none (defaults in DIPNotificationLevel.swift).
+    func notificationLevel(eventID: String) async throws -> DIPNotificationLevel?
+    func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws
     func addPhotos(eventID: String, photos: [PhotoUpload]) async throws
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws
 }
