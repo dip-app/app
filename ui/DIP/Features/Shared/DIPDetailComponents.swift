@@ -176,8 +176,9 @@ struct DIPDetailActionRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if showsParticipation && !joinInRow && !isParticipating {
-                if let directionsURL {
+            if !joinInRow {
+                // Directions sits beside Share, in both joined and unjoined states; Leave lives at the page bottom.
+                if showsParticipation, let directionsURL {
                     Link(destination: directionsURL) {
                         label(directionsTitle, systemImage: "mappin.and.ellipse",
                               background: DIPTokens.Color.actionPrimary.swiftUIColor)
