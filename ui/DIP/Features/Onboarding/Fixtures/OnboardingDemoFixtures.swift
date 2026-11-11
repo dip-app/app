@@ -6,27 +6,8 @@ import UIKit
 // Fictional, bundled content for the onboarding demos (spec §1 "Honest demos", §5 Files).
 // Nothing here comes from a repository or a real company; every name and event is invented.
 
-/// The four Crew characters (spec §1, §7.1): P purple round, W white pill, Y yellow square, G gray round.
-enum CrewMember: String, CaseIterable, Sendable {
-    case purple, white, yellow, gray
-
-    var fill: Color {
-        switch self {
-        case .purple: OnboardingTheme.accent
-        case .white: OnboardingTheme.inverse
-        case .yellow: OnboardingTheme.notification
-        case .gray: OnboardingTheme.muted
-        }
-    }
-
-    var figure: OnboardingFace.Figure {
-        switch self {
-        case .purple, .gray: .round
-        case .white: .pill
-        case .yellow: .square
-        }
-    }
-
+/// Demo-only extras for the shared `CrewMember` (spec §1, §7.1): P purple round, W white pill, Y yellow square, G gray round.
+extension CrewMember {
     /// The fictional coworker this face plays in the demos (open decision 4: names pending approval).
     var demoName: String {
         switch self {
@@ -47,7 +28,7 @@ enum CrewMember: String, CaseIterable, Sendable {
     }
 
     func face(size: CGFloat, mood: OnboardingFace.Mood? = nil) -> OnboardingFace {
-        OnboardingFace(fill: fill, figure: figure, mood: mood ?? self.mood, size: size)
+        OnboardingFace(fill: fill.color, figure: figure, mood: mood ?? self.mood, size: size)
     }
 }
 
@@ -59,7 +40,7 @@ enum CrewAvatarImages {
     private static var cache: [String: MediaReference] = [:]
 
     static func reference(_ member: CrewMember, size: CGFloat = 40) -> MediaReference {
-        cached("\(member.rawValue)@\(size)") { member.face(size: size) }
+        cached("\(member)@\(size)") { member.face(size: size) }
     }
 
     /// "You": the person's initials in a `DIPAvatar` on `surfaceMuted` with a 3 pt white ring (spec §7.1).
