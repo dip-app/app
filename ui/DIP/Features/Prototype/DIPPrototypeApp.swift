@@ -207,6 +207,7 @@ struct DIPPrototypeApp: View {
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
+        .shakeToReport(screen: reportScreen)
         .alert(
             "Not available yet",
             isPresented: Binding(
@@ -444,6 +445,23 @@ struct DIPPrototypeApp: View {
     private var surface: OnboardingHomeSurface {
         if model.snapshot != nil { return .ready }
         return model.isLoading ? .activitiesLoading : .activitiesError
+    }
+
+    /// The route kind for bug reports: a kind only, never an event, album or person id.
+    private var reportScreen: BugReportScreen {
+        switch routes.last {
+        case .event?: return .event
+        case .participants?: return .participants
+        case .album?: return .album
+        case .challenge?: return .challenge
+        case nil:
+            switch selectedTab {
+            case .home: return .home
+            case .rewards: return .rewards
+            case .events: return .myEvents
+            case .profile: return .profile
+            }
+        }
     }
 
     private var isRSVPPending: Bool {

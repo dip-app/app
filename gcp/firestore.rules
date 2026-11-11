@@ -156,6 +156,49 @@ service cloud.firestore {
         && request.resource.data.level in ['all', 'changes', 'reminders', 'none']
         && request.resource.data.updatedAt == request.time;
     }
+    // Shake-to-report / "Report a problem" (V2). Create-only for verified members whose server-owned
+    // membership document exists; the document id is the client-generated report UUID so a retry cannot create a
+    // second report (a repeat create is an update, which is denied). No client read, list, update or delete:
+    // admins/organizers read through the console or a later admin UI. Strict allow-list and size limits; the only
+    // identifier is the caller's own uid (no name, email, token or company).
+    match /bugReports/{reportId} {
+      function bugScreen(value) {
+        return value in ['home', 'rewards', 'myEvents', 'profile', 'event', 'participants', 'album', 'challenge', 'other'];
+      }
+      function bugDiagnosticsValid(d) {
+        return d is map
+          && d.keys().hasOnly(['appVersion', 'appBuild', 'osVersion', 'deviceModel', 'locale', 'screen', 'installId'])
+          && d.keys().hasAll(['appVersion', 'appBuild', 'osVersion', 'deviceModel', 'locale', 'screen', 'installId'])
+          && d.appVersion is string && d.appVersion.size() <= 32
+          && d.appBuild is string && d.appBuild.size() <= 32
+          && d.osVersion is string && d.osVersion.size() <= 32
+          && d.deviceModel is string && d.deviceModel.size() <= 40
+          && d.locale is string && d.locale.size() <= 35
+          && d.screen is string && bugScreen(d.screen)
+          && d.installId is string && d.installId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+      }
+      function validBugReport(data) {
+        return data.keys().hasOnly(['uid', 'category', 'description', 'source', 'screen', 'diagnostics',
+            'screenshotPath', 'screenshotBytes', 'createdAt'])
+          && data.keys().hasAll(['uid', 'category', 'description', 'source', 'screen', 'createdAt'])
+          && data.uid == request.auth.uid
+          && data.category in ['bug', 'confusing', 'looksWrong', 'idea', 'unspecified']
+          && data.description is string && data.description.size() <= 1000
+          && (data.category != 'unspecified' || data.description.trim().size() >= 10)
+          && data.source in ['shake', 'profile']
+          && data.screen is string && bugScreen(data.screen)
+          && (!('diagnostics' in data.keys()) || bugDiagnosticsValid(data.diagnostics))
+          && (('screenshotPath' in data.keys()) == ('screenshotBytes' in data.keys()))
+          && (!('screenshotPath' in data.keys())
+              || (data.screenshotPath == 'bugReports/' + request.auth.uid + '/' + reportId + '.jpg'
+                  && data.screenshotBytes is int && data.screenshotBytes > 0 && data.screenshotBytes <= 409600))
+          && data.createdAt == request.time;
+      }
+      allow create: if verified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && reportId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        && validBugReport(request.resource.data);
+    }
     // --- Event photo albums (photos module, docs/contracts/callables.md#event-photo-albums) ---
     // Album documents are written only by finalizeEventPhotoV1 (Admin SDK); commentCount is server-owned
     // (onPhotoCommentCreated). Verified same-company members read albums (get, including a missing photo;

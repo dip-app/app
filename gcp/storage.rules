@@ -1,6 +1,21 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Bug-report screenshots (shake-to-report, V2): a signed-in, verified company member (the server-owned
+    // users/{uid} document exists; this cross-service read needs the Firebase Storage service agent to hold
+    // the Firestore viewer role, which `firebase deploy --only storage` offers to grant) may write one JPEG of
+    // at most 400 KB at bugReports/{uid}/{reportId}.jpg. A retry may overwrite its own object. Nobody reads or
+    // deletes through the client SDK; admins use the console. The report document is created under bugReports
+    // in firestore.rules. Add a bucket lifecycle rule for the bugReports/ prefix (retention and orphans).
+    match /bugReports/{uid}/{reportId} {
+      allow create, update: if request.auth != null && request.auth.token.email_verified == true
+        && request.auth.uid == uid
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && reportId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[.]jpg$')
+        && request.resource.size > 0 && request.resource.size <= 400 * 1024
+        && request.resource.contentType == 'image/jpeg';
+      allow read, delete: if false;
+    }
     // Event photo albums (V2-05, docs/contracts/callables.md#event-photo-albums).
     //
     // One create-only object per slot: companies/{c}/events/{e}/photos/{uid}/{slot}, slot 0..19, so a member

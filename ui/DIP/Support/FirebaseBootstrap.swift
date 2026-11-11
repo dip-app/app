@@ -1,5 +1,6 @@
 import Foundation
 import DIPAccounts
+import DIPCore
 @preconcurrency import FirebaseAppCheck
 @preconcurrency import FirebaseAuth
 @preconcurrency import FirebaseCore
@@ -95,6 +96,12 @@ enum FirebaseBootstrap {
         guard case .configured = status else { return nil }
         return FirebaseParticipationSource(firestore: Firestore.firestore(),
                                            functions: Functions.functions(region: FirebaseAccountsRepository.region))
+    }
+
+    /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.
+    @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
+        guard case .configured = status else { return nil }
+        return FirebaseBugReportSubmitter(firestore: Firestore.firestore(), storage: Storage.storage())
     }
 
     /// Event photo albums (Storage uploads, finalizeEventPhotoV1, album/comment reads) share the configured SDKs.
