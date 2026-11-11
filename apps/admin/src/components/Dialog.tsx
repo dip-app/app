@@ -8,8 +8,14 @@ interface Props {
   confirmLabel: string;
   /** Asks for a written reason (recorded in the audit log) before the confirm button works. */
   reasonLabel?: string;
+  /** Longest note allowed (default 200, the audit-log limit). */
+  reasonMax?: number;
+  /** Replaces "Saved in the audit log." under the field. */
+  reasonHint?: string;
   /** Destructive actions use the error color so they read differently from a normal save. */
   danger?: boolean;
+  /** Start with focus on Cancel, for actions that are final (a stray Enter must not confirm). */
+  focusCancel?: boolean;
   /** Extra condition (e.g. a valid number inside the dialog body) before confirm is enabled. */
   confirmDisabled?: boolean;
   onConfirm: (reason: string) => Promise<void>;
@@ -17,21 +23,25 @@ interface Props {
 }
 
 /** Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. */
-export function Dialog({ title, children, confirmLabel, reasonLabel, danger, confirmDisabled, onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, focusCancel, confirmDisabled, onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const id = useId();
+  const cancel = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const dialog = ref.current;
     const opener = document.activeElement as HTMLElement | null;
     if (dialog && !dialog.open) dialog.showModal();
+    if (focusCancel) cancel.current?.focus();
     return () => {
       dialog?.close();
       opener?.focus?.(); // return focus to the control that opened the dialog
     };
+  // Runs once on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function confirm() {
@@ -53,8 +63,8 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, danger, con
       {needsReason && (
         <div className="field">
           <label htmlFor={`${id}-r`}>{reasonLabel} (required)</label>
-          <textarea id={`${id}-r`} value={reason} maxLength={200} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
-          <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? "Add a reason to continue. " : ""}Saved in the audit log. {reason.trim().length}/200</span>
+          <textarea id={`${id}-r`} value={reason} maxLength={reasonMax} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
+          <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? "Add a reason to continue. " : ""}{reasonHint} {reason.trim().length}/{reasonMax}</span>
         </div>
       )}
       {error && <p className="error" role="alert">{error}</p>}
@@ -62,7 +72,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, danger, con
         <button className={`pill-btn ${danger ? "danger" : "dark"}`} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
           {busy ? "Working…" : confirmLabel}
         </button>
-        <button className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
+        <button ref={cancel} className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
       </div>
     </dialog>
   );

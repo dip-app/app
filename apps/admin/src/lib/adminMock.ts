@@ -1,7 +1,7 @@
 import type { AdminOpsApi } from "./adminApi";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type FieldChange, type ImportPlanResponse, type ImportRow, type Member, type PlanAction, type Role, type RosterRow,
+  type FieldChange, type ImportPlanResponse, type ImportRow, type Member, type PlanAction, type Role, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -19,6 +19,8 @@ export interface MockOpsDeps {
   findEvent: (companyId: string, eventId: string) => MockEventView | undefined;
   /** Changes the going count; `minCapacity` grows the capacity (the capacity-override rule). */
   bumpAttendees: (companyId: string, eventId: string, delta: number, minCapacity?: number) => { attendeeCount: number; capacity: number };
+  /** The company's weekly themes (challenges) the review queue belongs to. */
+  themes: (companyId: string) => { id: string; pointsReward: number; startDate: string }[];
 }
 
 type Stored<T> = T & { companyId: string };
@@ -39,6 +41,9 @@ interface OpsState {
   audit: Stored<AuditEntry>[];
   receipts: Record<string, string>;
   jobs: Record<string, Job>;
+  /** Added after the first release; created on first use so stored preview data keeps working. */
+  submissions?: Stored<Submission & { changeOnReview?: boolean }>[];
+  seededThemes?: string[];
 }
 
 const KEY = "dip-admin-mock-ops-v2";
@@ -111,6 +116,31 @@ const hashOf = (value: unknown) => {
   return h.toString(16).padStart(8, "0").repeat(8);
 };
 
+const SUBMISSION_PAGE = 25;
+const NOTES = [
+  "Did the 30 minute run before work.", "Yoga at lunch, three sessions this week.", "Walked the stairs instead of the elevator all week. My legs hurt but it counts!",
+  "Cycled to the office on Tuesday and Thursday, plus a long ride on Saturday with the family, about 40 km in total.", "", "Swim session at the community pool.",
+  "Gym class with the Wellness team.", "Morning stretch routine, every day.",
+];
+
+/** Seeds a believable review queue for a theme the first time it is opened. */
+function seedSubmissions(state: OpsState, companyId: string, theme: { id: string; startDate: string }, now: Date): void {
+  const people = state.members.filter((m) => m.companyId === companyId && m.status === "active" && m.role !== "admin");
+  const count = Math.min(people.length, theme.startDate > now.toISOString() ? 0 : 22);
+  people.slice(0, count).forEach((m, i) => {
+    const kind = i % 7 === 4 ? "rejected" : i % 7 >= 5 ? "approved" : "submitted";
+    const at = isoAgo(now, 3 - (i % 3) * 0.7 - i * 0.03);
+    state.submissions!.push({
+      companyId, id: `${theme.id}_${m.id}`, challengeId: theme.id, userId: m.id, userName: m.displayName, caption: NOTES[i % NOTES.length], progress: 1 + (i % 3),
+      status: kind, createdAt: at, updatedAt: at, storagePath: i % 8 === 4 ? null : `companies/${companyId}/challenges/${theme.id}/submissions/${m.id}/0`,
+      attempt: i % 9 === 2 ? 2 : 1, reviewedAt: kind === "submitted" ? null : isoAgo(now, 1), reviewNote: kind === "rejected" ? "The photo is too dark to see the activity. Please add a clearer one." : null,
+      pointsAwarded: kind === "approved" ? 50 : 0,
+      // Demo of "changed meanwhile": the member edits this entry the first time you try to review it.
+      ...(i === 1 ? { changeOnReview: true } : {}),
+    });
+  });
+}
+
 export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
   const { store, now } = deps;
   function load(): OpsState {
@@ -153,6 +183,22 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     return found;
   }
   const admins = (state: OpsState, session: Session) => state.members.filter((m) => m.companyId === session.companyId && m.role === "admin" && m.status === "active");
+
+  /** Shared checks of approve and reject: not your own entry, exists, and unchanged since it was listed. */
+  function reviewTarget(state: OpsState, session: Session, listed: Submission) {
+    const found = state.submissions?.find((x) => x.companyId === session.companyId && x.id === listed.id);
+    if (!found) throw new ApiError("not-found", "That submission doesn’t exist any more.", {}, "SUBMISSION_NOT_FOUND");
+    if (found.userId === session.uid) throw new ApiError("permission-denied", "You can’t review your own submission.", {}, "SELF_REVIEW");
+    if (found.changeOnReview) {
+      // The member edits their entry right as you review (demo of SUBMISSION_CHANGED).
+      found.changeOnReview = false;
+      found.caption = `${found.caption} (edited just now)`.trim();
+      found.updatedAt = now().toISOString();
+      save(state);
+    }
+    if (listed.updatedAt !== found.updatedAt) throw new ApiError("failed-precondition", "The member changed this submission after you opened it.", {}, "SUBMISSION_CHANGED");
+    return found;
+  }
 
   // ----- import planning (mirrors importEmployeesV1 / applyEmployeeImportV1)
   function currentValues(state: OpsState, session: Session, email: string): { values: Record<string, string>; target: "member" | "roster" } | null {
@@ -520,6 +566,56 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (done) log(state, session, { action: "import.apply", targetType: "import", targetId: jobId, summary: `Import finished: ${progress().created} added, ${progress().updated} updated, ${progress().failed} failed` });
       save(state);
       return { status: job.status, done, progress: progress(), results };
+    },
+
+    // ----- challenge submissions
+    async listSubmissions(challengeId, status, cursor) {
+      const state = load();
+      const session = staff("challenges.review");
+      const theme = deps.themes(session.companyId).find((t) => t.id === challengeId);
+      if (!theme) throw new ApiError("not-found", "That weekly theme doesn’t exist.", {}, "CHALLENGE_NOT_FOUND");
+      state.submissions ??= [];
+      state.seededThemes ??= [];
+      if (!state.seededThemes.includes(`${session.companyId}:${challengeId}`)) {
+        state.seededThemes.push(`${session.companyId}:${challengeId}`);
+        seedSubmissions(state, session.companyId, theme, now());
+        save(state);
+      }
+      const all = state.submissions.filter((x) => x.companyId === session.companyId && x.challengeId === challengeId && x.status === status).sort((a, b) => a.id.localeCompare(b.id));
+      const page = all.filter((x) => !cursor || x.id > cursor).slice(0, SUBMISSION_PAGE);
+      const last = page[page.length - 1];
+      const more = last && all.some((x) => x.id > last.id);
+      return { submissions: page.map(({ companyId: _c, changeOnReview: _x, ...rest }) => (void _c, void _x, rest)), nextCursor: more ? last.id : null };
+    },
+    async submissionEvidence(submission) {
+      const pictures = ["fitness", "outdoors", "hiking", "games", "cooking"];
+      return `/img/events/${pictures[submission.userId.length % pictures.length]}.jpg`;
+    },
+    async approveSubmission(submission) {
+      const state = load();
+      const session = staff("challenges.review");
+      const found = reviewTarget(state, session, submission);
+      const theme = deps.themes(session.companyId).find((t) => t.id === submission.challengeId)!;
+      if (found.status === "approved") return { pointsAwarded: 0, replayed: true };
+      if (found.status === "rejected") throw new ApiError("failed-precondition", "This was sent back for changes. The member has to resubmit before it can be approved.", {}, "SUBMISSION_NOT_PENDING");
+      const owner = state.members.find((m) => m.id === found.userId && m.companyId === session.companyId && m.status === "active");
+      if (!owner) throw new ApiError("not-found", "The person who submitted this is no longer in the company.", {}, "SUBMITTER_NOT_FOUND");
+      owner.pointsBalance += theme.pointsReward;
+      Object.assign(found, { status: "approved", reviewedAt: now().toISOString(), pointsAwarded: theme.pointsReward, reviewNote: null });
+      save(state);
+      return { pointsAwarded: theme.pointsReward, replayed: false };
+    },
+    async rejectSubmission(submission, reason) {
+      const state = load();
+      const session = staff("challenges.review");
+      const note = reason.trim();
+      if (note.length < 1 || note.length > 280) throw new ApiError("invalid-argument", "Write a note for the member (1 to 280 characters).", { reason: "Write a note." }, "VALIDATION_FAILED");
+      const found = reviewTarget(state, session, submission);
+      if (found.status === "approved") throw new ApiError("failed-precondition", "This was already approved and can’t be sent back.", {}, "SUBMISSION_LOCKED");
+      if (found.status === "rejected") return { replayed: true };
+      Object.assign(found, { status: "rejected", reviewedAt: now().toISOString(), reviewNote: note });
+      save(state);
+      return { replayed: false };
     },
 
     // ----- audit

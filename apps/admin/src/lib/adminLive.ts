@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type ImportPlanResponse, type ImportRow, type Member, type Role, type RosterRow,
+  type ImportPlanResponse, type ImportRow, type Member, type Role, type RosterRow, type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
 
@@ -49,6 +49,16 @@ export function auditFromDoc(id: string, d: DocumentData): AuditEntry {
     id, at: iso(d.createdAt), actorId: str(d.actorId), actorName: str(d.actorName), actorRole: roleOf(d.actorRole), action: str(d.action),
     targetType: (str(d.targetType) || "member") as AuditEntry["targetType"], targetId: str(d.targetId), summary: str(d.summary),
     reason: str(d.reason) || undefined, changes,
+  };
+}
+
+/** A ChallengeSubmission from listChallengeSubmissionsV1 (dates arrive as RFC 3339 strings). */
+export function submissionFromWire(d: DocumentData): Submission {
+  return {
+    id: str(d.id), challengeId: str(d.challengeId), userId: str(d.userId), userName: str(d.userName), caption: str(d.caption), progress: Number(d.progress ?? 0),
+    status: d.status === "approved" ? "approved" : d.status === "rejected" ? "rejected" : "submitted", createdAt: iso(d.createdAt), updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : iso(d.updatedAt), // sent back verbatim as expectedUpdatedAt
+    storagePath: typeof d.storagePath === "string" && d.storagePath ? d.storagePath : null, attempt: Number(d.attempt ?? 1),
+    reviewedAt: iso(d.reviewedAt) || null, reviewNote: typeof d.reviewNote === "string" ? d.reviewNote : null, pointsAwarded: Number(d.pointsAwarded ?? 0),
   };
 }
 
@@ -253,6 +263,30 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     applyImportStep: (jobId, planHash) => run(async () => {
       const data = await call<ApplyStepResponse>(ADMIN_CALLABLES.applyImport, await organizer(), { jobId, planHash }, false);
       return { status: data.status, done: data.done === true, progress: data.progress, results: data.results ?? [] };
+    }),
+
+    listSubmissions: (challengeId, status, cursor) => run(async () => {
+      const data = await call<{ submissions: DocumentData[]; nextCursor: string | null }>(
+        ADMIN_CALLABLES.listSubmissions, await organizer(), { challengeId, status, limit: 25, ...(cursor ? { cursor } : {}) }, false);
+      return { submissions: data.submissions.map(submissionFromWire), nextCursor: data.nextCursor ?? null };
+    }),
+    // Evidence has no download URL: admins read the object through the authenticated Storage SDK (storage rules).
+    submissionEvidence: (submission) => run(async () => {
+      if (!submission.storagePath) throw new Error("This submission has no photo.");
+      return URL.createObjectURL(await getBlob(ref(getStorage(app), submission.storagePath)));
+    }),
+    // Always send the listed updatedAt so the review fails (SUBMISSION_CHANGED) if the member edited since.
+    approveSubmission: (submission) => run(async () => {
+      const data = await call<{ pointsAwarded: number; replayed?: boolean }>(ADMIN_CALLABLES.approveSubmission, await organizer(), {
+        challengeId: submission.challengeId, userId: submission.userId, expectedUpdatedAt: submission.updatedAt,
+      }, false);
+      return { pointsAwarded: Number(data.pointsAwarded ?? 0), replayed: data.replayed === true };
+    }),
+    rejectSubmission: (submission, reason) => run(async () => {
+      const data = await call<{ replayed?: boolean }>(ADMIN_CALLABLES.rejectSubmission, await organizer(), {
+        challengeId: submission.challengeId, userId: submission.userId, reason: reason.trim(), expectedUpdatedAt: submission.updatedAt,
+      }, false);
+      return { replayed: data.replayed === true };
     }),
 
     listAudit: () => run(async () => {

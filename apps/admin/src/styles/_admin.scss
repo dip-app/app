@@ -148,3 +148,41 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 }
 .notice .pill-btn { margin: 4px 6px 0 0; }
 .banner.error a.pill-btn { background: $white; color: $ink; min-height: 44px; font-size: 16px; }
+
+// ---------- Challenge review
+.theme-rows { list-style: none; display: grid; gap: 12px; }
+.theme-row { background: $gray; border-radius: $radius-panel; padding: 20px 24px; display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  .theme-row-main { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+  h2 { font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-weight: 400; font-size: 32px; line-height: 1.1; } }
+.theme-name { font-family: var(--font-figtree), sans-serif; font-weight: 400; font-size: 20px; }
+.review-layout { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .review-layout { grid-template-columns: minmax(0, 1fr); } .review-detail.panel { padding: 16px; } .queue { max-height: 420px; } }
+.queue-wrap { min-width: 0; }
+.queue { list-style: none; display: grid; gap: 8px; max-height: 70vh; overflow-y: auto; padding: 2px; }
+@media (max-width: 1000px) { .queue { max-height: 320px; } }
+.queue-item { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; background: $gray; border-radius: $radius-card; padding: 12px 16px; min-height: 64px; font-family: var(--font-figtree), sans-serif;
+  .queue-text { display: grid; flex: 1; min-width: 0; strong { font-weight: 500; } .muted { font-size: 14px; } }
+  &[aria-current="true"] { background: $ink; color: $white; .muted { color: #c9ccda; } .info-pill { color: $white; border-color: $white; } .avatar { background: $white; } } }
+.review-detail { position: sticky; top: 16px; margin-bottom: 0; h3 { font-family: var(--font-figtree), sans-serif; font-weight: 400; font-size: 18px; margin-bottom: 8px; } }
+@media (max-width: 1000px) { .review-detail { position: static; } }
+.review-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.review-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.member-note { background: $white; border-radius: $radius-card; padding: 14px 18px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.evidence { display: block; position: relative; width: 100%; border-radius: $radius-inset; overflow: hidden; background: $white; padding: 0; text-align: left;
+  img { width: 100%; max-height: 260px; object-fit: contain; display: block; background: $white; }
+  .info-pill { position: absolute; right: 12px; bottom: 12px; background: $white; }
+  &.none, &.loading { min-height: 160px; display: grid; place-items: center; color: var(--muted); }
+  &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }
+@media (prefers-reduced-motion: no-preference) { .evidence.loading { animation: pulse 1.4s ease-in-out infinite; } }
+.review-result { border-radius: $radius-card; padding: 14px 18px; display: grid; gap: 8px; border: 2px solid $ink; background: transparent; &.ok { border-color: $purple; } &.warn { border-color: $events-pink; } }
+.review-banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border-radius: $radius-card; padding: 14px 20px; margin-bottom: 20px; border: 2px solid $ink; &.ok { border-color: $purple; } &.warn { border-color: $events-pink; } }
+.review-actions { display: grid; gap: 12px; border-bottom: 2px solid $white; padding-bottom: 16px; }
+.review-nav { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; span { white-space: nowrap; } }
+.keys kbd { display: inline-block; min-width: 24px; padding: 0 6px; text-align: center; border: 2px solid $ink; border-radius: 8px; font-family: var(--font-figtree), sans-serif; font-size: 13px; }
+.dialog:not([open]) { display: none; }
+@media (max-width: 700px) { .keys { display: none; } }
+.queue-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.theme-row-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.view-full { position: absolute; right: 12px; bottom: 12px; background: $white; color: $ink; border-radius: 999px; padding: 6px 16px; font-family: var(--font-figtree), sans-serif; font-size: 15px; box-shadow: 0 0 0 2px $ink inset; }
+.pill-btn.to-list { display: none; }
+@media (max-width: 1000px) { .pill-btn.to-list { display: inline-flex; } }
