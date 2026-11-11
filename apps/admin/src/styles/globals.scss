@@ -43,13 +43,13 @@ button { cursor: pointer; border: 0; background: none; }
 .content { min-width: 0; padding: 16px clamp(20px, 3.5vw, 64px) 72px; width: 100%; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 32px; }
 .titles { display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; min-width: 0; }
-.title-pill { background: $purple; color: $ink; border-radius: 999px; min-height: 56px; padding: 0 32px; display: inline-flex; align-items: center; font-family: var(--font-figtree), sans-serif; font-weight: 400; font-size: 28px; }
+.title-pill { background: $purple; color: $white; border-radius: 999px; min-height: 56px; padding: 0 32px; display: inline-flex; align-items: center; font-family: var(--font-figtree), sans-serif; font-weight: 400; font-size: 28px; }
 .subtitle { font-size: 17px; color: var(--muted); }
 .header-action { padding-top: 4px; flex: none; }
 
 // ---------- Controls
 .pill-btn, .big-pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-family: var(--font-figtree), sans-serif; transition: transform .12s ease, opacity .12s ease; white-space: nowrap; &:active { transform: scale(.98); } &[disabled] { opacity: .45; cursor: not-allowed; } }
-.pill-btn { min-height: 48px; padding: 0 28px; font-size: 18px; &.purple { background: $purple; color: $ink; } &.gray { background: $gray; color: $ink; } &.dark { background: $ink; color: $white; } }
+.pill-btn { min-height: 48px; padding: 0 28px; font-size: 18px; &.purple { background: $purple; color: $white; } &.gray { background: $gray; color: $ink; } &.dark { background: $ink; color: $white; } }
 .big-pill { min-height: 56px; padding: 0 40px; font-size: 20px; &.dark { background: $ink; color: $white; } &.gray { background: $gray; color: $ink; } }
 .tabs { display: flex; gap: 4px; margin-bottom: 28px; overflow-x: auto; padding: 4px; background: $gray; border-radius: 999px; width: fit-content; max-width: 100%; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
 .tab { flex: none; background: transparent; color: $ink; border-radius: 999px; min-height: 44px; padding: 0 24px; font-family: var(--font-figtree), sans-serif; font-size: 17px; transition: background .2s ease, color .2s ease; &[aria-pressed="true"] { background: $ink; color: $white; } }
@@ -129,7 +129,7 @@ button { cursor: pointer; border: 0; background: none; }
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .row > * { min-width: 0; }
 .chips { display: flex; gap: 10px; flex-wrap: wrap; }
-.chip { background: $gray; color: $ink; border-radius: 999px; min-height: 44px; padding: 0 20px; font-size: 15px; font-family: var(--font-figtree), sans-serif; display: inline-flex; align-items: center; &[aria-pressed="true"] { background: $purple; } }
+.chip { background: $gray; color: $ink; border-radius: 999px; min-height: 44px; padding: 0 20px; font-size: 15px; font-family: var(--font-figtree), sans-serif; display: inline-flex; align-items: center; &[aria-pressed="true"] { background: $purple; color: $white; } }
 .covers { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
 .cover-option { border-radius: $radius-card; background: $gray; padding: 8px 8px 12px; text-align: center; font-size: 15px; font-family: var(--font-figtree), sans-serif; display: grid; gap: 10px;
   .swatch { height: 120px; aspect-ratio: 3 / 2; width: 100%; border-radius: inner-radius($radius-card, 8px); object-fit: cover; display: block; }
