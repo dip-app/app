@@ -44,9 +44,9 @@
         }
         private var titlePill: some View {
             Text(title).font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .title3)).fixedSize(horizontal: false, vertical: true)
-                .foregroundStyle(DIPComponentTheme.onAccent)
+                .foregroundStyle(DIPComponentTheme.accent)
                 .padding(.horizontal, DIPTokens.Spacing.contentInset).padding(.vertical, 14)
-                .background(DIPComponentTheme.accent, in: Capsule())
+                .overlay(Capsule().strokeBorder(DIPComponentTheme.accent, lineWidth: 2))
                 .accessibilityAddTraits(.isHeader)
         }
         private var controls: some View {

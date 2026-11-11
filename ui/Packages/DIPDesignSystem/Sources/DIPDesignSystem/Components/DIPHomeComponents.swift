@@ -53,10 +53,11 @@
             HStack {
                 Text(title)
                     .font(DIPReferenceAssets.font("Figtree-Regular", size: 20))
-                    .foregroundStyle(DIPTokens.Color.headerTitle.swiftUIColor)
+                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
                     .frame(height: 22)
                     .padding(.horizontal, 20).padding(.vertical, 14)
-                    .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
+                    // Informational label, so outlined (pill rule: solid = pressable, outline = informational).
+                    .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
                 Spacer(minLength: 10)
                 HStack(spacing: 10) {
                     Button(action: onNotifications) {

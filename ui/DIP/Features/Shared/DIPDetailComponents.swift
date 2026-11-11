@@ -35,9 +35,9 @@ struct DIPDetailHeader: View {
                         Text(calendarAdded ? "Added" : calendarLabel)
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 14)).lineLimit(1).fixedSize()
                     }
-                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 18).frame(height: 50)
-                    .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
+                    .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
                     .contentShape(Capsule())
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
@@ -232,19 +232,7 @@ struct DIPDetailActionRow: View {
         }
     }
 
-    private func label<Icon: View>(_ title: String, background: Color, @ViewBuilder icon: () -> Icon) -> some View {
-        HStack(spacing: 0) {
-            Text(title)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                .foregroundStyle(.white)
-                .lineLimit(1).minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity).frame(height: 29)
-            icon().frame(width: 20, height: 20)
-                .frame(width: 40, height: 40)
-                .background(.white, in: Circle())
-        }
-        .padding(5).frame(height: 50)
-        .background(background, in: Capsule())
-        .contentShape(Capsule())
+    private func label<Icon: View>(_ title: String, background: Color, @ViewBuilder icon: @escaping () -> Icon) -> some View {
+        DIPActionPill(title: title, color: background, style: .solid, icon: icon)
     }
 }
