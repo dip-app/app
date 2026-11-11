@@ -27,6 +27,7 @@ struct DIPMemberHome: View {
     private let onboarding: OnboardingTourSettings?
     /// Where bug reports go (Firebase when configured, the in-memory mock in unconfigured Debug builds). Nil: off.
     @State private var bugReporting: BugReportContext?
+    private let bugReportSubmitter: (() -> (any BugReportSubmitting)?)?
     @State private var tour: OnboardingTourModel?
     @State private var tourInterests: OnboardingInterestsModel?
     @State private var replay: OnboardingTourModel?
@@ -47,7 +48,7 @@ struct DIPMemberHome: View {
         onSignOut: @escaping () async -> Void
     ) {
         self.onboarding = onboarding
-        _bugReporting = State(initialValue: bugReportSubmitter?().map { BugReportContext.make(uid: context.uid, submitter: $0) })
+        self.bugReportSubmitter = bugReportSubmitter
         self.deepLinkEventID = deepLinkEventID
         self.onDeepLinkHandled = onDeepLinkHandled
         self.eventReadFactory = eventReadFactory
@@ -82,6 +83,11 @@ struct DIPMemberHome: View {
                                    onSignOut: { await signOut() })
                     .onAppear { tour.reportSurface(currentSurface); tour.onFinished = { self.tour = nil } }
                     .transition(.identity)
+            }
+        }
+        .task {
+            if bugReporting == nil, let submitter = bugReportSubmitter?() {
+                bugReporting = BugReportContext.make(uid: context.uid, submitter: submitter)
             }
         }
         .onChange(of: currentSurface) { _, surface in

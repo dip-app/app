@@ -78,7 +78,9 @@ struct FirebaseBugReportSubmitter: BugReportSubmitting {
     }
 
     func submit(_ report: BugReport, screenshot: Data?) async throws {
-        guard let current = Auth.auth().currentUser?.uid, current == report.uid else { throw BugReportSubmitError.rejected }
+        // No user yet (session restoring) is transient and keeps a queued report; a different user is final.
+        guard let current = Auth.auth().currentUser?.uid else { throw BugReportSubmitError.failed }
+        guard current == report.uid else { throw BugReportSubmitError.rejected }
         guard BugReportValidation.isValid(report) else { throw BugReportSubmitError.rejected }
         do {
             var uploaded: Int?

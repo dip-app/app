@@ -100,13 +100,13 @@ test("size and shape limits", async () => {
   await assertFails(setDoc(reportDoc(member(), over), valid("member", { screenshotBytes: 1000 })));
 });
 
-test("the description limit counts characters, not bytes (the client trims by Unicode scalars)", async () => {
+test("the description limit counts UTF-16 units (the client trims to match)", async () => {
   await assertSucceeds(setDoc(reportDoc(member(), "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
-    valid("member", { description: "😀".repeat(1000) })));
+    valid("member", { description: "😀".repeat(500) })));
   await assertSucceeds(setDoc(reportDoc(member(), "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
     valid("member", { description: "é".repeat(1000) })));
   await assertFails(setDoc(reportDoc(member(), "dddddddd-dddd-4ddd-8ddd-dddddddddddd"),
-    valid("member", { description: "😀".repeat(1001) })));
+    valid("member", { description: "😀".repeat(501) })));
 });
 
 test("createdAt must be the server time and the document id must be a UUID", async () => {
@@ -138,6 +138,10 @@ test("storage: owner uploads a small JPEG to their own path only", async () => {
   await assertFails(uploadBytes(ref(member("other").storage(), path), jpeg(1000), { contentType: "image/jpeg" }));
   await assertFails(uploadBytes(ref(environment.unauthenticatedContext().storage(), path), jpeg(1000), { contentType: "image/jpeg" }));
   await assertFails(uploadBytes(ref(member("member", false).storage(), path), jpeg(1000), { contentType: "image/jpeg" }));
+});
+
+test("storage: verified non-members cannot upload", async () => {
+  await assertFails(uploadBytes(ref(member("stranger").storage(), `bugReports/stranger/${REPORT}.jpg`), jpeg(1000), { contentType: "image/jpeg" }));
 });
 
 test("storage: size, type and path limits", async () => {

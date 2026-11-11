@@ -204,7 +204,9 @@ public actor BugReportSender {
 
     private struct TimeoutError: Error {}
 
-    /// First finisher wins. A hung SDK call cannot hold the sheet open, because the race does not wait for it.
+    /// First finisher wins. Cancelling the job does not cancel an SDK write already handed over; if it lands later,
+    /// the queued retry meets the create-only rule and is dropped as already stored, so there is still one report.
+    /// A hung SDK call cannot hold the sheet open, because the race does not wait for it.
     private func withTimeout(_ work: @escaping @Sendable () async throws -> Void) async throws {
         let limit = timeout
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
