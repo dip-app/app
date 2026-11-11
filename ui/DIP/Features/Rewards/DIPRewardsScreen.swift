@@ -32,7 +32,7 @@ struct DIPRewardsScreen: View {
 
     /// Type sizes from the Rewards frame.
     private enum Metrics {
-        static let title: CGFloat = 20, subtitle: CGFloat = 18, body: CGFloat = 14, lead: CGFloat = 17
+        static let title: CGFloat = 26, subtitle: CGFloat = 18, body: CGFloat = 14, inset: CGFloat = 20
     }
 
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
@@ -86,48 +86,46 @@ struct DIPRewardsScreen: View {
     // MARK: Raffle
 
     private var raffleSection: some View {
-        entryCard(DIPRewardsMock.raffle, progress: true).padding(.top, 24)
+        entryCard(DIPRewardsMock.raffle, progress: true).padding(.top, 26)
     }
 
     // MARK: Discounts
 
     private var discountSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Discounted Experiences")
-                .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.lead, relativeTo: .body)).foregroundStyle(ink)
-                .accessibilityAddTraits(.isHeader)
-            Text("Receive discounts connected to the weekly challenge")
-                .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline)).foregroundStyle(ink)
-                .padding(.top, 4)
-            VStack(spacing: 38) {
+            VStack(spacing: 36) {
                 ForEach(DIPRewardsMock.discounts) { entryCard($0) }
             }
-            .padding(.top, 36)
         }
-        .padding(.top, 20)
+        .padding(.top, 40)
     }
 
     /// Same content geometry as the ticket (38 pt text inset, 20 pt title, bold subtitle, 14 pt body),
     /// on a gift-box card instead of the notched ticket shape.
     private func entryCard(_ entry: DIPRewardEntry, progress: Bool = false) -> some View {
-        Button { notice = entry } label: {
+        let dark = entry.style.usesDarkText
+        return Button { notice = entry } label: {
             DIPGiftBoxCard(style: entry.style, tag: entry.badge) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(entry.title.uppercased())
-                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: Metrics.title, relativeTo: .title3))
+                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: Metrics.title, relativeTo: .title))
+                        .tracking(0.3)
+                        .foregroundStyle(dark ? ink : .white)
                     Text(entry.subtitle)
                         .font(DIPReferenceAssets.font("Figtree-Bold", size: Metrics.subtitle, relativeTo: .headline))
-                        .padding(.top, 5)
-                    Spacer(minLength: 12)
+                        .foregroundStyle(dark ? ink : .white)
+                        .padding(.top, 6)
                     Text(entry.body)
                         .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline))
+                        .lineSpacing(6)
+                        .foregroundStyle(dark ? ink.opacity(0.7) : .white.opacity(0.9))
                         .fixedSize(horizontal: false, vertical: true)
-                    if progress { raffleMeter.padding(.top, 14) }
+                        .padding(.top, 12)
+                    if progress { raffleMeter.padding(.top, 16) }
                 }
-                .foregroundStyle(entry.style.usesDarkText ? ink : .white)
                 .multilineTextAlignment(.leading)
-                .padding(.horizontal, 24).padding(.top, 34).padding(.bottom, 22)
-                .frame(maxWidth: .infinity, minHeight: 165, alignment: .topLeading)
+                .padding(.horizontal, Metrics.inset).padding(.top, DIPGiftBoxCard<EmptyView>.lidHeight + 12).padding(.bottom, 20)
+                .frame(maxWidth: .infinity, minHeight: progress ? 190 : 168, alignment: .topLeading)
             }
             .contentShape(Rectangle())
         }
@@ -138,14 +136,15 @@ struct DIPRewardsScreen: View {
 
     /// Raffle progress built into the card: three segments and one short line.
     private var raffleMeter: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 3) {
                 ForEach(0..<DIPRewardsMock.raffleNeeded, id: \.self) { index in
-                    Capsule().fill(ink.opacity(index < DIPRewardsMock.raffleAttended ? 1 : 0.18)).frame(height: 10)
+                    Capsule().fill(ink.opacity(index < DIPRewardsMock.raffleAttended ? 1 : 0.15)).frame(height: 8)
                 }
             }
             Text(DIPRewardsMock.raffleRemainingText)
-                .font(DIPReferenceAssets.font("Figtree-Bold", size: Metrics.body, relativeTo: .subheadline))
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.body, relativeTo: .subheadline).weight(.semibold))
+                .foregroundStyle(ink)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(DIPRewardsMock.raffleAttended) of \(DIPRewardsMock.raffleNeeded) events attended. \(DIPRewardsMock.raffleRemainingText)")
@@ -157,6 +156,6 @@ private struct DIPGiftPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: configuration.isPressed)
     }
 }

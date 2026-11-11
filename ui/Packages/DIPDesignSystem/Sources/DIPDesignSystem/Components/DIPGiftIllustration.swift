@@ -1,7 +1,7 @@
 /// A solid gift-box card with one small bow. Replaces the raffle ticket's notched shape on the Rewards
-/// page while keeping its flat, solid colour treatment. Colours come only from the Rewards frame palette.
+/// page while keeping its flat, solid colour treatment. Colours come from the Rewards frame palette.
 public struct DIPGiftStyle: Equatable, Sendable {
-    public enum Tone: String, CaseIterable, Sendable { case yellow, orange, blue, ink, white }
+    public enum Tone: String, CaseIterable, Sendable { case yellow, orange, blue, periwinkle, ink, white }
     public enum Placement: String, CaseIterable, Sendable { case topCenter, topLeft, topRight }
 
     public let box: Tone
@@ -17,14 +17,13 @@ public struct DIPGiftStyle: Equatable, Sendable {
     /// Text on the box: ink on the light yellow and blue boxes, white on orange (contrast).
     public var usesDarkText: Bool { box == .yellow || box == .blue }
 
-    /// Fill for the corner tag (opposite the bow): yellow on orange, ink elsewhere; the tag's text flips to match.
-    public var tagTone: Tone { box == .orange ? .yellow : .ink }
-    public var tagUsesDarkText: Bool { tagTone == .yellow }
+    /// The "% off" tab is always ink with white text, so it reads on every box colour.
+    public var tagTone: Tone { .ink }
 
     /// One bow construction for every card; only colour and placement vary.
     public static let raffle = DIPGiftStyle(box: .yellow, bow: .orange, placement: .topCenter)
     public static let orangeBox = DIPGiftStyle(box: .orange, bow: .yellow, placement: .topLeft)
-    public static let blueBox = DIPGiftStyle(box: .blue, bow: .ink, placement: .topRight)
+    public static let blueBox = DIPGiftStyle(box: .blue, bow: .periwinkle, placement: .topRight)
 }
 
 #if canImport(SwiftUI)
@@ -36,42 +35,130 @@ public struct DIPGiftStyle: Equatable, Sendable {
             case .yellow: DIPTokens.Color.rewardYellowCard.swiftUIColor
             case .orange: DIPTokens.Color.rewardOrangeCard.swiftUIColor
             case .blue: DIPTokens.Color.rewardBlueCard.swiftUIColor
+            case .periwinkle: DIPTokens.Color.actionPrimary.swiftUIColor
             case .ink: DIPTokens.Color.textPrimary.swiftUIColor
             case .white: DIPTokens.Color.surfaceDefault.swiftUIColor
             }
         }
+
+        /// Lid band: the box colour about 10% darker.
+        var lidColor: Color {
+            switch self {
+            case .yellow: Color(red: 235 / 255, green: 178 / 255, blue: 48 / 255)
+            case .orange: Color(red: 226 / 255, green: 68 / 255, blue: 0)
+            case .blue: Color(red: 98 / 255, green: 182 / 255, blue: 245 / 255)
+            default: color
+            }
+        }
+
+        /// Thin shadow strip under the lid: the box colour about 18% darker.
+        var lidShadowColor: Color {
+            switch self {
+            case .yellow: Color(red: 205 / 255, green: 157 / 255, blue: 42 / 255)
+            case .orange: Color(red: 207 / 255, green: 63 / 255, blue: 0)
+            case .blue: Color(red: 86 / 255, green: 160 / 255, blue: 215 / 255)
+            default: color
+            }
+        }
     }
 
-    /// The one small bow: two teardrop loops, two short angled tails and a small knot, one stroke treatment.
+    /// Geometry of the one small bow on a 54 x 34 pt grid with the knot centre at (27, 20): two teardrop
+    /// loops tilted 22 degrees, a rounded knot, and two short tapered tails behind. Each part is its own
+    /// shape so overlaps never cancel; the loop holes are cut out in `DIPGiftBow`.
+    struct DIPGiftBowShape: Shape {
+        enum Part { case tails, leftLoop, rightLoop, knot, leftHole, rightHole }
+        static let size = CGSize(width: 54, height: 34)
+        static let knot = CGPoint(x: 27, y: 20)
+        let part: Part
+
+        private func about(_ angle: Double) -> CGAffineTransform {
+            let k = Self.knot
+            return CGAffineTransform(translationX: k.x, y: k.y).rotated(by: angle * .pi / 180).translatedBy(x: -k.x, y: -k.y)
+        }
+        private var mirror: CGAffineTransform {
+            CGAffineTransform(translationX: 2 * Self.knot.x, y: 0).scaledBy(x: -1, y: 1)
+        }
+
+        func path(in rect: CGRect) -> Path {
+            let k = Self.knot
+            var path = Path()
+            switch part {
+            case .tails:
+                for angle in [18.0, -18.0] {
+                    var tail = Path()
+                    tail.move(to: CGPoint(x: k.x - 3.5, y: k.y))
+                    tail.addLine(to: CGPoint(x: k.x + 3.5, y: k.y))
+                    tail.addLine(to: CGPoint(x: k.x + 2.5, y: k.y + 14))
+                    tail.addLine(to: CGPoint(x: k.x, y: k.y + 11))
+                    tail.addLine(to: CGPoint(x: k.x - 2.5, y: k.y + 14))
+                    tail.closeSubpath()
+                    path.addPath(tail.applying(about(angle)))
+                }
+            case .leftLoop, .rightLoop:
+                path.move(to: k)
+                path.addCurve(to: CGPoint(x: k.x - 26, y: k.y), control1: CGPoint(x: k.x - 8, y: k.y - 12), control2: CGPoint(x: k.x - 26, y: k.y - 10))
+                path.addCurve(to: k, control1: CGPoint(x: k.x - 26, y: k.y + 9), control2: CGPoint(x: k.x - 8, y: k.y + 10))
+                path.closeSubpath()
+                path = path.applying(about(22))
+                if part == .rightLoop { path = path.applying(mirror) }
+            case .leftHole, .rightHole:
+                path.addEllipse(in: CGRect(x: k.x - 21, y: k.y - 3, width: 10, height: 6))
+                path = path.applying(about(22))
+                if part == .rightHole { path = path.applying(mirror) }
+            case .knot:
+                path.addRoundedRect(in: CGRect(x: k.x - 4.5, y: k.y - 4.5, width: 9, height: 9), cornerSize: CGSize(width: 3, height: 3))
+            }
+            return path.applying(CGAffineTransform(scaleX: rect.width / Self.size.width, y: rect.height / Self.size.height))
+        }
+    }
+
     public struct DIPGiftBow: View {
         let color: Color
         public init(color: Color) { self.color = color }
 
-        public var body: some View {
-            let edge = Color.white.opacity(0.35)
+        private func silhouette(_ fill: Color) -> some View {
             ZStack {
-                ForEach([-1.0, 1.0], id: \.self) { side in
-                    RoundedRectangle(cornerRadius: 2, style: .continuous).fill(color)
-                        .frame(width: 6, height: 13).rotationEffect(.degrees(side * 24), anchor: .top)
-                        .offset(x: side * -2, y: 7)
-                    Ellipse().fill(color).overlay { Ellipse().stroke(edge, lineWidth: 1) }
-                        .frame(width: 22, height: 15).rotationEffect(.degrees(side * 26))
-                        .offset(x: side * 11, y: -3)
-                }
-                Circle().fill(color).overlay { Circle().stroke(edge, lineWidth: 1) }.frame(width: 9, height: 9)
+                DIPGiftBowShape(part: .tails).fill(fill)
+                DIPGiftBowShape(part: .leftLoop).fill(fill)
+                DIPGiftBowShape(part: .rightLoop).fill(fill)
+                DIPGiftBowShape(part: .knot).fill(fill)
             }
-            .frame(width: 46, height: 30)
+        }
+
+        public var body: some View {
+            let size = DIPGiftBowShape.size
+            let kneeY = DIPGiftBowShape.knot.y
+            ZStack {
+                silhouette(color)
+                // Darker lower half.
+                DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.14)
+                    .mask(alignment: .bottom) { Rectangle().frame(height: size.height - kneeY) }
+                    .mask { silhouette(.black) }
+                // Light top edge on the loops.
+                ZStack {
+                    DIPGiftBowShape(part: .leftLoop).stroke(Color.white.opacity(0.30), lineWidth: 1.5)
+                    DIPGiftBowShape(part: .rightLoop).stroke(Color.white.opacity(0.30), lineWidth: 1.5)
+                }
+                .mask(alignment: .top) { Rectangle().frame(height: kneeY - 8) }
+                // Holes.
+                DIPGiftBowShape(part: .leftHole).fill(.black).blendMode(.destinationOut)
+                DIPGiftBowShape(part: .rightHole).fill(.black).blendMode(.destinationOut)
+            }
+            .compositingGroup()
+            .frame(width: size.width, height: size.height)
             .accessibilityHidden(true)
         }
     }
 
-    /// Gift-box card background: solid colour in the card radius, a slightly darker lid band across the
-    /// top, and one small bow that overhangs the top edge. Content is laid over it by the caller.
+    /// Gift-box card background: solid colour in a 24 pt continuous radius, a distinct darker lid band
+    /// with a shadow strip and a light top edge, a soft drop shadow, one small bow seated on the lid's
+    /// top edge, and an optional "% off" tab set into the lid at the corner opposite the bow.
     public struct DIPGiftBoxCard<Content: View>: View {
         private let style: DIPGiftStyle
         private let content: Content
         private let tag: String?
-        private let lidHeight: CGFloat = 30
+        public static var cornerRadius: CGFloat { 24 }
+        public static var lidHeight: CGFloat { 34 }
 
         /// - tag: short label (e.g. "20% off") set into the lid band at the corner opposite the bow.
         public init(style: DIPGiftStyle, tag: String? = nil, @ViewBuilder content: () -> Content) {
@@ -81,43 +168,45 @@ public struct DIPGiftStyle: Equatable, Sendable {
         }
 
         public var body: some View {
-            let shape = RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
-                    shape.fill(style.box.color)
-                        .overlay(alignment: .top) {
-                            Rectangle().fill(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.12))
-                                .frame(height: lidHeight)
-                        }
-                        .clipShape(shape)
+                    ZStack(alignment: .top) {
+                        style.box.color
+                        style.box.lidShadowColor.frame(height: Self.lidHeight + 3).frame(maxHeight: .infinity, alignment: .top)
+                        style.box.lidColor.frame(height: Self.lidHeight).frame(maxHeight: .infinity, alignment: .top)
+                        Color.white.opacity(0.35).frame(height: 2).frame(maxHeight: .infinity, alignment: .top)
+                    }
+                    .clipShape(shape)
+                    .shadow(color: DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.10), radius: 16, y: 8)
                 }
                 .overlay(alignment: tagAlignment) { tagView }
                 .overlay(alignment: bowAlignment) {
                     DIPGiftBow(color: style.bowTone.color)
-                        .scaleEffect(1.2)
-                        .rotationEffect(.degrees(style.placement == .topLeft ? -14 : style.placement == .topRight ? 14 : 0))
-                        .offset(x: style.placement == .topLeft ? 26 : style.placement == .topRight ? -26 : 0, y: -20)
+                        .offset(x: bowInset, y: -20)
                 }
         }
 
         private var tagAlignment: Alignment { style.placement == .topLeft ? .topTrailing : .topLeading }
+        private var bowInset: CGFloat { style.placement == .topLeft ? 13 : style.placement == .topRight ? -13 : 0 }
 
         @ViewBuilder private var tagView: some View {
             if let tag {
-                let radius = DIPTokens.Radius.card
                 let onRight = style.placement == .topLeft
+                let outer = Self.cornerRadius
                 Text(tag)
-                    .font(DIPReferenceAssets.font("Figtree-Bold", size: 15, relativeTo: .subheadline))
-                    .foregroundStyle(style.tagUsesDarkText
-                        ? DIPTokens.Color.textPrimary.swiftUIColor : DIPTokens.Color.textInverse.swiftUIColor)
-                    .padding(.horizontal, 16).frame(height: lidHeight)
+                    .font(DIPReferenceAssets.font("Figtree-Bold", size: 14, relativeTo: .subheadline))
+                    .tracking(0.2)
+                    .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                    .padding(.horizontal, 14).frame(height: Self.lidHeight)
                     .background(
                         style.tagTone.color,
                         in: UnevenRoundedRectangle(
-                            topLeadingRadius: onRight ? 0 : radius, bottomLeadingRadius: onRight ? 14 : 0,
-                            bottomTrailingRadius: onRight ? 0 : 14, topTrailingRadius: onRight ? radius : 0,
+                            topLeadingRadius: onRight ? 0 : outer, bottomLeadingRadius: onRight ? 14 : 0,
+                            bottomTrailingRadius: onRight ? 0 : 14, topTrailingRadius: onRight ? outer : 0,
                             style: .continuous))
+                    .overlay { DIPGiftTagInnerEdge(onRight: onRight).stroke(Color.white.opacity(0.5), lineWidth: 2) }
             }
         }
 
@@ -130,10 +219,32 @@ public struct DIPGiftStyle: Equatable, Sendable {
         }
     }
 
+    /// The tab's two inner edges (the side facing the card and its bottom), so the white separator
+    /// never draws along the card's outer edge.
+    private struct DIPGiftTagInnerEdge: Shape {
+        let onRight: Bool
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            let r: CGFloat = 14
+            if onRight {
+                path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - r))
+                path.addQuadCurve(to: CGPoint(x: rect.minX + r, y: rect.maxY), control: CGPoint(x: rect.minX, y: rect.maxY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            } else {
+                path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
+                path.addQuadCurve(to: CGPoint(x: rect.maxX - r, y: rect.maxY), control: CGPoint(x: rect.maxX, y: rect.maxY))
+                path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            }
+            return path
+        }
+    }
+
     #Preview("Gift boxes") {
-        VStack(spacing: 28) {
+        VStack(spacing: 40) {
             ForEach([DIPGiftStyle.raffle, .orangeBox, .blueBox], id: \.box) { style in
-                DIPGiftBoxCard(style: style) { Color.clear.frame(height: 150) }
+                DIPGiftBoxCard(style: style, tag: style == .raffle ? nil : "20% off") { Color.clear.frame(height: 150) }
             }
         }.padding()
     }
