@@ -66,6 +66,7 @@ struct OnboardingCopy: Equatable {
     /// "Getting your events…": the handoff wait (spec §3 H "Wait").
     static let waitingForHome = String(localized: "onboarding.handoff.waiting", defaultValue: "Getting your events…")
     static let skipForNow = String(localized: "onboarding.interests.skipForNow", defaultValue: "Skip for now")
+    static let signOut = String(localized: "onboarding.signOut", defaultValue: "Sign out")
     static let back = String(localized: "onboarding.back", defaultValue: "Back")
     static let previousStep = String(localized: "onboarding.previousStep", defaultValue: "Previous step")
 }

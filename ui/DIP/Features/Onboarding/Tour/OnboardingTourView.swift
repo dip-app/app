@@ -15,6 +15,9 @@ struct OnboardingTourView: View {
     let firstName: String?
     /// For You's initials.
     let youName: String
+    /// First run only: the leading "Sign out" on the first step (the step before it was sign-in).
+    var onSignOut: (() async -> Void)?
+    @State private var signingOut = false
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -78,15 +81,6 @@ struct OnboardingTourView: View {
                 .accessibilityHidden(true)
             stageCard(layout, step: step, frame: stageFrame)
                 .opacity(stageContentFaded ? 0 : 1)
-            if let host = CrewMember.host(of: step), !model.isHandingOff {
-                host.face(size: TourLayout.perchSize)
-                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
-                    .matchedGeometryEffect(id: "crew.\(host)", in: crew)
-                    .id("perch.\(host)")
-                    .transition(.asymmetric(insertion: .offset(y: 24).combined(with: .opacity), removal: .opacity))
-                    .position(layout.perch)
-                    .accessibilityHidden(true)
-            }
             header(layout)
                 .opacity(chromeShown && !revealStarted ? 1 : 0)
             copy(layout, step: step)
@@ -165,8 +159,8 @@ struct OnboardingTourView: View {
         HStack(spacing: 0) {
             if model.flow.canGoBack {
                 backButton.padding(.trailing, 8)
-            } else {
-                Color.clear.frame(width: 52, height: 44)
+            } else if let signOutButton {
+                signOutButton.padding(.trailing, 8)
             }
             if let step = model.step, step != .arrival {
                 HStack(spacing: 10) {
@@ -177,7 +171,8 @@ struct OnboardingTourView: View {
                         .padding(.horizontal, 16).frame(height: 44)
                         .background(OnboardingTheme.accent, in: Capsule())
                     TourCrewStack(members: model.stackMembers, youName: youName,
-                                  youSaved: model.interestsSaved, namespace: crew, hidesYou: revealStarted)
+                                  youSaved: model.interestsSaved, namespace: crew, hidesYou: revealStarted,
+                                  host: model.isHandingOff ? nil : CrewMember.host(of: step))
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(model.progressLabel ?? step.pillTitle))
@@ -204,6 +199,30 @@ struct OnboardingTourView: View {
         .buttonStyle(DIPPressFeedbackStyle())
         .accessibilityLabel(Text(OnboardingCopy.back))
         .accessibilityIdentifier("onboarding.tour.back")
+    }
+
+    /// The first step of a first run follows sign-in, so its leading control is "Sign out" (owner revision,
+    /// Nov 10). Replay and every later step have none or Back; the header then starts flush at the margin.
+    private var signOutButton: AnyView? {
+        guard model.flow.mode == .firstRun, let onSignOut else { return nil }
+        return AnyView(Button {
+            guard !signingOut else { return }
+            signingOut = true
+            Task { await onSignOut(); signingOut = false }
+        } label: {
+            // Same 44 pt muted circle, ink glyph, size and weight as Back (the design system has no sign-out
+            // asset; Back also uses an SF Symbol here).
+            Image(systemName: "rectangle.portrait.and.arrow.right")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(OnboardingTheme.ink)
+                .scaleEffect(x: -1, y: 1)
+                .frame(width: 44, height: 44)
+                .background(OnboardingTheme.muted, in: Circle())
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .disabled(signingOut || model.isHandingOff)
+        .accessibilityLabel(Text(OnboardingCopy.signOut))
+        .accessibilityIdentifier("onboarding.signOut"))
     }
 
     private var skipButton: some View {

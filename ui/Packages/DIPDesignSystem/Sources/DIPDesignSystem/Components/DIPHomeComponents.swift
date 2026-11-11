@@ -460,11 +460,6 @@
             Button(action: onAction) {
                 ZStack {
                     Capsule().fill(actionColor(action.style))
-                    if action.showsProgress && !reduceMotion {
-                        DIPProgressBand()
-                            .transition(.opacity)
-                            .accessibilityHidden(true)
-                    }
                     HStack(spacing: 0) {
                         Text(action.title)
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
@@ -472,6 +467,7 @@
                             .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.4)
                             .padding(.horizontal, 16)
                             .frame(maxWidth: .infinity)
+                            .modifier(DIPProgressBreath(active: action.showsProgress && !reduceMotion))
                             .id(action.title)
                             .transition(.opacity)
                         if let icon = action.icon {
@@ -483,14 +479,14 @@
                                 .padding(.trailing, 8)
                                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                 .accessibilityHidden(true)
-                        } else if action.showsProgress && reduceMotion {
-                            // Reduce Motion: no travelling band; a static spinner in the icon circle.
-                            ProgressView()
-                                .tint(DIPTokens.Color.navigationBackground.swiftUIColor)
+                        } else if action.showsProgress {
+                            // Work in flight: three ink dots breathing in the white icon circle (the affirmative
+                            // state's affordance slot). Under Reduce Motion the dots rest, with no loop.
+                            DIPProgressPulse(animated: !reduceMotion)
                                 .frame(width: 64, height: 64)
                                 .background(.white, in: Circle())
                                 .padding(.trailing, 8)
-                                .transition(.opacity)
+                                .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                 .accessibilityHidden(true)
                         }
                     }
@@ -509,28 +505,48 @@
         }
     }
 
-    /// A white 25% band, 80 pt wide, sweeping left to right across its container every 1.4 s.
-    /// One gradient layer moved by an offset; it exists only while progress is shown.
-    struct DIPProgressBand: View {
-        static let bandWidth: CGFloat = 80
-        static let period = 1.4
-        @State private var sweeping = false
+    /// Three 8 pt ink dots that breathe in turn (scale 0.6 → 1, opacity 0.35 → 1), like the Crew's faces hopping:
+    /// a soft pulse instead of a shimmer. It exists only while progress is shown; `animated: false` (Reduce
+    /// Motion) draws the dots at rest with no loop.
+    struct DIPProgressPulse: View {
+        static let dotSize: CGFloat = 8
+        /// One breath in or out; the dots are a third of a cycle apart.
+        static let breath = 0.6
+        let animated: Bool
+        @State private var breathing = false
 
         var body: some View {
-            GeometryReader { geometry in
-                LinearGradient(
-                    colors: [.white.opacity(0), .white.opacity(0.25), .white.opacity(0)],
-                    startPoint: .leading, endPoint: .trailing
-                )
-                .frame(width: Self.bandWidth, height: geometry.size.height)
-                .offset(x: sweeping ? geometry.size.width : -Self.bandWidth)
-            }
-            .allowsHitTesting(false)
-            .onAppear {
-                withAnimation(.linear(duration: Self.period).repeatForever(autoreverses: false)) {
-                    sweeping = true
+            HStack(spacing: 6) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(DIPTokens.Color.navigationBackground.swiftUIColor)
+                        .frame(width: Self.dotSize, height: Self.dotSize)
+                        .scaleEffect(animated && !breathing ? 0.6 : 1)
+                        .opacity(animated && !breathing ? 0.35 : 1)
+                        .animation(
+                            animated
+                                ? .easeInOut(duration: Self.breath).repeatForever(autoreverses: true)
+                                    .delay(Double(index) * Self.breath * 2 / 3)
+                                : nil,
+                            value: breathing)
                 }
             }
+            .allowsHitTesting(false)
+            .onAppear { if animated { breathing = true } }
+        }
+    }
+
+    /// The action label breathes gently (opacity 1 ↔ 0.7) while work is in flight. No loop when inactive.
+    struct DIPProgressBreath: ViewModifier {
+        let active: Bool
+        @State private var dimmed = false
+
+        func body(content: Content) -> some View {
+            content
+                .opacity(active && dimmed ? 0.7 : 1)
+                .animation(active ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: dimmed)
+                .onAppear { if active { dimmed = true } }
+                .onChange(of: active) { _, isActive in dimmed = isActive }
         }
     }
 

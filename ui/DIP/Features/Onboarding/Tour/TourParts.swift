@@ -242,10 +242,27 @@ struct TourCrewStack: View {
     let namespace: Namespace.ID
     /// Hides You during the handoff while its own flight copy is drawn.
     var hidesYou = false
+    /// This step's host (owner revision Nov 10: the device frame owns the Stage's top edge, so the host sits
+    /// in the header after the stack, ringed in `actionPrimary`, and joins the stack when the step ends).
+    var host: CrewMember?
 
     var body: some View {
+        HStack(spacing: 6) {
+            stack
+            if let host {
+                host.face(size: 28)
+                    .overlay(Circle().strokeBorder(OnboardingTheme.accent, lineWidth: 2))
+                    .matchedGeometryEffect(id: "crew.\(host)", in: namespace)
+                    .id("host.\(host)")
+                    .transition(.asymmetric(insertion: .scale(scale: 0.6).combined(with: .opacity), removal: .opacity))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var stack: some View {
         let layout = OnboardingCrewStack(count: members.count)
-        ZStack(alignment: .leading) {
+        return ZStack(alignment: .leading) {
             ForEach(Array(members.prefix(layout.faces).enumerated()), id: \.element) { index, member in
                 face(member)
                     .opacity(member == .you && hidesYou ? 0 : 1)
@@ -362,10 +379,8 @@ struct InterestsStrip: View {
                     ForEach(names, id: \.self) { chip($0, selected: true) }
                 }
                 .padding(16)
-                .padding(.top, 30)
                 .animation(reduceMotion ? .easeInOut(duration: 0.12) : OnboardingMotion.hop, value: names)
             }
-            DemoExampleChip().padding(.leading, 12).padding(.top, 11).opacity(failed ? 0 : 1)
         }
         .accessibilityHidden(true)
     }

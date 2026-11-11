@@ -34,11 +34,6 @@ struct ChallengeCanvas: View {
     let state: ChallengeState
     let stageFill: Color
 
-    private static let lines = [
-        "Have coffee with 3 coworkers you haven’t met",
-        "Send your count, a caption and a photo if you like",
-        "Your organizer approves it",
-    ]
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -48,7 +43,7 @@ struct ChallengeCanvas: View {
                 .frame(width: DemoCanvas.size.width, height: state.whiteHeight)
                 .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height, alignment: .bottom)
             card
-            requirements
+            if state.detailsOpen { challengePage.transition(.move(edge: .trailing)) }
             if state.calloutShown || state.calloutAppearance > 0 {
                 DemoCallout(text: "How to submit", tail: .top, appearance: state.calloutAppearance)
                     .fixedSize()
@@ -83,75 +78,45 @@ struct ChallengeCanvas: View {
     // MARK: Card → details band
 
     private var card: some View {
-        ZStack(alignment: .topLeading) {
-            if state.detailsOpen {
-                detailsBand.transition(.opacity)
-            } else {
-                DIPChallengeCard(
-                    category: "COFFEE WITH 3", participationText: "+ 12 others participating",
-                    accessibilityLabel: "", accent: stageFill, titleColor: .white,
-                    artwork: CrewMember.white.face(size: 150, mood: .happy), avatarStack: nil, onSelect: {})
-                    .frame(width: 350, height: 225)
-                    .opacity(state.contentOpacity)
-                    .transition(.opacity)
-            }
-        }
-        .frame(width: 350, height: state.detailsOpen ? 140 : 225, alignment: .topLeading)
-        .background(stageFill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .offset(x: 20, y: 20)
+        DIPChallengeCard(
+            category: "COFFEE WITH 3", participationText: "+ 12 others participating",
+            accessibilityLabel: "", accent: stageFill, titleColor: .white,
+            artwork: CrewMember.white.face(size: 150, mood: .happy), avatarStack: nil, onSelect: {})
+            .frame(width: 350, height: 225)
+            .opacity(state.contentOpacity)
+            .background(stageFill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .offset(x: 20, y: 20)
     }
 
-    private var detailsBand: some View {
-        ZStack(alignment: .topLeading) {
-            CrewMember.white.face(size: 96).offset(x: 236, y: 34)
-            VStack(alignment: .leading, spacing: 6) {
-                DemoPlaceholderTag(feature: "Challenges").foregroundStyle(.white)
-                Text("COFFEE WITH 3")
-                    .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 34))
-                    .foregroundStyle(.white)
-            }
-            .padding(.leading, 18).padding(.top, 50)
+    /// The app's real challenge page (`DIPChallengeDetailsScreen`, pushed like the `.challenge` route): what to
+    /// do, the deadline and the reward, shown before any submit action (spec principle 5).
+    private var challengePage: some View {
+        DemoPhoneScreen {
+            DIPChallengeDetailsScreen(challenge: Self.detail, onBack: {})
+        }
+        .background(.white)
+        .overlay(alignment: .topLeading) {
             if state.pointsEnabled {
+                // F2 placeholder: the member's balance.
                 Text("\(state.balance) points")
                     .font(DIPReferenceAssets.font("Inter-Medium", size: 13))
-                    .foregroundStyle(OnboardingTheme.ink)
+                    .foregroundStyle(.white)
                     .contentTransition(.numericText(value: Double(state.balance)))
                     .padding(.horizontal, 10).frame(height: 28)
-                    .background(.white, in: Capsule())
-                    .position(x: ChallengeTimeline.Point.pointsPill.x - 20, y: ChallengeTimeline.Point.pointsPill.y - 20)
+                    .background(OnboardingTheme.accent, in: Capsule())
+                    .position(x: ChallengeTimeline.Point.pointsPill.x, y: ChallengeTimeline.Point.pointsPill.y)
             }
         }
-        .frame(width: 350, height: 140, alignment: .topLeading)
     }
 
-    // MARK: Requirements, deadline, reward
-
-    private var requirements: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(Self.lines.enumerated()), id: \.offset) { index, line in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("\(index + 1)")
-                        .font(DIPReferenceAssets.font("Figtree-Bold", size: 15))
-                        .frame(width: 22, height: 22)
-                        .background(OnboardingTheme.muted, in: Circle())
-                    Text(line)
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                }
-                .demoWipe(state.lineReveal[index])
-            }
-            HStack(spacing: 16) {
-                Label("Ends Friday", systemImage: "calendar").demoWipe(state.lineReveal[3])
-                Label("+\(ChallengeTimeline.reward) points", systemImage: "star.fill").demoWipe(state.lineReveal[4])
-            }
-            .font(DIPReferenceAssets.font("Inter-Medium", size: 14))
-            .padding(.top, 4)
-        }
-        .foregroundStyle(OnboardingTheme.ink)
-        .frame(width: 350, alignment: .leading)
-        .offset(x: 20, y: 176)
-        .opacity(state.detailsOpen ? 1 : 0)
+    /// A fictional challenge in the app's own detail projection.
+    @MainActor static var detail: DIPChallengeDetail {
+        DIPChallengeDetail(
+            id: "onboarding.coffee-with-3", title: "Coffee with 3", image: nil, timing: "Ends Friday",
+            description: "Have coffee with 3 coworkers you haven’t met. Send your count, a caption and a photo if you like; your organizer approves it.",
+            tags: ["Social"], completedCount: 12,
+            completedAvatars: [CrewMember.purple, .yellow, .gray].map { CrewAvatarImages.reference($0) },
+            goalText: "3 coffees", rewardText: "+\(ChallengeTimeline.reward) points")
     }
 
     // MARK: Entry form (F3 placeholder)

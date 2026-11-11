@@ -43,8 +43,8 @@
         public let value: String?
         /// Optional design-system image shown in a white circle at the trailing edge of the action.
         public let icon: String?
-        /// Work in flight: a moving light band crosses the capsule, or (Reduce Motion) a static
-        /// spinner sits in the trailing icon circle. Presentation only; activation is the host's call.
+        /// Work in flight: three ink dots breathe in the trailing white icon circle and the label pulses
+        /// softly; under Reduce Motion the dots rest with no loop. Presentation only; activation is the host's call.
         public let showsProgress: Bool
 
         public init(

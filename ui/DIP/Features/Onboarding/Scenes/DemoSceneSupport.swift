@@ -1,4 +1,5 @@
 import DIPCore
+import DIPMockData
 import DIPDesignSystem
 import SwiftUI
 
@@ -11,18 +12,44 @@ extension GhostState {
     }
 }
 
+extension OnboardingDemoFixtures {
+    /// A snapshot holding the demo Pasta Night, so demo bars come from `EventBarAction.resolve` exactly as the
+    /// app shell resolves them for the event and participants routes.
+    static func pastaSnapshot(joined: Bool) -> DIPAppSnapshot {
+        var snapshot = DIPMockFixtures.reference
+        snapshot.eventDetails[pastaNight.id] = pastaDetail(joined: joined, avatars: [])
+        return snapshot
+    }
+}
+
 extension DemoCoordinate {
     var cgPoint: CGPoint { CGPoint(x: x, y: y) }
 }
 
-/// The demo's mini bar: the real `DIPFloatingNavigation` with three tabs (spec §7.1 tab rule), centred at
+/// A real app screen laid out on a full 390 × 844 phone, of which the canvas shows the lower 540 pt (the device
+/// frame's top runs off the Stage). Real screens keep their own top padding and headers; those sit above the
+/// visible part, exactly as on a phone whose top is out of view.
+struct DemoPhoneScreen<Content: View>: View {
+    static var height: CGFloat { 844 }
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+            .frame(width: DemoCanvas.size.width, height: Self.height)
+            .offset(y: DemoCanvas.size.height - Self.height)
+            .frame(width: DemoCanvas.size.width, height: DemoCanvas.size.height, alignment: .topLeading)
+            .environment(\.dynamicTypeSize, .large)
+    }
+}
+
+/// The demo's mini bar: the real `DIPFloatingNavigation`, with every tab the app shows (owner revision Nov 10), centred at
 /// canvas y 479.
 struct DemoMiniBar: View {
     var selected: DIPHomeTab = .home
     var action: DIPBottomBarAction?
 
     var body: some View {
-        DIPFloatingNavigation(selected: selected, action: action, tabs: [.home, .events, .profile], onSelect: { _ in })
+        DIPFloatingNavigation(selected: selected, action: action, onSelect: { _ in })
             .padding(.horizontal, 20)
             .frame(width: DemoCanvas.size.width)
             .position(x: DemoCanvas.size.width / 2, y: DemoCanvas.barCenterY)
@@ -36,6 +63,8 @@ enum DemoPeople {
             DIPParticipant(id: "maya", name: "Maya", department: "Design", avatar: CrewAvatarImages.reference(.purple, size: 50)),
             DIPParticipant(id: "theo", name: "Theo", department: "Engineering", avatar: CrewAvatarImages.reference(.white, size: 50)),
             DIPParticipant(id: "jun", name: "Jun", department: "Finance", avatar: CrewAvatarImages.reference(.yellow, size: 50)),
+            DIPParticipant(id: "lena", name: "Lena", department: "Sales", avatar: CrewAvatarImages.reference(.gray, size: 50)),
+            DIPParticipant(id: "omar", name: "Omar", department: "Product", avatar: CrewAvatarImages.reference(.purple, size: 50)),
             DIPParticipant(id: "you", name: "You", department: "Going", avatar: CrewAvatarImages.you(name: youName, size: 50)),
         ]
     }

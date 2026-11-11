@@ -49,7 +49,9 @@ final class OnboardingTourTests: XCTestCase {
         waitForTitle(app, "You're in, Sam")
         XCTAssertTrue(app.buttons["onboarding.tour.skip"].exists)
         XCTAssertFalse(app.buttons["onboarding.tour.back"].exists)
+        XCTAssertTrue(app.buttons["onboarding.signOut"].exists, "the first step after sign-in offers Sign out")
         tapNext(app)
+        XCTAssertFalse(app.buttons["onboarding.signOut"].exists)
         waitForTitle(app, "Find something fun")
         let progress = app.descendants(matching: .any)["onboarding.tour.progress"]
         XCTAssertEqual(progress.label, "Step 1 of 4, Find events")
@@ -78,6 +80,19 @@ final class OnboardingTourTests: XCTestCase {
         let again = launch([])
         XCTAssertTrue(again.buttons["home.tab.Home"].waitForExistence(timeout: 10))
         XCTAssertFalse(title(again).exists)
+    }
+
+    /// The first step after sign-in leads with an icon Sign out (`onboarding.signOut`) that returns to Welcome.
+    @MainActor func testSignOutFromTheFirstStepReturnsToWelcome() {
+        let app = launch(["-onboarding.reset", "-onboarding.timeScale", "4"])
+        waitForTitle(app, "You're in, Sam")
+        let signOut = app.buttons["onboarding.signOut"]
+        XCTAssertTrue(signOut.exists)
+        XCTAssertEqual(signOut.label, "Sign out")
+        signOut.tap()
+        let welcome = app.buttons.matching(NSPredicate(format: "label == %@", "Continue with Google")).firstMatch
+        XCTAssertTrue(welcome.waitForExistence(timeout: 10))
+        XCTAssertFalse(title(app).exists)
     }
 
     @MainActor func testSkipAtB2WritesSkippedAndNeverShowsAgain() {
@@ -134,6 +149,8 @@ final class OnboardingTourTests: XCTestCase {
         row.tap()
         waitForTitle(app, "Find something fun")
         XCTAssertEqual(app.buttons["onboarding.tour.skip"].label, "Done")
+        XCTAssertFalse(app.buttons["onboarding.signOut"].exists, "replay never offers Sign out")
+        XCTAssertFalse(app.buttons["onboarding.tour.back"].exists)
         app.buttons["onboarding.tour.skip"].tap()
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: title(app))
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 10), .completed)
@@ -157,7 +174,10 @@ final class OnboardingTourTests: XCTestCase {
             ("onboarding-tour-B2-people", ["-onboarding.resumeAt", "people", "-onboarding.freezeAt", "people@2.1"]),
             ("onboarding-tour-B3-challenges", ["-onboarding.resumeAt", "challenges", "-onboarding.features", "all",
                                                "-onboarding.freezeAt", "challenges@3.2"]),
+            ("onboarding-tour-B4-my-events", ["-onboarding.resumeAt", "memories", "-onboarding.freezeAt", "memories@2.0"]),
+            ("onboarding-tour-B4-past-callout", ["-onboarding.resumeAt", "memories", "-onboarding.freezeAt", "memories@4.2"]),
             ("onboarding-tour-B4-memories", ["-onboarding.resumeAt", "memories", "-onboarding.freezeAt", "memories@5.7"]),
+            ("onboarding-tour-B4-album", ["-onboarding.resumeAt", "memories", "-onboarding.freezeAt", "memories@final"]),
             ("onboarding-tour-B5-interests", ["-onboarding.resumeAt", "interests"]),
         ]
         for (name, arguments) in steps {

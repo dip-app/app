@@ -47,3 +47,23 @@ Onboarding phase P2 (tour shell) and scenes B2–B5 on top of the merged P0/P1/P
 
 - When F2/F3/F4/F5/F1 land, add their flags to `OnboardingFeatures.shipping` and replace the "PREVIEW" stand-ins.
 - Not implemented from the spec: B4 → B5 strip with F1 cards, the standard step-change keyframed host flight (matched geometry is used instead), demo pre-decoding budget checks, GIFs, Low Power Mode composition for the tour chrome, `-home.surface` override.
+
+## Owner revisions (later in the session)
+
+- Demo panes now run on the app's real screens in a device frame:
+  - B2 pushes the real `DIPParticipantsScreen` (the `.participants` route); its bar comes from `EventBarAction.resolve`.
+  - B3 pushes the real `DIPChallengeDetailsScreen`. The entry form and balance stay marked F3/F2 placeholders.
+  - B4 uses the real `DIPMyEventsScreen`, `DIPEventDetailsScreen` and `DIPAlbumScreen`, fed by `DIPMockFixtures.reference`.
+  - Real screens are laid out at 390 × 844, and the canvas shows their lower 540 pt (`DemoPhoneScreen`). Beat tables, timings and validators are unchanged; the timeline motion still drives the transitions (pushes with the beat springs, crossfades).
+- Device frame (`DemoDeviceFrame`): ink bezel. The canvas fills the Stage height and bleeds off its top and bottom, so there is no dead space below the phone. The `EXAMPLE` chip is removed. Replay sits top-right of the visible screen. The spec §3.0 table is updated.
+- Host face: no perch on the Stage, since the frame owns the top edge. The step's host now sits in the header after the Crew stack, with an `actionPrimary` ring, and joins the stack when the step ends.
+- Demo mini bars use the real `DIPFloatingNavigation` default tab list: four tabs including the Rewards gift. Spec §7.1 is updated.
+- Header leading control:
+  - Back on later steps.
+  - On the first step of a first run, a 44 pt icon "Sign out" circle styled like Back (`onboarding.signOut`). It uses the existing session sign-out, which has no confirmation, the same as Profile.
+  - Nothing in replay; the content starts flush left with no reserved gap.
+- Bar progress: the shimmer band (`DIPProgressBand`) is replaced by `DIPProgressPulse`, three ink dots breathing in the trailing white circle, with a gentle label breath (`DIPProgressBreath`). Under Reduce Motion the dots rest with no loop. Identifiers and values are unchanged. Spec §3 A2 is updated.
+- Process:
+  - Simulators: this session first created "Claude-DIP" (UDID B1885C1A-2AC8-42B7-A821-21A3406E8887), which is now the shared agents' simulator, and then its own **"Claude-DIP (Onboarding)"** (UDID 44A8367D-1717-4E92-9A3E-8A969CD59F96), which later onboarding runs use. Both are kept and shut down, not deleted.
+  - The owner's "iPhone 17 Pro" is no longer used.
+  - Large-text, Dynamic Type and accessibility tests and captures are excluded from all runs, by owner instruction.

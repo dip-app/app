@@ -1,9 +1,13 @@
 import DIPCore
+import DIPMockData
 import DIPDesignSystem
 import SwiftUI
 
-/// B4 Memories (spec §3 B4): My Events by name, "Past events" spelled out, a past event's shared album and
-/// adding a photo (the mock album until F5). The timeline is `MemoriesTimeline` (DIPCore).
+/// B4 Memories (spec §3 B4): My Events by name, "Past events", a past event's shared album and adding a photo
+/// (the mock album until F5). The timeline is `MemoriesTimeline` (DIPCore).
+///
+/// Owner revision (Nov 10): every page is the app's real screen (`DIPMyEventsScreen`, `DIPEventDetailsScreen`,
+/// `DIPAlbumScreen`) fed by the bundled mock fixtures, and the bar comes from `EventBarAction.resolve`.
 struct MemoriesScene: DemoScene {
     static let id = "memories"
 
@@ -29,34 +33,26 @@ struct MemoriesScene: DemoScene {
     }
 }
 
+/// The fixtures B4 shows: the app's mock snapshot (fictional, bundled).
+enum MemoriesDemoFixtures {
+    static let snapshot = DIPMockFixtures.reference
+    static let lists = DIPEventLists(snapshot: snapshot, now: Date())
+    static var pastEventID: String { lists.past.first?.id ?? "kayaking-memory" }
+    static let newPhoto = DIPPhoto(id: "onboarding.new-photo", image: .asset("album_Rectangle937"))
+}
+
 struct MemoriesCanvas: View {
     let state: MemoriesState
-
-    private struct Row: Identifiable {
-        let id: String
-        let title: String
-        let detail: String
-        let cover: String
-    }
-
-    private static let upcoming = [
-        Row(id: "pasta", title: "Pasta Night", detail: "Thu · 6:30 PM", cover: "cover_cooking"),
-        Row(id: "games", title: "Board Game Lunch", detail: "Fri · 12:00 PM", cover: "cover_games"),
-    ]
-    private static let past = [
-        Row(id: "hike", title: "Saturday Hike", detail: "Oct 18", cover: "cover_hiking"),
-        Row(id: "kayak", title: "Kayak Morning", detail: "Oct 4", cover: "cover_outdoors"),
-    ]
-    private static let album = (931...936).map { "album_Rectangle\($0)" }
-    private static let newPhoto = "album_Rectangle937"
+    private typealias Fixtures = MemoriesDemoFixtures
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.white
             switch state.page {
             case .myEvents: myEvents.transition(.opacity)
-            case .pastEvent: pastPage.transition(.scale(scale: 0.5, anchor: UnitPoint(x: 0.5, y: 196 / 540)).combined(with: .opacity))
-            case .album: albumGrid.transition(.opacity)
+            case .pastEvent:
+                pastPage.transition(.scale(scale: 0.5, anchor: UnitPoint(x: 0.5, y: 196 / 540)).combined(with: .opacity))
+            case .album: album.transition(.opacity)
             }
             DemoMiniBar(selected: state.selectedTab == .events ? .events : .home, action: barAction)
             if state.callout == .myEvents || state.myEventsCallout > 0 {
@@ -65,9 +61,9 @@ struct MemoriesCanvas: View {
                     .position(x: 195, y: 418)
             }
             if state.callout == .past || state.pastCallout > 0 {
-                DemoCallout(text: "Past events", tail: .top, appearance: state.pastCallout)
+                DemoCallout(text: "Past events", tail: .bottom, appearance: state.pastCallout)
                     .fixedSize()
-                    .position(x: 287, y: 116)
+                    .position(x: MemoriesTimeline.Point.pastCard.x, y: MemoriesTimeline.Point.pastCard.y - 70)
             }
             if let upload = state.upload, !state.thumbSettled { uploadingThumb(upload) }
             if let ghost = state.ghost { GhostTouch(ghost: GhostState(ghost)) }
@@ -76,126 +72,72 @@ struct MemoriesCanvas: View {
         .clipped()
     }
 
+    /// The app's own resolver for each page: tabs on My Events, "View Album" on a past event, "Add Photos" in
+    /// its album. B4 opens on B3's entry action (a placeholder until F3).
     private var barAction: DIPBottomBarAction? {
         switch state.bar {
         case .entry: DIPBottomBarAction(title: "Add Your Entry", identifier: "onboarding.demo.entry")
         case .tabs: nil
-        case .viewAlbum: DIPBottomBarAction(title: "View Album", identifier: "onboarding.demo.album")
-        case .addPhotos: DIPBottomBarAction(title: "Add Photos", identifier: "onboarding.demo.addPhotos")
+        case .viewAlbum:
+            EventBarAction.resolve(route: .event(Fixtures.pastEventID), snapshot: Fixtures.snapshot, isLoading: false)
+        case .addPhotos:
+            EventBarAction.resolve(route: .album(Fixtures.pastEventID), snapshot: Fixtures.snapshot, isLoading: false)
         }
     }
 
-    // MARK: My Events
+    // MARK: Real screens
 
     private var myEvents: some View {
-        ZStack(alignment: .topLeading) {
-            Text("My Events")
-                .font(DIPReferenceAssets.font("Figtree-Regular", size: 20))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16).frame(height: 40)
-                .background(OnboardingTheme.accent, in: Capsule())
-                .offset(x: 20, y: 18)
-            sectionSwitch.offset(x: 20, y: 70)
-            HStack(alignment: .top, spacing: 40) {
-                list(Self.upcoming)
-                list(Self.past)
-            }
-            .offset(x: 20 + (state.pastSection ? -390 : 0), y: 130)
+        DemoPhoneScreen {
+            DIPMyEventsScreen(
+                activeEvents: Fixtures.lists.upcoming, memories: Fixtures.lists.past, unreadCount: 0,
+                profileAvatar: Fixtures.snapshot.home.profileAvatar, initialMemories: state.pastSection,
+                showsBottomBar: false, onSelectTab: { _ in }, onEvent: { _ in }, onAlbum: { _ in },
+                onNotifications: {}, onProfile: {})
         }
+        // The section is the screen's own state; the demo switches it by re-creating the screen.
+        .id(state.pastSection)
+        .transition(.opacity)
         .blur(radius: 6 * (1 - state.listDevelop))
         .opacity(state.listDevelop)
     }
 
-    private var sectionSwitch: some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(OnboardingTheme.muted).frame(width: 350, height: 40)
-            Capsule().fill(OnboardingTheme.ink)
-                .frame(width: 171, height: 34)
-                .offset(x: state.pastSection ? 176 : 3)
-            HStack(spacing: 0) {
-                Text("Upcoming").foregroundStyle(state.pastSection ? OnboardingTheme.ink : .white)
-                    .frame(width: 175)
-                Text("Past events").foregroundStyle(state.pastSection ? .white : OnboardingTheme.ink)
-                    .frame(width: 175)
-            }
-            .font(DIPReferenceAssets.font("Inter-Medium", size: 14))
-        }
-        .frame(width: 350, height: 40)
-    }
-
-    private func list(_ rows: [Row]) -> some View {
-        VStack(spacing: 12) {
-            ForEach(rows) { row in
-                HStack(spacing: 14) {
-                    DIPReferenceAssets.image(row.cover).resizable().scaledToFill()
-                        .frame(width: 96, height: 96)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.title).font(DIPReferenceAssets.font("Figtree-Bold", size: 18))
-                        Text(row.detail).font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                    }
-                    .foregroundStyle(.black)
-                    Spacer(minLength: 0)
-                }
-                .padding(12)
-                .frame(width: 350, height: 120)
-                .background(OnboardingTheme.muted.opacity(0.55), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-        }
-        .frame(width: 350)
-    }
-
-    // MARK: Past event page
-
     private var pastPage: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            DIPDetailHero(image: .asset("cover_hiking"), tags: [], identifierPrefix: "onboarding.demo.past")
-                .frame(width: 350, height: 264)
-                .frame(height: 200, alignment: .top)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            Text("SATURDAY HIKE")
-                .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40))
-                .foregroundStyle(.black)
-                .frame(height: 50, alignment: .leading)
-                .padding(.top, 10)
-            DIPDetailPeopleRow(
-                title: "Who Attended", avatars: [CrewMember.white, .gray, .purple].map { CrewAvatarImages.reference($0) },
-                total: 6, emptyText: "", identifierPrefix: "onboarding.demo.past", onMore: {})
-                .padding(.top, 14)
-        }
-        .frame(width: 350, alignment: .leading)
-        .offset(x: 20, y: 20)
-    }
-
-    // MARK: Album
-
-    private var albumGrid: some View {
-        let photos = state.thumbSettled ? [Self.newPhoto] + Self.album : Self.album
-        let columns = Array(repeating: GridItem(.fixed(110), spacing: 10), count: 3)
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("SATURDAY HIKE")
-                .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 28))
-                .foregroundStyle(.black)
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                ForEach(Array(photos.enumerated()), id: \.element) { index, photo in
-                    let develop = photo == Self.newPhoto ? 1 : state.albumDevelop[min(index, state.albumDevelop.count - 1)]
-                    DIPReferenceAssets.image(photo).resizable().scaledToFill()
-                        .frame(width: 110, height: 110)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .blur(radius: 6 * (1 - min(1, develop)))
-                        .scaleEffect(0.96 + 0.04 * min(1, develop))
-                        .opacity(min(1, develop))
-                }
+        let id = Fixtures.pastEventID
+        return DemoPhoneScreen {
+            if let event = Fixtures.snapshot.eventDetails[id] {
+                DIPEventDetailsScreen(
+                    event: event, joined: event.isJoined, showsBottomBar: false, onJoin: {}, onBack: {},
+                    onAttendees: {}, onChat: {}, photos: Fixtures.snapshot.albums[id]?.photos ?? [],
+                    onAlbum: {}, onLeave: {})
             }
         }
-        .frame(width: 350, alignment: .leading)
-        .offset(x: 20, y: 24)
+    }
+
+    /// The past event's album, with the new photo in slot 1 once it settles.
+    private var albumModel: DIPAlbum? {
+        guard var album = Fixtures.snapshot.albums[Fixtures.pastEventID] else { return nil }
+        if state.thumbSettled { album.photos.insert(Fixtures.newPhoto, at: 0) }
+        return album
+    }
+
+    private var album: some View {
+        let develop = state.albumDevelop.last ?? 1
+        return DemoPhoneScreen {
+            if let album = albumModel {
+                DIPAlbumScreen(
+                    album: album, commentsByPhoto: [:], currentUser: Fixtures.snapshot.profile, showsBottomBar: false,
+                    onBack: {}, onAddPhotos: { _ in }, onAddComment: { _, _, _ in })
+            }
+        }
+        .blur(radius: 6 * (1 - min(1, develop)))
+        .opacity(min(1, develop))
     }
 
     private func uploadingThumb(_ progress: Double) -> some View {
         let size = 20 + 60 * progress
         return ZStack {
-            DIPReferenceAssets.image(Self.newPhoto).resizable().scaledToFill()
+            DIPMedia(Fixtures.newPhoto.image).resizable().scaledToFill()
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             Circle().trim(from: 0, to: progress)

@@ -64,7 +64,8 @@ struct DIPMemberHome: View {
                 .allowsHitTesting(tour == nil)
                 .accessibilityHidden(tour != nil)
             if let tour {
-                OnboardingTourView(model: tour, interests: tourInterests, firstName: firstName, youName: youName)
+                OnboardingTourView(model: tour, interests: tourInterests, firstName: firstName, youName: youName,
+                                   onSignOut: onSignOut)
                     .onAppear { tour.reportSurface(currentSurface); tour.onFinished = { self.tour = nil } }
                     .transition(.identity)
             }

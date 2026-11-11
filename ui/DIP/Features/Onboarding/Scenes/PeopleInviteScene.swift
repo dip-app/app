@@ -54,7 +54,6 @@ struct PeopleInviteCanvas: View {
         static let actionTop: CGFloat = 316
         static let chip = CGRect(x: 95, y: 376, width: 200, height: 50)
         static let zoomAnchor = UnitPoint(x: 195 / 390, y: 276 / 540)
-        static let panel = CGRect(x: 20, y: 40, width: 350, height: 344)
         static let sheet = CGRect(x: 0, y: 213, width: 390, height: 327)
     }
 
@@ -75,9 +74,10 @@ struct PeopleInviteCanvas: View {
         ZStack(alignment: .topLeading) {
             eventPage
                 .scaleEffect(state.zoomed ? 1.35 : 1, anchor: Metrics.zoomAnchor)
-            DemoMiniBar(action: EventBarAction.forEvent(
-                OnboardingDemoFixtures.pastaDetail(joined: true, avatars: []), isLoading: false))
             participantPanel
+            DemoMiniBar(action: EventBarAction.resolve(
+                route: state.panelShown ? .participants(OnboardingDemoFixtures.pastaNight.id) : .event(OnboardingDemoFixtures.pastaNight.id),
+                snapshot: OnboardingDemoFixtures.pastaSnapshot(joined: true), isLoading: false))
             inviteSheet
             if state.toastShown {
                 DemoToast(text: "Invite sent to Priya")
@@ -141,19 +141,17 @@ struct PeopleInviteCanvas: View {
             .position(x: Metrics.chip.midX, y: Metrics.chip.midY)
     }
 
+    /// "+ 2 More" pushes the app's real Participants screen, as `DIPPrototypeApp` does (`.participants` route);
+    /// `b2.panelBack` pops it. The joined bar ("Activity Chat") stays, as on that route in the app.
     private var participantPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            DemoParticipantList(people: DemoPeople.attendees(youName: youName))
+        let people = DemoPeople.attendees(youName: youName)
+        return DemoPhoneScreen {
+            DIPParticipantsScreen(people: people, participantCount: people.count, showsBottomBar: false,
+                                  onBack: {}, onChat: {})
         }
-        .padding(16)
-        .frame(width: Metrics.panel.width, height: Metrics.panel.height, alignment: .top)
-        .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.12), radius: 16, y: 6)
-        .scaleEffect(state.panelShown ? 1 : 0.3,
-                     anchor: UnitPoint(x: (295 - Metrics.panel.minX) / Metrics.panel.width,
-                                       y: (276 - Metrics.panel.minY) / Metrics.panel.height))
-        .opacity(state.panelShown ? 1 : 0)
-        .position(x: Metrics.panel.midX, y: Metrics.panel.midY)
+        .background(.white)
+        .shadow(color: .black.opacity(state.panelShown ? 0.12 : 0), radius: 12, x: -4)
+        .offset(x: state.panelShown ? 0 : DemoCanvas.size.width + 12)
     }
 
     private var inviteSheet: some View {
