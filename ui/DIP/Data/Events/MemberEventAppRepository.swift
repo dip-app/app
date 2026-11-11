@@ -391,12 +391,12 @@ import DIPAccounts
         }
     }
 
-    /// Downloads missing photo bytes through the authenticated SDK, four at a time, newest first.
     /// Shared wording for a failed album listener (same offline text as upload and comment failures).
     nonisolated static func albumLoadMessage(_ error: Error) -> String {
         (error as? AlbumFailure) == .unavailable ? AlbumFailure.unavailable.message : "This album couldn’t be loaded. Go back and open it again."
     }
 
+    /// Downloads missing photo bytes through the authenticated SDK, four at a time, newest first.
     private func loadAlbumImages(eventID: String) {
         guard let albums else { return }
         let wanted = albumRecords.filter { albumImages[$0.id] == nil && !albumImagesLoading.contains($0.id) }
