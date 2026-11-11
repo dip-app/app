@@ -93,7 +93,7 @@ Open Firebase console, Hosting, release history for `team05-dip`, and roll back 
 
 - **Backend:** `createEventV1`, `updateEventV1`, `resolveMembershipV1` and the event read rules are deployed.
 - **Web app:** "DIP Admin", app ID `1:28423377357:web:a19e30f455328ae322b484` (public identifier; `firebase apps:sdkconfig WEB <appId> --project team05-dip` prints the rest of the config).
-- **App Check:** a reCAPTCHA Enterprise key ("DIP Admin web", domains `team05-dip.web.app`, `team05-dip.firebaseapp.com`, `localhost`) is registered for the web app (`NEXT_PUBLIC_APPCHECK_SITE_KEY`, a public site key). Production callables enforce App Check.
+- **App Check:** a reCAPTCHA Enterprise key ("DIP Admin web", domains `letsdip.work`, `www.letsdip.work`, `team05-dip.web.app`, `team05-dip.firebaseapp.com`, `localhost`) is registered for the web app (`NEXT_PUBLIC_APPCHECK_SITE_KEY`, a public site key). Production callables enforce App Check.
 - **Repository variables:** the five `NEXT_PUBLIC_*` values above are GitHub Actions variables (not secrets).
 - **First organizer:** one maintainer account has `users/{uid}.role == "admin"`, assigned with trusted tooling. Assign more the same way (Admin SDK or the Firebase console); clients cannot write roles. To revoke, set the role back to `"member"`.
 - **Not yet verified in production:** a real browser sign-in followed by an event create/edit (the adapter is proven end to end against the emulators in CI, and the live site loads and passes the App Check exchange).

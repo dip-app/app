@@ -41,3 +41,7 @@ team05-dip.web.app cannot redirect itself while it also serves letsdip.work, so 
 ## Follow-up: Apple links
 
 Removed the legacy `applinks:team05-dip.web.app` from ui/Config/DIP-Paid.entitlements (only `applinks:letsdip.work` remains; Apple does not follow redirects for the association file) and refreshed the share-link docs, FRONTEND_PLAN row and admin README. Still open: replace `TEAMID` in the AASA file with the paid team's real Team ID.
+
+## Follow-up: authorized domains
+
+Added `letsdip.work` and `www.letsdip.work` to Firebase Auth authorized domains (Identity Toolkit admin API) and to the "DIP Admin web" reCAPTCHA Enterprise key's allowed domains; existing entries kept. The admin's Google popup sign-in uses the firebaseapp.com handler, so no OAuth client change was needed.
