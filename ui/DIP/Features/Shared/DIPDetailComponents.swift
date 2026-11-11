@@ -166,6 +166,8 @@ struct DIPDetailActionRow: View {
     let joinTitle: String
     let leaveTitle: String
     let shareItem: String
+    /// Public link to the page (`DIPShareLink`). When set it is the shared item (rich link preview) and `shareItem` is the message above it.
+    var shareLink: URL? = nil
     let shareTitle: String
     let identifierPrefix: String
     let onJoin: () -> Void
@@ -201,12 +203,21 @@ struct DIPDetailActionRow: View {
             .opacity(canChange ? 1 : 0.5)
             .accessibilityIdentifier(isParticipating ? "\(identifierPrefix).leave" : "\(identifierPrefix).join")
             }
+            if let shareLink {
+                ShareLink(item: shareLink, message: Text(shareItem)) {
+                    label(shareTitle, asset: "event_HeroiconsMiniLink", background: shareColor)
+                }
+                .buttonStyle(DIPPressFeedbackStyle())
+                .accessibilityLabel(shareTitle)
+                .accessibilityIdentifier("\(identifierPrefix).share")
+            } else {
             ShareLink(item: shareItem) {
                 label(shareTitle, asset: "event_HeroiconsMiniLink", background: shareColor)
             }
             .buttonStyle(DIPPressFeedbackStyle())
             .accessibilityLabel(shareTitle)
             .accessibilityIdentifier("\(identifierPrefix).share")
+            }
         }
     }
 

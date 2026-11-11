@@ -13,6 +13,9 @@ struct DIPMemberHome: View {
     /// Photo from the signed-in OAuth identity, used while the stored profile has none.
     let oauthPhotoURL: String
     let onSignOut: () async -> Void
+    /// Queued event link target; opened once the shell is ready and the onboarding tour is not showing.
+    private let deepLinkEventID: String?
+    private let onDeepLinkHandled: ((String) -> Void)?
     @State private var editor: ProfileEditor
     @State private var catalog: InterestCatalog
     private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
@@ -36,9 +39,13 @@ struct DIPMemberHome: View {
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
+        deepLinkEventID: String? = nil,
+        onDeepLinkHandled: ((String) -> Void)? = nil,
         onSignOut: @escaping () async -> Void
     ) {
         self.onboarding = onboarding
+        self.deepLinkEventID = deepLinkEventID
+        self.onDeepLinkHandled = onDeepLinkHandled
         self.eventReadFactory = eventReadFactory
         self.participationFactory = participationFactory
         self.context = context
@@ -173,7 +180,10 @@ struct DIPMemberHome: View {
             loadingMoreEvents: liveEvents?.isLoadingMore == true, eventPaginationError: liveEvents?.paginationError,
             onRefreshEvents: live ? { await liveEvents?.refresh() } : nil,
             onSurfaceChange: { homeSurface = $0 },
-            onReplayTour: onboarding == nil ? nil : { startReplay() })
+            onReplayTour: onboarding == nil ? nil : { startReplay() },
+            // Held while the onboarding tour (or its replay) covers the shell.
+            deepLinkEventID: tour == nil && replay == nil ? deepLinkEventID : nil,
+            onDeepLinkHandled: onDeepLinkHandled)
     }
 
     private var catalogIsLoading: Bool {

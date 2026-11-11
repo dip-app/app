@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Paid Apple Developer team only. Select with DIP_ENTITLEMENTS in Config/Local.xcconfig. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<!-- Must match DIPShareLink.baseURL's host (ui/Packages/DIPCore/Sources/DIPCore/DIPShareLink.swift). -->
+		<string>applinks:team05-dip.web.app</string>
+	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)org.dip-app.DIP</string>
+	</array>
+</dict>
+</plist>

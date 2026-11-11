@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.org.dip-app.DIP"],
+        "components": [{ "/": "/e/*", "comment": "Event share links: https://<host>/e/<eventId>" }]
+      }
+    ]
+  }
+}

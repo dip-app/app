@@ -33,12 +33,6 @@ targets:
     sources:
       - path: DIP
         excludes: ["**/*.md"]
-    entitlements:
-      path: Config/DIP.entitlements
-      properties:
-        # Google Sign-In stores its session in the keychain; without a keychain group it fails with -34018.
-        keychain-access-groups:
-          - $(AppIdentifierPrefix)org.dip-app.DIP
     configFiles:
       Debug: Config/Base.xcconfig
       Release: Config/Base.xcconfig
@@ -49,6 +43,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
+              - dip
     dependencies:
       - package: DIPContracts
       - package: DIPAccounts
@@ -76,6 +71,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.dip-app.DIP
+        # Free-team builds use the generated Config/DIP.entitlements (no Associated Domains). Paid-team builds set
+        # DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements in the untracked Local.xcconfig (docs/design/share-links.md).
+        CODE_SIGN_ENTITLEMENTS: $(DIP_ENTITLEMENTS)
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
   DIPTests:
     type: bundle.unit-test

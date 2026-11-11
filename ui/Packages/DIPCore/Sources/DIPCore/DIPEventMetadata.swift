@@ -73,9 +73,10 @@ public struct DIPEventMetadata: Equatable, Sendable {
         return formatter.string(from: amount) ?? "USD \(amount.stringValue)"
     }
 
-    /// Natural-language text for the native share sheet (two short paragraphs); V1 does not promise a deep link.
+    /// Natural-language text for the native share sheet (two short paragraphs). Pass `link` (`DIPShareLink.url`) to
+    /// append it as the last line; cancelled events share no link.
     /// Missing pieces (end time, venue, price, description) are left out gracefully instead of shown as blank labels.
-    public func shareText(title: String, description: String = "", locale: Locale = .current,
+    public func shareText(title: String, description: String = "", link: URL? = nil, locale: Locale = .current,
                           timeZone: TimeZone = .current) -> String {
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let subject = name.isEmpty ? "this activity" : name
@@ -95,7 +96,9 @@ public struct DIPEventMetadata: Equatable, Sendable {
         } else {
             details += " It’s free to join\(note.isEmpty ? "" : " (\(note))")."
         }
-        return "\(intro)\n\n\(details) Hope to see you there!"
+        var text = "\(intro)\n\n\(details) Hope to see you there!"
+        if let link { text += "\n\n\(link.absoluteString)" }
+        return text
     }
 
     private func whenPhrase(locale: Locale, timeZone: TimeZone) -> String {
