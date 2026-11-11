@@ -1,7 +1,7 @@
 import type { SetRsvpResponse } from "../../../generated/models";
 import { ParticipationError } from "../domain/errors";
 import { parseRequest, validDocumentId } from "../domain/request";
-import type { Document, ParticipationIdentity, ParticipationStore } from "./ports";
+import type { Document, ParticipationIdentity, ParticipationStore, ParticipationTransaction } from "./ports";
 
 function stored(condition: boolean): asserts condition {
   if (!condition) throw new ParticipationError("internal", "INVALID_STORED_DATA", "Invalid stored participation data.");
@@ -24,48 +24,58 @@ export async function setRsvp(store: ParticipationStore, identity: Participation
     if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
       throw new ParticipationError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
     }
-    const event = await tx.getEvent(companyId, eventId);
-    if (!event) throw new ParticipationError("not-found", "EVENT_NOT_FOUND", "Event not found.");
-    stored(event.companyId === companyId && date(event.startTime) && integer(event.capacity) &&
-      event.capacity >= 1 && event.capacity <= 10000 && integer(event.attendeeCount) &&
-      event.attendeeCount >= 0 && event.attendeeCount <= event.capacity &&
-      (event.status === "scheduled" || event.status === "cancelled"));
-    const rsvp = await tx.getRsvp(companyId, eventId, uid);
-    if (rsvp) {
-      validateRsvp(rsvp, companyId, eventId, uid);
-      stored(rsvp.status !== "going" || (event.attendeeCount as number) > 0);
-    }
-    const count = event.attendeeCount as number;
-    const response = (attendeeCount: number): SetRsvpResponse => ({ contractVersion: 1, eventId, status, attendeeCount });
-    // An acknowledgement retry never reapplies a delta, even if the event since closed.
-    if (rsvp?.status === status) return response(count);
-    const instant = now();
-    stored(date(instant));
-    if ((event.startTime as Date).getTime() <= instant.getTime() || (status === "going" && event.status !== "scheduled")) {
-      throw new ParticipationError("failed-precondition", "EVENT_CLOSED", "Event is closed.");
-    }
-    if (status === "going" && count >= (event.capacity as number)) {
-      throw new ParticipationError("resource-exhausted", "EVENT_FULL", "Event is full.");
-    }
-    const delta = status === "going" ? 1 : rsvp?.status === "going" ? -1 : 0;
-    stored(count + delta >= 0);
-    if (rsvp) {
-      // Preserve attendance/audit and snapshot-at-first-RSVP fields on cancellation/rejoin.
-      tx.updateRsvp(companyId, eventId, uid, { status, eventStartTime: event.startTime });
-    } else {
-      stored(typeof member.displayName === "string" && typeof member.avatarId === "string" && typeof member.department === "string");
-      tx.createRsvp(companyId, eventId, uid, {
-        companyId, eventId, userId: uid, status,
-        userName: member.displayName, userAvatarId: member.avatarId, userDepartment: member.department,
-        // Optional profile field: "" when the member has not set a job title (kept current by onUserProfileUpdated).
-        userJobTitle: typeof member.jobTitle === "string" ? member.jobTitle : "",
-        eventStartTime: event.startTime, checkedIn: false, checkedInAt: null,
-        // Adapter assigns createdAt with serverTimestamp, never caller-supplied data.
-      });
-    }
-    if (delta !== 0) tx.setCount(companyId, eventId, count + delta);
-    return response(count + delta);
+    return applyRsvp(tx, member, companyId, eventId, uid, status, now);
   });
+}
+
+/**
+ * The shared join/leave transaction body: event and RSVP checks, capacity, RSVP write and attendee count.
+ * Used by setRsvpV1 and by invite acceptance (respondToInviteV1), so both apply identical rules. The caller
+ * has already verified that `member` belongs to `companyId`.
+ */
+export async function applyRsvp(tx: ParticipationTransaction, member: Document, companyId: string, eventId: string,
+  uid: string, status: "going" | "cancelled", now: () => Date): Promise<SetRsvpResponse> {
+  const event = await tx.getEvent(companyId, eventId);
+  if (!event) throw new ParticipationError("not-found", "EVENT_NOT_FOUND", "Event not found.");
+  stored(event.companyId === companyId && date(event.startTime) && integer(event.capacity) &&
+    event.capacity >= 1 && event.capacity <= 10000 && integer(event.attendeeCount) &&
+    event.attendeeCount >= 0 && event.attendeeCount <= event.capacity &&
+    (event.status === "scheduled" || event.status === "cancelled"));
+  const rsvp = await tx.getRsvp(companyId, eventId, uid);
+  if (rsvp) {
+    validateRsvp(rsvp, companyId, eventId, uid);
+    stored(rsvp.status !== "going" || (event.attendeeCount as number) > 0);
+  }
+  const count = event.attendeeCount as number;
+  const response = (attendeeCount: number): SetRsvpResponse => ({ contractVersion: 1, eventId, status, attendeeCount });
+  // An acknowledgement retry never reapplies a delta, even if the event since closed.
+  if (rsvp?.status === status) return response(count);
+  const instant = now();
+  stored(date(instant));
+  if ((event.startTime as Date).getTime() <= instant.getTime() || (status === "going" && event.status !== "scheduled")) {
+    throw new ParticipationError("failed-precondition", "EVENT_CLOSED", "Event is closed.");
+  }
+  if (status === "going" && count >= (event.capacity as number)) {
+    throw new ParticipationError("resource-exhausted", "EVENT_FULL", "Event is full.");
+  }
+  const delta = status === "going" ? 1 : rsvp?.status === "going" ? -1 : 0;
+  stored(count + delta >= 0);
+  if (rsvp) {
+    // Preserve attendance/audit and snapshot-at-first-RSVP fields on cancellation/rejoin.
+    tx.updateRsvp(companyId, eventId, uid, { status, eventStartTime: event.startTime });
+  } else {
+    stored(typeof member.displayName === "string" && typeof member.avatarId === "string" && typeof member.department === "string");
+    tx.createRsvp(companyId, eventId, uid, {
+      companyId, eventId, userId: uid, status,
+      userName: member.displayName, userAvatarId: member.avatarId, userDepartment: member.department,
+      // Optional profile field: "" when the member has not set a job title (kept current by onUserProfileUpdated).
+      userJobTitle: typeof member.jobTitle === "string" ? member.jobTitle : "",
+      eventStartTime: event.startTime, checkedIn: false, checkedInAt: null,
+      // Adapter assigns createdAt with serverTimestamp, never caller-supplied data.
+    });
+  }
+  if (delta !== 0) tx.setCount(companyId, eventId, count + delta);
+  return response(count + delta);
 }
 
 function validateRsvp(rsvp: Document, companyId: string, eventId: string, uid: string): void {

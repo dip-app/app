@@ -1315,9 +1315,27 @@
           "type": "string"
         },
         "status": {
-          "type": "string"
+          "type": "string",
+          "description": "pending | accepted | declined. Written only by sendInviteV1/respondToInviteV1."
         },
         "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fromUserAvatarId": {
+          "type": "string"
+        },
+        "toUserName": {
+          "type": "string"
+        },
+        "toUserAvatarId": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Server-kept idempotency key of the sendInviteV1 call that created the invite."
+        },
+        "respondedAt": {
           "type": "string",
           "format": "date-time"
         }
@@ -2019,6 +2037,262 @@
         "contractVersion",
         "photoId",
         "created"
+      ]
+    },
+    "SendInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "sendInviteV1: invite one same-company coworker to a scheduled, future event. The invite document id is '{eventId}_{toUserId}', so a person can be invited once per event; a replay with the same requestId by the same sender returns the same invite.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "toUserId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "toUserId",
+        "requestId"
+      ]
+    },
+    "SendInviteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "inviteId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 260
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "accepted",
+            "declined"
+          ]
+        },
+        "created": {
+          "type": "boolean",
+          "description": "false when this requestId had already created the invite (idempotent retry)."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "inviteId",
+        "status",
+        "created"
+      ]
+    },
+    "RespondToInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "respondToInviteV1: the recipient accepts (joins through the same capacity transaction as setRsvpV1) or declines.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "inviteId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 260,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "response": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "declined"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "inviteId",
+        "response"
+      ]
+    },
+    "RespondToInviteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "inviteId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 260
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "declined"
+          ]
+        },
+        "rsvpStatus": {
+          "type": "string",
+          "enum": [
+            "going"
+          ],
+          "description": "Present when the invite was accepted."
+        },
+        "attendeeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Present when the invite was accepted."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "inviteId",
+        "status"
+      ]
+    },
+    "Coworker": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Minimal directory entry for the invite picker: display name, avatar id and team only; never email, role, points or other profile fields.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatarId": {
+          "type": "string"
+        },
+        "department": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "available",
+            "going",
+            "invited"
+          ],
+          "description": "For the event in the request."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "avatarId",
+        "department",
+        "state"
+      ]
+    },
+    "ListCoworkersRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "listCoworkersV1: search same-company members by name for the invite picker. A query of at least 2 characters is required (no company-wide enumeration); excludes the caller.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 25
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "eventId",
+        "query"
+      ]
+    },
+    "ListCoworkersResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "coworkers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Coworker"
+          }
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "true when more members match than were returned; refine the query."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "coworkers",
+        "truncated"
       ]
     }
   }

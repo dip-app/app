@@ -325,6 +325,11 @@ export interface EventInvite {
   message: string;
   status: string;
   createdAt: string;
+  fromUserAvatarId?: string;
+  toUserName?: string;
+  toUserAvatarId?: string;
+  requestId?: string;
+  respondedAt?: string;
 }
 
 export interface ResolveMembershipRequest {
@@ -476,4 +481,57 @@ export interface FinalizeEventPhotoResponse {
   contractVersion: number;
   photoId: string;
   created: boolean;
+}
+
+export interface SendInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  toUserId: string;
+  message?: string;
+  requestId: string;
+}
+
+export interface SendInviteResponse {
+  contractVersion: number;
+  inviteId: string;
+  status: "pending" | "accepted" | "declined";
+  created: boolean;
+}
+
+export interface RespondToInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  inviteId: string;
+  response: "accepted" | "declined";
+}
+
+export interface RespondToInviteResponse {
+  contractVersion: number;
+  inviteId: string;
+  status: "accepted" | "declined";
+  rsvpStatus?: "going";
+  attendeeCount?: number;
+}
+
+export interface Coworker {
+  userId: string;
+  displayName: string;
+  avatarId: string;
+  department: string;
+  state: "available" | "going" | "invited";
+}
+
+export interface ListCoworkersRequest {
+  contractVersion: number;
+  companyId: string;
+  eventId: string;
+  query: string;
+  limit?: number;
+}
+
+export interface ListCoworkersResponse {
+  contractVersion: number;
+  coworkers: Array<Coworker>;
+  truncated: boolean;
 }
