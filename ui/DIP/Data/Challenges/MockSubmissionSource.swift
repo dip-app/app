@@ -1,3 +1,4 @@
+#if DEBUG
 import DIPCore
 import Foundation
 #if canImport(UIKit)
@@ -111,3 +112,4 @@ import UIKit
         continuations.values.forEach { $0.yield(entry) }
     }
 }
+#endif

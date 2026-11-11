@@ -91,8 +91,8 @@ struct DIPChallengeDetailsScreen: View {
 
     /// One model per page appearance; read-only (no model) when there is no context or the theme has no numeric goal.
     private func startSubmissions() {
-        guard submission == nil, let context = submissionContext, let goal = challenge.goal, goal > 0 else { return }
-        let model = ChallengeSubmissionModel(challenge: challenge, goal: goal, scope: context.scope, source: context.makeSource(), clock: { now })
+        guard submission == nil, let context = submissionContext, let goal = challenge.goal, goal > 0, let source = context.makeSource() else { return }
+        let model = ChallengeSubmissionModel(challenge: challenge, goal: goal, scope: context.scope, source: source, clock: { now })
         submission = model
         model.start()
     }

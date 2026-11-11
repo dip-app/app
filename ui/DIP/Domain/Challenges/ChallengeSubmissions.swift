@@ -23,7 +23,7 @@ import SwiftUI
 /// (the SDK-backed source is never created while rendering, only when the page appears).
 struct ChallengeSubmissionContext {
     let scope: ChallengeReadScope
-    let makeSource: @MainActor () -> any SubmissionSource
+    let makeSource: @MainActor () -> (any SubmissionSource)?
     /// Previews and tests only: a photo already picked when the sheet opens (the system picker cannot be driven).
     var previewPhoto: Data? = nil
 }

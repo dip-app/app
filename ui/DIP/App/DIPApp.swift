@@ -87,7 +87,7 @@ struct DIPApp: App {
         .task(id: context.uid) { await push?.memberSignedIn(uid: context.uid) }
         let submissions = ChallengeSubmissionContext(
             scope: ChallengeReadScope(uid: context.uid, companyID: context.companyID),
-            makeSource: { makeSubmissionSource() ?? MockSubmissionSource() })
+            makeSource: { makeSubmissionSource() })
         if let makeChallengeReads {
             WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
                 .environment(\.challengeSubmissionContext, submissions)

@@ -950,12 +950,14 @@ public struct ApproveChallengeRequest: Codable, Equatable, Sendable {
     public var companyId: String
     public var challengeId: String
     public var userId: String
+    public var expectedUpdatedAt: Date?
 
-    public init(contractVersion: Int, companyId: String, challengeId: String, userId: String) {
+    public init(contractVersion: Int, companyId: String, challengeId: String, userId: String, expectedUpdatedAt: Date? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.challengeId = challengeId
         self.userId = userId
+        self.expectedUpdatedAt = expectedUpdatedAt
     }
 }
 
@@ -1895,13 +1897,15 @@ public struct RejectChallengeRequest: Codable, Equatable, Sendable {
     public var challengeId: String
     public var userId: String
     public var reason: String
+    public var expectedUpdatedAt: Date?
 
-    public init(contractVersion: Int, companyId: String, challengeId: String, userId: String, reason: String) {
+    public init(contractVersion: Int, companyId: String, challengeId: String, userId: String, reason: String, expectedUpdatedAt: Date? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.challengeId = challengeId
         self.userId = userId
         self.reason = reason
+        self.expectedUpdatedAt = expectedUpdatedAt
     }
 }
 

@@ -25,6 +25,9 @@ iOS half of F3 on top of the backend PR #128: members add an entry (progress, no
 - DIP scheme `build-for-testing` succeeded; `ChallengeSubmissionModelTests` (15), `MemberChallengeReadTests` and `ChallengeDocumentMapperTests` passed.
 - Not run: remaining DIPTests/UI suites, design audit and code review (deferred by the owner until integration).
 
+- Design audit (no Figma frame, screenshot based): round 1 REVISE (7.0-7.4), round 2 PASS (8.2); screenshots and verdicts in scratchpad/shots/challenges (not committed). Required edits applied: pinned sheet header, in-form status banner, real upload-failed state with Send without photo, Required label and error border, tinted hugging status pills, organizer note card, shared empty state for load errors, photo thumbnail in the status row.
+- Independent code review applied: approve/reject accept `expectedUpdatedAt` (SUBMISSION_CHANGED), deactivated accounts refused (service and Storage rules), organizer role may submit, list skips malformed documents, neutral upload-denied wording, mock source Debug-only.
+
 ## Decisions
 
 - No Figma frame exists for the entry flow; the sheet reuses the bug-report sheet structure, the event-page info card, shared pill, button, empty-state and skeleton patterns. Needs design review.

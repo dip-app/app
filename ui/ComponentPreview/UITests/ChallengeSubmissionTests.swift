@@ -76,7 +76,7 @@ final class ChallengeSubmissionTests: XCTestCase {
         field.tap(); field.typeText("1")
         app.buttons["submission.send"].tap()
         XCTAssertTrue(element(app, "submission.error").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(app, "submission.error").label.contains("offline"))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "offline")).firstMatch.exists)
         XCTAssertEqual(app.textFields["submission.progress"].value as? String, "1", "the draft survives a failure")
         app.buttons["submission.send"].tap()
         XCTAssertTrue(element(app, "submission.status").waitForExistence(timeout: 5))

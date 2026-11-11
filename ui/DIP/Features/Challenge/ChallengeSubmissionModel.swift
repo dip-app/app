@@ -59,7 +59,6 @@ final class ChallengeSubmissionModel {
     @ObservationIgnored private let clock: () -> Date
     @ObservationIgnored private let prepare: Prepare
     @ObservationIgnored private var observation: Task<Void, Never>?
-    @ObservationIgnored private var sending: Task<Void, Never>?
     /// The path of the draft photo once uploaded; a retry reuses it instead of uploading again.
     @ObservationIgnored private var uploadedPath: String?
     /// Slots known to hold other bytes (a previous entry's photo, an abandoned upload).
@@ -115,7 +114,6 @@ final class ChallengeSubmissionModel {
 
     func stop() {
         observation?.cancel(); observation = nil
-        sending?.cancel(); sending = nil
         source.stop()
     }
 

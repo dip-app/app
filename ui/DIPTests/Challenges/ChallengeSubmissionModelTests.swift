@@ -244,6 +244,7 @@ final class ChallengeSubmissionModelTests: XCTestCase {
         XCTAssertEqual(FirebaseSubmissionSource.failure(NSError(domain: FunctionsErrorDomain, code: FunctionsErrorCode.unavailable.rawValue)), .offline)
         XCTAssertEqual(FirebaseSubmissionSource.failure(NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)), .offline)
         XCTAssertEqual(FirebaseSubmissionSource.failure(NSError(domain: StorageErrorDomain, code: StorageErrorCode.unauthenticated.rawValue)), .unauthenticated)
+        XCTAssertEqual(FirebaseSubmissionSource.failure(NSError(domain: StorageErrorDomain, code: StorageErrorCode.unauthorized.rawValue)), .uploadDenied)
         XCTAssertEqual(FirebaseSubmissionSource.failure(NSError(domain: "other", code: 1)), .unknown)
         XCTAssertEqual(FirebaseSubmissionSource.failure(DIPSubmissionFailure.tooLarge), .tooLarge)
     }

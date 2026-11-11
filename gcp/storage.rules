@@ -76,13 +76,16 @@ service firebase.storage {
         let challenge = firestore.get(/databases/(default)/documents/companies/$(companyId)/challenges/$(challengeId)).data;
         return challenge.companyId == companyId && challenge.startDate <= request.time && request.time <= challenge.endDate;
       }
-      allow get: if signedIn() && profile().companyId == companyId
+      function active() {
+        return profile().get('status', 'active') != 'deactivated';
+      }
+      allow get: if signedIn() && profile().companyId == companyId && active()
         && (request.auth.uid == uploaderId || profile().role == 'admin');
       allow create: if signedIn() && request.auth.uid == uploaderId && resource == null
         && slot.matches('^[0-4]$')
         && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('^image/(jpeg|png|heic)$')
-        && profile().companyId == companyId
+        && profile().companyId == companyId && active()
         && windowOpen();
     }
     // Everything else, including listing album folders, stays denied.

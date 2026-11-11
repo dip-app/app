@@ -109,7 +109,7 @@ final class ChallengeSubmissionTests: XCTestCase {
     func testFailureRetryability() {
         XCTAssertTrue(DIPSubmissionFailure.offline.isRetryable)
         XCTAssertTrue(DIPSubmissionFailure.unknown.isRetryable)
-        for failure in [DIPSubmissionFailure.closed, .locked, .invalidImage, .tooLarge, .noSlotsLeft, .notMember] {
+        for failure in [DIPSubmissionFailure.closed, .uploadDenied, .locked, .invalidImage, .tooLarge, .noSlotsLeft, .notMember] {
             XCTAssertFalse(failure.isRetryable)
         }
         XCTAssertTrue(DIPSubmissionFailure.noSlotsLeft.message.contains("\(DIPSubmissionPolicy.slots)"))

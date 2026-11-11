@@ -156,8 +156,8 @@ import Foundation
         if error.domain == StorageErrorDomain {
             switch StorageErrorCode(rawValue: error.code) {
             case .unauthenticated: return .unauthenticated
-            // Rules denial on upload: the window closed or the slot is taken (see `uploadEvidence`).
-            case .unauthorized: return .closed
+            // Rules denial on upload (window closed, deactivated account, taken slot): neutral wording; the server answers CHALLENGE_CLOSED on submit.
+            case .unauthorized: return .uploadDenied
             case .retryLimitExceeded, .cancelled: return .offline
             default: return .unknown
             }

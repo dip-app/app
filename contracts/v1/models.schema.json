@@ -2063,6 +2063,11 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "expectedUpdatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional but expected from the portal: the `updatedAt` of the submission as listed. If the member changed the entry since, the command fails SUBMISSION_CHANGED."
         }
       },
       "required": [
@@ -4387,6 +4392,11 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 280
+        },
+        "expectedUpdatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional but expected from the portal: the `updatedAt` of the submission as listed. If the member changed the entry since, the command fails SUBMISSION_CHANGED."
         }
       },
       "required": [

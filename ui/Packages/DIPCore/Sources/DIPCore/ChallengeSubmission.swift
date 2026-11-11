@@ -187,11 +187,12 @@ public enum DIPSubmissionState: Equatable, Sendable {
 
 /// Failures the member can act on, mapped from `submitChallengeV1` reasons and SDK errors in the Data layer.
 public enum DIPSubmissionFailure: Error, Equatable, Sendable {
-    case closed, notStarted, locked, invalidInput, invalidImage, tooLarge, noSlotsLeft, notMember, unauthenticated, offline, unknown
+    case closed, uploadDenied, notStarted, locked, invalidInput, invalidImage, tooLarge, noSlotsLeft, notMember, unauthenticated, offline, unknown
 
     public var message: String {
         switch self {
         case .closed: "This theme has ended, so entries are closed."
+        case .uploadDenied: "Your photo couldn’t be uploaded. Try again later, or send your entry without it."
         case .notStarted: "This theme hasn’t started yet."
         case .locked: "This entry was already approved, so it can’t be changed."
         case .invalidInput: "Check your entry and try again."

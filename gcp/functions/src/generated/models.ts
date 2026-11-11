@@ -477,6 +477,7 @@ export interface ApproveChallengeRequest {
   companyId: string;
   challengeId: string;
   userId: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface ApproveChallengeResponse {
@@ -950,6 +951,7 @@ export interface RejectChallengeRequest {
   challengeId: string;
   userId: string;
   reason: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface RejectChallengeResponse {
