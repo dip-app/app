@@ -129,8 +129,7 @@ struct DIPDetailPeopleRow: View {
             .frame(height: 22)
             if total == 0 {
                 DIPEmptyState(
-                    screen: "\(identifierPrefix)-attendees", title: emptyTitle, message: emptyText,
-                    style: .compact, faces: 2)
+                    screen: "\(identifierPrefix)-attendees", title: emptyTitle, message: emptyText)
             } else {
                 HStack(spacing: 10) {
                     ForEach(Array(shown.enumerated()), id: \.offset) { _, avatar in

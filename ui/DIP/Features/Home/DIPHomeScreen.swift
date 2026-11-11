@@ -117,8 +117,8 @@ struct DIPHomeScreen: View {
             sectionTitle("Attended Your Recent Events:")
             if home.recentAttendeeAvatars.isEmpty {
                 DIPEmptyState(
-                    screen: "home-recents", title: "No one here yet",
-                    message: "Coworkers you meet at events will show up here.", style: .compact)
+                    screen: "home-recents", title: "Events you’ve attended will show up here",
+                    message: "Join one this week and your coworkers will appear here.")
             } else {
                 HStack(spacing: 10) {
                     ForEach(Array(home.recentAttendeeAvatars.enumerated()), id: \.offset) { _, avatar in

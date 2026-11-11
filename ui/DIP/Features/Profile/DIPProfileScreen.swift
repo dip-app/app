@@ -160,7 +160,7 @@ struct DIPProfileScreen: View {
             if profile.favoriteMemories.isEmpty {
                 DIPEmptyState(
                     screen: "profile-memories", title: "No favorite memories yet",
-                    message: "Favorite a photo from a past event and it will show up here.", faces: 2)
+                    message: "Favorite a photo from a past event and it will show up here.")
             } else {
                 LazyVGrid(
                     columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
