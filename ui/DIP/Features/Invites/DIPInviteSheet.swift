@@ -32,7 +32,7 @@ struct DIPInviteSheet: View {
     }
 
     private var header: some View {
-        InviteSheetHeader(title: "Invite a coworker", subtitle: eventTitle, closeIdentifier: "invite.close", onClose: onClose)
+        InviteSheetHeader(title: "Invite Coworker", subtitle: eventTitle, closeIdentifier: "invite.close", onClose: onClose)
     }
 
     private var searchField: some View {

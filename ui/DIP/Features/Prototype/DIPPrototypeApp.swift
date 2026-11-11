@@ -101,7 +101,9 @@ struct DIPPrototypeApp: View {
         }
         let model = DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
-                ?? (ProcessInfo.processInfo.arguments.contains("--many-tags")
+                ?? (ProcessInfo.processInfo.arguments.contains("--event-full") || ProcessInfo.processInfo.arguments.contains("--event-cancelled")
+                ? Self.fullEventReview()
+                : ProcessInfo.processInfo.arguments.contains("--many-tags")
                 ? DIPMockFixtures.manyTagsReview()
                 : ProcessInfo.processInfo.arguments.contains("--v1-event-fixtures")
                 ? DIPMockFixtures.v1Events()
@@ -182,6 +184,18 @@ struct DIPPrototypeApp: View {
         #else
         return nil
         #endif
+    }
+
+    /// `--event-full` / `--event-cancelled` (Debug review): Puppy Yoga at capacity, or cancelled, to review the pill pair
+    /// (Directions replaces Invite Coworker when inviting is not possible).
+    private static func fullEventReview() -> DIPAppSnapshot {
+        var snapshot = DIPMockFixtures.v1Events()
+        if ProcessInfo.processInfo.arguments.contains("--event-cancelled") {
+            snapshot.eventDetails["puppy-yoga"]?.metadata?.status = .cancelled
+        } else if let capacity = snapshot.eventDetails["puppy-yoga"]?.metadata?.capacity {
+            snapshot.eventDetails["puppy-yoga"]?.attendeeCount = capacity
+        }
+        return snapshot
     }
 
     /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
