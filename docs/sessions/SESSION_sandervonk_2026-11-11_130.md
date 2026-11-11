@@ -37,3 +37,7 @@ Hosting deployed (landing at /, admin at /admin/). letsdip.work and www.letsdip.
 ## Follow-up: separate redirect site
 
 team05-dip.web.app cannot redirect itself while it also serves letsdip.work, so letsdip.work and www moved to a new Hosting site `letsdip` (firebase.json is now a two-site array: `letsdip` = landing, /admin/, share route, AASA; `team05-dip` = redirect-only, apps/redirect, 301 to https://letsdip.work/:path*). Required DNS changes: TXT hosting-site=letsdip and www CNAME letsdip.web.app. Only `hosting:letsdip` was deployed; the redirect (`firebase deploy --only hosting:team05-dip`) must wait until letsdip.work has an active certificate. Admin CI workflow now assembles site-dist before deploying. Note: AASA does not follow redirects, so the legacy applinks: host in the paid entitlements stops working once the redirect is live; drop it then.
+
+## Follow-up: Apple links
+
+Removed the legacy `applinks:team05-dip.web.app` from ui/Config/DIP-Paid.entitlements (only `applinks:letsdip.work` remains; Apple does not follow redirects for the association file) and refreshed the share-link docs, FRONTEND_PLAN row and admin README. Still open: replace `TEAMID` in the AASA file with the paid team's real Team ID.

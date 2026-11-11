@@ -24,7 +24,7 @@ Share button: `ShareLink(item: <link>, message: <share text>)` on the event page
 | --- | --- | --- |
 | Apple Team ID | `apps/admin/public/aasa/apple-app-site-association.json` | `TEAMID.org.dip-app.DIP` |
 | App Store ID | `APP_STORE_ID` in `gcp/functions/src/modules/share/domain/sharePage.ts` (the Safari banner meta uses `0000000000` until set) | empty (shows "coming to the App Store") |
-| Public domain | `DIPShareLink.baseURL`, `SHARE_ORIGIN` in `sharePage.ts`, `applinks:` in `ui/Config/DIP-Paid.entitlements`, Firebase Hosting custom domain | `letsdip.work` (the old `team05-dip.web.app` stays served and listed in `applinks:`) |
+| Public domain | `DIPShareLink.baseURL`, `SHARE_ORIGIN` in `sharePage.ts`, `applinks:` in `ui/Config/DIP-Paid.entitlements`, Firebase Hosting custom domain | `letsdip.work` (the old `team05-dip.web.app` only redirects here; it is not an `applinks:` host because Apple does not follow redirects for the association file) |
 
 ## Associated Domains and local builds
 

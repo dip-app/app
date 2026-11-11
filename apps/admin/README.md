@@ -44,7 +44,7 @@ npm run build    # static export to out/
 
 ## Deploy (Firebase Hosting)
 
-The portal is a static export (`output: "export"`) served by Firebase Hosting, project `team05-dip`, site `team05-dip` at **https://team05-dip.web.app**. The hosting config is the `hosting` block in the root [`firebase.json`](../../firebase.json) (public dir `apps/admin/out`, `trailingSlash`, `noindex`, `X-Frame-Options: DENY`, long cache on `/_next/static/**`).
+The portal is a static export (`output: "export"`) served by Firebase Hosting, project `team05-dip`, site `letsdip` at **https://letsdip.work/admin/**. The hosting config is the `hosting` block in the root [`firebase.json`](../../firebase.json) (public dir `apps/admin/out`, `trailingSlash`, `noindex`, `X-Frame-Options: DENY`, long cache on `/_next/static/**`).
 
 What is live is the **live-mode portal** (since November 4, 2026): Google sign-in against `team05-dip`, events read through Firestore rules and written only through `createEventV1`/`updateEventV1`. The site itself serves no private data; every read and write is authorized by the backend. It is `noindex`. A build without the `NEXT_PUBLIC_FIREBASE_*` variables is the mock-mode preview instead, so **always build with the live config before deploying** (below). The event photos are the app's prototype assets with unconfirmed release rights (see [asset provenance](../../docs/design/asset-provenance.md)); keep the URL internal until that is settled.
 
