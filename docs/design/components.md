@@ -6,6 +6,8 @@ Source: [Team 05 prototype](https://www.figma.com/design/DCIagJo7uk5IOUGqlKzAjf/
 
 ## Shared visual components
 
+Pill rule: a solid pill is pressable; an outlined pill is informational and not pressable (shared `DIPActionPill` has both styles; header title pills and Goal/Reward are outlined; Share, Directions and the event calendar pill are solid).
+
 | Component | Figma node | Inputs and behavior |
 | --- | --- | --- |
 | DIPHomeHeader | 46:276 | Title, unread count, supplied profile-avatar view and notification/profile callbacks. Original white-on-purple layout; no fetching. |
