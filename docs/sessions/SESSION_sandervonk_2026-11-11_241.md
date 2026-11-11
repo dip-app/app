@@ -26,7 +26,7 @@ Hardening and leftover features on `feature/v2-hardening` (from `origin/feature/
 
 - `swift test --filter` in `ui/Packages/DIPCore` for EventCover, EventLists, ParticipationRules, EventMetadata, ScreenshotMarkup, ShakeGate, EventRewardPoints: passed. Nothing else was run.
 
-- Onboarding motion was NOT screenshot-checked or audited: only ~3 GB of disk was free, too little for a derived-data build under the 1.5 GB floor.
+- Onboarding motion: Preview scheme built and screenshot-checked on Claude-DIP under the sim lock (slowed 0.2x frames per step, entry stagger, people to challenges transition, float diff); `OnboardingTourTests/testFirstRunToHome` passed once (first attempt failed before reporting a reason, second passed). Shots in the scratchpad `shots/onboarding/`.
 
 ## Decisions
 

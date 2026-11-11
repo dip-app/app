@@ -115,6 +115,8 @@ struct OnboardingTourView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous).fill(stageFill(step))
             stageContent(step)
                 .opacity(landed ? 1 : 0)
+                // Content fades in after the Stage has started to land, so a drawn phone is never empty for long.
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.3 / speed).delay((landed ? 0.15 : 0) / speed), value: landed)
         }
         .frame(width: frame.width, height: frame.height)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -183,6 +185,7 @@ struct OnboardingTourView: View {
                                   youSaved: model.interestsSaved, namespace: crew, hidesYou: revealStarted,
                                   host: model.isHandingOff ? nil : CrewMember.host(of: step))
                 }
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.28 / speed), value: step)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(model.progressLabel ?? step.pillTitle))
                 .accessibilityAddTraits(.isHeader)
@@ -331,8 +334,8 @@ struct OnboardingTourView: View {
             .allowsHitTesting(!model.isHandingOff)
             .opacity(fadesOut && revealStarted ? 0 : 1)
             // The bar rises into place with the header chrome on first entrance (no travel with Reduce Motion).
+            // (it follows the same delayed transaction that fades the header chrome in)
             .offset(y: chromeShown || reduceMotion ? 0 : 28)
-            .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed), value: chromeShown)
             .animation(.easeOut(duration: OnboardingHandoff.barFadeDuration / speed)
                 .delay(OnboardingHandoff.barAt / speed), value: revealStarted)
     }
@@ -382,8 +385,11 @@ struct OnboardingTourView: View {
                 withAnimation(.easeInOut(duration: 0.3 / speed)) { landed = true; chromeShown = true }
                 return
             }
-            withAnimation(motion(OnboardingMotion.stage).delay(0.05 / speed)) { landed = true }
-            let chromeDelay = model.entrance == .fresh ? 0.70 : 0.15
+            // Resume: header (0.05 s), then the Stage morph (0.20 s), then its content (0.35 s, see `stageCard`).
+            // Fresh: the Stage lands first, the chrome follows at 0.70 s (B0 has no header to lead with).
+            let stageDelay = model.entrance == .fresh ? 0.05 : 0.20
+            withAnimation(motion(OnboardingMotion.stage).delay(stageDelay / speed)) { landed = true }
+            let chromeDelay = model.entrance == .fresh ? 0.70 : 0.05
             withAnimation(.easeOut(duration: 0.25 / speed).delay(chromeDelay / speed)) { chromeShown = true }
         }
     }

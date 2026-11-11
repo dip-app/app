@@ -69,7 +69,7 @@ struct AccountsStageView: View {
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { stageVisible = true }
             // The Bar rises into place just after the Stage (no travel with Reduce Motion).
-            withAnimation(reduceMotion ? nil : OnboardingMotion.hop.delay(0.2)) { footerShown = true }
+            withAnimation(reduceMotion ? nil : OnboardingMotion.bar(reduceMotion: false).delay(0.2)) { footerShown = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)
             .receive(on: RunLoop.main)) { _ in
@@ -286,6 +286,7 @@ struct AccountsStageView: View {
         .background(OnboardingTheme.surface)
         .offset(y: footerShown || reduceMotion ? 0 : 24)
         .opacity(footerShown || reduceMotion ? 1 : 0)
+        .allowsHitTesting(footerShown || reduceMotion)
     }
 
     private func perform(_ intent: StageIntent) {
