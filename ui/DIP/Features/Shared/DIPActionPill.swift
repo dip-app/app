@@ -9,23 +9,30 @@ struct DIPActionPill<Icon: View>: View {
     let title: String
     let color: Color
     var style: Style = .solid
+    /// Icon circle on the left (informational pills) instead of the right (action pills).
+    var iconLeading = false
     @ViewBuilder let icon: () -> Icon
 
     var body: some View {
         HStack(spacing: 0) {
+            if iconLeading { iconCircle }
             Text(title)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .foregroundStyle(style == .solid ? .white : color)
                 .lineLimit(2).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 29)
-            icon().frame(width: 20, height: 20)
-                .foregroundStyle(color)
-                .frame(width: 40, height: 40)
-                .background(style == .solid ? Color.white : color.opacity(0.14), in: Circle())
+            if !iconLeading { iconCircle }
         }
         .padding(5).frame(minHeight: 50)
         .background(style == .solid ? color : .clear, in: Capsule())
         .overlay { if style == .outline { Capsule().strokeBorder(color, lineWidth: 2) } }
         .contentShape(Capsule())
+    }
+
+    private var iconCircle: some View {
+        icon().frame(width: 20, height: 20)
+            .foregroundStyle(color)
+            .frame(width: 40, height: 40)
+            .background(style == .solid ? Color.white : color.opacity(0.14), in: Circle())
     }
 }
