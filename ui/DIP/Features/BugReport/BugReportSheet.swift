@@ -45,6 +45,7 @@ struct BugReportSheet: View {
             .opacity(model.isSending ? 0.6 : 1)
         }
         .scrollIndicators(.hidden)
+        .accessibilityIdentifier("report.sheet")
         .scrollDismissesKeyboard(.interactively)
         .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
@@ -53,11 +54,6 @@ struct BugReportSheet: View {
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(model.isSending || model.needsDiscardConfirmation)
         .preferredColorScheme(.light)
-        .confirmationDialog("Discard this report?", isPresented: $showsDiscard, titleVisibility: .visible) {
-            Button("Discard", role: .destructive) { dismiss() }
-            Button("Keep editing", role: .cancel) {}
-        }
-        .accessibilityIdentifier("report.sheet")
         .onChange(of: model.phase) { _, phase in handle(phase) }
     }
 
@@ -76,6 +72,10 @@ struct BugReportSheet: View {
             .disabled(model.isSending)
             .accessibilityLabel("Close")
             .accessibilityIdentifier("report.close.button")
+            .confirmationDialog("Discard this report?", isPresented: $showsDiscard, titleVisibility: .visible) {
+                Button("Discard", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) {}
+            }
         }
     }
 
@@ -92,7 +92,7 @@ struct BugReportSheet: View {
     }
 
     private var categories: some View {
-        ReportChipFlow(spacing: 10, lineSpacing: 10) {
+        ReportChipFlow(spacing: 8, lineSpacing: 8) {
             ForEach(BugReportCategory.selectable, id: \.self) { category in
                 let selected = model.draft.category == category
                 Button {
@@ -102,12 +102,13 @@ struct BugReportSheet: View {
                     HStack(spacing: 6) {
                         if selected { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)) }
                         Text(category.title)
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline))
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
                     }
                     .foregroundStyle(ink)
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 12)
                     .frame(minHeight: DIPTokens.Spacing.minimumTouchTarget)
                     .background(selected ? accent : muted, in: Capsule())
+                    .overlay(Capsule().strokeBorder(ink.opacity(selected ? 0 : 0.12), lineWidth: 1))
                     .contentShape(Capsule())
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
@@ -172,7 +173,10 @@ struct BugReportSheet: View {
                             .accessibilityIdentifier("report.screenshot.warning")
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(16)
+            .background(muted, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
         } else {
             DIPEmptyState(
                 screen: "report-screenshot", title: "No screenshot",
@@ -187,7 +191,24 @@ struct BugReportSheet: View {
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 17, relativeTo: .body))
                 .tint(accent)
                 .accessibilityIdentifier("report.diagnostics.toggle")
-            DisclosureGroup(isExpanded: $detailsExpanded) {
+            Button {
+                withAnimation(DIPMotion.navigation(reduceMotion: reduceMotion)) { detailsExpanded.toggle() }
+            } label: {
+                HStack {
+                    Text("What’s included")
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 17, relativeTo: .body)).foregroundStyle(ink)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(ink)
+                        .rotationEffect(.degrees(detailsExpanded ? 90 : 0)).accessibilityHidden(true)
+                }
+                .frame(minHeight: DIPTokens.Spacing.minimumTouchTarget)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityValue(detailsExpanded ? "Expanded" : "Collapsed")
+            .accessibilityIdentifier("report.included")
+            if detailsExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.draft.includesDiagnostics {
                         ForEach(detailRows, id: \.0) { row in
@@ -205,13 +226,8 @@ struct BugReportSheet: View {
                         .foregroundStyle(ink).padding(.top, 4)
                 }
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline))
-                .padding(.top, 8)
-            } label: {
-                Text("What’s included")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 17, relativeTo: .body)).foregroundStyle(ink)
+                .transition(.opacity)
             }
-            .tint(ink)
-            .accessibilityIdentifier("report.included")
         }
         .padding(16)
         .background(muted, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
@@ -223,13 +239,19 @@ struct BugReportSheet: View {
             ("App", "\(d.appVersion) (\(d.appBuild))"), ("iOS", d.osVersion.replacingOccurrences(of: "iOS ", with: "")),
             ("Device", d.deviceModel), ("Language", d.locale), ("Screen", Self.screenName(d.screen)),
             ("Install", "Random id, not your account"),
-        ]
+        ].filter { !$0.1.contains("unknown") }
     }
 
     // MARK: Bar
 
     private var bottomBar: some View {
         VStack(spacing: 10) {
+            if model.phase == .editing, !model.draft.canSend {
+                Text("Pick a type or add a few words to send.")
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                    .foregroundStyle(ink.opacity(0.72))
+                    .accessibilityIdentifier("report.hint")
+            }
             if let message = model.failureMessage {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "exclamationmark.circle").font(.system(size: 20)).accessibilityHidden(true)
@@ -261,9 +283,7 @@ struct BugReportSheet: View {
         .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
         .padding(.top, 10)
         .padding(.bottom, 10)
-        .background(
-            LinearGradient(colors: [.white.opacity(0), .white], startPoint: .top, endPoint: .center)
-                .allowsHitTesting(false))
+        .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
         .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: model.failureMessage)
     }
 

@@ -140,7 +140,11 @@ struct DIPProfileScreen: View {
 
     /// "Report a problem" is the accessible, non-shake path to the same sheet; the toggle turns the shake off.
     private func reportProblem(_ present: @escaping @MainActor (BugReportSource) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("HELP US FIX THINGS")
+                .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 24, relativeTo: .title2))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                .accessibilityAddTraits(.isHeader)
             Toggle(isOn: $shakeToReport) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Shake to report a problem")
@@ -151,6 +155,9 @@ struct DIPProfileScreen: View {
                 }
             }
             .tint(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .padding(16)
+            .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                        in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
             .accessibilityIdentifier("profile.shakeToReport")
             DIPButton("Report a problem", emphasis: .secondary) { present(.profile) }
                 .accessibilityIdentifier("profile.reportProblem")

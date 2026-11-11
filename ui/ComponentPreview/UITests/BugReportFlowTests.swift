@@ -1,7 +1,7 @@
 import XCTest
 
-/// Shake to report. The simulator shake is delivered with XCUIDevice's private `_shake`; `--open-bug-report` opens
-/// the same sheet without it (design review). Reports go to the in-memory submitter; `--bugreport-*` flags choose
+/// Shake to report. XCUITest has no public shake, so these tests open the same sheet with `--open-bug-report`; the
+/// real shake was driven with `simctl spawn notifyutil -p com.apple.UIKit.SimulatorShake` (see the PR). Reports go to the in-memory submitter; `--bugreport-*` flags choose
 /// its outcome.
 final class BugReportFlowTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
@@ -13,28 +13,35 @@ final class BugReportFlowTests: XCTestCase {
         return app
     }
 
+    /// Design-review screenshots: written only when /tmp/dip-c-shots exists (a local review run).
+    @MainActor private func snap(_ name: String) {
+        let folder = "/tmp/dip-c-shots"
+        guard FileManager.default.fileExists(atPath: folder) else { return }
+        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/\(name).png"))
+    }
+
     private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         app.descendants(matching: .any)[id]
     }
 
-    @MainActor private func shake() {
-        XCUIDevice.shared.perform(NSSelectorFromString("_shake"))
-    }
-
-    @MainActor func testShakeOpensSheetAndAReportIsSent() {
-        let app = launch()
-        XCTAssertTrue(app.buttons["home.tab.Home"].waitForExistence(timeout: 10))
-        shake()
-        XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10), "a shake opens the report sheet")
+    @MainActor func testReportIsSentAndTheSheetCloses() {
+        let app = launch(["--open-bug-report"])
+        XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "report.thumbnail").exists, "the screenshot was captured before the sheet")
         let send = app.buttons["report.send"]
         XCTAssertTrue(send.waitForExistence(timeout: 5))
         XCTAssertFalse(send.isEnabled, "nothing to send yet")
+        snap("10-empty")
         app.buttons["report.category.bug"].tap()
         XCTAssertTrue(send.isEnabled)
+        let field = element(app, "report.description")
+        field.tap()
+        field.typeText("Tapped Join but the button kept spinning")
+        snap("11-filled")
         send.tap()
+        snap("12-sending")
         XCTAssertTrue(app.buttons["report.sent"].waitForExistence(timeout: 10), "success state")
-        // The sheet closes by itself.
+        snap("13-sent")
         XCTAssertTrue(element(app, "report.sheet").waitForNonExistence(timeout: 10))
     }
 
@@ -55,6 +62,7 @@ final class BugReportFlowTests: XCTestCase {
         app.buttons["report.category.idea"].tap()
         app.buttons["report.send"].tap()
         XCTAssertTrue(app.buttons["report.queued"].waitForExistence(timeout: 10), "queued state")
+        snap("14-queued")
     }
 
     @MainActor func testFailureKeepsDraftAndOffersTryAgain() {
@@ -64,6 +72,7 @@ final class BugReportFlowTests: XCTestCase {
         app.buttons["report.send"].tap()
         XCTAssertTrue(element(app, "report.error").waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["report.retry"].exists)
+        snap("15-failed")
         XCTAssertEqual(app.buttons["report.category.confusing"].isSelected, true, "the draft is kept")
     }
 
@@ -73,6 +82,7 @@ final class BugReportFlowTests: XCTestCase {
         app.buttons["report.category.bug"].tap()
         app.buttons["report.send"].tap()
         XCTAssertTrue(app.buttons["report.close"].waitForExistence(timeout: 10))
+        snap("16-ratelimited")
     }
 
     @MainActor func testScreenshotCanBeLeftOutAndDiagnosticsExpand() {
@@ -85,6 +95,10 @@ final class BugReportFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Screenshot won’t be sent."].exists)
         XCTAssertTrue(element(app, "report.included").exists)
         XCTAssertTrue(element(app, "report.privacy").exists)
+        snap("17-screenshot-off")
+        app.swipeUp()
+        element(app, "report.included").tap()
+        snap("18-included")
     }
 
     @MainActor func testClosingWithContentAsksBeforeDiscarding() {
@@ -92,7 +106,8 @@ final class BugReportFlowTests: XCTestCase {
         XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10))
         app.buttons["report.category.looksWrong"].tap()
         app.buttons["report.close.button"].tap()
-        XCTAssertTrue(app.buttons["Keep editing"].waitForExistence(timeout: 5))
+        // On iPhone the confirmation shows as a popover: Discard is a button; Keep editing is a tap outside.
+        XCTAssertTrue(app.buttons["Discard"].waitForExistence(timeout: 5))
         app.buttons["Discard"].tap()
         XCTAssertTrue(element(app, "report.sheet").waitForNonExistence(timeout: 10))
     }
@@ -102,6 +117,8 @@ final class BugReportFlowTests: XCTestCase {
         let entry = app.buttons["profile.reportProblem"]
         XCTAssertTrue(entry.waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "profile.shakeToReport").exists)
+        app.swipeUp()
+        snap("19-profile")
         entry.tap()
         XCTAssertTrue(element(app, "report.sheet").waitForExistence(timeout: 10))
     }
