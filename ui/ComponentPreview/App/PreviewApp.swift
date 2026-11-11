@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct PreviewApp: App {
+    @StateObject private var calendar = FakeCalendarAdder()
     var body: some Scene {
         WindowGroup {
             Group {
@@ -31,6 +32,13 @@ struct PreviewApp: App {
                 .first { $0.hasPrefix("--progress-style=") }
                 .flatMap { DIPProgressIndicatorStyle(rawValue: String($0.dropFirst("--progress-style=".count))) }
                 ?? .shipping)
+            .environment(\.eventCalendarAdder, calendar)
+            .overlay(alignment: .bottom) {
+                if ProcessInfo.processInfo.arguments.contains("--fake-calendar") {
+                    Text(calendar.summary).font(.system(size: 1)).opacity(0.02)
+                        .accessibilityIdentifier("calendar.fake.last")
+                }
+            }
             .environment(
                 \.dynamicTypeSize,
                 ProcessInfo.processInfo.arguments.contains("--largest-text") ? .accessibility5

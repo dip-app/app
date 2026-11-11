@@ -49,28 +49,47 @@ final class EventMetadataTests: XCTestCase {
         }
     }
 
-    func testShareIncludesStructuredInformationWithoutInventingLink() {
-        let event = metadata(cost: 1_250)
-        let text = event.shareText(title: "Kayaking", locale: locale, timeZone: utc)
-        XCTAssertTrue(text.hasPrefix("Kayaking\n"))
-        XCTAssertTrue(text.contains(event.dateTimeText(locale: locale, timeZone: utc)))
-        XCTAssertTrue(text.contains("Duration: 90 minutes"))
-        XCTAssertTrue(text.contains("Riverside Park, 10 River Road, Boston"))
-        XCTAssertTrue(text.contains("$12.50 — Bring water"))
+    func testShareReadsAsParagraphsForPaidEvent() {
+        let text = metadata(cost: 1_250).shareText(title: "Kayaking", description: "Paddle the river with the team. Bring a hat.", locale: locale, timeZone: utc)
+        let paragraphs = text.components(separatedBy: "\n\n")
+        XCTAssertEqual(paragraphs.count, 2)
+        XCTAssertEqual(paragraphs[0], "Join me for Kayaking! Paddle the river with the team.")
+        XCTAssertTrue(paragraphs[1].contains("at Riverside Park, 10 River Road, Boston."))
+        XCTAssertTrue(paragraphs[1].contains("It costs $12.50 (Bring water)."))
+        XCTAssertTrue(paragraphs[1].hasSuffix("Hope to see you there!"))
+        XCTAssertTrue(paragraphs[1].contains(" from "))
+        XCTAssertFalse(text.contains("Duration:"))
         XCTAssertFalse(text.contains("https://"))
     }
 
-    func testFreeBlankLocationAndCancelledSharing() {
-        var event = metadata(status: .cancelled)
-        event.venueName = " "
-        event.address = ""
-        event.locality = "\n"
-        event.costNote = " "
+    func testShareFreeEventWithoutDescriptionOrVenue() {
+        var event = metadata()
+        event.venueName = " "; event.address = ""; event.locality = "\n"; event.costNote = " "
         let text = event.shareText(title: "Walk", locale: locale, timeZone: utc)
-        XCTAssertTrue(text.contains("Walk\nCancelled\n"))
-        XCTAssertTrue(text.hasSuffix("\nFree"))
+        XCTAssertTrue(text.hasPrefix("Join me for Walk!\n\n"))
+        XCTAssertTrue(text.contains("It’s free to join."))
+        XCTAssertFalse(text.contains(" at  "))
         XCTAssertFalse(text.contains(", ,"))
-        XCTAssertEqual(event.durationMinutes, 90)
+    }
+
+    func testShareWithoutEndTimeAndLongAddress() {
+        var event = metadata()
+        event.endTime = event.startTime
+        event.address = String(repeating: "Long Street ", count: 12)
+        let text = event.shareText(title: "Lunch", locale: locale, timeZone: utc)
+        XCTAssertTrue(text.contains(" at 8:00"))
+        XCTAssertFalse(text.contains(" to 8:"))
+        XCTAssertTrue(text.contains(event.address.trimmingCharacters(in: .whitespaces)))
+    }
+
+    func testShareMultiDayAndCancelled() {
+        var event = metadata()
+        event.endTime = event.startTime.addingTimeInterval(2 * 86_400)
+        let text = event.shareText(title: "Retreat", locale: locale, timeZone: utc)
+        XCTAssertTrue(text.contains("It’s from "))
+        XCTAssertTrue(text.contains(" to "))
+        event.status = .cancelled
+        XCTAssertTrue(event.shareText(title: "Retreat", locale: locale, timeZone: utc).contains("has been cancelled"))
     }
 
     func testTimezoneAffectsDisplayWithoutChangingStoredInstant() {

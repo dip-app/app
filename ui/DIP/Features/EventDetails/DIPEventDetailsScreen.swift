@@ -15,6 +15,8 @@ struct DIPEventDetailsScreen: View {
     let onAlbum: () -> Void
     let onLeave: () -> Void
     @State private var confirmingLeave = false
+    @State private var calendarResult: DIPCalendarAddResult?
+    @Environment(\.eventCalendarAdder) private var calendarAdder
 
     init(
         event: DIPEventDetail,
@@ -112,7 +114,22 @@ struct DIPEventDetailsScreen: View {
     }
 
     private var header: some View {
-        DIPDetailHeader(timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack)
+        let addable = event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
+        return DIPDetailHeader(
+            timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
+            calendarLabel: addable.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
+            onCalendar: {
+                guard let metadata = addable else { return }
+                let fields = metadata.calendarFields(title: event.title, description: event.description)
+                Task { calendarResult = await calendarAdder.add(fields) }
+            })
+        .alert("Couldn’t add to calendar", isPresented: Binding(
+            get: { if case .failed = calendarResult { return true } else { return false } },
+            set: { if !$0 { calendarResult = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if case .failed(let message) = calendarResult { Text(message) }
+        }
     }
 
     private var hero: some View {
@@ -149,10 +166,10 @@ struct DIPEventDetailsScreen: View {
             DIPDetailActionRow(
                 showsParticipation: !event.isPast,
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions before joining, Leave after.
-                joinInRow: false, directionsURL: event.metadata?.mapsURL,
+                joinInRow: false, directionsURL: event.metadata?.directionsURL(fallbackTitle: event.title),
                 isParticipating: joined, canChange: canChangeParticipation,
                 joinTitle: "Join Activity", leaveTitle: "Leave Activity",
-                shareItem: event.metadata?.shareText(title: event.title) ?? "\(event.title) — \(event.timing)",
+                shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title) — \(event.timing)",
                 shareTitle: "Share Event", identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
@@ -201,14 +218,12 @@ struct DIPEventDetailsScreen: View {
             }
             metadataRow("calendar", title: "When") {
                 Text(metadata.startTime, format: .dateTime.weekday(.wide).month(.wide).day().year())
-                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))")
-                if !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime) {
-                    Text("Ends \(metadata.endTime.formatted(date: .abbreviated, time: .omitted))")
-                }
+                let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: metadata.endTime)
+                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(metadata.endTime.formatted(.dateTime.month(.abbreviated).day())))" : "")")
                 Text(durationLabel(metadata))
                     .foregroundStyle(.secondary)
             }
-            metadataRow("mappin.and.ellipse", title: "Where") {
+            metadataRow("mappin.and.ellipse", title: "Where", trailing: directionsButton(metadata)) {
                 Text(metadata.venueName)
                 Text(metadata.address).foregroundStyle(.secondary)
                 if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
@@ -221,22 +236,53 @@ struct DIPEventDetailsScreen: View {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event.metadata")
     }
 
-    private func metadataRow<Content: View>(_ symbol: String, title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
+    /// Once joined, the action row shows Leave instead of Directions, so Directions lives on the Where row.
+    @ViewBuilder private func directionsButton(_ metadata: DIPEventMetadata) -> some View {
+        if joined, !event.isPast, let url = metadata.directionsURL(fallbackTitle: event.title) {
+            Link(destination: url) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.turn.up.right.diamond").font(.system(size: 14, weight: .semibold))
+                    Text("Directions").font(DIPReferenceAssets.font("Figtree-Bold", size: 14)).lineLimit(1).fixedSize()
+                }
                 .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                .frame(width: 24).padding(.top, 2)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(DIPReferenceAssets.font("Figtree-Bold", size: 16, relativeTo: .headline))
-                content().font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                .padding(.horizontal, 12).frame(height: 32)
+                .overlay(Capsule().stroke(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 1.5))
+                .contentShape(Capsule())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(DIPPressFeedbackStyle())
+            .accessibilityLabel("Directions")
+            .accessibilityIdentifier("event.whereDirections")
         }
-        .accessibilityElement(children: .combine)
+    }
+
+    /// Pill label: short date by default ("Monday, 11/23", no time; the card has the full details);
+    /// `--calendar-label=generic` switches to "Add to Calendar" for owner comparison.
+    private static func calendarLabel(_ metadata: DIPEventMetadata) -> String {
+        if ProcessInfo.processInfo.arguments.contains("--calendar-label=generic") { return "Add to Calendar" }
+        return metadata.startTime.formatted(.dateTime.weekday(.wide).month(.defaultDigits).day())
+    }
+
+    private func metadataRow<Content: View, Trailing: View>(
+        _ symbol: String, title: String, trailing: Trailing = EmptyView(), @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: symbol)
+                    .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                    .frame(width: 24).padding(.top, 2)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    content().font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityElement(children: .combine)
+            trailing
+        }
     }
 
     private func durationLabel(_ metadata: DIPEventMetadata) -> String {
