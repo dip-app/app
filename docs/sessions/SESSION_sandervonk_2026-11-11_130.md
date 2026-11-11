@@ -53,3 +53,7 @@ Owner approved turning the legacy redirect on without waiting for letsdip.work's
 ## Follow-up: Get it now button
 
 The landing page's informational "Coming soon to the App Store" pill became a solid App Store blue (#0071E3, white text, hover/active/focus states) "Get it now" button. Its href is a placeholder (https://apps.apple.com/) with a TODO: replace with the real listing URL once the App Store ID exists.
+
+## Follow-up: tilt and shimmer
+
+Ported the case-study DeviceFrame effect (sandervonk.github.io/src/components/case/primitives/DeviceFrame: perspective 900px, max tilt 7deg with cursor falloff, spring-like easing, Shimmer sheen sliding against the tilt with proximity opacity) to plain JS in apps/landing/index.html. Disabled for prefers-reduced-motion and coarse pointers. Verified by dispatching pointer events in the browser: tilt follows, then returns to ~0.
