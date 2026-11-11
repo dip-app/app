@@ -297,3 +297,40 @@ V2-S01 activity chat (now selected, item A above), V2-S02 raffle, V2-S03 rewards
 | Dec 1–4 | F5 live; A1/A2 live; F6 sweep; F7 coverage numbers and device flows; F8 TestFlight build; push device check only if the paid team is ready | Integration owner: full-flow verification, fixes |
 
 If the backend lags, the mock-first approach means the UI and tests for F1–F5 are still done and reviewable; the adapter swap is the only remaining work. Items to drop first if time runs out: onboarding phases after P1, the Backlog items, push device verification, then the polish part of F5 (upload cancel/partial-retry UX), never F1/F2/F3/F4's core acceptance rows.
+
+## Owner requirements ledger (Nov 10-11, 2026)
+
+Every request the owner made while the V2 frontend was being built, with its state on `main` (checked against the code on Nov 11). Status values: **Done** (merged), **In progress** (an agent is on it), **Queued** (assigned, not started), **Held** (owner said not yet), **Not started**. Nothing leaves this list until it is Done and the owner has seen it. Update the row, do not delete it.
+
+| # | Request | State | Where / PR |
+| --- | --- | --- | --- |
+| 1 | Onboarding demos use the real app screens in an iPhone frame (lower portion visible), no "Example" tag | Done | #63, #73 |
+| 2 | Equal bottom gap and side gaps around the demo phone | Done (verify on device) | #63 |
+| 3 | First tour step: Sign out icon button top-left, flat-left on replay | Done | #63 |
+| 4 | Demo bars show all four tabs including Rewards | Done | #63 |
+| 5 | Sign-in "Finding your company" without dots + faces animation in the circle (alternatives behind `--progress-style`) | Done | #63 |
+| 6 | "Who's going" demo zoomed/cropped; My Events pointer at the tab's real position; no opacity snap at the end | Done (unverified on screen) | #73 |
+| 7 | Consistent onboarding button copy | Done | #77 |
+| 8 | Haptics: shared helper, actions vs navigation | Helper + bottom bar + interest picker + onboarding + segmented toggle done; **call sites in Events (join/leave/leave button), Profile (save, sign out), Rewards (redeem), Chat (send), Album (upload) not wired** | helper in #63; call sites Queued |
+| 9 | Profile: About inside the coloured header, designed header, solid unioned shapes, no overline labels, empty state for memories | Done | #69 |
+| 10 | Tapping a memory opens the gallery on that exact photo | Done | #69 |
+| 11 | App-assigned avatar badge on the profile photo; shape + colour from a stable uid hash | Done on Profile; **not yet used on other screens (attendees, participants, Home chips)** | #69; app-wide use Queued |
+| 12 | Home recents empty state matches the memories format (all empty states consistent) | Done | #71 |
+| 13 | Swipe from the left edge goes back everywhere | Done (album photo viewer and sheets excluded) | #74 |
+| 14 | My Events Active/Memories toggle draggable and not clipped | Done | #78 |
+| 15 | Home event cards: attendee avatars must load without opening the event; "N going" if tight | Done (background prefetch of 3 attendees per card; chip reads "N going") | #79 |
+| 16 | Rewards: original raffle layout with solid gift-box cards and small bows; badge tab; progress inside the raffle card; no "Discounted Experiences" header | Done | #65 |
+| 17 | Event page: calendar pill top-right of the PAGE (short date, solid); Directions pill left of Share; Leave Activity at the bottom once joined; no When/Where/Price labels | Done | #68, #70, #72 |
+| 18 | Share text as flowing paragraphs; tags wrap; share link (universal link) | Done (link not deployed: needs Team ID, App Store ID, hosting deploy approval) | #68, #75 |
+| 19 | Outline = not pressable, solid = pressable (Goal/Reward outline pills, header title outlined) | Done (white informational chips and disabled bar left as is) | #72 |
+| 20 | Mock-data launch mode for the real app | Done | #67 |
+| 21 | Optimistic join/leave with reasonableness checks; disabled "Event is Full" button (today still "Activity full") | Queued | Events agent |
+| 22 | Activity Chat live (Firestore adapter), fix "not working" on the phone build, bell menu in chat (All/Changes/Reminders/None) | In progress | Events agent |
+| 23 | Event change-history button and sheet | Held (owner: wait) | Events agent |
+| 24 | Push registration, permission priming, deep links | Held, cannot be device-tested without the paid team APNs key | Events agent |
+| 25 | Weekly-theme page polish to match the event page | Held | Events agent |
+| 26 | Reward points an event gives (show if it has them) | Held, owner said leave in the plan | see F2 |
+| 27 | Shake-to-report bug screen (design exists) implementation | Not started | Backlog B |
+| 28 | TestFlight release | Not started, needs the paid team | F8 |
+| 29 | Known failing UI tests to repair after the owner's fix list (two demo-stage, interests search, chat/photo-comment retry, ScreenFlowTests join expectation) | Not started | F7 |
+| 30 | Owner process rules: no large-text/accessibility work, no full test runs while landing, merge early, shared Claude-DIP simulator under the lock | Standing | all agents |
