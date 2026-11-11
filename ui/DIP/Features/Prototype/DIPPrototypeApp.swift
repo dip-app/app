@@ -44,6 +44,10 @@ struct DIPPrototypeApp: View {
     /// Event id from a share link or `dip://events/<id>`; opened once, then reported through `onDeepLinkHandled`.
     private let deepLinkEventID: String?
     private let onDeepLinkHandled: ((String) -> Void)?
+    /// The deep link asked for the chat (`.../chat`); honoured when the member is going to the event.
+    private let deepLinkOpensChat: Bool
+    /// Called after the member's join was accepted (push permission priming hangs off the first one).
+    private let onJoined: (() -> Void)?
 
     init(initialScreen: String? = nil, repository: (any DIPRepository)? = nil, onSignOut: (() async -> Void)? = nil,
          accountProfile: DIPProfile? = nil, interestCatalogLoading: Bool = false,
@@ -54,7 +58,10 @@ struct DIPPrototypeApp: View {
          eventPaginationError: String? = nil, onRefreshEvents: (() async -> Void)? = nil,
          onPhotoViewed: ((String, String?) -> Void)? = nil,
          onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil,
-         deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil) {
+         deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil,
+         deepLinkOpensChat: Bool = false, onJoined: (() -> Void)? = nil) {
+        self.deepLinkOpensChat = deepLinkOpensChat
+        self.onJoined = onJoined
         self.deepLinkEventID = deepLinkEventID
         self.onDeepLinkHandled = onDeepLinkHandled
         self.onSurfaceChange = onSurfaceChange
@@ -243,7 +250,10 @@ struct DIPPrototypeApp: View {
             guard let id else { return }
             // Open the linked event on top of the current tab; an id outside this company shows "Activity unavailable".
             routes = [.event(id)]
-            showChat = false
+            if deepLinkOpensChat, model.snapshot?.eventDetails[id]?.isJoined == true, model.snapshot?.eventDetails[id]?.isPast == false {
+                chatEventID = id
+                showChat = true
+            } else { showChat = false }
             onDeepLinkHandled?(id)
         }
         .task(id: observationID) { await model.observe() }
@@ -536,7 +546,7 @@ struct DIPPrototypeApp: View {
         // The repository flips the state immediately, so the success haptic plays now; a server failure rolls back.
         DIPHaptics.success()
         Task {
-            do { try await model.setRSVP(eventID: eventID, going: going) }
+            do { try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() } }
             catch { DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error) }
         }
     }

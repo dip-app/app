@@ -8,6 +8,9 @@ struct DIPApp: App {
     @State private var session: AccountsSession
     /// Event links wait here until the member shell can open them (signed out, resolving, onboarding).
     @State private var eventLinks = EventLinkInbox()
+    /// Push client; nil unless the feature flag is on and Firebase is configured (device-unverified, see PushRegistration.swift).
+    @State private var push: PushCoordinator?
+    @Environment(\.scenePhase) private var scenePhase
     private let makeEventReads: ((MembershipContext) -> MemberEventsRepository?)?
     private let makeParticipation: (() -> (any ParticipationSource)?)?
     private let makeBugReportSubmitter: (() -> (any BugReportSubmitting)?)
@@ -34,6 +37,7 @@ struct DIPApp: App {
         let repository = Self.makeRepository()
         self.repository = repository
         _session = State(initialValue: AccountsSession(repository: repository))
+        _push = State(initialValue: MockLaunch.mode() == nil ? PushComposition.make() : nil)
     }
 
     var body: some Scene {
@@ -42,7 +46,19 @@ struct DIPApp: App {
                 memberHome(context)
                     .id(EventReadScope(uid: context.uid, companyID: context.companyID))
             }
-            .task { session.start() }
+            .task { session.start(); push?.onLink = { eventLinks.receive($0) } }
+            .onChange(of: scenePhase) { _, phase in
+                // Permission granted later in iOS Settings takes effect when the app returns to the foreground.
+                if phase == .active { Task { await push?.refresh() } }
+            }
+            // The buttons drive the coordinator; the setter is a no-op so a dismissal never double-fires.
+            .alert("Get updates for activities you join?", isPresented: Binding(
+                get: { push?.isPrimingVisible == true }, set: { _ in })) {
+                Button("Turn on notifications") { Task { await push?.primingAccepted() } }
+                Button("Not now", role: .cancel) { push?.primingDeclined() }
+            } message: {
+                Text("We’ll tell you if an organizer changes or cancels an activity, and send reminders. You can change this for each activity in its chat.")
+            }
             .onOpenURL { url in
                 // Google sign-in redirects first; anything else may be an event share link or `dip://events/<id>`.
                 if !FirebaseBootstrap.handle(url: url) { eventLinks.receive(url) }
@@ -57,7 +73,8 @@ struct DIPApp: App {
     /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed
     /// by the same scope ID); unconfigured builds keep the fixture challenge card.
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
-        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, onSignOut: { await session.signOut() })
+        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, deepLinkOpensChat: eventLinks.pendingOpensChat, onJoined: { Task { await push?.didJoin() } }, onSignOut: { await push?.signingOut(); await session.signOut() })
+        .task(id: context.uid) { await push?.memberSignedIn(uid: context.uid) }
         if let makeChallengeReads {
             WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
         } else { home }

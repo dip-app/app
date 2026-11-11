@@ -40,6 +40,10 @@ targets:
       path: Config/DIP-Info.plist
       properties:
         NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
+        # Push client feature flag (default NO; see docs/design/push-client.md).
+        DIPPushEnabled: $(DIP_PUSH_ENABLED)
+        # Containment: FCM never starts (no token, no network) unless PushComposition turns it on for the flag.
+        FirebaseMessagingAutoInitEnabled: false
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
@@ -68,6 +72,8 @@ targets:
         product: FirebaseFunctions
       - package: Firebase
         product: FirebaseStorage
+      - package: Firebase
+        product: FirebaseMessaging
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.dip-app.DIP

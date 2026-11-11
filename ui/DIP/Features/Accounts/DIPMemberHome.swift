@@ -16,6 +16,8 @@ struct DIPMemberHome: View {
     /// Queued event link target; opened once the shell is ready and the onboarding tour is not showing.
     private let deepLinkEventID: String?
     private let onDeepLinkHandled: ((String) -> Void)?
+    private let deepLinkOpensChat: Bool
+    private let onJoined: (() -> Void)?
     @State private var editor: ProfileEditor
     @State private var catalog: InterestCatalog
     private let eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)?
@@ -47,12 +49,16 @@ struct DIPMemberHome: View {
         bugReportSubmitter: (() -> (any BugReportSubmitting)?)? = nil,
         deepLinkEventID: String? = nil,
         onDeepLinkHandled: ((String) -> Void)? = nil,
+        deepLinkOpensChat: Bool = false,
+        onJoined: (() -> Void)? = nil,
         onSignOut: @escaping () async -> Void
     ) {
         self.onboarding = onboarding
         self.bugReportSubmitter = bugReportSubmitter
         self.deepLinkEventID = deepLinkEventID
         self.onDeepLinkHandled = onDeepLinkHandled
+        self.deepLinkOpensChat = deepLinkOpensChat
+        self.onJoined = onJoined
         self.eventReadFactory = eventReadFactory
         self.participationFactory = participationFactory
         self.albumFactory = albumFactory
@@ -216,7 +222,7 @@ struct DIPMemberHome: View {
             onReplayTour: onboarding == nil ? nil : { startReplay() },
             // Held while the onboarding tour (or its replay) covers the shell.
             deepLinkEventID: tour == nil && replay == nil ? deepLinkEventID : nil,
-            onDeepLinkHandled: onDeepLinkHandled)
+            onDeepLinkHandled: onDeepLinkHandled, deepLinkOpensChat: deepLinkOpensChat, onJoined: onJoined)
     }
 
     private var catalogIsLoading: Bool {

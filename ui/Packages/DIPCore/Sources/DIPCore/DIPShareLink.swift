@@ -47,6 +47,22 @@ public enum DIPShareLink {
         return id
     }
 
+    /// Where a link points: the event, and whether it asks for the chat (`dip://events/<id>/chat`, push taps).
+    public struct Destination: Equatable, Sendable {
+        public let eventID: String
+        public let opensChat: Bool
+        public init(eventID: String, opensChat: Bool) { self.eventID = eventID; self.opensChat = opensChat }
+    }
+
+    public static func destination(from url: URL) -> Destination? {
+        guard let id = eventID(from: url) else { return nil }
+        let chat = URLComponents(url: url, resolvingAgainstBaseURL: false).map {
+            let segments = $0.percentEncodedPath.split(separator: "/")
+            return $0.scheme?.lowercased() == appScheme && segments.count == 2 && segments[1] == "chat"
+        } ?? false
+        return Destination(eventID: id, opensChat: chat)
+    }
+
     private static func isValidID(_ id: String) -> Bool {
         !id.isEmpty && id.count <= maxIDLength && !id.contains("/")
             && id.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) && !CharacterSet.whitespacesAndNewlines.contains($0) }
