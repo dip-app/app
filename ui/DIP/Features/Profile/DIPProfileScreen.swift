@@ -89,6 +89,7 @@ struct DIPProfileScreen: View {
                             DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
                                 isLoading: isSigningOut) {
                                 guard !isSigningOut else { return }
+                                DIPHaptics.commit()
                                 isSigningOut = true
                                 Task { await onSignOut(); isSigningOut = false }
                             }
@@ -356,11 +357,14 @@ struct DIPProfileScreen: View {
             travelRadiusMiles: profile.hasAccountDetails ? draftRadius : nil)
         isSaving = true
         saveError = nil
+        DIPHaptics.commit()
         defer { isSaving = false }
         do {
             try await onSave(edit)
+            DIPHaptics.success()
             isEditing = false
         } catch {
+            DIPHaptics.failure()
             saveError = "Your profile could not be saved. Try again."
         }
     }

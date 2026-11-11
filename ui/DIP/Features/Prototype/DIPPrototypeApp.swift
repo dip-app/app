@@ -314,8 +314,8 @@ struct DIPPrototypeApp: View {
         guard !participationUnavailable else { notice = "RSVP"; return }
         guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return }
         Task {
-            do { try await model.setRSVP(eventID: eventID, going: going) }
-            catch { rsvpError = Self.rsvpMessage(error) }
+            do { try await model.setRSVP(eventID: eventID, going: going); DIPHaptics.success() }
+            catch { DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error) }
         }
     }
 

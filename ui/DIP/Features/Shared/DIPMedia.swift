@@ -22,7 +22,8 @@ struct DIPMedia: View {
                 }
             }
         case .generatedAvatar(let userID):
-            DIPAssignedAvatar(userID: userID)
+            // Flexible: sizes to whatever frame the caller gives it (small stacks and the large profile photo).
+            DIPCrewFace(style: .assigned(forUserID: userID))
         case .data(let bytes):
             if let image = UIImage(data: bytes) {
                 Image(uiImage: image).resizable()

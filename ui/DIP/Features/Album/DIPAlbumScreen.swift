@@ -291,11 +291,13 @@ struct DIPAlbumScreen: View {
         do {
             try await onAddPhotos(uploads)
             pendingUploads = []
+            DIPHaptics.success()
             if failures > 0 {
                 importMessage = "\(failures) selected photo(s) could not be opened. Choose images smaller than 25 MB."
             }
         } catch {
             // Retain command IDs/bytes for an idempotent retry; observed album data is unchanged here.
+            DIPHaptics.failure()
             importMessage = "Your photos could not be added. Try again."
         }
     }
