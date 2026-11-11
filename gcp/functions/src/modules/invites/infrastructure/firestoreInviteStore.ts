@@ -40,7 +40,8 @@ export class FirestoreInviteStore implements InviteStore {
           transaction.update(this.invite(company, id), { status, respondedAt: FieldValue.serverTimestamp() });
         },
         createNotification: (uid, id, data) => {
-          transaction.create(this.db.collection("users").doc(uid).collection("notifications").doc(id),
+          // Deterministic id per invitation, written only when the invitation itself is created: set, so a re-created invitation never fails on a leftover notice.
+          transaction.set(this.db.collection("users").doc(uid).collection("notifications").doc(id),
             { ...data, createdAt: FieldValue.serverTimestamp() });
         },
         getBudget: async (key) => (await transaction.get(this.budget(key))).data() ?? null,
