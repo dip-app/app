@@ -19,9 +19,12 @@ public struct DIPEventSummary: Identifiable, Equatable, Sendable {
     public var imageShade: Double
     /// Catalog tag ids of the event (opaque ids, not names); used for interest filtering.
     public var tagIDs: [String]
-    public init(id: String, title: String, locality: String, image: MediaReference, avatars: [MediaReference] = [], attendeeCount: Int = 0, imageShade: Double = 0, tagIDs: [String] = []) {
+    /// Points the event awards (`Event.pointsValue`); the card hides the points pill at 0.
+    public var pointsValue: Int
+    public init(id: String, title: String, locality: String, image: MediaReference, avatars: [MediaReference] = [], attendeeCount: Int = 0, imageShade: Double = 0, tagIDs: [String] = [], pointsValue: Int = 0) {
         self.id = id; self.title = title; self.locality = locality; self.image = image
         self.avatars = avatars; self.attendeeCount = attendeeCount; self.imageShade = imageShade; self.tagIDs = tagIDs
+        self.pointsValue = max(0, pointsValue)
     }
 }
 

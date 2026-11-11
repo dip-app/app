@@ -477,7 +477,11 @@ import DIPAccounts
             publish()
             return photoID
         } catch {
+            #if canImport(FirebaseFunctions)
             let failure = error as? AlbumFailure ?? FirebasePhotoAlbumSource.failure(error)
+            #else
+            let failure = error as? AlbumFailure ?? .unknown  // the Preview target has no Firebase adapter
+            #endif
             // The server deleted an invalid object, so its slot is free again.
             if failure == .invalidImage { uploadSlots[photo.id] = nil }
             publish()

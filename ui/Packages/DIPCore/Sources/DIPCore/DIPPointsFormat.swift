@@ -15,4 +15,22 @@ public enum DIPPointsFormat {
         let value = max(0, balance)
         return "\(number(value, locale: locale)) \(value == 1 ? "point" : "points")"
     }
+
+    /// Reward an event gives: "+50 points" ("+1 point"); nil at 0 or below, so callers hide the pill.
+    public static func reward(_ points: Int, locale: Locale = .current) -> String? {
+        guard points > 0 else { return nil }
+        return "+\(balance(points, locale: locale))"
+    }
+
+    /// VoiceOver text for the reward pill on every surface: "Worth 50 points"; nil at 0 or below.
+    public static func rewardAccessibility(_ points: Int, locale: Locale = .current) -> String? {
+        guard points > 0 else { return nil }
+        return "Worth \(balance(points, locale: locale))"
+    }
+
+    /// Compact card text: "+50 pts"; nil at 0 or below.
+    public static func rewardShort(_ points: Int, locale: Locale = .current) -> String? {
+        guard points > 0 else { return nil }
+        return "+\(number(points, locale: locale)) pts"
+    }
 }

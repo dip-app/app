@@ -28,6 +28,7 @@ targets:
       - ../DIP/Domain/Events
       - ../DIP/Domain/Challenges
       - ../DIP/Data/Events/MemberEventAppRepository.swift
+      - ../DIP/Support/AlbumImageProcessing.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features
         excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]

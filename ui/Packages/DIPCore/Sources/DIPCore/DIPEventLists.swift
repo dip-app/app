@@ -27,7 +27,8 @@ public struct DIPEventLists: Equatable, Sendable {
         }
         func summary(_ event: DIPEventDetail) -> DIPEventSummary {
             .init(id: event.id, title: event.title, locality: label(event), image: event.image,
-                  avatars: event.attendeeAvatars, attendeeCount: event.attendeeCount, tagIDs: event.tagIDs)
+                  avatars: event.attendeeAvatars, attendeeCount: event.attendeeCount, tagIDs: event.tagIDs,
+                  pointsValue: event.metadata?.pointsValue ?? 0)
         }
         discovery = scheduled.filter { $0.metadata!.startTime > now }.sorted(by: ascending).map(summary)
             + snapshot.home.events.filter { snapshot.eventDetails[$0.id]?.metadata == nil }
