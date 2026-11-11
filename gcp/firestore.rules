@@ -70,11 +70,11 @@ service cloud.firestore {
       allow get: if sameCompany(companyId) &&
         (!exists(/databases/$(database)/documents/companies/$(companyId)/events/$(eventId))
           || (resource.data.companyId == companyId
-            && (resource.data.status == 'scheduled' || organizer(companyId))));
+            && (resource.data.status in ['scheduled', 'completed'] || organizer(companyId))));
       allow list: if organizer(companyId)
         || (sameCompany(companyId)
           && request.query.limit != null && request.query.limit <= 100
-          && resource.data.companyId == companyId && resource.data.status == 'scheduled');
+          && resource.data.companyId == companyId && resource.data.status in ['scheduled', 'completed']);
       // Client mutations, RSVP rows and private command receipts remain denied.
     }
     // RSVP rows are written only by setRsvpV1 (Admin SDK). Members get their own row in any
@@ -136,7 +136,7 @@ service cloud.firestore {
       }
       function chatOpen() {
         let event = get(chatEventPath()).data;
-        return event.companyId == companyId && event.status == 'scheduled'
+        return event.companyId == companyId && event.status != 'cancelled'
           && request.time < event.endTime + duration.value(24, 'h');
       }
       allow get: if chatParticipant() && (resource == null || resource.data.companyId == companyId);

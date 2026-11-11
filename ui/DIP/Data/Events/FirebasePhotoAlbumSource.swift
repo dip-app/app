@@ -43,6 +43,14 @@ import Foundation
         }
     }
 
+    func coverPhoto(scope: EventReadScope, eventID: String) async -> AlbumPhotoRecord? {
+        guard !stopped, MemberEventsRepository.validID(eventID), MemberEventsRepository.validID(scope.companyID) else { return nil }
+        guard let result = try? await photos(scope, eventID).order(by: "createdAt").limit(to: 1).getDocuments() else { return nil }
+        return result.documents.lazy.compactMap {
+            Self.photoRecord(id: $0.documentID, fields: $0.data(), companyID: scope.companyID, eventID: eventID)
+        }.first
+    }
+
     func ownPhotoIDs(scope: EventReadScope, eventID: String) async throws -> Set<String> {
         guard !stopped else { throw AlbumFailure.unauthenticated }
         do {

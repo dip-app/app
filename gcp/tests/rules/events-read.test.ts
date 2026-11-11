@@ -20,6 +20,7 @@ before(async () => {
       await db.doc(`users/${uid}`).set({ companyId: c, role });
     }
     for (const id of ['a', 'b', 'c']) await db.doc(`companies/${company}/events/${id}`).set({ companyId: company, title: id, status: 'scheduled', startTime: start });
+    await db.doc(`companies/${company}/events/done`).set({ companyId: company, title: 'done', status: 'completed', startTime: start });
     await db.doc(`companies/${company}/events/cancelled`).set({ companyId: company, status: 'cancelled', startTime: start });
     await db.doc(`companies/${company}/events/malformed`).set({ companyId: 'event-read-beta', status: 'scheduled', startTime: start });
     await db.doc(`companies/${company}/events/a/rsvps/member`).set({ companyId: company });
@@ -32,6 +33,14 @@ test('verified company member reads ordered bounded feed and cursor pages', asyn
   assert.deepEqual(first.docs.map(d => d.id), ['a', 'b']);
   const second = await assertSucceeds(feed().startAfter(start, 'b').limit(2).get());
   assert.deepEqual(second.docs.map(d => d.id), ['c']);
+});
+test('completed events are readable and listable by members through an in-status feed; cancelled stay hidden', async () => {
+  await assertSucceeds(client().doc(`companies/${company}/events/done`).get());
+  const page = await assertSucceeds(client().collection(`companies/${company}/events`).where('companyId', '==', company)
+    .where('status', 'in', ['scheduled', 'completed']).where('startTime', '>=', start).orderBy('startTime').orderBy('__name__').limit(20).get());
+  assert.deepEqual(page.docs.map(d => d.id).sort(), ['a', 'b', 'c', 'done']);
+  await assertFails(client().collection(`companies/${company}/events`).where('companyId', '==', company)
+    .where('status', 'in', ['scheduled', 'cancelled']).where('startTime', '>=', start).orderBy('startTime').limit(20).get());
 });
 test('cancelled detail remains organizer-only; same-company missing documents are observable', async () => {
   for (const uid of ['event-reader', 'event-admin']) {

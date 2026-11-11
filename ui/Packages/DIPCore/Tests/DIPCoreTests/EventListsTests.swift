@@ -7,14 +7,14 @@ final class EventListsTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func event(_ id: String, start: TimeInterval, end: TimeInterval,
-                       joined: Bool = false, cancelled: Bool = false) -> DIPEventDetail {
+                       joined: Bool = false, cancelled: Bool = false, completed: Bool = false) -> DIPEventDetail {
         var result = DIPMockFixtures.reference.eventDetails["puppy-yoga"]!
         result.id = id
         result.title = "Title without a date"
         result.isJoined = joined
         result.metadata = .init(startTime: now.addingTimeInterval(start), endTime: now.addingTimeInterval(end),
                                 venueName: "Studio", address: "123 Example Street", locality: "Pittsburgh",
-                                costCents: 0, capacity: 20, status: cancelled ? .cancelled : .scheduled)
+                                costCents: 0, capacity: 20, status: cancelled ? .cancelled : (completed ? .completed : .scheduled))
         return result
     }
 
@@ -49,6 +49,25 @@ final class EventListsTests: XCTestCase {
         XCTAssertTrue(lists.discovery.isEmpty)
         XCTAssertTrue(lists.upcoming.isEmpty)
         XCTAssertTrue(lists.past.isEmpty)
+    }
+
+    func testCompletedEventsJoinedByTheMemberAppearInPastButNeverDiscoveryOrUpcoming() {
+        let lists = DIPEventLists(snapshot: snapshot([
+            event("done-joined", start: -100, end: -10, joined: true, completed: true),
+            event("done-closed-early", start: 10, end: 100, joined: true, completed: true),
+            event("done-not-joined", start: -100, end: -10, completed: true)
+        ]), now: now)
+        XCTAssertEqual(Set(lists.past.map(\.eventID)), ["done-joined", "done-closed-early"])
+        XCTAssertTrue(lists.discovery.isEmpty)
+        XCTAssertTrue(lists.upcoming.isEmpty)
+    }
+
+    func testCardDateAndPlaceSitOnSeparateLinesWithoutADanglingDot() {
+        let lists = DIPEventLists(snapshot: snapshot([event("e", start: 10, end: 100)]), now: now,
+                                  locale: Locale(identifier: "en_US"), timeZone: TimeZone(secondsFromGMT: 0)!)
+        let label = lists.discovery[0].locality
+        XCTAssertFalse(label.contains("·"))
+        XCTAssertTrue(label.hasSuffix("\nPittsburgh"))
     }
 
     func testSortingIsStableAndPastIsMostRecentFirst() {

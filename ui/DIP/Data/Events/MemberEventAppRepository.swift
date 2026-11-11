@@ -55,6 +55,11 @@ import DIPAccounts
     /// Display JPEGs by photo ID for the open album (bounded by the album listener size).
     private var albumImages: [String: Data] = [:]
     private var albumImagesLoading: Set<String> = []
+    /// Real per-event covers (display copy of the event's first album photo) and the events already asked for.
+    /// At most `coverLimit` past joined events are fetched per session: one limit-1 query plus one download each.
+    private var coverImages: [String: Data] = [:]
+    private var coverRequested: Set<String> = []
+    static let coverLimit = 6
     /// The member's own published slots per event (from a one-shot query plus the listener).
     private var ownSlots: [String: Set<Int>] = [:]
     /// Slots held by abandoned, never-finalized uploads (create-only, so they stay used).
@@ -155,6 +160,7 @@ import DIPAccounts
         ownSlots.removeAll(); occupiedSlots.removeAll(); uploadSlots.removeAll(); landedUploads.removeAll(); albums?.stop()
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
         joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
+        coverImages.removeAll(); coverRequested.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
         fail(EventReadFailure.unauthenticated)
     }
@@ -171,18 +177,45 @@ import DIPAccounts
             guard let metadata = try? MemberEventsRepository.metadata(event) else { continue }
             // V1-08: category-based default image from the approved catalog URL (falls back to tags).
             details[id] = DIPEventDetail(id: id, title: event.title,
-                image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds),
+                image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds, photo: coverData(id)),
                 timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
                 isJoined: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.isGoing : joinedIDs.contains(id),
                 attendeeCount: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.attendeeCount : event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
-                isPast: event.endTime <= clock(), metadata: metadata, tagIDs: event.tagIds)
+                isPast: event.endTime <= clock() || event.status == "completed", metadata: metadata, tagIDs: event.tagIds)
         }
         var snapshot = DIPAppSnapshot(home: DIPHomeSnapshot(unreadCount: 0, profileAvatar: profile.avatar,
             challenge: nil, events: [], recentAttendeeAvatars: []), activeEvents: [], memories: [], profile: profile,
             eventDetails: details, participants: participants.filter { details[$0.key] != nil }, albums: albumProjection(details),
             messages: messages, photoComments: photoComments)
-        snapshot.home.events = DIPEventLists(snapshot: snapshot, now: clock()).discovery
+        let lists = DIPEventLists(snapshot: snapshot, now: clock())
+        snapshot.home.events = lists.discovery
         for observer in observers.values { observer.yield(snapshot) }
+        requestCovers(for: lists.past.map(\.eventID))
+    }
+
+    /// The cover photo bytes known for an event: the open album's oldest photo, else the fetched cover.
+    private func coverData(_ id: String) -> Data? {
+        if id == albumEventID, let oldest = albumRecords.last, let data = albumImages[oldest.id] { return data }
+        return coverImages[id]
+    }
+
+    /// Memories (most recent first) get their first album photo as the card image. Each event is asked for once;
+    /// events without photos, or when the read fails, keep the catalog cover.
+    private func requestCovers(for pastIDs: [String]) {
+        guard let albums, !stopped else { return }
+        let wanted = pastIDs.filter { !coverRequested.contains($0) }.prefix(max(0, Self.coverLimit - coverRequested.count))
+        let scope = reads.scope, token = generation
+        for id in wanted {
+            coverRequested.insert(id)
+            Task { [weak self] in
+                guard let record = await albums.coverPhoto(scope: scope, eventID: id),
+                      let raw = try? await albums.imageData(path: record.storagePath),
+                      let data = await Task.detached(priority: .utility, operation: { AlbumImageProcessing.displayCopy(raw, maxPixelSize: 600) }).value,
+                      let self, self.generation == token, !self.stopped else { return }
+                self.coverImages[id] = data
+                self.publish()
+            }
+        }
     }
     /// Optimistic: after a local reasonableness check the UI flips at once (joined state, attendee count, My Events,
     /// Home cards) and rolls back only if the server rejects or fails. The latest intent wins; the RSVP and event
@@ -511,12 +544,12 @@ import DIPAccounts
         return slot
     }
 
-    /// Mirrors the Storage upload rule: going RSVP, event scheduled and ended.
+    /// Mirrors the Storage upload rule: going RSVP, event not cancelled and ended.
     private func canUpload(_ eventID: String) -> Bool { uploadDenial(eventID) == nil }
 
     private func uploadDenial(_ eventID: String) -> AlbumFailure? {
         guard albums != nil, joinedIDs.contains(eventID), let event = joinedRecords[eventID] ?? records[eventID] else { return .notAttendee }
-        if event.status != "scheduled" { return .cancelled }
+        if event.status == "cancelled" { return .cancelled }
         return event.endTime <= clock() ? nil : .notEnded
     }
 

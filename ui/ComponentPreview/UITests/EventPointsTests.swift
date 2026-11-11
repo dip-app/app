@@ -34,7 +34,7 @@ final class EventPointsTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["event.primary"].waitForExistence(timeout: 10))
         let pill = app.descendants(matching: .any)["event.points"]
-        if pill.exists { XCTAssertTrue(pill.label.hasPrefix("Worth ")) }
+        if pill.exists { XCTAssertTrue(pill.label.hasPrefix("Worth ") || pill.label.hasPrefix("Earned ")) }
     }
 
     @MainActor func testHomeCardsShowRewardPillOnlyForEventsWithPoints() {
