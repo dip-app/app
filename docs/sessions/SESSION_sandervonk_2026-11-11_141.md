@@ -20,7 +20,8 @@ Event details When row adds to calendar (same action and gate as the header pill
 ## Validation
 
 - xcodebuild test Preview scheme, AddToCalendarTests: 8 of 8 passed on iPhone 17 Pro simulator
-- xcodebuild build DIP scheme: succeeded
+- xcodebuild build DIP scheme: succeeded (before review fixes); tests re-run after review fixes (double-tap guard, Button for Where, glyphs, test hardening): 8 of 8 pass
+- Not applied: uniform row rhythm, Added label, wider press highlight, two-tap test (fake adder returns instantly); owner to confirm keeping both rows and header pills
 - Figma 46:1397, 76:1742, 46:1755 show no info rows (header and bottom bar only), so no row-level reference exists
 
 ## Decisions
