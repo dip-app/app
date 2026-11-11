@@ -25,7 +25,7 @@ final class PushPrimingTests: XCTestCase {
     func testDeepLinkDestinationsIncludeTheChatFlag() {
         XCTAssertEqual(DIPShareLink.destination(from: URL(string: "dip://events/abc123")!), .init(eventID: "abc123", opensChat: false))
         XCTAssertEqual(DIPShareLink.destination(from: URL(string: "dip://events/abc123/chat")!), .init(eventID: "abc123", opensChat: true))
-        XCTAssertEqual(DIPShareLink.destination(from: URL(string: "https://team05-dip.web.app/e/abc123")!), .init(eventID: "abc123", opensChat: false))
+        XCTAssertEqual(DIPShareLink.destination(from: URL(string: "https://letsdip.work/e/abc123")!), .init(eventID: "abc123", opensChat: false))
         XCTAssertNil(DIPShareLink.destination(from: URL(string: "dip://events/abc123/photos")!))
         // "chat" as the only segment is an event id, not the chat flag.
         XCTAssertEqual(DIPShareLink.destination(from: URL(string: "dip://events/chat")!), .init(eventID: "chat", opensChat: false))

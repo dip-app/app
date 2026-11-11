@@ -212,7 +212,7 @@ final class PushRegistrarTests: XCTestCase {
         inbox.consume("abc123")
         XCTAssertNil(inbox.pendingEventID)
         XCTAssertFalse(inbox.pendingOpensChat)
-        XCTAssertTrue(inbox.receive(URL(string: "https://team05-dip.web.app/e/xyz")!))
+        XCTAssertTrue(inbox.receive(URL(string: "https://letsdip.work/e/xyz")!))
         XCTAssertFalse(inbox.pendingOpensChat)
         XCTAssertFalse(inbox.receive(URL(string: "dip://settings")!))
     }
