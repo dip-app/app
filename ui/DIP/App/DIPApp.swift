@@ -16,6 +16,8 @@ struct DIPApp: App {
     private let makeBugReportSubmitter: (() -> (any BugReportSubmitting)?)
     private let makeAlbums: (() -> (any PhotoAlbumSource)?)?
     private let makeChallengeReads: ((MembershipContext) -> MemberChallengesRepository?)?
+    /// Challenge submissions: SDK-backed when configured, the in-memory source in unconfigured Debug builds, nil otherwise.
+    private let makeSubmissionSource: (() -> (any SubmissionSource)?)
     private let repository: any AccountsRepository & InterestCatalogRepository
 
     init() {
@@ -34,6 +36,14 @@ struct DIPApp: App {
         }
         makeAlbums = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makePhotoAlbumSource() }
         makeChallengeReads = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeMemberChallengesRepository(context: $0) }
+        makeSubmissionSource = {
+            if let firebase = FirebaseBootstrap.makeSubmissionSource() { return firebase }
+            #if DEBUG
+            return MockSubmissionSource()
+            #else
+            return nil
+            #endif
+        }
         let repository = Self.makeRepository()
         self.repository = repository
         _session = State(initialValue: AccountsSession(repository: repository))
@@ -75,9 +85,19 @@ struct DIPApp: App {
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
         let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, deepLinkOpensChat: eventLinks.pendingOpensChat, onJoined: { Task { await push?.didJoin() } }, onSignOut: { await push?.signingOut(); await session.signOut() })
         .task(id: context.uid) { await push?.memberSignedIn(uid: context.uid) }
+        let submissions = ChallengeSubmissionContext(
+            scope: ChallengeReadScope(uid: context.uid, companyID: context.companyID),
+            makeSource: { makeSubmissionSource() })
         if let makeChallengeReads {
             WeeklyChallengeHost(makeRepository: { makeChallengeReads(context) }) { home }
-        } else { home }
+                .environment(\.challengeSubmissionContext, submissions)
+        } else {
+            #if DEBUG
+            home.environment(\.challengeSubmissionContext, submissions)
+            #else
+            home
+            #endif
+        }
     }
 
     /// Real Firebase when local configuration exists (ADR 0007). Otherwise Debug builds use
