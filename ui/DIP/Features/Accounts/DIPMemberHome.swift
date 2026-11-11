@@ -34,6 +34,7 @@ struct DIPMemberHome: View {
         oauthPhotoURL: String = "",
         eventReadFactory: ((MembershipContext) -> MemberEventsRepository?)? = nil,
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
+        mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
         onSignOut: @escaping () async -> Void
     ) {
@@ -53,7 +54,7 @@ struct DIPMemberHome: View {
             _tourInterests = State(initialValue: OnboardingInterestsModel(editor: editor, uid: context.uid))
         }
         _prototypeRepository = State(initialValue: DIPMockRepository(
-            initialSnapshot: MemberProfileBridge.seed(context: context, oauthPhotoURL: oauthPhotoURL)))
+            initialSnapshot: MemberProfileBridge.seed(context: context, oauthPhotoURL: oauthPhotoURL, base: mockSnapshot ?? DIPMockFixtures.reference)))
     }
 
     var body: some View {
@@ -227,8 +228,8 @@ enum MemberProfileBridge {
         guard await editor.save() else { throw editor.saveError ?? AccountsFailure.unknown }
     }
 
-    static func seed(context: MembershipContext, oauthPhotoURL: String = "") -> DIPAppSnapshot {
-        var snapshot = DIPMockFixtures.reference
+    static func seed(context: MembershipContext, oauthPhotoURL: String = "", base: DIPAppSnapshot = DIPMockFixtures.reference) -> DIPAppSnapshot {
+        var snapshot = base
         snapshot.profile = profile(context: context, tags: [], oauthPhotoURL: oauthPhotoURL)
         snapshot.home.profileAvatar = snapshot.profile.avatar
         return snapshot
