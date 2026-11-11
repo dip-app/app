@@ -102,7 +102,8 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertEqual(oauthName.label, "Name, Elissa Woode")
         XCTAssertFalse(app.textFields["profile.edit.name"].exists)
         let department = app.textFields["profile.edit.department"]
-        department.tap()
+        // Tap at the trailing end so the caret lands after the text, then delete it all.
+        department.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
         department.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 30))
         department.typeText("Design")
         app.buttons["profile.edit.save"].tap()

@@ -62,7 +62,7 @@ struct DIPProfileScreen: View {
                         catalogStatus
                         memories
                         if let onSignOut {
-                            DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .destructive,
+                            DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
                                 isLoading: isSigningOut) {
                                 guard !isSigningOut else { return }
                                 isSigningOut = true
@@ -73,7 +73,7 @@ struct DIPProfileScreen: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 60)
-                    .padding(.bottom, 122)
+                    .padding(.bottom, 150)
                 }
                 .scrollIndicators(.hidden)
                 .padding(.bottom, 22)
@@ -132,11 +132,6 @@ struct DIPProfileScreen: View {
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 8)
-                if !profile.favoriteMemories.isEmpty {
-                    Text("\(profile.favoriteMemories.count)")
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.6))
-                }
             }
             if profile.favoriteMemories.isEmpty {
                 DIPEmptyState(

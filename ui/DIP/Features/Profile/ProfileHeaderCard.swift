@@ -109,8 +109,18 @@ struct ProfileHeaderCard: View {
         .accessibilityIdentifier("profile.details")
     }
 
-    /// Icon plus the value itself; no caption that only names the field.
-    private func row(_ icon: String, _ value: String?, placeholder: String, id: String) -> some View {
+    /// Icon plus the value itself; no caption that only names the field. An unset value is
+    /// an action (opens Edit): dimmer text with an accent plus button, so it reads as tappable.
+    @ViewBuilder private func row(_ icon: String, _ value: String?, placeholder: String, id: String) -> some View {
+        if let value {
+            rowContent(icon, value, isPlaceholder: false, id: id)
+        } else {
+            Button(action: onEdit) { rowContent(icon, placeholder, isPlaceholder: true, id: id) }
+                .buttonStyle(DIPPressFeedbackStyle())
+        }
+    }
+
+    private func rowContent(_ icon: String, _ text: String, isPlaceholder: Bool, id: String) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
@@ -118,11 +128,21 @@ struct ProfileHeaderCard: View {
                 .frame(width: 32, height: 32)
                 .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.18), in: Circle())
                 .accessibilityHidden(true)
-            Text(value ?? placeholder)
+            Text(text)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
-                .foregroundStyle(value == nil ? ink.opacity(0.5) : ink)
+                .foregroundStyle(isPlaceholder ? ink.opacity(0.7) : ink)
                 .fixedSize(horizontal: false, vertical: true)
+            if isPlaceholder {
+                Spacer(minLength: 8)
+                Image(systemName: "plus")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(ink)
+                    .frame(width: 26, height: 26)
+                    .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Circle())
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("profile.details.\(id)")
     }
@@ -167,16 +187,12 @@ struct ProfileHeaderBackdrop: View {
     }
     private let lighter = tint(0.12, toward: 1)
     private let lightest = tint(0.26, toward: 1)
-    private let deeper = tint(0.10, toward: 0)
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             DIPTokens.Color.actionPrimary.swiftUIColor
             Circle().fill(lighter).frame(width: 260, height: 260).offset(x: 90, y: -110)
             clover.fill(lightest).frame(width: 96, height: 96).offset(x: -36, y: 84)
-            Circle().fill(deeper).frame(width: 190, height: 190)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .offset(x: -110, y: 130)
         }
         .accessibilityHidden(true)
     }
@@ -184,13 +200,14 @@ struct ProfileHeaderBackdrop: View {
     /// Four petals as one path: filled once, so overlaps are a single flat silhouette.
     private var clover: Path {
         Path { path in
-            let size: CGFloat = 96, petal: CGFloat = 40, center = size / 2
+            let size: CGFloat = 96, petal: CGFloat = 36, center = size / 2
             let reach: CGFloat = 25
             for index in 0..<4 {
                 let angle = Double(index) * .pi / 2 + .pi / 4
                 let x = center + CGFloat(cos(angle)) * reach, y = center + CGFloat(sin(angle)) * reach
                 path.addEllipse(in: CGRect(x: x - petal / 2, y: y - petal / 2, width: petal, height: petal))
             }
+            path.addEllipse(in: CGRect(x: center - 13, y: center - 13, width: 26, height: 26))
         }
     }
 }
