@@ -23,7 +23,7 @@ Share button: `ShareLink(item: <link>, message: <share text>)` on the event page
 | What | Where | Value now |
 | --- | --- | --- |
 | Apple Team ID | `apps/admin/public/aasa/apple-app-site-association.json` | `TEAMID.org.dip-app.DIP` |
-| App Store ID | `APP_STORE_ID` in `gcp/functions/src/modules/share/domain/sharePage.ts` (the Safari banner meta uses `0000000000` until set) | empty (shows "coming to the App Store") |
+| App Store ID | `APP_STORE_ID` in `gcp/functions/src/config/launch.ts`, read by the share page and the landing build ([launch switches](../ops/launch-switches.md)); the Safari banner meta uses `0000000000` until set | empty (shows "coming to the App Store") |
 | Public domain | `DIPShareLink.baseURL`, `SHARE_ORIGIN` in `sharePage.ts`, `applinks:` in `ui/Config/DIP-Paid.entitlements`, Firebase Hosting custom domain | `letsdip.work` (the old `team05-dip.web.app` only redirects here; it is not an `applinks:` host because Apple does not follow redirects for the association file) |
 
 ## Associated Domains and local builds
@@ -34,7 +34,7 @@ Associated Domains need a paid Apple Developer team. A free Personal Team cannot
 
 1. Join the paid Apple Developer Program team, enable Associated Domains for `org.dip-app.DIP`, and put `DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements` in `Local.xcconfig`.
 2. Replace `TEAMID` in the AASA file with the real Team ID.
-3. Create the App Store Connect listing and set `APP_STORE_ID` in `sharePage.ts`, then redeploy the function.
+3. Create the App Store Connect listing and set `APP_STORE_ID` in `gcp/functions/src/config/launch.ts`, then redeploy the function and hosting (the landing page is built from the same value). Full checklist: [TestFlight and Universal Links](../ops/testflight-universal-links.md).
 4. Build the admin export (`npm --prefix apps/admin run build`) and deploy hosting (`firebase deploy --only hosting`) after approval. Verify `curl -i https://letsdip.work/.well-known/apple-app-site-association` returns 200 JSON without a redirect.
 5. Done: `letsdip.work` is connected in Firebase Hosting (apex plus `www` redirect) and the three places above were switched together.
 

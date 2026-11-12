@@ -6,7 +6,7 @@
 <title>DIP: the app for company events</title>
 <meta name="description" content="DIP is the app for your company's events: find something to join, see who's going, share the photos afterwards and earn points as a team.">
 <link rel="canonical" href="https://letsdip.work/">
-<!-- Pre-release: firebase.json sends X-Robots-Tag noindex, nofollow on every path, and that header is the only switch. To let search engines in, remove it (the landing carries no robots meta). The admin portal keeps its own noindex meta. -->
+<!-- Pre-release: firebase.json sends X-Robots-Tag noindex, nofollow on every path, and that header is the only switch (flip it with scripts/set-indexing.sh on|off; see docs/ops/launch-switches.md). The landing carries no robots meta. The admin portal keeps its own noindex meta. -->
 <meta name="theme-color" content="#7B88FA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14161D" media="(prefers-color-scheme: dark)">
 <meta property="og:site_name" content="DIP">
@@ -106,6 +106,7 @@
     .stage { min-height: 560px; }
     .features { grid-template-columns: 1fr; }
   }
+  .store-badge { display: inline-block; line-height: 0; } /* only rendered with the official badge switch on */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; }
     .shot:nth-child(1) { opacity: 1; }
@@ -121,7 +122,7 @@
         <h1>Get out of the office. <em>Do something together.</em></h1>
         <p class="lead">DIP is the app for your company's events: find something to join, see who's going, share the photos afterwards and earn points as a team.</p>
         <div class="ctas">
-          <!-- Opens the app if installed (dip:// is registered in the app's Info.plist); silently does nothing otherwise. Swap in the App Store listing link once it exists. -->
+          <!-- Opens the app if installed (dip:// is registered in the app's Info.plist); silently does nothing otherwise. When APP_STORE_ID is set in gcp/functions/src/config/launch.ts, scripts/build-site.sh rewrites this pill to the App Store listing (or the official badge). -->
           <a class="pill store" id="open-app" href="dip://" role="button">
             <img class="store-icon" src="/img/landing/app-store.svg" alt="" width="26" height="26">
             Get the app</a>

@@ -9,7 +9,12 @@ if [ "${1:-}" != "--skip-admin-build" ]; then
 fi
 rm -rf site-dist
 mkdir -p site-dist/admin
-cp apps/landing/index.html site-dist/index.html
+# Landing page: with APP_STORE_ID set in gcp/functions/src/config/launch.ts the button opens the App Store listing
+# (or shows the official badge when USE_OFFICIAL_APP_STORE_BADGE is on); empty = unchanged "open the app" pill.
+python3 scripts/launch_config.py landing apps/landing/index.html site-dist/index.html
+# robots.txt and sitemap.xml are written by scripts/set-indexing.sh (noindex today); see docs/ops/launch-switches.md.
+cp apps/landing/robots.txt site-dist/robots.txt
+cp apps/landing/sitemap.xml site-dist/sitemap.xml
 mkdir -p site-dist/img/landing && cp apps/landing/img/* site-dist/img/landing/
 cp apps/landing/img/favicon.ico site-dist/favicon.ico   # crawlers and old clients ask for /favicon.ico
 cp -R apps/admin/out/. site-dist/admin/

@@ -5,3 +5,8 @@ GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.REPLACE-WITH-REVERSED-CLI
 // Paid Apple Developer team only: enables Universal Links (Associated Domains) for share links.
 // Free Personal Teams cannot sign this entitlement, so leave it commented out for local phone builds.
 // DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements
+
+// Push notifications (paid team + APNs key uploaded to Firebase + Push capability on the App ID). ONE line turns
+// the client flag on and selects the paid entitlements that include aps-environment (docs/design/push-client.md).
+// Use this INSTEAD of the DIP_ENTITLEMENTS line above.
+// #include "Push.xcconfig"
