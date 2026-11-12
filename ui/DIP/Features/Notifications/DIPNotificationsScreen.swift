@@ -25,6 +25,9 @@ struct DIPNotificationsScreen: View {
     /// Reference date for grouping and relative times; injectable for tests.
     var now: () -> Date = { Date() }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The permission banner can be put away for this visit.
+    @State private var bannerDismissed = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,7 +36,7 @@ struct DIPNotificationsScreen: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if model.isStale { offlineBanner }
                     controls
-                    if let permissionPrompt { permissionBanner(permissionPrompt) }
+                    if let permissionPrompt, !bannerDismissed { permissionBanner(permissionPrompt) }
                     stateContent
                 }
                 .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 40)
@@ -55,9 +58,11 @@ struct DIPNotificationsScreen: View {
         let showMarkAll = model.phase == .ready && model.hasUnread
         if showInvites || showMarkAll {
             VStack(alignment: .leading, spacing: 8) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) { buttons(showInvites: showInvites, showMarkAll: showMarkAll) }
+                // Side by side (half width each); stacked only at accessibility text sizes.
+                if dynamicTypeSize.isAccessibilitySize {
                     VStack(spacing: 10) { buttons(showInvites: showInvites, showMarkAll: showMarkAll) }
+                } else {
+                    HStack(spacing: 10) { buttons(showInvites: showInvites, showMarkAll: showMarkAll) }
                 }
                 if let error = model.markAllError { InviteNotice(text: error, identifier: "notifications.markall.error") }
             }
@@ -86,11 +91,11 @@ struct DIPNotificationsScreen: View {
     private func pill(_ title: String, identifier: String, chevron: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Text(title).font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .title3)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(title).font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .title3)).lineLimit(1).minimumScaleFactor(0.7)
                 if chevron { Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold)).accessibilityHidden(true) }
             }
                 .foregroundStyle(.white)
-                .padding(.horizontal, 20).frame(maxWidth: .infinity, minHeight: 50)
+                .padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 50)
                 .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                 .contentShape(Capsule())
         }
@@ -103,11 +108,19 @@ struct DIPNotificationsScreen: View {
     /// Informational (outlined) with one pressable action inside.
     private func permissionBanner(_ prompt: NotificationPermissionPrompt) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label {
-                Text(prompt == .turnOn ? "Get updates when plans change" : "Notifications are turned off")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
-            } icon: { Image(systemName: "bell.slash").accessibilityHidden(true) }
-                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+            HStack(alignment: .center, spacing: 8) {
+                Label {
+                    Text(prompt == .turnOn ? "Get updates when plans change" : "Notifications are turned off")
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
+                } icon: { Image(systemName: "bell.slash").accessibilityHidden(true) }
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                Spacer(minLength: 0)
+                Button { DIPHaptics.select(); withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { bannerDismissed = true } } label: {
+                    Image(systemName: "xmark").font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .accessibilityLabel("Dismiss").accessibilityIdentifier("notifications.permission.dismiss")
+            }
             Text(prompt == .turnOn
                  ? "Turn on notifications and we’ll tell you when an activity changes or is about to start."
                  : "You’ll still see updates here. To get them on your phone too, allow notifications in Settings.")
