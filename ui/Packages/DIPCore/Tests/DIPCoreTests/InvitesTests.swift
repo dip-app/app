@@ -69,6 +69,21 @@ import Testing
         #expect(!inbox.isEmptyReceived)
     }
 
+    @Test func acceptedInvitesSplitByTheMembersCurrentRSVP() {
+        let invites = DIPInvites(received: [
+            invite("going", start: 1_000, status: .accepted), invite("left", start: 2_000, status: .accepted),
+            invite("unknown", start: 3_000, status: .accepted), invite("pastLeft", start: -50, status: .accepted),
+            invite("pending", start: 4_000), invite("declined", start: 5_000, status: .declined),
+        ])
+        let inbox = DIPInviteInbox(invites, now: now, rsvp: { ["e-going": true, "e-left": false, "e-pastLeft": false][$0] })
+        #expect(inbox.accepted.map(\.id) == ["going", "unknown"])   // unknown is never guessed as cancelled
+        #expect(inbox.cancelled.map(\.id) == ["left"])               // past events disappear from both sections
+        #expect(inbox.pending.map(\.id) == ["pending"])
+        #expect(inbox.badgeCount == 1)
+        #expect(!inbox.isEmptyReceived)
+        #expect(DIPInviteInbox(DIPInvites(received: [invite("left", start: 2_000, status: .accepted)]), now: now, rsvp: { _ in false }).isEmptyReceived == false)
+    }
+
     @Test func declinedAndExpiredNeverCountOnTheBell() {
         let inbox = DIPInviteInbox(DIPInvites(received: [invite("a", start: -5), invite("b", start: 5, status: .declined)]), now: now)
         #expect(inbox.badgeCount == 0)
@@ -138,7 +153,7 @@ import Testing
         let repo = DIPMockInvitesRepository.reference()
         var iterator = await repo.observe().makeAsyncIterator()
         let first = try await iterator.next()
-        #expect(first?.received.count == 3)
+        #expect(first?.received.count == 4)
         _ = try await repo.respond(inviteID: "e1_me", accept: false)
         let second = try await iterator.next()
         #expect(second?.received.first { $0.id == "e1_me" }?.status == .declined)

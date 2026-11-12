@@ -128,7 +128,10 @@ struct DIPPrototypeApp: View {
         _uploads = State(initialValue: Self.uploadReview() ?? uploads)
         // The shell's own mock mode (previews, UI tests) gets the fixture invitations; real members get the adapter.
         let inviteSource = invitesRepository ?? (repository == nil ? Self.fixtureInvites() : nil)
-        _invites = State(initialValue: inviteSource.map { DIPInvitesModel(repository: $0) })
+        let inviteModel = inviteSource.map { DIPInvitesModel(repository: $0) }
+        // Fixture invitations do not talk to the RSVP fixtures, so an accepted invite joins the fixture event here (live: the server did).
+        if invitesRepository == nil, repository == nil { inviteModel?.didJoin = { id in try? await model.setRSVP(eventID: id, going: true) } }
+        _invites = State(initialValue: inviteModel)
         _showInvitations = State(initialValue: inviteSource != nil && screen == "invitations")
         startsWithInvitePicker = inviteSource != nil && screen == "invite-picker"
     }
@@ -295,15 +298,7 @@ struct DIPPrototypeApp: View {
                 })
             .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
         }
-        .sheet(isPresented: $showInvitations) {
-            if let invites {
-                DIPInvitationsScreen(
-                    model: invites,
-                    onOpenEvent: { id in showInvitations = false; routes = [.event(id)] },
-                    onRetry: { invitesObservationID = UUID() },
-                    onClose: { showInvitations = false })
-            }
-        }
+        .sheet(isPresented: $showInvitations) { invitationsSheet }
         .sheet(item: $inviteSession) { session in
             DIPInviteSheet(model: session.model, eventTitle: session.title, onClose: { inviteSession = nil })
         }
@@ -609,6 +604,20 @@ struct DIPPrototypeApp: View {
         }
     }
 
+    /// The Invitations sheet (kept out of `body`, whose modifier chain is already close to the type-checker's limit).
+    @ViewBuilder private var invitationsSheet: some View {
+        if let invites {
+            DIPInvitationsScreen(
+                model: invites,
+                // Going / Cancelled follows the member's CURRENT RSVP (only events the app has loaded are known).
+                rsvp: { id in model.snapshot?.rsvpKnown == true ? model.snapshot?.eventDetails[id]?.isJoined : nil },
+                onRejoin: { await rejoinFromInvitation($0) },
+                onOpenEvent: { id in showInvitations = false; routes = [.event(id)] },
+                onRetry: { invitesObservationID = UUID() },
+                onClose: { showInvitations = false })
+        }
+    }
+
     /// The bell opens the invitations (the notifications area) when there is an adapter; its badge counts invitations waiting for an answer.
     private func openNotifications() {
         if invites != nil { showInvitations = true } else { notice = "Notifications" }
@@ -616,6 +625,46 @@ struct DIPPrototypeApp: View {
 
     private func bellCount(_ snapshot: DIPAppSnapshot) -> Int {
         invites.map(\.badgeCount) ?? snapshot.home.unreadCount
+    }
+
+    /// Rejoin from the Invitations screen: the same checks and the same RSVP command as the Join button, so capacity and
+    /// eligibility rules apply. Returns nil on success, otherwise the neutral reason (full / started / cancelled ...).
+    private func rejoinFromInvitation(_ eventID: String) async -> DIPInviteFailure? {
+        #if DEBUG
+        switch ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--rejoin-state=") }).map({ String($0.dropFirst("--rejoin-state=".count)) }) {
+        case "full": return .full
+        case "closed": return .closed
+        default: break
+        }
+        #endif
+        guard !participationUnavailable else { return .unknown }
+        if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
+           let denial = DIPParticipationRules.denial(going: true, metadata: metadata, attendeeCount: event.attendeeCount, isGoing: event.isJoined, now: Date()) {
+            switch denial {
+            case .alreadyGoing: return nil
+            case .full: return .full
+            case .started, .ended: return .closed
+            case .cancelled: return .cancelled
+            case .notGoing: return .unknown
+            }
+        }
+        do { try await model.setRSVP(eventID: eventID, going: true); onJoined?(); return nil }
+        catch {
+            // Classify by state, not by wording: the same rules the Join button checks, against the freshest snapshot.
+            if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
+               let denial = DIPParticipationRules.joinDenial(metadata, attendeeCount: event.attendeeCount, isGoing: event.isJoined, now: Date()) {
+                switch denial {
+                case .alreadyGoing: return nil
+                case .full: return .full
+                case .started, .ended: return .closed
+                case .cancelled: return .cancelled
+                case .notGoing: return .unknown
+                }
+            }
+            if error is CancellationError { return .unknown }
+            if case .notFound? = error as? DIPRepositoryError { return .notFound }
+            return (error as NSError).domain == NSURLErrorDomain ? .offline : .unknown
+        }
     }
 
     private func openInvite(_ eventID: String) {

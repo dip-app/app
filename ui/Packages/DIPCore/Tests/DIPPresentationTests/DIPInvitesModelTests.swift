@@ -59,6 +59,44 @@ private actor FlakyInvites: DIPInvitesRepository {
         #expect(model.answerErrors.isEmpty)
     }
 
+    @Test func acceptedInvitesFollowTheLiveRSVPAndRejoinGoesThroughTheJoinCommand() async {
+        var now = Date()
+        let model = DIPInvitesModel(repository: DIPMockInvitesRepository.reference(now: now), now: { now })
+        let task = Task { await model.observe() }
+        for _ in 0..<50 where model.invites == nil { try? await Task.sleep(for: .milliseconds(10)) }
+        task.cancel()
+        // e4_me (Kayaking) was accepted earlier; the member has since left: Cancelled, with a Rejoin.
+        let left: (String) -> Bool? = { $0 == "kayaking" ? false : nil }
+        #expect(model.inbox(rsvp: left).cancelled.map(\.id) == ["e4_me"])
+        let invite = model.inbox(rsvp: left).cancelled[0]
+        var asked: [String] = []
+        #expect(await model.rejoin(invite, perform: { asked.append($0); return .full }) == false)
+        #expect(model.rejoinErrors["e4_me"] == .full)
+        #expect(await model.rejoin(invite, perform: { asked.append($0); return nil }))
+        #expect(asked == ["kayaking", "kayaking"])
+        #expect(model.rejoinErrors["e4_me"] == nil)
+        // Just rejoined: counts as going while the RSVP listener catches up, then the live state rules again.
+        #expect(model.inbox(rsvp: left).cancelled.isEmpty)
+        now = now.addingTimeInterval(DIPInvitesModel.acceptanceGrace + 1)
+        #expect(model.inbox(rsvp: left).cancelled.map(\.id) == ["e4_me"])
+        #expect(model.inbox(rsvp: { _ in true }).cancelled.isEmpty)
+    }
+
+    @Test func aJustAcceptedInviteNeverFlashesAsCancelledAndReportsTheJoin() async {
+        var joined: [String] = []
+        let model = DIPInvitesModel(repository: DIPMockInvitesRepository.reference())
+        model.didJoin = { joined.append($0) }
+        let task = Task { await model.observe() }
+        for _ in 0..<50 where model.invites == nil { try? await Task.sleep(for: .milliseconds(10)) }
+        task.cancel()
+        _ = await model.respond(inviteID: "e1_me", accept: true)
+        #expect(joined == ["puppy-yoga"])
+        // The RSVP listener has not caught up yet (not going): still shown as Going, not Cancelled.
+        let inbox = model.inbox(rsvp: { _ in false })
+        #expect(inbox.accepted.contains { $0.id == "e1_me" })
+        #expect(!inbox.cancelled.contains { $0.id == "e1_me" })
+    }
+
     @Test func aFullEventLeavesTheInvitePendingWithAnActionableError() async {
         let repository = DIPMockInvitesRepository.reference(behavior: .init(respondFailure: .full))
         let model = DIPInvitesModel(repository: repository)
