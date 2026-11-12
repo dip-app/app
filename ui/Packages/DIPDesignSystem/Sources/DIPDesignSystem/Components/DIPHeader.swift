@@ -54,7 +54,7 @@
                 if let onNotifications {
                     Button(action: onNotifications) {
                         Label {
-                            if let unreadCount, unreadCount > 0 { Text("\(unreadCount)") }
+                            if let unreadCount, unreadCount > 0 { Text(DIPBadgeCount.text(unreadCount)) }
                         } icon: {
                             Image(systemName: "bell.badge")
                         }

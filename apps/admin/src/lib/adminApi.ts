@@ -1,6 +1,7 @@
 import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
-  BackfillStep, CompanyInsights, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
+  BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
+  CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
   RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 
@@ -65,6 +66,14 @@ export interface AdminOpsApi {
   approveSubmission(submission: Submission): Promise<{ pointsAwarded: number; replayed: boolean }>;
   /** rejectChallengeV1: sends it back with a required note (1 to 280 characters). */
   rejectSubmission(submission: Submission, reason: string): Promise<{ replayed: boolean }>;
+
+  // ----- Bug reports inbox (admins only; listBugReportsV1, getBugReportV1, updateBugReportV1)
+  /** One page of reports, newest first, with filters. The first page carries counts per status (also used for the sidebar badge). */
+  listBugReports(query: BugReportQuery, cursor?: string | null, pageSize?: number): Promise<BugReportPage>;
+  /** Full detail with the reporter's email, diagnostics, triage state and a 15 minute screenshot URL. */
+  getBugReport(reportId: string): Promise<BugReportDetail>;
+  /** Sets status, internal note and/or assignee; `expectedRevision` is the detail's revision (REVISION_CONFLICT if someone else saved). */
+  updateBugReport(reportId: string, patch: BugReportPatch, expectedRevision: number): Promise<BugReportUpdate>;
 
   // ----- Insights
   /** getCompanyInsightsV1: usage overview for the company. `refresh` asks the server to bypass its 10-minute cache (honored at most once a minute). */

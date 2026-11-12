@@ -2,7 +2,7 @@ import type { AdminOpsApi } from "./adminApi";
 import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type BackfillStep, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
+  type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -48,6 +48,12 @@ interface OpsState {
   /** Added after the first release; created on first use so stored preview data keeps working. */
   submissions?: Stored<Submission & { changeOnReview?: boolean }>[];
   seededThemes?: string[];
+  bugReports?: StoredBug[];
+}
+
+interface StoredBug extends BugReport {
+  companyId: string; reporterEmail: string; diagnostics: BugDiagnostics | null; screenshot: string | null; note: string; revision: number;
+  updatedAt: string | null; updatedByName: string | null;
 }
 
 const KEY = "dip-admin-mock-ops-v3";
@@ -125,7 +131,51 @@ const hashOf = (value: unknown) => {
   return h.toString(16).padStart(8, "0").repeat(8);
 };
 
+
+const BUG_SEEDS: { cat: BugCategory; text: string; screen: string; shot?: string; status?: BugStatus; note?: string; assignee?: string; source?: "shake" | "profile" }[] = [
+  { cat: "bug", text: "I tapped Join on the Game Cafe event and the button just kept spinning. Had to force close the app, and then it showed me as not going.", screen: "event", shot: "games" },
+  { cat: "looksWrong", text: "The points on the Rewards tab are cut off on my phone, the last digit is hidden behind the badge.", screen: "rewards", shot: "fitness" },
+  { cat: "confusing", text: "I can't tell how to change my teams. Is that something I do or does an admin do it?", screen: "profile", source: "profile" },
+  { cat: "idea", text: "It would be great to filter events by office so I only see the ones in Pittsburgh.", screen: "home", status: "triaged", note: "Related to the location filter on the roadmap. Waiting for the V2 filters design.", assignee: "uid-admin" },
+  { cat: "bug", text: "Photo upload failed twice on the cooking class album. Third time worked but now there are two copies of the same picture.", screen: "album", shot: "cooking", status: "triaged", note: "Duplicate uploads: check the retry path of finalizeEventPhotoV1.", assignee: "uid-admin" },
+  { cat: "unspecified", text: "Something looked off on the participants list, names were overlapping with the avatar.", screen: "participants", shot: "outdoors" },
+  { cat: "bug", text: "Notification said the hike starts at 9 but the event page says 10.", screen: "event", status: "resolved", note: "Time zone bug in the reminder. Fixed in 2.1 (build 418)." },
+  { cat: "looksWrong", text: "Dark mode: the challenge card has white text on a light background.", screen: "challenge", shot: "hiking" },
+  { cat: "idea", text: "Let me add a plus one to an event.", screen: "event" },
+  { cat: "confusing", text: "What does 'Check in' do? I pressed it by accident.", screen: "myEvents", status: "resolved", note: "Explained in the help text, closing." },
+  { cat: "bug", text: "App crashed when I opened My Events right after signing in.", screen: "myEvents" },
+  { cat: "idea", text: "Weekly theme reminders on Monday morning would help me remember.", screen: "challenge", source: "profile" },
+  { cat: "bug", text: "I can't see my friend's photos in the album even though they were published yesterday.", screen: "album", shot: "games" },
+  { cat: "looksWrong", text: "Profile picture is stretched on the Home screen header.", screen: "home" },
+];
+
+/** Bug reports are seeded when the inbox is first opened so older stored preview data keeps working. */
+function seedBugReports(state: OpsState, now: Date): void {
+  const people = state.members.filter((m) => m.companyId === "acme" && m.role === "member" && m.status === "active");
+  const admins = state.members.filter((m) => m.companyId === "acme" && m.role === "admin");
+  const phones = [["iPhone17,1", "iOS 18.1"], ["iPhone16,2", "iOS 18.0.1"], ["iPhone15,4", "iOS 17.6"]];
+  const out: StoredBug[] = BUG_SEEDS.map((s, i) => {
+    const who = people[(i * 3 + 1) % people.length];
+    const [model, os] = phones[i % 3];
+    const assignee = s.assignee ? admins.find((a) => a.id === s.assignee) : undefined;
+    return {
+      companyId: "acme", id: `7f3c2a1${i.toString(16)}-0b5d-4c3e-9a41-${String(1000 + i * 37).padStart(12, "0")}`, category: s.cat, description: s.text, source: s.source ?? "shake", screen: s.screen,
+      createdAt: isoAgo(now, 0.05 + i * 0.6), reporterId: who.id, reporterName: who.displayName, appVersion: i % 5 === 4 ? "2.0" : "2.1", hasScreenshot: !!s.shot, status: s.status ?? "new", hasNote: !!s.note,
+      ...(assignee ? { assigneeId: assignee.id, assigneeName: assignee.displayName } : {}),
+      reporterEmail: who.email, screenshot: s.shot ? `/admin/img/events/${s.shot}.jpg` : null, note: s.note ?? "", revision: s.status || s.note ? 1 : 0,
+      updatedAt: s.status ? isoAgo(now, 0.2 + i * 0.3) : null, updatedByName: s.status ? "Alex Admin" : null,
+      diagnostics: { appVersion: i % 5 === 4 ? "2.0" : "2.1", appBuild: i % 5 === 4 ? "398" : "418", osVersion: os, deviceModel: model, locale: "en_US", screen: s.screen, installId: `0a1b2c3d-1111-2222-3333-4444555566${String(10 + i)}` },
+    };
+  });
+  out.push({
+    companyId: "globex", id: "5b1e0000-0000-4000-8000-000000000001", category: "bug", description: "Globex only: this must never show in Acme's inbox.", source: "shake", screen: "home", createdAt: isoAgo(now, 0.1),
+    reporterId: "uid-other-admin", reporterName: "Gale Globex", hasScreenshot: false, status: "new", hasNote: false, reporterEmail: "gale@globex.com", diagnostics: null, screenshot: null, note: "", revision: 0, updatedAt: null, updatedByName: null,
+  });
+  state.bugReports = out;
+}
+
 const SUBMISSION_PAGE = 25;
+const BUG_PAGE = 25;
 const NOTES = [
   "Did the 30 minute run before work.", "Yoga at lunch, three sessions this week.", "Walked the stairs instead of the elevator all week. My legs hurt but it counts!",
   "Cycled to the office on Tuesday and Thursday, plus a long ride on Saturday with the family, about 40 km in total.", "", "Swim session at the community pool.",
@@ -701,7 +751,69 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       return { replayed: false };
     },
 
-    // ----- insights
+    // ----- bug reports
+    async listBugReports(q, cursor, pageSize = BUG_PAGE) {
+      const state = load();
+      const session = staff("bugreports.manage");
+      if (!state.bugReports) { seedBugReports(state, now()); save(state); }
+      const reports = state.bugReports ?? [];
+      const text = q.query.trim().toLowerCase();
+      const from = q.from ? Date.parse(`${q.from}T00:00:00.000Z`) : -Infinity;
+      const to = q.to ? Date.parse(`${q.to}T23:59:59.999Z`) : Infinity;
+      const own = reports.filter((b) => b.companyId === session.companyId && Date.parse(b.createdAt) >= from && Date.parse(b.createdAt) <= to
+        && (q.category === "all" || b.category === q.category)
+        && (!text || `${b.description} ${b.reporterName} ${b.screen} ${b.appVersion ?? ""} ${b.id} ${b.assigneeName ?? ""}`.toLowerCase().includes(text)))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || (a.id < b.id ? 1 : -1));
+      const matching = own.filter((b) => q.status === "all" || b.status === q.status);
+      const start = cursor ? matching.findIndex((b) => b.id === cursor) + 1 : 0;
+      const page = matching.slice(start, start + pageSize);
+      const counts: BugReportCounts | null = cursor ? null : {
+        all: own.length, new: own.filter((b) => b.status === "new").length, triaged: own.filter((b) => b.status === "triaged").length,
+        resolved: own.filter((b) => b.status === "resolved").length, capped: false,
+      };
+      const strippedPage = page.map(({ companyId: _c, reporterEmail: _e, diagnostics: _d, screenshot: _s, note: _n, revision: _r, updatedAt: _u, updatedByName: _b, ...rest }) => (void _c, void _e, void _d, void _s, void _n, void _r, void _u, void _b, rest));
+      return { reports: strippedPage, nextCursor: start + pageSize < matching.length ? page[page.length - 1].id : null, counts };
+    },
+    async getBugReport(reportId) {
+      const state = load();
+      const session = staff("bugreports.manage");
+      const found = state.bugReports?.find((b) => b.id === reportId && b.companyId === session.companyId);
+      if (!found) throw new ApiError("not-found", "That report doesn’t exist.", {}, "BUG_REPORT_NOT_FOUND");
+      const { companyId: _c, reporterEmail, diagnostics, screenshot, note, revision, updatedAt, updatedByName, ...report } = found;
+      void _c;
+      return { report, reporterEmail, diagnostics, screenshotUrl: screenshot, note, revision, updatedAt, updatedByName };
+    },
+    async updateBugReport(reportId, patch, expectedRevision) {
+      const state = load();
+      const session = staff("bugreports.manage");
+      const found = state.bugReports?.find((b) => b.id === reportId && b.companyId === session.companyId);
+      if (!found) throw new ApiError("not-found", "That report doesn’t exist.", {}, "BUG_REPORT_NOT_FOUND");
+      if (expectedRevision !== found.revision) throw new ApiError("aborted", "Someone else updated this report. Reload it and try again.", {}, "REVISION_CONFLICT");
+      if (patch.note !== undefined && patch.note.length > 2000) throw new ApiError("invalid-argument", "Notes can be up to 2,000 characters.", { note: "Too long." }, "VALIDATION_FAILED");
+      let assignee: StoredMember | null | undefined;
+      if (patch.assigneeId === null) assignee = null;
+      else if (patch.assigneeId !== undefined) {
+        assignee = state.members.find((m) => m.id === patch.assigneeId && m.companyId === session.companyId && m.role === "admin" && m.status === "active");
+        if (!assignee) throw new ApiError("not-found", "That person can’t be assigned. Pick an admin of your company.", {}, "ASSIGNEE_NOT_FOUND");
+      }
+      const changes: AuditEntry["changes"] = [];
+      if (patch.status !== undefined && patch.status !== found.status) { changes.push({ field: "status", before: found.status, after: patch.status }); found.status = patch.status; }
+      if (patch.note !== undefined && patch.note.trim() !== found.note) { changes.push({ field: "note", before: found.note ? "(edited)" : "", after: patch.note.trim() ? "(edited)" : "" }); found.note = patch.note.trim(); found.hasNote = found.note !== ""; }
+      if (assignee !== undefined && (assignee?.id ?? undefined) !== found.assigneeId) {
+        changes.push({ field: "assignee", before: found.assigneeName ?? "", after: assignee?.displayName ?? "" });
+        if (assignee) { found.assigneeId = assignee.id; found.assigneeName = assignee.displayName; } else { delete found.assigneeId; delete found.assigneeName; }
+      }
+      if (changes.length) {
+        found.revision += 1;
+        found.updatedAt = now().toISOString();
+        found.updatedByName = session.name;
+        log(state, session, { action: "bugreport.update", targetType: "bugReport", targetId: found.id, summary: `Updated bug report ${found.id.slice(0, 8)}`, changes });
+        save(state);
+      }
+      return { status: found.status, note: found.note, assigneeId: found.assigneeId ?? null, assigneeName: found.assigneeName ?? null, revision: found.revision, updatedAt: found.updatedAt ?? now().toISOString(), changed: changes.length > 0 };
+    },
+
+    // ----- audit
     async companyInsights() {
       const session = staff("insights.view");
       const scenario = typeof window === "undefined" ? "default" : scenarioFromSearch(window.location.search);

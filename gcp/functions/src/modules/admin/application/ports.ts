@@ -18,6 +18,10 @@ export interface ListQuery {
  */
 export interface AdminTransaction {
   get(path: string): Promise<Doc | null>;
+  /** Several documents at once, in request order (null where missing). */
+  getMany(paths: readonly string[]): Promise<Array<Doc | null>>;
+  /** Newest-first page of a collection by a timestamp field, optionally bounded and continued after a (timestamp, id) position. */
+  scanNewest(collectionPath: string, query: NewestQuery): Promise<Entry[]>;
   list(collectionPath: string, query: ListQuery): Promise<Entry[]>;
   /** Aggregate count of a collection, optionally narrowed by equality filters (no documents are read). */
   count(collectionPath: string, where?: Where): Promise<number>;
@@ -26,6 +30,17 @@ export interface AdminTransaction {
   /** Merges fields into an existing document (fails if it is missing). */
   update(path: string, data: Doc): void;
   delete(path: string): void;
+}
+
+export interface NewestQuery {
+  /** Timestamp field to order by, descending (ties by document id, descending). */
+  field: string;
+  limit: number;
+  /** Inclusive bounds on the field. */
+  from?: Date;
+  to?: Date;
+  /** Continue strictly after this position. */
+  after?: { at: Date; id: string };
 }
 
 export interface GroupQuery {
@@ -68,6 +83,11 @@ export interface AdminStore {
 export interface ObjectStore {
   /** Deletes the object; resolves true when it is gone afterwards (including already absent). */
   remove(path: string): Promise<boolean>;
+  /**
+   * A short-lived read URL for an object, or null when it does not exist. Prefers a signed URL; when signing is not
+   * available it falls back to a data: URL of the bytes (only for objects up to `maxInlineBytes`).
+   */
+  readUrl(path: string, ttlMs: number, maxInlineBytes: number): Promise<{ url: string; expiresAt: Date } | null>;
 }
 
 /** Firebase Auth session control. */

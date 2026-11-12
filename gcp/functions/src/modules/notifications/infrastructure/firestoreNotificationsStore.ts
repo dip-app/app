@@ -1,7 +1,7 @@
 import { FieldPath, FieldValue, Timestamp, type DocumentReference, type Firestore } from "firebase-admin/firestore";
 import type {
   ChangeLogStore, ClaimStore, DeviceDirectory, DeviceRegistry, DeviceRegistryTransaction, DeviceToken, EventReader,
-  EventSummary, RecipientDirectory, SubscriptionStore, UpcomingEvents,
+  EventSummary, InboxItem, InboxWriter, RecipientDirectory, SubscriptionStore, UpcomingEvents,
 } from "../application/ports";
 import { mergeChangeLog } from "../domain/changeLog";
 import { isSubscriptionLevel, DEFAULT_LEVEL_ON_JOIN } from "../domain/subscription";
@@ -37,7 +37,7 @@ export function plainEvent(data: Record<string, unknown>): Record<string, unknow
  * derived from trigger parameters or the verified caller UID, never from client payload fields.
  */
 export class FirestoreNotificationsStore implements
-  DeviceDirectory, RecipientDirectory, ClaimStore, EventReader, UpcomingEvents, ChangeLogStore, SubscriptionStore, DeviceRegistry {
+  DeviceDirectory, RecipientDirectory, ClaimStore, EventReader, UpcomingEvents, ChangeLogStore, SubscriptionStore, DeviceRegistry, InboxWriter {
   constructor(private readonly db: Firestore, private readonly now: () => Date = () => new Date()) {}
 
   private event(companyId: string, eventId: string): DocumentReference {
@@ -202,5 +202,26 @@ export class FirestoreNotificationsStore implements
       };
       return work(tx);
     });
+  }
+
+  /** Create-only batches of 400: an existing id (trigger redelivery) is skipped, never overwritten. */
+  async createMany(items: readonly InboxItem[]): Promise<number> {
+    let created = 0;
+    for (const group of chunks(items, 400)) {
+      const results = await Promise.all(group.map(async (item) => {
+        try {
+          await this.db.collection("users").doc(item.uid).collection("notifications").doc(item.id).create({
+            userId: item.uid, companyId: item.companyId, type: item.type, title: item.title, body: item.body,
+            targetType: item.targetType, targetId: item.targetId, isRead: false, createdAt: FieldValue.serverTimestamp(),
+          });
+          return 1;
+        } catch (error) {
+          if ((error as { code?: unknown }).code === ALREADY_EXISTS) return 0;
+          throw error;
+        }
+      }));
+      created += results.reduce<number>((sum, value) => sum + value, 0);
+    }
+    return created;
   }
 }

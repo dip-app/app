@@ -4,6 +4,7 @@ import { Reader, validWireId } from "./reader";
 import { MAX_TEAMS_PER_MEMBER, validDate } from "./employee";
 import { IMPORT_MAX_ROWS } from "./importPlan";
 import { AdminError } from "./errors";
+import { BUG_CATEGORIES, BUG_STATUSES, MAX_NOTE, decodeCursor, validDay } from "./bugReports";
 
 const BASE = ["contractVersion", "companyId"];
 const MUTATING = [...BASE, "requestId"];
@@ -211,6 +212,49 @@ export function parseListRoster(data: unknown) {
     companyId: r.id("companyId"), state: r.optEnum("state", ROSTER_STATES), query: r.optText("query", 80), pageSize: r.optInt("pageSize", 1, 100) ?? 50,
     pageToken: r.optId("pageToken"),
   };
+  r.finish();
+  return req;
+}
+
+export function parseListBugReports(data: unknown) {
+  const r = Reader.from(data, [...BASE, "status", "category", "query", "from", "to", "pageSize", "pageToken"]);
+  const from = r.optText("from", 10);
+  const to = r.optText("to", 10);
+  if (from !== undefined && !validDay(from)) r.fail("from");
+  if (to !== undefined && !validDay(to)) r.fail("to");
+  if (from !== undefined && to !== undefined && validDay(from) && validDay(to) && from > to) r.fail("to");
+  const pageToken = r.optId("pageToken");
+  if (pageToken !== undefined && pageToken !== "" && !decodeCursor(pageToken)) r.fail("pageToken");
+  const req = {
+    companyId: r.id("companyId"), status: r.optEnum("status", BUG_STATUSES), category: r.optEnum("category", BUG_CATEGORIES), query: r.optText("query", 80),
+    from, to, pageSize: r.optInt("pageSize", 1, 100) ?? 25, pageToken,
+  };
+  r.finish();
+  return req;
+}
+
+export function parseGetBugReport(data: unknown) {
+  const r = Reader.from(data, [...BASE, "reportId"]);
+  const req = { companyId: r.id("companyId"), reportId: r.id("reportId") };
+  r.finish();
+  return req;
+}
+
+export interface UpdateBugReportRequest {
+  companyId: string; requestId: string; reportId: string; status?: (typeof BUG_STATUSES)[number] | undefined; note?: string | undefined;
+  /** A member id assigns, null clears, undefined leaves unchanged. */
+  assigneeId?: string | null | undefined; expectedRevision?: number | undefined;
+}
+
+export function parseUpdateBugReport(data: unknown): UpdateBugReportRequest {
+  const r = Reader.from(data, [...MUTATING, "reportId", "status", "note", "assigneeId", "expectedRevision"]);
+  const rawAssignee = r.record.assigneeId;
+  const assigneeId = rawAssignee === null ? null : r.optId("assigneeId");
+  const req: UpdateBugReportRequest = {
+    companyId: r.id("companyId"), requestId: r.requestId(), reportId: r.id("reportId"), status: r.optEnum("status", BUG_STATUSES),
+    note: r.optText("note", MAX_NOTE), assigneeId, expectedRevision: r.optInt("expectedRevision", 0, 1_000_000_000),
+  };
+  if (req.status === undefined && req.note === undefined && req.assigneeId === undefined) r.fail("status");
   r.finish();
   return req;
 }

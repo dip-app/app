@@ -114,6 +114,12 @@ enum FirebaseBootstrap {
                                          scope: EventReadScope(uid: context.uid, companyID: context.companyID))
     }
 
+    /// The member's own in-app notifications (users/{uid}/notifications): live list, unread count and isRead-only writes.
+    @MainActor static func makeNotificationsRepository(context: MembershipContext) -> (any DIPNotificationsRepository)? {
+        guard case .configured = status else { return nil }
+        return FirebaseNotificationsRepository(firestore: Firestore.firestore(), uid: context.uid)
+    }
+
     /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.
     @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
         guard case .configured = status else { return nil }

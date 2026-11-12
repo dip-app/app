@@ -24,6 +24,10 @@ struct DIPMemberHome: View {
     private let participationFactory: (() -> (any ParticipationSource)?)?
     private let albumFactory: (() -> (any PhotoAlbumSource)?)?
     private let invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)?
+    private let notificationsFactory: ((MembershipContext) -> (any DIPNotificationsRepository)?)?
+    /// Present only when the push client is enabled by flag (drives the notifications center's permission banner).
+    private let pushPermission: PushPermissionControl?
+    @State private var liveNotifications: (any DIPNotificationsRepository)?
     /// Created with the home (like the other live sources), so the shell never starts without it.
     @State private var liveInvites: (any DIPInvitesRepository)?
     @State private var liveEvents: MemberEventAppRepository?
@@ -48,6 +52,8 @@ struct DIPMemberHome: View {
         participationFactory: (() -> (any ParticipationSource)?)? = nil,
         albumFactory: (() -> (any PhotoAlbumSource)?)? = nil,
         invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)? = nil,
+        notificationsFactory: ((MembershipContext) -> (any DIPNotificationsRepository)?)? = nil,
+        pushPermission: PushPermissionControl? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
         bugReportSubmitter: (() -> (any BugReportSubmitting)?)? = nil,
@@ -67,6 +73,9 @@ struct DIPMemberHome: View {
         self.participationFactory = participationFactory
         self.albumFactory = albumFactory
         self.invitesFactory = invitesFactory
+        self.notificationsFactory = notificationsFactory
+        self.pushPermission = pushPermission
+        _liveNotifications = State(initialValue: eventReadFactory == nil ? nil : notificationsFactory?(context))
         _liveInvites = State(initialValue: eventReadFactory == nil ? nil : invitesFactory?(context))
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
@@ -230,7 +239,9 @@ struct DIPMemberHome: View {
             deepLinkEventID: tour == nil && replay == nil ? deepLinkEventID : nil,
             onDeepLinkHandled: onDeepLinkHandled, deepLinkOpensChat: deepLinkOpensChat, onJoined: onJoined,
             // Live members use the Firebase adapter; fixture members (unconfigured Debug) get fixture invitations.
-            invitesRepository: live ? liveInvites : DIPPrototypeApp.fixtureInvites())
+            invitesRepository: live ? liveInvites : DIPPrototypeApp.fixtureInvites(),
+            notificationsRepository: live ? liveNotifications : DIPPrototypeApp.fixtureNotifications(),
+            pushPermission: pushPermission)
     }
 
     private var catalogIsLoading: Bool {

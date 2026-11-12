@@ -36,5 +36,8 @@ export const paths = {
   submissions: (companyId: string, challengeId: string) => `companies/${companyId}/challenges/${challengeId}/submissions`,
   pointTransactions: (companyId: string) => `companies/${companyId}/pointTransactions`,
   rsvps: (companyId: string, eventId: string) => `companies/${companyId}/events/${eventId}/rsvps`,
+  bugReports: "bugReports",
+  bugReport: (reportId: string) => `bugReports/${reportId}`,
+  bugTriage: (companyId: string, reportId: string) => `companies/${companyId}/bugReportTriage/${reportId}`,
   notification: (uid: string, id: string) => `users/${uid}/notifications/${id}`,
 };

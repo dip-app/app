@@ -40,6 +40,7 @@ targets:
       path: Config/DIP-Info.plist
       properties:
         NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
+        NSPhotoLibraryAddUsageDescription: Save event photos to your library.
         # Push client feature flag (default NO; see docs/design/push-client.md).
         DIPPushEnabled: $(DIP_PUSH_ENABLED)
         # Containment: FCM never starts (no token, no network) unless PushComposition turns it on for the flag.

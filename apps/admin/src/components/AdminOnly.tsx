@@ -16,6 +16,7 @@ const ASK: Partial<Record<Capability, string>> = {
   "import.run": "import people from a spreadsheet",
   "roster.manage": "invite someone, resend an invite or revoke one",
   "audit.view": "look something up in the audit log",
+  "bugreports.manage": "look at bug reports from the app",
 };
 
 /** Shown instead of an admin page to an organizer: explains the limit, says what to ask for and who can help. */

@@ -32,6 +32,7 @@ $nav-text: #e6e8f0;
     &::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: $purple; } }
   &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; }
 }
+.nav-badge { margin-left: auto; flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: $purple; color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
 .menu-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 6px; color: $white; background: transparent;
   &:hover { background: rgba(255, 255, 255, .1); } &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; } }
 

@@ -1,7 +1,7 @@
 import XCTest
 
-/// Coworker invitations against the fixture repository (no Firebase): the bell opens the Invitations sheet
-/// (badge = pending count), accepting moves a card to "Going", declining removes it, and the event page's
+/// Coworker invitations against the fixture repository (no Firebase): the bell opens the notifications center, whose
+/// Invitations button opens the sheet (waiting count), accepting moves a card to "Going", declining removes it, and the event page's
 /// Invite a Coworker opens the picker, where a search result can be invited once.
 /// `--invites-state=empty|loading|failed|full|search-failed|send-failed` selects the review variants.
 final class InvitesTests: XCTestCase {
@@ -23,8 +23,13 @@ final class InvitesTests: XCTestCase {
         let app = launch([])
         let bell = app.buttons["home.notifications"]
         XCTAssertTrue(bell.waitForExistence(timeout: 20))
-        XCTAssertTrue(bell.label.contains("2"), "badge is the two pending invitations, got \(bell.label)")
+        XCTAssertTrue(bell.label.contains("4 unread"), "badge is the unread notifications, got \(bell.label)")
         bell.tap()
+        // Invitations are one tap away from the notifications center.
+        let invitations = app.buttons["notifications.invitations"]
+        XCTAssertTrue(invitations.waitForExistence(timeout: 10))
+        XCTAssertTrue(invitations.label.contains("2 waiting"), "got \(invitations.label)")
+        invitations.tap()
         XCTAssertTrue(app.buttons["invitations.accept.e1_me"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["invitations.decline.e1_me"].exists)
         XCTAssertTrue(app.buttons["invitations.open.e1_me"].exists)

@@ -141,6 +141,11 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
     const points = alreadyAwarded ? 0 : challenge.pointsReward;
     tx.reviewSubmission(companyId, challengeId, id, { status: "approved", reviewedBy: reviewer.uid, reviewNote: null, pointsAwarded: points });
     tx.incrementCompleted(companyId, challengeId);
+    tx.createNotice(userId, `challenge_approved_${challengeId}`, {
+      companyId, type: "challenge_approved", title: "Challenge approved",
+      body: points > 0 ? `You earned ${points} ${points === 1 ? "point" : "points"}.` : "Your entry was approved.",
+      targetType: "challenge", targetId: challengeId,
+    });
     if (points > 0) {
       tx.createAward(companyId, awardId(challengeId, userId), { companyId, userId, amount: points, reason: "challenge_approved", sourceId: challengeId });
       tx.incrementBalance(userId, points);
@@ -159,6 +164,11 @@ export async function rejectChallenge(store: SubmissionStore, caller: Submission
     if (submission.status === "approved") throw new SubmissionError("failed-precondition", "SUBMISSION_LOCKED", "This entry was already approved.");
     requireUnchanged(submission, expectedUpdatedAt);
     tx.reviewSubmission(companyId, challengeId, id, { status: "rejected", reviewedBy: reviewer.uid, reviewNote: reason, pointsAwarded: 0 });
+    // One notice per attempt (a resubmission that is rejected again gets its own).
+    tx.createNotice(userId, `challenge_changes_${challengeId}_${submission.attempt}`, {
+      companyId, type: "challenge_changes_requested", title: "Changes needed",
+      body: [...reason].slice(0, 200).join("") || "Your reviewer asked for changes.", targetType: "challenge", targetId: challengeId,
+    });
     return { contractVersion: 1, submissionId: id, status: "rejected", replayed: false } satisfies RejectChallengeResponse;
   });
 }

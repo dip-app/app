@@ -12,7 +12,7 @@ The schema currently includes all 18 supplied document structs plus embedded Ven
 | tags/{tagId}, partners/{partnerId} | Authenticated shared catalog; partners later | Trusted seed/admin tooling only |
 | companies/{c}/events/{eventId} | Tenant-scoped feed and details | Create/update callable; counts, revision, author/audit and points server-owned |
 | .../events/{eventId}/rsvps/{uid} | Same-company attendee list; own joined events | setRsvp callable only; attendance later admin callable |
-| users/{uid}/notifications/{id} | Recipient only (get; list limit <= 50) | Server creates (invite notices today); recipient may change isRead only |
+| users/{uid}/notifications/{id} | Recipient only (get; list limit <= 50) | Server creates (invite, attendee_added, event_updated/event_cancelled from onEventChanged as `event_{eventId}_{revision}`, challenge_approved/challenge_changes_requested from the review callables); recipient may change isRead only |
 | companies/{c}/challenges/{id} | Same-company weekly themes (get; list limit <= 20; organizers unbounded) | `createChallengeV1`/`updateChallengeV1` only; participantCount, completedCount, revision, author/audit server-owned |
 | .../challenges/{id}/submissions/{challengeId}_{uid} | Own submission and completion summaries, V2 (denied today) | Submission/approval commands; no client counters/status approval |
 | .../pointTransactions/{id} | Own ledger, V2 | Server append-only, deterministic award IDs; balance and ledger updated atomically |

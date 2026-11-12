@@ -66,6 +66,8 @@ export interface SubmissionTransaction {
   /** Server-owned counters on the challenge document (never bumps its revision). */
   incrementParticipants(companyId: string, challengeId: string): void;
   incrementCompleted(companyId: string, challengeId: string): void;
+  /** Creates the member's in-app notice (`users/{uid}/notifications/{id}`, create-only; an existing id is left as is). */
+  createNotice(uid: string, id: string, notice: { companyId: string; type: string; title: string; body: string; targetType: string; targetId: string }): void;
   /** Creates the deterministic ledger entry (fails if it exists) with a server `createdAt`. */
   createAward(companyId: string, awardId: string, entry: LedgerEntry): void;
   incrementBalance(uid: string, amount: number): void;
