@@ -14,7 +14,7 @@ import type { AdminDeps, Caller } from "./ports";
  * getCompanyInsightsV1 (insights.read: organizer, admin). Design: a short-lived server-owned cache document
  * `companies/{c}/insights/summary` (10 minutes) in front of aggregation queries. count()/sum() queries cost one
  * read per 1000 index entries, and the few document reads are bounded (see the limits in domain/insights.ts),
- * so a recompute is roughly 100 billed reads for a company of any size and nothing scans unbounded. The cache
+ * so a recompute is bounded at roughly 1,200 billed reads (1,000 sampled RSVPs, 60 day counts, up to 25 attendance counts, a few dozen documents) for a company of any size and nothing scans unbounded. The cache
  * holds the admin view; organizers get it with `points` removed. A cache write failure never fails the read.
  */
 export async function getCompanyInsights(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<GetCompanyInsightsResponse> {
@@ -81,7 +81,7 @@ async function compute(deps: AdminDeps, companyId: string, now: Date): Promise<G
     perDay,
     store.aggregate({ group: "comments" }, [eq("companyId", companyId), ["createdAt", ">=", windowStart]]),
     store.aggregate({ collection: paths.pointTransactions(companyId) }, [["amount", ">", 0], ["createdAt", ">=", windowStart]], "amount"),
-    store.queryDocs(rsvpGroup, { where: [eq("companyId", companyId), ["createdAt", ">=", windowStart]], select: ["userId"], limit: ACTIVE_SAMPLE_LIMIT }),
+    store.queryDocs(rsvpGroup, { where: [eq("companyId", companyId), ["createdAt", ">=", windowStart]], select: ["userId"], orderBy: "createdAt", descending: true, limit: ACTIVE_SAMPLE_LIMIT }),
     store.queryDocs(events, { where: [], orderBy: "attendeeCount", descending: true, select: ["title", "startTime", "attendeeCount", "capacity", "status"], limit: 10 }),
     store.queryDocs(events, { where: [eq("status", "completed")], orderBy: "startTime", descending: true, select: ["attendeeCount"], limit: ATTENDANCE_SAMPLE_EVENTS }),
     store.queryDocs({ collection: paths.challenges(companyId) }, { where: [], orderBy: "endDate", descending: true, limit: RECENT_CHALLENGES }),
