@@ -9,7 +9,7 @@
 .stat-tile { background: $gray; border-radius: $radius-card; padding: 18px 20px; display: grid; gap: 2px; align-content: start; min-width: 0;
   .stat-label { font-family: var(--font-figtree), sans-serif; font-size: 15px; color: var(--muted); }
   .stat-value { font-family: var(--font-fjalla), Impact, sans-serif; font-size: 44px; line-height: 1.1; letter-spacing: .01em; overflow-wrap: anywhere; }
-  .stat-note { font-size: 14px; color: var(--muted); }
+  .stat-note { font-size: 15px; color: var(--muted); }
   &.accent { background: $purple; color: $white; .stat-label, .stat-note { color: $white; } }
   &.skeleton-tile { min-height: 128px; } }
 @media (prefers-reduced-motion: no-preference) { .skeleton-tile { animation: pulse 1.4s ease-in-out infinite; } }
@@ -49,7 +49,7 @@
 .rank { width: 32px; height: 32px; border-radius: 50%; background: $ink; color: $white; display: grid; place-items: center; font-family: var(--font-figtree), sans-serif; font-size: 15px; }
 .rank-main { min-width: 0; display: grid; gap: 4px; &.person { display: flex; align-items: center; gap: 12px; } .muted { font-size: 14px; } }
 .rank-title { font-family: var(--font-figtree), sans-serif; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; &:hover { text-decoration: underline; } }
-.rank-value { font-family: var(--font-figtree), sans-serif; font-size: 17px; white-space: nowrap; text-align: right; }
+.rank-value { display: grid; justify-items: end; gap: 4px; font-family: var(--font-figtree), sans-serif; font-size: 17px; white-space: nowrap; text-align: right; }
 
 .meter { height: 10px; border-radius: 999px; background: $gray; overflow: hidden; span { display: block; height: 100%; background: $purple; border-radius: 999px; } }
 .panel .meter { background: $white; }
@@ -77,3 +77,5 @@
   .refresh { justify-content: flex-start; }
   .mini-stats dd { font-size: 24px; }
 }
+
+.info-pill.full { min-height: 24px; padding: 0 10px; font-size: 13px; border-color: $purple; }

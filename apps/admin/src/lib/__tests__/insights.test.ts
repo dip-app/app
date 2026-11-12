@@ -25,7 +25,7 @@ const input: MockInsightsInput = {
 describe("formatting", () => {
   test("percent and updated labels", () => {
     expect(formatPercent(0.744)).toBe("74%");
-    expect(formatPercent(null)).toBe("n/a");
+    expect(formatPercent(null)).toBe("–");
     expect(updatedLabel("2026-11-11T12:00:00Z", NOW)).toBe("Updated just now");
     expect(updatedLabel("2026-11-11T11:56:00Z", NOW)).toBe("Updated 4 min ago");
     expect(updatedLabel("2026-11-11T09:00:00Z", NOW)).toBe("Updated 3 hr ago");

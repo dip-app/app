@@ -30,7 +30,7 @@ export function StatTiles({ insights, role }: { insights: CompanyInsights; role:
       <StatTile accent label="Members" value={formatCount(members.total)} note={`${formatCount(members.active)} active accounts`} />
       <StatTile label="Active, last 30 days" value={formatCount(members.activeLast30Days)} note={members.activeCapped ? "At least this many" : "Members who joined an event"} />
       <StatTile label="Invited, not joined" value={formatCount(members.invited)} note={members.invited === 1 ? "Person yet to sign in" : "People yet to sign in"} />
-      <StatTile accent label="Upcoming events" value={formatCount(events.upcoming)} note={`${formatCount(events.thisMonth)} this month`} />
+      <StatTile label="Upcoming events" value={formatCount(events.upcoming)} note={`${formatCount(events.thisMonth)} this month`} />
       <StatTile label="RSVPs, last 30 days" value={formatCount(participation.rsvpsLast30Days)} note="Going, across all events" />
       <StatTile label="Average attendance" value={formatPercent(participation.attendanceRate)}
         note={participation.attendanceSample > 0 ? `Latest ${participation.attendanceSample} completed ${participation.attendanceSample === 1 ? "event" : "events"}` : "After the first completed event"} />
@@ -154,7 +154,7 @@ export function TopEvents({ insights }: { insights: CompanyInsights }) {
                   <p className="muted">{formatDate(event.startTime)} · {event.status === "completed" ? "Completed" : "Upcoming"}</p>
                   <div className="meter" role="img" aria-label={`${event.attendeeCount} of ${event.capacity} spots`}><span style={{ width: `${Math.round(fill * 100)}%` }} /></div>
                 </div>
-                <span className="rank-value"><strong>{formatCount(event.attendeeCount)}</strong><span className="muted"> / {formatCount(event.capacity)}</span></span>
+                <span className="rank-value"><strong>{formatCount(event.attendeeCount)}</strong><span className="muted"> / {formatCount(event.capacity)}</span>{event.capacity > 0 && event.attendeeCount >= event.capacity && <span className="info-pill full">Full</span>}</span>
               </li>
             );
           })}
