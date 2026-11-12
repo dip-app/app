@@ -559,6 +559,14 @@ import DIPAccounts
         return event.endTime <= clock() ? nil : .notEnded
     }
 
+    /// The stored object (original resolution) for one album photo, read with the signed-in Storage session.
+    func originalPhotoData(eventID: String, photoID: String) async throws -> Data {
+        guard let albums, !stopped, albumEventID == eventID, let record = albumRecords.first(where: { $0.id == photoID }) else {
+            throw DIPRepositoryError.notFound("This photo can’t be saved right now")
+        }
+        return try await albums.imageData(path: record.storagePath)
+    }
+
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
         guard let albums, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput("Comments aren’t available yet") }
         do {

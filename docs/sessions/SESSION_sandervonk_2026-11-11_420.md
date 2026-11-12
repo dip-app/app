@@ -20,9 +20,12 @@ iOS V2 polish: tolerant event mapping for live data with a clear unavailable rea
 - UI tests: MockMemberLaunchUITests, ScreenFlowTests, HomeThemeTests (expectations only).
 - docs/milestones/v2/ACCESSIBILITY.md (new), docs/milestones/v2/FRONTEND_PLAN.md.
 
+- Photo viewer redo (PR on branch polish/photo-comments): comment composer restyled (48 pt pill, readable placeholder, solid purple send), floating comment bubbles (`DIPPhotoCommentPlacement`, pure and tested, centre kept free, `+N` pill and full list), single top-right control bar with `3/12`, yellow back button, directional step transition, Save photo and Save all to Photos (add-only), `NSPhotoLibraryAddUsageDescription`, `originalPhotoData` repository call (stored original through the signed-in Storage session). Design auditor PASS after two rounds.
+
 ## Validation
 
 - swift build and swift build --build-tests in ui/Packages/DIPCore: pass.
+- Photo viewer: targeted simulator screenshots in scratchpad shots/polish; DIPCore PhotoCommentPlacementTests (9) and PhotoSavingTests pass; app build-for-testing passes; AlbumPhotoSaverTests, MessageComposerStateTests and the updated ConversationFlow UI tests were written but not run.
 - App target, unit tests and UI tests were written but not built or run in this session (owner runs the full suite at the end).
 
 ## Decisions

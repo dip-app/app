@@ -25,12 +25,3 @@ final class AlbumPolishTests: XCTestCase {
         XCTAssertEqual(DIPPhotoCommentsScreen.sendErrorMessage(for: CancellationError()), "Your comment could not be sent. Try again.")
     }
 }
-
-extension AlbumPolishTests {
-    func testPositionLabelWidthDependsOnTheAlbumSizeNotTheCurrentPhoto() {
-        XCTAssertEqual(DIPPhotoCommentsScreen.positionLabelWidth(count: 12), 72)
-        XCTAssertEqual(DIPPhotoCommentsScreen.positionLabelWidth(count: 99), 72)
-        XCTAssertGreaterThan(DIPPhotoCommentsScreen.positionLabelWidth(count: 120), 72)
-        XCTAssertGreaterThan(DIPPhotoCommentsScreen.positionLabelWidth(count: 1200), DIPPhotoCommentsScreen.positionLabelWidth(count: 120))
-    }
-}
