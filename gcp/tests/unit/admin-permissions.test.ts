@@ -6,7 +6,8 @@ import {
   adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../../functions/src/modules/admin/application/members";
 import { removeEventPhoto, removeEventPhotoComment } from "../../functions/src/modules/admin/application/moderation";
-import { revokeRosterEntry, upsertRosterEntry } from "../../functions/src/modules/admin/application/roster";
+import { backfillRosterCallable } from "../../functions/src/modules/admin/application/backfillRoster";
+import { listRoster, resendRosterInvite, revokeRosterEntry, upsertRosterEntry } from "../../functions/src/modules/admin/application/roster";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { can, PERMISSION_MATRIX, type Permission } from "../../functions/src/modules/admin/domain/permissions";
 import { handleAdminCommand, toHttpsError } from "../../functions/src/modules/admin/transport/adminCallables";
@@ -39,6 +40,9 @@ const COMMANDS: Array<{ name: string; run: typeof removeEventPhoto; permission: 
   { name: "upsertTeamV1", run: upsertTeam as never, permission: "team.manage", payload: () => ({ ...base(), requestId: rid(), name: "Platform" }) },
   { name: "upsertRosterEntryV1", run: upsertRosterEntry as never, permission: "roster.manage", payload: () => ({ ...base(), requestId: rid(), entry: { email: "new@alpha.test" } }) },
   { name: "revokeRosterEntryV1", run: revokeRosterEntry as never, permission: "roster.manage", payload: () => ({ ...base(), requestId: rid(), entryId: HASH }) },
+  { name: "resendRosterInviteV1", run: resendRosterInvite as never, permission: "roster.manage", payload: () => ({ ...base(), requestId: rid(), entryId: HASH }) },
+  { name: "listRosterV1", run: listRoster as never, permission: "roster.manage", payload: () => base() },
+  { name: "backfillRosterV1", run: backfillRosterCallable as never, permission: "roster.manage", payload: () => ({ ...base(), requestId: rid(), dryRun: true }) },
   { name: "importEmployeesV1", run: importEmployees as never, permission: "import.run", payload: () => ({ ...base(), requestId: rid(), rows: [{ email: "new@alpha.test" }] }) },
   { name: "applyEmployeeImportV1", run: applyEmployeeImport as never, permission: "import.run", payload: () => ({ ...base(), jobId: "job1", planHash: HASH }) },
   { name: "getEmployeeImportV1", run: getEmployeeImport as never, permission: "import.run", payload: () => ({ ...base(), jobId: "job1" }) },

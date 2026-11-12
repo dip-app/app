@@ -44,6 +44,9 @@ export const ADMIN_CALLABLES = {
   adjustPoints: "adjustMemberPointsV1",
   upsertRosterEntry: "upsertRosterEntryV1",
   revokeRosterEntry: "revokeRosterEntryV1",
+  resendRosterInvite: "resendRosterInviteV1",
+  listRoster: "listRosterV1",
+  backfillRoster: "backfillRosterV1",
   planImport: "importEmployeesV1",
   applyImport: "applyEmployeeImportV1",
   getImport: "getEmployeeImportV1",
@@ -106,6 +109,43 @@ export interface RosterRow {
   state: "invited" | "active" | "deactivated" | "revoked";
   memberId?: string;
   invitedAt: string;
+  /** How many times an admin resent the invite message, and when last. */
+  resendCount?: number;
+  lastResentAt?: string;
+}
+
+/** Page size of the people lists (the server allows up to 100). */
+export const LIST_PAGE_SIZE = 25;
+
+export interface MemberQuery { query: string; status: MemberStatus | "all"; role: Role | "all"; teamId: string; workLocation: string }
+export interface MemberPage {
+  members: Member[];
+  /** Pass back to read the next page; null when everything was scanned. A page can be short while more follow. */
+  nextCursor: string | null;
+  /** All members of the company (first page only). */
+  total: number | null;
+}
+
+export type RosterState = RosterRow["state"];
+export interface RosterQuery { query: string; state: RosterState | "all" }
+export interface RosterCounts { all: number; invited: number; active: number; deactivated: number; revoked: number }
+export interface RosterPage { rows: RosterRow[]; nextCursor: string | null; /** First page only. */ counts: RosterCounts | null }
+
+/** resendRosterInviteV1: DIP sends no email, so a resend records the event and returns a message for the admin to share. */
+export interface ResendResult { resendCount: number; lastResentAt: string; signInUrl: string; message: string }
+
+/** One chunk of backfillRosterV1 (`created` is "would create" in a dry run). */
+export interface BackfillStep { dryRun: boolean; scanned: number; created: number; existing: number; skipped: number; nextCursor: string | null; done: boolean }
+
+/** getEmployeeImportV1, for resuming an import after a reload. */
+export interface ImportJobInfo {
+  jobId: string;
+  status: ApplyStepResponse["status"];
+  chunkCount: number;
+  nextChunk: number;
+  progress: ImportProgress;
+  planHash: string;
+  fileName: string;
 }
 
 export interface AlbumPhoto {
@@ -179,6 +219,8 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "company.settings": "Settings changed",
   "roster.upsert": "Roster entry saved",
   "roster.revoke": "Invite revoked",
+  "roster.resend": "Invite resent",
+  "roster.backfill": "Roster backfilled",
   "roster.claim": "Invite claimed",
   "import.plan": "Import previewed",
   "import.apply": "Import applied",

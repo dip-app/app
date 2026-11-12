@@ -2530,6 +2530,19 @@
             "deactivated"
           ],
           "description": "Mirrors the member's status once claimed; kept in sync by setMemberStatusV1."
+        },
+        "resendCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many times an admin resent the invite message."
+        },
+        "lastResentAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastResentBy": {
+          "type": "string",
+          "maxLength": 128
         }
       },
       "required": [
@@ -3396,6 +3409,11 @@
         "nextPageToken": {
           "type": "string",
           "maxLength": 256
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Company members in total (first page only), for 'N of M'."
         }
       },
       "required": [
@@ -4722,6 +4740,281 @@
         "contractVersion",
         "coworkers",
         "truncated"
+      ]
+    },
+    "ResendRosterInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "resendRosterInviteV1: records a resend for an invited roster entry and returns the shareable message. No email is sent. roster.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "entryId"
+      ]
+    },
+    "ResendRosterInviteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Resend result: the sign-in link and a ready-to-send message for the admin to copy.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited"
+          ]
+        },
+        "resendCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lastResentAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "signInUrl": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "contractVersion",
+        "entryId",
+        "status",
+        "resendCount",
+        "lastResentAt",
+        "signInUrl",
+        "message"
+      ]
+    },
+    "BackfillRosterRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "backfillRosterV1: creates missing claimed roster entries for existing members, 100 members per call (cursor), never touching existing entries. dryRun only counts. roster.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "pageToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "dryRun"
+      ]
+    },
+    "BackfillRosterResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One chunk of the backfill. `created` is what would be created when dryRun is true. Call again with nextPageToken until done.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "scanned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "existing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nextPageToken": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "done": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "dryRun",
+        "scanned",
+        "created",
+        "existing",
+        "skipped",
+        "done"
+      ]
+    },
+    "RosterCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Roster totals by state (first page only).",
+      "properties": {
+        "all": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invited": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deactivated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "revoked": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "all",
+        "invited",
+        "active",
+        "deactivated",
+        "revoked"
+      ]
+    },
+    "ListRosterRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "listRosterV1: roster page with server-side state filter and search; scans in document-id order with a cursor. roster.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "active",
+            "deactivated",
+            "revoked"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Case-insensitive substring of name, email, department, job title or work location."
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Default 50."
+        },
+        "pageToken": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId"
+      ]
+    },
+    "ListRosterResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A page of roster entries; keep following nextPageToken (a page can be short when filters match few of the scanned entries).",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RosterEntry"
+          },
+          "maxItems": 100
+        },
+        "nextPageToken": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "counts": {
+          "$ref": "#/$defs/RosterCounts"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "entries"
       ]
     }
   }

@@ -53,7 +53,9 @@ export async function listMembers(deps: AdminDeps, caller: Caller | null, data: 
       if (batch.length < SCAN_BATCH) { exhausted = true; break; }
     }
     const nextPageToken = exhausted ? undefined : afterId;
-    return { contractVersion: 1, members, ...(nextPageToken ? { nextPageToken } : {}) } satisfies ListMembersResponse;
+    // The first page carries the exact company total so the portal can show "N of M" however many pages follow.
+    const total = req.pageToken ? undefined : await tx.count("users", [["companyId", actor.companyId]]);
+    return { contractVersion: 1, members, ...(nextPageToken ? { nextPageToken } : {}), ...(total !== undefined ? { total } : {}) } satisfies ListMembersResponse;
   });
 }
 

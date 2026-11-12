@@ -8,8 +8,9 @@ import { ImportMapping } from "@/components/ImportMapping";
 import { Shell } from "@/components/Shell";
 import { Empty, Info, Loading, Notice } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
-import { IMPORT_LIMITS, type PlanAction, type PlanRow } from "@/lib/adminTypes";
+import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanRow } from "@/lib/adminTypes";
 import { browserStore } from "@/lib/api";
+import { ApiError } from "@/lib/contract";
 import { downloadText } from "@/lib/csv";
 import { FIELD_LABEL, type ParsedImport, type RawFile, errorCsv, planCounts, readRawFile, templateCsv, validRows } from "@/lib/importFile";
 import { applyAll, planAll } from "@/lib/importRun";
@@ -19,7 +20,10 @@ const STEPS: { id: string; label: string; phases: Phase[] }[] = [
   { id: "file", label: "Upload", phases: ["choose"] }, { id: "map", label: "Match columns", phases: ["map"] },
   { id: "review", label: "Review", phases: ["checking", "preview"] }, { id: "apply", label: "Import", phases: ["applying", "done"] },
 ];
-/** An import that was started survives a reload: the server keeps its cursor, so only the job id and plan hash are needed. */
+/**
+ * An import that was started survives a reload, a closed tab and a new session in this browser: the server keeps the cursor, so only
+ * the job id and plan hash are saved (localStorage). On return the portal asks the server where the job stands (getEmployeeImportV1).
+ */
 interface SavedJob { jobId: string; planHash: string; lines: number[]; fileName: string }
 const jobKey = (companyId: string) => `dip-admin-import-job-v1:${companyId}`;
 const ACTION_LABEL: Record<PlanAction, string> = { create: "New", update: "Update", unchanged: "No change", invalid: "Invalid" };
@@ -35,13 +39,16 @@ export default function ImportPage() {
   const [parsed, setParsed] = useState<ParsedImport | null>(null);
   const [raw, setRaw] = useState<RawFile | null>(null);
   const [lines, setLines] = useState<number[]>([]);
-  const [unfinished, setUnfinished] = useState<SavedJob | null>(null);
+  const [unfinished, setUnfinished] = useState<(SavedJob & { info?: ImportJobInfo }) | null>(null);
+  const [resumeNote, setResumeNote] = useState("");
   const store = useMemo(() => (typeof window === "undefined" ? null : browserStore()), []);
   const [rows, setRows] = useState<PlanRow[]>([]);
   const [jobId, setJobId] = useState("");
   const [planHash, setPlanHash] = useState("");
   const [finished, setFinished] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  // The server's own counters from the last step: exact even when this page resumed a job or a batch was retried.
+  const [serverCounts, setServerCounts] = useState<{ created: number; updated: number; unchanged: number } | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<PlanAction | "all">("all");
   const [shown, setShown] = useState(PREVIEW_PAGE);
@@ -51,15 +58,38 @@ export default function ImportPage() {
 
   const domain = company.data?.emailDomain ?? "";
   const companyId = session?.companyId ?? "";
-  const sessionJobs = () => { try { return window.sessionStorage; } catch { return null; } };
+  const sessionJobs = () => { try { return window.localStorage; } catch { return null; } };
 
   useEffect(() => {
     // An import that was applying when the page closed can be continued; the server remembers how far it got.
+    let cancelled = false;
+    let saved: SavedJob | null = null;
     try {
-      const saved = sessionJobs()?.getItem(jobKey(companyId));
-      if (saved) setUnfinished(JSON.parse(saved) as SavedJob);
+      const raw = sessionJobs()?.getItem(jobKey(companyId));
+      if (raw) saved = JSON.parse(raw) as SavedJob;
     } catch { /* nothing saved */ }
-  }, [companyId]);
+    if (!saved || !companyId) return;
+    const job = saved;
+    const forget = () => { try { sessionJobs()?.removeItem(jobKey(companyId)); } catch { /* ignore */ } };
+    api.getImport(job.jobId).then(
+      (info) => {
+        if (cancelled) return;
+        if (info.nextChunk >= info.chunkCount) {
+          // It finished (this tab or another): nothing to continue, say what happened instead.
+          forget();
+          setResumeNote(`${job.fileName || "Your last import"} finished: ${info.progress.created} added, ${info.progress.updated} updated, ${info.progress.unchanged} unchanged${info.progress.failed ? `, ${info.progress.failed} failed` : ""}.`);
+        } else {
+          setUnfinished({ ...job, info });
+        }
+      },
+      (failure: unknown) => {
+        if (cancelled) return;
+        if (failure instanceof ApiError && failure.code === "not-found") forget(); // the job is gone: nothing to continue
+        else setUnfinished(job); // can't reach the server right now: still offer to continue
+      },
+    );
+    return () => { cancelled = true; };
+  }, [api, companyId]);
   const counts = useMemo(() => planCounts(rows), [rows]);
   const visible = useMemo(() => rows.filter((r) => filter === "all" || r.action === filter), [rows, filter]);
   const changes = counts.create + counts.update;
@@ -104,7 +134,7 @@ export default function ImportPage() {
     setConfirming(false);
     setPhase("applying");
     setError("");
-    if (!resume) { setResults([]); setProgress({ done: 0, total: counts.create + counts.update + counts.unchanged }); }
+    if (!resume) { setResults([]); setServerCounts(null); setProgress({ done: 0, total: counts.create + counts.update + counts.unchanged }); }
     try {
       sessionJobs()?.setItem(jobKey(companyId), JSON.stringify(job satisfies SavedJob));
     } catch { /* resume after reload just won't be offered */ }
@@ -112,6 +142,7 @@ export default function ImportPage() {
       await applyAll(api, job.jobId, job.planHash, (step) => {
         setResults((previous) => [...previous, ...step.results.map((r) => ({ line: job.lines[r.rowNumber - 1] ?? r.rowNumber, email: r.email, outcome: r.outcome, message: r.message }))]);
         setProgress({ done: step.progress.processed, total: step.progress.total });
+        setServerCounts({ created: step.progress.created, updated: step.progress.updated, unchanged: step.progress.unchanged });
       });
       setFinished(true);
       try { sessionJobs()?.removeItem(jobKey(companyId)); } catch { /* ignore */ }
@@ -149,10 +180,15 @@ export default function ImportPage() {
       </ol>
       {phase === "choose" && (
         <>
+          {resumeNote && <Notice>{resumeNote}</Notice>}
           {unfinished && (
             <section className="panel" aria-labelledby="resume-h">
               <h2 id="resume-h">Unfinished import</h2>
-              <p className="muted">{unfinished.fileName || "An import"} was being applied when this page closed. The server remembers how far it got, so continuing won’t repeat finished rows.</p>
+              <p className="muted">
+                {unfinished.fileName || "An import"} was being applied when this page closed.
+                {unfinished.info && <> {unfinished.info.progress.processed.toLocaleString("en-US")} of {unfinished.info.progress.total.toLocaleString("en-US")} rows are done ({unfinished.info.nextChunk} of {unfinished.info.chunkCount} batches).</>}
+                {" "}The server remembers how far it got, so continuing won’t repeat finished rows or change the counts.
+              </p>
               <div className="actions"><button className="pill-btn dark" onClick={() => resumeSaved(unfinished)}>Continue import</button><button className="pill-btn gray" onClick={discardSaved}>Dismiss</button></div>
             </section>
           )}
@@ -283,9 +319,9 @@ export default function ImportPage() {
         <section className="panel" aria-labelledby="done">
           <h2 id="done">{failed.length || !finished ? "Import finished with problems" : "Import complete"}</h2>
           <div className="stats" role="group" aria-label="Import result">
-            <div className="stat"><span className="stat-n">{outcome("created")}</span><span>Added to roster</span></div>
-            <div className="stat"><span className="stat-n">{outcome("updated")}</span><span>Updated</span></div>
-            <div className="stat"><span className="stat-n">{outcome("unchanged")}</span><span>Unchanged</span></div>
+            <div className="stat"><span className="stat-n">{serverCounts?.created ?? outcome("created")}</span><span>Added to roster</span></div>
+            <div className="stat"><span className="stat-n">{serverCounts?.updated ?? outcome("updated")}</span><span>Updated</span></div>
+            <div className="stat"><span className="stat-n">{serverCounts?.unchanged ?? outcome("unchanged")}</span><span>Unchanged</span></div>
             <div className="stat"><span className="stat-n">{failed.length + previewInvalid.size}</span><span>Skipped</span></div>
           </div>
           {!finished && <p className="notice">The import stopped early. Choose the same file again to run it once more: finished rows won’t change.</p>}

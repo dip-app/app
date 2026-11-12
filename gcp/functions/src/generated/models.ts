@@ -572,6 +572,9 @@ export interface RosterEntry {
   updatedAt: string;
   revision: number;
   memberStatus?: "active" | "deactivated";
+  resendCount?: number;
+  lastResentAt?: string;
+  lastResentBy?: string;
 }
 
 export interface AdminMemberSummary {
@@ -747,6 +750,7 @@ export interface ListMembersResponse {
   contractVersion: number;
   members: Array<AdminMemberSummary>;
   nextPageToken?: string;
+  total?: number;
 }
 
 export interface GetMemberRequest {
@@ -1019,4 +1023,64 @@ export interface ListCoworkersResponse {
   contractVersion: number;
   coworkers: Array<Coworker>;
   truncated: boolean;
+}
+
+export interface ResendRosterInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  entryId: string;
+}
+
+export interface ResendRosterInviteResponse {
+  contractVersion: number;
+  entryId: string;
+  status: "invited";
+  resendCount: number;
+  lastResentAt: string;
+  signInUrl: string;
+  message: string;
+}
+
+export interface BackfillRosterRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  dryRun: boolean;
+  pageToken?: string;
+}
+
+export interface BackfillRosterResponse {
+  contractVersion: number;
+  dryRun: boolean;
+  scanned: number;
+  created: number;
+  existing: number;
+  skipped: number;
+  nextPageToken?: string;
+  done: boolean;
+}
+
+export interface RosterCounts {
+  all: number;
+  invited: number;
+  active: number;
+  deactivated: number;
+  revoked: number;
+}
+
+export interface ListRosterRequest {
+  contractVersion: number;
+  companyId: string;
+  state?: "invited" | "active" | "deactivated" | "revoked";
+  query?: string;
+  pageSize?: number;
+  pageToken?: string;
+}
+
+export interface ListRosterResponse {
+  contractVersion: number;
+  entries: Array<RosterEntry>;
+  nextPageToken?: string;
+  counts?: RosterCounts;
 }

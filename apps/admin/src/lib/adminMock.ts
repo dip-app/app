@@ -1,7 +1,8 @@
 import type { AdminOpsApi } from "./adminApi";
+import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type FieldChange, type ImportPlanResponse, type ImportRow, type Member, type PlanAction, type Role, type RosterRow, type Submission,
+  type BackfillStep, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -46,12 +47,12 @@ interface OpsState {
   seededThemes?: string[];
 }
 
-const KEY = "dip-admin-mock-ops-v2";
+const KEY = "dip-admin-mock-ops-v3";
 const TEAMS = ["Platform", "Mentors", "Wellness", "Events crew", "Design"];
 const LOCATIONS = ["Pittsburgh", "Philadelphia", "New York", "Remote"];
 const DEPARTMENTS = ["Engineering", "People", "Marketing", "Finance", "Operations"];
-const FIRST = ["Alex", "Pat", "Casey", "Riley", "Sam", "Jordan", "Morgan", "Taylor", "Avery", "Quinn", "Jamie", "Robin", "Drew", "Skyler", "Cameron", "Reese", "Emery", "Harper", "Rowan", "Sage", "Blake", "Dana", "Kai", "Lee"];
-const LAST = ["Admin", "Member", "Novak", "Chen", "Okafor", "Rivera", "Patel", "Haas", "Kim", "Silva", "Brandt", "Costa", "Dubois", "Evans", "Fischer", "Gupta", "Hughes", "Ito", "Jensen", "Khan", "Lopez", "Mendes", "Nair", "Ortiz"];
+const FIRST = ["Alex", "Pat", "Casey", "Riley", "Sam", "Jordan", "Morgan", "Taylor", "Avery", "Quinn", "Jamie", "Robin", "Drew", "Skyler", "Cameron", "Reese", "Emery", "Harper", "Rowan", "Sage", "Blake", "Dana", "Kai", "Lee", "Noor", "Ola", "Pia", "Quin", "Remy", "Tess"];
+const LAST = ["Admin", "Member", "Novak", "Chen", "Okafor", "Rivera", "Patel", "Haas", "Kim", "Silva", "Brandt", "Costa", "Dubois", "Evans", "Fischer", "Gupta", "Hughes", "Ito", "Jensen", "Khan", "Lopez", "Mendes", "Nair", "Ortiz", "Park", "Quill", "Roth", "Stone", "Tran", "Ueda"];
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const isoAgo = (now: Date, days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -84,7 +85,12 @@ export function seedOps(now: Date): OpsState {
     teamIds: [teams[teamIndex].id], workLocation: LOCATIONS[teamIndex % 4], department: DEPARTMENTS[teamIndex % 5], jobTitle: "Specialist",
     managerEmail: "", startDate: "", state: "invited", invitedAt: isoAgo(now, days),
   });
-  const roster: StoredRoster[] = [invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
+  // Everyone who signed in has a claimed entry, except the last five: they joined before the roster listed everyone (the backfill adds them).
+  const claimed = members.filter((m) => m.companyId === "acme").slice(0, -5).map((m): StoredRoster => ({
+    companyId: "acme", entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
+    jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt,
+  }));
+  const roster: StoredRoster[] = [...claimed, invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
   const photos: Stored<AlbumPhoto>[] = [];
   const comments: Stored<AlbumComment & { eventId: string }>[] = [];
   const images = ["games", "cooking", "outdoors", "fitness", "hiking"];
@@ -413,6 +419,21 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const session = staff("members.view");
       return state.members.filter((m) => m.companyId === session.companyId).map((m) => view(session, m)).sort((a, b) => a.displayName.localeCompare(b.displayName));
     },
+    async listMembersPage(q: MemberQuery, cursor, pageSize = 25) {
+      const state = load();
+      const session = staff("members.view");
+      const text = q.query.trim().toLowerCase();
+      const all = state.members.filter((m) => m.companyId === session.companyId).sort((a, b) => (a.id < b.id ? -1 : 1));
+      const matches = (m: StoredMember) =>
+        (q.status === "all" || m.status === q.status) && (q.role === "all" || m.role === q.role) && (q.teamId === "all" || !q.teamId || m.teamIds.includes(q.teamId)) &&
+        (q.workLocation === "all" || !q.workLocation || m.workLocation.toLowerCase() === q.workLocation.toLowerCase()) &&
+        (!text || `${m.displayName} ${m.email} ${m.department} ${m.jobTitle} ${m.workLocation}`.toLowerCase().includes(text));
+      const rest = all.filter((m) => !cursor || m.id > cursor);
+      const page = rest.filter(matches).slice(0, pageSize);
+      const last = page[page.length - 1];
+      const more = last ? rest.some((m) => m.id > last.id && matches(m)) : false;
+      return { members: page.map((m) => view(session, m)), nextCursor: more ? last!.id : null, total: cursor ? null : all.length };
+    },
     async getMember(id) {
       const state = load();
       const session = staff("members.view");
@@ -487,23 +508,82 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     },
 
     // ----- roster
-    async listRoster() {
+    async listRosterPage(q: RosterQuery, cursor, pageSize = 25) {
       const state = load();
       const session = staff("roster.manage");
-      const entries = state.roster.filter((r) => r.companyId === session.companyId).map((r) => strip(r));
-      // People who already have an account appear through their member record.
-      const people = state.members.filter((m) => m.companyId === session.companyId).map((m): RosterRow => ({
-        entryId: m.id, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
-        jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: m.status === "deactivated" ? "deactivated" : "active", memberId: m.id, invitedAt: m.createdAt,
-      }));
-      return [...entries, ...people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+      const stateOf = (r: StoredRoster): RosterRow["state"] => {
+        const m = r.memberId ? state.members.find((x) => x.id === r.memberId) : undefined;
+        return m ? (m.status === "deactivated" ? "deactivated" : "active") : r.state;
+      };
+      const entries = state.roster.filter((r) => r.companyId === session.companyId).sort((a, b) => (a.entryId < b.entryId ? -1 : 1));
+      const text = q.query.trim().toLowerCase();
+      const matches = (r: StoredRoster) => (q.state === "all" || stateOf(r) === q.state) && (!text || `${r.displayName} ${r.email} ${r.department} ${r.jobTitle} ${r.workLocation}`.toLowerCase().includes(text));
+      const rest = entries.filter((r) => !cursor || r.entryId > cursor);
+      const page = rest.filter(matches).slice(0, pageSize);
+      const last = page[page.length - 1];
+      const more = last ? rest.some((r) => r.entryId > last.entryId && matches(r)) : false;
+      let counts: RosterCounts | null = null;
+      if (!cursor) {
+        counts = { all: entries.length, invited: 0, active: 0, deactivated: 0, revoked: 0 };
+        for (const r of entries) counts[stateOf(r)] += 1;
+      }
+      return { rows: page.map((r) => ({ ...strip(r), state: stateOf(r) })), nextCursor: more ? last!.entryId : null, counts };
+    },
+    async resendInvite(row) {
+      const state = load();
+      const session = staff("roster.manage");
+      const entry = state.roster.find((r) => r.companyId === session.companyId && r.entryId === row.entryId);
+      if (!entry) throw new ApiError("not-found", "That person isn’t on the roster.", {}, "ROSTER_ENTRY_NOT_FOUND");
+      if (entry.state === "active" || entry.state === "deactivated") throw new ApiError("failed-precondition", "This person already signed in.", {}, "ROSTER_ENTRY_CLAIMED");
+      if (entry.state !== "invited") throw new ApiError("failed-precondition", "Invite this person again before resending.", {}, "ROSTER_ENTRY_NOT_INVITED");
+      const sent = entry.resendCount ?? 0;
+      if (sent >= MAX_RESENDS) throw new ApiError("resource-exhausted", "This invite was already resent several times. Reach out to the person directly.", {}, "RESEND_LIMIT");
+      entry.resendCount = sent + 1;
+      entry.lastResentAt = now().toISOString();
+      log(state, session, { action: "roster.resend", targetType: "roster", targetId: entry.entryId, summary: `Resent the invite for ${entry.email} (#${sent + 1})`, changes: [{ field: "resendCount", before: String(sent), after: String(sent + 1) }] });
+      save(state);
+      return { resendCount: sent + 1, lastResentAt: entry.lastResentAt, ...inviteMessage({ name: entry.displayName, company: company(state, session).name, email: entry.email, role: entry.role }) };
+    },
+    async backfillRoster(dryRun, _requestId, cursor): Promise<BackfillStep> {
+      const state = load();
+      const session = staff("roster.manage");
+      const members = state.members.filter((m) => m.companyId === session.companyId).sort((a, b) => (a.id < b.id ? -1 : 1)).filter((m) => !cursor || m.id > cursor).slice(0, 100);
+      const step: BackfillStep = { dryRun, scanned: members.length, created: 0, existing: 0, skipped: 0, nextCursor: null, done: members.length < 100 };
+      for (const m of members) {
+        if (!m.email) { step.skipped += 1; continue; }
+        if (state.roster.some((r) => r.companyId === session.companyId && r.email === m.email)) { step.existing += 1; continue; }
+        step.created += 1;
+        if (!dryRun) {
+          state.roster.push({
+            companyId: session.companyId, entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation,
+            department: m.department, jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt,
+          });
+        }
+      }
+      if (!step.done) step.nextCursor = members[members.length - 1]!.id;
+      if (!dryRun) {
+        log(state, session, { action: "roster.backfill", targetType: "roster", targetId: cursor ?? "start", summary: `Added existing members to the roster: ${step.created} added, ${step.existing} already listed, ${step.skipped} skipped`, changes: [{ field: "created", before: "", after: String(step.created) }] });
+        save(state);
+      }
+      return step;
+    },
+    async getImport(jobId): Promise<ImportJobInfo> {
+      const state = load();
+      const session = staff("import.run");
+      const job = state.jobs[jobId];
+      if (!job || job.companyId !== session.companyId) throw new ApiError("not-found", "That import doesn’t exist any more.", {}, "IMPORT_JOB_NOT_FOUND");
+      const count = (o: string) => job.results.filter((r) => r.outcome === o).length;
+      return {
+        jobId, status: job.status, chunkCount: job.chunkCount, nextChunk: job.nextChunk, planHash: job.planHash, fileName: "",
+        progress: { processed: job.results.length, total: job.rows.length, created: count("created"), updated: count("updated"), unchanged: count("unchanged"), failed: count("failed") },
+      };
     },
     async revokeRosterEntry(entryId) {
       const state = load();
       const session = staff("roster.manage");
       const entry = state.roster.find((r) => r.companyId === session.companyId && r.entryId === entryId);
       if (!entry) throw new ApiError("not-found", "That person isn’t on the roster.", {}, "ROSTER_ENTRY_NOT_FOUND");
-      if (entry.state === "revoked") return;
+      if (entry.state !== "invited") return; // revoked already, or a claimed entry (revoke the member instead)
       entry.state = "revoked";
       log(state, session, { action: "roster.revoke", targetType: "roster", targetId: entryId, summary: `Withdrew the invite for ${entry.displayName}`, changes: [{ field: "status", before: "invited", after: "revoked" }] });
       save(state);

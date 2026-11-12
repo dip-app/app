@@ -176,3 +176,34 @@ export function parseGetImport(data: unknown) {
 }
 
 export { invalid };
+
+export function parseResendRoster(data: unknown) {
+  const r = Reader.from(data, [...MUTATING, "entryId"]);
+  const entryId = r.record.entryId;
+  if (typeof entryId !== "string" || !HASH.test(entryId)) r.fail("entryId");
+  const req = { companyId: r.id("companyId"), requestId: r.requestId(), entryId: typeof entryId === "string" ? entryId : "" };
+  r.finish();
+  return req;
+}
+
+export function parseBackfillRoster(data: unknown) {
+  const r = Reader.from(data, [...MUTATING, "dryRun", "pageToken"]);
+  const dryRun = r.optBool("dryRun");
+  if (dryRun === undefined) r.fail("dryRun");
+  const req = { companyId: r.id("companyId"), requestId: r.requestId(), dryRun: dryRun === true, pageToken: r.optId("pageToken") };
+  r.finish();
+  return req;
+}
+
+const ROSTER_STATES = ["invited", "active", "deactivated", "revoked"] as const;
+export type RosterState = (typeof ROSTER_STATES)[number];
+
+export function parseListRoster(data: unknown) {
+  const r = Reader.from(data, [...BASE, "state", "query", "pageSize", "pageToken"]);
+  const req = {
+    companyId: r.id("companyId"), state: r.optEnum("state", ROSTER_STATES), query: r.optText("query", 80), pageSize: r.optInt("pageSize", 1, 100) ?? 50,
+    pageToken: r.optId("pageToken"),
+  };
+  r.finish();
+  return req;
+}

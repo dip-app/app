@@ -1,6 +1,7 @@
 import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
-  ImportPlanRequest, ImportPlanResponse, Member, MemberPatch, MemberStatus, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
+  RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 
 /**
@@ -27,7 +28,10 @@ export interface AdminOpsApi {
   recordAttendance(eventId: string, memberId: string, checkedIn: boolean): Promise<{ pointsAwarded: number; checkedIn: boolean }>;
 
   // ----- Members (#124)
+  /** Every member (follows the cursor to the end; for pickers and joins, not for the directory screen). */
   listMembers(): Promise<Member[]>;
+  /** One page of the directory with server-side search and filters (listMembersV1 scans in id order, so a page can be short while more follow). */
+  listMembersPage(query: MemberQuery, cursor?: string | null, pageSize?: number): Promise<MemberPage>;
   getMember(memberId: string): Promise<Member>;
   updateMember(memberId: string, expectedRevision: number, patch: MemberPatch): Promise<Member>;
   setMemberStatus(memberId: string, status: Exclude<MemberStatus, "invited">, reason: string): Promise<Member>;
@@ -36,8 +40,15 @@ export interface AdminOpsApi {
   adjustPoints(memberId: string, requestId: string, delta: number, reason: string): Promise<Member>;
 
   // ----- Roster (#126) and import (#125)
-  listRoster(): Promise<RosterRow[]>;
+  /** One page of the roster with server-side state filter and search (listRosterV1). The first page also returns exact counts per state. */
+  listRosterPage(query: RosterQuery, cursor?: string | null, pageSize?: number): Promise<RosterPage>;
   revokeRosterEntry(entryId: string): Promise<void>;
+  /** resendRosterInviteV1: records a resend for an invited entry and returns the message and link to share (no email is sent). */
+  resendInvite(row: RosterRow): Promise<ResendResult>;
+  /** backfillRosterV1: adds existing members that have no roster entry, 100 per call. A dry run only counts. */
+  backfillRoster(dryRun: boolean, requestId: string, cursor?: string | null): Promise<BackfillStep>;
+  /** getEmployeeImportV1: where an import stands (used to resume after a reload). */
+  getImport(jobId: string): Promise<ImportJobInfo>;
   /** Re-invites a revoked entry (upsertRosterEntryV1). */
   reinvite(row: RosterRow): Promise<void>;
   /** Dry run (importEmployeesV1): validates and plans every row, writes nothing but the job record. */
