@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.org.dip-app.DIP"],
+        "appIDs": ["AX2A775SS6.work.letsdip.app"],
         "components": [{ "/": "/e/*", "comment": "Event share links: https://<host>/e/<eventId>" }]
       }
     ]

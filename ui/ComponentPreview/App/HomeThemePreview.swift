@@ -51,7 +51,7 @@ import SwiftUI
         case "loading": try await Task.sleep(for: .seconds(3600)); return []
         case "none": return []
         case "offline": throw ChallengeReadFailure.unavailable
-        case "error" where serverReads == 1: throw ChallengeReadFailure.unavailable
+        case "error" where serverReads <= 2: throw ChallengeReadFailure.unavailable
         default: return [record()]
         }
     }

@@ -211,7 +211,7 @@ Do this per screen as each item lands, and again as a sweep in the last week.
 
 Depends on the new paid Apple Developer account and a few decisions.
 
-- Bundle ID under the paid team (`org.dip-app.DIP` is registered to another team), then update the Firebase iOS app, Google sign-in client and App Check registration if it changes.
+- Bundle ID under the paid team (`work.letsdip.app` is registered to another team), then update the Firebase iOS app, Google sign-in client and App Check registration if it changes.
 - App Attest entitlement in `project.yml` and App Attest registered with the Team ID in the Firebase console; version/build bump.
 - Invite teammates in App Store Connect (Users and Access); first internal TestFlight build, then optionally Xcode Cloud for builds on merge.
 - **Acceptance:** a TestFlight build installs for an invited teammate, signs in, and reaches live events.

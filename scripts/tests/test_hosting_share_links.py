@@ -43,7 +43,7 @@ class HostingShareLinks(unittest.TestCase):
     def test_aasa_is_valid_json_for_the_event_path(self):
         aasa = json.loads((ROOT / "apps/admin/public/aasa/apple-app-site-association.json").read_text())
         detail = aasa["applinks"]["details"][0]
-        self.assertEqual(detail["appIDs"], ["TEAMID.org.dip-app.DIP"])  # placeholder Team ID until the paid team exists
+        self.assertEqual(detail["appIDs"], ["AX2A775SS6.work.letsdip.app"])  # placeholder Team ID until the paid team exists
         self.assertEqual(detail["components"][0]["/"], "/e/*")
 
     def test_domain_matches_swift_base_url_and_paid_entitlements(self):

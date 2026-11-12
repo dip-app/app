@@ -25,7 +25,7 @@ Only demo-dip emulators are the default. Rules deny all initially; feature PRs o
 | Decision | Proposed default / why | Required before |
 |---|---|---|
 | Firebase/GCP projects and location | Separate development/staging/production; us-central1 only as callable proposal | Any deployment or client config |
-| iOS minimum / identifier | iOS17+, org.dip-app.DIP placeholders | Device signing/release |
+| iOS minimum / identifier | iOS17+, work.letsdip.app placeholders | Device signing/release |
 | Membership | Google sign-in; server matches the verified email's root domain to a company by querying `companies.emailDomain`; personal domains refused ([ADR 0007](adr/0007-oauth-domain-based-sign-in.md)) | Accounts integration |
 | Roles | Existing admin means V1 organizer; member is normal user | Event commands/rules |
 | Public company projection | No secrets in the readable company document; domain mapping is server-only | Company reads |

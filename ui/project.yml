@@ -1,6 +1,6 @@
 name: DIP
 options:
-  bundleIdPrefix: org.dip-app
+  bundleIdPrefix: work.letsdip
   deploymentTarget:
     iOS: "17.0"
 packages:
@@ -77,7 +77,7 @@ targets:
         product: FirebaseMessaging
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.dip-app.DIP
+        PRODUCT_BUNDLE_IDENTIFIER: work.letsdip.app
         # Free-team builds use the generated Config/DIP.entitlements (no Associated Domains). Paid-team builds set
         # DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements in the untracked Local.xcconfig (docs/design/share-links.md).
         CODE_SIGN_ENTITLEMENTS: $(DIP_ENTITLEMENTS)
