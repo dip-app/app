@@ -31,5 +31,8 @@ export const paths = {
   importResult: (companyId: string, jobId: string, rowNumber: number) => `companies/${companyId}/importJobs/${jobId}/results/${rowNumber}`,
   importChunk: (companyId: string, jobId: string, index: number) => `companies/${companyId}/importJobs/${jobId}/chunks/${index}`,
   pointTransaction: (companyId: string, id: string) => `companies/${companyId}/pointTransactions/${id}`,
+  bugReports: "bugReports",
+  bugReport: (reportId: string) => `bugReports/${reportId}`,
+  bugTriage: (companyId: string, reportId: string) => `companies/${companyId}/bugReportTriage/${reportId}`,
   notification: (uid: string, id: string) => `users/${uid}/notifications/${id}`,
 };

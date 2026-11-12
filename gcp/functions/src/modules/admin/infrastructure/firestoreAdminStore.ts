@@ -55,6 +55,20 @@ export class FirestoreAdminStore implements AdminStore {
     };
     return {
       get: async path => readDoc((await transaction.get(db.doc(path))).data()),
+      getMany: async paths => {
+        if (paths.length === 0) return [];
+        const snaps = await transaction.getAll(...paths.map(path => db.doc(path)));
+        return snaps.map(snap => readDoc(snap.data()));
+      },
+      scanNewest: async (collectionPath, query) => {
+        let ref = db.collection(collectionPath) as FirebaseFirestore.Query;
+        if (query.from) ref = ref.where(query.field, ">=", Timestamp.fromDate(query.from));
+        if (query.to) ref = ref.where(query.field, "<=", Timestamp.fromDate(query.to));
+        ref = ref.orderBy(query.field, "desc").orderBy(FieldPath.documentId(), "desc");
+        if (query.after) ref = ref.startAfter(Timestamp.fromDate(query.after.at), query.after.id);
+        const snap = await transaction.get(ref.limit(query.limit));
+        return snap.docs.map(d => ({ id: d.id, data: readDoc(d.data()) ?? {} }));
+      },
       list: async (collectionPath, query: ListQuery) => {
         let ref = db.collection(collectionPath) as FirebaseFirestore.Query;
         for (const [field, value] of query.where ?? []) ref = ref.where(field, "==", value);
@@ -115,6 +129,24 @@ export class StorageObjects implements ObjectStore {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async readUrl(path: string, ttlMs: number, maxInlineBytes: number): Promise<{ url: string; expiresAt: Date } | null> {
+    const file = this.storage.bucket().file(path);
+    const [exists] = await file.exists();
+    if (!exists) return null;
+    const expiresAt = new Date(Date.now() + ttlMs);
+    try {
+      const [url] = await file.getSignedUrl({ version: "v4", action: "read", expires: expiresAt });
+      return { url, expiresAt };
+    } catch {
+      // Signing needs the function's service account to hold signBlob on itself; without it, inline small objects.
+      const [metadata] = await file.getMetadata();
+      if (Number(metadata.size) > maxInlineBytes) return null;
+      const [bytes] = await file.download();
+      if (bytes.length > maxInlineBytes) return null;
+      return { url: `data:image/jpeg;base64,${bytes.toString("base64")}`, expiresAt };
     }
   }
 }

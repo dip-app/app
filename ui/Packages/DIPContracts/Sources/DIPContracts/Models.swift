@@ -2170,3 +2170,195 @@ public struct ListRosterResponse: Codable, Equatable, Sendable {
         self.counts = counts
     }
 }
+
+public struct AdminBugReportDiagnostics: Codable, Equatable, Sendable {
+    public var appVersion: String?
+    public var appBuild: String?
+    public var osVersion: String?
+    public var deviceModel: String?
+    public var locale: String?
+    public var screen: String?
+    public var installId: String?
+
+    public init(appVersion: String? = nil, appBuild: String? = nil, osVersion: String? = nil, deviceModel: String? = nil, locale: String? = nil, screen: String? = nil, installId: String? = nil) {
+        self.appVersion = appVersion
+        self.appBuild = appBuild
+        self.osVersion = osVersion
+        self.deviceModel = deviceModel
+        self.locale = locale
+        self.screen = screen
+        self.installId = installId
+    }
+}
+
+public struct AdminBugReport: Codable, Equatable, Sendable {
+    public var id: String
+    public var category: String
+    public var description: String
+    public var source: String
+    public var screen: String
+    public var createdAt: Date
+    public var reporterId: String
+    public var reporterName: String
+    public var appVersion: String?
+    public var hasScreenshot: Bool
+    public var status: String
+    public var hasNote: Bool
+    public var assigneeId: String?
+    public var assigneeName: String?
+
+    public init(id: String, category: String, description: String, source: String, screen: String, createdAt: Date, reporterId: String, reporterName: String, appVersion: String? = nil, hasScreenshot: Bool, status: String, hasNote: Bool, assigneeId: String? = nil, assigneeName: String? = nil) {
+        self.id = id
+        self.category = category
+        self.description = description
+        self.source = source
+        self.screen = screen
+        self.createdAt = createdAt
+        self.reporterId = reporterId
+        self.reporterName = reporterName
+        self.appVersion = appVersion
+        self.hasScreenshot = hasScreenshot
+        self.status = status
+        self.hasNote = hasNote
+        self.assigneeId = assigneeId
+        self.assigneeName = assigneeName
+    }
+}
+
+public struct AdminBugReportCounts: Codable, Equatable, Sendable {
+    public var all: Int
+    public var new: Int
+    public var triaged: Int
+    public var resolved: Int
+    public var capped: Bool
+
+    public init(all: Int, new: Int, triaged: Int, resolved: Int, capped: Bool) {
+        self.all = all
+        self.new = new
+        self.triaged = triaged
+        self.resolved = resolved
+        self.capped = capped
+    }
+}
+
+public struct ListBugReportsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var status: String?
+    public var category: String?
+    public var query: String?
+    public var from: String?
+    public var to: String?
+    public var pageSize: Int?
+    public var pageToken: String?
+
+    public init(contractVersion: Int, companyId: String, status: String? = nil, category: String? = nil, query: String? = nil, from: String? = nil, to: String? = nil, pageSize: Int? = nil, pageToken: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.status = status
+        self.category = category
+        self.query = query
+        self.from = from
+        self.to = to
+        self.pageSize = pageSize
+        self.pageToken = pageToken
+    }
+}
+
+public struct ListBugReportsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var reports: [AdminBugReport]
+    public var nextPageToken: String?
+    public var counts: AdminBugReportCounts?
+
+    public init(contractVersion: Int, reports: [AdminBugReport], nextPageToken: String? = nil, counts: AdminBugReportCounts? = nil) {
+        self.contractVersion = contractVersion
+        self.reports = reports
+        self.nextPageToken = nextPageToken
+        self.counts = counts
+    }
+}
+
+public struct GetBugReportRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var reportId: String
+
+    public init(contractVersion: Int, companyId: String, reportId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.reportId = reportId
+    }
+}
+
+public struct GetBugReportResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var report: AdminBugReport
+    public var reporterEmail: String
+    public var diagnostics: AdminBugReportDiagnostics?
+    public var screenshotUrl: String?
+    public var screenshotExpiresAt: Date?
+    public var note: String
+    public var revision: Int
+    public var updatedAt: Date?
+    public var updatedByName: String?
+
+    public init(contractVersion: Int, report: AdminBugReport, reporterEmail: String, diagnostics: AdminBugReportDiagnostics? = nil, screenshotUrl: String? = nil, screenshotExpiresAt: Date? = nil, note: String, revision: Int, updatedAt: Date? = nil, updatedByName: String? = nil) {
+        self.contractVersion = contractVersion
+        self.report = report
+        self.reporterEmail = reporterEmail
+        self.diagnostics = diagnostics
+        self.screenshotUrl = screenshotUrl
+        self.screenshotExpiresAt = screenshotExpiresAt
+        self.note = note
+        self.revision = revision
+        self.updatedAt = updatedAt
+        self.updatedByName = updatedByName
+    }
+}
+
+public struct UpdateBugReportRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var reportId: String
+    public var status: String?
+    public var note: String?
+    public var assigneeId: String?
+    public var expectedRevision: Int?
+
+    public init(contractVersion: Int, companyId: String, requestId: String, reportId: String, status: String? = nil, note: String? = nil, assigneeId: String? = nil, expectedRevision: Int? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.reportId = reportId
+        self.status = status
+        self.note = note
+        self.assigneeId = assigneeId
+        self.expectedRevision = expectedRevision
+    }
+}
+
+public struct UpdateBugReportResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var reportId: String
+    public var status: String
+    public var note: String
+    public var assigneeId: String?
+    public var assigneeName: String?
+    public var revision: Int
+    public var updatedAt: Date?
+    public var changed: Bool
+
+    public init(contractVersion: Int, reportId: String, status: String, note: String, assigneeId: String? = nil, assigneeName: String? = nil, revision: Int, updatedAt: Date? = nil, changed: Bool) {
+        self.contractVersion = contractVersion
+        self.reportId = reportId
+        self.status = status
+        self.note = note
+        self.assigneeId = assigneeId
+        self.assigneeName = assigneeName
+        self.revision = revision
+        self.updatedAt = updatedAt
+        self.changed = changed
+    }
+}

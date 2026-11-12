@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
 import { AdminOnly } from "./AdminOnly";
+import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 
@@ -18,7 +19,7 @@ interface Props {
   requires?: Capability;
 }
 
-interface NavItem { href: string; label: string; d: string; requires?: Capability }
+interface NavItem { href: string; label: string; d: string; requires?: Capability; badge?: "bugReports" }
 interface NavGroup { heading: string; items: NavItem[] }
 
 // Grouped like most admin tools: what you run, what you review, who is involved, what happened. Items a role can't use are hidden.
@@ -34,6 +35,9 @@ const NAV: NavGroup[] = [
     { href: "/members/", label: "Members", d: "M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.7a3.5 3.5 0 0 1 0 6.6", requires: "members.view" },
     { href: "/roster/", label: "Roster", d: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01", requires: "roster.manage" },
     { href: "/import/", label: "Import people", d: "M12 4v11m0 0-4-4m4 4 4-4M5 19h14", requires: "import.run" },
+  ] },
+  { heading: "Support", items: [
+    { href: "/bug-reports/", label: "Bug reports", d: "M9 9V7a3 3 0 0 1 6 0v2M7 9h10v5a5 5 0 0 1-10 0zM4 13h3M17 13h3M5 19l2.5-2.2M19 19l-2.5-2.2M12 9v10", requires: "bugreports.manage", badge: "bugReports" },
   ] },
   { heading: "Insights", items: [
     { href: "/audit/", label: "Audit log", d: "M7 3.5h8l4 4V20.5H7zM14.5 3.5V8H19M10 13h6M10 17h6", requires: "audit.view" },
@@ -51,7 +55,8 @@ function isWithin(pathname: string, href: string): "page" | "true" | undefined {
 
 /** Signed-in frame. Visibility is a convenience only; every command is authorized by the backend. */
 export function Shell({ title, subtitle, action, children, requires }: Props) {
-  const { session, signOut } = useApp();
+  const { session, signOut, api } = useApp();
+  const bugBadge = useBugBadge();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -62,6 +67,22 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   useEffect(() => {
     if (!session) router.replace("/login/");
   }, [session, router]);
+
+  // Admins see how many bug reports are new. Fetched on sign-in and every few minutes; the Bug reports page keeps it current.
+  const isAdmin = can(session?.role, "bugreports.manage");
+  useEffect(() => {
+    if (!isAdmin) { setBugBadge(null); return; }
+    let cancelled = false;
+    const refresh = () => {
+      api.listBugReports({ query: "", status: "new", category: "all", from: "", to: "" }, null, 1).then(
+        (page) => { if (!cancelled && page.counts) setBugBadge({ count: page.counts.new, capped: page.counts.capped }); },
+        () => { /* the badge is a convenience; the page reports real errors */ },
+      );
+    };
+    refresh();
+    const timer = setInterval(refresh, 5 * 60_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [api, isAdmin]);
 
   const close = useCallback((returnFocus = true) => {
     setOpen(false);
@@ -128,6 +149,9 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
                 <Link key={item.href} href={item.href} className="nav-item" title={item.label} aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
                   <span className="label">{item.label}</span>
+                  {item.badge === "bugReports" && bugBadge && bugBadge.count > 0 && (
+                    <span className="nav-badge" aria-label={`${bugBadge.count}${bugBadge.capped ? " or more" : ""} new`}>{badgeLabel(bugBadge)}</span>
+                  )}
                 </Link>
               ))}
             </div>

@@ -529,7 +529,7 @@ export interface AuditEntry {
   actorName: string;
   actorRole: "member" | "organizer" | "admin";
   action: string;
-  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
+  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
   targetId: string;
   summary: string;
   changes: Array<AuditFieldChange>;
@@ -1083,4 +1083,100 @@ export interface ListRosterResponse {
   entries: Array<RosterEntry>;
   nextPageToken?: string;
   counts?: RosterCounts;
+}
+
+export interface AdminBugReportDiagnostics {
+  appVersion?: string;
+  appBuild?: string;
+  osVersion?: string;
+  deviceModel?: string;
+  locale?: string;
+  screen?: string;
+  installId?: string;
+}
+
+export interface AdminBugReport {
+  id: string;
+  category: "bug" | "confusing" | "looksWrong" | "idea" | "unspecified";
+  description: string;
+  source: "shake" | "profile";
+  screen: string;
+  createdAt: string;
+  reporterId: string;
+  reporterName: string;
+  appVersion?: string;
+  hasScreenshot: boolean;
+  status: "new" | "triaged" | "resolved";
+  hasNote: boolean;
+  assigneeId?: string;
+  assigneeName?: string;
+}
+
+export interface AdminBugReportCounts {
+  all: number;
+  new: number;
+  triaged: number;
+  resolved: number;
+  capped: boolean;
+}
+
+export interface ListBugReportsRequest {
+  contractVersion: number;
+  companyId: string;
+  status?: "new" | "triaged" | "resolved";
+  category?: "bug" | "confusing" | "looksWrong" | "idea" | "unspecified";
+  query?: string;
+  from?: string;
+  to?: string;
+  pageSize?: number;
+  pageToken?: string;
+}
+
+export interface ListBugReportsResponse {
+  contractVersion: number;
+  reports: Array<AdminBugReport>;
+  nextPageToken?: string;
+  counts?: AdminBugReportCounts;
+}
+
+export interface GetBugReportRequest {
+  contractVersion: number;
+  companyId: string;
+  reportId: string;
+}
+
+export interface GetBugReportResponse {
+  contractVersion: number;
+  report: AdminBugReport;
+  reporterEmail: string;
+  diagnostics?: AdminBugReportDiagnostics;
+  screenshotUrl?: string;
+  screenshotExpiresAt?: string;
+  note: string;
+  revision: number;
+  updatedAt?: string;
+  updatedByName?: string;
+}
+
+export interface UpdateBugReportRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  reportId: string;
+  status?: "new" | "triaged" | "resolved";
+  note?: string;
+  assigneeId?: string | null;
+  expectedRevision?: number;
+}
+
+export interface UpdateBugReportResponse {
+  contractVersion: number;
+  reportId: string;
+  status: "new" | "triaged" | "resolved";
+  note: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  revision: number;
+  updatedAt?: string;
+  changed: boolean;
 }
