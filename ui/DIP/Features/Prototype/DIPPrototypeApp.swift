@@ -20,10 +20,22 @@ struct DIPPrototypeApp: View {
     @State private var chatNotificationLevel: DIPNotificationLevel?
     @State private var chatEventID = "puppy-yoga"
     /// Coworker invitations (F4): nil when there is no invitations adapter (the bell then says "not connected").
+    private let readsOriginalPhotos: Bool
+    /// `--comment-count=N` (review builds): how many comments the comment fixtures put on each photo.
+    private static var commentCount: Int {
+        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--comment-count=") }
+            .flatMap { Int($0.dropFirst("--comment-count=".count)) } ?? 5
+    }
     @State private var invites: DIPInvitesModel?
     @State private var showInvitations = false
     @State private var invitesObservationID = UUID()
     @State private var inviteSession: InviteSession?
+    /// The notifications center (the bell): nil when there is no notifications adapter (the bell then opens Invitations).
+    @State private var notifications: DIPNotificationsModel?
+    @State private var showNotifications = false
+    @State private var notificationsObservationID = UUID()
+    @State private var pushAuthorization: DIPPushAuthorization?
+    private let pushPermission: PushPermissionControl?
     private let startsWithInvitePicker: Bool
     private let initialMemories: Bool
     private let onSignOut: (() async -> Void)?
@@ -66,7 +78,14 @@ struct DIPPrototypeApp: View {
          onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil,
          deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil,
          deepLinkOpensChat: Bool = false, onJoined: (() -> Void)? = nil,
-         invitesRepository: (any DIPInvitesRepository)? = nil) {
+         invitesRepository: (any DIPInvitesRepository)? = nil,
+         notificationsRepository: (any DIPNotificationsRepository)? = nil,
+         pushPermission: PushPermissionControl? = nil) {
+        #if DEBUG
+        self.pushPermission = pushPermission ?? (repository == nil ? PushPermissionControl.fixture() : nil)
+        #else
+        self.pushPermission = pushPermission
+        #endif
         self.deepLinkOpensChat = deepLinkOpensChat
         self.onJoined = onJoined
         self.deepLinkEventID = deepLinkEventID
@@ -86,6 +105,8 @@ struct DIPPrototypeApp: View {
         self.onRetryInterestCatalog = onRetryInterestCatalog
         self.onProfileSave = onProfileSave
         self.onSignOut = onSignOut
+        // Only a Storage-backed repository can return the stored original; fixtures save the photo as shown.
+        self.readsOriginalPhotos = repository != nil
         let argument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--screen=") }
         let screen = initialScreen ?? argument.map { String($0.dropFirst("--screen=".count)) } ?? "home"
         _selectedTab = State(
@@ -101,7 +122,9 @@ struct DIPPrototypeApp: View {
         }
         let model = DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
-                ?? (ProcessInfo.processInfo.arguments.contains("--many-tags")
+                ?? (ProcessInfo.processInfo.arguments.contains("--event-full") || ProcessInfo.processInfo.arguments.contains("--event-cancelled")
+                ? Self.fullEventReview()
+                : ProcessInfo.processInfo.arguments.contains("--many-tags")
                 ? DIPMockFixtures.manyTagsReview()
                 : ProcessInfo.processInfo.arguments.contains("--v1-event-fixtures")
                 ? DIPMockFixtures.v1Events()
@@ -112,7 +135,7 @@ struct DIPPrototypeApp: View {
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview
+                ? DIPMockFixtures.photoCommentReview(count: Self.commentCount)
                 : ["event", "event-joined", "past-event", "invite-picker"].contains(screen)
                 ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
@@ -126,9 +149,33 @@ struct DIPPrototypeApp: View {
         _uploads = State(initialValue: Self.uploadReview() ?? uploads)
         // The shell's own mock mode (previews, UI tests) gets the fixture invitations; real members get the adapter.
         let inviteSource = invitesRepository ?? (repository == nil ? Self.fixtureInvites() : nil)
-        _invites = State(initialValue: inviteSource.map { DIPInvitesModel(repository: $0) })
+        let inviteModel = inviteSource.map { DIPInvitesModel(repository: $0) }
+        // Fixture invitations do not talk to the RSVP fixtures, so an accepted invite joins the fixture event here (live: the server did).
+        if invitesRepository == nil, repository == nil { inviteModel?.didJoin = { id in try? await model.setRSVP(eventID: id, going: true) } }
+        _invites = State(initialValue: inviteModel)
         _showInvitations = State(initialValue: inviteSource != nil && screen == "invitations")
         startsWithInvitePicker = inviteSource != nil && screen == "invite-picker"
+        // Same rule as invitations: the shell's own mock mode gets the fixture notifications, real members get the adapter.
+        let notificationSource = notificationsRepository ?? (repository == nil ? Self.fixtureNotifications() : nil)
+        _notifications = State(initialValue: notificationSource.map { DIPNotificationsModel(repository: $0) })
+        _showNotifications = State(initialValue: notificationSource != nil && screen == "notifications")
+    }
+
+    /// Fixture notifications; `--notifications-state=empty|loading|failed|many|mark-failed|more-failed` (Debug) for review and UI tests.
+    static func fixtureNotifications() -> any DIPNotificationsRepository {
+        #if DEBUG
+        let state = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--notifications-state=") }.map { String($0.dropFirst("--notifications-state=".count)) }
+        switch state {
+        case "empty": return DIPMockNotificationsRepository.empty()
+        case "loading": return DIPMockNotificationsRepository.reference(behavior: .init(latency: .seconds(3600)))
+        case "failed": return DIPMockNotificationsRepository.reference(behavior: .init(observeFailure: true))
+        case "many": return DIPMockNotificationsRepository.reference(count: 70)
+        case "mark-failed": return DIPMockNotificationsRepository.reference(behavior: .init(markFailure: .offline))
+        case "more-failed": return DIPMockNotificationsRepository.reference(count: 70, behavior: .init(loadOlderFailure: .offline))
+        default: break
+        }
+        #endif
+        return DIPMockNotificationsRepository.reference()
     }
 
     /// Fixture invitations; `--invites-state=empty|loading|failed|full|search-failed|send-failed|already-invited|slow-send` (Debug) for review and UI tests.
@@ -184,6 +231,18 @@ struct DIPPrototypeApp: View {
         #endif
     }
 
+    /// `--event-full` / `--event-cancelled` (Debug review): Puppy Yoga at capacity, or cancelled, to review the pill pair
+    /// (Directions replaces Invite Coworker when inviting is not possible).
+    private static func fullEventReview() -> DIPAppSnapshot {
+        var snapshot = DIPMockFixtures.v1Events()
+        if ProcessInfo.processInfo.arguments.contains("--event-cancelled") {
+            snapshot.eventDetails["puppy-yoga"]?.metadata?.status = .cancelled
+        } else if let capacity = snapshot.eventDetails["puppy-yoga"]?.metadata?.capacity {
+            snapshot.eventDetails["puppy-yoga"]?.attendeeCount = capacity
+        }
+        return snapshot
+    }
+
     /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
     private static func emptyStateFixture() -> DIPEmptyStateFixture? {
         ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--empty-state=") }
@@ -200,6 +259,7 @@ struct DIPPrototypeApp: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
     @Environment(\.weeklyChallengeFeed) private var challengeFeed
     /// The theme page publishes its entry action here; the shared bottom bar below renders it.
@@ -281,19 +341,18 @@ struct DIPPrototypeApp: View {
                 })
             .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
         }
-        .sheet(isPresented: $showInvitations) {
-            if let invites {
-                DIPInvitationsScreen(
-                    model: invites,
-                    onOpenEvent: { id in showInvitations = false; routes = [.event(id)] },
-                    onRetry: { invitesObservationID = UUID() },
-                    onClose: { showInvitations = false })
-            }
-        }
+        .sheet(isPresented: $showNotifications) { notificationsSheet }
+        .sheet(isPresented: $showInvitations) { invitationsSheet }
         .sheet(item: $inviteSession) { session in
             DIPInviteSheet(model: session.model, eventTitle: session.title, onClose: { inviteSession = nil })
         }
         .task(id: invitesObservationID) { await invites?.observe() }
+        // Live for as long as the member's shell exists (it is keyed by member): the bell badge counts unread, and the
+        // listeners go away with the view on sign-out.
+        .task(id: notificationsObservationID) { await notifications?.observe() }
+        .task(id: showNotifications) { if showNotifications { await refreshPushAuthorization() } }
+        // Coming back from iOS Settings: re-read the permission so the banner disappears once it is on.
+        .onChange(of: scenePhase) { _, phase in if phase == .active, showNotifications { Task { await refreshPushAuthorization() } } }
         .onAppear {
             if startsWithInvitePicker, inviteSession == nil, let invites {
                 inviteSession = InviteSession(id: "puppy-yoga", title: model.snapshot?.eventDetails["puppy-yoga"]?.title ?? "Puppy Yoga",
@@ -595,13 +654,127 @@ struct DIPPrototypeApp: View {
         }
     }
 
-    /// The bell opens the invitations (the notifications area) when there is an adapter; its badge counts invitations waiting for an answer.
-    private func openNotifications() {
-        if invites != nil { showInvitations = true } else { notice = "Notifications" }
+    /// The Invitations sheet (kept out of `body`, whose modifier chain is already close to the type-checker's limit).
+    @ViewBuilder private var invitationsSheet: some View {
+        if let invites {
+            DIPInvitationsScreen(
+                model: invites,
+                // Going / Cancelled follows the member's CURRENT RSVP (only events the app has loaded are known).
+                rsvp: { id in model.snapshot?.rsvpKnown == true ? model.snapshot?.eventDetails[id]?.isJoined : nil },
+                onRejoin: { await rejoinFromInvitation($0) },
+                onOpenEvent: { id in showInvitations = false; routes = [.event(id)] },
+                onRetry: { invitesObservationID = UUID() },
+                onClose: { showInvitations = false })
+        }
     }
 
+    /// The notifications center; invitations are one tap away from it.
+    @ViewBuilder private var notificationsSheet: some View {
+        if let notifications {
+            DIPNotificationsScreen(
+                model: notifications,
+                invitesWaiting: invites?.badgeCount,
+                permissionPrompt: permissionPrompt,
+                onOpen: { openNotification($0) },
+                onOpenInvitations: { showNotifications = false; presentInvitationsAfterSheet() },
+                onPermission: { Task { await turnOnPush() } },
+                onRetry: { notificationsObservationID = UUID() },
+                onClose: { showNotifications = false })
+        }
+    }
+
+    /// The bell opens the notifications center when there is an adapter (otherwise the invitations, otherwise a notice).
+    private func openNotifications() {
+        if notifications != nil { showNotifications = true }
+        else if invites != nil { showInvitations = true }
+        else { notice = "Notifications" }
+    }
+
+    /// The bell's badge: unread notifications (live); without a notifications adapter, invitations waiting for an answer.
     private func bellCount(_ snapshot: DIPAppSnapshot) -> Int {
-        invites.map(\.badgeCount) ?? snapshot.home.unreadCount
+        notifications?.unreadCount ?? invites.map(\.badgeCount) ?? snapshot.home.unreadCount
+    }
+
+    /// Marks the row read and goes where it points (the same routes as the deep-link inbox uses).
+    private func openNotification(_ item: DIPNotification) {
+        Task { await notifications?.markRead(item.id) }
+        switch item.destination {
+        case .event(let id): showNotifications = false; routes = [.event(id)]
+        case .challenge(let id): showNotifications = false; routes = [.challenge(id)]
+        case .album(let id): showNotifications = false; routes = [.album(id)]
+        case .invitations:
+            showNotifications = false
+            if invites != nil { presentInvitationsAfterSheet() }
+        case .none: break
+        }
+    }
+
+    /// One sheet at a time: the notifications sheet finishes dismissing before Invitations presents.
+    private func presentInvitationsAfterSheet() {
+        guard invites != nil else { return }
+        Task { try? await Task.sleep(for: .milliseconds(450)); showInvitations = true }
+    }
+
+    // MARK: Push permission banner (only when the push client is enabled by flag)
+
+    private var permissionPrompt: NotificationPermissionPrompt? {
+        guard pushPermission != nil, let pushAuthorization else { return nil }
+        switch pushAuthorization {
+        case .notDetermined: return .turnOn
+        case .denied: return .openSettings
+        case .authorized, .provisional, .ephemeral: return nil
+        }
+    }
+
+    private func refreshPushAuthorization() async {
+        guard let pushPermission else { return }
+        pushAuthorization = await pushPermission.status()
+    }
+
+    private func turnOnPush() async {
+        guard let pushPermission else { return }
+        if pushAuthorization == .denied { pushPermission.openSettings(); return }
+        pushAuthorization = await pushPermission.turnOn()
+    }
+
+    /// Rejoin from the Invitations screen: the same checks and the same RSVP command as the Join button, so capacity and
+    /// eligibility rules apply. Returns nil on success, otherwise the neutral reason (full / started / cancelled ...).
+    private func rejoinFromInvitation(_ eventID: String) async -> DIPInviteFailure? {
+        #if DEBUG
+        switch ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--rejoin-state=") }).map({ String($0.dropFirst("--rejoin-state=".count)) }) {
+        case "full": return .full
+        case "closed": return .closed
+        default: break
+        }
+        #endif
+        guard !participationUnavailable else { return .unknown }
+        if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
+           let denial = DIPParticipationRules.denial(going: true, metadata: metadata, attendeeCount: event.attendeeCount, isGoing: event.isJoined, now: Date()) {
+            switch denial {
+            case .alreadyGoing: return nil
+            case .full: return .full
+            case .started, .ended: return .closed
+            case .cancelled: return .cancelled
+            case .notGoing: return .unknown
+            }
+        }
+        do { try await model.setRSVP(eventID: eventID, going: true); onJoined?(); return nil }
+        catch {
+            // Classify by state, not by wording: the same rules the Join button checks, against the freshest snapshot.
+            if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
+               let denial = DIPParticipationRules.joinDenial(metadata, attendeeCount: event.attendeeCount, isGoing: event.isJoined, now: Date()) {
+                switch denial {
+                case .alreadyGoing: return nil
+                case .full: return .full
+                case .started, .ended: return .closed
+                case .cancelled: return .cancelled
+                case .notGoing: return .unknown
+                }
+            }
+            if error is CancellationError { return .unknown }
+            if case .notFound? = error as? DIPRepositoryError { return .notFound }
+            return (error as NSError).domain == NSURLErrorDomain ? .offline : .unknown
+        }
     }
 
     private func openInvite(_ eventID: String) {
@@ -684,9 +857,20 @@ struct DIPPrototypeApp: View {
         // The repository flips the state immediately, so the success haptic plays now; a server failure rolls back.
         DIPHaptics.success()
         Task {
-            do { try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() } }
-            catch { DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error) }
+            do {
+                try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() }
+                UIAccessibility.post(notification: .announcement, argument: Self.rsvpAnnouncement(title: model.snapshot?.eventDetails[eventID]?.title, going: going))
+            } catch {
+                DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error)
+                UIAccessibility.post(notification: .announcement, argument: Self.rsvpMessage(error))
+            }
         }
+    }
+
+    /// Spoken confirmation of a Join or Leave (the bar and Leave button change silently for VoiceOver users).
+    nonisolated static func rsvpAnnouncement(title: String?, going: Bool) -> String {
+        let name = title.map { " \($0)" } ?? ""
+        return going ? "You joined\(name)" : "You left\(name)"
     }
 
     @ViewBuilder private func destination(_ route: Route) -> some View {
@@ -723,7 +907,8 @@ struct DIPPrototypeApp: View {
                         onAddPhotos: { try await model.addPhotos(eventID: id, photos: $0) },
                         onAddComment: { try await model.addPhotoComment(
                             eventID: id, photoID: $0, commentID: $1, text: $2) },
-                        onViewPhoto: { onPhotoViewed?(id, $0) })
+                        onViewPhoto: { onPhotoViewed?(id, $0) },
+                        loadOriginal: readsOriginalPhotos ? { try await model.originalPhotoData(eventID: id, photoID: $0) } : nil)
                 } else { missingResource }
             }
         } else { ProgressView("Loading…") }
@@ -733,7 +918,7 @@ struct DIPPrototypeApp: View {
         ContentUnavailableView {
             Label("Activity unavailable", systemImage: "calendar.badge.exclamationmark")
         } description: {
-            Text("This activity isn’t available to your account. It may belong to another company or no longer exist.")
+            Text(EventBarAction.unavailableReason(updatesPaused: model.loadError != nil))
         } actions: { Button("Back", action: pop) }
     }
 

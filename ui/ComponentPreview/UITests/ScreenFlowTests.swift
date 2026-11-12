@@ -17,15 +17,16 @@ final class ScreenFlowTests: XCTestCase {
         XCTAssertEqual(join.frame.minY, app.frame.height - 101, accuracy: 0.5)
         XCTAssertEqual(join.frame.height, 80, accuracy: 0.5)
         join.tap()
-        XCTAssertEqual(join.label, "Activity Chat")
+        // Joining is optimistic but asynchronous: wait for the bar to flip instead of reading it in the same turn.
+        XCTAssertTrue(waitForLabel(join, "Activity Chat"), "bar did not become Activity Chat")
         XCTAssertTrue(app.buttons["event.leave"].waitForExistence(timeout: 3), "Leave appears once joined")
         XCTAssertFalse(app.buttons["event.join"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["event.directions"].exists, "Directions stays beside Share once joined")
+        XCTAssertTrue(app.buttons["event.invite"].exists, "Invite Coworker sits beside Share once joined")
         app.buttons["event.attendees"].tap()
         XCTAssertTrue(app.buttons["participants.back"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Elissa Woode"].exists)
         app.buttons["participants.back"].tap()
-        XCTAssertEqual(join.label, "Activity Chat")
+        XCTAssertTrue(waitForLabel(join, "Activity Chat"))
         join.tap()
         let field = app.descendants(matching: .any)["event.chat.message"]
         XCTAssertTrue(field.waitForExistence(timeout: 3))
@@ -38,8 +39,16 @@ final class ScreenFlowTests: XCTestCase {
         app.buttons["Done"].tap()
         app.buttons["event.back"].tap()
         // v1 fixtures: Puppy Yoga's card artwork is `event_Image` (the card id follows the artwork, not the event id).
-        app.buttons["home.event.event_Image"].tap()
-        XCTAssertEqual(app.buttons["event.primary"].label, "Activity Chat")
+        let card = app.buttons["home.event.event_Image"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5), "Puppy Yoga card id follows its artwork in the v1 fixtures")
+        card.tap()
+        XCTAssertTrue(waitForLabel(app.buttons["event.primary"], "Activity Chat"), "joined state was not kept locally")
+    }
+
+    /// Waits for an element's label to equal `label`.
+    @MainActor private func waitForLabel(_ element: XCUIElement, _ label: String, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "label == %@", label)
+        return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
     }
 
     @MainActor func testMyEventsMemoriesAlbumAndBackNavigation() {

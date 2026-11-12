@@ -21,18 +21,67 @@ final class EventDocumentMapperTests: XCTestCase {
         f = fields(); f.removeValue(forKey: "venue"); XCTAssertThrowsError(try decode(f))
         f = fields(); f["startTime"] = "2033-05-18T00:00:00Z"; XCTAssertThrowsError(try decode(f))
     }
-    func testBooleanAndFractionalCountersAreNotIntegers() {
-        for (key, value) in [("costCents", true as Any), ("capacity", 2.5 as Any), ("attendeeCount", -1 as Any), ("revision", 0 as Any), ("pointsValue", Double.infinity as Any), ("isOutdoor", 1 as Any)] {
-            var f = fields(); f[key] = value; XCTAssertThrowsError(try decode(f), "Unexpected acceptance of \(key)")
-        }
+    func testOnlyTenantIDAndStartTimeAreRequired() {
+        var f = fields(); f["companyId"] = "beta"; XCTAssertThrowsError(try decode(f))
+        f = fields(); f.removeValue(forKey: "startTime"); XCTAssertThrowsError(try decode(f))
+        f = fields(); f["startTime"] = "2033-05-18T00:00:00Z"; XCTAssertThrowsError(try decode(f))
+        XCTAssertThrowsError(try EventDocumentMapper.decode(id: "bad/id", companyID: "alpha", fields: fields()))
     }
-    func testInvalidStatusDatesCoordinatesAndOptionalTypesFailClosed() {
-        var f = fields(); f["status"] = "mystery"; XCTAssertThrowsError(try decode(f))
-        f = fields(); f["endTime"] = f["startTime"]; XCTAssertThrowsError(try decode(f))
+    func testOddCountersFallBackInsteadOfHidingTheEvent() throws {
+        var f = fields()
+        f["costCents"] = true; f["capacity"] = 2.5; f["attendeeCount"] = -1; f["revision"] = 0; f["pointsValue"] = Double.infinity; f["isOutdoor"] = 1
+        let event = try XCTUnwrap(decode(f))
+        XCTAssertEqual(event.costCents, 0)
+        XCTAssertEqual(event.capacity, 3, "2.5 rounds to a whole capacity")
+        XCTAssertEqual(event.attendeeCount, 0)
+        XCTAssertEqual(event.revision, 1)
+        XCTAssertEqual(event.pointsValue, 0)
+        XCTAssertFalse(event.isOutdoor)
+        XCTAssertEqual(try MemberEventsRepository.metadata(event).revision, 1)
+    }
+    func testStringAndIntegerCoordinatesAndStringNumbersAreAccepted() throws {
+        var f = fields(); f["pointsValue"] = "50"; f["capacity"] = "12"
+        f["venue"] = ["name": "Cafe", "address": "1 Main", "locality": "Pittsburgh", "latitude": "40.5", "longitude": -79] as [String: Any]
+        let event = try XCTUnwrap(decode(f))
+        XCTAssertEqual(event.venue.latitude, 40.5)
+        XCTAssertEqual(event.venue.longitude, -79)
+        XCTAssertEqual(event.pointsValue, 50)
+        XCTAssertEqual(event.capacity, 12)
+    }
+    func testMissingVenueFieldsAndCoordinatesStillProduceAnEvent() throws {
+        var f = fields(); f.removeValue(forKey: "venue")
+        var event = try XCTUnwrap(decode(f))
+        XCTAssertEqual(event.venue.name, ""); XCTAssertEqual(event.venue.latitude, 0)
         for patch in [["latitude": 91.0], ["longitude": Double.nan], ["latitude": true], ["website": 123]] as [[String: Any]] {
             f = fields(); var venue = f["venue"] as! [String: Any]; venue.merge(patch) { _, new in new }; f["venue"] = venue
-            XCTAssertThrowsError(try decode(f))
+            event = try XCTUnwrap(decode(f))
+            XCTAssertEqual(event.venue.name, "Cafe")
+            XCTAssertNil(event.venue.website)
         }
+    }
+    func testMissingOptionalFieldsUseDefaults() throws {
+        var f = fields()
+        for key in ["title", "description", "tagIds", "coverImageURL", "costNote", "createdBy", "createdAt", "endTime", "status", "isOutdoor", "revision", "pointsValue", "attendeeCount", "capacity", "costCents"] { f.removeValue(forKey: key) }
+        let event = try XCTUnwrap(decode(f))
+        XCTAssertEqual(event.title, "Untitled activity")
+        XCTAssertEqual(event.status, "scheduled")
+        XCTAssertEqual(event.endTime.timeIntervalSince(event.startTime), 3600)
+        XCTAssertEqual(event.capacity, 10000)
+        XCTAssertEqual(event.tagIds, [])
+        XCTAssertNoThrow(try MemberEventsRepository.metadata(event))
+    }
+    func testUnknownStatusIsScheduledAndSpellingVariantsAreNormalized() throws {
+        for (raw, expected) in [("mystery", "scheduled"), ("canceled", "cancelled"), ("COMPLETED", "completed"), ("", "scheduled")] {
+            var f = fields(); f["status"] = raw
+            XCTAssertEqual(try decode(f)?.status, expected, raw)
+        }
+        var f = fields(); f["status"] = 7
+        XCTAssertEqual(try decode(f)?.status, "scheduled")
+    }
+    func testEndNotAfterStartGetsADefaultDuration() throws {
+        var f = fields(); f["endTime"] = f["startTime"]
+        let event = try XCTUnwrap(decode(f))
+        XCTAssertGreaterThan(event.endTime, event.startTime)
     }
     func testPointsAndChangeLogAreMappedAndMalformedEntriesSkipped() throws {
         var f = fields(); f["pointsValue"] = 50

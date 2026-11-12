@@ -11,13 +11,15 @@ final class AddToCalendarTests: XCTestCase {
         shot.name = "event-add-to-calendar-generic"; shot.lifetime = .keepAlways; add(shot)
     }
 
-    @MainActor func testDirectionsBesideShareAndLeaveAtBottom() {
+    @MainActor func testInviteBesideShareAndLeaveAtBottom() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--screen=event-joined", "--v1-event-fixtures"]
         app.launch()
-        XCTAssertTrue(app.descendants(matching: .any)["event.directions"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["event.invite"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["event.directions"].exists, "Directions lives on the Where row")
         XCTAssertTrue(app.buttons["event.share"].exists)
+        XCTAssertEqual(app.buttons["event.invite"].frame.minY, app.buttons["event.share"].frame.minY, accuracy: 1, "one row of two pills")
         let row = XCTAttachment(screenshot: app.screenshot())
         row.name = "event-action-row"; row.lifetime = .keepAlways; add(row)
         app.swipeUp(); app.swipeUp()
@@ -76,7 +78,7 @@ final class AddToCalendarTests: XCTestCase {
         XCTAssertFalse(app.buttons["event.when"].isEnabled, "Row is spent once added, like the header pill")
     }
 
-    @MainActor func testWhereRowOpensTheSameDirectionsLinkAsThePill() {
+    @MainActor func testWhereRowOpensDirections() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--screen=event", "--v1-event-fixtures", "--fake-directions"]
@@ -88,10 +90,6 @@ final class AddToCalendarTests: XCTestCase {
         row.tap()
         let rowTarget = app.staticTexts["directions.fake.last"].label
         XCTAssertTrue(rowTarget.hasPrefix("https://maps.apple.com/"), rowTarget)
-        let pill = app.descendants(matching: .any)["event.directions"]
-        XCTAssertTrue(pill.exists)
-        pill.tap()
-        XCTAssertEqual(app.staticTexts["directions.fake.last"].label, rowTarget)
     }
 
     @MainActor func testPriceRowStaysInformational() {

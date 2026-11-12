@@ -10,6 +10,18 @@ public struct DIPCalendarEventFields: Equatable, Sendable {
     public var location: String
     public var notes: String
     public var url: URL?
+
+    /// All-day entries float: the same calendar days as shown in `timeZone` (the window's zone) land on the same days in
+    /// the device calendar, whatever zone the device is in. Dates are local midnights of those days.
+    public func floatingAllDayDates(deviceCalendar: Calendar = .current) -> (start: Date, end: Date) {
+        var source = Calendar(identifier: .gregorian); source.timeZone = timeZone
+        func local(_ date: Date) -> Date {
+            let parts = source.dateComponents([.year, .month, .day], from: date)
+            return deviceCalendar.date(from: parts) ?? date
+        }
+        let start = local(startDate)
+        return (start, max(start, local(endDate)))
+    }
 }
 
 public enum DIPCalendarAddResult: Equatable, Sendable {

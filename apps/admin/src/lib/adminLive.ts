@@ -7,7 +7,8 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type ImportPlanResponse, type ImportRow, type Member, type Role, type RosterRow, type Submission,
+  type BackfillStep, type CompanyInsights, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
 
@@ -34,12 +35,15 @@ export function memberFromSummary(d: DocumentData): Member {
   };
 }
 
-/** A `roster/{emailHash}` document. Claimed entries are represented by their member instead. */
+/** A roster entry (listRosterV1 `RosterEntry`, or the raw document). Claimed entries show their member's status. */
 export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
+  const claimed = d.status === "claimed";
   return {
     entryId: id, email: str(d.email), displayName: str(d.displayName), role: roleOf(d.role), teamIds: strings(d.teamIds), workLocation: str(d.workLocation),
     department: str(d.department), jobTitle: str(d.jobTitle), managerEmail: str(d.managerEmail), startDate: str(d.startDate),
-    state: d.status === "revoked" ? "revoked" : d.status === "claimed" ? "active" : "invited", invitedAt: iso(d.createdAt),
+    state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
+    ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), invitedAt: iso(d.createdAt),
+    ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
   };
 }
 
@@ -52,6 +56,19 @@ export function auditFromDoc(id: string, d: DocumentData): AuditEntry {
   };
 }
 
+const bugStatus = (value: unknown): BugStatus => (value === "triaged" || value === "resolved" ? value : "new");
+const BUG_CATEGORIES: readonly string[] = ["bug", "confusing", "looksWrong", "idea", "unspecified"];
+
+/** An AdminBugReport from listBugReportsV1 / getBugReportV1. */
+export function bugReportFromWire(d: DocumentData): BugReport {
+  return {
+    id: str(d.id), category: (BUG_CATEGORIES.includes(str(d.category)) ? str(d.category) : "unspecified") as BugCategory, description: str(d.description),
+    source: d.source === "profile" ? "profile" : "shake", screen: str(d.screen) || "other", createdAt: iso(d.createdAt), reporterId: str(d.reporterId), reporterName: str(d.reporterName),
+    ...(str(d.appVersion) ? { appVersion: str(d.appVersion) } : {}), hasScreenshot: d.hasScreenshot === true, status: bugStatus(d.status), hasNote: d.hasNote === true,
+    ...(str(d.assigneeId) ? { assigneeId: str(d.assigneeId) } : {}), ...(str(d.assigneeName) ? { assigneeName: str(d.assigneeName) } : {}),
+  };
+}
+
 /** A ChallengeSubmission from listChallengeSubmissionsV1 (dates arrive as RFC 3339 strings). */
 export function submissionFromWire(d: DocumentData): Submission {
   return {
@@ -59,6 +76,47 @@ export function submissionFromWire(d: DocumentData): Submission {
     status: d.status === "approved" ? "approved" : d.status === "rejected" ? "rejected" : "submitted", createdAt: iso(d.createdAt), updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : iso(d.updatedAt), // sent back verbatim as expectedUpdatedAt
     storagePath: typeof d.storagePath === "string" && d.storagePath ? d.storagePath : null, attempt: Number(d.attempt ?? 1),
     reviewedAt: iso(d.reviewedAt) || null, reviewNote: typeof d.reviewNote === "string" ? d.reviewNote : null, pointsAwarded: Number(d.pointsAwarded ?? 0),
+  };
+}
+
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0);
+const obj = (value: unknown): DocumentData => (value && typeof value === "object" ? (value as DocumentData) : {});
+const list = (value: unknown): DocumentData[] => (Array.isArray(value) ? value.map(obj) : []);
+
+/** GetCompanyInsightsResponse -> CompanyInsights. Missing numbers read as zero so a partial response still renders. */
+export function insightsFromWire(d: DocumentData): CompanyInsights {
+  const members = obj(d.members), events = obj(d.events), participation = obj(d.participation), content = obj(d.content), challenges = obj(d.challenges);
+  const current = challenges.current ? obj(challenges.current) : null;
+  const points = d.points ? obj(d.points) : null;
+  return {
+    generatedAt: iso(d.generatedAt), windowDays: num(d.windowDays) || 30,
+    members: {
+      total: num(members.total), active: num(members.active), deactivated: num(members.deactivated), invited: num(members.invited),
+      activeLast30Days: num(members.activeLast30Days), activeCapped: members.activeCapped === true,
+    },
+    events: { upcoming: num(events.upcoming), thisMonth: num(events.thisMonth), completed: num(events.completed), cancelled: num(events.cancelled) },
+    participation: {
+      rsvpsLast30Days: num(participation.rsvpsLast30Days),
+      attendanceRate: typeof participation.attendanceRate === "number" ? Math.min(1, Math.max(0, participation.attendanceRate)) : null,
+      attendanceSample: num(participation.attendanceSample),
+      topEvents: list(participation.topEvents).map((e) => ({
+        eventId: str(e.eventId), title: str(e.title), startTime: iso(e.startTime), attendeeCount: num(e.attendeeCount), capacity: num(e.capacity),
+        status: e.status === "completed" ? "completed" as const : "scheduled" as const,
+      })),
+    },
+    content: { photosLast30Days: num(content.photosLast30Days), commentsLast30Days: num(content.commentsLast30Days) },
+    challenges: {
+      pendingReviews: num(challenges.pendingReviews),
+      current: current && {
+        challengeId: str(current.challengeId), title: str(current.title), startDate: iso(current.startDate), endDate: iso(current.endDate),
+        participantCount: num(current.participantCount), completedCount: num(current.completedCount), pendingReviews: num(current.pendingReviews),
+      },
+    },
+    points: points && {
+      issuedLast30Days: num(points.issuedLast30Days),
+      topMembers: list(points.topMembers).map((m) => ({ userId: str(m.userId), displayName: str(m.displayName), pointsBalance: num(m.pointsBalance) })),
+    },
+    activity: list(d.activity).map((a) => ({ date: str(a.date), rsvps: num(a.rsvps), photos: num(a.photos) })),
   };
 }
 
@@ -105,32 +163,20 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
   }
   const col = (session: Session, ...path: string[]) => collection(db, "companies", session.companyId, ...path);
 
+  /** Follows the cursor to the end: no page cap, so a large company is never silently cut short. */
   async function listMembersAll(session: Session): Promise<Member[]> {
     const members: Member[] = [];
     let pageToken: string | undefined;
-    for (let page = 0; page < 30; page += 1) {
+    do {
       const data = await call<{ members: DocumentData[]; nextPageToken?: string }>(ADMIN_CALLABLES.listMembers, session, { pageSize: 100, ...(pageToken ? { pageToken } : {}) }, false);
       members.push(...data.members.map(memberFromSummary));
       pageToken = data.nextPageToken;
-      if (!pageToken) break;
-    }
+    } while (pageToken);
     return members.sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
   async function member(session: Session, id: string): Promise<Member> {
     const data = await call<{ member: DocumentData }>(ADMIN_CALLABLES.getMember, session, { userId: id }, false);
     return memberFromSummary(data.member);
-  }
-  /** Roster rules cap lists at 100 documents, so read page by page. */
-  async function rosterDocs(session: Session): Promise<QueryDocumentSnapshot[]> {
-    const docs: QueryDocumentSnapshot[] = [];
-    let last: QueryDocumentSnapshot | undefined;
-    for (let page = 0; page < 30; page += 1) {
-      const snap = await getDocs(query(col(session, "roster"), orderBy("createdAt"), ...(last ? [startAfter(last)] : []), limit(100)));
-      docs.push(...snap.docs);
-      last = snap.docs[snap.docs.length - 1];
-      if (snap.docs.length < 100) break;
-    }
-    return docs;
   }
 
   return {
@@ -207,6 +253,15 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     }),
 
     listMembers: () => run(async () => listMembersAll(await organizer())),
+    listMembersPage: (q: MemberQuery, cursor, pageSize = 25) => run(async () => {
+      const data = await call<{ members: DocumentData[]; nextPageToken?: string; total?: number }>(ADMIN_CALLABLES.listMembers, await organizer(), {
+        pageSize,
+        ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.status !== "all" ? { status: q.status } : {}), ...(q.role !== "all" ? { role: q.role } : {}),
+        ...(q.teamId !== "all" && q.teamId ? { teamId: q.teamId } : {}), ...(q.workLocation !== "all" && q.workLocation ? { workLocation: q.workLocation } : {}),
+        ...(cursor ? { pageToken: cursor } : {}),
+      }, false);
+      return { members: data.members.map(memberFromSummary), nextCursor: data.nextPageToken ?? null, total: typeof data.total === "number" ? data.total : null };
+    }),
     getMember: (id) => run(async () => member(await organizer(), id)),
     updateMember: (id, expectedRevision, patch) => run(async () => {
       const session = await organizer();
@@ -229,17 +284,28 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       return member(session, id);
     }),
 
-    // Roster = pending and revoked entries (Firestore, admin-only rules) plus every member (listMembersV1) as active or deactivated.
-    listRoster: () => run(async () => {
-      const session = await organizer();
-      const [docs, members] = await Promise.all([rosterDocs(session), listMembersAll(session)]);
-      const memberEmails = new Set(members.map((m) => m.email.toLowerCase()));
-      const entries = docs.map((d) => rosterFromDoc(d.id, d.data())).filter((r) => r.state !== "active" && !memberEmails.has(r.email.toLowerCase()));
-      const people = members.map((m): RosterRow => ({
-        entryId: m.id, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
-        jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: m.status === "deactivated" ? "deactivated" : "active", memberId: m.id, invitedAt: m.createdAt,
-      }));
-      return [...entries, ...people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    // The roster lists everyone (invited, joined, deactivated, revoked); listRosterV1 pages and searches on the server.
+    listRosterPage: (q, cursor, pageSize = 25) => run(async () => {
+      const data = await call<{ entries: DocumentData[]; nextPageToken?: string; counts?: RosterCounts }>(ADMIN_CALLABLES.listRoster, await organizer(), {
+        pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.state !== "all" ? { state: q.state } : {}), ...(cursor ? { pageToken: cursor } : {}),
+      }, false);
+      return { rows: data.entries.map((e) => rosterFromDoc(str(e.id), e)), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null };
+    }),
+    resendInvite: (row) => run(async () => {
+      const data = await call<{ resendCount: number; lastResentAt: string; signInUrl: string; message: string }>(ADMIN_CALLABLES.resendRosterInvite, await organizer(), { entryId: row.entryId });
+      return { resendCount: Number(data.resendCount ?? 0), lastResentAt: iso(data.lastResentAt), signInUrl: str(data.signInUrl), message: str(data.message) };
+    }),
+    backfillRoster: (dryRun, requestId, cursor) => run(async () => {
+      const data = await call<BackfillStep & { nextPageToken?: string }>(ADMIN_CALLABLES.backfillRoster, await organizer(), { dryRun, requestId, ...(cursor ? { pageToken: cursor } : {}) });
+      return { dryRun: data.dryRun === true, scanned: Number(data.scanned ?? 0), created: Number(data.created ?? 0), existing: Number(data.existing ?? 0), skipped: Number(data.skipped ?? 0), nextCursor: data.nextPageToken ?? null, done: data.done === true };
+    }),
+    getImport: (jobId) => run(async () => {
+      const data = await call<{ job: DocumentData }>(ADMIN_CALLABLES.getImport, await organizer(), { jobId }, false);
+      const job = data.job;
+      return {
+        jobId, status: (str(job.status) || "planned") as ImportJobInfo["status"], chunkCount: Number(job.chunkCount ?? 0), nextChunk: Number(job.nextChunk ?? 0),
+        progress: job.progress as ImportJobInfo["progress"], planHash: str(job.planHash), fileName: str(job.fileName),
+      } satisfies ImportJobInfo;
     }),
     revokeRosterEntry: (entryId) => run(async () => {
       await call(ADMIN_CALLABLES.revokeRosterEntry, await organizer(), { entryId });
@@ -287,6 +353,33 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         challengeId: submission.challengeId, userId: submission.userId, reason: reason.trim(), expectedUpdatedAt: submission.updatedAt,
       }, false);
       return { replayed: data.replayed === true };
+    }),
+
+    listBugReports: (q, cursor, pageSize = 25) => run(async () => {
+      const data = await call<{ reports: DocumentData[]; nextPageToken?: string; counts?: BugReportCounts }>(ADMIN_CALLABLES.listBugReports, await organizer(), {
+        pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.status !== "all" ? { status: q.status } : {}), ...(q.category !== "all" ? { category: q.category } : {}),
+        ...(q.from ? { from: q.from } : {}), ...(q.to ? { to: q.to } : {}), ...(cursor ? { pageToken: cursor } : {}),
+      }, false);
+      return { reports: data.reports.map(bugReportFromWire), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null };
+    }),
+    getBugReport: (reportId) => run(async () => {
+      const d = await call<DocumentData>(ADMIN_CALLABLES.getBugReport, await organizer(), { reportId }, false);
+      return {
+        report: bugReportFromWire(d.report as DocumentData), reporterEmail: str(d.reporterEmail), diagnostics: (d.diagnostics as BugDiagnostics | undefined) ?? null,
+        screenshotUrl: str(d.screenshotUrl) || null, note: str(d.note), revision: Number(d.revision ?? 0), updatedAt: iso(d.updatedAt) || null, updatedByName: str(d.updatedByName) || null,
+      };
+    }),
+    updateBugReport: (reportId, patch, expectedRevision) => run(async () => {
+      const d = await call<DocumentData>(ADMIN_CALLABLES.updateBugReport, await organizer(), { reportId, ...patch, expectedRevision });
+      return {
+        status: bugStatus(d.status), note: str(d.note), assigneeId: str(d.assigneeId) || null, assigneeName: str(d.assigneeName) || null,
+        revision: Number(d.revision ?? 0), updatedAt: iso(d.updatedAt), changed: d.changed === true,
+      };
+    }),
+
+    companyInsights: (refresh = false) => run(async () => {
+      const session = await organizer();
+      return insightsFromWire(await call<DocumentData>(ADMIN_CALLABLES.getInsights, session, refresh ? { refresh: true } : {}, false));
     }),
 
     listAudit: () => run(async () => {

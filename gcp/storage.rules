@@ -5,7 +5,7 @@ service firebase.storage {
     // users/{uid} document exists; this cross-service read needs the Firebase Storage service agent to hold
     // the Firestore viewer role, which `firebase deploy --only storage` offers to grant) may write one JPEG of
     // at most 400 KB at bugReports/{uid}/{reportId}.jpg. A retry may overwrite its own object. Nobody reads or
-    // deletes through the client SDK; admins use the console. The report document is created under bugReports
+    // deletes through the client SDK; admins view them in the portal through a 15 minute signed URL minted by getBugReportV1 (Admin SDK). The report document is created under bugReports
     // in firestore.rules. Add a bucket lifecycle rule for the bugReports/ prefix (retention and orphans).
     match /bugReports/{uid}/{reportId} {
       allow create, update: if request.auth != null && request.auth.token.email_verified == true

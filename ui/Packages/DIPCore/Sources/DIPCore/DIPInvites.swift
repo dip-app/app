@@ -143,26 +143,32 @@ public enum DIPInviteStatusLabel: String, Equatable, Sendable {
 public struct DIPInviteInbox: Equatable, Sendable {
     /// Pending invitations to events that have not started, soonest event first.
     public var pending: [DIPInvite]
-    /// Accepted invitations to events that have not started (the member is going), soonest first.
+    /// Accepted invitations to events that have not started where the member is still going (or it is unknown), soonest first.
     public var accepted: [DIPInvite]
+    /// Accepted invitations to upcoming events the member has since left (their RSVP is no longer going): they can rejoin.
+    public var cancelled: [DIPInvite]
     /// Invitations the member sent, newest first (all statuses).
     public var sent: [DIPInvite]
     public var now: Date
 
-    public init(_ invites: DIPInvites, now: Date) {
+    /// - Parameter rsvp: the member's CURRENT RSVP for an event id: true going, false not going, nil unknown (the event is not
+    ///   loaded). Unknown is treated as going, so an invitation never shows as cancelled on a guess.
+    public init(_ invites: DIPInvites, now: Date, rsvp: (String) -> Bool? = { _ in nil }) {
         self.now = now
         let upcoming = invites.received.filter { $0.eventStart > now }
         func byStart(_ a: DIPInvite, _ b: DIPInvite) -> Bool {
             (a.eventStart, a.createdAt, a.id) < (b.eventStart, b.createdAt, b.id)
         }
         pending = upcoming.filter { $0.status == .pending }.sorted(by: byStart)
-        accepted = upcoming.filter { $0.status == .accepted }.sorted(by: byStart)
+        let acceptedUpcoming = upcoming.filter { $0.status == .accepted }.sorted(by: byStart)
+        accepted = acceptedUpcoming.filter { rsvp($0.eventID) != false }
+        cancelled = acceptedUpcoming.filter { rsvp($0.eventID) == false }
         sent = invites.sent.sorted { ($0.createdAt, $0.id) > ($1.createdAt, $1.id) }
     }
 
     /// The count on the bell: invitations waiting for an answer.
     public var badgeCount: Int { pending.count }
-    public var isEmptyReceived: Bool { pending.isEmpty && accepted.isEmpty }
+    public var isEmptyReceived: Bool { pending.isEmpty && accepted.isEmpty && cancelled.isEmpty }
 
     public func label(for invite: DIPInvite) -> DIPInviteStatusLabel {
         switch invite.status {

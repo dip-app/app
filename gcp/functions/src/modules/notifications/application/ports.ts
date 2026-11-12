@@ -84,6 +84,24 @@ export interface DeviceRegistry {
   runTransaction<T>(work: (tx: DeviceRegistryTransaction) => Promise<T>): Promise<T>;
 }
 
+/** One in-app notification (`users/{uid}/notifications/{id}`); the id is deterministic so a redelivered trigger cannot duplicate it. */
+export interface InboxItem {
+  uid: string;
+  id: string;
+  companyId: string;
+  type: string;
+  title: string;
+  body: string;
+  targetType: string;
+  targetId: string;
+}
+
+/** Server-side writer for the in-app notification center (create-only: an existing id is left untouched, so a read flag is never reset). */
+export interface InboxWriter {
+  /** Returns how many documents were newly created. */
+  createMany(items: readonly InboxItem[]): Promise<number>;
+}
+
 export interface Caller { uid: string; emailVerified: boolean; signInProvider: string | null }
 
 export interface PushDependencies {

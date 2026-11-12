@@ -9,12 +9,13 @@ export type MemberStatus = "invited" | "active" | "deactivated";
 export type Capability =
   | "events.manage" | "themes.manage" | "albums.moderate" | "attendees.manage"
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
-  | "import.run" | "roster.manage" | "audit.view" | "challenges.review";
+  | "import.run" | "roster.manage" | "audit.view" | "challenges.review" | "bugreports.manage"
+  | "insights.view" | "insights.points";
 
-const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "albums.moderate", "attendees.manage", "members.view"];
+const ORGANIZER_CAPS: readonly Capability[] = ["insights.view", "events.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
   ...ORGANIZER_CAPS, "themes.manage", "challenges.review", "members.edit", "members.status", "members.reset", "points.adjust",
-  "import.run", "roster.manage", "audit.view",
+  "import.run", "roster.manage", "audit.view", "bugreports.manage", "insights.points",
 ];
 
 export function capabilitiesOf(role: Role): readonly Capability[] {
@@ -44,12 +45,19 @@ export const ADMIN_CALLABLES = {
   adjustPoints: "adjustMemberPointsV1",
   upsertRosterEntry: "upsertRosterEntryV1",
   revokeRosterEntry: "revokeRosterEntryV1",
+  resendRosterInvite: "resendRosterInviteV1",
+  listRoster: "listRosterV1",
+  backfillRoster: "backfillRosterV1",
   planImport: "importEmployeesV1",
   applyImport: "applyEmployeeImportV1",
   getImport: "getEmployeeImportV1",
   listSubmissions: "listChallengeSubmissionsV1",
   approveSubmission: "approveChallengeV1",
   rejectSubmission: "rejectChallengeV1",
+  getInsights: "getCompanyInsightsV1",
+  listBugReports: "listBugReportsV1",
+  getBugReport: "getBugReportV1",
+  updateBugReport: "updateBugReportV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -106,6 +114,43 @@ export interface RosterRow {
   state: "invited" | "active" | "deactivated" | "revoked";
   memberId?: string;
   invitedAt: string;
+  /** How many times an admin resent the invite message, and when last. */
+  resendCount?: number;
+  lastResentAt?: string;
+}
+
+/** Page size of the people lists (the server allows up to 100). */
+export const LIST_PAGE_SIZE = 25;
+
+export interface MemberQuery { query: string; status: MemberStatus | "all"; role: Role | "all"; teamId: string; workLocation: string }
+export interface MemberPage {
+  members: Member[];
+  /** Pass back to read the next page; null when everything was scanned. A page can be short while more follow. */
+  nextCursor: string | null;
+  /** All members of the company (first page only). */
+  total: number | null;
+}
+
+export type RosterState = RosterRow["state"];
+export interface RosterQuery { query: string; state: RosterState | "all" }
+export interface RosterCounts { all: number; invited: number; active: number; deactivated: number; revoked: number }
+export interface RosterPage { rows: RosterRow[]; nextCursor: string | null; /** First page only. */ counts: RosterCounts | null }
+
+/** resendRosterInviteV1: DIP sends no email, so a resend records the event and returns a message for the admin to share. */
+export interface ResendResult { resendCount: number; lastResentAt: string; signInUrl: string; message: string }
+
+/** One chunk of backfillRosterV1 (`created` is "would create" in a dry run). */
+export interface BackfillStep { dryRun: boolean; scanned: number; created: number; existing: number; skipped: number; nextCursor: string | null; done: boolean }
+
+/** getEmployeeImportV1, for resuming an import after a reload. */
+export interface ImportJobInfo {
+  jobId: string;
+  status: ApplyStepResponse["status"];
+  chunkCount: number;
+  nextChunk: number;
+  progress: ImportProgress;
+  planHash: string;
+  fileName: string;
 }
 
 export interface AlbumPhoto {
@@ -158,7 +203,7 @@ export interface AuditEntry {
   actorName: string;
   actorRole: Role;
   action: string;
-  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
+  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
   targetId: string;
   summary: string;
   reason?: string;
@@ -179,9 +224,12 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "company.settings": "Settings changed",
   "roster.upsert": "Roster entry saved",
   "roster.revoke": "Invite revoked",
+  "roster.resend": "Invite resent",
+  "roster.backfill": "Roster backfilled",
   "roster.claim": "Invite claimed",
   "import.plan": "Import previewed",
   "import.apply": "Import applied",
+  "bugreport.update": "Bug report updated",
 };
 
 // ---------- Bulk import
@@ -266,3 +314,71 @@ export interface Submission {
 }
 
 export interface SubmissionPage { submissions: Submission[]; nextCursor: string | null }
+
+// ----- Company insights (getCompanyInsightsV1, docs/contracts/admin.md, "Company insights")
+export interface InsightsDay { date: string; rsvps: number; photos: number }
+export interface InsightsEvent { eventId: string; title: string; startTime: string; attendeeCount: number; capacity: number; status: "scheduled" | "completed" }
+export interface InsightsTheme {
+  challengeId: string; title: string; startDate: string; endDate: string; participantCount: number; completedCount: number; pendingReviews: number;
+}
+export interface CompanyInsights {
+  /** When the numbers were computed (the server caches them for up to 10 minutes). */
+  generatedAt: string;
+  windowDays: number;
+  members: { total: number; active: number; deactivated: number; invited: number; activeLast30Days: number; activeCapped: boolean };
+  events: { upcoming: number; thisMonth: number; completed: number; cancelled: number };
+  participation: { rsvpsLast30Days: number; attendanceRate: number | null; attendanceSample: number; topEvents: InsightsEvent[] };
+  content: { photosLast30Days: number; commentsLast30Days: number };
+  challenges: { pendingReviews: number; current: InsightsTheme | null };
+  /** Admins only; null for organizers (the backend never sends it to them). */
+  points: { issuedLast30Days: number; topMembers: { userId: string; displayName: string; pointsBalance: number }[] } | null;
+  /** The last 30 UTC days, oldest first. */
+  activity: InsightsDay[];
+}
+
+// ---------- Bug reports (shake-to-report inbox, docs/contracts/admin.md#bug-reports-inbox-bugreportmanage-admin-only)
+
+export type BugStatus = "new" | "triaged" | "resolved";
+export type BugCategory = "bug" | "confusing" | "looksWrong" | "idea" | "unspecified";
+
+export interface BugDiagnostics {
+  appVersion?: string; appBuild?: string; osVersion?: string; deviceModel?: string; locale?: string; screen?: string; installId?: string;
+}
+
+export interface BugReport {
+  id: string;
+  category: BugCategory;
+  description: string;
+  source: "shake" | "profile";
+  /** Screen the member was on (home, rewards, event, ...). */
+  screen: string;
+  createdAt: string;
+  reporterId: string;
+  reporterName: string;
+  appVersion?: string;
+  hasScreenshot: boolean;
+  status: BugStatus;
+  hasNote: boolean;
+  assigneeId?: string;
+  assigneeName?: string;
+}
+
+export interface BugReportQuery { query: string; status: BugStatus | "all"; category: BugCategory | "all"; from: string; to: string }
+/** Counts per status over the newest reports of the first page; `capped` when older reports were not counted. */
+export interface BugReportCounts { all: number; new: number; triaged: number; resolved: number; capped: boolean }
+export interface BugReportPage { reports: BugReport[]; nextCursor: string | null; counts: BugReportCounts | null }
+
+export interface BugReportDetail {
+  report: BugReport;
+  reporterEmail: string;
+  diagnostics: BugDiagnostics | null;
+  /** Short-lived signed URL (15 minutes) or a data: URL; null without a screenshot. */
+  screenshotUrl: string | null;
+  note: string;
+  revision: number;
+  updatedAt: string | null;
+  updatedByName: string | null;
+}
+
+export interface BugReportPatch { status?: BugStatus; note?: string; /** null clears the assignee. */ assigneeId?: string | null }
+export interface BugReportUpdate { status: BugStatus; note: string; assigneeId: string | null; assigneeName: string | null; revision: number; updatedAt: string; changed: boolean }

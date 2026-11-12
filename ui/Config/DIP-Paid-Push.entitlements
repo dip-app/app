@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Paid Apple Developer team only, with push. Selected by ui/Config/Push.xcconfig (one include line in
+	     Local.xcconfig). Keep every other key identical to DIP-Paid.entitlements. -->
+	<key>aps-environment</key>
+	<!-- "development" for Xcode device builds. Distribution signing (TestFlight/App Store) replaces it with
+	     "production" from the provisioning profile; check the archive's entitlements before the first upload. -->
+	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<!-- Must match DIPShareLink.baseURL's host (ui/Packages/DIPCore/Sources/DIPCore/DIPShareLink.swift). -->
+		<string>applinks:letsdip.work</string>
+	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)org.dip-app.DIP</string>
+	</array>
+</dict>
+</plist>

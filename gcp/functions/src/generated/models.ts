@@ -529,7 +529,7 @@ export interface AuditEntry {
   actorName: string;
   actorRole: "member" | "organizer" | "admin";
   action: string;
-  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
+  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
   targetId: string;
   summary: string;
   changes: Array<AuditFieldChange>;
@@ -572,6 +572,9 @@ export interface RosterEntry {
   updatedAt: string;
   revision: number;
   memberStatus?: "active" | "deactivated";
+  resendCount?: number;
+  lastResentAt?: string;
+  lastResentBy?: string;
 }
 
 export interface AdminMemberSummary {
@@ -747,6 +750,7 @@ export interface ListMembersResponse {
   contractVersion: number;
   members: Array<AdminMemberSummary>;
   nextPageToken?: string;
+  total?: number;
 }
 
 export interface GetMemberRequest {
@@ -1019,4 +1023,248 @@ export interface ListCoworkersResponse {
   contractVersion: number;
   coworkers: Array<Coworker>;
   truncated: boolean;
+}
+
+export interface ResendRosterInviteRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  entryId: string;
+}
+
+export interface ResendRosterInviteResponse {
+  contractVersion: number;
+  entryId: string;
+  status: "invited";
+  resendCount: number;
+  lastResentAt: string;
+  signInUrl: string;
+  message: string;
+}
+
+export interface BackfillRosterRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  dryRun: boolean;
+  pageToken?: string;
+}
+
+export interface BackfillRosterResponse {
+  contractVersion: number;
+  dryRun: boolean;
+  scanned: number;
+  created: number;
+  existing: number;
+  skipped: number;
+  nextPageToken?: string;
+  done: boolean;
+}
+
+export interface RosterCounts {
+  all: number;
+  invited: number;
+  active: number;
+  deactivated: number;
+  revoked: number;
+}
+
+export interface ListRosterRequest {
+  contractVersion: number;
+  companyId: string;
+  state?: "invited" | "active" | "deactivated" | "revoked";
+  query?: string;
+  pageSize?: number;
+  pageToken?: string;
+}
+
+export interface ListRosterResponse {
+  contractVersion: number;
+  entries: Array<RosterEntry>;
+  nextPageToken?: string;
+  counts?: RosterCounts;
+}
+
+export interface AdminBugReportDiagnostics {
+  appVersion?: string;
+  appBuild?: string;
+  osVersion?: string;
+  deviceModel?: string;
+  locale?: string;
+  screen?: string;
+  installId?: string;
+}
+
+export interface AdminBugReport {
+  id: string;
+  category: "bug" | "confusing" | "looksWrong" | "idea" | "unspecified";
+  description: string;
+  source: "shake" | "profile";
+  screen: string;
+  createdAt: string;
+  reporterId: string;
+  reporterName: string;
+  appVersion?: string;
+  hasScreenshot: boolean;
+  status: "new" | "triaged" | "resolved";
+  hasNote: boolean;
+  assigneeId?: string;
+  assigneeName?: string;
+}
+
+export interface AdminBugReportCounts {
+  all: number;
+  new: number;
+  triaged: number;
+  resolved: number;
+  capped: boolean;
+}
+
+export interface ListBugReportsRequest {
+  contractVersion: number;
+  companyId: string;
+  status?: "new" | "triaged" | "resolved";
+  category?: "bug" | "confusing" | "looksWrong" | "idea" | "unspecified";
+  query?: string;
+  from?: string;
+  to?: string;
+  pageSize?: number;
+  pageToken?: string;
+}
+
+export interface ListBugReportsResponse {
+  contractVersion: number;
+  reports: Array<AdminBugReport>;
+  nextPageToken?: string;
+  counts?: AdminBugReportCounts;
+}
+
+export interface GetBugReportRequest {
+  contractVersion: number;
+  companyId: string;
+  reportId: string;
+}
+
+export interface GetBugReportResponse {
+  contractVersion: number;
+  report: AdminBugReport;
+  reporterEmail: string;
+  diagnostics?: AdminBugReportDiagnostics;
+  screenshotUrl?: string;
+  screenshotExpiresAt?: string;
+  note: string;
+  revision: number;
+  updatedAt?: string;
+  updatedByName?: string;
+}
+
+export interface UpdateBugReportRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  reportId: string;
+  status?: "new" | "triaged" | "resolved";
+  note?: string;
+  assigneeId?: string | null;
+  expectedRevision?: number;
+}
+
+export interface UpdateBugReportResponse {
+  contractVersion: number;
+  reportId: string;
+  status: "new" | "triaged" | "resolved";
+  note: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  revision: number;
+  updatedAt?: string;
+  changed: boolean;
+}
+
+export interface GetCompanyInsightsRequest {
+  contractVersion: number;
+  companyId: string;
+  refresh?: boolean;
+}
+
+export interface InsightsTopEvent {
+  eventId: string;
+  title: string;
+  startTime: string;
+  attendeeCount: number;
+  capacity: number;
+  status: "scheduled" | "completed";
+}
+
+export interface InsightsTopMember {
+  userId: string;
+  displayName: string;
+  pointsBalance: number;
+}
+
+export interface InsightsCurrentTheme {
+  challengeId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  participantCount: number;
+  completedCount: number;
+  pendingReviews: number;
+}
+
+export interface InsightsActivityDay {
+  date: string;
+  rsvps: number;
+  photos: number;
+}
+
+export interface InsightsMembers {
+  total: number;
+  active: number;
+  deactivated: number;
+  invited: number;
+  activeLast30Days: number;
+  activeCapped: boolean;
+}
+
+export interface InsightsEvents {
+  upcoming: number;
+  thisMonth: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface InsightsParticipation {
+  rsvpsLast30Days: number;
+  attendanceRate: number | null;
+  attendanceSample: number;
+  topEvents: Array<InsightsTopEvent>;
+}
+
+export interface InsightsContent {
+  photosLast30Days: number;
+  commentsLast30Days: number;
+}
+
+export interface InsightsChallenges {
+  pendingReviews: number;
+  current?: InsightsCurrentTheme;
+}
+
+export interface InsightsPoints {
+  issuedLast30Days: number;
+  topMembers: Array<InsightsTopMember>;
+}
+
+export interface GetCompanyInsightsResponse {
+  contractVersion: number;
+  generatedAt: string;
+  windowDays: number;
+  members: InsightsMembers;
+  events: InsightsEvents;
+  participation: InsightsParticipation;
+  content: InsightsContent;
+  challenges: InsightsChallenges;
+  points?: InsightsPoints;
+  activity: Array<InsightsActivityDay>;
 }

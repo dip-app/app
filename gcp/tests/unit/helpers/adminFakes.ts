@@ -1,5 +1,5 @@
 import type {
-  AdminDeps, AdminStore, AdminTransaction, Caller, Doc, GroupQuery, ListQuery, ObjectStore, SessionRevoker,
+  AdminDeps, AdminStore, AdminTransaction, Caller, Doc, DocQuery, Filter, GroupQuery, QuerySource, ListQuery, ObjectStore, SessionRevoker,
 } from "../../../functions/src/modules/admin/application/ports";
 
 export const NOW = new Date("2030-01-02T12:00:00Z");
@@ -38,6 +38,18 @@ export class FakeAdminStore implements AdminStore {
     const queue = (apply: () => void) => { if (!pending) throw new Error("write in read-only transaction"); pending.push(apply); };
     return {
       get: async path => { await tick(); const e = this.docs.get(path); seen.set(path, e?.version ?? 0); return e ? structuredClone(e.data) : null; },
+      getMany: async paths => { await tick(); return paths.map(path => { const e = this.docs.get(path); seen.set(path, e?.version ?? 0); return e ? structuredClone(e.data) : null; }); },
+      scanNewest: async (collection, query) => {
+        await tick();
+        seen.set(`collection:${collection}`, this.collectionVersion(collection));
+        const at = (d: Doc) => (d[query.field] as Date).getTime();
+        return this.children(collection)
+          .filter(c => c.data[query.field] instanceof Date)
+          .filter(c => (!query.from || at(c.data) >= query.from.getTime()) && (!query.to || at(c.data) <= query.to.getTime()))
+          .sort((a, b) => at(b.data) - at(a.data) || (a.id < b.id ? 1 : -1))
+          .filter(c => !query.after || at(c.data) < query.after.at.getTime() || (at(c.data) === query.after.at.getTime() && c.id < query.after.id))
+          .slice(0, query.limit).map(c => ({ id: c.id, data: structuredClone(c.data) }));
+      },
       list: async (collection: string, query: ListQuery) => {
         await tick();
         seen.set(`collection:${collection}`, this.collectionVersion(collection));
@@ -47,7 +59,7 @@ export class FakeAdminStore implements AdminStore {
           .filter(c => !query.afterId || c.id > query.afterId)
           .slice(0, query.limit).map(c => { seen.set(`${collection}/${c.id}`, this.docs.get(`${collection}/${c.id}`)!.version); return { id: c.id, data: structuredClone(c.data) }; });
       },
-      count: async collection => { await tick(); seen.set(`collection:${collection}`, this.collectionVersion(collection)); return this.children(collection).length; },
+      count: async (collection, where) => { await tick(); seen.set(`collection:${collection}`, this.collectionVersion(collection)); return this.children(collection).filter(c => (where ?? []).every(([f, v]) => c.data[f] === v)).length; },
       create: (path, data) => queue(() => { if (this.docs.has(path)) throw new Error(`ALREADY_EXISTS ${path}`); this.seed(path, this.resolve(undefined, data)); this.writes++; }),
       update: (path, data) => queue(() => { const cur = this.docs.get(path); if (!cur) throw new Error(`NOT_FOUND ${path}`); this.seed(path, this.resolve(cur.data, data)); this.writes++; }),
       delete: path => queue(() => { this.docs.delete(path); this.writes++; }),
@@ -85,6 +97,34 @@ export class FakeAdminStore implements AdminStore {
     return matches.slice(0, query.limit).map(([path, e]) => ({ path, data: structuredClone(e.data) }));
   }
 
+  private sourceDocs(source: QuerySource, where: ReadonlyArray<Filter>) {
+    const value = (v: unknown) => (v instanceof Date ? v.getTime() : v);
+    return [...this.docs].filter(([p]) => {
+      const parts = p.split("/");
+      if (parts.length % 2 !== 0) return false;
+      return "collection" in source ? childOf(source.collection, p) : parts[parts.length - 2] === source.group;
+    }).filter(([, e]) => where.every(([f, op, v]) => {
+      const a = value(e.data[f]) as number | string | undefined, b = value(v) as number | string;
+      if (a === undefined) return false;
+      return op === "==" ? a === b : op === ">" ? a > b : op === ">=" ? a >= b : op === "<" ? a < b : a <= b;
+    }));
+  }
+
+  async aggregate(source: QuerySource, where: ReadonlyArray<Filter>, sumField?: string) {
+    const rows = this.sourceDocs(source, where);
+    return { count: rows.length, sum: sumField ? rows.reduce((n, [, e]) => n + (typeof e.data[sumField] === "number" ? (e.data[sumField] as number) : 0), 0) : 0 };
+  }
+
+  async queryDocs(source: QuerySource, query: DocQuery) {
+    const rows = this.sourceDocs(source, query.where);
+    const key = (e: { data: Doc }) => { const v = e.data[query.orderBy!]; return v instanceof Date ? v.getTime() : (v as number); };
+    if (query.orderBy) rows.sort(([, x], [, y]) => (query.descending ? -1 : 1) * (key(x) - key(y)));
+    return rows.slice(0, query.limit).map(([path, e]) => ({ path, data: structuredClone(e.data) }));
+  }
+
+  async getDoc(path: string) { const e = this.docs.get(path); return e ? structuredClone(e.data) : null; }
+  async setDoc(path: string, data: Doc) { this.seed(path, data); }
+
   async deletePage(collection: string, limit: number) {
     const ids = this.children(collection).slice(0, limit);
     for (const c of ids) this.docs.delete(`${collection}/${c.id}`);
@@ -95,6 +135,16 @@ export class FakeAdminStore implements AdminStore {
 export class FakeObjects implements ObjectStore {
   removed: string[] = [];
   async remove(path: string) { this.removed.push(path); return true; }
+  /** Paths that exist; readUrl answers with a fake signed URL for them. */
+  existing = new Set<string>();
+  signed: string[] = [];
+  failSigning = false;
+  async readUrl(path: string, ttlMs: number) {
+    if (this.failSigning) throw new Error("signing unavailable");
+    if (!this.existing.has(path)) return null;
+    this.signed.push(path);
+    return { url: `https://signed.test/${path}?ttl=${ttlMs}`, expiresAt: new Date(NOW.getTime() + ttlMs) };
+  }
 }
 
 export class FakeSessions implements SessionRevoker {

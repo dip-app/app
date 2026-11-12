@@ -1,0 +1,6 @@
+// Turns the push client ON. Pull this file into the untracked ui/Config/Local.xcconfig with a single
+// include line naming this file (see docs/design/push-client.md; never write that line in this file itself).
+// Needs the paid Apple Developer team, the APNs key uploaded in Firebase and the Push capability on the App ID
+// (docs/design/push-client.md). Use it INSTEAD of a DIP_ENTITLEMENTS line in Local.xcconfig.
+DIP_PUSH_ENABLED = YES
+DIP_ENTITLEMENTS = Config/DIP-Paid-Push.entitlements

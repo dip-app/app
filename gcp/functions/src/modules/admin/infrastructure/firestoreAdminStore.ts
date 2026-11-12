@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { FieldPath, FieldValue, Timestamp, type DocumentData, type Firestore, type Transaction } from "firebase-admin/firestore";
+import { AggregateField, FieldPath, FieldValue, Timestamp, type DocumentData, type Firestore, type Transaction } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import type { App } from "firebase-admin/app";
 import type { Storage } from "firebase-admin/storage";
 import { AdminError } from "../domain/errors";
 import type {
-  AdminStore, AdminTransaction, Doc, GroupQuery, ListQuery, ObjectStore, RateLimiter, SessionRevoker,
+  AdminStore, AdminTransaction, DocQuery, Doc, Filter, GroupQuery, QuerySource, ListQuery, ObjectStore, RateLimiter, SessionRevoker,
 } from "../application/ports";
 
 /** Domain value -> Firestore value: Dates become Timestamps, markers become field values, undefined is dropped. */
@@ -55,6 +55,20 @@ export class FirestoreAdminStore implements AdminStore {
     };
     return {
       get: async path => readDoc((await transaction.get(db.doc(path))).data()),
+      getMany: async paths => {
+        if (paths.length === 0) return [];
+        const snaps = await transaction.getAll(...paths.map(path => db.doc(path)));
+        return snaps.map(snap => readDoc(snap.data()));
+      },
+      scanNewest: async (collectionPath, query) => {
+        let ref = db.collection(collectionPath) as FirebaseFirestore.Query;
+        if (query.from) ref = ref.where(query.field, ">=", Timestamp.fromDate(query.from));
+        if (query.to) ref = ref.where(query.field, "<=", Timestamp.fromDate(query.to));
+        ref = ref.orderBy(query.field, "desc").orderBy(FieldPath.documentId(), "desc");
+        if (query.after) ref = ref.startAfter(Timestamp.fromDate(query.after.at), query.after.id);
+        const snap = await transaction.get(ref.limit(query.limit));
+        return snap.docs.map(d => ({ id: d.id, data: readDoc(d.data()) ?? {} }));
+      },
       list: async (collectionPath, query: ListQuery) => {
         let ref = db.collection(collectionPath) as FirebaseFirestore.Query;
         for (const [field, value] of query.where ?? []) ref = ref.where(field, "==", value);
@@ -63,7 +77,11 @@ export class FirestoreAdminStore implements AdminStore {
         const snap = await transaction.get(ref.limit(query.limit));
         return snap.docs.map(d => ({ id: d.id, data: readDoc(d.data()) ?? {} }));
       },
-      count: async collectionPath => (await transaction.get(db.collection(collectionPath).count())).data().count,
+      count: async (collectionPath, where) => {
+        let ref = db.collection(collectionPath) as FirebaseFirestore.Query;
+        for (const [field, value] of where ?? []) ref = ref.where(field, "==", value);
+        return (await transaction.get(ref.count())).data().count;
+      },
       create: (path, data) => queue(() => { transaction.create(db.doc(path), toFirestore(data) as DocumentData); }),
       update: (path, data) => queue(() => { transaction.update(db.doc(path), toFirestore(data) as DocumentData); }),
       delete: path => queue(() => { transaction.delete(db.doc(path)); }),
@@ -92,6 +110,37 @@ export class FirestoreAdminStore implements AdminStore {
     return snap.docs.map(d => ({ path: d.ref.path, data: readDoc(d.data()) ?? {} }));
   }
 
+  private source(source: QuerySource, where: ReadonlyArray<Filter>): FirebaseFirestore.Query {
+    let ref = ("collection" in source ? this.db.collection(source.collection) : this.db.collectionGroup(source.group)) as FirebaseFirestore.Query;
+    for (const [field, op, value] of where) ref = ref.where(field, op, toFirestore(value));
+    return ref;
+  }
+
+  async aggregate(source: QuerySource, where: ReadonlyArray<Filter>, sumField?: string) {
+    const ref = this.source(source, where);
+    if (sumField) {
+      const data = (await ref.aggregate({ count: AggregateField.count(), sum: AggregateField.sum(sumField) }).get()).data();
+      return { count: data.count, sum: data.sum ?? 0 };
+    }
+    return { count: (await ref.count().get()).data().count, sum: 0 };
+  }
+
+  async queryDocs(source: QuerySource, query: DocQuery) {
+    let ref = this.source(source, query.where);
+    if (query.orderBy) ref = ref.orderBy(query.orderBy, query.descending ? "desc" : "asc");
+    if (query.select) ref = ref.select(...query.select);
+    const snap = await ref.limit(query.limit).get();
+    return snap.docs.map(d => ({ path: d.ref.path, data: readDoc(d.data()) ?? {} }));
+  }
+
+  async getDoc(path: string) {
+    return readDoc((await this.db.doc(path).get()).data());
+  }
+
+  async setDoc(path: string, data: Doc) {
+    await this.db.doc(path).set(toFirestore(data) as DocumentData);
+  }
+
   async deletePage(collectionPath: string, limit: number): Promise<number> {
     const snap = await this.db.collection(collectionPath).limit(limit).get();
     if (snap.empty) return 0;
@@ -111,6 +160,24 @@ export class StorageObjects implements ObjectStore {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async readUrl(path: string, ttlMs: number, maxInlineBytes: number): Promise<{ url: string; expiresAt: Date } | null> {
+    const file = this.storage.bucket().file(path);
+    const [exists] = await file.exists();
+    if (!exists) return null;
+    const expiresAt = new Date(Date.now() + ttlMs);
+    try {
+      const [url] = await file.getSignedUrl({ version: "v4", action: "read", expires: expiresAt });
+      return { url, expiresAt };
+    } catch {
+      // Signing needs the function's service account to hold signBlob on itself; without it, inline small objects.
+      const [metadata] = await file.getMetadata();
+      if (Number(metadata.size) > maxInlineBytes) return null;
+      const [bytes] = await file.download();
+      if (bytes.length > maxInlineBytes) return null;
+      return { url: `data:image/jpeg;base64,${bytes.toString("base64")}`, expiresAt };
     }
   }
 }

@@ -98,6 +98,13 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 
 // Quiet destructive row action: white pill, error-colored text (the confirm dialog carries the weight).
 .pill-btn.gray.small.quiet-danger, .table-wrap .pill-btn.quiet-danger { color: var(--error); }
+.row-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: nowrap; .pill-btn { white-space: nowrap; } }
+.small-note { font-size: 13px; }
+.admin-list { display: grid; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; text-align: left; }
+.admin-list li { display: flex; gap: 12px; align-items: center; background: $white; border-radius: $radius-inset; padding: 10px 14px; }
+.admin-only { display: grid; gap: 16px; justify-items: center; }
+.admin-only .actions { justify-content: center; }
+.admin-only .admin-block { width: 100%; max-width: 480px; display: grid; gap: 8px; }
 .pill-btn[disabled] { opacity: .55; }
 .photo-tile { transition: transform .12s ease; &:hover { transform: translateY(-2px); } &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }
 
@@ -110,6 +117,7 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
     tbody tr + tr td { border-top: 0; }
     td { display: block; padding: 0; }
     td.right { text-align: left; }
+    .row-actions { justify-content: flex-start; flex-wrap: wrap; }
   }
   .table-wrap:has(.responsive) { background: transparent; padding: 0; }
   .toolbar .spacer { flex-basis: 100%; height: 0; }
@@ -181,3 +189,34 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .view-full { position: absolute; right: 12px; bottom: 12px; background: $white; color: $ink; border-radius: 999px; padding: 6px 16px; font-family: var(--font-figtree), sans-serif; font-size: 15px; box-shadow: 0 0 0 2px $ink inset; }
 .pill-btn.to-list { display: none; }
 @media (max-width: 1000px) { .pill-btn.to-list { display: inline-flex; } }
+
+// ---------- Bug reports inbox
+.bug-filters { grid-template-columns: minmax(220px, 2fr) repeat(auto-fit, minmax(150px, 1fr)); }
+.bug-filters .field input[type="date"] { padding-right: 16px; min-width: 0; max-width: 100%; }
+.bug-filters .filters-toggle { display: none; }
+.clear-filters { margin: -8px 0 12px; }
+.bug-list .queue { max-height: none; overflow: visible; }
+.bug-item[aria-current="true"] { .muted { color: rgba(255, 255, 255, .82); } .info-pill.warn { border-color: $pink; color: $pink; } }
+@media (max-width: 700px) {
+  .bug-filters { grid-template-columns: minmax(0, 1fr) auto; .field.search { grid-column: 1; } .filters-toggle { display: inline-flex; align-self: end; min-height: 52px; }
+    .extra { display: none; } &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } .filters-toggle { grid-column: 1 / -1; } .extra { display: grid; } .field.wide { grid-column: 1 / -1; } } }
+}
+.bug-item { align-items: flex-start; }
+.bug-item .queue-text { gap: 4px; }
+.bug-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.bug-snippet { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.bug-item[aria-current="true"] .info-pill { background: transparent; }
+.bug-detail.review-detail { position: static; margin-bottom: 0; }
+.bug-detail .evidence.shot img { max-height: 340px; }
+.bug-detail .evidence.none { gap: 8px; align-content: center; justify-items: center; text-align: center; padding: 16px; }
+.facts.diagnostics div { grid-template-columns: 110px minmax(0, 1fr); dd { overflow-wrap: anywhere; } }
+.triage { display: grid; gap: 14px; border-top: 2px solid $white; padding-top: 16px; }
+.triage .actions { padding: 4px 0 0; }
+.triage textarea { min-height: 112px; }
+
+.triage .pill-btn.dark[disabled] { opacity: .4; }
+.no-changes { font-size: 13px; color: rgba(30, 33, 43, .7); margin: -4px 0 0; }
+.filters-toggle svg { margin-right: 8px; flex: none; }
+.filter-count { margin-left: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: $purple; color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
+.tabs-fade { position: relative; max-width: 100%; width: fit-content; }
+@media (max-width: 700px) { .tabs-fade { width: 100%; &::after { content: ""; position: absolute; right: 0; top: 0; bottom: 28px; width: 40px; border-radius: 0 999px 999px 0; pointer-events: none; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 85%); } } }

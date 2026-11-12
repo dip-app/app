@@ -1,3 +1,10 @@
+import Foundation
+
+/// The bell's badge text: the number up to nine, then "9+". Accessibility labels keep the true count.
+public enum DIPBadgeCount {
+    public static func text(_ count: Int) -> String { count > 9 ? "9+" : "\(max(0, count))" }
+}
+
 #if canImport(SwiftUI)
     import SwiftUI
     import CoreText
@@ -94,7 +101,7 @@
                         HStack(spacing: 6) {
                             DIPReferenceAssets.image("HeroiconsOutlineBellAlert").resizable().frame(
                                 width: 25, height: 24)
-                            Text("\(unreadCount)")
+                            Text(DIPBadgeCount.text(unreadCount))
                                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 19.636))
                                 .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
                         }

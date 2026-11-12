@@ -1,0 +1,4 @@
+# Pre-release: keep crawlers out. The firebase.json X-Robots-Tag header is the real switch.
+# Do not edit apps/landing/robots.txt by hand; run scripts/set-indexing.sh on|off.
+User-agent: *
+Disallow: /

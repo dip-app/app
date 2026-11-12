@@ -142,3 +142,20 @@ test('responses', () => {
     progress: {processed: 0, total: 0, created: 0, updated: 0, unchanged: 0, failed: 0}, planHash: 'a'.repeat(64), chunkCount: 0, nextChunk: 0, errors: [], errorsTruncated: false,
     createdBy: 'u', createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z'}});
 });
+
+test('company insights request and response', () => {
+  accepts('GetCompanyInsightsRequest', base);
+  accepts('GetCompanyInsightsRequest', {...base, refresh: true});
+  rejects('GetCompanyInsightsRequest', {...base, requestId: rid});
+  const activity = Array.from({length: 30}, (_, i) => ({date: `2026-10-${String(i + 1).padStart(2, '0')}`, rsvps: i, photos: 0}));
+  const response = {contractVersion: 1, generatedAt: '2026-11-11T12:00:00Z', windowDays: 30,
+    members: {total: 10, active: 9, deactivated: 1, invited: 2, activeLast30Days: 6, activeCapped: false},
+    events: {upcoming: 3, thisMonth: 4, completed: 8, cancelled: 1},
+    participation: {rsvpsLast30Days: 40, attendanceRate: null, attendanceSample: 0, topEvents: []},
+    content: {photosLast30Days: 5, commentsLast30Days: 7},
+    challenges: {pendingReviews: 0}, activity};
+  accepts('GetCompanyInsightsResponse', response);
+  accepts('GetCompanyInsightsResponse', {...response, points: {issuedLast30Days: 120, topMembers: [{userId: 'u1', displayName: 'Ada', pointsBalance: 90}]}});
+  rejects('GetCompanyInsightsResponse', {...response, activity: activity.slice(1)}, 'a 29-day series');
+  rejects('GetCompanyInsightsResponse', {...response, members: {...response.members, total: -1}}, 'negative total');
+});

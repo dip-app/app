@@ -9,9 +9,12 @@ import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../appl
 import {
   adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../application/members";
+import { getBugReport, listBugReports, updateBugReport } from "../application/bugReports";
+import { getCompanyInsights } from "../application/insights";
 import { removeEventPhoto, removeEventPhotoComment } from "../application/moderation";
 import type { AdminDeps, Caller } from "../application/ports";
-import { revokeRosterEntry, upsertRosterEntry } from "../application/roster";
+import { backfillRosterCallable } from "../application/backfillRoster";
+import { listRoster, resendRosterInvite, revokeRosterEntry, upsertRosterEntry } from "../application/roster";
 import { AdminError } from "../domain/errors";
 import {
   AuthSessions, FirestoreAdminRateLimiter, FirestoreAdminStore, randomId, StorageObjects,
@@ -73,6 +76,13 @@ export const adjustMemberPointsV1 = onCall(base, command("adjustMemberPointsV1",
 export const upsertTeamV1 = onCall(base, command("upsertTeamV1", upsertTeam));
 export const upsertRosterEntryV1 = onCall(base, command("upsertRosterEntryV1", upsertRosterEntry));
 export const revokeRosterEntryV1 = onCall(base, command("revokeRosterEntryV1", revokeRosterEntry));
+export const resendRosterInviteV1 = onCall(base, command("resendRosterInviteV1", resendRosterInvite));
+export const listRosterV1 = onCall(base, command("listRosterV1", listRoster));
+export const backfillRosterV1 = onCall(heavy, command("backfillRosterV1", backfillRosterCallable));
 export const importEmployeesV1 = onCall(heavy, command("importEmployeesV1", importEmployees));
 export const applyEmployeeImportV1 = onCall(heavy, command("applyEmployeeImportV1", applyEmployeeImport));
 export const getEmployeeImportV1 = onCall(base, command("getEmployeeImportV1", getEmployeeImport));
+export const listBugReportsV1 = onCall(base, command("listBugReportsV1", listBugReports));
+export const getBugReportV1 = onCall(base, command("getBugReportV1", getBugReport));
+export const updateBugReportV1 = onCall(base, command("updateBugReportV1", updateBugReport));
+export const getCompanyInsightsV1 = onCall(base, command("getCompanyInsightsV1", getCompanyInsights));

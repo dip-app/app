@@ -136,6 +136,12 @@ final class EventBarActionTests: XCTestCase {
         XCTAssertNil(resolve(.challenge("x")))
     }
 
+    func testUnavailableReasonNamesTheCause() {
+        XCTAssertTrue(EventBarAction.unavailableReason(updatesPaused: true).contains("couldn’t reach"))
+        XCTAssertTrue(EventBarAction.unavailableReason(updatesPaused: false).contains("another company"))
+        XCTAssertNotEqual(EventBarAction.unavailableReason(updatesPaused: true), EventBarAction.unavailableReason(updatesPaused: false))
+    }
+
     func testForEventMatchesTheEventRoute() {
         let snapshot = self.snapshot
         for (id, event) in snapshot.eventDetails {

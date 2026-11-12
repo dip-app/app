@@ -1,12 +1,14 @@
 import type { AdminOpsApi } from "./adminApi";
+import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type FieldChange, type ImportPlanResponse, type ImportRow, type Member, type PlanAction, type Role, type RosterRow, type Submission,
+  type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
 import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
+import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
 export interface MockEventView {
@@ -20,7 +22,9 @@ export interface MockOpsDeps {
   /** Changes the going count; `minCapacity` grows the capacity (the capacity-override rule). */
   bumpAttendees: (companyId: string, eventId: string, delta: number, minCapacity?: number) => { attendeeCount: number; capacity: number };
   /** The company's weekly themes (challenges) the review queue belongs to. */
-  themes: (companyId: string) => { id: string; pointsReward: number; startDate: string }[];
+  themes: (companyId: string) => { id: string; title: string; pointsReward: number; startDate: string; endDate: string; participantCount: number; completedCount: number }[];
+  /** The company's events (Overview numbers). */
+  events: (companyId: string) => MockEventView[];
 }
 
 type Stored<T> = T & { companyId: string };
@@ -44,14 +48,20 @@ interface OpsState {
   /** Added after the first release; created on first use so stored preview data keeps working. */
   submissions?: Stored<Submission & { changeOnReview?: boolean }>[];
   seededThemes?: string[];
+  bugReports?: StoredBug[];
 }
 
-const KEY = "dip-admin-mock-ops-v2";
+interface StoredBug extends BugReport {
+  companyId: string; reporterEmail: string; diagnostics: BugDiagnostics | null; screenshot: string | null; note: string; revision: number;
+  updatedAt: string | null; updatedByName: string | null;
+}
+
+const KEY = "dip-admin-mock-ops-v3";
 const TEAMS = ["Platform", "Mentors", "Wellness", "Events crew", "Design"];
 const LOCATIONS = ["Pittsburgh", "Philadelphia", "New York", "Remote"];
 const DEPARTMENTS = ["Engineering", "People", "Marketing", "Finance", "Operations"];
-const FIRST = ["Alex", "Pat", "Casey", "Riley", "Sam", "Jordan", "Morgan", "Taylor", "Avery", "Quinn", "Jamie", "Robin", "Drew", "Skyler", "Cameron", "Reese", "Emery", "Harper", "Rowan", "Sage", "Blake", "Dana", "Kai", "Lee"];
-const LAST = ["Admin", "Member", "Novak", "Chen", "Okafor", "Rivera", "Patel", "Haas", "Kim", "Silva", "Brandt", "Costa", "Dubois", "Evans", "Fischer", "Gupta", "Hughes", "Ito", "Jensen", "Khan", "Lopez", "Mendes", "Nair", "Ortiz"];
+const FIRST = ["Alex", "Pat", "Casey", "Riley", "Sam", "Jordan", "Morgan", "Taylor", "Avery", "Quinn", "Jamie", "Robin", "Drew", "Skyler", "Cameron", "Reese", "Emery", "Harper", "Rowan", "Sage", "Blake", "Dana", "Kai", "Lee", "Noor", "Ola", "Pia", "Quin", "Remy", "Tess"];
+const LAST = ["Admin", "Member", "Novak", "Chen", "Okafor", "Rivera", "Patel", "Haas", "Kim", "Silva", "Brandt", "Costa", "Dubois", "Evans", "Fischer", "Gupta", "Hughes", "Ito", "Jensen", "Khan", "Lopez", "Mendes", "Nair", "Ortiz", "Park", "Quill", "Roth", "Stone", "Tran", "Ueda"];
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const isoAgo = (now: Date, days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -84,7 +94,12 @@ export function seedOps(now: Date): OpsState {
     teamIds: [teams[teamIndex].id], workLocation: LOCATIONS[teamIndex % 4], department: DEPARTMENTS[teamIndex % 5], jobTitle: "Specialist",
     managerEmail: "", startDate: "", state: "invited", invitedAt: isoAgo(now, days),
   });
-  const roster: StoredRoster[] = [invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
+  // Everyone who signed in has a claimed entry, except the last five: they joined before the roster listed everyone (the backfill adds them).
+  const claimed = members.filter((m) => m.companyId === "acme").slice(0, -5).map((m): StoredRoster => ({
+    companyId: "acme", entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
+    jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt,
+  }));
+  const roster: StoredRoster[] = [...claimed, invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
   const photos: Stored<AlbumPhoto>[] = [];
   const comments: Stored<AlbumComment & { eventId: string }>[] = [];
   const images = ["games", "cooking", "outdoors", "fitness", "hiking"];
@@ -116,7 +131,51 @@ const hashOf = (value: unknown) => {
   return h.toString(16).padStart(8, "0").repeat(8);
 };
 
+
+const BUG_SEEDS: { cat: BugCategory; text: string; screen: string; shot?: string; status?: BugStatus; note?: string; assignee?: string; source?: "shake" | "profile" }[] = [
+  { cat: "bug", text: "I tapped Join on the Game Cafe event and the button just kept spinning. Had to force close the app, and then it showed me as not going.", screen: "event", shot: "games" },
+  { cat: "looksWrong", text: "The points on the Rewards tab are cut off on my phone, the last digit is hidden behind the badge.", screen: "rewards", shot: "fitness" },
+  { cat: "confusing", text: "I can't tell how to change my teams. Is that something I do or does an admin do it?", screen: "profile", source: "profile" },
+  { cat: "idea", text: "It would be great to filter events by office so I only see the ones in Pittsburgh.", screen: "home", status: "triaged", note: "Related to the location filter on the roadmap. Waiting for the V2 filters design.", assignee: "uid-admin" },
+  { cat: "bug", text: "Photo upload failed twice on the cooking class album. Third time worked but now there are two copies of the same picture.", screen: "album", shot: "cooking", status: "triaged", note: "Duplicate uploads: check the retry path of finalizeEventPhotoV1.", assignee: "uid-admin" },
+  { cat: "unspecified", text: "Something looked off on the participants list, names were overlapping with the avatar.", screen: "participants", shot: "outdoors" },
+  { cat: "bug", text: "Notification said the hike starts at 9 but the event page says 10.", screen: "event", status: "resolved", note: "Time zone bug in the reminder. Fixed in 2.1 (build 418)." },
+  { cat: "looksWrong", text: "Dark mode: the challenge card has white text on a light background.", screen: "challenge", shot: "hiking" },
+  { cat: "idea", text: "Let me add a plus one to an event.", screen: "event" },
+  { cat: "confusing", text: "What does 'Check in' do? I pressed it by accident.", screen: "myEvents", status: "resolved", note: "Explained in the help text, closing." },
+  { cat: "bug", text: "App crashed when I opened My Events right after signing in.", screen: "myEvents" },
+  { cat: "idea", text: "Weekly theme reminders on Monday morning would help me remember.", screen: "challenge", source: "profile" },
+  { cat: "bug", text: "I can't see my friend's photos in the album even though they were published yesterday.", screen: "album", shot: "games" },
+  { cat: "looksWrong", text: "Profile picture is stretched on the Home screen header.", screen: "home" },
+];
+
+/** Bug reports are seeded when the inbox is first opened so older stored preview data keeps working. */
+function seedBugReports(state: OpsState, now: Date): void {
+  const people = state.members.filter((m) => m.companyId === "acme" && m.role === "member" && m.status === "active");
+  const admins = state.members.filter((m) => m.companyId === "acme" && m.role === "admin");
+  const phones = [["iPhone17,1", "iOS 18.1"], ["iPhone16,2", "iOS 18.0.1"], ["iPhone15,4", "iOS 17.6"]];
+  const out: StoredBug[] = BUG_SEEDS.map((s, i) => {
+    const who = people[(i * 3 + 1) % people.length];
+    const [model, os] = phones[i % 3];
+    const assignee = s.assignee ? admins.find((a) => a.id === s.assignee) : undefined;
+    return {
+      companyId: "acme", id: `7f3c2a1${i.toString(16)}-0b5d-4c3e-9a41-${String(1000 + i * 37).padStart(12, "0")}`, category: s.cat, description: s.text, source: s.source ?? "shake", screen: s.screen,
+      createdAt: isoAgo(now, 0.05 + i * 0.6), reporterId: who.id, reporterName: who.displayName, appVersion: i % 5 === 4 ? "2.0" : "2.1", hasScreenshot: !!s.shot, status: s.status ?? "new", hasNote: !!s.note,
+      ...(assignee ? { assigneeId: assignee.id, assigneeName: assignee.displayName } : {}),
+      reporterEmail: who.email, screenshot: s.shot ? `/admin/img/events/${s.shot}.jpg` : null, note: s.note ?? "", revision: s.status || s.note ? 1 : 0,
+      updatedAt: s.status ? isoAgo(now, 0.2 + i * 0.3) : null, updatedByName: s.status ? "Alex Admin" : null,
+      diagnostics: { appVersion: i % 5 === 4 ? "2.0" : "2.1", appBuild: i % 5 === 4 ? "398" : "418", osVersion: os, deviceModel: model, locale: "en_US", screen: s.screen, installId: `0a1b2c3d-1111-2222-3333-4444555566${String(10 + i)}` },
+    };
+  });
+  out.push({
+    companyId: "globex", id: "5b1e0000-0000-4000-8000-000000000001", category: "bug", description: "Globex only: this must never show in Acme's inbox.", source: "shake", screen: "home", createdAt: isoAgo(now, 0.1),
+    reporterId: "uid-other-admin", reporterName: "Gale Globex", hasScreenshot: false, status: "new", hasNote: false, reporterEmail: "gale@globex.com", diagnostics: null, screenshot: null, note: "", revision: 0, updatedAt: null, updatedByName: null,
+  });
+  state.bugReports = out;
+}
+
 const SUBMISSION_PAGE = 25;
+const BUG_PAGE = 25;
 const NOTES = [
   "Did the 30 minute run before work.", "Yoga at lunch, three sessions this week.", "Walked the stairs instead of the elevator all week. My legs hurt but it counts!",
   "Cycled to the office on Tuesday and Thursday, plus a long ride on Saturday with the family, about 40 km in total.", "", "Swim session at the community pool.",
@@ -413,6 +472,21 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const session = staff("members.view");
       return state.members.filter((m) => m.companyId === session.companyId).map((m) => view(session, m)).sort((a, b) => a.displayName.localeCompare(b.displayName));
     },
+    async listMembersPage(q: MemberQuery, cursor, pageSize = 25) {
+      const state = load();
+      const session = staff("members.view");
+      const text = q.query.trim().toLowerCase();
+      const all = state.members.filter((m) => m.companyId === session.companyId).sort((a, b) => (a.id < b.id ? -1 : 1));
+      const matches = (m: StoredMember) =>
+        (q.status === "all" || m.status === q.status) && (q.role === "all" || m.role === q.role) && (q.teamId === "all" || !q.teamId || m.teamIds.includes(q.teamId)) &&
+        (q.workLocation === "all" || !q.workLocation || m.workLocation.toLowerCase() === q.workLocation.toLowerCase()) &&
+        (!text || `${m.displayName} ${m.email} ${m.department} ${m.jobTitle} ${m.workLocation}`.toLowerCase().includes(text));
+      const rest = all.filter((m) => !cursor || m.id > cursor);
+      const page = rest.filter(matches).slice(0, pageSize);
+      const last = page[page.length - 1];
+      const more = last ? rest.some((m) => m.id > last.id && matches(m)) : false;
+      return { members: page.map((m) => view(session, m)), nextCursor: more ? last!.id : null, total: cursor ? null : all.length };
+    },
     async getMember(id) {
       const state = load();
       const session = staff("members.view");
@@ -487,23 +561,82 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     },
 
     // ----- roster
-    async listRoster() {
+    async listRosterPage(q: RosterQuery, cursor, pageSize = 25) {
       const state = load();
       const session = staff("roster.manage");
-      const entries = state.roster.filter((r) => r.companyId === session.companyId).map((r) => strip(r));
-      // People who already have an account appear through their member record.
-      const people = state.members.filter((m) => m.companyId === session.companyId).map((m): RosterRow => ({
-        entryId: m.id, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
-        jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: m.status === "deactivated" ? "deactivated" : "active", memberId: m.id, invitedAt: m.createdAt,
-      }));
-      return [...entries, ...people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+      const stateOf = (r: StoredRoster): RosterRow["state"] => {
+        const m = r.memberId ? state.members.find((x) => x.id === r.memberId) : undefined;
+        return m ? (m.status === "deactivated" ? "deactivated" : "active") : r.state;
+      };
+      const entries = state.roster.filter((r) => r.companyId === session.companyId).sort((a, b) => (a.entryId < b.entryId ? -1 : 1));
+      const text = q.query.trim().toLowerCase();
+      const matches = (r: StoredRoster) => (q.state === "all" || stateOf(r) === q.state) && (!text || `${r.displayName} ${r.email} ${r.department} ${r.jobTitle} ${r.workLocation}`.toLowerCase().includes(text));
+      const rest = entries.filter((r) => !cursor || r.entryId > cursor);
+      const page = rest.filter(matches).slice(0, pageSize);
+      const last = page[page.length - 1];
+      const more = last ? rest.some((r) => r.entryId > last.entryId && matches(r)) : false;
+      let counts: RosterCounts | null = null;
+      if (!cursor) {
+        counts = { all: entries.length, invited: 0, active: 0, deactivated: 0, revoked: 0 };
+        for (const r of entries) counts[stateOf(r)] += 1;
+      }
+      return { rows: page.map((r) => ({ ...strip(r), state: stateOf(r) })), nextCursor: more ? last!.entryId : null, counts };
+    },
+    async resendInvite(row) {
+      const state = load();
+      const session = staff("roster.manage");
+      const entry = state.roster.find((r) => r.companyId === session.companyId && r.entryId === row.entryId);
+      if (!entry) throw new ApiError("not-found", "That person isn’t on the roster.", {}, "ROSTER_ENTRY_NOT_FOUND");
+      if (entry.state === "active" || entry.state === "deactivated") throw new ApiError("failed-precondition", "This person already signed in.", {}, "ROSTER_ENTRY_CLAIMED");
+      if (entry.state !== "invited") throw new ApiError("failed-precondition", "Invite this person again before resending.", {}, "ROSTER_ENTRY_NOT_INVITED");
+      const sent = entry.resendCount ?? 0;
+      if (sent >= MAX_RESENDS) throw new ApiError("resource-exhausted", "This invite was already resent several times. Reach out to the person directly.", {}, "RESEND_LIMIT");
+      entry.resendCount = sent + 1;
+      entry.lastResentAt = now().toISOString();
+      log(state, session, { action: "roster.resend", targetType: "roster", targetId: entry.entryId, summary: `Resent the invite for ${entry.email} (#${sent + 1})`, changes: [{ field: "resendCount", before: String(sent), after: String(sent + 1) }] });
+      save(state);
+      return { resendCount: sent + 1, lastResentAt: entry.lastResentAt, ...inviteMessage({ name: entry.displayName, company: company(state, session).name, email: entry.email, role: entry.role }) };
+    },
+    async backfillRoster(dryRun, _requestId, cursor): Promise<BackfillStep> {
+      const state = load();
+      const session = staff("roster.manage");
+      const members = state.members.filter((m) => m.companyId === session.companyId).sort((a, b) => (a.id < b.id ? -1 : 1)).filter((m) => !cursor || m.id > cursor).slice(0, 100);
+      const step: BackfillStep = { dryRun, scanned: members.length, created: 0, existing: 0, skipped: 0, nextCursor: null, done: members.length < 100 };
+      for (const m of members) {
+        if (!m.email) { step.skipped += 1; continue; }
+        if (state.roster.some((r) => r.companyId === session.companyId && r.email === m.email)) { step.existing += 1; continue; }
+        step.created += 1;
+        if (!dryRun) {
+          state.roster.push({
+            companyId: session.companyId, entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation,
+            department: m.department, jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt,
+          });
+        }
+      }
+      if (!step.done) step.nextCursor = members[members.length - 1]!.id;
+      if (!dryRun) {
+        log(state, session, { action: "roster.backfill", targetType: "roster", targetId: cursor ?? "start", summary: `Added existing members to the roster: ${step.created} added, ${step.existing} already listed, ${step.skipped} skipped`, changes: [{ field: "created", before: "", after: String(step.created) }] });
+        save(state);
+      }
+      return step;
+    },
+    async getImport(jobId): Promise<ImportJobInfo> {
+      const state = load();
+      const session = staff("import.run");
+      const job = state.jobs[jobId];
+      if (!job || job.companyId !== session.companyId) throw new ApiError("not-found", "That import doesn’t exist any more.", {}, "IMPORT_JOB_NOT_FOUND");
+      const count = (o: string) => job.results.filter((r) => r.outcome === o).length;
+      return {
+        jobId, status: job.status, chunkCount: job.chunkCount, nextChunk: job.nextChunk, planHash: job.planHash, fileName: "",
+        progress: { processed: job.results.length, total: job.rows.length, created: count("created"), updated: count("updated"), unchanged: count("unchanged"), failed: count("failed") },
+      };
     },
     async revokeRosterEntry(entryId) {
       const state = load();
       const session = staff("roster.manage");
       const entry = state.roster.find((r) => r.companyId === session.companyId && r.entryId === entryId);
       if (!entry) throw new ApiError("not-found", "That person isn’t on the roster.", {}, "ROSTER_ENTRY_NOT_FOUND");
-      if (entry.state === "revoked") return;
+      if (entry.state !== "invited") return; // revoked already, or a claimed entry (revoke the member instead)
       entry.state = "revoked";
       log(state, session, { action: "roster.revoke", targetType: "roster", targetId: entryId, summary: `Withdrew the invite for ${entry.displayName}`, changes: [{ field: "status", before: "invited", after: "revoked" }] });
       save(state);
@@ -616,6 +749,89 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       Object.assign(found, { status: "rejected", reviewedAt: now().toISOString(), reviewNote: note });
       save(state);
       return { replayed: false };
+    },
+
+    // ----- bug reports
+    async listBugReports(q, cursor, pageSize = BUG_PAGE) {
+      const state = load();
+      const session = staff("bugreports.manage");
+      if (!state.bugReports) { seedBugReports(state, now()); save(state); }
+      const reports = state.bugReports ?? [];
+      const text = q.query.trim().toLowerCase();
+      const from = q.from ? Date.parse(`${q.from}T00:00:00.000Z`) : -Infinity;
+      const to = q.to ? Date.parse(`${q.to}T23:59:59.999Z`) : Infinity;
+      const own = reports.filter((b) => b.companyId === session.companyId && Date.parse(b.createdAt) >= from && Date.parse(b.createdAt) <= to
+        && (q.category === "all" || b.category === q.category)
+        && (!text || `${b.description} ${b.reporterName} ${b.screen} ${b.appVersion ?? ""} ${b.id} ${b.assigneeName ?? ""}`.toLowerCase().includes(text)))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || (a.id < b.id ? 1 : -1));
+      const matching = own.filter((b) => q.status === "all" || b.status === q.status);
+      const start = cursor ? matching.findIndex((b) => b.id === cursor) + 1 : 0;
+      const page = matching.slice(start, start + pageSize);
+      const counts: BugReportCounts | null = cursor ? null : {
+        all: own.length, new: own.filter((b) => b.status === "new").length, triaged: own.filter((b) => b.status === "triaged").length,
+        resolved: own.filter((b) => b.status === "resolved").length, capped: false,
+      };
+      const strippedPage = page.map(({ companyId: _c, reporterEmail: _e, diagnostics: _d, screenshot: _s, note: _n, revision: _r, updatedAt: _u, updatedByName: _b, ...rest }) => (void _c, void _e, void _d, void _s, void _n, void _r, void _u, void _b, rest));
+      return { reports: strippedPage, nextCursor: start + pageSize < matching.length ? page[page.length - 1].id : null, counts };
+    },
+    async getBugReport(reportId) {
+      const state = load();
+      const session = staff("bugreports.manage");
+      const found = state.bugReports?.find((b) => b.id === reportId && b.companyId === session.companyId);
+      if (!found) throw new ApiError("not-found", "That report doesn’t exist.", {}, "BUG_REPORT_NOT_FOUND");
+      const { companyId: _c, reporterEmail, diagnostics, screenshot, note, revision, updatedAt, updatedByName, ...report } = found;
+      void _c;
+      return { report, reporterEmail, diagnostics, screenshotUrl: screenshot, note, revision, updatedAt, updatedByName };
+    },
+    async updateBugReport(reportId, patch, expectedRevision) {
+      const state = load();
+      const session = staff("bugreports.manage");
+      const found = state.bugReports?.find((b) => b.id === reportId && b.companyId === session.companyId);
+      if (!found) throw new ApiError("not-found", "That report doesn’t exist.", {}, "BUG_REPORT_NOT_FOUND");
+      if (expectedRevision !== found.revision) throw new ApiError("aborted", "Someone else updated this report. Reload it and try again.", {}, "REVISION_CONFLICT");
+      if (patch.note !== undefined && patch.note.length > 2000) throw new ApiError("invalid-argument", "Notes can be up to 2,000 characters.", { note: "Too long." }, "VALIDATION_FAILED");
+      let assignee: StoredMember | null | undefined;
+      if (patch.assigneeId === null) assignee = null;
+      else if (patch.assigneeId !== undefined) {
+        assignee = state.members.find((m) => m.id === patch.assigneeId && m.companyId === session.companyId && m.role === "admin" && m.status === "active");
+        if (!assignee) throw new ApiError("not-found", "That person can’t be assigned. Pick an admin of your company.", {}, "ASSIGNEE_NOT_FOUND");
+      }
+      const changes: AuditEntry["changes"] = [];
+      if (patch.status !== undefined && patch.status !== found.status) { changes.push({ field: "status", before: found.status, after: patch.status }); found.status = patch.status; }
+      if (patch.note !== undefined && patch.note.trim() !== found.note) { changes.push({ field: "note", before: found.note ? "(edited)" : "", after: patch.note.trim() ? "(edited)" : "" }); found.note = patch.note.trim(); found.hasNote = found.note !== ""; }
+      if (assignee !== undefined && (assignee?.id ?? undefined) !== found.assigneeId) {
+        changes.push({ field: "assignee", before: found.assigneeName ?? "", after: assignee?.displayName ?? "" });
+        if (assignee) { found.assigneeId = assignee.id; found.assigneeName = assignee.displayName; } else { delete found.assigneeId; delete found.assigneeName; }
+      }
+      if (changes.length) {
+        found.revision += 1;
+        found.updatedAt = now().toISOString();
+        found.updatedByName = session.name;
+        log(state, session, { action: "bugreport.update", targetType: "bugReport", targetId: found.id, summary: `Updated bug report ${found.id.slice(0, 8)}`, changes });
+        save(state);
+      }
+      return { status: found.status, note: found.note, assigneeId: found.assigneeId ?? null, assigneeName: found.assigneeName ?? null, revision: found.revision, updatedAt: found.updatedAt ?? now().toISOString(), changed: changes.length > 0 };
+    },
+
+    // ----- audit
+    async companyInsights() {
+      const session = staff("insights.view");
+      const scenario = typeof window === "undefined" ? "default" : scenarioFromSearch(window.location.search);
+      if (scenario === "slow") await new Promise((resolve) => setTimeout(resolve, 2500));
+      if (scenario === "error") throw new ApiError("failed-precondition", "Couldn’t load the overview. Check your connection and try again.", {}, "UNAVAILABLE");
+      const state = load();
+      const nowDate = now();
+      const theme = deps.themes(session.companyId).find((t) => Date.parse(t.startDate) <= nowDate.getTime() && Date.parse(t.endDate) >= nowDate.getTime()) ?? null;
+      const queue = (state.submissions ?? []).filter((s) => s.companyId === session.companyId && theme && s.challengeId === theme.id);
+      return buildMockInsights({
+        members: state.members.filter((m) => m.companyId === session.companyId),
+        invited: state.roster.filter((r) => r.companyId === session.companyId && r.state === "invited").length,
+        events: deps.events(session.companyId),
+        photos: state.photos.filter((p) => p.companyId === session.companyId).length,
+        comments: state.comments.filter((c) => c.companyId === session.companyId).length,
+        theme,
+        pendingReviews: state.submissions ? queue.filter((s) => s.status === "submitted").length : 3,
+      }, scenario, session.role, nowDate);
     },
 
     // ----- audit

@@ -1,7 +1,7 @@
 import XCTest
 
-/// Coworker invitations against the fixture repository (no Firebase): the bell opens the Invitations sheet
-/// (badge = pending count), accepting moves a card to "Going", declining removes it, and the event page's
+/// Coworker invitations against the fixture repository (no Firebase): the bell opens the notifications center, whose
+/// Invitations button opens the sheet (waiting count), accepting moves a card to "Going", declining removes it, and the event page's
 /// Invite a Coworker opens the picker, where a search result can be invited once.
 /// `--invites-state=empty|loading|failed|full|search-failed|send-failed` selects the review variants.
 final class InvitesTests: XCTestCase {
@@ -23,8 +23,13 @@ final class InvitesTests: XCTestCase {
         let app = launch([])
         let bell = app.buttons["home.notifications"]
         XCTAssertTrue(bell.waitForExistence(timeout: 20))
-        XCTAssertTrue(bell.label.contains("2"), "badge is the two pending invitations, got \(bell.label)")
+        XCTAssertTrue(bell.label.contains("4 unread"), "badge is the unread notifications, got \(bell.label)")
         bell.tap()
+        // Invitations are one tap away from the notifications center.
+        let invitations = app.buttons["notifications.invitations"]
+        XCTAssertTrue(invitations.waitForExistence(timeout: 10))
+        XCTAssertTrue(invitations.label.contains("2 waiting"), "got \(invitations.label)")
+        invitations.tap()
         XCTAssertTrue(app.buttons["invitations.accept.e1_me"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["invitations.decline.e1_me"].exists)
         XCTAssertTrue(app.buttons["invitations.open.e1_me"].exists)
@@ -124,7 +129,6 @@ final class InvitesTests: XCTestCase {
         let app = launch(["--screen=event", "--v1-event-fixtures"])
         let invite = app.buttons["event.invite"]
         XCTAssertTrue(invite.waitForExistence(timeout: 20))
-        app.swipeUp()
         shot("event-invite-action")
         invite.tap()
         XCTAssertTrue(app.descendants(matching: .any)["invite.search"].waitForExistence(timeout: 10))
@@ -193,5 +197,75 @@ final class InvitesTests: XCTestCase {
         shot("motion-picker-invite-mid")
         XCTAssertTrue(picker.descendants(matching: .any)["invite.state.u-priya"].waitForExistence(timeout: 15))
         shot("motion-picker-invited-final")
+    }
+
+    /// An accepted invitation whose activity the member left sits under Cancelled with a Rejoin; rejoining moves it back to
+    /// Going with a toast; full / closed are refused with a neutral message.
+    @MainActor func testCancelledSectionRejoinAndRefusals() {
+        let app = launch(["--screen=invitations"])
+        XCTAssertTrue(app.descendants(matching: .any)["invitations.cancelled.e4_me"].waitForExistence(timeout: 20), "left activity is listed as Cancelled")
+        XCTAssertTrue(app.buttons["invitations.going.e3_me"].exists, "an activity the member still goes to stays under Going")
+        XCTAssertFalse(app.buttons["invitations.going.e4_me"].exists)
+        shot("invitations-cancelled-section")
+        app.buttons["invitations.rejoin.e4_me"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["invitations.toast"].waitForExistence(timeout: 5), "rejoining is confirmed")
+        shot("invitations-rejoined-toast")
+        XCTAssertTrue(app.buttons["invitations.going.e4_me"].waitForExistence(timeout: 10), "the row moves back to Going")
+        XCTAssertFalse(app.buttons["invitations.rejoin.e4_me"].exists)
+        app.terminate()
+
+        let full = launch(["--screen=invitations", "--rejoin-state=full"])
+        XCTAssertTrue(full.buttons["invitations.rejoin.e4_me"].waitForExistence(timeout: 20))
+        full.buttons["invitations.rejoin.e4_me"].tap()
+        XCTAssertTrue(full.descendants(matching: .any)["invitations.rejoin.error.e4_me"].waitForExistence(timeout: 5))
+        XCTAssertTrue(full.buttons["invitations.rejoin.e4_me"].isEnabled, "a full activity may open up, so Rejoin stays available")
+        shot("invitations-rejoin-full")
+        full.terminate()
+
+        let closed = launch(["--screen=invitations", "--rejoin-state=closed"])
+        XCTAssertTrue(closed.buttons["invitations.rejoin.e4_me"].waitForExistence(timeout: 20))
+        closed.buttons["invitations.rejoin.e4_me"].tap()
+        XCTAssertTrue(closed.descendants(matching: .any)["invitations.rejoin.error.e4_me"].waitForExistence(timeout: 5))
+        XCTAssertFalse(closed.buttons["invitations.rejoin.e4_me"].isEnabled, "a started activity cannot be rejoined")
+        shot("invitations-rejoin-closed")
+    }
+
+    /// The event page always shows exactly two pills side by side: [Invite Coworker | Share Event] while inviting is
+    /// possible, [Directions | Share Event] otherwise (full, past, cancelled). Frames are kept for the design audit.
+    @MainActor func testEventPagePillPairInEveryState() {
+        func assertPair(_ app: XCUIApplication, first: String, absent: String, _ state: String) {
+            let lead = app.buttons[first].exists ? app.buttons[first] : app.descendants(matching: .any)[first]
+            XCTAssertTrue(lead.waitForExistence(timeout: 20), "\(state): \(first)")
+            XCTAssertFalse(app.descendants(matching: .any)[absent].exists, "\(state): no \(absent)")
+            let share = app.buttons["event.share"]
+            XCTAssertTrue(share.exists, "\(state): Share Event")
+            XCTAssertEqual(lead.frame.minY, share.frame.minY, accuracy: 1, "\(state): side by side")
+            XCTAssertEqual(lead.frame.width, share.frame.width, accuracy: 2, "\(state): equal pills")
+            XCTAssertEqual(lead.frame.height, share.frame.height, accuracy: 1, "\(state): same height")
+            // The top-right pill is date-only: no "at 18:44" (the time lives in the When row).
+            let datePill = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "^[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}( at .*)?$")).firstMatch
+            if datePill.exists { XCTAssertFalse(datePill.label.contains(" at "), "\(state): date pill shows a time: \(datePill.label)") }
+            shot("event-pills-\(state)")
+        }
+        let upcoming = launch(["--screen=event", "--v1-event-fixtures"])
+        assertPair(upcoming, first: "event.invite", absent: "event.directions", "upcoming")
+        upcoming.terminate()
+        let joined = launch(["--screen=event-joined", "--v1-event-fixtures"])
+        assertPair(joined, first: "event.invite", absent: "event.directions", "joined")
+        joined.terminate()
+        let full = launch(["--screen=event", "--v1-event-fixtures", "--event-full"])
+        assertPair(full, first: "event.directions", absent: "event.invite", "full")
+        full.terminate()
+        let cancelled = launch(["--screen=event", "--v1-event-fixtures", "--event-cancelled"])
+        assertPair(cancelled, first: "event.directions", absent: "event.invite", "cancelled")
+        XCTAssertEqual(cancelled.staticTexts["event.attendeeNote"].label, "Cancelled", "a cancelled activity says so instead of a count")
+        cancelled.terminate()
+        let past = launch(["--screen=past-event", "--v1-event-fixtures"])
+        XCTAssertTrue(past.buttons["event.primary"].waitForExistence(timeout: 20))
+        XCTAssertFalse(past.buttons["event.invite"].exists)
+        XCTAssertTrue(past.descendants(matching: .any)["event.directions"].waitForExistence(timeout: 5), "past: Directions is the first pill")
+        XCTAssertTrue(past.buttons["event.share"].exists)
+        XCTAssertTrue(past.staticTexts["event.attendeeNote"].label.hasSuffix(" went"), "a past activity shows how many went")
+        shot("event-pills-past")
     }
 }

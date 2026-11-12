@@ -69,6 +69,8 @@ public actor DIPMockInvitesRepository: DIPInvitesRepository {
             invite("e1_me", "puppy-yoga", "Puppy Yoga", in: 2, person: theo, message: "Say yes, there are puppies.", ago: 3_600),
             invite("e2_me", "kayaking-sunrise", "Sunrise Kayaking", in: 5, person: priya, ago: 7_200),
             invite("e3_me", "pasta-night", "Pasta Night", in: 3, person: jordan, status: .accepted, ago: 86_400),
+            // Accepted earlier, then the member left Kayaking (it is not joined in the fixtures): offered a Rejoin.
+            invite("e4_me", "kayaking", "Kayaking", in: 4, person: directory[4], status: .accepted, ago: 172_800),
         ]
         let sent = [
             invite("e1_u-mia", "puppy-yoga", "Puppy Yoga", in: 2, person: directory[4], ago: 1_800),

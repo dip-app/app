@@ -133,7 +133,7 @@ struct DIPEventDetailsScreen: View {
 
     private var header: some View {
         return DIPDetailHeader(
-            timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
+            timing: Self.dateOnly(event), widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
             calendarLabel: addableMetadata.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
             onCalendar: addToCalendar)
         .alert("Couldn’t add to calendar", isPresented: Binding(
@@ -143,6 +143,14 @@ struct DIPEventDetailsScreen: View {
         } message: {
             if case .failed(let message) = calendarResult { Text(message) }
         }
+    }
+
+    /// The header pill shows the date only ("Nov 23, 2026"); the time lives in the When row of the info card.
+    static func dateOnly(_ event: DIPEventDetail) -> String {
+        if let start = event.metadata?.startTime { return start.formatted(.dateTime.month(.abbreviated).day().year()) }
+        // Fixture events without metadata: drop a trailing " at 6:30 PM" from the preformatted text.
+        if let range = event.timing.range(of: " at ") { return String(event.timing[..<range.lowerBound]) }
+        return event.timing
     }
 
     /// Metadata when the event can still be added to a calendar (not past, not cancelled); the header pill and the When row share this gate.
@@ -190,11 +198,12 @@ struct DIPEventDetailsScreen: View {
                 avatars: event.attendeeAvatars, total: event.attendeeCount,
                 emptyTitle: event.isPast ? "No attendance recorded" : "Be the first to join",
                 emptyText: event.isPast ? "No one checked in to this event." : "Coworkers who join will show up here.",
-                capacity: event.isPast ? nil : event.metadata?.capacity,
+                capacity: event.isPast || event.metadata?.status == .cancelled ? nil : event.metadata?.capacity,
+                trailingNote: event.metadata?.status == .cancelled ? "Cancelled" : event.isPast && event.attendeeCount > 0 ? "\(event.attendeeCount) went" : nil,
                 identifierPrefix: "event", onMore: onAttendees)
-            if onInvite != nil, canOfferInvite { inviteButton }
             DIPDetailActionRow(
-                showsParticipation: !event.isPast,
+                invite: invitePill,
+                showsParticipation: true,
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions (always, when there is a location); Leave sits at the bottom of the page.
                 joinInRow: false, directionsURL: event.metadata?.directionsURL(fallbackTitle: event.title),
                 isParticipating: joined, canChange: canChangeParticipation,
@@ -211,30 +220,11 @@ struct DIPEventDetailsScreen: View {
         guard let metadata = event.metadata else { return nil }
         return DIPInviteRules.denial(metadata, attendeeCount: event.attendeeCount, now: Date())
     }
-    private var canOfferInvite: Bool {
-        guard !event.isPast else { return false }
-        switch inviteDenial { case nil, .full?: return true; default: return false }
-    }
-
-    /// Solid (pressable) ink pill under the attendees, like "See what changed" (a separate action from the iOS share sheet).
-    private var inviteButton: some View {
-        let denial = inviteDenial
-        return VStack(alignment: .leading, spacing: 6) {
-            Button { onInvite?() } label: {
-                DIPActionPill(title: "Invite a Coworker", color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
-                    Image(systemName: "person.badge.plus").resizable().scaledToFit()
-                }
-            }
-            .buttonStyle(DIPPressFeedbackStyle())
-            .disabled(denial != nil)
-            .opacity(denial == nil ? 1 : 0.5)
-            .accessibilityLabel("Invite a coworker")
-            .accessibilityHint(denial?.message ?? "Choose a coworker from your company to invite")
-            .accessibilityIdentifier("event.invite")
-            if let denial {
-                Text(denial.message).font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote)).foregroundStyle(.secondary)
-            }
-        }
+    /// Invite Coworker takes the first slot beside Share only while inviting is possible (upcoming, scheduled, not started,
+    /// not full, and an invitations adapter exists); otherwise the slot is Directions again.
+    private var invitePill: DIPDetailActionRow.InviteAction? {
+        guard let onInvite, !event.isPast, inviteDenial == nil else { return nil }
+        return .init(accessibilityLabel: "Invite a coworker to \(event.title)", action: onInvite)
     }
 
     /// Solid (pressable) pill, shown only when the organizer has edited the event.
@@ -363,9 +353,14 @@ struct DIPEventDetailsScreen: View {
     @ViewBuilder private func whereRow(_ metadata: DIPEventMetadata) -> some View {
         let row = { (trailing: AnyView) in
             metadataRow("mappin.and.ellipse", title: "Where", trailing: trailing) {
-                Text(metadata.venueName)
-                Text(metadata.address).foregroundStyle(.secondary)
-                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+                // Live data can lack a venue name or address: say so instead of drawing an empty row.
+                if metadata.venueName.isEmpty && metadata.address.isEmpty && metadata.locality.isEmpty {
+                    Text("Location to be announced").foregroundStyle(.secondary)
+                } else {
+                    if !metadata.venueName.isEmpty { Text(metadata.venueName) }
+                    if !metadata.address.isEmpty { Text(metadata.address).foregroundStyle(.secondary) }
+                    if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+                }
             }
         }
         if !event.isPast, let url = metadata.mapsURL {

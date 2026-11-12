@@ -1,0 +1,8 @@
+# Launch: the landing page is indexable; the admin portal and event share pages are not.
+# Do not edit apps/landing/robots.txt by hand; run scripts/set-indexing.sh on|off.
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /e/
+
+Sitemap: https://letsdip.work/sitemap.xml

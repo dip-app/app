@@ -16,6 +16,8 @@ export type Permission =
   | "roster.manage"
   | "import.run"
   | "audit.read"
+  | "insights.read"
+  | "bugreport.manage"
   | "challenge.manage";
 
 const ORGANIZER_AND_ADMIN: readonly Role[] = ["organizer", "admin"];
@@ -32,6 +34,8 @@ export const PERMISSION_MATRIX: Readonly<Record<Permission, readonly Role[]>> = 
   "roster.manage": ADMIN_ONLY,
   "import.run": ADMIN_ONLY,
   "audit.read": ADMIN_ONLY,
+  "insights.read": ORGANIZER_AND_ADMIN,
+  "bugreport.manage": ADMIN_ONLY,
   // Challenges are admin-only until that module adopts `can`.
   "challenge.manage": ADMIN_ONLY,
 };

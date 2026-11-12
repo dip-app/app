@@ -55,7 +55,9 @@ class HostingShareLinks(unittest.TestCase):
 
     def test_landing_page_has_unset_app_store_placeholder(self):
         ts = (ROOT / "gcp/functions/src/modules/share/domain/sharePage.ts").read_text()
-        self.assertRegex(ts, r'APP_STORE_ID = "";')
+        launch = (ROOT / "gcp/functions/src/config/launch.ts").read_text()
+        self.assertRegex(launch, r'APP_STORE_ID = "";')  # single source; see docs/ops/launch-switches.md
+        self.assertIn("config/launch", ts)
         self.assertIn("dip://events/", ts)
         self.assertNotIn("http-equiv", ts)
 

@@ -6,14 +6,16 @@
  * Never the venue, address, locality, coordinates, time of day, tags, attendee data, cost or company id.
  */
 
+import { APP_STORE_ID, USE_OFFICIAL_APP_STORE_BADGE } from "../../../config/launch";
+
 /** Public origin of the share links; must equal `DIPShareLink.baseURL` (checked by scripts/tests). */
 export const SHARE_ORIGIN = "https://letsdip.work";
 
 /** Previous default Hosting origin; still served, and still accepted for stored preview images. */
 export const LEGACY_SHARE_ORIGIN = "https://team05-dip.web.app";
 
-/** PLACEHOLDER: numeric App Store ID of the DIP listing. Empty until the listing exists. */
-export const APP_STORE_ID = "";
+/** App Store wiring lives in config/launch.ts (docs/ops/launch-switches.md); re-exported for existing importers. */
+export { APP_STORE_ID, USE_OFFICIAL_APP_STORE_BADGE };
 /** Used in the `apple-itunes-app` banner meta while APP_STORE_ID is unset. */
 export const APP_STORE_ID_PLACEHOLDER = "0000000000";
 
@@ -174,7 +176,11 @@ function metaProperty(property: string, content: string): string {
 }
 
 /** Renders the complete server-side HTML page: preview tags for crawlers plus the human landing behaviour. */
-export function renderSharePage(preview: SharePreview, appStoreId: string = APP_STORE_ID): string {
+export function renderSharePage(
+  preview: SharePreview,
+  appStoreId: string = APP_STORE_ID,
+  useBadge: boolean = USE_OFFICIAL_APP_STORE_BADGE,
+): string {
   const pageURL = preview.eventId ? `${SHARE_ORIGIN}/e/${encodeURIComponent(preview.eventId)}` : `${SHARE_ORIGIN}/`;
   const appLink = preview.eventId && EVENT_ID.test(preview.eventId) ? `dip://events/${encodeURIComponent(preview.eventId)}` : "dip://";
   const storeURL = /^[0-9]+$/.test(appStoreId) ? `https://apps.apple.com/app/id${appStoreId}` : "";
@@ -208,9 +214,11 @@ export function renderSharePage(preview: SharePreview, appStoreId: string = APP_
     metaName("twitter:image", preview.imageURL),
     metaName("twitter:image:alt", preview.imageAlt),
   ];
-  const note = storeURL
-    ? `<p class="note">Don’t have DIP yet? <a href="${escapeHtml(storeURL)}">Get it on the App Store</a>.</p>`
-    : `<p class="note">Don’t have DIP yet? It’s coming to the App Store.</p>`;
+  const note = !storeURL
+    ? `<p class="note">Don’t have DIP yet? It’s coming to the App Store.</p>`
+    : useBadge
+      ? `<p class="note"><a class="badge" href="${escapeHtml(storeURL)}"><img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="40"></a></p>`
+      : `<p class="note">Don’t have DIP yet? <a href="${escapeHtml(storeURL)}">Get it on the App Store</a>.</p>`;
   const card = preview.isEvent
     ? `    <div class="cover"><img src="${escapeHtml(preview.imageURL)}" alt="${escapeHtml(preview.imageAlt)}" width="${PREVIEW_IMAGE.width}" height="${PREVIEW_IMAGE.height}"></div>
 ${preview.dateLabel ? `    <p class="date">${escapeHtml(preview.dateLabel)}</p>\n` : ""}`

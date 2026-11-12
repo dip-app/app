@@ -70,5 +70,13 @@ enum EventBarAction {
             icon: joined ? chatIcon : nil, kind: joined ? .navigate : .commit)
     }
 
+    /// Why an event page has nothing to show: a paused live connection reads differently from an event that is
+    /// simply not in this member's company (or was removed).
+    static func unavailableReason(updatesPaused: Bool) -> String {
+        updatesPaused
+            ? "We couldn’t reach the latest activities, so this one can’t be shown right now. Go back and try again in a moment."
+            : "This activity isn’t in your company’s list. It may belong to another company or may have been removed."
+    }
+
     static let chatIcon = "event_HeroiconsOutlineChatBubbleOvalLeft"
 }

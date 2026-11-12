@@ -17,6 +17,9 @@ public protocol DIPRepository: Sendable {
     func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws
     func discardUpload(uploadID: String) async
+    /// The stored photo bytes at original resolution (at most 2048 px JPEG, location removed), read through the signed-in
+    /// Storage session. Used only to save a photo to the member's library; adapters without a store refuse.
+    func originalPhotoData(eventID: String, photoID: String) async throws -> Data
 }
 
 public enum DIPRepositoryError: Error, Equatable, Sendable {
@@ -29,6 +32,10 @@ public extension DIPRepository {
     /// Adapters without challenge support refuse instead of pretending to join.
     func setChallengeJoined(challengeID: String, joined: Bool) async throws {
         throw DIPRepositoryError.invalidInput("Challenges aren’t available yet")
+    }
+
+    func originalPhotoData(eventID: String, photoID: String) async throws -> Data {
+        throw DIPRepositoryError.notFound("This photo can’t be saved right now")
     }
 
     /// The member removed a failed upload draft: adapters that reserve a slot per upload release it.
