@@ -77,7 +77,7 @@ export const onEventChanged = onDocumentUpdated(
     const { store, messaging, clock } = dependencies();
     const { companyId, eventId } = event.params;
     const updateTime = event.data.after.updateTime?.toDate() ?? new Date(event.time);
-    const result = await onEventDocumentUpdated({ messaging, devices: store, recipients: store, changeLog: store, clock },
+    const result = await onEventDocumentUpdated({ messaging, devices: store, recipients: store, changeLog: store, clock, inbox: store },
       companyId, eventId, plainEvent(event.data.before.data()), plainEvent(event.data.after.data()), updateTime);
     if (result.appended) logger.info("event change logged", { companyId, eventId, ...result.push });
   });

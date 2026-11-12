@@ -83,6 +83,11 @@ export class FirestoreSubmissionStore implements SubmissionStore {
         incrementCompleted: (companyId, challengeId) => {
           transaction.update(this.challenge(companyId, challengeId), { completedCount: FieldValue.increment(1) });
         },
+        createNotice: (uid, id, notice) => {
+          // Create-only inside the review transaction: a replay never gets here, and an existing notice is never reset to unread.
+          transaction.create(this.db.collection("users").doc(uid).collection("notifications").doc(id),
+            { userId: uid, ...notice, isRead: false, createdAt: FieldValue.serverTimestamp() });
+        },
         createAward: (companyId, awardId, entry) => {
           transaction.create(this.award(companyId, awardId), { ...entry, createdAt: FieldValue.serverTimestamp() });
         },

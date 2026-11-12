@@ -27,6 +27,8 @@ targets:
       - ../DIP/Data/Accounts/PreviewAccountsRepository.swift
       - ../DIP/Domain/Events
       - ../DIP/Domain/Challenges
+      # Permission banner seam for the notifications center (UIKit/Foundation only).
+      - ../DIP/Domain/Push/PushPermissionControl.swift
       # In-memory submission source for the review states (never a network).
       - ../DIP/Data/Challenges/MockSubmissionSource.swift
       - ../DIP/Data/Events/MemberEventAppRepository.swift

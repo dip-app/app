@@ -51,4 +51,4 @@ Also: `SUBMISSION_NOT_FOUND`, `CHALLENGE_NOT_FOUND` (`not-found`). Organizers ha
 
 ## Accepted V2 gaps
 
-Unfinalized evidence uploads are not swept (at most 5 x 10 MiB per member per challenge, invisible to others). `approved` is not reversible. Points shown in the iOS app come from the submission's `pointsAwarded` and the observed profile balance. No push notification on approval or rejection yet.
+Unfinalized evidence uploads are not swept (at most 5 x 10 MiB per member per challenge, invisible to others). `approved` is not reversible. Points shown in the iOS app come from the submission's `pointsAwarded` and the observed profile balance. Approval and rejection each create one in-app notice for the member (`users/{uid}/notifications/challenge_approved_{challengeId}` and `challenge_changes_{challengeId}_{attempt}`, create-only, inside the review transaction); there is no push for them yet.
