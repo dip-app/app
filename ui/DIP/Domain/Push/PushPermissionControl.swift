@@ -12,8 +12,8 @@ struct PushPermissionControl {
     var turnOn: @MainActor () async -> DIPPushAuthorization
     var openSettings: @MainActor () -> Void
 
-    @MainActor static func settingsOpener() -> () -> Void {
-        {
+    @MainActor static func settingsOpener() -> @MainActor @Sendable () -> Void {
+        { @MainActor @Sendable in
             #if canImport(UIKit)
             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
             #endif
