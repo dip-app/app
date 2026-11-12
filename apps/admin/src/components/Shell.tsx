@@ -182,7 +182,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         ) : (<>
         <header className="page-header">
           <div className="titles">
-            <h1 className="title-pill">{title}</h1>
+            <h1 className="page-title">{title}</h1>
             {subtitle && <p className="subtitle">{subtitle}</p>}
           </div>
           {action && <div className="header-action">{action}</div>}

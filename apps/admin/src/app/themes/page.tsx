@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
-import { ThemeCard } from "@/components/ThemeCard";
+import { ThemeCard, ThemeTable } from "@/components/ThemeCard";
 import { type ThemePhase, type WeeklyTheme, sortThemes, themePhase } from "@/lib/challenge";
 import { ApiError } from "@/lib/contract";
 
@@ -55,7 +55,7 @@ export default function ThemesPage() {
           <button className="pill-btn" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
         </div>
       ) : themes === null ? (
-        <div className="skeleton-list" role="status" aria-label="Loading weekly themes"><div className="skeleton" /></div>
+        <div className="skeleton-list" role="status" aria-label="Loading weekly themes"><div className="skeleton short" /><div className="skeleton short" /></div>
       ) : (
         <>
           <div className="tabs" role="group" aria-label="Filter weekly themes">
@@ -71,7 +71,7 @@ export default function ThemesPage() {
               <p>{EMPTY[phase].body}</p>
             </div>
           ) : (
-            <div className="cards">{shown.map((theme) => <ThemeCard key={theme.id} theme={theme} phase={phase} />)}</div>
+            <ThemeTable>{shown.map((theme) => <ThemeCard key={theme.id} theme={theme} phase={phase} />)}</ThemeTable>
           )}
         </>
       )}

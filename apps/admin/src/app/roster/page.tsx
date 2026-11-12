@@ -148,13 +148,13 @@ export default function RosterPage() {
                           ? <Link className="person" href={`/members/detail/?id=${encodeURIComponent(r.memberId)}`}><Avatar name={r.displayName} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></Link>
                           : <span className="person"><Avatar name={r.displayName} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></span>}
                       </td>
-                      <td>{ROLE_LABEL[r.role]}</td>
-                      <td>{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
-                      <td>
+                      <td data-label="Role">{ROLE_LABEL[r.role]}</td>
+                      <td data-label="Teams">{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
+                      <td data-label="Status">
                         <Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info>
                         {r.state === "invited" && r.resendCount ? <><br /><span className="muted small-note">Resent {r.resendCount}×{r.lastResentAt ? `, last ${formatDate(r.lastResentAt)}` : ""}</span></> : null}
                       </td>
-                      <td>{formatDate(r.invitedAt)}</td>
+                      <td data-label="Added">{formatDate(r.invitedAt)}</td>
                       <td className="right">
                         <div className="row-actions">
                           {r.state === "invited" && <button className="pill-btn dark small" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={`Resend invite to ${r.displayName}`}>{busy === r.entryId ? "Working…" : "Resend invite"}</button>}

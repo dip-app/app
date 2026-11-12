@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Shell } from "@/components/Shell";
 import { Empty, Info, LoadError, Loading, SearchBox, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
@@ -41,30 +41,39 @@ export default function AuditPage() {
             </div>
             {filtered.length === 0 ? <Empty title="No matches" body="Try a different search or action." /> : (
               <>
-                <ol className="audit-list">
-                  {filtered.slice(0, shown).map((e) => {
-                    const expandable = e.changes.length > 0 || !!e.reason;
-                    return (
-                      <li key={e.id} className="audit-row">
-                        <div className="audit-main">
-                          <Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info>
-                          <p><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span> · {e.summary}</p>
-                          <p className="muted">{e.targetType} {e.targetId} · <time dateTime={e.at}>{formatDateTime(e.at)}</time></p>
-                        </div>
-                        {expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}
-                        {open === e.id && (
-                          <div className="audit-detail">
-                            {e.reason && <p><strong>Reason:</strong> {e.reason}</p>}
-                            {e.changes.length > 0 && (
-                              <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
-                                <tbody>{e.changes.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || "—"}</td><td>{c.after || "—"}</td></tr>)}</tbody></table>
+                <div className="table-wrap">
+                  <table className="table responsive audit-table">
+                    <caption className="sr-only">Audit log</caption>
+                    <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">Who</th><th scope="col">What</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                    <tbody>
+                      {filtered.slice(0, shown).map((e) => {
+                        const expandable = e.changes.length > 0 || !!e.reason;
+                        return (
+                          <Fragment key={e.id}>
+                            <tr className="audit-entry">
+                              <td className="nowrap" data-label="When"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
+                              <td data-label="Action"><Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info></td>
+                              <td data-label="Who"><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></td>
+                              <td data-label="What"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
+                              <td className="right">{expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${e.summary}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}</td>
+                            </tr>
+                            {open === e.id && (
+                              <tr className="audit-detail-row" id={`audit-detail-${e.id}`}><td colSpan={5}>
+                                <div className="audit-detail">
+                                  {e.reason && <p><strong>Reason:</strong> {e.reason}</p>}
+                                  {e.changes.length > 0 && (
+                                    <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+                                      <tbody>{e.changes.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || "—"}</td><td>{c.after || "—"}</td></tr>)}</tbody></table>
+                                  )}
+                                </div>
+                              </td></tr>
                             )}
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
                 {filtered.length > shown && <div className="actions"><button className="pill-btn gray" onClick={() => setShown((n) => n + PAGE)}>Show more ({filtered.length - shown} left)</button></div>}
               </>
             )}

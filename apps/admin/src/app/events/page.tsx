@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
-import { EventCard } from "@/components/EventCard";
+import { EventCard, EventTable } from "@/components/EventCard";
 import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
 import { ApiError, type AdminEvent, classify } from "@/lib/contract";
@@ -49,7 +49,7 @@ export default function EventsPage() {
           <button className="pill-btn" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
         </div>
       ) : events === null ? (
-        <div className="skeleton-list" role="status" aria-label="Loading events"><div className="skeleton" /><div className="skeleton" /></div>
+        <div className="skeleton-list" role="status" aria-label="Loading events"><div className="skeleton short" /><div className="skeleton short" /><div className="skeleton short" /></div>
       ) : (
         <>
           <div className="tabs" role="group" aria-label="Filter events">
@@ -65,7 +65,7 @@ export default function EventsPage() {
               <p>{filter === "upcoming" ? "Create an event to give your team something to join." : "Nothing here yet."}</p>
             </div>
           ) : (
-            <div className="cards">{shown.map((event) => <EventCard key={event.id} event={event} />)}</div>
+            <EventTable>{shown.map((event) => <EventCard key={event.id} event={event} />)}</EventTable>
           )}
         </>
       )}
