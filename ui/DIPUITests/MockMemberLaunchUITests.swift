@@ -24,7 +24,9 @@ final class MockMemberLaunchUITests: XCTestCase {
         event.tap()
         // DIPMockFixtures.v1Events() gives every event one of these synthetic venue addresses (never "Example Street").
         let addresses = ["101 Panther Hollow Rd", "1 Allegheny Ave", "4800 Liberty Ave", "1 Schenley Dr", "3600 Butler St", "601 Commonwealth Pl"]
-        let venue = app.staticTexts.matching(NSPredicate(format: "label IN %@", addresses)).firstMatch
-        XCTAssertTrue(venue.waitForExistence(timeout: 10), "event details with venue address did not open")
+        // The Where row is one combined element (name, address, locality) that opens Directions, so match its label.
+        let venue = app.descendants(matching: .any)["event.where"]
+        XCTAssertTrue(venue.waitForExistence(timeout: 10), "event details with the Where row did not open")
+        XCTAssertTrue(addresses.contains { venue.label.contains($0) }, "Where row shows no fixture address: \(venue.label)")
     }
 }

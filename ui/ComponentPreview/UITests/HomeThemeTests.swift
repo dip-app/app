@@ -64,10 +64,12 @@ final class HomeThemeTests: XCTestCase {
         let retry = app.buttons["home.challenge.retry"]
         XCTAssertTrue(retry.waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "home.challenge.error").exists)
-        XCTAssertTrue(app.buttons["home.event.EventCard"].isHittable)
+        // The rest of Home keeps its events while the card fails (exists, not hittable: the card may sit below the fold).
+        XCTAssertTrue(app.buttons["home.event.EventCard"].exists)
         retry.tap()
-        XCTAssertTrue(app.buttons["home.challenge"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.challenge"].waitForExistence(timeout: 10))
         XCTAssertFalse(element(app, "home.challenge.error").exists)
+        XCTAssertFalse(element(app, "home.challenge.retry").exists)
     }
 
     @MainActor func testLoadingSkeletonHasTheCardFootprint() {

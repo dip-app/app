@@ -353,9 +353,14 @@ struct DIPEventDetailsScreen: View {
     @ViewBuilder private func whereRow(_ metadata: DIPEventMetadata) -> some View {
         let row = { (trailing: AnyView) in
             metadataRow("mappin.and.ellipse", title: "Where", trailing: trailing) {
-                Text(metadata.venueName)
-                Text(metadata.address).foregroundStyle(.secondary)
-                if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+                // Live data can lack a venue name or address: say so instead of drawing an empty row.
+                if metadata.venueName.isEmpty && metadata.address.isEmpty && metadata.locality.isEmpty {
+                    Text("Location to be announced").foregroundStyle(.secondary)
+                } else {
+                    if !metadata.venueName.isEmpty { Text(metadata.venueName) }
+                    if !metadata.address.isEmpty { Text(metadata.address).foregroundStyle(.secondary) }
+                    if !metadata.locality.isEmpty { Text(metadata.locality).foregroundStyle(.secondary) }
+                }
             }
         }
         if !event.isPast, let url = metadata.mapsURL {

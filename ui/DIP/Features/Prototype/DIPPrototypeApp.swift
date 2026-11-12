@@ -747,9 +747,20 @@ struct DIPPrototypeApp: View {
         // The repository flips the state immediately, so the success haptic plays now; a server failure rolls back.
         DIPHaptics.success()
         Task {
-            do { try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() } }
-            catch { DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error) }
+            do {
+                try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() }
+                UIAccessibility.post(notification: .announcement, argument: Self.rsvpAnnouncement(title: model.snapshot?.eventDetails[eventID]?.title, going: going))
+            } catch {
+                DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error)
+                UIAccessibility.post(notification: .announcement, argument: Self.rsvpMessage(error))
+            }
         }
+    }
+
+    /// Spoken confirmation of a Join or Leave (the bar and Leave button change silently for VoiceOver users).
+    nonisolated static func rsvpAnnouncement(title: String?, going: Bool) -> String {
+        let name = title.map { " \($0)" } ?? ""
+        return going ? "You joined\(name)" : "You left\(name)"
     }
 
     @ViewBuilder private func destination(_ route: Route) -> some View {
@@ -796,7 +807,7 @@ struct DIPPrototypeApp: View {
         ContentUnavailableView {
             Label("Activity unavailable", systemImage: "calendar.badge.exclamationmark")
         } description: {
-            Text("This activity isn’t available to your account. It may belong to another company or no longer exist.")
+            Text(EventBarAction.unavailableReason(updatesPaused: model.loadError != nil))
         } actions: { Button("Back", action: pop) }
     }
 

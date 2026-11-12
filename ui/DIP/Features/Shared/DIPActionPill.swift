@@ -19,7 +19,7 @@ struct DIPActionPill<Icon: View>: View {
             Text(title)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .foregroundStyle(style == .solid ? .white : color)
-                .lineLimit(2).minimumScaleFactor(0.8)
+                .lineLimit(4).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: 29)
             if !iconLeading { iconCircle }
         }

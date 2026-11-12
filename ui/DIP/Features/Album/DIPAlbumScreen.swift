@@ -106,8 +106,9 @@ struct DIPAlbumScreen: View {
             isPresented: Binding(get: { isPickerPresented && selectionLimit > 0 }, set: { isPickerPresented = $0 }),
             selection: $selectedItems, maxSelectionCount: max(1, selectionLimit), matching: .images
         )
-        .fullScreenCover(item: viewedPhoto) { photo in
-            photoViewer(photo)
+        // Presented by a flag (not by item) so stepping to the next photo updates the viewer in place.
+        .fullScreenCover(isPresented: Binding(get: { viewedPhoto != nil }, set: { if !$0 { viewedPhotoID = nil } })) {
+            if let photo = viewedPhoto { photoViewer(photo) }
         }
         .onChange(of: selectedItems) { _, items in importSelection(items) }
         .onChange(of: album.photos.map(\.id), initial: true) { _, ids in
@@ -121,6 +122,19 @@ struct DIPAlbumScreen: View {
     /// Finished uploads are felt: success when every photo landed, failure when any did not.
     static func feelRun(succeeded: Int, failed: Int) {
         if failed > 0 { DIPHaptics.failure() } else if succeeded > 0 { DIPHaptics.success() }
+        if let message = runAnnouncement(succeeded: succeeded, failed: failed) {
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
+    }
+
+    /// Spoken result of a finished upload run (VoiceOver users otherwise miss the strip changing). Nil when nothing ran.
+    nonisolated static func runAnnouncement(succeeded: Int, failed: Int) -> String? {
+        switch (succeeded, failed) {
+        case (0, 0): return nil
+        case (let ok, 0): return ok == 1 ? "Photo added" : "\(ok) photos added"
+        case (0, let bad): return bad == 1 ? "1 photo couldn’t be added. Retry is available." : "\(bad) photos couldn’t be added. Retry is available."
+        case (let ok, let bad): return "\(ok) added, \(bad) couldn’t be added. Retry is available."
+        }
     }
 
     @ViewBuilder private func content(width: CGFloat) -> some View {
@@ -153,10 +167,14 @@ struct DIPAlbumScreen: View {
         }
     }
 
-    private var viewedPhoto: Binding<DIPPhoto?> {
-        Binding(
-            get: { album.photos.first { $0.id == viewedPhotoID } },
-            set: { viewedPhotoID = $0?.id })
+    private var viewedPhoto: DIPPhoto? { album.photos.first { $0.id == viewedPhotoID } }
+
+    /// Moves the viewer to the previous (-1) or next (+1) photo; stops at either end. Navigation, so no haptic.
+    private func stepViewer(_ offset: Int) {
+        guard let current = album.photos.firstIndex(where: { $0.id == viewedPhotoID }) else { return }
+        let target = current + offset
+        guard album.photos.indices.contains(target) else { return }
+        viewedPhotoID = album.photos[target].id
     }
 
     private var header: some View {
@@ -427,11 +445,15 @@ struct DIPAlbumScreen: View {
     }
 
     private func photoViewer(_ photo: DIPPhoto) -> some View {
-        DIPPhotoCommentsScreen(
+        let index = album.photos.firstIndex { $0.id == photo.id } ?? 0
+        return DIPPhotoCommentsScreen(
             photo: photo, comments: commentsByPhoto[photo.id] ?? [],
             currentUser: currentUser, onClose: { viewedPhotoID = nil },
-            onAddComment: onAddComment
+            onAddComment: onAddComment,
+            position: album.photos.count > 1 ? (index + 1, album.photos.count) : nil,
+            onStep: stepViewer
         )
+        .id(photo.id)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.viewer.\(photo.id)")
         .presentationBackground(.clear)

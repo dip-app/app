@@ -9,6 +9,9 @@ struct DIPPhotoCommentsScreen: View {
     let currentUser: DIPProfile
     let onClose: () -> Void
     let onAddComment: (String, String, String) async throws -> Void
+    /// 1-based place in the album (nil for a single photo) and the previous/next stepper (-1 / +1).
+    var position: (index: Int, count: Int)?
+    var onStep: ((Int) -> Void)?
 
     @State private var draft = ""
     @State private var retryIntent: SendIntent?
@@ -45,6 +48,9 @@ struct DIPPhotoCommentsScreen: View {
             .overlay(alignment: .topLeading) {
                 closeButton.padding(.leading, 20).padding(.top, 60)
             }
+            .overlay(alignment: .topTrailing) {
+                if let position, let onStep { stepper(position, onStep).padding(.trailing, 20).padding(.top, 60) }
+            }
         }
         .ignoresSafeArea(.container)
         .preferredColorScheme(.light)
@@ -76,6 +82,34 @@ struct DIPPhotoCommentsScreen: View {
         .accessibilityIdentifier("album.photo.close")
     }
 
+    /// Previous/next photo (solid, pressable) around a plain "3 of 12" position. Disabled at either end.
+    private func stepper(_ position: (index: Int, count: Int), _ onStep: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: 8) {
+            stepButton("chevron.left", label: "Previous photo", id: "album.photo.previous", enabled: position.index > 1) { onStep(-1) }
+            Text("\(position.index) of \(position.count)")
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .body))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.4), radius: 2)
+                .accessibilityLabel("Photo \(position.index) of \(position.count)")
+                .accessibilityIdentifier("album.photo.position")
+            stepButton("chevron.right", label: "Next photo", id: "album.photo.next", enabled: position.index < position.count) { onStep(1) }
+        }
+    }
+
+    private func stepButton(_ symbol: String, label: String, id: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .frame(width: 44, height: 44)
+                .background(.white, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .disabled(!enabled).opacity(enabled ? 1 : 0.4)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(id)
+    }
+
     private func photoPreview(width: CGFloat) -> some View {
         let photoTop: CGFloat = photo.attribution == nil ? 0 : 25
         return ZStack(alignment: .top) {
@@ -93,6 +127,8 @@ struct DIPPhotoCommentsScreen: View {
                 .accessibilityHint("Swipe left for earlier comments or right for newer comments")
                 .accessibilityAction(named: Text("Earlier comments")) { changeCommentPage(by: 1) }
                 .accessibilityAction(named: Text("Newer comments")) { changeCommentPage(by: -1) }
+                .accessibilityAction(named: Text("Next photo")) { onStep?(1) }
+                .accessibilityAction(named: Text("Previous photo")) { onStep?(-1) }
                 .padding(.top, photoTop)
             if let attribution = photo.attribution {
                 DIPPhotoAttributionTag(name: attribution.name) {
@@ -190,8 +226,15 @@ struct DIPPhotoCommentsScreen: View {
                 olderPageEnd = nil
             } catch {
                 // The same ID/text pair survives failure; editing starts a new intent on the next send.
-                sendError = "Your comment could not be sent. Try again."
+                sendError = Self.sendErrorMessage(for: error)
             }
         }
+    }
+
+    /// Comment failures say what to do: offline/unavailable keeps the draft, and an unchanged retry reuses its id.
+    nonisolated static func sendErrorMessage(for error: Error) -> String {
+        if (error as? URLError)?.code == .notConnectedToInternet { return "You’re offline. Your comment is kept; try again when you’re back online." }
+        if let failure = error as? DIPRepositoryError, case .invalidInput(let message) = failure, !message.isEmpty { return message }
+        return "Your comment could not be sent. Try again."
     }
 }
