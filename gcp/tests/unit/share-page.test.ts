@@ -78,6 +78,16 @@ describe("share page domain", () => {
     assert.ok(renderSharePage(genericPreview("evt_123")).includes('href="dip://events/evt_123"'));
   });
 
+  test("the official badge variant needs an App Store id and replaces the text link", () => {
+    const withId = renderSharePage(buildPreview("evt_123", EVENT), "1234567890", true);
+    assert.ok(withId.includes('<img src="/img/landing/app-store-badge.svg" alt="Download on the App Store"'));
+    assert.ok(withId.includes('href="https://apps.apple.com/app/id1234567890"'));
+    assert.ok(!withId.includes("Get it on the App Store"));
+    const withoutId = renderSharePage(buildPreview("evt_123", EVENT), "", true);
+    assert.ok(!withoutId.includes("app-store-badge.svg"));
+    assert.ok(withoutId.includes("It’s coming to the App Store."));
+  });
+
   test("with an App Store id the muted line links to the listing and nothing redirects on load", () => {
     const html = renderSharePage(buildPreview("evt_123", EVENT), "1234567890");
     assert.ok(html.includes('<a href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>'));
