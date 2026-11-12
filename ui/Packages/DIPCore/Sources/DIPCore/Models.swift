@@ -311,6 +311,9 @@ public struct DIPAppSnapshot: Equatable, Sendable {
     public var messages: [String: [DIPMessage]]
     public var photoComments: [String: [String: [DIPPhotoComment]]]
     public var challengeDetails: [String: DIPChallengeDetail]
+    /// Whether `DIPEventDetail.isJoined` reflects the member's real RSVPs. A live source reports false until its first participation
+    /// snapshot arrives (and always when participation is unavailable), so consumers must not read "not joined" from it before then.
+    public var rsvpKnown: Bool = true
     public init(home: DIPHomeSnapshot, activeEvents: [DIPEventSummary], memories: [DIPMemory], profile: DIPProfile, eventDetails: [String: DIPEventDetail], participants: [String: [DIPParticipant]], albums: [String: DIPAlbum], messages: [String: [DIPMessage]], photoComments: [String: [String: [DIPPhotoComment]]] = [:], challengeDetails: [String: DIPChallengeDetail] = [:]) {
         self.challengeDetails = challengeDetails
         self.home = home; self.activeEvents = activeEvents; self.memories = memories; self.profile = profile

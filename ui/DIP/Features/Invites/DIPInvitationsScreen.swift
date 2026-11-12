@@ -56,9 +56,16 @@ struct DIPInvitationsScreen: View {
         .preferredColorScheme(.light)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .overlay(alignment: .bottom) { toastView }
-        .task(id: model.joinedInviteIDs) {
-            guard !model.joinedInviteIDs.isEmpty else { return }
+        .safeAreaInset(edge: .bottom, spacing: 0) { toastView }
+        .task(id: nextBoundary) {
+            // Rows for an activity that starts are dropped by the inbox; re-evaluate at that moment so they animate out.
+            guard let boundary = nextBoundary else { return }
+            try? await Task.sleep(for: .seconds(max(0, boundary.timeIntervalSinceNow) + 0.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(InviteMotion.spring(reduceMotion: reduceMotion)) { graceTick += 1 }
+        }
+        .task(id: model.graceStamp) {
+            guard model.graceStamp > 0 else { return }
             try? await Task.sleep(for: .seconds(DIPInvitesModel.acceptanceGrace + 0.5))
             graceTick += 1
         }
@@ -80,6 +87,7 @@ struct DIPInvitationsScreen: View {
 
     private var content: some View {
         ZStack(alignment: .top) { stateContent.transition(.opacity) }
+            .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: model.inbox(rsvp: rsvp).isEmptyReceived)
             .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: model.invites == nil)
             .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: tab)
     }
@@ -102,6 +110,12 @@ struct DIPInvitationsScreen: View {
         }
     }
 
+    /// The next moment an upcoming received invitation's activity starts (after which its row leaves the lists).
+    private var nextBoundary: Date? {
+        let now = Date()
+        return (model.invites?.received ?? []).map(\.eventStart).filter { $0 > now }.min()
+    }
+
     private var loading: some View {
         VStack(spacing: 12) {
             ForEach(0..<3, id: \.self) { _ in DIPSkeleton(cornerRadius: DIPTokens.Radius.card).frame(height: 150) }
@@ -117,6 +131,7 @@ struct DIPInvitationsScreen: View {
         if inbox.isEmptyReceived {
             DIPEmptyState(screen: "invitations-received", title: "No invitations yet",
                           message: "When a coworker invites you to an activity, it shows up here.")
+                .transition(.opacity)
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(inbox.pending) { invite in
@@ -133,6 +148,7 @@ struct DIPInvitationsScreen: View {
                 if !inbox.cancelled.isEmpty {
                     Text("Cancelled").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.black)
                         .padding(.top, 8).accessibilityAddTraits(.isHeader)
+                        .accessibilityLabel("Cancelled: you cancelled your RSVP")
                         .transition(.opacity)
                     ForEach(inbox.cancelled) { invite in
                         cancelledRow(invite).transition(InviteMotion.exit(reduceMotion: reduceMotion))
@@ -141,6 +157,7 @@ struct DIPInvitationsScreen: View {
             }
             // Accepting or declining animates the card out (or into Going) and closes the gap below it.
             .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: inbox.pending.map(\.id) + inbox.accepted.map(\.id) + inbox.cancelled.map { "c\($0.id)" })
+            .transition(.opacity)
         }
     }
 
@@ -244,7 +261,7 @@ struct DIPInvitationsScreen: View {
             Text(toast).font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body)).foregroundStyle(.white)
                 .multilineTextAlignment(.center).padding(.horizontal, 20).padding(.vertical, 12).frame(minHeight: 44)
                 .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                .padding(.bottom, 24).padding(.horizontal, 20)
+                .padding(.vertical, 12).padding(.horizontal, 20)
                 .transition(InviteMotion.swap(reduceMotion: reduceMotion))
                 .accessibilityIdentifier("invitations.toast")
         }
@@ -281,43 +298,46 @@ struct DIPInvitationsScreen: View {
         let failure = model.rejoinErrors[invite.id]
         // Full may clear when someone leaves, so Rejoin stays on; closed, cancelled or gone will not come back.
         let blocked = failure.map { $0 != .full && !$0.isRetryable } ?? false
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 12) {
-                DIPMedia(invite.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
+        let reason = failure.map { blocked ? $0.message : $0.isRetryable ? "\($0.message) Tap Rejoin to try again." : "\($0.message) Check back if a spot opens." }
+        return HStack(alignment: .top, spacing: 12) {
+            DIPMedia(invite.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 8) {
                         Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).lineLimit(1)
                         Spacer(minLength: 4)
-                        statusChip("Cancelled", color: Color.black.opacity(0.5))
+                        statusChip("Cancelled", color: Color.black.opacity(0.62), spoken: "You cancelled your RSVP")
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.tail)
                 }
                 .foregroundStyle(.black)
-            }
-            HStack {
-                Spacer(minLength: 0)
-                Button { rejoin(invite) } label: {
-                    Group {
-                        if busy { ProgressView().tint(.white) }
-                        else { Text("Rejoin").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.white) }
+                if let reason { InviteNotice(text: reason, identifier: "invitations.rejoin.error.\(invite.id)") }
+                HStack {
+                    Spacer(minLength: 0)
+                    Button { rejoin(invite) } label: {
+                        Group {
+                            if busy { ProgressView().tint(.white) }
+                            else { Text("Rejoin").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.white) }
+                        }
+                        .frame(width: 120, height: 44)
+                        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                        .contentShape(Capsule())
                     }
-                    .frame(width: 120, height: 44)
-                    .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                    .contentShape(Capsule())
+                    .buttonStyle(DIPPressFeedbackStyle())
+                    .disabled(busy || blocked).opacity(blocked ? 0.4 : 1)
+                    .accessibilityLabel(busy ? "Rejoin \(invite.eventTitle), in progress" : "Rejoin \(invite.eventTitle)")
+                    // VoiceOver reads why Rejoin is off.
+                    .accessibilityHint(blocked ? (reason ?? "") : "")
+                    .accessibilityIdentifier("invitations.rejoin.\(invite.id)")
                 }
-                .buttonStyle(DIPPressFeedbackStyle())
-                .disabled(busy || blocked).opacity(blocked ? 0.4 : 1)
-                .accessibilityLabel(busy ? "Rejoin \(invite.eventTitle), in progress" : "Rejoin \(invite.eventTitle)")
-                .accessibilityIdentifier("invitations.rejoin.\(invite.id)")
-            }
-            if let failure {
-                InviteNotice(text: blocked ? failure.message : failure.isRetryable ? "\(failure.message) Tap Rejoin to try again." : "\(failure.message) Check back if a spot opens.",
-                             identifier: "invitations.rejoin.error.\(invite.id)")
             }
         }
         .padding(.vertical, 8)
+        .onChange(of: failure) { _, new in
+            if let new { AccessibilityNotification.Announcement(new.message).post() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("invitations.cancelled.\(invite.id)")
     }
@@ -335,11 +355,12 @@ struct DIPInvitationsScreen: View {
     }
 
     /// Informational (outlined): not a button.
-    private func statusChip(_ title: String, color: Color) -> some View {
+    private func statusChip(_ title: String, color: Color, spoken: String? = nil) -> some View {
         Text(title).font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(color).lineLimit(1)
             .padding(.horizontal, 14).frame(minHeight: 32)
             .overlay(Capsule().strokeBorder(color, lineWidth: 2))
-            .accessibilityHidden(true)
+            .accessibilityHidden(spoken == nil)
+            .accessibilityLabel(spoken ?? title)
     }
 
     // MARK: Sent
@@ -388,7 +409,7 @@ struct DIPInvitationsScreen: View {
         switch label {
         case .pending: DIPTokens.Color.actionPrimary.swiftUIColor
         case .accepted: DIPTokens.Color.eventsAccent.swiftUIColor
-        case .declined, .expired: Color.black.opacity(0.5)
+        case .declined, .expired: Color.black.opacity(0.62)
         }
     }
 }

@@ -610,7 +610,7 @@ struct DIPPrototypeApp: View {
             DIPInvitationsScreen(
                 model: invites,
                 // Going / Cancelled follows the member's CURRENT RSVP (only events the app has loaded are known).
-                rsvp: { id in model.snapshot?.eventDetails[id]?.isJoined },
+                rsvp: { id in model.snapshot?.rsvpKnown == true ? model.snapshot?.eventDetails[id]?.isJoined : nil },
                 onRejoin: { await rejoinFromInvitation($0) },
                 onOpenEvent: { id in showInvitations = false; routes = [.event(id)] },
                 onRetry: { invitesObservationID = UUID() },
@@ -650,22 +650,21 @@ struct DIPPrototypeApp: View {
         }
         do { try await model.setRSVP(eventID: eventID, going: true); onJoined?(); return nil }
         catch {
-            switch error as? DIPRepositoryError {
-            case .invalidInput(let message)?, .injectedFailure(let message)?:
-                return Self.rejoinFailure(message: message)
-            case .notFound?: return .notFound
-            case nil: return .offline
+            // Classify by state, not by wording: the same rules the Join button checks, against the freshest snapshot.
+            if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
+               let denial = DIPParticipationRules.joinDenial(metadata, attendeeCount: event.attendeeCount, isGoing: event.isJoined, now: Date()) {
+                switch denial {
+                case .alreadyGoing: return nil
+                case .full: return .full
+                case .started, .ended: return .closed
+                case .cancelled: return .cancelled
+                case .notGoing: return .unknown
+                }
             }
+            if error is CancellationError { return .unknown }
+            if case .notFound? = error as? DIPRepositoryError { return .notFound }
+            return (error as NSError).domain == NSURLErrorDomain ? .offline : .unknown
         }
-    }
-
-    /// Maps the RSVP command's user-facing refusal text to the neutral invite failures (full / closed).
-    nonisolated private static func rejoinFailure(message: String) -> DIPInviteFailure {
-        let text = message.lowercased()
-        if text.contains("full") { return .full }
-        let closing = ["ended", "started", "close"]
-        if closing.contains(where: { text.contains($0) }) { return .closed }
-        return .unknown
     }
 
     private func openInvite(_ eventID: String) {

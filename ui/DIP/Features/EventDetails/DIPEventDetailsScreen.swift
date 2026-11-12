@@ -133,7 +133,7 @@ struct DIPEventDetailsScreen: View {
 
     private var header: some View {
         return DIPDetailHeader(
-            timing: event.timing, widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
+            timing: Self.dateOnly(event), widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
             calendarLabel: addableMetadata.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
             onCalendar: addToCalendar)
         .alert("Couldn’t add to calendar", isPresented: Binding(
@@ -143,6 +143,14 @@ struct DIPEventDetailsScreen: View {
         } message: {
             if case .failed(let message) = calendarResult { Text(message) }
         }
+    }
+
+    /// The header pill shows the date only ("Nov 23, 2026"); the time lives in the When row of the info card.
+    static func dateOnly(_ event: DIPEventDetail) -> String {
+        if let start = event.metadata?.startTime { return start.formatted(.dateTime.month(.abbreviated).day().year()) }
+        // Fixture events without metadata: drop a trailing " at 6:30 PM" from the preformatted text.
+        if let range = event.timing.range(of: " at ") { return String(event.timing[..<range.lowerBound]) }
+        return event.timing
     }
 
     /// Metadata when the event can still be added to a calendar (not past, not cancelled); the header pill and the When row share this gate.

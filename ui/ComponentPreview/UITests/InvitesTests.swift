@@ -237,6 +237,9 @@ final class InvitesTests: XCTestCase {
             XCTAssertEqual(lead.frame.minY, share.frame.minY, accuracy: 1, "\(state): side by side")
             XCTAssertEqual(lead.frame.width, share.frame.width, accuracy: 2, "\(state): equal pills")
             XCTAssertEqual(lead.frame.height, share.frame.height, accuracy: 1, "\(state): same height")
+            // The top-right pill is date-only: no "at 18:44" (the time lives in the When row).
+            let datePill = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "^[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}( at .*)?$")).firstMatch
+            if datePill.exists { XCTAssertFalse(datePill.label.contains(" at "), "\(state): date pill shows a time: \(datePill.label)") }
             shot("event-pills-\(state)")
         }
         let upcoming = launch(["--screen=event", "--v1-event-fixtures"])

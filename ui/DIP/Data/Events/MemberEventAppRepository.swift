@@ -26,6 +26,8 @@ import DIPAccounts
     private let participation: (any ParticipationSource)?
     /// Events the member is going to, from the live RSVP listener (My Events + joined state).
     private var joinedIDs: Set<String> = []
+    /// True once the participation listener has delivered its first set of going events.
+    private var participationLoaded = false
     /// Joined events outside the loaded feed page (e.g. past events), fetched by ID.
     private var joinedRecords: [String: DIPContracts.Event] = [:]
     private var participants: [String: [DIPParticipant]] = [:]
@@ -159,6 +161,7 @@ import DIPAccounts
         commentTask?.cancel(); commentTask = nil; commentKey = nil; photoComments.removeAll()
         ownSlots.removeAll(); occupiedSlots.removeAll(); uploadSlots.removeAll(); landedUploads.removeAll(); albums?.stop()
         joinedTask?.cancel(); joinedTask = nil; participation?.stop()
+        participationLoaded = false
         joinedIDs.removeAll(); joinedRecords.removeAll(); participants.removeAll(); previews.removeAll()
         coverImages.removeAll(); coverRequested.removeAll()
         reads.invalidate(); records.removeAll(); cursor = nil; hasMore = false
@@ -187,6 +190,8 @@ import DIPAccounts
             challenge: nil, events: [], recentAttendeeAvatars: []), activeEvents: [], memories: [], profile: profile,
             eventDetails: details, participants: participants.filter { details[$0.key] != nil }, albums: albumProjection(details),
             messages: messages, photoComments: photoComments)
+        // isJoined is only meaningful once the participation listener has answered (and only with a participation source).
+        snapshot.rsvpKnown = participation != nil && participationLoaded
         let lists = DIPEventLists(snapshot: snapshot, now: clock())
         snapshot.home.events = lists.discovery
         for observer in observers.values { observer.yield(snapshot) }
@@ -265,6 +270,7 @@ import DIPAccounts
                 for try await ids in stream {
                     guard let self, !Task.isCancelled, !self.stopped else { return }
                     self.joinedIDs = ids
+                    self.participationLoaded = true
                     self.joinedRecords = self.joinedRecords.filter { ids.contains($0.key) }
                     self.syncChat()
                     self.publish()

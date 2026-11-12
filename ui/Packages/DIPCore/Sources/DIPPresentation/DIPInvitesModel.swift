@@ -27,6 +27,8 @@ public final class DIPInvitesModel {
     /// for `acceptanceGrace` instead of flashing as cancelled.
     @ObservationIgnored private var acceptedAt: [String: Date] = [:]
     public static let acceptanceGrace: TimeInterval = 8
+    /// Bumped whenever a grace window starts (accept or rejoin), so a view can schedule a re-evaluation for when it ends.
+    public private(set) var graceStamp = 0
     /// Called after an accepted invitation joined the activity server-side. Fixture hosts use it to keep their own RSVP state in step.
     @ObservationIgnored public var didJoin: ((String) async -> Void)?
 
@@ -87,7 +89,7 @@ public final class DIPInvitesModel {
                 invites = all
             }
             if reply.joined {
-                joinedInviteIDs.insert(inviteID); acceptedAt[inviteID] = now()
+                joinedInviteIDs.insert(inviteID); acceptedAt[inviteID] = now(); graceStamp += 1
                 if let eventID = invites?.received.first(where: { $0.id == inviteID })?.eventID { await didJoin?(eventID) }
             }
             return reply
@@ -107,7 +109,7 @@ public final class DIPInvitesModel {
         rejoining.insert(invite.id); rejoinErrors[invite.id] = nil
         defer { rejoining.remove(invite.id) }
         if let failure = await perform(invite.eventID) { rejoinErrors[invite.id] = failure; return false }
-        acceptedAt[invite.id] = now()
+        acceptedAt[invite.id] = now(); graceStamp += 1
         return true
     }
 
