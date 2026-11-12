@@ -112,12 +112,13 @@ struct EventFeedPage: Equatable, Sendable {
     nonisolated static func validID(_ id: String) -> Bool {
         !id.isEmpty && id.count <= 128 && id.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil
     }
+    /// Tolerant projection: an event is never unreadable because of an odd status, capacity, revision, cost or end time.
     nonisolated static func metadata(_ event: DIPContracts.Event) throws -> DIPEventMetadata {
-        guard let status = DIPEventStatus(rawValue: event.status), event.endTime > event.startTime,
-              event.costCents >= 0, event.capacity >= 1, event.revision >= 1 else { throw EventReadFailure.invalidDocument }
-        return DIPEventMetadata(startTime: event.startTime, endTime: event.endTime, venueName: event.venue.name,
-            address: event.venue.address, locality: event.venue.locality, costCents: event.costCents,
-            costNote: event.costNote, capacity: event.capacity, status: status, revision: event.revision,
+        let status = DIPEventStatus(rawValue: event.status) ?? .scheduled
+        let end = event.endTime > event.startTime ? event.endTime : event.startTime.addingTimeInterval(3600)
+        return DIPEventMetadata(startTime: event.startTime, endTime: end, venueName: event.venue.name,
+            address: event.venue.address, locality: event.venue.locality, costCents: max(0, event.costCents),
+            costNote: event.costNote, capacity: max(1, event.capacity), status: status, revision: max(1, event.revision),
             pointsValue: max(0, event.pointsValue),
             changeLog: (event.changeLog ?? []).map {
                 DIPChangeLogEntry(at: $0.at, revision: $0.revision,

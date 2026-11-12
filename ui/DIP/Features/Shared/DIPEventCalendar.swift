@@ -27,13 +27,9 @@ struct DIPEventKitCalendarAdder: DIPEventCalendarAdding {
         event.isAllDay = fields.isAllDay
         if fields.isAllDay {
             // All-day events float: keep the same calendar days as shown (in the source time zone) on every device.
-            var source = Calendar(identifier: .gregorian); source.timeZone = fields.timeZone
-            func local(_ date: Date) -> Date {
-                let parts = source.dateComponents([.year, .month, .day], from: date)
-                return Calendar.current.date(from: parts) ?? date
-            }
-            event.startDate = local(fields.startDate)
-            event.endDate = local(fields.endDate)
+            let days = fields.floatingAllDayDates()
+            event.startDate = days.start
+            event.endDate = days.end
             event.timeZone = nil
         } else {
             event.startDate = fields.startDate
