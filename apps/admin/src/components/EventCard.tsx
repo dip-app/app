@@ -17,16 +17,16 @@ export function EventCard({ event }: { event: AdminEvent }) {
         <div className="media-cell">
           <Cover url={event.coverImageURL} className="thumb" />
           <div className="media-text">
-            <Link className="row-title" href={`/events/edit/?id=${encodeURIComponent(event.id)}`} title="Edit event">{event.title}</Link>
+            <Link className="row-title" href={`/events/edit/?id=${encodeURIComponent(event.id)}`} tabIndex={-1}>{event.title}</Link>
             <span className="muted clamp-1">{event.description}</span>
           </div>
         </div>
       </td>
-      <td><span className="line">{when}</span><span className="line muted">{duration}</span></td>
-      <td><span className="line">{event.venue.name}</span><span className="line muted">{event.venue.locality}</span></td>
-      <td className="num">{formatPrice(event.costCents)}</td>
-      <td className="num"><div className="going"><span>{event.attendeeCount} / {event.capacity}</span><span className="meter-mini" aria-hidden><span style={{ width: `${pct}%` }} /></span></div></td>
-      <td><span className={`info-pill${tone ? ` ${tone}` : ""}`}>{label}</span></td>
+      <td data-label="When"><span className="line">{when}</span><span className="line muted">{duration}</span></td>
+      <td data-label="Where"><span className="line">{event.venue.name}</span><span className="line muted">{event.venue.locality}</span></td>
+      <td className="num" data-label="Price">{formatPrice(event.costCents)}</td>
+      <td className="num" data-label="Going"><div className="going"><span aria-label={`${event.attendeeCount} of ${event.capacity} going`}>{event.attendeeCount} / {event.capacity}</span><span className="meter-mini" aria-hidden><span style={{ width: `${pct}%` }} /></span></div></td>
+      <td data-label="Status"><span className={`info-pill${tone ? ` ${tone}` : ""}`}>{label}</span></td>
       <td className="right">
         <span className="row-actions">
           <Link className="pill-btn gray small" href={`/events/attendees/?id=${encodeURIComponent(event.id)}`}>Attendees</Link>

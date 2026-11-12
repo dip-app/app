@@ -18,11 +18,11 @@ export function ThemeCard({ theme, phase }: { theme: WeeklyTheme; phase: ThemePh
           </div>
         </div>
       </td>
-      <td>{window}</td>
-      <td>{formatGoal(theme.goal, theme.goalUnit)}</td>
-      <td>{formatReward(theme.pointsReward)}</td>
-      <td className="num">{theme.participantCount} joined{theme.completedCount > 0 ? ` · ${theme.completedCount} completed` : ""}</td>
-      <td><span className={`info-pill${phase === "current" ? " ok" : ""}`}>{PHASE_LABEL[phase]}</span></td>
+      <td data-label="Week">{window}</td>
+      <td data-label="Goal">{formatGoal(theme.goal, theme.goalUnit)}</td>
+      <td data-label="Reward">{formatReward(theme.pointsReward)}</td>
+      <td className="num" data-label="Participation">{theme.participantCount} joined{theme.completedCount > 0 ? ` · ${theme.completedCount} completed` : ""}</td>
+      <td data-label="Status"><span className={`info-pill${phase === "current" ? " ok" : ""}`}>{PHASE_LABEL[phase]}</span></td>
       <td className="right"><span className="row-actions"><Link className="pill-btn gray small" href={`/themes/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={`Edit ${theme.title}`}>Edit</Link></span></td>
     </tr>
   );

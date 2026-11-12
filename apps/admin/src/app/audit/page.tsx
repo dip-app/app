@@ -51,14 +51,14 @@ export default function AuditPage() {
                         return (
                           <Fragment key={e.id}>
                             <tr className="audit-entry">
-                              <td className="nowrap"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
-                              <td><Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info></td>
-                              <td><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></td>
-                              <td><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
-                              <td className="right">{expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}</td>
+                              <td className="nowrap" data-label="When"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
+                              <td data-label="Action"><Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info></td>
+                              <td data-label="Who"><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></td>
+                              <td data-label="What"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
+                              <td className="right">{expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${e.summary}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}</td>
                             </tr>
                             {open === e.id && (
-                              <tr className="audit-detail-row"><td colSpan={5}>
+                              <tr className="audit-detail-row" id={`audit-detail-${e.id}`}><td colSpan={5}>
                                 <div className="audit-detail">
                                   {e.reason && <p><strong>Reason:</strong> {e.reason}</p>}
                                   {e.changes.length > 0 && (

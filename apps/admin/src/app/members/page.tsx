@@ -103,11 +103,11 @@ export default function MembersPage() {
                   {list.items.map((m) => (
                     <tr key={m.id}>
                       <td><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span></span></Link></td>
-                      <td>{ROLE_LABEL[m.role]}</td>
-                      <td>{m.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
-                      <td>{m.workLocation || <span className="muted">Not set</span>}</td>
-                      <td><Info tone={m.status === "active" ? "ok" : "warn"}>{m.status === "active" ? "Active" : m.status === "invited" ? "Invited" : "Deactivated"}</Info></td>
-                      {showPoints && <td className="right">{m.pointsBalance}</td>}
+                      <td data-label="Role">{ROLE_LABEL[m.role]}</td>
+                      <td data-label="Teams">{m.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
+                      <td data-label="Work location">{m.workLocation || <span className="muted">Not set</span>}</td>
+                      <td data-label="Status"><Info tone={m.status === "active" ? "ok" : "warn"}>{m.status === "active" ? "Active" : m.status === "invited" ? "Invited" : "Deactivated"}</Info></td>
+                      {showPoints && <td className="right" data-label="Points">{m.pointsBalance}</td>}
                     </tr>
                   ))}
                 </tbody>

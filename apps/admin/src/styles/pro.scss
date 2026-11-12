@@ -32,10 +32,14 @@ $ctl-h: 36px;
   .pill-btn, .big-pill { border-radius: $r-ctl; min-height: $ctl-h; padding: 0 14px; font-size: 14px; font-weight: 500; font-family: var(--font-figtree), sans-serif; &:active { transform: none; } }
   .pill-btn.small { min-height: 28px; padding: 0 10px; font-size: 13px; }
   .pill-btn.purple { background: $purple; color: $white; &:hover:not([disabled]) { background: #6a78f0; } }
-  .pill-btn.dark, .big-pill.dark { background: $ink; color: $white; &:hover:not([disabled]) { background: #2c3040; } }
+  // Primary actions are purple with white text everywhere (the older "dark" variant is the same primary).
+  .pill-btn.dark, .big-pill.dark { background: $purple; color: $white; &:hover:not([disabled]) { background: #6a78f0; } }
+  .pill-btn.purple, .pill-btn.dark, .big-pill.dark { font-weight: 600; }
   .pill-btn.gray, .big-pill.gray { background: $white; color: $ink; box-shadow: inset 0 0 0 1px $line-strong; &:hover:not([disabled]) { background: $subtle; } }
   .table-wrap .pill-btn.gray, .panel .pill-btn.gray, .audit-row .pill-btn.gray, .comment-list .pill-btn.gray, .viewer .pill-btn.gray { background: $white; }
-  .pill-btn.danger { background: var(--error); color: $white; }
+  // Destructive buttons are outlined; only the confirm dialog gets the solid fill.
+  .pill-btn.danger { background: $white; color: var(--error); box-shadow: inset 0 0 0 1px var(--error); &:hover:not([disabled]) { background: #fff4f9; } }
+  .dialog .pill-btn.danger { background: var(--error); color: $white; box-shadow: none; }
   .pill-btn[disabled], .big-pill[disabled] { opacity: .5; }
   .big-pill { padding: 0 18px; }
   .actions { gap: 8px; padding: 4px 0 24px; }
@@ -43,7 +47,7 @@ $ctl-h: 36px;
 
   // ---------- Focus
   :focus-visible { outline: 2px solid $purple; outline-offset: 2px; border-radius: 4px; }
-  .dark:focus-visible { outline-color: $purple; box-shadow: 0 0 0 4px $white; }
+  .dark:focus-visible, .purple:focus-visible { outline-color: $ink; box-shadow: 0 0 0 4px $white; }
   .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid $purple; outline-offset: 0; }
 
   // ---------- Tabs / filters: underlined tabs; compact segmented control
@@ -81,7 +85,8 @@ $ctl-h: 36px;
   .chips { gap: 6px; }
   .toolbar { gap: 8px; margin-bottom: 12px; }
   .result-count { margin-bottom: 6px; font-size: 13px; }
-  .form { gap: 24px 40px; }
+  .form { gap: 24px 40px; max-width: 1040px; }
+  .field input::placeholder { color: #7a7e92; }
   .form.single { gap: 14px; }
   .section { gap: 12px; }
   .section > h2 { font-size: 15px; font-weight: 600; }
@@ -137,7 +142,8 @@ $ctl-h: 36px;
   .member-note { background: $subtle; border-radius: $r-ctl; padding: 10px 12px; }
 
   // ---------- Data table: one shared primitive (sticky header, tight rows, tabular numerals, hover actions)
-  .table-wrap { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 0; margin-bottom: 14px; overflow: auto; max-height: calc(100dvh - 220px); }
+  .table-wrap { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 0; margin-bottom: 14px; overflow: auto; }
+  .table-wrap:has(.events-table, .themes-table, .audit-table) { max-height: calc(100dvh - 190px); }
   .table { font-size: 14px; border-collapse: separate; border-spacing: 0;
     th, td { padding: 8px 12px; vertical-align: middle; border: 0; }
     thead th { position: sticky; top: 0; z-index: 1; background: $subtle; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--muted); border-bottom: 1px solid $line; padding: 8px 12px; }
@@ -151,11 +157,6 @@ $ctl-h: 36px;
     &.compact th, &.compact td { padding: 4px 10px; } }
   .person strong { font-weight: 600; }
   .row-actions { gap: 6px; }
-  // Row actions appear on hover or keyboard focus on pointer devices; always visible on touch and narrow screens.
-  @media (hover: hover) and (min-width: 901px) {
-    .events-table .row-actions, .themes-table .row-actions { opacity: 0; transition: opacity .12s ease; }
-    .events-table tr:hover .row-actions, .events-table tr:focus-within .row-actions, .themes-table tr:hover .row-actions, .themes-table tr:focus-within .row-actions { opacity: 1; }
-  }
   .line { display: block; &.muted { font-size: 12px; } }
   .clamp-1 { display: block; max-width: 44ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
   .media-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -167,9 +168,9 @@ $ctl-h: 36px;
   .event-row.cancelled .row-title { text-decoration: line-through; }
   .going { display: grid; gap: 4px; justify-items: end; }
   .meter-mini { display: block; width: 56px; height: 4px; border-radius: 2px; background: $line; overflow: hidden; span { display: block; height: 100%; background: $purple; } }
-  .events-table, .themes-table { min-width: 880px; }
-  .cell-main { min-width: 260px; }
-  .audit-table { min-width: 760px; .audit-detail-row td { background: $subtle; } }
+  .events-table, .themes-table { min-width: 760px; }
+  .cell-main { min-width: 200px; }
+  .audit-table { min-width: 680px; .audit-detail-row td { background: $subtle; } }
   .audit-detail .table { thead th { position: static; } tbody tr:hover td, tbody tr:hover th { background: transparent; } }
   .audit-detail { background: $white; border: 1px solid $line; border-radius: $r-ctl; padding: 8px 12px; gap: 6px; }
 
@@ -183,6 +184,7 @@ $ctl-h: 36px;
   .bug-item[aria-current="true"] { .muted { color: var(--muted); } .info-pill.warn { color: $ink; border-color: $line-strong; } }
   .queue-chips, .bug-meta { gap: 4px; }
   .review-layout { grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px; }
+  @media (min-width: 1001px) { .bug-detail.review-detail { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow: auto; } }
   .review-detail { top: 12px; h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; } }
   .viewer-side h3, .sample-row h3, .panel h3 { font-size: 14px; font-weight: 600; }
   .theme-row-tr .art { min-height: 0; }
@@ -206,7 +208,7 @@ $ctl-h: 36px;
   .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .stat-tile { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 10px 12px;
     .stat-label { font-size: 12px; font-weight: 500; } .stat-value { font-size: 26px; } .stat-note { font-size: 12px; }
-    &.accent { background: $white; color: $ink; border-top: 3px solid $purple; .stat-label, .stat-note { color: var(--muted); } }
+    &.accent { background: $white; color: $ink; .stat-label, .stat-note { color: var(--muted); } }
     &.skeleton-tile { min-height: 84px; background: $subtle; } }
   .overview-row { gap: 14px; align-items: start; }
   .legend { font-size: 12px; }
@@ -257,6 +259,8 @@ $ctl-h: 36px;
     .table.responsive tbody { gap: 8px; }
     .table.responsive tbody td { border: 0; }
     .table.responsive td.num { text-align: left; }
+    .table.responsive td[data-label] { position: relative; padding-left: 96px; min-height: 20px; }
+    .table.responsive td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
     .going { justify-items: start; }
     .table-wrap:has(.responsive) { border: 0; background: transparent; overflow: visible; }
     .page-header { flex-wrap: wrap; align-items: flex-start; }
