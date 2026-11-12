@@ -30,6 +30,12 @@ struct DIPPrototypeApp: View {
     @State private var showInvitations = false
     @State private var invitesObservationID = UUID()
     @State private var inviteSession: InviteSession?
+    /// The notifications center (the bell): nil when there is no notifications adapter (the bell then opens Invitations).
+    @State private var notifications: DIPNotificationsModel?
+    @State private var showNotifications = false
+    @State private var notificationsObservationID = UUID()
+    @State private var pushAuthorization: DIPPushAuthorization?
+    private let pushPermission: PushPermissionControl?
     private let startsWithInvitePicker: Bool
     private let initialMemories: Bool
     private let onSignOut: (() async -> Void)?
@@ -72,7 +78,14 @@ struct DIPPrototypeApp: View {
          onSurfaceChange: ((OnboardingHomeSurface) -> Void)? = nil, onReplayTour: (() -> Void)? = nil,
          deepLinkEventID: String? = nil, onDeepLinkHandled: ((String) -> Void)? = nil,
          deepLinkOpensChat: Bool = false, onJoined: (() -> Void)? = nil,
-         invitesRepository: (any DIPInvitesRepository)? = nil) {
+         invitesRepository: (any DIPInvitesRepository)? = nil,
+         notificationsRepository: (any DIPNotificationsRepository)? = nil,
+         pushPermission: PushPermissionControl? = nil) {
+        #if DEBUG
+        self.pushPermission = pushPermission ?? (repository == nil ? PushPermissionControl.fixture() : nil)
+        #else
+        self.pushPermission = pushPermission
+        #endif
         self.deepLinkOpensChat = deepLinkOpensChat
         self.onJoined = onJoined
         self.deepLinkEventID = deepLinkEventID
@@ -142,6 +155,27 @@ struct DIPPrototypeApp: View {
         _invites = State(initialValue: inviteModel)
         _showInvitations = State(initialValue: inviteSource != nil && screen == "invitations")
         startsWithInvitePicker = inviteSource != nil && screen == "invite-picker"
+        // Same rule as invitations: the shell's own mock mode gets the fixture notifications, real members get the adapter.
+        let notificationSource = notificationsRepository ?? (repository == nil ? Self.fixtureNotifications() : nil)
+        _notifications = State(initialValue: notificationSource.map { DIPNotificationsModel(repository: $0) })
+        _showNotifications = State(initialValue: notificationSource != nil && screen == "notifications")
+    }
+
+    /// Fixture notifications; `--notifications-state=empty|loading|failed|many|mark-failed|more-failed` (Debug) for review and UI tests.
+    static func fixtureNotifications() -> any DIPNotificationsRepository {
+        #if DEBUG
+        let state = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--notifications-state=") }.map { String($0.dropFirst("--notifications-state=".count)) }
+        switch state {
+        case "empty": return DIPMockNotificationsRepository.empty()
+        case "loading": return DIPMockNotificationsRepository.reference(behavior: .init(latency: .seconds(3600)))
+        case "failed": return DIPMockNotificationsRepository.reference(behavior: .init(observeFailure: true))
+        case "many": return DIPMockNotificationsRepository.reference(count: 70)
+        case "mark-failed": return DIPMockNotificationsRepository.reference(behavior: .init(markFailure: .offline))
+        case "more-failed": return DIPMockNotificationsRepository.reference(count: 70, behavior: .init(loadOlderFailure: .offline))
+        default: break
+        }
+        #endif
+        return DIPMockNotificationsRepository.reference()
     }
 
     /// Fixture invitations; `--invites-state=empty|loading|failed|full|search-failed|send-failed|already-invited|slow-send` (Debug) for review and UI tests.
@@ -225,6 +259,7 @@ struct DIPPrototypeApp: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
     @Environment(\.weeklyChallengeFeed) private var challengeFeed
     /// The theme page publishes its entry action here; the shared bottom bar below renders it.
@@ -306,11 +341,18 @@ struct DIPPrototypeApp: View {
                 })
             .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
         }
+        .sheet(isPresented: $showNotifications) { notificationsSheet }
         .sheet(isPresented: $showInvitations) { invitationsSheet }
         .sheet(item: $inviteSession) { session in
             DIPInviteSheet(model: session.model, eventTitle: session.title, onClose: { inviteSession = nil })
         }
         .task(id: invitesObservationID) { await invites?.observe() }
+        // Live for as long as the member's shell exists (it is keyed by member): the bell badge counts unread, and the
+        // listeners go away with the view on sign-out.
+        .task(id: notificationsObservationID) { await notifications?.observe() }
+        .task(id: showNotifications) { if showNotifications { await refreshPushAuthorization() } }
+        // Coming back from iOS Settings: re-read the permission so the banner disappears once it is on.
+        .onChange(of: scenePhase) { _, phase in if phase == .active, showNotifications { Task { await refreshPushAuthorization() } } }
         .onAppear {
             if startsWithInvitePicker, inviteSession == nil, let invites {
                 inviteSession = InviteSession(id: "puppy-yoga", title: model.snapshot?.eventDetails["puppy-yoga"]?.title ?? "Puppy Yoga",
@@ -626,13 +668,73 @@ struct DIPPrototypeApp: View {
         }
     }
 
-    /// The bell opens the invitations (the notifications area) when there is an adapter; its badge counts invitations waiting for an answer.
-    private func openNotifications() {
-        if invites != nil { showInvitations = true } else { notice = "Notifications" }
+    /// The notifications center; invitations are one tap away from it.
+    @ViewBuilder private var notificationsSheet: some View {
+        if let notifications {
+            DIPNotificationsScreen(
+                model: notifications,
+                invitesWaiting: invites?.badgeCount,
+                permissionPrompt: permissionPrompt,
+                onOpen: { openNotification($0) },
+                onOpenInvitations: { showNotifications = false; presentInvitationsAfterSheet() },
+                onPermission: { Task { await turnOnPush() } },
+                onRetry: { notificationsObservationID = UUID() },
+                onClose: { showNotifications = false })
+        }
     }
 
+    /// The bell opens the notifications center when there is an adapter (otherwise the invitations, otherwise a notice).
+    private func openNotifications() {
+        if notifications != nil { showNotifications = true }
+        else if invites != nil { showInvitations = true }
+        else { notice = "Notifications" }
+    }
+
+    /// The bell's badge: unread notifications (live); without a notifications adapter, invitations waiting for an answer.
     private func bellCount(_ snapshot: DIPAppSnapshot) -> Int {
-        invites.map(\.badgeCount) ?? snapshot.home.unreadCount
+        notifications?.unreadCount ?? invites.map(\.badgeCount) ?? snapshot.home.unreadCount
+    }
+
+    /// Marks the row read and goes where it points (the same routes as the deep-link inbox uses).
+    private func openNotification(_ item: DIPNotification) {
+        Task { await notifications?.markRead(item.id) }
+        switch item.destination {
+        case .event(let id): showNotifications = false; routes = [.event(id)]
+        case .challenge(let id): showNotifications = false; routes = [.challenge(id)]
+        case .album(let id): showNotifications = false; routes = [.album(id)]
+        case .invitations:
+            showNotifications = false
+            if invites != nil { presentInvitationsAfterSheet() }
+        case .none: break
+        }
+    }
+
+    /// One sheet at a time: the notifications sheet finishes dismissing before Invitations presents.
+    private func presentInvitationsAfterSheet() {
+        guard invites != nil else { return }
+        Task { try? await Task.sleep(for: .milliseconds(450)); showInvitations = true }
+    }
+
+    // MARK: Push permission banner (only when the push client is enabled by flag)
+
+    private var permissionPrompt: NotificationPermissionPrompt? {
+        guard pushPermission != nil, let pushAuthorization else { return nil }
+        switch pushAuthorization {
+        case .notDetermined: return .turnOn
+        case .denied: return .openSettings
+        case .authorized, .provisional, .ephemeral: return nil
+        }
+    }
+
+    private func refreshPushAuthorization() async {
+        guard let pushPermission else { return }
+        pushAuthorization = await pushPermission.status()
+    }
+
+    private func turnOnPush() async {
+        guard let pushPermission else { return }
+        if pushAuthorization == .denied { pushPermission.openSettings(); return }
+        pushAuthorization = await pushPermission.turnOn()
     }
 
     /// Rejoin from the Invitations screen: the same checks and the same RSVP command as the Join button, so capacity and

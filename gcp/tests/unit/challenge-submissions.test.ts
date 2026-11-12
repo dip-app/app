@@ -71,6 +71,10 @@ class Store implements SubmissionStore {
         reviewSubmission: (c, id, s, data: ReviewWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { reviewedAt: this.stamp(), updatedAt: this.stamp() })),
         incrementParticipants: (c, id) => patch(ch(c, id), d => { d.participantCount = Number(d.participantCount) + 1; }),
         incrementCompleted: (c, id) => patch(ch(c, id), d => { d.completedCount = Number(d.completedCount) + 1; }),
+        createNotice: (u, id, notice) => pending.push(() => {
+          if (this.docs.has(`users/${u}/notifications/${id}`)) throw new Error("ALREADY_EXISTS");
+          this.put(`users/${u}/notifications/${id}`, { userId: u, ...notice, isRead: false }); this.writes++;
+        }),
         createAward: (c, a, entry: LedgerEntry) => pending.push(() => {
           if (this.docs.has(`companies/${c}/pointTransactions/${a}`)) throw new Error("ALREADY_EXISTS");
           this.put(`companies/${c}/pointTransactions/${a}`, { ...entry }); this.writes++;
@@ -202,6 +206,18 @@ test("pending submissions can be edited; approved ones are locked", async () => 
   assert.equal(await reason(submitChallenge(store, objects, caller(), request({ progress: 5 }), now)), "SUBMISSION_LOCKED");
   // Re-opening the approved entry with identical content is a harmless replay.
   assert.equal((await submitChallenge(store, objects, caller(), request({ progress: 4, caption: "More" }), now)).outcome, "unchanged");
+});
+
+test("approval and rejection leave one create-only in-app notice for the member (never on replay)", async () => {
+  const { store, objects } = world();
+  await submitChallenge(store, objects, caller(), request(), now);
+  await approveChallenge(store, caller("boss"), review());
+  await approveChallenge(store, caller("boss"), review());
+  const notice = store.get("users/alice/notifications/challenge_approved_week1")!;
+  assert.equal(notice.type, "challenge_approved");
+  assert.equal(notice.body, "You earned 50 points.");
+  assert.equal(notice.targetId, "week1");
+  assert.equal(notice.isRead, false);
 });
 
 test("approval awards points once through the ledger, balance, submission and completed count atomically", async () => {

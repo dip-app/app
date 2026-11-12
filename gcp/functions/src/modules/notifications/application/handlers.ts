@@ -1,9 +1,9 @@
 import { buildEntry, summarizeChanges } from "../domain/changeLog";
-import { changePush, chatPush, reminderPush } from "../domain/push";
+import { changePush, chatPush, reminderPush, shorten } from "../domain/push";
 import { dueWindow, reminderKey, REMINDER_WINDOWS } from "../domain/reminders";
 import { LEVELS_FOR } from "../domain/subscription";
 import type {
-  ChangeLogStore, ClaimStore, Clock, EventReader, PushDependencies, SubscriptionStore, UpcomingEvents,
+  ChangeLogStore, ClaimStore, Clock, EventReader, InboxWriter, PushDependencies, SubscriptionStore, UpcomingEvents,
 } from "./ports";
 import { sendPush, type PushStats } from "./sendPush";
 
@@ -44,7 +44,7 @@ export async function onChatMessageCreated(
  * produce no entry, so the trigger's own changeLog write ends the loop.
  */
 export async function onEventDocumentUpdated(
-  deps: PushDependencies & { changeLog: ChangeLogStore; clock: Clock },
+  deps: PushDependencies & { changeLog: ChangeLogStore; clock: Clock; inbox?: InboxWriter },
   companyId: string, eventId: string, before: Doc, after: Doc, updateTime: Date,
 ): Promise<{ appended: boolean; push: PushStats }> {
   const entry = buildEntry(before, after, updateTime);
@@ -58,7 +58,19 @@ export async function onEventDocumentUpdated(
   if (ended || wasAndIsCancelled) return { appended, push: emptyStats() };
   const recipients = (await deps.recipients.subscribers(companyId, eventId, LEVELS_FOR.event_changed)).filter((uid) => uid !== entry.by);
   const title = typeof after.title === "string" ? after.title : "Activity update";
-  const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summarizeChanges(entry.changes)));
+  const summary = summarizeChanges(entry.changes);
+  const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summary));
+  // The in-app center mirrors the push for the same recipients, whether or not they have a device token. Best-effort:
+  // a failure here never fails the trigger (the changeLog entry is already stored and a retry would be a duplicate).
+  if (deps.inbox && recipients.length > 0) {
+    const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
+    try {
+      await deps.inbox.createMany([...new Set(recipients)].map((uid) => ({
+        uid, id: `event_${eventId}_${entry.revision}`, companyId, type: cancelled ? "event_cancelled" : "event_updated",
+        title: shorten(title, 60), body: summary, targetType: "event", targetId: eventId,
+      })));
+    } catch { /* best-effort */ }
+  }
   return { appended, push };
 }
 

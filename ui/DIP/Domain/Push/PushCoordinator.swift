@@ -51,6 +51,18 @@ final class PushCoordinator {
         store.hasPrimed = true   // never nag: Settings can still turn notifications on
     }
 
+    /// The notifications center's permission banner: only exists while the push client is enabled.
+    var permissionControl: PushPermissionControl {
+        PushPermissionControl(
+            status: { [system] in await system.authorization() },
+            turnOn: { [weak self, system] in
+                // An explicit tap in the center; the system prompt only ever appears while the status is undetermined.
+                if await system.authorization() == .notDetermined { _ = await self?.registrar.requestPermission() }
+                return await system.authorization()
+            },
+            openSettings: PushPermissionControl.settingsOpener())
+    }
+
     /// A tapped notification's `deepLink` payload (`dip://events/{id}[/chat]`); anything else is ignored.
     func handleDeepLink(_ text: String) {
         guard let url = URL(string: text), DIPShareLink.destination(from: url) != nil else { return }

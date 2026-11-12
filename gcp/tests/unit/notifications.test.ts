@@ -260,6 +260,35 @@ describe("event change trigger", () => {
     assert.equal(world.changeLogs.size, 0);
   });
 
+  test("the in-app center mirrors the push: one create-only item per recipient with a deterministic id, cancellation typed separately", async () => {
+    const { world, deps } = setup();
+    const created = new Map<string, Record<string, unknown>>();
+    const inbox = { createMany: async (items: readonly { uid: string; id: string }[]) => {
+      let count = 0;
+      for (const item of items) { const key = `${item.uid}/${item.id}`; if (!created.has(key)) { created.set(key, item as unknown as Record<string, unknown>); count++; } }
+      return count;
+    } };
+    world.subscribe("fan", "changes"); world.subscribe("quiet", "none"); world.subscribe("editor", "all");
+    const edited = { ...baseEvent, venue: { ...baseEvent.venue, address: "2 Main" }, revision: 5, updatedBy: "editor" };
+    await onEventDocumentUpdated({ ...deps, inbox }, "alpha", "event", baseEvent, edited, NOW);
+    assert.deepEqual([...created.keys()], ["fan/event_event_5"]);
+    assert.equal(created.get("fan/event_event_5")!.type, "event_updated");
+    assert.equal(created.get("fan/event_event_5")!.body, "Updated: location.");
+    // A redelivered trigger changes nothing; a cancellation is its own type and id.
+    await onEventDocumentUpdated({ ...deps, inbox }, "alpha", "event", baseEvent, edited, NOW);
+    await onEventDocumentUpdated({ ...deps, inbox }, "alpha", "event", edited, { ...edited, status: "cancelled", revision: 6, updatedBy: "editor" }, NOW);
+    assert.deepEqual([...created.keys()].sort(), ["fan/event_event_5", "fan/event_event_6"]);
+    assert.equal(created.get("fan/event_event_6")!.type, "event_cancelled");
+  });
+
+  test("a failing in-app write never fails the trigger", async () => {
+    const { world, deps } = setup();
+    world.subscribe("fan", "changes");
+    const result = await onEventDocumentUpdated({ ...deps, inbox: { createMany: async () => { throw new Error("down"); } } },
+      "alpha", "event", baseEvent, { ...baseEvent, costNote: "Free", revision: 5 }, NOW);
+    assert.equal(result.appended, true);
+  });
+
   test("cancellation is pushed; edits to cancelled or finished events are logged silently", async () => {
     const { world, messaging, deps } = setup();
     world.subscribe("fan", "changes"); world.addDevice("fan", "fan");
