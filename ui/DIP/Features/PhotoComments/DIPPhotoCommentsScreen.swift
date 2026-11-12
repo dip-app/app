@@ -73,7 +73,7 @@ struct DIPPhotoCommentsScreen: View {
         Button(action: onClose) {
             Image(systemName: "xmark").font(.system(size: 20, weight: .regular))
                 .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                .frame(width: 50, height: 50)
+                .frame(width: 44, height: 44)
                 .background(.white, in: Circle())
                 .contentShape(Circle())
         }
@@ -82,32 +82,55 @@ struct DIPPhotoCommentsScreen: View {
         .accessibilityIdentifier("album.photo.close")
     }
 
-    /// Previous/next photo (solid, pressable) around a plain "3 of 12" position. Disabled at either end.
+    /// Previous/next photo (solid, pressable) around a plain "3 of 12" position pill. All controls are 44 pt, 8 pt apart.
+    /// The label is sized for the widest "N of N" so the circles keep their x for every photo.
     private func stepper(_ position: (index: Int, count: Int), _ onStep: @escaping (Int) -> Void) -> some View {
         HStack(spacing: 8) {
             stepButton("chevron.left", label: "Previous photo", id: "album.photo.previous", enabled: position.index > 1) { onStep(-1) }
             Text("\(position.index) of \(position.count)")
-                .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .body))
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .body).weight(.medium))
+                .monospacedDigit()
                 .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.4), radius: 2)
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .frame(minWidth: Self.positionLabelWidth(count: position.count), minHeight: 36)
+                .padding(.horizontal, 14)
+                .background(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.6), in: Capsule())
                 .accessibilityLabel("Photo \(position.index) of \(position.count)")
                 .accessibilityIdentifier("album.photo.position")
             stepButton("chevron.right", label: "Next photo", id: "album.photo.next", enabled: position.index < position.count) { onStep(1) }
         }
     }
 
+    /// Width of the widest label for an album of `count` photos (digits of N twice, plus " of "), never below 72 pt.
+    nonisolated static func positionLabelWidth(count: Int) -> CGFloat {
+        let digits = String(max(1, count)).count
+        return max(72, CGFloat(digits * 2) * 10 + 28)
+    }
+
     private func stepButton(_ symbol: String, label: String, id: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                // Disabled keeps the white circle at full strength; only the chevron fades.
+                .foregroundStyle(enabled ? DIPTokens.Color.actionPrimary.swiftUIColor : Color(red: 0xB8 / 255, green: 0xBA / 255, blue: 0xC4 / 255))
                 .frame(width: 44, height: 44)
                 .background(.white, in: Circle())
                 .contentShape(Circle())
         }
-        .buttonStyle(DIPPressFeedbackStyle())
-        .disabled(!enabled).opacity(enabled ? 1 : 0.4)
+        .buttonStyle(StepPressStyle())
+        .disabled(!enabled)
         .accessibilityLabel(label)
         .accessibilityIdentifier(id)
+    }
+
+    /// Pressed: scale 0.95 and a brief tint. Stepping is navigation, so there is no haptic.
+    private struct StepPressStyle: ButtonStyle {
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .overlay(Circle().fill(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(configuration.isPressed ? 0.16 : 0)).allowsHitTesting(false))
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
+                .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+        }
     }
 
     private func photoPreview(width: CGFloat) -> some View {
