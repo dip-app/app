@@ -208,7 +208,10 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
 
   const ops = createMockOps({
     store, now,
-    themes: (companyId) => (load().themes ?? []).filter((t) => t.companyId === companyId).map((t) => ({ id: t.id, pointsReward: t.pointsReward, startDate: t.startDate })),
+    themes: (companyId) => (load().themes ?? []).filter((t) => t.companyId === companyId).map((t) => ({
+      id: t.id, title: t.title, pointsReward: t.pointsReward, startDate: t.startDate, endDate: t.endDate, participantCount: t.participantCount, completedCount: t.completedCount,
+    })),
+    events: (companyId) => load().events.filter((e) => e.companyId === companyId),
     session: () => load().session,
     findEvent: (companyId, eventId) => load().events.find((e) => e.id === eventId && e.companyId === companyId),
     bumpAttendees: (companyId, eventId, delta, minCapacity) => {

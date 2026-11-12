@@ -78,6 +78,13 @@ export function parseGetMember(data: unknown) {
   return req;
 }
 
+export function parseGetCompanyInsights(data: unknown) {
+  const r = Reader.from(data, [...BASE, "refresh"]);
+  const req = { companyId: r.id("companyId"), refresh: r.optBool("refresh") ?? false };
+  r.finish();
+  return req;
+}
+
 export interface UpdateMemberRequest {
   companyId: string; requestId: string; userId: string; expectedRevision?: number | undefined; role?: Role | undefined; teamIds?: string[] | undefined;
   workLocation?: string | undefined; department?: string | undefined; jobTitle?: string | undefined; managerEmail?: string | undefined; startDate?: string | undefined;

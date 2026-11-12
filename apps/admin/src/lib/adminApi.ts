@@ -1,7 +1,7 @@
 import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
-  BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
+  CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
   RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 
@@ -74,6 +74,10 @@ export interface AdminOpsApi {
   getBugReport(reportId: string): Promise<BugReportDetail>;
   /** Sets status, internal note and/or assignee; `expectedRevision` is the detail's revision (REVISION_CONFLICT if someone else saved). */
   updateBugReport(reportId: string, patch: BugReportPatch, expectedRevision: number): Promise<BugReportUpdate>;
+
+  // ----- Insights
+  /** getCompanyInsightsV1: usage overview for the company. `refresh` asks the server to bypass its 10-minute cache (honored at most once a minute). */
+  companyInsights(refresh?: boolean): Promise<CompanyInsights>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

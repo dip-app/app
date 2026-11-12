@@ -10,6 +10,7 @@ import {
   adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../application/members";
 import { getBugReport, listBugReports, updateBugReport } from "../application/bugReports";
+import { getCompanyInsights } from "../application/insights";
 import { removeEventPhoto, removeEventPhotoComment } from "../application/moderation";
 import type { AdminDeps, Caller } from "../application/ports";
 import { backfillRosterCallable } from "../application/backfillRoster";
@@ -84,3 +85,4 @@ export const getEmployeeImportV1 = onCall(base, command("getEmployeeImportV1", g
 export const listBugReportsV1 = onCall(base, command("listBugReportsV1", listBugReports));
 export const getBugReportV1 = onCall(base, command("getBugReportV1", getBugReport));
 export const updateBugReportV1 = onCall(base, command("updateBugReportV1", updateBugReport));
+export const getCompanyInsightsV1 = onCall(base, command("getCompanyInsightsV1", getCompanyInsights));

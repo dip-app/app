@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { FieldPath, FieldValue, Timestamp, type DocumentData, type Firestore, type Transaction } from "firebase-admin/firestore";
+import { AggregateField, FieldPath, FieldValue, Timestamp, type DocumentData, type Firestore, type Transaction } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import type { App } from "firebase-admin/app";
 import type { Storage } from "firebase-admin/storage";
 import { AdminError } from "../domain/errors";
 import type {
-  AdminStore, AdminTransaction, Doc, GroupQuery, ListQuery, ObjectStore, RateLimiter, SessionRevoker,
+  AdminStore, AdminTransaction, DocQuery, Doc, Filter, GroupQuery, QuerySource, ListQuery, ObjectStore, RateLimiter, SessionRevoker,
 } from "../application/ports";
 
 /** Domain value -> Firestore value: Dates become Timestamps, markers become field values, undefined is dropped. */
@@ -108,6 +108,37 @@ export class FirestoreAdminStore implements AdminStore {
     if (query.orderBy) ref = ref.orderBy(query.orderBy);
     const snap = await ref.limit(query.limit).get();
     return snap.docs.map(d => ({ path: d.ref.path, data: readDoc(d.data()) ?? {} }));
+  }
+
+  private source(source: QuerySource, where: ReadonlyArray<Filter>): FirebaseFirestore.Query {
+    let ref = ("collection" in source ? this.db.collection(source.collection) : this.db.collectionGroup(source.group)) as FirebaseFirestore.Query;
+    for (const [field, op, value] of where) ref = ref.where(field, op, toFirestore(value));
+    return ref;
+  }
+
+  async aggregate(source: QuerySource, where: ReadonlyArray<Filter>, sumField?: string) {
+    const ref = this.source(source, where);
+    if (sumField) {
+      const data = (await ref.aggregate({ count: AggregateField.count(), sum: AggregateField.sum(sumField) }).get()).data();
+      return { count: data.count, sum: data.sum ?? 0 };
+    }
+    return { count: (await ref.count().get()).data().count, sum: 0 };
+  }
+
+  async queryDocs(source: QuerySource, query: DocQuery) {
+    let ref = this.source(source, query.where);
+    if (query.orderBy) ref = ref.orderBy(query.orderBy, query.descending ? "desc" : "asc");
+    if (query.select) ref = ref.select(...query.select);
+    const snap = await ref.limit(query.limit).get();
+    return snap.docs.map(d => ({ path: d.ref.path, data: readDoc(d.data()) ?? {} }));
+  }
+
+  async getDoc(path: string) {
+    return readDoc((await this.db.doc(path).get()).data());
+  }
+
+  async setDoc(path: string, data: Doc) {
+    await this.db.doc(path).set(toFirestore(data) as DocumentData);
   }
 
   async deletePage(collectionPath: string, limit: number): Promise<number> {

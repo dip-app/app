@@ -8,7 +8,7 @@ export default function Home() {
   const { session } = useApp();
   const router = useRouter();
   useEffect(() => {
-    router.replace(session ? "/events/" : "/login/");
+    router.replace(session ? "/overview/" : "/login/");
   }, [session, router]);
   return null;
 }

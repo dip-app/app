@@ -9,12 +9,13 @@ export type MemberStatus = "invited" | "active" | "deactivated";
 export type Capability =
   | "events.manage" | "themes.manage" | "albums.moderate" | "attendees.manage"
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
-  | "import.run" | "roster.manage" | "audit.view" | "challenges.review" | "bugreports.manage";
+  | "import.run" | "roster.manage" | "audit.view" | "challenges.review" | "bugreports.manage"
+  | "insights.view" | "insights.points";
 
-const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "albums.moderate", "attendees.manage", "members.view"];
+const ORGANIZER_CAPS: readonly Capability[] = ["insights.view", "events.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
   ...ORGANIZER_CAPS, "themes.manage", "challenges.review", "members.edit", "members.status", "members.reset", "points.adjust",
-  "import.run", "roster.manage", "audit.view", "bugreports.manage",
+  "import.run", "roster.manage", "audit.view", "bugreports.manage", "insights.points",
 ];
 
 export function capabilitiesOf(role: Role): readonly Capability[] {
@@ -53,6 +54,7 @@ export const ADMIN_CALLABLES = {
   listSubmissions: "listChallengeSubmissionsV1",
   approveSubmission: "approveChallengeV1",
   rejectSubmission: "rejectChallengeV1",
+  getInsights: "getCompanyInsightsV1",
   listBugReports: "listBugReportsV1",
   getBugReport: "getBugReportV1",
   updateBugReport: "updateBugReportV1",
@@ -312,6 +314,27 @@ export interface Submission {
 }
 
 export interface SubmissionPage { submissions: Submission[]; nextCursor: string | null }
+
+// ----- Company insights (getCompanyInsightsV1, docs/contracts/admin.md, "Company insights")
+export interface InsightsDay { date: string; rsvps: number; photos: number }
+export interface InsightsEvent { eventId: string; title: string; startTime: string; attendeeCount: number; capacity: number; status: "scheduled" | "completed" }
+export interface InsightsTheme {
+  challengeId: string; title: string; startDate: string; endDate: string; participantCount: number; completedCount: number; pendingReviews: number;
+}
+export interface CompanyInsights {
+  /** When the numbers were computed (the server caches them for up to 10 minutes). */
+  generatedAt: string;
+  windowDays: number;
+  members: { total: number; active: number; deactivated: number; invited: number; activeLast30Days: number; activeCapped: boolean };
+  events: { upcoming: number; thisMonth: number; completed: number; cancelled: number };
+  participation: { rsvpsLast30Days: number; attendanceRate: number | null; attendanceSample: number; topEvents: InsightsEvent[] };
+  content: { photosLast30Days: number; commentsLast30Days: number };
+  challenges: { pendingReviews: number; current: InsightsTheme | null };
+  /** Admins only; null for organizers (the backend never sends it to them). */
+  points: { issuedLast30Days: number; topMembers: { userId: string; displayName: string; pointsBalance: number }[] } | null;
+  /** The last 30 UTC days, oldest first. */
+  activity: InsightsDay[];
+}
 
 // ---------- Bug reports (shake-to-report inbox, docs/contracts/admin.md#bug-reports-inbox-bugreportmanage-admin-only)
 

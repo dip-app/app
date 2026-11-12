@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type BackfillStep, type CompanyInsights, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -76,6 +76,47 @@ export function submissionFromWire(d: DocumentData): Submission {
     status: d.status === "approved" ? "approved" : d.status === "rejected" ? "rejected" : "submitted", createdAt: iso(d.createdAt), updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : iso(d.updatedAt), // sent back verbatim as expectedUpdatedAt
     storagePath: typeof d.storagePath === "string" && d.storagePath ? d.storagePath : null, attempt: Number(d.attempt ?? 1),
     reviewedAt: iso(d.reviewedAt) || null, reviewNote: typeof d.reviewNote === "string" ? d.reviewNote : null, pointsAwarded: Number(d.pointsAwarded ?? 0),
+  };
+}
+
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0);
+const obj = (value: unknown): DocumentData => (value && typeof value === "object" ? (value as DocumentData) : {});
+const list = (value: unknown): DocumentData[] => (Array.isArray(value) ? value.map(obj) : []);
+
+/** GetCompanyInsightsResponse -> CompanyInsights. Missing numbers read as zero so a partial response still renders. */
+export function insightsFromWire(d: DocumentData): CompanyInsights {
+  const members = obj(d.members), events = obj(d.events), participation = obj(d.participation), content = obj(d.content), challenges = obj(d.challenges);
+  const current = challenges.current ? obj(challenges.current) : null;
+  const points = d.points ? obj(d.points) : null;
+  return {
+    generatedAt: iso(d.generatedAt), windowDays: num(d.windowDays) || 30,
+    members: {
+      total: num(members.total), active: num(members.active), deactivated: num(members.deactivated), invited: num(members.invited),
+      activeLast30Days: num(members.activeLast30Days), activeCapped: members.activeCapped === true,
+    },
+    events: { upcoming: num(events.upcoming), thisMonth: num(events.thisMonth), completed: num(events.completed), cancelled: num(events.cancelled) },
+    participation: {
+      rsvpsLast30Days: num(participation.rsvpsLast30Days),
+      attendanceRate: typeof participation.attendanceRate === "number" ? Math.min(1, Math.max(0, participation.attendanceRate)) : null,
+      attendanceSample: num(participation.attendanceSample),
+      topEvents: list(participation.topEvents).map((e) => ({
+        eventId: str(e.eventId), title: str(e.title), startTime: iso(e.startTime), attendeeCount: num(e.attendeeCount), capacity: num(e.capacity),
+        status: e.status === "completed" ? "completed" as const : "scheduled" as const,
+      })),
+    },
+    content: { photosLast30Days: num(content.photosLast30Days), commentsLast30Days: num(content.commentsLast30Days) },
+    challenges: {
+      pendingReviews: num(challenges.pendingReviews),
+      current: current && {
+        challengeId: str(current.challengeId), title: str(current.title), startDate: iso(current.startDate), endDate: iso(current.endDate),
+        participantCount: num(current.participantCount), completedCount: num(current.completedCount), pendingReviews: num(current.pendingReviews),
+      },
+    },
+    points: points && {
+      issuedLast30Days: num(points.issuedLast30Days),
+      topMembers: list(points.topMembers).map((m) => ({ userId: str(m.userId), displayName: str(m.displayName), pointsBalance: num(m.pointsBalance) })),
+    },
+    activity: list(d.activity).map((a) => ({ date: str(a.date), rsvps: num(a.rsvps), photos: num(a.photos) })),
   };
 }
 
@@ -334,6 +375,11 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         status: bugStatus(d.status), note: str(d.note), assigneeId: str(d.assigneeId) || null, assigneeName: str(d.assigneeName) || null,
         revision: Number(d.revision ?? 0), updatedAt: iso(d.updatedAt), changed: d.changed === true,
       };
+    }),
+
+    companyInsights: (refresh = false) => run(async () => {
+      const session = await organizer();
+      return insightsFromWire(await call<DocumentData>(ADMIN_CALLABLES.getInsights, session, refresh ? { refresh: true } : {}, false));
     }),
 
     listAudit: () => run(async () => {

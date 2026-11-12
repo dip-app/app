@@ -1,5 +1,5 @@
 import type {
-  AdminDeps, AdminStore, AdminTransaction, Caller, Doc, GroupQuery, ListQuery, ObjectStore, SessionRevoker,
+  AdminDeps, AdminStore, AdminTransaction, Caller, Doc, DocQuery, Filter, GroupQuery, QuerySource, ListQuery, ObjectStore, SessionRevoker,
 } from "../../../functions/src/modules/admin/application/ports";
 
 export const NOW = new Date("2030-01-02T12:00:00Z");
@@ -96,6 +96,34 @@ export class FakeAdminStore implements AdminStore {
     if (query.orderBy) matches.sort(([, x], [, y]) => +(x.data[query.orderBy!] as Date) - +(y.data[query.orderBy!] as Date));
     return matches.slice(0, query.limit).map(([path, e]) => ({ path, data: structuredClone(e.data) }));
   }
+
+  private sourceDocs(source: QuerySource, where: ReadonlyArray<Filter>) {
+    const value = (v: unknown) => (v instanceof Date ? v.getTime() : v);
+    return [...this.docs].filter(([p]) => {
+      const parts = p.split("/");
+      if (parts.length % 2 !== 0) return false;
+      return "collection" in source ? childOf(source.collection, p) : parts[parts.length - 2] === source.group;
+    }).filter(([, e]) => where.every(([f, op, v]) => {
+      const a = value(e.data[f]) as number | string | undefined, b = value(v) as number | string;
+      if (a === undefined) return false;
+      return op === "==" ? a === b : op === ">" ? a > b : op === ">=" ? a >= b : op === "<" ? a < b : a <= b;
+    }));
+  }
+
+  async aggregate(source: QuerySource, where: ReadonlyArray<Filter>, sumField?: string) {
+    const rows = this.sourceDocs(source, where);
+    return { count: rows.length, sum: sumField ? rows.reduce((n, [, e]) => n + (typeof e.data[sumField] === "number" ? (e.data[sumField] as number) : 0), 0) : 0 };
+  }
+
+  async queryDocs(source: QuerySource, query: DocQuery) {
+    const rows = this.sourceDocs(source, query.where);
+    const key = (e: { data: Doc }) => { const v = e.data[query.orderBy!]; return v instanceof Date ? v.getTime() : (v as number); };
+    if (query.orderBy) rows.sort(([, x], [, y]) => (query.descending ? -1 : 1) * (key(x) - key(y)));
+    return rows.slice(0, query.limit).map(([path, e]) => ({ path, data: structuredClone(e.data) }));
+  }
+
+  async getDoc(path: string) { const e = this.docs.get(path); return e ? structuredClone(e.data) : null; }
+  async setDoc(path: string, data: Doc) { this.seed(path, data); }
 
   async deletePage(collection: string, limit: number) {
     const ids = this.children(collection).slice(0, limit);

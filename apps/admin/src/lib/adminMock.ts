@@ -8,6 +8,7 @@ import {
 import type { KeyValueStore, Session } from "./api";
 import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
+import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
 export interface MockEventView {
@@ -21,7 +22,9 @@ export interface MockOpsDeps {
   /** Changes the going count; `minCapacity` grows the capacity (the capacity-override rule). */
   bumpAttendees: (companyId: string, eventId: string, delta: number, minCapacity?: number) => { attendeeCount: number; capacity: number };
   /** The company's weekly themes (challenges) the review queue belongs to. */
-  themes: (companyId: string) => { id: string; pointsReward: number; startDate: string }[];
+  themes: (companyId: string) => { id: string; title: string; pointsReward: number; startDate: string; endDate: string; participantCount: number; completedCount: number }[];
+  /** The company's events (Overview numbers). */
+  events: (companyId: string) => MockEventView[];
 }
 
 type Stored<T> = T & { companyId: string };
@@ -808,6 +811,27 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         save(state);
       }
       return { status: found.status, note: found.note, assigneeId: found.assigneeId ?? null, assigneeName: found.assigneeName ?? null, revision: found.revision, updatedAt: found.updatedAt ?? now().toISOString(), changed: changes.length > 0 };
+    },
+
+    // ----- audit
+    async companyInsights() {
+      const session = staff("insights.view");
+      const scenario = typeof window === "undefined" ? "default" : scenarioFromSearch(window.location.search);
+      if (scenario === "slow") await new Promise((resolve) => setTimeout(resolve, 2500));
+      if (scenario === "error") throw new ApiError("failed-precondition", "Couldn’t load the overview. Check your connection and try again.", {}, "UNAVAILABLE");
+      const state = load();
+      const nowDate = now();
+      const theme = deps.themes(session.companyId).find((t) => Date.parse(t.startDate) <= nowDate.getTime() && Date.parse(t.endDate) >= nowDate.getTime()) ?? null;
+      const queue = (state.submissions ?? []).filter((s) => s.companyId === session.companyId && theme && s.challengeId === theme.id);
+      return buildMockInsights({
+        members: state.members.filter((m) => m.companyId === session.companyId),
+        invited: state.roster.filter((r) => r.companyId === session.companyId && r.state === "invited").length,
+        events: deps.events(session.companyId),
+        photos: state.photos.filter((p) => p.companyId === session.companyId).length,
+        comments: state.comments.filter((c) => c.companyId === session.companyId).length,
+        theme,
+        pendingReviews: state.submissions ? queue.filter((s) => s.status === "submitted").length : 3,
+      }, scenario, session.role, nowDate);
     },
 
     // ----- audit
