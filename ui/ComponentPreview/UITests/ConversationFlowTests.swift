@@ -72,7 +72,7 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         XCTAssertFalse(bubble.exists)
     }
-    @MainActor func testFourCompactBubblesExpandAtPhotoCenter() {
+    @MainActor func testFiveCompactBubblesFloatOverThePhotoAndExpandAtItsCenter() {
         let app = XCUIApplication()
         app.launchArguments = ["--screen=album", "--comment-bubble-fixtures"]
         app.launch()
@@ -80,9 +80,15 @@ final class ConversationFlowTests: XCTestCase {
         app.buttons["album.photo.0"].tap()
         let compact = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "photo.comments.comment."))
         XCTAssertTrue(app.buttons["photo.comments.comment.review-2"].waitForExistence(timeout: 5))
-        XCTAssertEqual(compact.count, 4)
-        XCTAssertFalse(app.buttons["photo.comments.comment.review-0"].exists)
+        XCTAssertEqual(compact.count, 5, "up to five bubbles float over the photo")
+        XCTAssertTrue(app.buttons["photo.comments.comment.review-0"].exists)
         let image = app.descendants(matching: .any)["photo.comments.image"]
+        for index in 0..<compact.count {
+            let bubble = compact.element(boundBy: index)
+            // Inset from the photo's edges: never hugging a corner or clipped.
+            XCTAssertGreaterThanOrEqual(bubble.frame.minX, image.frame.minX + 15)
+            XCTAssertLessThanOrEqual(bubble.frame.maxX, image.frame.maxX - 15)
+        }
         let selected = app.buttons["photo.comments.comment.review-2"]
         XCTAssertLessThanOrEqual(selected.frame.width, 134.5)
         XCTAssertEqual(selected.frame.height, 44, accuracy: 0.5)
@@ -106,7 +112,7 @@ final class ConversationFlowTests: XCTestCase {
         add(expandedCapture)
         image.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap()
         XCTAssertFalse(expanded.exists)
-        XCTAssertEqual(compact.count, 4)
+        XCTAssertEqual(compact.count, 5)
     }
 
     @MainActor func testParticipantsRequireJoinBeforeChat() {
@@ -170,19 +176,35 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Start the conversation"].exists)
     }
 
-    @MainActor func testEarlierCommentsRemainReachableWithoutAThreadPanel() {
+    @MainActor func testMoreThanFiveCommentsCollapseIntoAPillThatListsThemAll() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--screen=album", "--comment-bubble-fixtures", "--comment-count=8"]
+        app.launch()
+        XCTAssertTrue(app.buttons["album.photo.0"].waitForExistence(timeout: 10))
+        app.buttons["album.photo.0"].tap()
+        let compact = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "photo.comments.comment."))
+        XCTAssertTrue(app.buttons["photo.comments.more"].waitForExistence(timeout: 5))
+        XCTAssertEqual(compact.count, 5)
+        XCTAssertEqual(app.buttons["photo.comments.more"].label, "3 more comments")
+        app.buttons["photo.comments.more"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["photo.comments.all"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Comment number 8 on this photo"].exists)
+    }
+
+    @MainActor func testSteppingBetweenPhotosShowsTheSlashCount() {
         let app = XCUIApplication()
         app.launchArguments = ["--screen=album", "--comment-bubble-fixtures"]
         app.launch()
         XCTAssertTrue(app.buttons["album.photo.0"].waitForExistence(timeout: 10))
         app.buttons["album.photo.0"].tap()
-        let image = app.descendants(matching: .any)["photo.comments.image"]
-        XCTAssertTrue(app.buttons["photo.comments.comment.review-2"].waitForExistence(timeout: 5))
-        image.swipeLeft()
-        XCTAssertTrue(app.buttons["photo.comments.comment.review-0"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["photo.comments.comment.review-2"].exists)
-        image.swipeRight()
-        XCTAssertTrue(app.buttons["photo.comments.comment.review-2"].waitForExistence(timeout: 5))
+        let position = app.staticTexts["album.photo.position"]
+        XCTAssertTrue(position.waitForExistence(timeout: 5))
+        XCTAssertEqual(position.label, "Photo 1 of 12")
+        XCTAssertFalse(app.buttons["album.photo.previous"].isEnabled)
+        app.buttons["album.photo.next"].tap()
+        XCTAssertTrue(NSPredicate(format: "label == %@", "Photo 2 of 12")
+            .evaluate(with: position) || position.waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["album.photo.save"].exists)
     }
 
     @MainActor func testSoftwareKeyboardKeepsComposerVisible() throws {

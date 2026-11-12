@@ -20,6 +20,12 @@ struct DIPPrototypeApp: View {
     @State private var chatNotificationLevel: DIPNotificationLevel?
     @State private var chatEventID = "puppy-yoga"
     /// Coworker invitations (F4): nil when there is no invitations adapter (the bell then says "not connected").
+    private let readsOriginalPhotos: Bool
+    /// `--comment-count=N` (review builds): how many comments the comment fixtures put on each photo.
+    private static var commentCount: Int {
+        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--comment-count=") }
+            .flatMap { Int($0.dropFirst("--comment-count=".count)) } ?? 5
+    }
     @State private var invites: DIPInvitesModel?
     @State private var showInvitations = false
     @State private var invitesObservationID = UUID()
@@ -99,6 +105,8 @@ struct DIPPrototypeApp: View {
         self.onRetryInterestCatalog = onRetryInterestCatalog
         self.onProfileSave = onProfileSave
         self.onSignOut = onSignOut
+        // Only a Storage-backed repository can return the stored original; fixtures save the photo as shown.
+        self.readsOriginalPhotos = repository != nil
         let argument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--screen=") }
         let screen = initialScreen ?? argument.map { String($0.dropFirst("--screen=".count)) } ?? "home"
         _selectedTab = State(
@@ -127,7 +135,7 @@ struct DIPPrototypeApp: View {
                 : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
-                ? DIPMockFixtures.photoCommentReview
+                ? DIPMockFixtures.photoCommentReview(count: Self.commentCount)
                 : ["event", "event-joined", "past-event", "invite-picker"].contains(screen)
                 ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
@@ -899,7 +907,8 @@ struct DIPPrototypeApp: View {
                         onAddPhotos: { try await model.addPhotos(eventID: id, photos: $0) },
                         onAddComment: { try await model.addPhotoComment(
                             eventID: id, photoID: $0, commentID: $1, text: $2) },
-                        onViewPhoto: { onPhotoViewed?(id, $0) })
+                        onViewPhoto: { onPhotoViewed?(id, $0) },
+                        loadOriginal: readsOriginalPhotos ? { try await model.originalPhotoData(eventID: id, photoID: $0) } : nil)
                 } else { missingResource }
             }
         } else { ProgressView("Loading…") }

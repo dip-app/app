@@ -83,6 +83,10 @@ public final class DIPAppViewModel {
             try await repository.addPhotoComment(eventID: eventID, photoID: photoID, commentID: commentID, text: text)
         }
     }
+    /// Original-resolution bytes of an album photo, for saving to the library.
+    public func originalPhotoData(eventID: String, photoID: String) async throws -> Data {
+        try await repository.originalPhotoData(eventID: eventID, photoID: photoID)
+    }
     public func dismissCommandError() { commandError = nil }
 
     private func perform(_ key: String, action: () async throws -> Void) async throws {

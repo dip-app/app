@@ -179,15 +179,26 @@ public enum DIPMockFixtures {
     }
 
     /// Opt-in interaction-review data; original frame fixtures remain unchanged.
-    public static var photoCommentReview: DIPAppSnapshot {
+    public static var photoCommentReview: DIPAppSnapshot { photoCommentReview(count: 5) }
+
+    /// Review data with `count` comments on each of the first four photos (`--comment-count=N`): placement, overflow and empty states.
+    public static func photoCommentReview(count: Int) -> DIPAppSnapshot {
         var snapshot = reference
         let longText = String(repeating: "A wonderful afternoon on the river with our coworkers. The scenery was beautiful and we should absolutely plan another trip together. ", count: 8)
         let texts = ["An earlier comment retained in the repository", "Loved this river trip", longText, "Perfect weather for kayaking", "We should go again soon"]
-        snapshot.photoComments["kayaking-memory"] = ["0": texts.enumerated().map { index, text in
-            DIPPhotoComment(id: "review-\(index)", authorID: "review-author-\(index)",
-                authorName: "Coworker \(index)", authorAvatar: .asset(index.isMultiple(of: 2) ? "AvatarPink" : "AvatarTeal"),
-                text: text, createdAt: Date(timeIntervalSince1970: 1_790_000_000 + Double(index)))
-        }]
+        func comments(_ prefix: String) -> [DIPPhotoComment] {
+            (0..<max(0, count)).map { index in
+                let text = index < texts.count ? texts[index] : "Comment number \(index + 1) on this photo"
+                return DIPPhotoComment(id: "\(prefix)-\(index)", authorID: "review-author-\(index)",
+                    authorName: "Coworker \(index)", authorAvatar: .asset(index.isMultiple(of: 2) ? "AvatarPink" : "AvatarTeal"),
+                    text: text, createdAt: Date(timeIntervalSince1970: 1_790_000_000 + Double(index)))
+            }
+        }
+        // Photo 0 keeps the original `review-N` ids the interaction tests use.
+        var byPhoto = ["0": comments("review")]
+        // The default five-comment review keeps the other photos empty (interaction tests rely on it).
+        if count != 5 { byPhoto["1"] = comments("second"); byPhoto["2"] = comments("third"); byPhoto["3"] = comments("fourth") }
+        snapshot.photoComments["kayaking-memory"] = byPhoto
         return snapshot
     }
 

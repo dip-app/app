@@ -20,6 +20,14 @@ struct DIPAlbumScreen: View {
     @State private var ownUploads: AlbumUploadQueue
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var viewedPhotoID: String?
+    @State private var stepDirection = 1
+    /// Reads a photo's stored bytes (original resolution) through the signed-in session; nil in previews and fixtures.
+    private let loadOriginal: (@MainActor (String) async throws -> Data)?
+    @State private var saver = AlbumPhotoSaver()
+    @State private var toast: String?
+    @State private var toastTask: Task<Void, Never>?
+    @State private var showsPermissionAlert = false
+    @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
@@ -33,9 +41,11 @@ struct DIPAlbumScreen: View {
         onBack: @escaping () -> Void,
         onAddPhotos: @escaping ([PhotoUpload]) async throws -> Void,
         onAddComment: @escaping (String, String, String) async throws -> Void,
-        onViewPhoto: ((String?) -> Void)? = nil
+        onViewPhoto: ((String?) -> Void)? = nil,
+        loadOriginal: (@MainActor (String) async throws -> Data)? = nil
     ) {
         self.album = album
+        self.loadOriginal = loadOriginal
         _viewedPhotoID = State(initialValue: initialPhotoID)
         self.commentsByPhoto = commentsByPhoto
         self.currentUser = currentUser
@@ -110,6 +120,26 @@ struct DIPAlbumScreen: View {
         .fullScreenCover(isPresented: Binding(get: { viewedPhoto != nil }, set: { if !$0 { viewedPhotoID = nil } })) {
             if let photo = viewedPhoto { photoViewer(photo) }
         }
+        .overlay(alignment: .bottom) {
+            if let toast {
+                Text(toast)
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center).padding(.horizontal, 20).padding(.vertical, 12).frame(minHeight: 44)
+                    .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                    .padding(.horizontal, 20)
+                    // 24 pt above the Add Photos pill (80 pt tall, 21 pt from the bottom), so it never covers photos.
+                    .padding(.bottom, 125)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .accessibilityIdentifier("album.toast")
+            }
+        }
+        .alert("Allow saving photos", isPresented: $showsPermissionAlert) {
+            Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+            Button("Not Now", role: .cancel) {}
+        } message: {
+            Text("DIP needs permission to add photos to your library. You can turn it on in Settings.")
+        }
+        .onChange(of: saver.isSavingAll) { _, saving in if !saving { finishSaveAll() } }
         .onChange(of: selectedItems) { _, items in importSelection(items) }
         .onChange(of: album.photos.map(\.id), initial: true) { _, ids in
             uploads.reconcile(eventID: album.eventID, publishedPhotoIDs: Set(ids))
@@ -170,11 +200,16 @@ struct DIPAlbumScreen: View {
     private var viewedPhoto: DIPPhoto? { album.photos.first { $0.id == viewedPhotoID } }
 
     /// Moves the viewer to the previous (-1) or next (+1) photo; stops at either end. Navigation, so no haptic.
+    /// The direction is published first so the outgoing photo's transition is built for it, then the photo changes.
     private func stepViewer(_ offset: Int) {
         guard let current = album.photos.firstIndex(where: { $0.id == viewedPhotoID }) else { return }
         let target = current + offset
         guard album.photos.indices.contains(target) else { return }
-        viewedPhotoID = album.photos[target].id
+        let id = album.photos[target].id
+        stepDirection = offset
+        DispatchQueue.main.async {
+            withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.35, dampingFraction: 0.86)) { viewedPhotoID = id }
+        }
     }
 
     private var header: some View {
@@ -187,6 +222,7 @@ struct DIPAlbumScreen: View {
             .accessibilityLabel("Back")
             .accessibilityIdentifier("album.back")
             Spacer(minLength: 0)
+            if album.isLoaded, !album.photos.isEmpty { saveAllControl }
             ShareLink(item: album.title) {
                 DIPReferenceAssets.image("album_HeroiconsMiniLink")
                     .resizable().frame(width: 20, height: 20)
@@ -204,6 +240,83 @@ struct DIPAlbumScreen: View {
         }
         .buttonStyle(.plain)
         .frame(height: 50)
+    }
+
+    // MARK: Save to Photos
+
+    /// Solid ink pill (pressable): "Save all", or live progress with a cancel control while a run is going.
+    @ViewBuilder private var saveAllControl: some View {
+        if let progress = saver.progress {
+            HStack(spacing: 4) {
+                Text(progress.label)
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body)).foregroundStyle(.white)
+                    .monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                    .padding(.leading, 16)
+                    .accessibilityIdentifier("album.save-all.progress")
+                Button { saver.cancelAll() } label: {
+                    Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(DIPPressFeedbackStyle())
+                .accessibilityLabel("Cancel saving")
+                .accessibilityIdentifier("album.save-all.cancel")
+            }
+            .frame(height: 50)
+            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+            .padding(.trailing, 8)
+        } else {
+            Button(action: startSaveAll) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down.to.line").font(.system(size: 14, weight: .semibold))
+                    Text("Save all").font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body)).lineLimit(1)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16).frame(minWidth: 44, minHeight: 50)
+                .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .padding(.trailing, 8)
+            .accessibilityLabel("Save all photos")
+            .accessibilityHint("Saves every photo in this album to your Photos library")
+            .accessibilityIdentifier("album.save-all")
+        }
+    }
+
+    private func originalLoader(_ photo: DIPPhoto) -> @MainActor (String) async throws -> Data {
+        { photoID in
+            // Review builds can slow the fixtures down so the progress state can be inspected (`--slow-photo-save`).
+            if ProcessInfo.processInfo.arguments.contains("--slow-photo-save") { try await Task.sleep(for: .milliseconds(800)) }
+            if let loadOriginal { return try await loadOriginal(photoID) }
+            return try await AlbumPhotoSaver.fallbackData(for: photo)
+        }
+    }
+
+    private func startSaveAll() {
+        let photos = Dictionary(album.photos.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        saver.saveAll(eventID: album.eventID, photoIDs: album.photos.map(\.id)) { id in
+            guard let photo = photos[id] else { throw DIPRepositoryError.notFound("Missing photo") }
+            return try await originalLoader(photo)(id)
+        }
+    }
+
+    private func finishSaveAll() {
+        if saver.lastRunDenied { DIPHaptics.failure(); showsPermissionAlert = true; saver.clearRunResult(); return }
+        guard let summary = saver.lastRunSummary else { return }
+        saver.clearRunResult()
+        if summary.hasPrefix("Saved") || summary.hasPrefix("All") { DIPHaptics.success() } else { DIPHaptics.failure() }
+        show(toast: summary)
+    }
+
+    private func show(toast message: String) {
+        toastTask?.cancel()
+        withAnimation(reduceMotion ? .linear(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.85)) { toast = message }
+        UIAccessibility.post(notification: .announcement, argument: message)
+        toastTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+        }
     }
 
     // MARK: Upload drafts
@@ -451,9 +564,9 @@ struct DIPAlbumScreen: View {
             currentUser: currentUser, onClose: { viewedPhotoID = nil },
             onAddComment: onAddComment,
             position: album.photos.count > 1 ? (index + 1, album.photos.count) : nil,
-            onStep: stepViewer
+            onStep: stepViewer, direction: stepDirection,
+            saver: saver, eventID: album.eventID, loadOriginal: originalLoader(photo)
         )
-        .id(photo.id)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.viewer.\(photo.id)")
         .presentationBackground(.clear)

@@ -58,29 +58,23 @@ public struct DIPMessageComposer: View {
         self.avatar = AnyView(avatar()); self.sendIcon = AnyView(sendIcon()); self.onSend = onSend; self.onFocusChange = onFocusChange
     }
 
-    private var canSend: Bool {
-        !isSending && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && text.count <= Self.maximumLength
+    /// The send control's three states: nothing (or too much) to send, ready, or a send in flight.
+    public enum SendState: Equatable, Sendable { case disabled, ready, sending }
+
+    public static func sendState(text: String, isSending: Bool) -> SendState {
+        if isSending { return .sending }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && text.count <= maximumLength ? .ready : .disabled
     }
 
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let errorMessage {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label(errorMessage, systemImage: "exclamationmark.circle")
-                        .font(.footnote).foregroundStyle(.red)
-                        .accessibilityIdentifier(identifierPrefix + ".error")
-                    Button("Try Again", action: onSend)
-                        .font(.footnote.weight(.semibold))
-                        .disabled(!canSend)
-                        .accessibilityIdentifier(identifierPrefix + ".retry")
-                }
-                .padding(style == .photoOverlay ? 12 : 0)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(style == .photoOverlay ? Color.white : .clear,
-                            in: RoundedRectangle(cornerRadius: 16))
-            }
-            HStack(alignment: .bottom, spacing: style == .photoOverlay ? -7 : 10) {
+    private var sendState: SendState { Self.sendState(text: text, isSending: isSending) }
+    private var canSend: Bool { sendState == .ready }
+
+    /// Placeholder ink: the text colour at 70% (about 5.9:1 on white; the earlier light grey failed 4.5:1).
+    private var placeholderColor: Color { DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7) }
+
+    private var standardRow: some View {
+            HStack(alignment: .bottom, spacing: 10) {
                 HStack(spacing: avatar == nil ? 0 : 17) {
                     if let avatar { avatar.frame(width: 40, height: 40).clipShape(Circle()).accessibilityHidden(true) }
                     TextField(placeholder, text: $text, axis: .vertical)
@@ -123,6 +117,64 @@ public struct DIPMessageComposer: View {
                 .accessibilityValue(isSending ? "Sending" : (canSend ? "" : "Enter a message within the character limit"))
                 .accessibilityIdentifier(identifierPrefix + ".send")
             }
+    }
+
+    /// Photo viewer composer: a 48 pt white pill (32 pt avatar, readable placeholder) and a solid purple 48 pt send
+    /// circle with a white icon; the disabled state is a flat grey circle so it reads as inactive on the dark scrim.
+    private var photoRow: some View {
+        HStack(alignment: .center, spacing: 8) {
+            HStack(spacing: 10) {
+                if let avatar { avatar.frame(width: 32, height: 32).clipShape(Circle()).accessibilityHidden(true) }
+                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(placeholderColor), axis: .vertical)
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                    .lineLimit(1...4)
+                    .focused($isFocused)
+                    .onChange(of: isFocused) { _, focused in onFocusChange(focused) }
+                    .submitLabel(.send)
+                    .onSubmit { if canSend { onSend() } }
+                    .accessibilityLabel(placeholder)
+                    .accessibilityIdentifier(identifierPrefix + ".message")
+            }
+            .padding(.leading, 8).padding(.trailing, 16).padding(.vertical, 8)
+            .frame(minHeight: 48)
+            .background(.white, in: RoundedRectangle(cornerRadius: 24))
+            Button(action: onSend) {
+                Group {
+                    if sendState == .sending { ProgressView().tint(.white) }
+                    else { sendIcon.frame(width: 20, height: 20) }
+                }
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(sendState == .disabled ? DIPTokens.Color.actionComplete.swiftUIColor : DIPTokens.Color.actionPrimary.swiftUIColor, in: Circle())
+                .contentShape(Circle())
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .disabled(!canSend)
+            .accessibilityLabel("Send")
+            .accessibilityValue(isSending ? "Sending" : (canSend ? "" : "Type a comment to send"))
+            .accessibilityIdentifier(identifierPrefix + ".send")
+        }
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let errorMessage {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label(errorMessage, systemImage: "exclamationmark.circle")
+                        .font(.footnote).foregroundStyle(.red)
+                        .accessibilityIdentifier(identifierPrefix + ".error")
+                    Button("Try Again", action: onSend)
+                        .font(.footnote.weight(.semibold))
+                        .disabled(!canSend)
+                        .accessibilityIdentifier(identifierPrefix + ".retry")
+                }
+                .padding(style == .photoOverlay ? 12 : 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(style == .photoOverlay ? Color.white : .clear,
+                            in: RoundedRectangle(cornerRadius: 16))
+            }
+            if style == .photoOverlay { photoRow } else { standardRow }
             if text.count > Self.maximumLength - 200 {
                 Text("\(text.count)/\(Self.maximumLength)")
                     .font(.caption).foregroundStyle(text.count > Self.maximumLength ? .red : .secondary)
