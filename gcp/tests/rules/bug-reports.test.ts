@@ -1,7 +1,7 @@
 import { after, before, test } from "node:test";
 import { readFileSync } from "node:fs";
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { serverTimestamp, Timestamp, deleteDoc, doc, getDoc, getDocs, collection, setDoc, updateDoc } from "firebase/firestore";
+import { serverTimestamp, Timestamp, deleteDoc, doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getBytes, deleteObject } from "firebase/storage";
 
 let environment: RulesTestEnvironment;
@@ -173,6 +173,7 @@ test("triage documents are server-only: no client read or write, admins and the 
   for (const ctx of [member(), member("other"), environment.authenticatedContext("boss", { email_verified: true }), environment.unauthenticatedContext()]) {
     await assertFails(getDoc(doc(ctx.firestore(), path)));
     await assertFails(getDocs(collection(ctx.firestore(), "companies/company-a/bugReportTriage")));
+    await assertFails(getDocs(collectionGroup(ctx.firestore(), "bugReportTriage")));
     await assertFails(setDoc(doc(ctx.firestore(), path), { companyId: "company-a", reportId: REPORT, status: "resolved", note: "" }));
     await assertFails(updateDoc(doc(ctx.firestore(), path), { status: "resolved" }));
     await assertFails(deleteDoc(doc(ctx.firestore(), path)));

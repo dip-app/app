@@ -142,6 +142,8 @@ export class StorageObjects implements ObjectStore {
       return { url, expiresAt };
     } catch {
       // Signing needs the function's service account to hold signBlob on itself; without it, inline small objects.
+      const [metadata] = await file.getMetadata();
+      if (Number(metadata.size) > maxInlineBytes) return null;
       const [bytes] = await file.download();
       if (bytes.length > maxInlineBytes) return null;
       return { url: `data:image/jpeg;base64,${bytes.toString("base64")}`, expiresAt };

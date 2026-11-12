@@ -125,10 +125,10 @@ export async function getBugReport(deps: AdminDeps, caller: Caller | null, data:
   } satisfies GetBugReportResponse;
 }
 
-function response(reportId: string, triage: Triage, changed: boolean, now: Date): UpdateBugReportResponse {
+function response(reportId: string, triage: Triage, changed: boolean): UpdateBugReportResponse {
   return {
     contractVersion: 1, reportId, status: triage.status, note: triage.note, ...(triage.assigneeId ? { assigneeId: triage.assigneeId } : {}),
-    ...(triage.assigneeName ? { assigneeName: triage.assigneeName } : {}), revision: triage.revision, updatedAt: (triage.updatedAt ?? now).toISOString(), changed,
+    ...(triage.assigneeName ? { assigneeName: triage.assigneeName } : {}), revision: triage.revision, ...(triage.updatedAt ? { updatedAt: triage.updatedAt.toISOString() } : {}), changed,
   };
 }
 
@@ -168,7 +168,7 @@ export async function updateBugReport(deps: AdminDeps, caller: Caller | null, da
         if (assignee) { next.assigneeId = assignee.id; next.assigneeName = assignee.name; } else { delete next.assigneeId; delete next.assigneeName; }
         changes.push(change("assignee", current.assigneeName ?? null, assignee?.name ?? null));
       }
-      if (changes.length === 0) return response(req.reportId, current, false, now);
+      if (changes.length === 0) return response(req.reportId, current, false);
       next.revision = current.revision + 1;
       next.updatedAt = now;
       next.updatedByName = actor.name;
@@ -188,7 +188,7 @@ export async function updateBugReport(deps: AdminDeps, caller: Caller | null, da
         summary: `Updated bug report ${req.reportId.slice(0, 8)}${req.status && req.status !== current.status ? ` (${current.status} to ${req.status})` : ""}`,
         changes, requestId: req.requestId,
       });
-      return response(req.reportId, next, true, now);
+      return response(req.reportId, next, true);
     }, now);
   })).value;
 }

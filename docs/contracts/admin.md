@@ -134,6 +134,8 @@ Reports from the app's shake-to-report land in `bugReports/{reportId}` (client c
 - `getBugReportV1`: the report, `reporterEmail`, the diagnostics the app included (`appVersion`, `appBuild`, `osVersion`, `deviceModel`, `locale`, `screen`, `installId`), triage state and, when a screenshot exists, `screenshotUrl` with `screenshotExpiresAt` (15 minutes). The URL is a v4 signed URL minted with the Admin SDK for exactly `bugReports/{uid}/{reportId}.jpg`; if signing is unavailable the bytes (<= 512 KB) are inlined as a `data:` URL, and if that fails too the screenshot is left out without failing the call.
 - `updateBugReportV1`: set `status`, `note` (trimmed, <= 2000, empty clears) and/or `assigneeId` (an active admin of the company; `null` clears) in the triage document. Requires `requestId`, accepts `expectedRevision` (`REVISION_CONFLICT`), appends one `bugreport.update` audit entry (note text is not copied, only "(edited)") and does nothing (`changed: false`, no audit) when nothing differs.
 
+Limits: listing reads the global `bugReports` collection (reports carry no company), so cost grows with all tenants' reports; a trigger-maintained per-company index is the follow-up if volume requires it. A report whose reporter's membership is gone is not attributable and is only reachable from the console. Memberships never move between companies (ADR 0007).
+
 Reads are not audited; all three calls consume the per-caller rate limit. Operational note: signed URLs need the Functions service account to hold `roles/iam.serviceAccountTokenCreator` on itself; without it the inline fallback is used.
 
 ## Firestore rules summary
