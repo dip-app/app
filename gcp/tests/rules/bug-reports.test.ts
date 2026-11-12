@@ -163,3 +163,18 @@ test("storage: no client reads or deletes, even for the owner", async () => {
   await assertFails(deleteObject(ref(own, path)));
   await assertFails(getBytes(ref(member("other").storage(), path)));
 });
+
+test("triage documents are server-only: no client read or write, admins and the reporter included", async () => {
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc("users/boss").set({ companyId: "company-a", role: "admin", displayName: "Boss", createdAt: Timestamp.now() });
+    await context.firestore().doc(`companies/company-a/bugReportTriage/${REPORT}`).set({ companyId: "company-a", reportId: REPORT, status: "triaged", note: "internal" });
+  });
+  const path = `companies/company-a/bugReportTriage/${REPORT}`;
+  for (const ctx of [member(), member("other"), environment.authenticatedContext("boss", { email_verified: true }), environment.unauthenticatedContext()]) {
+    await assertFails(getDoc(doc(ctx.firestore(), path)));
+    await assertFails(getDocs(collection(ctx.firestore(), "companies/company-a/bugReportTriage")));
+    await assertFails(setDoc(doc(ctx.firestore(), path), { companyId: "company-a", reportId: REPORT, status: "resolved", note: "" }));
+    await assertFails(updateDoc(doc(ctx.firestore(), path), { status: "resolved" }));
+    await assertFails(deleteDoc(doc(ctx.firestore(), path)));
+  }
+});

@@ -189,3 +189,28 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .view-full { position: absolute; right: 12px; bottom: 12px; background: $white; color: $ink; border-radius: 999px; padding: 6px 16px; font-family: var(--font-figtree), sans-serif; font-size: 15px; box-shadow: 0 0 0 2px $ink inset; }
 .pill-btn.to-list { display: none; }
 @media (max-width: 1000px) { .pill-btn.to-list { display: inline-flex; } }
+
+// ---------- Bug reports inbox
+.bug-filters { grid-template-columns: minmax(220px, 2fr) repeat(auto-fit, minmax(150px, 1fr)); }
+.bug-filters .field input[type="date"] { padding-right: 16px; min-width: 0; max-width: 100%; }
+.filters-toggle { display: none; }
+.clear-filters { margin: -8px 0 12px; }
+.bug-list .queue { max-height: none; overflow: visible; }
+.bug-item[aria-current="true"] { .muted { color: rgba(255, 255, 255, .82); } .info-pill.warn { border-color: $pink; color: $pink; } }
+@media (max-width: 700px) {
+  .bug-filters { grid-template-columns: minmax(0, 1fr) auto; .field.search { grid-column: 1; } .filters-toggle { display: inline-flex; align-self: end; min-height: 52px; }
+    .extra { display: none; } &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } .filters-toggle { grid-column: 1 / -1; } .extra { display: grid; } .field.wide { grid-column: 1 / -1; } } }
+}
+.bug-item { align-items: flex-start; }
+.bug-item .queue-text { gap: 4px; }
+.bug-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.bug-snippet { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.bug-item[aria-current="true"] .info-pill { background: transparent; }
+.bug-detail.review-detail { position: static; margin-bottom: 0; }
+.bug-detail .evidence.shot img { max-height: 340px; }
+.bug-detail .evidence.none { gap: 8px; align-content: center; justify-items: center; text-align: center; padding: 16px; }
+.facts.diagnostics div { grid-template-columns: 110px minmax(0, 1fr); dd { overflow-wrap: anywhere; } }
+.triage { display: grid; gap: 14px; border-top: 2px solid $white; padding-top: 16px; }
+.triage .actions { padding: 4px 0 0; }
+.triage textarea { min-height: 112px; }
+

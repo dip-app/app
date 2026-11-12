@@ -159,6 +159,12 @@ service cloud.firestore {
       allow get: if adminOf(companyId);
       allow list: if adminOf(companyId) && request.query.limit != null && request.query.limit <= 100;
     }
+    // Bug-report triage (status, internal note, assignee): server-owned and read only through listBugReportsV1 /
+    // getBugReportV1 / updateBugReportV1. No client access of any kind, admins included; the client-created
+    // bugReports documents stay immutable.
+    match /companies/{companyId}/bugReportTriage/{reportId} {
+      allow read, write: if false;
+    }
     match /tags/{tagId} {
       allow read: if verified();
     }
@@ -208,7 +214,7 @@ service cloud.firestore {
     // Shake-to-report / "Report a problem" (V2). Create-only for verified members whose server-owned
     // membership document exists; the document id is the client-generated report UUID so a retry cannot create a
     // second report (a repeat create is an update, which is denied). No client read, list, update or delete:
-    // admins/organizers read through the console or a later admin UI. Strict allow-list and size limits; the only
+    // admins read them through the admin portal (listBugReportsV1 / getBugReportV1, Admin SDK). Strict allow-list and size limits; the only
     // identifier is the caller's own uid (no name, email, token or company).
     match /bugReports/{reportId} {
       function bugScreen(value) {

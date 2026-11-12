@@ -2,7 +2,7 @@ import { SERVER_TIME, type ServerTime } from "./ops";
 import type { Role } from "./permissions";
 import { length } from "./reader";
 
-export type AuditTargetType = "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
+export type AuditTargetType = "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
 
 export interface AuditChange { field: string; before: string | null; after: string | null }
 

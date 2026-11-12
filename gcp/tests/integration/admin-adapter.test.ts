@@ -36,7 +36,7 @@ let db: ReturnType<typeof getFirestore>;
 let deps: AdminDeps;
 const removedObjects: string[] = [];
 const revoked: string[] = [];
-const objects: ObjectStore = { remove: async path => { removedObjects.push(path); return true; } };
+const objects: ObjectStore = { remove: async path => { removedObjects.push(path); return true; }, readUrl: async () => null };
 const sessions: SessionRevoker = { revoke: async uid => { revoked.push(uid); } };
 
 const base = { contractVersion: 1, companyId: "alpha" };

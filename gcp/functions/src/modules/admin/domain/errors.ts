@@ -48,6 +48,8 @@ export type AdminErrorReason =
   | "IMPORT_JOB_BUSY"
   | "IMPORT_PLAN_MISMATCH"
   | "COMPANY_NOT_FOUND"
+  | "BUG_REPORT_NOT_FOUND"
+  | "ASSIGNEE_NOT_FOUND"
   | "INVALID_STORED_DATA";
 
 export class AdminError extends Error {

@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type BackfillStep, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -53,6 +53,19 @@ export function auditFromDoc(id: string, d: DocumentData): AuditEntry {
     id, at: iso(d.createdAt), actorId: str(d.actorId), actorName: str(d.actorName), actorRole: roleOf(d.actorRole), action: str(d.action),
     targetType: (str(d.targetType) || "member") as AuditEntry["targetType"], targetId: str(d.targetId), summary: str(d.summary),
     reason: str(d.reason) || undefined, changes,
+  };
+}
+
+const bugStatus = (value: unknown): BugStatus => (value === "triaged" || value === "resolved" ? value : "new");
+const BUG_CATEGORIES: readonly string[] = ["bug", "confusing", "looksWrong", "idea", "unspecified"];
+
+/** An AdminBugReport from listBugReportsV1 / getBugReportV1. */
+export function bugReportFromWire(d: DocumentData): BugReport {
+  return {
+    id: str(d.id), category: (BUG_CATEGORIES.includes(str(d.category)) ? str(d.category) : "unspecified") as BugCategory, description: str(d.description),
+    source: d.source === "profile" ? "profile" : "shake", screen: str(d.screen) || "other", createdAt: iso(d.createdAt), reporterId: str(d.reporterId), reporterName: str(d.reporterName),
+    ...(str(d.appVersion) ? { appVersion: str(d.appVersion) } : {}), hasScreenshot: d.hasScreenshot === true, status: bugStatus(d.status), hasNote: d.hasNote === true,
+    ...(str(d.assigneeId) ? { assigneeId: str(d.assigneeId) } : {}), ...(str(d.assigneeName) ? { assigneeName: str(d.assigneeName) } : {}),
   };
 }
 
@@ -299,6 +312,28 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         challengeId: submission.challengeId, userId: submission.userId, reason: reason.trim(), expectedUpdatedAt: submission.updatedAt,
       }, false);
       return { replayed: data.replayed === true };
+    }),
+
+    listBugReports: (q, cursor, pageSize = 25) => run(async () => {
+      const data = await call<{ reports: DocumentData[]; nextPageToken?: string; counts?: BugReportCounts }>(ADMIN_CALLABLES.listBugReports, await organizer(), {
+        pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.status !== "all" ? { status: q.status } : {}), ...(q.category !== "all" ? { category: q.category } : {}),
+        ...(q.from ? { from: q.from } : {}), ...(q.to ? { to: q.to } : {}), ...(cursor ? { pageToken: cursor } : {}),
+      }, false);
+      return { reports: data.reports.map(bugReportFromWire), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null };
+    }),
+    getBugReport: (reportId) => run(async () => {
+      const d = await call<DocumentData>(ADMIN_CALLABLES.getBugReport, await organizer(), { reportId }, false);
+      return {
+        report: bugReportFromWire(d.report as DocumentData), reporterEmail: str(d.reporterEmail), diagnostics: (d.diagnostics as BugDiagnostics | undefined) ?? null,
+        screenshotUrl: str(d.screenshotUrl) || null, note: str(d.note), revision: Number(d.revision ?? 0), updatedAt: iso(d.updatedAt) || null, updatedByName: str(d.updatedByName) || null,
+      };
+    }),
+    updateBugReport: (reportId, patch, expectedRevision) => run(async () => {
+      const d = await call<DocumentData>(ADMIN_CALLABLES.updateBugReport, await organizer(), { reportId, ...patch, expectedRevision });
+      return {
+        status: bugStatus(d.status), note: str(d.note), assigneeId: str(d.assigneeId) || null, assigneeName: str(d.assigneeName) || null,
+        revision: Number(d.revision ?? 0), updatedAt: iso(d.updatedAt), changed: d.changed === true,
+      };
     }),
 
     listAudit: () => run(async () => {

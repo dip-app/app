@@ -38,6 +38,18 @@ export class FakeAdminStore implements AdminStore {
     const queue = (apply: () => void) => { if (!pending) throw new Error("write in read-only transaction"); pending.push(apply); };
     return {
       get: async path => { await tick(); const e = this.docs.get(path); seen.set(path, e?.version ?? 0); return e ? structuredClone(e.data) : null; },
+      getMany: async paths => { await tick(); return paths.map(path => { const e = this.docs.get(path); seen.set(path, e?.version ?? 0); return e ? structuredClone(e.data) : null; }); },
+      scanNewest: async (collection, query) => {
+        await tick();
+        seen.set(`collection:${collection}`, this.collectionVersion(collection));
+        const at = (d: Doc) => (d[query.field] as Date).getTime();
+        return this.children(collection)
+          .filter(c => c.data[query.field] instanceof Date)
+          .filter(c => (!query.from || at(c.data) >= query.from.getTime()) && (!query.to || at(c.data) <= query.to.getTime()))
+          .sort((a, b) => at(b.data) - at(a.data) || (a.id < b.id ? 1 : -1))
+          .filter(c => !query.after || at(c.data) < query.after.at.getTime() || (at(c.data) === query.after.at.getTime() && c.id < query.after.id))
+          .slice(0, query.limit).map(c => ({ id: c.id, data: structuredClone(c.data) }));
+      },
       list: async (collection: string, query: ListQuery) => {
         await tick();
         seen.set(`collection:${collection}`, this.collectionVersion(collection));
@@ -95,6 +107,16 @@ export class FakeAdminStore implements AdminStore {
 export class FakeObjects implements ObjectStore {
   removed: string[] = [];
   async remove(path: string) { this.removed.push(path); return true; }
+  /** Paths that exist; readUrl answers with a fake signed URL for them. */
+  existing = new Set<string>();
+  signed: string[] = [];
+  failSigning = false;
+  async readUrl(path: string, ttlMs: number) {
+    if (this.failSigning) throw new Error("signing unavailable");
+    if (!this.existing.has(path)) return null;
+    this.signed.push(path);
+    return { url: `https://signed.test/${path}?ttl=${ttlMs}`, expiresAt: new Date(NOW.getTime() + ttlMs) };
+  }
 }
 
 export class FakeSessions implements SessionRevoker {

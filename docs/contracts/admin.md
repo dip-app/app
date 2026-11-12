@@ -21,7 +21,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | unauthenticated | `UNAUTHENTICATED` |
 | invalid-argument | `VALIDATION_FAILED` (with `fields`), `TEAM_NOT_FOUND` (unknown or archived team in an edit), `EMAIL_DOMAIN_MISMATCH`, `IMPORT_TOO_LARGE` |
 | permission-denied | `EMAIL_NOT_VERIFIED`, `PROVIDER_NOT_ALLOWED`, `INSUFFICIENT_ROLE`, `COMPANY_MISMATCH`, `ACCOUNT_DEACTIVATED`, `MEMBERSHIP_CONFLICT` (caller has no membership) |
-| not-found | `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND` (also for a user of another company), `ROSTER_ENTRY_NOT_FOUND`, `IMPORT_JOB_NOT_FOUND`, `TEAM_NOT_FOUND` (upsert of an unknown teamId) |
+| not-found | `BUG_REPORT_NOT_FOUND` (also for another company's report), `ASSIGNEE_NOT_FOUND`, `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND` (also for a user of another company), `ROSTER_ENTRY_NOT_FOUND`, `IMPORT_JOB_NOT_FOUND`, `TEAM_NOT_FOUND` (upsert of an unknown teamId) |
 | failed-precondition | `ROSTER_ENTRY_CLAIMED` (resend for someone who already signed in), `ROSTER_ENTRY_NOT_INVITED` (resend for a revoked entry), `REQUEST_REUSED`, `EVENT_CLOSED` (cancelled or ended), `EVENT_NOT_STARTED`, `NOT_GOING`, `LAST_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `ATTENDANCE_LOCKED`, `INSUFFICIENT_POINTS`, `EMAIL_ALREADY_MEMBER`, `IMPORT_PLAN_MISMATCH`, `IMPORT_NOT_PLANNED` |
 | resource-exhausted | `EVENT_FULL` (no `capacityOverrideReason`, or capacity already 10000), `RATE_LIMITED`, `RESEND_LIMIT` (an invite was already resent 10 times) |
 | aborted | `REVISION_CONFLICT`, `IMPORT_JOB_BUSY` |
@@ -43,6 +43,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `roster.manage` | `upsertRosterEntryV1`, `revokeRosterEntryV1`, `resendRosterInviteV1`, `listRosterV1`, `backfillRosterV1`, roster reads | no | no | yes |
 | `import.run` | `importEmployeesV1`, `applyEmployeeImportV1`, `getEmployeeImportV1`, import job reads | no | no | yes |
 | `audit.read` | `companies/{c}/auditLog` reads | no | no | yes |
+| `bugreport.manage` | `listBugReportsV1`, `getBugReportV1`, `updateBugReportV1` | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
 
 Only an admin can create another admin or organizer (through `updateMemberV1`, a roster entry or an import). The last admin of a company can never be demoted or deactivated. Clients cannot write `role`, `status`, `teamIds`, `workLocation`, counts, balances or ledger entries (rules allow-list, unchanged).
@@ -51,6 +52,7 @@ Only an admin can create another admin or organizer (through `updateMemberV1`, a
 
 - `users/{uid}`: `workLocation` (string), `teamIds` (string[] <= 20), `status` (`invited` | `active` | `deactivated`, missing = active; `invited` is used by roster entries, members are `active`/`deactivated`), optional `managerEmail`, `startDate` (YYYY-MM-DD), `revision` (>= 1, incremented by admin edits), `statusUpdatedAt`. All server-owned: the own-profile rule allow-list is unchanged, so clients cannot write them.
 - `companies/{c}/teams/{teamId}` (`Team`): `name`, `archived`, `revision`, timestamps. Same-company members read (get/list <= 100); written only by `upsertTeamV1`.
+- `companies/{c}/bugReportTriage/{reportId}`: server-owned triage state of a shake-to-report document (`status` `new` | `triaged` | `resolved`, `note` <= 2000, optional `assigneeId`/`assigneeName`, `revision`, `updatedAt`, `updatedBy`, `updatedByName`); created by the first `updateBugReportV1`, a missing document means `new`. Clients have no access at all (rules deny read and write, admins included); the client-created `bugReports/{reportId}` documents stay immutable.
 - `companies/{c}/auditLog/{auditId}` (`AuditEntry`): append-only, server-written, admin-readable (get/list limit <= 100, order by `createdAt`).
 - `companies/{c}/roster/{emailHash}` (`RosterEntry`): admin-readable only; id is the lower-case hex SHA-256 of the lower-case email.
 - `companies/{c}/importJobs/{jobId}` (`ImportJob`): admin-readable; `importJobs/{jobId}/chunks/{n}` (plan rows) server-only.
@@ -124,9 +126,19 @@ All carry `contractVersion: 1`, `companyId` and (mutations) `requestId`. Shapes 
 - `applyEmployeeImportV1 {jobId, planHash}` -> `{jobId, status, done, progress, results}`. Processes the **next** unprocessed chunk (<= 100 rows), re-evaluating each row against current data in its own transaction (so stale plans converge safely), then advances the job cursor transactionally; the portal calls repeatedly until `done`. Outcome counters are exact: each applied row records its outcome (`importJobs/{job}/results/{row}`, server-only, written in the row transaction), a retried chunk reuses the recorded outcomes instead of reporting "unchanged", and `progress` is derived from per-chunk tallies on the job (a retried chunk replaces its own tally, never adds). A short lease on the job makes a concurrent apply fail `IMPORT_JOB_BUSY`; a wrong `planHash` fails `IMPORT_PLAN_MISMATCH`; re-running a completed job returns its final state without writes. Each created/updated row appends an audit entry (`import.apply`, targetId = emailHash).
 - `getEmployeeImportV1 {jobId}` -> `{job: ImportJob}`: totals, progress and up to 1000 failed rows (`errors`, `errorsTruncated`) for the downloadable error CSV.
 
+### Bug reports inbox (bugreport.manage, admin only)
+
+Reports from the app's shake-to-report land in `bugReports/{reportId}` (client create-only, `uid` only, no company on the document) with an optional screenshot at `bugReports/{uid}/{reportId}.jpg`. The inbox never trusts a supplied company: a report belongs to the company of its reporter's server-owned `users/{uid}` membership, resolved at read time, so another tenant's (or a membership-less reporter's) report is invisible and `getBugReportV1` / `updateBugReportV1` answer `BUG_REPORT_NOT_FOUND` for it.
+
+- `listBugReportsV1`: newest first. Filters `status`, `category`, `query` (substring of description, reporter name, screen, app version, report id), `from` / `to` (`YYYY-MM-DD`, inclusive, UTC); `pageSize` 1..100 (default 25) and an opaque `pageToken` (createdAt + id position). Scanning is bounded (first page 1000 reports, later pages 500) so a page can be short while `nextPageToken` is present; filters run in memory, so no composite index is needed. The first page returns `counts` per status over its scan window (`capped: true` when older reports were not counted), ignoring the status filter. Rows carry the reporter's display name, never the email.
+- `getBugReportV1`: the report, `reporterEmail`, the diagnostics the app included (`appVersion`, `appBuild`, `osVersion`, `deviceModel`, `locale`, `screen`, `installId`), triage state and, when a screenshot exists, `screenshotUrl` with `screenshotExpiresAt` (15 minutes). The URL is a v4 signed URL minted with the Admin SDK for exactly `bugReports/{uid}/{reportId}.jpg`; if signing is unavailable the bytes (<= 512 KB) are inlined as a `data:` URL, and if that fails too the screenshot is left out without failing the call.
+- `updateBugReportV1`: set `status`, `note` (trimmed, <= 2000, empty clears) and/or `assigneeId` (an active admin of the company; `null` clears) in the triage document. Requires `requestId`, accepts `expectedRevision` (`REVISION_CONFLICT`), appends one `bugreport.update` audit entry (note text is not copied, only "(edited)") and does nothing (`changed: false`, no audit) when nothing differs.
+
+Reads are not audited; all three calls consume the per-caller rate limit. Operational note: signed URLs need the Functions service account to hold `roles/iam.serviceAccountTokenCreator` on itself; without it the inline fallback is used.
+
 ## Firestore rules summary
 
-`organizer(c)` now means role `admin` or `organizer` (event reads, challenge lists, as before for admins). New `adminOf(c)` (role `admin`): reads `auditLog`, `roster`, `importJobs` (get; list limit <= 100). Same-company members read `teams`. `sameCompany()` additionally requires `status != 'deactivated'`. All new paths deny client writes; `commandReceipts`, `adminRateLimits`, `importJobs/*/chunks`, `pointTransactions` stay server-only/denied. The own-profile allow-list gains the new server-owned keys only as permitted *existing* document keys (never writable).
+`organizer(c)` now means role `admin` or `organizer` (event reads, challenge lists, as before for admins). New `adminOf(c)` (role `admin`): reads `auditLog`, `roster`, `importJobs` (get; list limit <= 100). Same-company members read `teams`. `sameCompany()` additionally requires `status != 'deactivated'`. All new paths deny client writes; `bugReportTriage` (explicit deny, admins included), `commandReceipts`, `adminRateLimits`, `importJobs/*/chunks`, `pointTransactions` stay server-only/denied. The own-profile allow-list gains the new server-owned keys only as permitted *existing* document keys (never writable).
 
 ## Not in this contract
 

@@ -2310,7 +2310,8 @@
             "import",
             "team",
             "company",
-            "points"
+            "points",
+            "bugReport"
           ]
         },
         "targetId": {
@@ -5015,6 +5016,458 @@
       "required": [
         "contractVersion",
         "entries"
+      ]
+    },
+    "AdminBugReportDiagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Diagnostics the app attached to a bug report (all optional; shown to admins only).",
+      "properties": {
+        "appVersion": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "appBuild": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "osVersion": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "deviceModel": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "locale": {
+          "type": "string",
+          "maxLength": 35
+        },
+        "screen": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "installId": {
+          "type": "string",
+          "maxLength": 36
+        }
+      },
+      "required": []
+    },
+    "AdminBugReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A bug report in the admin inbox: the client-created bugReports document plus its server-owned triage state and the reporter's display name.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "bug",
+            "confusing",
+            "looksWrong",
+            "idea",
+            "unspecified"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "shake",
+            "profile"
+          ]
+        },
+        "screen": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reporterId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "reporterName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "appVersion": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "hasScreenshot": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "triaged",
+            "resolved"
+          ]
+        },
+        "hasNote": {
+          "type": "boolean"
+        },
+        "assigneeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "assigneeName": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "description",
+        "source",
+        "screen",
+        "createdAt",
+        "reporterId",
+        "reporterName",
+        "hasScreenshot",
+        "status",
+        "hasNote"
+      ]
+    },
+    "AdminBugReportCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Report totals by triage status over the newest reports (first page only); `capped` is true when older reports were not counted.",
+      "properties": {
+        "all": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "triaged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capped": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "all",
+        "new",
+        "triaged",
+        "resolved",
+        "capped"
+      ]
+    },
+    "ListBugReportsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "listBugReportsV1: newest-first page of the company's bug reports with filters and a cursor. bugreport.manage (admin only).",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "triaged",
+            "resolved"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "bug",
+            "confusing",
+            "looksWrong",
+            "idea",
+            "unspecified"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Case-insensitive substring of description, reporter name, screen, app version or report id."
+        },
+        "from": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "YYYY-MM-DD, inclusive (UTC)."
+        },
+        "to": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "YYYY-MM-DD, inclusive (UTC)."
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Default 25."
+        },
+        "pageToken": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId"
+      ]
+    },
+    "ListBugReportsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A page of bug reports, newest first; keep following nextPageToken (a page can be short when filters match few of the scanned reports).",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "reports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AdminBugReport"
+          },
+          "maxItems": 100
+        },
+        "nextPageToken": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "counts": {
+          "$ref": "#/$defs/AdminBugReportCounts"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "reports"
+      ]
+    },
+    "GetBugReportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "getBugReportV1: full detail of one report. bugreport.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "reportId"
+      ]
+    },
+    "GetBugReportResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One report with reporter email, the diagnostics the app included, triage state and a 15 minute screenshot URL.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "report": {
+          "$ref": "#/$defs/AdminBugReport"
+        },
+        "reporterEmail": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/AdminBugReportDiagnostics"
+        },
+        "screenshotUrl": {
+          "type": "string",
+          "maxLength": 4000000,
+          "description": "Signed read URL (15 minutes), or a data: URL when signing is unavailable. Absent without a screenshot."
+        },
+        "screenshotExpiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedByName": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "contractVersion",
+        "report",
+        "reporterEmail",
+        "note",
+        "revision"
+      ]
+    },
+    "UpdateBugReportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "updateBugReportV1: set the triage status, internal note or assignee of a report (stored in companies/{c}/bugReportTriage/{reportId}). Needs at least one of status, note, assigneeId (null clears). bugreport.manage; idempotent per requestId.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "triaged",
+            "resolved"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "assigneeId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 128
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "reportId"
+      ]
+    },
+    "UpdateBugReportResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Triage state after the update; changed is false when nothing differed.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "triaged",
+            "resolved"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "assigneeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "assigneeName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "changed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "reportId",
+        "status",
+        "note",
+        "revision",
+        "changed"
       ]
     }
   }

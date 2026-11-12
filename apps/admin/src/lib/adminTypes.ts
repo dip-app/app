@@ -9,12 +9,12 @@ export type MemberStatus = "invited" | "active" | "deactivated";
 export type Capability =
   | "events.manage" | "themes.manage" | "albums.moderate" | "attendees.manage"
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
-  | "import.run" | "roster.manage" | "audit.view" | "challenges.review";
+  | "import.run" | "roster.manage" | "audit.view" | "challenges.review" | "bugreports.manage";
 
 const ORGANIZER_CAPS: readonly Capability[] = ["events.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
   ...ORGANIZER_CAPS, "themes.manage", "challenges.review", "members.edit", "members.status", "members.reset", "points.adjust",
-  "import.run", "roster.manage", "audit.view",
+  "import.run", "roster.manage", "audit.view", "bugreports.manage",
 ];
 
 export function capabilitiesOf(role: Role): readonly Capability[] {
@@ -53,6 +53,9 @@ export const ADMIN_CALLABLES = {
   listSubmissions: "listChallengeSubmissionsV1",
   approveSubmission: "approveChallengeV1",
   rejectSubmission: "rejectChallengeV1",
+  listBugReports: "listBugReportsV1",
+  getBugReport: "getBugReportV1",
+  updateBugReport: "updateBugReportV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -198,7 +201,7 @@ export interface AuditEntry {
   actorName: string;
   actorRole: Role;
   action: string;
-  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points";
+  targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
   targetId: string;
   summary: string;
   reason?: string;
@@ -224,6 +227,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "roster.claim": "Invite claimed",
   "import.plan": "Import previewed",
   "import.apply": "Import applied",
+  "bugreport.update": "Bug report updated",
 };
 
 // ---------- Bulk import
@@ -308,3 +312,50 @@ export interface Submission {
 }
 
 export interface SubmissionPage { submissions: Submission[]; nextCursor: string | null }
+
+// ---------- Bug reports (shake-to-report inbox, docs/contracts/admin.md#bug-reports-inbox-bugreportmanage-admin-only)
+
+export type BugStatus = "new" | "triaged" | "resolved";
+export type BugCategory = "bug" | "confusing" | "looksWrong" | "idea" | "unspecified";
+
+export interface BugDiagnostics {
+  appVersion?: string; appBuild?: string; osVersion?: string; deviceModel?: string; locale?: string; screen?: string; installId?: string;
+}
+
+export interface BugReport {
+  id: string;
+  category: BugCategory;
+  description: string;
+  source: "shake" | "profile";
+  /** Screen the member was on (home, rewards, event, ...). */
+  screen: string;
+  createdAt: string;
+  reporterId: string;
+  reporterName: string;
+  appVersion?: string;
+  hasScreenshot: boolean;
+  status: BugStatus;
+  hasNote: boolean;
+  assigneeId?: string;
+  assigneeName?: string;
+}
+
+export interface BugReportQuery { query: string; status: BugStatus | "all"; category: BugCategory | "all"; from: string; to: string }
+/** Counts per status over the newest reports of the first page; `capped` when older reports were not counted. */
+export interface BugReportCounts { all: number; new: number; triaged: number; resolved: number; capped: boolean }
+export interface BugReportPage { reports: BugReport[]; nextCursor: string | null; counts: BugReportCounts | null }
+
+export interface BugReportDetail {
+  report: BugReport;
+  reporterEmail: string;
+  diagnostics: BugDiagnostics | null;
+  /** Short-lived signed URL (15 minutes) or a data: URL; null without a screenshot. */
+  screenshotUrl: string | null;
+  note: string;
+  revision: number;
+  updatedAt: string | null;
+  updatedByName: string | null;
+}
+
+export interface BugReportPatch { status?: BugStatus; note?: string; /** null clears the assignee. */ assigneeId?: string | null }
+export interface BugReportUpdate { status: BugStatus; note: string; assigneeId: string | null; assigneeName: string | null; revision: number; updatedAt: string; changed: boolean }
