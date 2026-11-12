@@ -34,7 +34,27 @@ export interface GroupQuery {
   limit: number;
 }
 
+/** Where an insights read looks: one collection, or every collection with this id (collection group). */
+export type QuerySource = { readonly collection: string } | { readonly group: string };
+export type Filter = readonly [field: string, op: "==" | ">" | ">=" | "<" | "<=", value: unknown];
+export interface DocQuery {
+  where: ReadonlyArray<Filter>;
+  orderBy?: string;
+  descending?: boolean;
+  /** Only these fields are fetched (a bandwidth saver; every matching document is still a billed read). */
+  select?: readonly string[];
+  limit: number;
+}
+
 export interface AdminStore {
+  /** Server-side aggregation (count, optional sum of one numeric field); no documents are returned. */
+  aggregate(source: QuerySource, where: ReadonlyArray<Filter>, sumField?: string): Promise<{ count: number; sum: number }>;
+  /** Bounded, non-transactional query returning documents with their paths. */
+  queryDocs(source: QuerySource, query: DocQuery): Promise<Array<{ path: string; data: Doc }>>;
+  /** Single document read outside a transaction (null when missing). */
+  getDoc(path: string): Promise<Doc | null>;
+  /** Overwrites a server-owned document (caches); never used for user data. */
+  setDoc(path: string, data: Doc): Promise<void>;
   runTransaction<T>(work: (tx: AdminTransaction) => Promise<T>): Promise<T>;
   /** Read-only snapshot for directory and report reads; writes through it throw. */
   runReadOnly<T>(work: (tx: AdminTransaction) => Promise<T>): Promise<T>;

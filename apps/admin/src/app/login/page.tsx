@@ -12,7 +12,7 @@ export default function Login() {
   const [failed, setFailed] = useState(false);
   const live = api.mode === "live";
   useEffect(() => {
-    if (session) router.replace("/events/");
+    if (session) router.replace("/overview/");
   }, [session, router]);
 
   async function start() {

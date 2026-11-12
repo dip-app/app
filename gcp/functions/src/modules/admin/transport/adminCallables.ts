@@ -9,6 +9,7 @@ import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../appl
 import {
   adjustMemberPoints, getMember, listMembers, resetMemberProfile, setMemberStatus, updateMember, upsertTeam,
 } from "../application/members";
+import { getCompanyInsights } from "../application/insights";
 import { removeEventPhoto, removeEventPhotoComment } from "../application/moderation";
 import type { AdminDeps, Caller } from "../application/ports";
 import { backfillRosterCallable } from "../application/backfillRoster";
@@ -80,3 +81,4 @@ export const backfillRosterV1 = onCall(heavy, command("backfillRosterV1", backfi
 export const importEmployeesV1 = onCall(heavy, command("importEmployeesV1", importEmployees));
 export const applyEmployeeImportV1 = onCall(heavy, command("applyEmployeeImportV1", applyEmployeeImport));
 export const getEmployeeImportV1 = onCall(base, command("getEmployeeImportV1", getEmployeeImport));
+export const getCompanyInsightsV1 = onCall(base, command("getCompanyInsightsV1", getCompanyInsights));

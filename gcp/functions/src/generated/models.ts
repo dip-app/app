@@ -1084,3 +1084,91 @@ export interface ListRosterResponse {
   nextPageToken?: string;
   counts?: RosterCounts;
 }
+
+export interface GetCompanyInsightsRequest {
+  contractVersion: number;
+  companyId: string;
+  refresh?: boolean;
+}
+
+export interface InsightsTopEvent {
+  eventId: string;
+  title: string;
+  startTime: string;
+  attendeeCount: number;
+  capacity: number;
+  status: "scheduled" | "completed";
+}
+
+export interface InsightsTopMember {
+  userId: string;
+  displayName: string;
+  pointsBalance: number;
+}
+
+export interface InsightsCurrentTheme {
+  challengeId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  participantCount: number;
+  completedCount: number;
+  pendingReviews: number;
+}
+
+export interface InsightsActivityDay {
+  date: string;
+  rsvps: number;
+  photos: number;
+}
+
+export interface InsightsMembers {
+  total: number;
+  active: number;
+  deactivated: number;
+  invited: number;
+  activeLast30Days: number;
+  activeCapped: boolean;
+}
+
+export interface InsightsEvents {
+  upcoming: number;
+  thisMonth: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface InsightsParticipation {
+  rsvpsLast30Days: number;
+  attendanceRate: number | null;
+  attendanceSample: number;
+  topEvents: Array<InsightsTopEvent>;
+}
+
+export interface InsightsContent {
+  photosLast30Days: number;
+  commentsLast30Days: number;
+}
+
+export interface InsightsChallenges {
+  pendingReviews: number;
+  current?: InsightsCurrentTheme;
+}
+
+export interface InsightsPoints {
+  issuedLast30Days: number;
+  topMembers: Array<InsightsTopMember>;
+}
+
+export interface GetCompanyInsightsResponse {
+  contractVersion: number;
+  generatedAt: string;
+  windowDays: number;
+  members: InsightsMembers;
+  events: InsightsEvents;
+  participation: InsightsParticipation;
+  content: InsightsContent;
+  challenges: InsightsChallenges;
+  points?: InsightsPoints;
+  activity: Array<InsightsActivityDay>;
+}

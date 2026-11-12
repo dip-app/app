@@ -1,6 +1,6 @@
 import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
-  BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
+  BackfillStep, CompanyInsights, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
   RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 
@@ -65,6 +65,10 @@ export interface AdminOpsApi {
   approveSubmission(submission: Submission): Promise<{ pointsAwarded: number; replayed: boolean }>;
   /** rejectChallengeV1: sends it back with a required note (1 to 280 characters). */
   rejectSubmission(submission: Submission, reason: string): Promise<{ replayed: boolean }>;
+
+  // ----- Insights
+  /** getCompanyInsightsV1: usage overview for the company. `refresh` asks the server to bypass its 10-minute cache (honored at most once a minute). */
+  companyInsights(refresh?: boolean): Promise<CompanyInsights>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

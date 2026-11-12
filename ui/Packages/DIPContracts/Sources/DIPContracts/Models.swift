@@ -2170,3 +2170,179 @@ public struct ListRosterResponse: Codable, Equatable, Sendable {
         self.counts = counts
     }
 }
+
+public struct GetCompanyInsightsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var refresh: Bool?
+
+    public init(contractVersion: Int, companyId: String, refresh: Bool? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.refresh = refresh
+    }
+}
+
+public struct InsightsTopEvent: Codable, Equatable, Sendable {
+    public var eventId: String
+    public var title: String
+    public var startTime: Date
+    public var attendeeCount: Int
+    public var capacity: Int
+    public var status: String
+
+    public init(eventId: String, title: String, startTime: Date, attendeeCount: Int, capacity: Int, status: String) {
+        self.eventId = eventId
+        self.title = title
+        self.startTime = startTime
+        self.attendeeCount = attendeeCount
+        self.capacity = capacity
+        self.status = status
+    }
+}
+
+public struct InsightsTopMember: Codable, Equatable, Sendable {
+    public var userId: String
+    public var displayName: String
+    public var pointsBalance: Int
+
+    public init(userId: String, displayName: String, pointsBalance: Int) {
+        self.userId = userId
+        self.displayName = displayName
+        self.pointsBalance = pointsBalance
+    }
+}
+
+public struct InsightsCurrentTheme: Codable, Equatable, Sendable {
+    public var challengeId: String
+    public var title: String
+    public var startDate: Date
+    public var endDate: Date
+    public var participantCount: Int
+    public var completedCount: Int
+    public var pendingReviews: Int
+
+    public init(challengeId: String, title: String, startDate: Date, endDate: Date, participantCount: Int, completedCount: Int, pendingReviews: Int) {
+        self.challengeId = challengeId
+        self.title = title
+        self.startDate = startDate
+        self.endDate = endDate
+        self.participantCount = participantCount
+        self.completedCount = completedCount
+        self.pendingReviews = pendingReviews
+    }
+}
+
+public struct InsightsActivityDay: Codable, Equatable, Sendable {
+    public var date: String
+    public var rsvps: Int
+    public var photos: Int
+
+    public init(date: String, rsvps: Int, photos: Int) {
+        self.date = date
+        self.rsvps = rsvps
+        self.photos = photos
+    }
+}
+
+public struct InsightsMembers: Codable, Equatable, Sendable {
+    public var total: Int
+    public var active: Int
+    public var deactivated: Int
+    public var invited: Int
+    public var activeLast30Days: Int
+    public var activeCapped: Bool
+
+    public init(total: Int, active: Int, deactivated: Int, invited: Int, activeLast30Days: Int, activeCapped: Bool) {
+        self.total = total
+        self.active = active
+        self.deactivated = deactivated
+        self.invited = invited
+        self.activeLast30Days = activeLast30Days
+        self.activeCapped = activeCapped
+    }
+}
+
+public struct InsightsEvents: Codable, Equatable, Sendable {
+    public var upcoming: Int
+    public var thisMonth: Int
+    public var completed: Int
+    public var cancelled: Int
+
+    public init(upcoming: Int, thisMonth: Int, completed: Int, cancelled: Int) {
+        self.upcoming = upcoming
+        self.thisMonth = thisMonth
+        self.completed = completed
+        self.cancelled = cancelled
+    }
+}
+
+public struct InsightsParticipation: Codable, Equatable, Sendable {
+    public var rsvpsLast30Days: Int
+    public var attendanceRate: Double?
+    public var attendanceSample: Int
+    public var topEvents: [InsightsTopEvent]
+
+    public init(rsvpsLast30Days: Int, attendanceRate: Double? = nil, attendanceSample: Int, topEvents: [InsightsTopEvent]) {
+        self.rsvpsLast30Days = rsvpsLast30Days
+        self.attendanceRate = attendanceRate
+        self.attendanceSample = attendanceSample
+        self.topEvents = topEvents
+    }
+}
+
+public struct InsightsContent: Codable, Equatable, Sendable {
+    public var photosLast30Days: Int
+    public var commentsLast30Days: Int
+
+    public init(photosLast30Days: Int, commentsLast30Days: Int) {
+        self.photosLast30Days = photosLast30Days
+        self.commentsLast30Days = commentsLast30Days
+    }
+}
+
+public struct InsightsChallenges: Codable, Equatable, Sendable {
+    public var pendingReviews: Int
+    public var current: InsightsCurrentTheme?
+
+    public init(pendingReviews: Int, current: InsightsCurrentTheme? = nil) {
+        self.pendingReviews = pendingReviews
+        self.current = current
+    }
+}
+
+public struct InsightsPoints: Codable, Equatable, Sendable {
+    public var issuedLast30Days: Int
+    public var topMembers: [InsightsTopMember]
+
+    public init(issuedLast30Days: Int, topMembers: [InsightsTopMember]) {
+        self.issuedLast30Days = issuedLast30Days
+        self.topMembers = topMembers
+    }
+}
+
+public struct GetCompanyInsightsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var generatedAt: Date
+    public var windowDays: Int
+    public var members: InsightsMembers
+    public var events: InsightsEvents
+    public var participation: InsightsParticipation
+    public var content: InsightsContent
+    public var challenges: InsightsChallenges
+    public var points: InsightsPoints?
+    public var activity: [InsightsActivityDay]
+
+    public init(contractVersion: Int, generatedAt: Date, windowDays: Int, members: InsightsMembers, events: InsightsEvents, participation: InsightsParticipation, content: InsightsContent, challenges: InsightsChallenges, points: InsightsPoints? = nil, activity: [InsightsActivityDay]) {
+        self.contractVersion = contractVersion
+        self.generatedAt = generatedAt
+        self.windowDays = windowDays
+        self.members = members
+        self.events = events
+        self.participation = participation
+        self.content = content
+        self.challenges = challenges
+        self.points = points
+        self.activity = activity
+    }
+}

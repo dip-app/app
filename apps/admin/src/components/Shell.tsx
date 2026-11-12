@@ -19,10 +19,13 @@ interface Props {
 }
 
 interface NavItem { href: string; label: string; d: string; requires?: Capability }
-interface NavGroup { heading: string; items: NavItem[] }
+interface NavGroup { heading: string; items: NavItem[]; /** Home has no visible heading; the group is still labeled for screen readers. */ headless?: boolean }
 
 // Grouped like most admin tools: what you run, what you review, who is involved, what happened. Items a role can't use are hidden.
 const NAV: NavGroup[] = [
+  { heading: "Home", headless: true, items: [
+    { href: "/overview/", label: "Overview", d: "M4 13.5h4V20H4zM10 4h4v16h-4zM16 9h4v11h-4z", requires: "insights.view" },
+  ] },
   { heading: "Program", items: [
     { href: "/events/", label: "Events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
   ] },
@@ -110,12 +113,12 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         <button ref={menuButton} className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
-        <Link href="/events/" className="brand" aria-label="DIP Admin home"><CloudMark size={28} /><span>DIP Admin</span></Link>
+        <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={28} /><span>DIP Admin</span></Link>
       </header>
       <div className="scrim" data-open={open ? "true" : undefined} onClick={() => close()} aria-hidden />
       <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label="Sidebar" role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
         <div className="sidebar-top">
-          <Link href="/events/" className="brand" aria-label="DIP Admin home"><CloudMark size={30} /><span>DIP Admin</span></Link>
+          <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={30} /><span>DIP Admin</span></Link>
           <button ref={closeButton} className="menu-btn close-btn" aria-label="Close menu" onClick={() => close()}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
@@ -123,7 +126,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         <nav aria-label="Main">
           {visible.map((group) => (
             <div className="nav-group" key={group.heading} role="group" aria-label={group.heading}>
-              <p className="nav-heading" aria-hidden>{group.heading}</p>
+              {!group.headless && <p className="nav-heading" aria-hidden>{group.heading}</p>}
               {group.items.map((item) => (
                 <Link key={item.href} href={item.href} className="nav-item" title={item.label} aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>

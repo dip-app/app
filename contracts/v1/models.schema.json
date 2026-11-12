@@ -5016,6 +5016,389 @@
         "contractVersion",
         "entries"
       ]
+    },
+    "GetCompanyInsightsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "getCompanyInsightsV1: how the company uses DIP. insights.read (organizer, admin); points and member balances are admin only. Read-only, no requestId.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "refresh": {
+          "type": "boolean",
+          "description": "Ask for fresh numbers; honored at most once a minute, otherwise the cached summary (max 10 minutes old) is returned."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId"
+      ]
+    },
+    "InsightsTopEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "attendeeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "completed"
+          ]
+        }
+      },
+      "required": [
+        "eventId",
+        "title",
+        "startTime",
+        "attendeeCount",
+        "capacity",
+        "status"
+      ]
+    },
+    "InsightsTopMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "pointsBalance": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "pointsBalance"
+      ]
+    },
+    "InsightsCurrentTheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "challengeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "participantCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "completedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pendingReviews": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Submissions waiting for review in this theme."
+        }
+      },
+      "required": [
+        "challengeId",
+        "title",
+        "startDate",
+        "endDate",
+        "participantCount",
+        "completedCount",
+        "pendingReviews"
+      ]
+    },
+    "InsightsActivityDay": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "UTC calendar day."
+        },
+        "rsvps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "photos": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "date",
+        "rsvps",
+        "photos"
+      ]
+    },
+    "InsightsMembers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Not deactivated."
+        },
+        "deactivated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invited": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Roster entries that have not signed in yet."
+        },
+        "activeLast30Days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Distinct members with an RSVP in the window (a lower bound when activeCapped)."
+        },
+        "activeCapped": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "total",
+        "active",
+        "deactivated",
+        "invited",
+        "activeLast30Days",
+        "activeCapped"
+      ]
+    },
+    "InsightsEvents": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "upcoming": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "thisMonth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Events starting this UTC month, any status."
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cancelled": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "upcoming",
+        "thisMonth",
+        "completed",
+        "cancelled"
+      ]
+    },
+    "InsightsParticipation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rsvpsLast30Days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attendanceRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Checked in / going over the latest completed events; null without a sample."
+        },
+        "attendanceSample": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Completed events in the rate."
+        },
+        "topEvents": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/InsightsTopEvent"
+          }
+        }
+      },
+      "required": [
+        "rsvpsLast30Days",
+        "attendanceRate",
+        "attendanceSample",
+        "topEvents"
+      ]
+    },
+    "InsightsContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "photosLast30Days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "commentsLast30Days": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "photosLast30Days",
+        "commentsLast30Days"
+      ]
+    },
+    "InsightsChallenges": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pendingReviews": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Waiting across the recent weekly themes."
+        },
+        "current": {
+          "$ref": "#/$defs/InsightsCurrentTheme"
+        }
+      },
+      "required": [
+        "pendingReviews"
+      ]
+    },
+    "InsightsPoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "issuedLast30Days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "topMembers": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/InsightsTopMember"
+          }
+        }
+      },
+      "required": [
+        "issuedLast30Days",
+        "topMembers"
+      ]
+    },
+    "GetCompanyInsightsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "points is present for admins only; challenges.current is absent without an active weekly theme.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the numbers were computed (cached up to 10 minutes)."
+        },
+        "windowDays": {
+          "type": "integer",
+          "const": 30
+        },
+        "members": {
+          "$ref": "#/$defs/InsightsMembers"
+        },
+        "events": {
+          "$ref": "#/$defs/InsightsEvents"
+        },
+        "participation": {
+          "$ref": "#/$defs/InsightsParticipation"
+        },
+        "content": {
+          "$ref": "#/$defs/InsightsContent"
+        },
+        "challenges": {
+          "$ref": "#/$defs/InsightsChallenges"
+        },
+        "points": {
+          "$ref": "#/$defs/InsightsPoints"
+        },
+        "activity": {
+          "type": "array",
+          "minItems": 30,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/$defs/InsightsActivityDay"
+          },
+          "description": "Oldest first, the last 30 UTC days including today."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "generatedAt",
+        "windowDays",
+        "members",
+        "events",
+        "participation",
+        "content",
+        "challenges",
+        "activity"
+      ]
     }
   }
 }
