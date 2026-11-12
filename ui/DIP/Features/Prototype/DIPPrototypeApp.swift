@@ -137,7 +137,7 @@ struct DIPPrototypeApp: View {
                 : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
                 ? DIPMockFixtures.photoCommentReview(count: Self.commentCount)
                 : ["event", "event-joined", "past-event", "invite-picker"].contains(screen)
-                ? DIPMockFixtures.v1Events() : DIPMockFixtures.reference),
+                ? Self.eventReview(unjoined: screen == "event") : DIPMockFixtures.reference),
             initiallyJoinedEventIDs: screen == "event-joined" ? ["puppy-yoga"] : [],
             initialFailures: Self.previewFailures()))
         _model = State(initialValue: model)
@@ -244,6 +244,13 @@ struct DIPPrototypeApp: View {
     }
 
     /// `--empty-state=<fixture>` (see `DIPEmptyStateFixture`) for designed empty-state review only.
+    /// V1 events; `--screen=event` is the not-yet-joined review of Puppy Yoga (the fixture seeds it as joined).
+    static func eventReview(unjoined: Bool) -> DIPAppSnapshot {
+        var snapshot = DIPMockFixtures.v1Events()
+        if unjoined { snapshot.eventDetails["puppy-yoga"]?.isJoined = false }
+        return snapshot
+    }
+
     private static func emptyStateFixture() -> DIPEmptyStateFixture? {
         ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--empty-state=") }
             .flatMap { DIPEmptyStateFixture(rawValue: String($0.dropFirst("--empty-state=".count))) }

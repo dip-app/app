@@ -41,6 +41,13 @@ final class ScreenFlowTests: XCTestCase {
         // v1 fixtures: Puppy Yoga's card artwork is `event_Image` (the card id follows the artwork, not the event id).
         let card = app.buttons["home.event.event_Image"]
         XCTAssertTrue(card.waitForExistence(timeout: 5), "Puppy Yoga card id follows its artwork in the v1 fixtures")
+        // The card may sit off-screen in the horizontal carousel: page it in before tapping.
+        for _ in 0..<4 where card.frame.maxX > app.frame.width {
+            // Drag along the carousel row itself (a bare app.swipeLeft() lands on the page scroll view).
+            let y = card.frame.midY / app.frame.height
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: y))
+                .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: y)))
+        }
         card.tap()
         XCTAssertTrue(waitForLabel(app.buttons["event.primary"], "Activity Chat"), "joined state was not kept locally")
     }

@@ -1,17 +1,17 @@
 # TestFlight and Universal Links checklist
 
-Everything here needs the paid Apple Developer Program team. None of it is done yet. Owner steps are marked **(owner)**; the rest are repository changes that agents can prepare. Bundle ID: `org.dip-app.DIP`. Public domain: `letsdip.work`.
+Everything here needs the paid Apple Developer Program team. None of it is done yet. Owner steps are marked **(owner)**; the rest are repository changes that agents can prepare. Bundle ID: `work.letsdip.app`. Public domain: `letsdip.work`.
 
 ## A. Apple Developer account and App ID
 
 - [ ] **(owner)** Enroll or join the paid team; note the **Team ID** (10 characters, developer.apple.com, Membership details).
-- [ ] **(owner)** Register the App ID `org.dip-app.DIP` (explicit) with capabilities: Associated Domains, Push Notifications, Sign in is Google only so no Sign in with Apple, App Attest is used by Firebase App Check (nothing to enable on the App ID).
+- [ ] **(owner)** Register the App ID `work.letsdip.app` (explicit) with capabilities: Associated Domains, Push Notifications, Sign in is Google only so no Sign in with Apple, App Attest is used by Firebase App Check (nothing to enable on the App ID).
 - [ ] **(owner)** In the Firebase console, iOS app settings: set the Team ID and App Store ID later (section E); upload the APNs auth key ([push client](../design/push-client.md)); in App Check, the iOS app uses App Attest.
 - [ ] Local signing: put your team in the untracked `ui/Config/Local.xcconfig` (`DEVELOPMENT_TEAM`, bundle ID). Never commit it, and never commit `GoogleService-Info.plist`.
 
 ## B. Universal Links (share links `https://letsdip.work/e/<eventId>`)
 
-- [ ] Replace `TEAMID` in `apps/admin/public/aasa/apple-app-site-association.json` with the real Team ID so the app ID reads `<TEAMID>.org.dip-app.DIP`. (One-line change; the path component `/e/*` stays.)
+- [ ] Replace `TEAMID` in `apps/admin/public/aasa/apple-app-site-association.json` with the real Team ID so the app ID reads `AX2A775SS6.work.letsdip.app`. (One-line change; the path component `/e/*` stays.)
 - [ ] In `ui/Config/Local.xcconfig` select the paid entitlements: `DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements` (or `#include "Push.xcconfig"` once push is ready, which selects `DIP-Paid-Push.entitlements` and also carries `applinks:letsdip.work`).
 - [ ] Entitlements check: `applinks:letsdip.work` is in the file (it must match `DIPShareLink.baseURL`'s host). No `applinks:team05-dip.web.app`: Apple does not follow redirects for the association file.
 - [ ] Deploy hosting `letsdip` after approval ([runbook](deploy-runbook.md#hosting)); then `curl -si https://letsdip.work/.well-known/apple-app-site-association` must return 200, `application/json`, no redirect, and the right app ID.
@@ -29,7 +29,7 @@ Everything here needs the paid Apple Developer Program team. None of it is done 
 
 ## D. App Store Connect: TestFlight
 
-- [ ] **(owner)** Create the app record (name "DIP", bundle ID `org.dip-app.DIP`, SKU, primary language English (U.S.)).
+- [ ] **(owner)** Create the app record (name "DIP", bundle ID `work.letsdip.app`, SKU, primary language English (U.S.)).
 - [ ] Wait for the build to finish processing; fix any email from Apple about missing icons, usage descriptions or privacy items.
 - [ ] Internal testing: add the team under Internal Testers (up to 100, App Store Connect users); the build is available immediately without review.
 - [ ] External testing (company members outside the team): create a group, add testers or a public link, fill Test Information (what to test, contact, feedback email, demo sign-in notes: Google sign-in with a company-domain account; give App Review a working demo account if they ask), submit for Beta App Review (first build of each version).

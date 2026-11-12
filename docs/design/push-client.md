@@ -20,7 +20,7 @@ The whole client switch is one line. In the untracked `ui/Config/Local.xcconfig`
 
 `ui/Config/Push.xcconfig` sets `DIP_PUSH_ENABLED = YES` and selects `Config/DIP-Paid-Push.entitlements` (the paid-team entitlements plus `aps-environment`). Remove the line to turn push off; the committed default stays `DIP_PUSH_ENABLED = NO` in `ui/Config/Base.xcconfig`. Use the include instead of the `DIP_ENTITLEMENTS` line for share links, because the push entitlements file also carries `applinks:letsdip.work`. Prerequisites, in order:
 
-1. **(owner)** Join the paid Apple Developer team; enable Push Notifications for the App ID `org.dip-app.DIP`.
+1. **(owner)** Join the paid Apple Developer team; enable Push Notifications for the App ID `work.letsdip.app`.
 2. **(owner)** Create an APNs authentication key (.p8, Keys, Apple Push Notifications service) and upload it in the Firebase console: Project settings, Cloud Messaging, Apple app configuration, APNs Authentication Key (with the Key ID and Team ID). Keep the .p8 out of the repository.
 3. Set the bundle ID and team in `Local.xcconfig`; add the `#include` line above; regenerate the project and build to a physical device (the simulator cannot receive real APNs pushes).
 4. Make sure the notification functions are deployed (`registerDeviceV1`, `unregisterDeviceV1`, `onEventMessageCreated`, `onEventChanged`, `onRsvpChanged`, `sendEventReminders`, and for invitations `sendInviteV1`) with `firebase deploy --only functions --force` as described in the [deploy runbook](../ops/deploy-runbook.md).
