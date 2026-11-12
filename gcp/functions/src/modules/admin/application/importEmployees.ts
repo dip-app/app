@@ -9,7 +9,7 @@ import { DELETE_FIELD, paths, SERVER_TIME } from "../domain/ops";
 import { parseApplyImport, parseGetImport, parseImportEmployees } from "../domain/requests";
 import { payloadHash } from "../domain/reader";
 import {
-  chunkRows, decideRow, IMPORT_CHUNK_SIZE, IMPORT_MAX_ERRORS, planHashOf, planImport, totalsOf, type PlannedRow,
+  chunkRows, decideRow, IMPORT_CHUNK_SIZE, IMPORT_MAX_ERRORS, planHashOf, planImport, progressFromTallies, tallyOf, totalsOf, type PlannedRow, type Tallies,
 } from "../domain/importPlan";
 import { authorize, requireCaller, writeAudit, type Actor } from "./context";
 import { findMemberByEmail, loadEmployeeContext } from "./roster";
@@ -121,7 +121,7 @@ export async function importEmployees(deps: AdminDeps, caller: Caller | null, da
 type RowOutcome = ImportRowResult;
 
 /** Applies one planned row in its own transaction against live data; every failure is contained to the row. */
-async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: PlannedRow): Promise<RowOutcome> {
+async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: PlannedRow, now: Date): Promise<RowOutcome> {
   const fail = (code: string, message: string): RowOutcome => ({ rowNumber: row.rowNumber, email: row.email, outcome: "failed", errorCode: code, message });
   if (row.action === "invalid" || !row.record) {
     const first = row.errors[0];
@@ -130,6 +130,16 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
   const record = row.record;
   try {
     return await deps.store.runTransaction(async tx => {
+      // A row applied by an earlier (interrupted) attempt keeps its recorded outcome, so counters stay exact on a retry.
+      const resultPath = paths.importResult(actor.companyId, jobId, row.rowNumber);
+      const prior = await tx.get(resultPath);
+      if (prior && (prior.outcome === "created" || prior.outcome === "updated" || prior.outcome === "unchanged")) {
+        return { rowNumber: row.rowNumber, email: row.email, outcome: prior.outcome } satisfies RowOutcome;
+      }
+      const recorded = (outcome: "created" | "updated" | "unchanged"): RowOutcome => {
+        tx.create(resultPath, { rowNumber: row.rowNumber, email: row.email, outcome, createdAt: now });
+        return { rowNumber: row.rowNumber, email: row.email, outcome };
+      };
       for (const teamId of record.teamIds ?? []) {
         const team = await tx.get(paths.team(actor.companyId, teamId));
         if (!team || team.archived === true) return fail("TEAM_NOT_FOUND", "A team in this row no longer exists.");
@@ -138,16 +148,15 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
       const hash = emailHash(record.email);
       const entry = await tx.get(paths.rosterEntry(actor.companyId, hash));
       const decision = decideRow(record, member?.data, entry ?? undefined);
-      const base = { rowNumber: row.rowNumber, email: row.email };
       const auditId = `${actor.uid}_${jobId}_${row.rowNumber}`;
       if (decision.kind === "error") return fail(decision.issue.code, decision.issue.message);
-      if (decision.action === "unchanged") return { ...base, outcome: "unchanged" as const };
+      if (decision.action === "unchanged") return recorded("unchanged");
       if (decision.kind === "member" && member) {
         tx.update(paths.user(member.id), { ...decision.patch, revision: revisionOf(member.data) + 1 });
         if (entry) tx.update(paths.rosterEntry(actor.companyId, hash), { ...decision.patch, updatedAt: SERVER_TIME }); // roster lists everyone
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "member", targetId: member.id,
           summary: `Import updated ${record.email}`, changes: decision.changes, requestId: jobId });
-        return { ...base, outcome: "updated" as const };
+        return recorded("updated");
       }
       if (decision.kind === "roster" && decision.action === "create") {
         tx.create(paths.rosterEntry(actor.companyId, hash), {
@@ -156,13 +165,13 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
         });
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "roster", targetId: hash,
           summary: `Import invited ${record.email}`, changes: decision.changes, requestId: jobId });
-        return { ...base, outcome: "created" as const };
+        return recorded("created");
       }
       if (decision.kind === "roster") {
         tx.update(paths.rosterEntry(actor.companyId, hash), { ...decision.patch, importJobId: jobId, updatedAt: SERVER_TIME, revision: (entry && typeof entry.revision === "number" ? entry.revision : 1) + 1 });
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "roster", targetId: hash,
           summary: `Import updated the invitation for ${record.email}`, changes: decision.changes, requestId: jobId });
-        return { ...base, outcome: "updated" as const };
+        return recorded("updated");
       }
       return fail("INVALID_ROW", "Row could not be applied.");
     });
@@ -207,27 +216,26 @@ export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null
   }
   const { actor, chunkIndex, rows } = claimed;
   const results: RowOutcome[] = [];
-  for (const row of rows) results.push(await applyRow(deps, actor, req.jobId, row));
+  for (const row of rows) results.push(await applyRow(deps, actor, req.jobId, row, now));
 
   return deps.store.runTransaction(async tx => {
     const job = await tx.get(paths.importJob(actor.companyId, req.jobId));
     if (!job || job.leaseId !== leaseId || job.nextChunk !== chunkIndex) throw new AdminError("aborted", "IMPORT_JOB_BUSY", "This import is already being applied.");
-    const progress = { ...progressOf(job) };
-    progress.processed += results.length;
-    for (const r of results) {
-      if (r.outcome === "created") progress.created += 1;
-      else if (r.outcome === "updated") progress.updated += 1;
-      else if (r.outcome === "unchanged") progress.unchanged += 1;
-      else progress.failed += 1;
-    }
+    // Counters are derived from per-chunk tallies on the job: a retried chunk replaces its own tally instead of adding to it.
+    const before = progressOf(job);
+    const legacy: Tallies = !job.tallies && chunkIndex > 0
+      ? { legacy: { created: before.created, updated: before.updated, unchanged: before.unchanged, failed: before.failed } } : {};
+    const tallies: Tallies = { ...legacy, ...((job.tallies as Tallies | undefined) ?? {}), [String(chunkIndex)]: tallyOf(results) };
+    const progress = progressFromTallies(tallies, before.total);
     const failed = results.filter(r => r.outcome === "failed");
-    const previous = Array.isArray(job.errors) ? (job.errors as ImportRowResult[]) : [];
+    const chunkRowNumbers = new Set(rows.map(r => r.rowNumber));
+    const previous = (Array.isArray(job.errors) ? (job.errors as ImportRowResult[]) : []).filter(e => !chunkRowNumbers.has(e.rowNumber));
     const errors = [...previous, ...failed].slice(0, IMPORT_MAX_ERRORS);
     const next = chunkIndex + 1;
     const done = next >= (job.chunkCount as number);
     const status = done ? (progress.failed > 0 ? "completed_with_errors" : "completed") : "running";
     tx.update(paths.importJob(actor.companyId, req.jobId), {
-      status, progress, errors, errorsTruncated: job.errorsTruncated === true || previous.length + failed.length > IMPORT_MAX_ERRORS,
+      status, progress, tallies, errors, errorsTruncated: job.errorsTruncated === true || previous.length + failed.length > IMPORT_MAX_ERRORS,
       nextChunk: next, leaseUntil: DELETE_FIELD, leaseId: DELETE_FIELD, updatedAt: SERVER_TIME,
     });
     if (done) {

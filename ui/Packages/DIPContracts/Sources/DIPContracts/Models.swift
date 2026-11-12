@@ -1123,8 +1123,11 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var updatedAt: Date
     public var revision: Int
     public var memberStatus: String?
+    public var resendCount: Int?
+    public var lastResentAt: Date?
+    public var lastResentBy: String?
 
-    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil) {
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.email = email
@@ -1146,6 +1149,9 @@ public struct RosterEntry: Codable, Equatable, Sendable {
         self.updatedAt = updatedAt
         self.revision = revision
         self.memberStatus = memberStatus
+        self.resendCount = resendCount
+        self.lastResentAt = lastResentAt
+        self.lastResentBy = lastResentBy
     }
 }
 
@@ -1491,11 +1497,13 @@ public struct ListMembersResponse: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var members: [AdminMemberSummary]
     public var nextPageToken: String?
+    public var total: Int?
 
-    public init(contractVersion: Int, members: [AdminMemberSummary], nextPageToken: String? = nil) {
+    public init(contractVersion: Int, members: [AdminMemberSummary], nextPageToken: String? = nil, total: Int? = nil) {
         self.contractVersion = contractVersion
         self.members = members
         self.nextPageToken = nextPageToken
+        self.total = total
     }
 }
 
@@ -2040,5 +2048,125 @@ public struct ListCoworkersResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.coworkers = coworkers
         self.truncated = truncated
+    }
+}
+
+public struct ResendRosterInviteRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var entryId: String
+
+    public init(contractVersion: Int, companyId: String, requestId: String, entryId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.entryId = entryId
+    }
+}
+
+public struct ResendRosterInviteResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var entryId: String
+    public var status: String
+    public var resendCount: Int
+    public var lastResentAt: Date
+    public var signInUrl: String
+    public var message: String
+
+    public init(contractVersion: Int, entryId: String, status: String, resendCount: Int, lastResentAt: Date, signInUrl: String, message: String) {
+        self.contractVersion = contractVersion
+        self.entryId = entryId
+        self.status = status
+        self.resendCount = resendCount
+        self.lastResentAt = lastResentAt
+        self.signInUrl = signInUrl
+        self.message = message
+    }
+}
+
+public struct BackfillRosterRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var dryRun: Bool
+    public var pageToken: String?
+
+    public init(contractVersion: Int, companyId: String, requestId: String, dryRun: Bool, pageToken: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.dryRun = dryRun
+        self.pageToken = pageToken
+    }
+}
+
+public struct BackfillRosterResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var dryRun: Bool
+    public var scanned: Int
+    public var created: Int
+    public var existing: Int
+    public var skipped: Int
+    public var nextPageToken: String?
+    public var done: Bool
+
+    public init(contractVersion: Int, dryRun: Bool, scanned: Int, created: Int, existing: Int, skipped: Int, nextPageToken: String? = nil, done: Bool) {
+        self.contractVersion = contractVersion
+        self.dryRun = dryRun
+        self.scanned = scanned
+        self.created = created
+        self.existing = existing
+        self.skipped = skipped
+        self.nextPageToken = nextPageToken
+        self.done = done
+    }
+}
+
+public struct RosterCounts: Codable, Equatable, Sendable {
+    public var all: Int
+    public var invited: Int
+    public var active: Int
+    public var deactivated: Int
+    public var revoked: Int
+
+    public init(all: Int, invited: Int, active: Int, deactivated: Int, revoked: Int) {
+        self.all = all
+        self.invited = invited
+        self.active = active
+        self.deactivated = deactivated
+        self.revoked = revoked
+    }
+}
+
+public struct ListRosterRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var state: String?
+    public var query: String?
+    public var pageSize: Int?
+    public var pageToken: String?
+
+    public init(contractVersion: Int, companyId: String, state: String? = nil, query: String? = nil, pageSize: Int? = nil, pageToken: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.state = state
+        self.query = query
+        self.pageSize = pageSize
+        self.pageToken = pageToken
+    }
+}
+
+public struct ListRosterResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var entries: [RosterEntry]
+    public var nextPageToken: String?
+    public var counts: RosterCounts?
+
+    public init(contractVersion: Int, entries: [RosterEntry], nextPageToken: String? = nil, counts: RosterCounts? = nil) {
+        self.contractVersion = contractVersion
+        self.entries = entries
+        self.nextPageToken = nextPageToken
+        self.counts = counts
     }
 }

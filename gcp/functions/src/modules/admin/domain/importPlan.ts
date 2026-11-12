@@ -92,3 +92,25 @@ export function chunkRows<T>(rows: readonly T[], size = IMPORT_CHUNK_SIZE): T[][
   for (let i = 0; i < rows.length; i += size) chunks.push(rows.slice(i, i + size));
   return chunks;
 }
+
+/** Outcome counters of one chunk, stored per chunk on the job so progress is derived from state, never incremented. */
+export interface ChunkTally { created: number; updated: number; unchanged: number; failed: number }
+export type Tallies = Record<string, ChunkTally>;
+
+export function tallyOf(results: ReadonlyArray<{ outcome: "created" | "updated" | "unchanged" | "failed" }>): ChunkTally {
+  const tally: ChunkTally = { created: 0, updated: 0, unchanged: 0, failed: 0 };
+  for (const r of results) tally[r.outcome] += 1;
+  return tally;
+}
+
+const num = (value: unknown) => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
+
+/**
+ * Job progress is the sum of the per-chunk tallies. Re-applying an interrupted chunk replaces that chunk's tally
+ * (rows applied by the first attempt keep their stored outcome), so counters stay exact however often a chunk is retried.
+ */
+export function progressFromTallies(tallies: Tallies, total: number) {
+  const sum: ChunkTally = { created: 0, updated: 0, unchanged: 0, failed: 0 };
+  for (const t of Object.values(tallies)) for (const key of Object.keys(sum) as Array<keyof ChunkTally>) sum[key] += num(t[key]);
+  return { processed: sum.created + sum.updated + sum.unchanged + sum.failed, total, ...sum };
+}

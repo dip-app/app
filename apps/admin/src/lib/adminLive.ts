@@ -7,7 +7,8 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type ImportPlanResponse, type ImportRow, type Member, type Role, type RosterRow, type Submission,
+  type BackfillStep, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
 
@@ -34,12 +35,15 @@ export function memberFromSummary(d: DocumentData): Member {
   };
 }
 
-/** A `roster/{emailHash}` document. Claimed entries are represented by their member instead. */
+/** A roster entry (listRosterV1 `RosterEntry`, or the raw document). Claimed entries show their member's status. */
 export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
+  const claimed = d.status === "claimed";
   return {
     entryId: id, email: str(d.email), displayName: str(d.displayName), role: roleOf(d.role), teamIds: strings(d.teamIds), workLocation: str(d.workLocation),
     department: str(d.department), jobTitle: str(d.jobTitle), managerEmail: str(d.managerEmail), startDate: str(d.startDate),
-    state: d.status === "revoked" ? "revoked" : d.status === "claimed" ? "active" : "invited", invitedAt: iso(d.createdAt),
+    state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
+    ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), invitedAt: iso(d.createdAt),
+    ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
   };
 }
 
@@ -105,32 +109,20 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
   }
   const col = (session: Session, ...path: string[]) => collection(db, "companies", session.companyId, ...path);
 
+  /** Follows the cursor to the end: no page cap, so a large company is never silently cut short. */
   async function listMembersAll(session: Session): Promise<Member[]> {
     const members: Member[] = [];
     let pageToken: string | undefined;
-    for (let page = 0; page < 30; page += 1) {
+    do {
       const data = await call<{ members: DocumentData[]; nextPageToken?: string }>(ADMIN_CALLABLES.listMembers, session, { pageSize: 100, ...(pageToken ? { pageToken } : {}) }, false);
       members.push(...data.members.map(memberFromSummary));
       pageToken = data.nextPageToken;
-      if (!pageToken) break;
-    }
+    } while (pageToken);
     return members.sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
   async function member(session: Session, id: string): Promise<Member> {
     const data = await call<{ member: DocumentData }>(ADMIN_CALLABLES.getMember, session, { userId: id }, false);
     return memberFromSummary(data.member);
-  }
-  /** Roster rules cap lists at 100 documents, so read page by page. */
-  async function rosterDocs(session: Session): Promise<QueryDocumentSnapshot[]> {
-    const docs: QueryDocumentSnapshot[] = [];
-    let last: QueryDocumentSnapshot | undefined;
-    for (let page = 0; page < 30; page += 1) {
-      const snap = await getDocs(query(col(session, "roster"), orderBy("createdAt"), ...(last ? [startAfter(last)] : []), limit(100)));
-      docs.push(...snap.docs);
-      last = snap.docs[snap.docs.length - 1];
-      if (snap.docs.length < 100) break;
-    }
-    return docs;
   }
 
   return {
@@ -207,6 +199,15 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     }),
 
     listMembers: () => run(async () => listMembersAll(await organizer())),
+    listMembersPage: (q: MemberQuery, cursor, pageSize = 25) => run(async () => {
+      const data = await call<{ members: DocumentData[]; nextPageToken?: string; total?: number }>(ADMIN_CALLABLES.listMembers, await organizer(), {
+        pageSize,
+        ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.status !== "all" ? { status: q.status } : {}), ...(q.role !== "all" ? { role: q.role } : {}),
+        ...(q.teamId !== "all" && q.teamId ? { teamId: q.teamId } : {}), ...(q.workLocation !== "all" && q.workLocation ? { workLocation: q.workLocation } : {}),
+        ...(cursor ? { pageToken: cursor } : {}),
+      }, false);
+      return { members: data.members.map(memberFromSummary), nextCursor: data.nextPageToken ?? null, total: typeof data.total === "number" ? data.total : null };
+    }),
     getMember: (id) => run(async () => member(await organizer(), id)),
     updateMember: (id, expectedRevision, patch) => run(async () => {
       const session = await organizer();
@@ -229,17 +230,28 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       return member(session, id);
     }),
 
-    // Roster = pending and revoked entries (Firestore, admin-only rules) plus every member (listMembersV1) as active or deactivated.
-    listRoster: () => run(async () => {
-      const session = await organizer();
-      const [docs, members] = await Promise.all([rosterDocs(session), listMembersAll(session)]);
-      const memberEmails = new Set(members.map((m) => m.email.toLowerCase()));
-      const entries = docs.map((d) => rosterFromDoc(d.id, d.data())).filter((r) => r.state !== "active" && !memberEmails.has(r.email.toLowerCase()));
-      const people = members.map((m): RosterRow => ({
-        entryId: m.id, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
-        jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: m.status === "deactivated" ? "deactivated" : "active", memberId: m.id, invitedAt: m.createdAt,
-      }));
-      return [...entries, ...people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    // The roster lists everyone (invited, joined, deactivated, revoked); listRosterV1 pages and searches on the server.
+    listRosterPage: (q, cursor, pageSize = 25) => run(async () => {
+      const data = await call<{ entries: DocumentData[]; nextPageToken?: string; counts?: RosterCounts }>(ADMIN_CALLABLES.listRoster, await organizer(), {
+        pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.state !== "all" ? { state: q.state } : {}), ...(cursor ? { pageToken: cursor } : {}),
+      }, false);
+      return { rows: data.entries.map((e) => rosterFromDoc(str(e.id), e)), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null };
+    }),
+    resendInvite: (row) => run(async () => {
+      const data = await call<{ resendCount: number; lastResentAt: string; signInUrl: string; message: string }>(ADMIN_CALLABLES.resendRosterInvite, await organizer(), { entryId: row.entryId });
+      return { resendCount: Number(data.resendCount ?? 0), lastResentAt: iso(data.lastResentAt), signInUrl: str(data.signInUrl), message: str(data.message) };
+    }),
+    backfillRoster: (dryRun, requestId, cursor) => run(async () => {
+      const data = await call<BackfillStep & { nextPageToken?: string }>(ADMIN_CALLABLES.backfillRoster, await organizer(), { dryRun, requestId, ...(cursor ? { pageToken: cursor } : {}) });
+      return { dryRun: data.dryRun === true, scanned: Number(data.scanned ?? 0), created: Number(data.created ?? 0), existing: Number(data.existing ?? 0), skipped: Number(data.skipped ?? 0), nextCursor: data.nextPageToken ?? null, done: data.done === true };
+    }),
+    getImport: (jobId) => run(async () => {
+      const data = await call<{ job: DocumentData }>(ADMIN_CALLABLES.getImport, await organizer(), { jobId }, false);
+      const job = data.job;
+      return {
+        jobId, status: (str(job.status) || "planned") as ImportJobInfo["status"], chunkCount: Number(job.chunkCount ?? 0), nextChunk: Number(job.nextChunk ?? 0),
+        progress: job.progress as ImportJobInfo["progress"], planHash: str(job.planHash), fileName: str(job.fileName),
+      } satisfies ImportJobInfo;
     }),
     revokeRosterEntry: (entryId) => run(async () => {
       await call(ADMIN_CALLABLES.revokeRosterEntry, await organizer(), { entryId });

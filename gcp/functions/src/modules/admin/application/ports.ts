@@ -19,7 +19,8 @@ export interface ListQuery {
 export interface AdminTransaction {
   get(path: string): Promise<Doc | null>;
   list(collectionPath: string, query: ListQuery): Promise<Entry[]>;
-  count(collectionPath: string): Promise<number>;
+  /** Aggregate count of a collection, optionally narrowed by equality filters (no documents are read). */
+  count(collectionPath: string, where?: Where): Promise<number>;
   /** Fails if the document exists. */
   create(path: string, data: Doc): void;
   /** Merges fields into an existing document (fails if it is missing). */

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
+import { AdminOnly } from "./AdminOnly";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 
@@ -150,10 +151,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
             <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
           </div>
         ) : requires && !can(session.role, requires) ? (
-          <div className="empty" role="alert">
-            <h2>Admins only</h2>
-            <p>This page is for company admins. Organizers can manage events, weekly themes, albums and attendees.</p>
-          </div>
+          <AdminOnly page={title} capability={requires} role={session.role} />
         ) : (<>
         <header className="page-header">
           <div className="titles">

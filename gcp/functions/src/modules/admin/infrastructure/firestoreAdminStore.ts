@@ -63,7 +63,11 @@ export class FirestoreAdminStore implements AdminStore {
         const snap = await transaction.get(ref.limit(query.limit));
         return snap.docs.map(d => ({ id: d.id, data: readDoc(d.data()) ?? {} }));
       },
-      count: async collectionPath => (await transaction.get(db.collection(collectionPath).count())).data().count,
+      count: async (collectionPath, where) => {
+        let ref = db.collection(collectionPath) as FirebaseFirestore.Query;
+        for (const [field, value] of where ?? []) ref = ref.where(field, "==", value);
+        return (await transaction.get(ref.count())).data().count;
+      },
       create: (path, data) => queue(() => { transaction.create(db.doc(path), toFirestore(data) as DocumentData); }),
       update: (path, data) => queue(() => { transaction.update(db.doc(path), toFirestore(data) as DocumentData); }),
       delete: path => queue(() => { transaction.delete(db.doc(path)); }),

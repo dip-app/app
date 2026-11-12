@@ -28,6 +28,7 @@ export const paths = {
   roster: (companyId: string) => `companies/${companyId}/roster`,
   rosterEntry: (companyId: string, emailHash: string) => `companies/${companyId}/roster/${emailHash}`,
   importJob: (companyId: string, jobId: string) => `companies/${companyId}/importJobs/${jobId}`,
+  importResult: (companyId: string, jobId: string, rowNumber: number) => `companies/${companyId}/importJobs/${jobId}/results/${rowNumber}`,
   importChunk: (companyId: string, jobId: string, index: number) => `companies/${companyId}/importJobs/${jobId}/chunks/${index}`,
   pointTransaction: (companyId: string, id: string) => `companies/${companyId}/pointTransactions/${id}`,
   notification: (uid: string, id: string) => `users/${uid}/notifications/${id}`,

@@ -31,7 +31,7 @@ describe("permissions", () => {
   it("is enforced by the mock like the backend", async () => {
     const organizer = await as("organizer");
     await expect(organizer.listAudit()).rejects.toMatchObject({ code: "permission-denied" });
-    await expect(organizer.listRoster()).rejects.toMatchObject({ code: "permission-denied" });
+    await expect(organizer.listRosterPage({ query: "", state: "all" })).rejects.toMatchObject({ code: "permission-denied" });
     await expect(organizer.listPhotos("game-cafe")).resolves.toBeTruthy();
     const member = await as("member");
     await expect(member.listPhotos("game-cafe")).rejects.toMatchObject({ code: "permission-denied" });
@@ -95,7 +95,7 @@ describe("import flow (mock callables)", () => {
     expect(planCounts(plan.rows)).toEqual({ create: 1, update: 1, unchanged: 1, invalid: 2 });
     expect(plan.rows.find((r) => r.email === "pat@acme.com")).toMatchObject({ line: 3, changes: [{ field: "workLocation", after: "Berlin" }] });
     expect(plan.rows.find((r) => r.email === "new.two@acme.com")?.errors[0]).toMatch(/Unknown team/);
-    expect((await api.listRoster()).some((r) => r.email === "new.person@acme.com")).toBe(false);
+    expect((await api.listRosterPage({ query: "new.person", state: "all" })).rows).toHaveLength(0);
     // Same request and rows returns the same job; the same request with other rows is refused.
     expect((await planAll(api, parsed, "request-0001", "people.csv")).jobId).toBe(plan.jobId);
     await expect(planAll(api, rowsFromTable([["email", "name"], ["x@acme.com", "X"]], "acme.com"), "request-0001", "other.csv")).rejects.toMatchObject({ reason: "REQUEST_REUSED" });
@@ -103,8 +103,8 @@ describe("import flow (mock callables)", () => {
     const steps: number[] = [];
     await applyAll(api, plan.jobId, plan.planHash, (step) => steps.push(step.results.length));
     expect(steps).toEqual([4]);
-    const roster = await api.listRoster();
-    expect(roster.find((r) => r.email === "new.person@acme.com")?.state).toBe("invited");
+    const roster = await api.listRosterPage({ query: "new.person", state: "all" });
+    expect(roster.rows.find((r) => r.email === "new.person@acme.com")?.state).toBe("invited");
     expect((await api.getMember("uid-member")).workLocation).toBe("Berlin");
     const before = (await api.listAudit()).length;
     // A finished job is a no-op.
@@ -214,5 +214,62 @@ describe("albums and attendees", () => {
     expect((await api.recordAttendance("game-cafe", target.memberId, true)).pointsAwarded).toBe(25);
     expect((await api.recordAttendance("game-cafe", target.memberId, true)).pointsAwarded).toBe(0);
     await expect(api.recordAttendance("game-cafe", target.memberId, false)).rejects.toMatchObject({ reason: "ATTENDANCE_LOCKED" });
+  });
+});
+
+describe("paged lists, resend and roster backfill (mock, same rules as the callables)", () => {
+  it("pages members with a cursor, filters server-side and reports the total once", async () => {
+    const api = await as("admin");
+    const all = { query: "", status: "all", role: "all", teamId: "all", workLocation: "all" } as const;
+    const first = await api.listMembersPage(all, null, 10);
+    expect(first.members).toHaveLength(10);
+    expect(first.total).toBeGreaterThan(25);
+    expect(first.nextCursor).toBeTruthy();
+    const seen = new Set(first.members.map((m) => m.id));
+    let cursor = first.nextCursor;
+    while (cursor) {
+      const page = await api.listMembersPage(all, cursor, 10);
+      expect(page.total).toBeNull();
+      for (const m of page.members) { expect(seen.has(m.id)).toBe(false); seen.add(m.id); }
+      cursor = page.nextCursor;
+    }
+    expect(seen.size).toBe(first.total);
+    const admins = await api.listMembersPage({ ...all, role: "admin" }, null, 50);
+    expect(admins.members.every((m) => m.role === "admin")).toBe(true);
+    expect((await api.listMembersPage({ ...all, query: "NOVAK" }, null, 50)).members.every((m) => /novak/i.test(m.displayName))).toBe(true);
+  });
+  it("resends an invite (records it, returns the message) and refuses people who already joined", async () => {
+    const api = await as("admin");
+    const invited = (await api.listRosterPage({ query: "", state: "invited" }, null, 50)).rows[0]!;
+    const first = await api.resendInvite(invited);
+    expect(first.resendCount).toBe(1);
+    expect(first.message).toContain(invited.email);
+    expect((await api.resendInvite(invited)).resendCount).toBe(2);
+    const joined = (await api.listRosterPage({ query: "", state: "active" }, null, 5)).rows[0]!;
+    await expect(api.resendInvite(joined)).rejects.toMatchObject({ reason: "ROSTER_ENTRY_CLAIMED" });
+    expect((await api.listAudit()).some((a) => a.action === "roster.resend")).toBe(true);
+    const organizer = await as("organizer");
+    await expect(organizer.resendInvite(invited)).rejects.toMatchObject({ code: "permission-denied" });
+  });
+  it("backfills the members missing from the roster: a dry run writes nothing, the real run is idempotent", async () => {
+    const api = await as("admin");
+    const before = (await api.listRosterPage({ query: "", state: "all" })).counts!;
+    const dry = await api.backfillRoster(true, "req-dry-0001");
+    expect(dry.created).toBeGreaterThan(0);
+    expect((await api.listRosterPage({ query: "", state: "all" })).counts).toEqual(before);
+    const real = await api.backfillRoster(false, "req-real-0001");
+    expect(real.created).toBe(dry.created);
+    const after = (await api.listRosterPage({ query: "", state: "all" })).counts!;
+    expect(after.all).toBe(before.all + dry.created);
+    expect((await api.backfillRoster(false, "req-real-0002")).created).toBe(0);
+  });
+  it("reports where an import stands so it can be resumed", async () => {
+    const api = await as("admin");
+    const parsed = rowsFromTable([["email", "name"], ["resume.me@acme.com", "Resume Me"]], "acme.com");
+    const plan = await planAll(api, parsed, "request-0099", "resume.csv");
+    expect(await api.getImport(plan.jobId)).toMatchObject({ nextChunk: 0, chunkCount: 1, status: "planned" });
+    await applyAll(api, plan.jobId, plan.planHash, () => undefined);
+    expect(await api.getImport(plan.jobId)).toMatchObject({ nextChunk: 1, status: "completed" });
+    await expect(api.getImport("ghost")).rejects.toMatchObject({ code: "not-found" });
   });
 });

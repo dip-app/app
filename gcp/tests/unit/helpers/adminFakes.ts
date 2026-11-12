@@ -47,7 +47,7 @@ export class FakeAdminStore implements AdminStore {
           .filter(c => !query.afterId || c.id > query.afterId)
           .slice(0, query.limit).map(c => { seen.set(`${collection}/${c.id}`, this.docs.get(`${collection}/${c.id}`)!.version); return { id: c.id, data: structuredClone(c.data) }; });
       },
-      count: async collection => { await tick(); seen.set(`collection:${collection}`, this.collectionVersion(collection)); return this.children(collection).length; },
+      count: async (collection, where) => { await tick(); seen.set(`collection:${collection}`, this.collectionVersion(collection)); return this.children(collection).filter(c => (where ?? []).every(([f, v]) => c.data[f] === v)).length; },
       create: (path, data) => queue(() => { if (this.docs.has(path)) throw new Error(`ALREADY_EXISTS ${path}`); this.seed(path, this.resolve(undefined, data)); this.writes++; }),
       update: (path, data) => queue(() => { const cur = this.docs.get(path); if (!cur) throw new Error(`NOT_FOUND ${path}`); this.seed(path, this.resolve(cur.data, data)); this.writes++; }),
       delete: path => queue(() => { this.docs.delete(path); this.writes++; }),
