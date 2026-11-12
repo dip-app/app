@@ -187,10 +187,11 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
               {message && <p className={message.tone === "error" ? "error" : "muted"} role={message.tone === "error" ? "alert" : "status"}>{message.text}{message.tone === "error" && message.text.startsWith("Someone") && <> <button type="button" className="link-btn" onClick={() => setAttempt((n) => n + 1)}>Reload report</button></>}</p>}
               <div className="actions">
                 <button type="submit" className="pill-btn dark" disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</button>
-                {!dirty && !saving && <span className="muted small-note">No changes to save</span>}
+
                 <button type="button" className="pill-btn gray" onClick={() => void copy()}>{copied ? "✓ Copied" : "Copy as issue text"}</button>
                 <span className="sr-only" role="status">{copied ? "Issue text copied to the clipboard" : ""}</span>
               </div>
+              {!dirty && !saving && <p className="no-changes">No changes to save</p>}
             </form>
           </>
         )}
@@ -216,6 +217,7 @@ export default function BugReportsPage() {
   const admins = useLoad((a) => a.listMembersPage({ query: "", status: "active", role: "admin", teamId: "all", workLocation: "all" }, null, 100), "bug-admins");
   const adminOptions = useMemo(() => (admins.data?.members ?? []).map((m) => ({ id: m.id, name: m.displayName })), [admins.data]);
 
+  const activeFilters = (category !== "all" ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0);
   const filtered = query !== "" || category !== "all" || from !== "" || to !== "";
   const list = usePaged<BugReport, BugReportCounts>(
     async (a, cursor) => {
@@ -265,16 +267,18 @@ export default function BugReportsPage() {
 
   return (
     <Shell title="Bug reports" subtitle="What people send with shake-to-report or from Profile. Only admins can see these, including who sent them." requires="bugreports.manage">
-      <div className="tabs" role="group" aria-label="Filter by status">
+      <div className="tabs-fade"><div className="tabs" role="group" aria-label="Filter by status">
         {(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => (
-          <button key={id} className="tab" aria-pressed={status === id} onClick={() => setStatus(id)}>{id === "all" ? "All" : BUG_STATUS_LABEL[id]}{tabCount(id)}</button>
+          <button key={id} className="tab" aria-pressed={status === id} onClick={(e) => { setStatus(id); e.currentTarget.scrollIntoView?.({ inline: "center", block: "nearest" }); }}>{id === "all" ? "All" : BUG_STATUS_LABEL[id]}{tabCount(id)}</button>
         ))}
-      </div>
+      </div></div>
       <div className="filters bug-filters" data-open={filtersOpen ? "true" : undefined}>
         <div className="field search"><label htmlFor="search">Search</label>
           <input id="search" type="search" value={search} placeholder="Text, person or screen" onChange={(e) => setSearch(e.target.value)} autoComplete="off" /></div>
         <button type="button" className="pill-btn gray small filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
-          {filtersOpen ? "Hide filters" : `Filters${category !== "all" || from || to ? " (on)" : ""}`}</button>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+          {filtersOpen ? "Hide filters" : "Filters"}
+          {activeFilters > 0 && <span className="filter-count" aria-label={`${activeFilters} active`}>{activeFilters}</span>}</button>
         <div className="field wide extra"><label htmlFor="bug-category">Category</label>
           <select id="bug-category" value={category} onChange={(e) => setCategory(e.target.value as BugCategory | "all")}>
             <option value="all">All categories</option>
@@ -283,7 +287,7 @@ export default function BugReportsPage() {
         <div className="field extra"><label htmlFor="bug-from">From</label><input id="bug-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></div>
         <div className="field extra"><label htmlFor="bug-to">To</label><input id="bug-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-invalid={rangeBad || undefined} /></div>
       </div>
-      {filtered && <p className="clear-filters"><button className="link-btn" onClick={() => { setSearch(""); setCategory("all"); setFrom(""); setTo(""); }}>Clear filters</button></p>}
+      {filtered && !empty && <p className="clear-filters"><button className="link-btn" onClick={() => { setSearch(""); setCategory("all"); setFrom(""); setTo(""); }}>Clear filters</button></p>}
       {rangeBad && <p className="error" role="alert">The end date is before the start date.</p>}
       {counts?.capped && <Notice>Counts cover the newest 1,000 reports. Older ones are still listed as you load more.</Notice>}
 

@@ -193,7 +193,7 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 // ---------- Bug reports inbox
 .bug-filters { grid-template-columns: minmax(220px, 2fr) repeat(auto-fit, minmax(150px, 1fr)); }
 .bug-filters .field input[type="date"] { padding-right: 16px; min-width: 0; max-width: 100%; }
-.filters-toggle { display: none; }
+.bug-filters .filters-toggle { display: none; }
 .clear-filters { margin: -8px 0 12px; }
 .bug-list .queue { max-height: none; overflow: visible; }
 .bug-item[aria-current="true"] { .muted { color: rgba(255, 255, 255, .82); } .info-pill.warn { border-color: $pink; color: $pink; } }
@@ -214,3 +214,9 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .triage .actions { padding: 4px 0 0; }
 .triage textarea { min-height: 112px; }
 
+.triage .pill-btn.dark[disabled] { opacity: .4; }
+.no-changes { font-size: 13px; color: rgba(30, 33, 43, .7); margin: -4px 0 0; }
+.filters-toggle svg { margin-right: 8px; flex: none; }
+.filter-count { margin-left: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: $purple; color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
+.tabs-fade { position: relative; max-width: 100%; width: fit-content; }
+@media (max-width: 700px) { .tabs-fade { width: 100%; &::after { content: ""; position: absolute; right: 0; top: 0; bottom: 28px; width: 40px; border-radius: 0 999px 999px 0; pointer-events: none; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 85%); } } }
