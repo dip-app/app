@@ -59,7 +59,7 @@ public final class DIPNotificationsModel {
                 let covered = Set(value.map(\.id))
                 older.removeAll { covered.contains($0.id) }
                 if older.isEmpty { hasMorePages = value.count >= DIPNotificationRules.pageSize }
-                locallyRead.subtract(value.filter(\.isRead).map(\.id))
+                reconcileLocalReads()
             }
             guard !Task.isCancelled, generation == current else { return }
             markUnavailable("Updates stopped. Check your connection.")
@@ -75,11 +75,20 @@ public final class DIPNotificationsModel {
             for try await ids in stream {
                 guard !Task.isCancelled, generation == current else { return }
                 unreadIDs = ids; unreadKnown = true
+                reconcileLocalReads()
             }
         } catch {
             guard !Task.isCancelled, generation == current else { return }
             // The badge keeps its last value; the list reports the failure.
         }
+    }
+
+    /// An optimistic read is dropped only once BOTH listeners agree it is read; the two streams answer separately, so
+    /// dropping it on the first answer would briefly bring the unread count back.
+    private func reconcileLocalReads() {
+        guard unreadKnown, !head.isEmpty || phase == .ready else { return }
+        let stillUnreadInList = Set(head.filter { !$0.isRead }.map(\.id))
+        locallyRead = locallyRead.filter { unreadIDs.contains($0) || stillUnreadInList.contains($0) }
     }
 
     private func markUnavailable(_ message: String) {
