@@ -32,3 +32,7 @@ Added eight weekly themes (sleep, hydration, mindfulness, outdoors, kindness, le
 
 Create the production tags (Sleep, Hydration, Mindfulness, Kindness, Learning, Creativity; Outdoors and Cooking may exist) before using the new themes.
 
+
+## Update (owner change of plan)
+
+The first set of eight single-habit themes was replaced by eight broad ones: outdoors, food, arts, games, music, learning, volunteering, wellness (display names Outdoors, Food & Drink, Arts & Crafts, Games, Music, Learning, Volunteering, Wellness). Old keys removed from the portal, server allow-list, iOS catalog, tests, docs and mock tags. iOS assets are Mascot<Key>. Accents for the seven new themes are placeholders until the art agent updates ACCENTS.md. Checks rerun: vitest themes+api, tsc, gcp challenges unit (23), swift ThemeCatalogTests (3). PR #169 intentionally not merged until the art lands.

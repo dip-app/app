@@ -16,7 +16,7 @@ final class ThemeCatalogTests: XCTestCase {
     }
 
     func testCatalogListsAllNineThemesWithBundledArtAndSuggestions() {
-        let keys = ["fitness", "sleep", "hydration", "mindfulness", "outdoors", "kindness", "learning", "creativity", "cooking"]
+        let keys = ["fitness", "outdoors", "food", "arts", "games", "music", "learning", "volunteering", "wellness"]
         XCTAssertEqual(DIPThemeCatalog.themes.map(\.key), keys)
         for key in keys {
             let theme = DIPThemeCatalog.theme(coverImageURL: DIPThemeCatalog.catalogURL(for: key))
@@ -26,7 +26,7 @@ final class ThemeCatalogTests: XCTestCase {
             XCTAssertFalse(theme.displayName.isEmpty, key)
             if case .themed(let hex) = theme.accent { XCTAssertNotNil(hex.range(of: "^#[0-9A-F]{6}$", options: .regularExpression), key) }
         }
-        XCTAssertEqual(DIPThemeCatalog.theme(key: "sleep").displayName, "Sleep")
+        XCTAssertEqual(DIPThemeCatalog.theme(key: "food").displayName, "Food & Drink")
     }
 
     func testUnknownOrForeignValuesGetNeutralTitleOnlyFallback() {
