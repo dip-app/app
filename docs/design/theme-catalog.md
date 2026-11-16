@@ -6,17 +6,17 @@ US spelling, friendly workplace voice, no medical claims. The title is shown in 
 
 ## Themes
 
-| Key | Title | Challenge description | Goal units (default first) | Default goal | Default tag | Accent (placeholder) | iOS asset |
+| Key | Title | Challenge description | Goal units (default first) | Default goal | Default tag | Accent | iOS asset |
 |---|---|---|---|---|---|---|---|
 | `fitness` | Fitness | Get moving with coworkers this week: try a class, a walk or a workout together and log it. | workouts, classes, walks, minutes | 3 | Fitness | #FB72E4 (challengeAccent) | Mascot |
-| `sleep` | Sleep | Rest up with coworkers this week: pick a wind-down routine, trade your best bedtime tips and log each night you stick to it. | nights, hours | 5 | Sleep | #7B88FA (purple) | ThemeSleep |
-| `hydration` | Hydration | Sip up with coworkers this week: keep your bottle close, top it off through the day and log every refill. | refills, glasses, bottles | 10 | Hydration | #77C5FF (rewardBlue) | ThemeHydration |
-| `mindfulness` | Mindfulness | Take a breather with coworkers this week: step away for a few quiet minutes to stretch, breathe or go screen free, and log each pause. | breaks, minutes, sessions | 5 | Mindfulness | #FB72E4 (pink) | ThemeMindfulness |
-| `outdoors` | Outdoors | Get outside with coworkers this week: take a walk, eat lunch in the park or hold a meeting under the open sky, and log it. | outings, walks, minutes | 3 | Outdoors | #FFCC3E (yellow) | ThemeOutdoors |
-| `kindness` | Kindness | Spread some good with coworkers this week: say thanks, lend a hand or leave a kind note, and log each act. | acts, notes, shout-outs | 5 | Kindness | #F054A5 (eventsPink) | ThemeKindness |
-| `learning` | Learning | Learn something new with coworkers this week: read a chapter, try a short lesson or teach a teammate a trick, and log it. | lessons, sessions, chapters, minutes | 3 | Learning | #7B88FA (purple) | ThemeLearning |
-| `creativity` | Creativity | Make something with coworkers this week: sketch, write, build or craft, then share what you created. | creations, sketches, projects | 3 | Creativity | #FD4D03 (rewardOrange) | ThemeCreativity |
-| `cooking` | Cooking | Cook up something with coworkers this week: try a new recipe, pack a homemade lunch or swap dishes, and log every meal. | meals, recipes, dishes | 3 | Cooking | #FABF37 (rewardYellow) | ThemeCooking |
+| `sleep` | Sleep | Rest up with coworkers this week: pick a wind-down routine, trade your best bedtime tips and log each night you stick to it. | nights, hours | 5 | Sleep | #1E212B | MascotSleep |
+| `hydration` | Hydration | Sip up with coworkers this week: keep your bottle close, top it off through the day and log every refill. | refills, glasses, bottles | 10 | Hydration | #7B88FA | MascotHydration |
+| `mindfulness` | Mindfulness | Take a breather with coworkers this week: step away for a few quiet minutes to stretch, breathe or go screen free, and log each pause. | breaks, minutes, sessions | 5 | Mindfulness | #FFCC3E | MascotMindfulness |
+| `outdoors` | Outdoors | Get outside with coworkers this week: take a walk, eat lunch in the park or hold a meeting under the open sky, and log it. | outings, walks, minutes | 3 | Outdoors | #6BFF9B | MascotOutdoors |
+| `kindness` | Kindness | Spread some good with coworkers this week: say thanks, lend a hand or leave a kind note, and log each act. | acts, notes, shout-outs | 5 | Kindness | #FF7C73 | MascotKindness |
+| `learning` | Learning | Learn something new with coworkers this week: read a chapter, try a short lesson or teach a teammate a trick, and log it. | lessons, sessions, chapters, minutes | 3 | Learning | #66D9FF | MascotLearning |
+| `creativity` | Creativity | Make something with coworkers this week: sketch, write, build or craft, then share what you created. | creations, sketches, projects | 3 | Creativity | #FB72E4 | MascotCreativity |
+| `cooking` | Cooking | Cook up something with coworkers this week: try a new recipe, pack a homemade lunch or swap dishes, and log every meal. | meals, recipes, dishes | 3 | Cooking | #FFCC3E | MascotCooking |
 
 ## Submission prompts and picker blurbs
 
@@ -34,6 +34,6 @@ US spelling, friendly workplace voice, no medical claims. The title is shown in 
 
 ## Notes
 
-- Accent hexes for the eight new themes are placeholders from the brand palette in `ui/DesignSystem/tokens.json` until the art set's `ACCENTS.md` is final; Fitness uses `challengeAccent`.
+- Accent hexes come from `apps/admin/public/img/themes/ACCENTS.md`; Fitness uses `challengeAccent`. Title text is white on sleep, hydration and Fitness, and ink on the lighter accents (including creativity, which reuses the Fitness pink).
 - Tags: the portal's mock tag catalog includes all nine names. Production tags are managed by the trusted tag tooling (`tags/`); the seed script `scripts/seed-weekly-theme.mjs` aborts if no tag with the theme's name exists.
 - Unknown keys resolve to a neutral gray title-only card on every client, so an older app never breaks on a newer theme.

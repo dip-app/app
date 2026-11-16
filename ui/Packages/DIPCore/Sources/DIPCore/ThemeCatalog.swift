@@ -37,28 +37,28 @@ public enum DIPThemeCatalog {
         goalUnitSuggestions: ["workouts", "classes", "walks", "active minutes"], isKnown: true)
 
     public static let sleep = DIPTheme(
-        key: "sleep", displayName: "Sleep", illustration: .asset("ThemeSleep"), accent: .themed(hex: "#7B88FA"),
+        key: "sleep", displayName: "Sleep", illustration: .asset("MascotSleep"), accent: .themed(hex: "#1E212B"),
         goalUnitSuggestions: ["nights", "hours"], isKnown: true)
     public static let hydration = DIPTheme(
-        key: "hydration", displayName: "Hydration", illustration: .asset("ThemeHydration"), accent: .themed(hex: "#77C5FF"),
+        key: "hydration", displayName: "Hydration", illustration: .asset("MascotHydration"), accent: .themed(hex: "#7B88FA"),
         goalUnitSuggestions: ["refills", "glasses", "bottles"], isKnown: true)
     public static let mindfulness = DIPTheme(
-        key: "mindfulness", displayName: "Mindfulness", illustration: .asset("ThemeMindfulness"), accent: .themed(hex: "#FB72E4"),
+        key: "mindfulness", displayName: "Mindfulness", illustration: .asset("MascotMindfulness"), accent: .themed(hex: "#FFCC3E"),
         goalUnitSuggestions: ["breaks", "minutes", "sessions"], isKnown: true)
     public static let outdoors = DIPTheme(
-        key: "outdoors", displayName: "Outdoors", illustration: .asset("ThemeOutdoors"), accent: .themed(hex: "#FFCC3E"),
+        key: "outdoors", displayName: "Outdoors", illustration: .asset("MascotOutdoors"), accent: .themed(hex: "#6BFF9B"),
         goalUnitSuggestions: ["outings", "walks", "minutes"], isKnown: true)
     public static let kindness = DIPTheme(
-        key: "kindness", displayName: "Kindness", illustration: .asset("ThemeKindness"), accent: .themed(hex: "#F054A5"),
+        key: "kindness", displayName: "Kindness", illustration: .asset("MascotKindness"), accent: .themed(hex: "#FF7C73"),
         goalUnitSuggestions: ["acts", "notes", "shout-outs"], isKnown: true)
     public static let learning = DIPTheme(
-        key: "learning", displayName: "Learning", illustration: .asset("ThemeLearning"), accent: .themed(hex: "#7B88FA"),
+        key: "learning", displayName: "Learning", illustration: .asset("MascotLearning"), accent: .themed(hex: "#66D9FF"),
         goalUnitSuggestions: ["lessons", "sessions", "chapters", "minutes"], isKnown: true)
     public static let creativity = DIPTheme(
-        key: "creativity", displayName: "Creativity", illustration: .asset("ThemeCreativity"), accent: .themed(hex: "#FD4D03"),
+        key: "creativity", displayName: "Creativity", illustration: .asset("MascotCreativity"), accent: .themed(hex: "#FB72E4"),
         goalUnitSuggestions: ["creations", "sketches", "projects"], isKnown: true)
     public static let cooking = DIPTheme(
-        key: "cooking", displayName: "Cooking", illustration: .asset("ThemeCooking"), accent: .themed(hex: "#FABF37"),
+        key: "cooking", displayName: "Cooking", illustration: .asset("MascotCooking"), accent: .themed(hex: "#FFCC3E"),
         goalUnitSuggestions: ["meals", "recipes", "dishes"], isKnown: true)
 
     /// Approved themes, in organizer picker order. Copy and defaults: docs/design/theme-catalog.md.

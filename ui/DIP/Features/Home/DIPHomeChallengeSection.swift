@@ -17,7 +17,7 @@ extension DIPThemeAccent {
         case .neutral: DIPTokens.Color.textPrimary.swiftUIColor
         case .themed(let hex):
             // White on dark accents, ink on light ones (WCAG relative luminance).
-            Self.luminance(hex: hex).map { $0 < 0.4 ? DIPTokens.Color.textInverse.swiftUIColor : DIPTokens.Color.textPrimary.swiftUIColor }
+            Self.luminance(hex: hex).map { $0 < 0.3 ? DIPTokens.Color.textInverse.swiftUIColor : DIPTokens.Color.textPrimary.swiftUIColor }
                 ?? DIPTokens.Color.textPrimary.swiftUIColor
         }
     }
