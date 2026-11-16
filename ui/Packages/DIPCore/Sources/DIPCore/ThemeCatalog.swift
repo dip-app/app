@@ -2,11 +2,13 @@ import Foundation
 
 /// Accent of a weekly theme, named by its semantic design token. DIPCore has no UI dependency,
 /// so the app resolves the colour (`challenge` -> `challengeAccent`, `neutral` -> `surfaceMuted`).
-public enum DIPThemeAccent: String, Equatable, Sendable {
+public enum DIPThemeAccent: Equatable, Sendable {
     /// `challengeAccent` (#FB72E4) with a white display title, as in the Home reference.
     case challenge
     /// `surfaceMuted` with a dark title: the fallback for a theme this client does not know.
     case neutral
+    /// A catalog theme's own background colour (`#RRGGBB`), taken from the theme art set so the card blends with its illustration.
+    case themed(hex: String)
 }
 
 /// One bundled weekly-theme presentation. The stored challenge only carries
@@ -34,8 +36,33 @@ public enum DIPThemeCatalog {
         key: "fitness", displayName: "Fitness", illustration: .asset("Mascot"), accent: .challenge,
         goalUnitSuggestions: ["workouts", "classes", "walks", "active minutes"], isKnown: true)
 
-    /// Approved themes, in organizer picker order.
-    public static let themes: [DIPTheme] = [fitness]
+    public static let sleep = DIPTheme(
+        key: "sleep", displayName: "Sleep", illustration: .asset("ThemeSleep"), accent: .themed(hex: "#7B88FA"),
+        goalUnitSuggestions: ["nights", "hours"], isKnown: true)
+    public static let hydration = DIPTheme(
+        key: "hydration", displayName: "Hydration", illustration: .asset("ThemeHydration"), accent: .themed(hex: "#77C5FF"),
+        goalUnitSuggestions: ["refills", "glasses", "bottles"], isKnown: true)
+    public static let mindfulness = DIPTheme(
+        key: "mindfulness", displayName: "Mindfulness", illustration: .asset("ThemeMindfulness"), accent: .themed(hex: "#FB72E4"),
+        goalUnitSuggestions: ["breaks", "minutes", "sessions"], isKnown: true)
+    public static let outdoors = DIPTheme(
+        key: "outdoors", displayName: "Outdoors", illustration: .asset("ThemeOutdoors"), accent: .themed(hex: "#FFCC3E"),
+        goalUnitSuggestions: ["outings", "walks", "minutes"], isKnown: true)
+    public static let kindness = DIPTheme(
+        key: "kindness", displayName: "Kindness", illustration: .asset("ThemeKindness"), accent: .themed(hex: "#F054A5"),
+        goalUnitSuggestions: ["acts", "notes", "shout-outs"], isKnown: true)
+    public static let learning = DIPTheme(
+        key: "learning", displayName: "Learning", illustration: .asset("ThemeLearning"), accent: .themed(hex: "#7B88FA"),
+        goalUnitSuggestions: ["lessons", "sessions", "chapters", "minutes"], isKnown: true)
+    public static let creativity = DIPTheme(
+        key: "creativity", displayName: "Creativity", illustration: .asset("ThemeCreativity"), accent: .themed(hex: "#FD4D03"),
+        goalUnitSuggestions: ["creations", "sketches", "projects"], isKnown: true)
+    public static let cooking = DIPTheme(
+        key: "cooking", displayName: "Cooking", illustration: .asset("ThemeCooking"), accent: .themed(hex: "#FABF37"),
+        goalUnitSuggestions: ["meals", "recipes", "dishes"], isKnown: true)
+
+    /// Approved themes, in organizer picker order. Copy and defaults: docs/design/theme-catalog.md.
+    public static let themes: [DIPTheme] = [fitness, sleep, hydration, mindfulness, outdoors, kindness, learning, creativity, cooking]
 
     public static func catalogURL(for key: String) -> String { catalogPrefix + key }
 

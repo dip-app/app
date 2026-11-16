@@ -28,6 +28,14 @@ export const WEEKLY = "weekly" as const;
  */
 export const APPROVED_THEME_URLS: ReadonlySet<string> = new Set([
   "catalog://theme/fitness",
+  "catalog://theme/sleep",
+  "catalog://theme/hydration",
+  "catalog://theme/mindfulness",
+  "catalog://theme/outdoors",
+  "catalog://theme/kindness",
+  "catalog://theme/learning",
+  "catalog://theme/creativity",
+  "catalog://theme/cooking",
 ]);
 
 type Record_ = Record<string, unknown>;

@@ -114,7 +114,8 @@ describe("challenge request validation", () => {
     assert.deepEqual(fieldsOf(draftJson({ endDate: "2026-11-30T05:00:00Z" })), []); // exactly 14 days
   });
   test("catalog URL policy: only approved theme catalog URLs, never photos or event covers", () => {
-    assert.deepEqual([...APPROVED_THEME_URLS], ["catalog://theme/fitness"]);
+    assert.deepEqual([...APPROVED_THEME_URLS], ["catalog://theme/fitness", "catalog://theme/sleep", "catalog://theme/hydration", "catalog://theme/mindfulness", "catalog://theme/outdoors", "catalog://theme/kindness", "catalog://theme/learning", "catalog://theme/creativity", "catalog://theme/cooking"]);
+    for (const url of APPROVED_THEME_URLS) assert.deepEqual(fieldsOf(draftJson({ coverImageURL: url })), [], url);
     for (const url of ["https://example.com/fitness.png", "catalog://default/fitness", "catalog://theme/unknown", "catalog://theme/Fitness", "", "gs://bucket/x.png"]) {
       assert.deepEqual(fieldsOf(draftJson({ coverImageURL: url })), ["coverImageURL"], url);
     }

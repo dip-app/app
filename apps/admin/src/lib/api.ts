@@ -164,7 +164,7 @@ export function seedThemes(now: Date): WeeklyTheme[] {
   const theme = (id: string, companyId: string, monday: string, counts: { participantCount: number; completedCount: number }): WeeklyTheme => ({
     id, companyId, title: fitness.displayName, description: fitness.defaultDescription,
     tagIds: TAGS.filter((tag) => tag.name === fitness.defaultTagName).map((tag) => tag.id), type: "weekly",
-    goal: 3, goalUnit: fitness.goalUnits[0], coverImageURL: fitness.url,
+    goal: fitness.defaultGoal, goalUnit: fitness.goalUnits[0], coverImageURL: fitness.url,
     startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)), pointsReward: 50, ...counts,
     createdBy: PERSONAS.admin.uid, createdAt: weekStartIso(addDays(monday, -7)), updatedAt: weekStartIso(addDays(monday, -7)), revision: 1,
   });

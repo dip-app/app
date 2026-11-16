@@ -8,12 +8,34 @@ extension DIPThemeAccent {
         switch self {
         case .challenge: DIPTokens.Color.challengeAccent.swiftUIColor
         case .neutral: DIPTokens.Color.surfaceMuted.swiftUIColor
+        case .themed(let hex): Self.color(hex: hex) ?? DIPTokens.Color.surfaceMuted.swiftUIColor
         }
     }
     var title: Color {
         switch self {
         case .challenge: DIPTokens.Color.textInverse.swiftUIColor
         case .neutral: DIPTokens.Color.textPrimary.swiftUIColor
+        case .themed(let hex):
+            // White on dark accents, ink on light ones (WCAG relative luminance).
+            Self.luminance(hex: hex).map { $0 < 0.4 ? DIPTokens.Color.textInverse.swiftUIColor : DIPTokens.Color.textPrimary.swiftUIColor }
+                ?? DIPTokens.Color.textPrimary.swiftUIColor
+        }
+    }
+
+    private static func rgb(hex: String) -> (Double, Double, Double)? {
+        let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        return (Double((value >> 16) & 0xFF) / 255, Double((value >> 8) & 0xFF) / 255, Double(value & 0xFF) / 255)
+    }
+
+    private static func color(hex: String) -> Color? {
+        rgb(hex: hex).map { Color(.sRGB, red: $0.0, green: $0.1, blue: $0.2, opacity: 1) }
+    }
+
+    private static func luminance(hex: String) -> Double? {
+        rgb(hex: hex).map { r, g, b in
+            func lin(_ c: Double) -> Double { c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+            return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
         }
     }
 }
