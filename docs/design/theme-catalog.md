@@ -9,14 +9,14 @@ Themes are broad on purpose: each one holds many different events and activities
 | Key | Title | Challenge description | Goal units (default first) | Default goal | Default tag | Accent | iOS asset |
 |---|---|---|---|---|---|---|---|
 | `fitness` | Fitness | Get moving with coworkers this week: try a class, a walk or a workout together and log it. | workouts, classes, walks, minutes | 3 | Fitness | #FB72E4 | Mascot |
-| `outdoors` | Outdoors | Get outside with coworkers this week: try a hike, a kayak trip or a picnic in the park, and log your outing. | outings, hours | 2 | Outdoors | #6BFF9B | MascotOutdoors |
-| `food` | Food & Drink | Gather around good food with coworkers this week: cook together, host a potluck or hit a coffee or lunch spot, and log it. | gatherings, meals, tastings | 2 | Food & Drink | #FFCC3E | MascotFood |
-| `arts` | Arts & Crafts | Make something with coworkers this week: paint, throw a pot, knit, take photos or craft, then share what you made. | creations, projects, sessions | 2 | Arts & Crafts | #FF7C73 | MascotArts |
-| `games` | Games | Play together this week: board games at lunch, a trivia night, a video game round or an escape room, and log each game. | games, sessions, rounds | 3 | Games | #7B88FA | MascotGames |
-| `music` | Music | Make some noise with coworkers this week: sing karaoke, jam together, catch a concert or build a shared playlist, and log it. | songs, events, sessions | 3 | Music | #FB72E4 | MascotMusic |
-| `learning` | Learning | Learn something new with coworkers this week: join a workshop, read a chapter for book club, practice a language or host a lunch-and-learn, and log it. | lessons, sessions, chapters | 3 | Learning | #66D9FF | MascotLearning |
-| `volunteering` | Volunteering | Give back with coworkers this week: join a cleanup, a food bank shift or a charity drive, or mentor someone, and log your time. | shifts, hours, events | 1 | Volunteering | #6BFF9B | MascotVolunteering |
-| `wellness` | Wellness | Recharge with coworkers this week: try yoga, a guided meditation or a stretch break, and log each session. | sessions, minutes, breaks | 3 | Wellness | #66D9FF | MascotWellness |
+| `outdoors` | Outdoors | Get outside with coworkers this week: try a hike, a kayak trip or a picnic in the park, and log your outing. | outings, hours | 2 | Outdoors | #6BE5D0 | MascotOutdoors |
+| `food` | Food & Drink | Gather around good food with coworkers this week: cook together, host a potluck or hit a coffee or lunch spot, and log it. | gatherings, meals, tastings | 2 | Food & Drink | #FF7C73 | MascotFood |
+| `arts` | Arts & Crafts | Make something with coworkers this week: paint, throw a pot, knit, take photos or craft, then share what you made. | creations, projects, sessions | 2 | Arts & Crafts | #7B88FA | MascotArts |
+| `games` | Games | Play together this week: board games at lunch, a trivia night, a video game round or an escape room, and log each game. | games, sessions, rounds | 3 | Games | #FFCC3E | MascotGames |
+| `music` | Music | Make some noise with coworkers this week: sing karaoke, jam together, catch a concert or build a shared playlist, and log it. | songs, events, sessions | 3 | Music | #66D9FF | MascotMusic |
+| `learning` | Learning | Learn something new with coworkers this week: join a workshop, read a chapter for book club, practice a language or host a lunch-and-learn, and log it. | lessons, sessions, chapters | 3 | Learning | #6BFF9B | MascotLearning |
+| `volunteering` | Volunteering | Give back with coworkers this week: join a cleanup, a food bank shift or a charity drive, or mentor someone, and log your time. | shifts, hours, events | 1 | Volunteering | #1E212B | MascotVolunteering |
+| `wellness` | Wellness | Recharge with coworkers this week: try yoga, a guided meditation or a stretch break, and log each session. | sessions, minutes, breaks | 3 | Wellness | #FF7C73 | MascotWellness |
 
 ## Submission prompts and picker blurbs
 
@@ -34,6 +34,6 @@ Themes are broad on purpose: each one holds many different events and activities
 
 ## Notes
 
-- Accent hexes for the seven new themes are placeholders until the art agent's `apps/admin/public/img/themes/ACCENTS.md` is updated for this set; Fitness uses `challengeAccent`. Title text is white on a dark or mid-tone accent and ink on a light one (luminance rule in `DIPHomeChallengeSection.swift`).
+- Accent hexes come from `apps/admin/public/img/themes/ACCENTS.md`; Fitness uses `challengeAccent`. Title text is white on dark or mid-tone accents (purple, ink, Fitness pink) and ink on the lighter ones (rule in `DIPHomeChallengeSection.swift`, checked against real contrast ratios).
 - Tags: the portal's mock tag catalog includes all nine names. Production tags are managed by the trusted tag tooling (`tags/`); the seed script `scripts/seed-weekly-theme.mjs` aborts if no tag with the theme's name exists.
 - Unknown keys resolve to a neutral gray title-only card on every client, so an older app never breaks on a newer theme.

@@ -46,7 +46,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Outdoors",
     url: `${THEME_URL_PREFIX}outdoors`,
     illustration: "/img/themes/outdoors.png",
-    accent: "#6BFF9B", // (placeholder until ACCENTS.md is updated)
+    accent: "#6BE5D0", // ACCENTS.md
     goalUnits: ["outings", "hours"],
     defaultGoal: 2,
     defaultTagName: "Outdoors",
@@ -59,7 +59,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Food & Drink",
     url: `${THEME_URL_PREFIX}food`,
     illustration: "/img/themes/food.png",
-    accent: "#FFCC3E", // (placeholder until ACCENTS.md is updated)
+    accent: "#FF7C73", // ACCENTS.md
     goalUnits: ["gatherings", "meals", "tastings"],
     defaultGoal: 2,
     defaultTagName: "Food & Drink",
@@ -72,7 +72,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Arts & Crafts",
     url: `${THEME_URL_PREFIX}arts`,
     illustration: "/img/themes/arts.png",
-    accent: "#FF7C73", // (placeholder until ACCENTS.md is updated)
+    accent: "#7B88FA", // ACCENTS.md
     goalUnits: ["creations", "projects", "sessions"],
     defaultGoal: 2,
     defaultTagName: "Arts & Crafts",
@@ -85,7 +85,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Games",
     url: `${THEME_URL_PREFIX}games`,
     illustration: "/img/themes/games.png",
-    accent: "#7B88FA", // (placeholder until ACCENTS.md is updated)
+    accent: "#FFCC3E", // ACCENTS.md
     goalUnits: ["games", "sessions", "rounds"],
     defaultGoal: 3,
     defaultTagName: "Games",
@@ -98,7 +98,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Music",
     url: `${THEME_URL_PREFIX}music`,
     illustration: "/img/themes/music.png",
-    accent: "#FB72E4", // (placeholder until ACCENTS.md is updated)
+    accent: "#66D9FF", // ACCENTS.md
     goalUnits: ["songs", "events", "sessions"],
     defaultGoal: 3,
     defaultTagName: "Music",
@@ -111,7 +111,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Learning",
     url: `${THEME_URL_PREFIX}learning`,
     illustration: "/img/themes/learning.png",
-    accent: "#66D9FF", // (placeholder until ACCENTS.md is updated)
+    accent: "#6BFF9B", // ACCENTS.md
     goalUnits: ["lessons", "sessions", "chapters"],
     defaultGoal: 3,
     defaultTagName: "Learning",
@@ -124,7 +124,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Volunteering",
     url: `${THEME_URL_PREFIX}volunteering`,
     illustration: "/img/themes/volunteering.png",
-    accent: "#6BFF9B", // (placeholder until ACCENTS.md is updated)
+    accent: "#1E212B", // ACCENTS.md
     goalUnits: ["shifts", "hours", "events"],
     defaultGoal: 1,
     defaultTagName: "Volunteering",
@@ -137,7 +137,7 @@ export const THEMES: ThemeOption[] = [
     displayName: "Wellness",
     url: `${THEME_URL_PREFIX}wellness`,
     illustration: "/img/themes/wellness.png",
-    accent: "#66D9FF", // (placeholder until ACCENTS.md is updated)
+    accent: "#FF7C73", // ACCENTS.md
     goalUnits: ["sessions", "minutes", "breaks"],
     defaultGoal: 3,
     defaultTagName: "Wellness",
