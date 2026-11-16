@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="730" height="539" viewBox="0 0 730 539">
+<g transform="translate(120 150) scale(1.1)" fill="#FFFFFF"><circle cx="26" cy="34" r="22"/><circle cx="58" cy="22" r="28"/><circle cx="92" cy="34" r="20"/><rect x="6" y="34" width="106" height="22" rx="11"/></g><g transform="translate(20 220) scale(0.7)" fill="#FFFFFF"><circle cx="26" cy="34" r="22"/><circle cx="58" cy="22" r="28"/><circle cx="92" cy="34" r="20"/><rect x="6" y="34" width="106" height="22" rx="11"/></g><g transform="translate(190 300) scale(0.5)" fill="#FFFFFF"><circle cx="26" cy="34" r="22"/><circle cx="58" cy="22" r="28"/><circle cx="92" cy="34" r="20"/><rect x="6" y="34" width="106" height="22" rx="11"/></g>
+<rect x="545" y="470" width="175" height="38" rx="6" fill="#7B88FA"/><rect x="702" y="474" width="14" height="30" fill="#FFFFFF" opacity=".55"/><rect x="559" y="484" width="115" height="8" rx="4" fill="#FFFFFF" opacity=".8"/>
+<rect x="565" y="430" width="150" height="38" rx="6" fill="#FB72E4"/><rect x="697" y="434" width="14" height="30" fill="#FFFFFF" opacity=".55"/><rect x="579" y="444" width="90" height="8" rx="4" fill="#FFFFFF" opacity=".8"/>
+<rect x="540" y="390" width="170" height="38" rx="6" fill="#FF7C73"/><rect x="692" y="394" width="14" height="30" fill="#FFFFFF" opacity=".55"/><rect x="554" y="404" width="110" height="8" rx="4" fill="#FFFFFF" opacity=".8"/>
+<rect x="560" y="350" width="140" height="38" rx="6" fill="#6BFF9B"/><rect x="682" y="354" width="14" height="30" fill="#FFFFFF" opacity=".55"/><rect x="574" y="364" width="80" height="8" rx="4" fill="#FFFFFF" opacity=".8"/>
+<path d="M460 150C500 148 520 190 545 270C560 300 612 330 612 390C612 450 540 490 485 488C420 486 372 440 370 360C368 260 400 152 460 150Z" fill="#FFCC3E"/>
+<g fill="none" stroke="#1E212B" stroke-width="5"><circle cx="425" cy="252" r="20"/><circle cx="482" cy="252" r="20"/><path d="M445 250H462"/></g>
+<circle cx="425" cy="254" r="7" fill="#1E212B"/><circle cx="482" cy="254" r="7" fill="#1E212B"/>
+<path d="M439 288Q453 304 467 288" fill="none" stroke="#1E212B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M395 335L455 350L515 335V420L455 435L395 420Z" fill="#FFFFFF"/><path d="M455 350V435" stroke="#1E212B" stroke-width="4"/><g stroke="#1E212B" stroke-width="4" stroke-linecap="round"><path d="M408 360L443 369M408 380L443 389M408 400L443 409M467 369L502 360M467 389L502 380M467 409L502 400"/></g>
+<path d="M376 300C350 340 370 395 400 405" fill="none" stroke="#1E212B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M548 310C560 340 540 385 512 405" fill="none" stroke="#1E212B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="400" cy="405" r="8" fill="#1E212B"/>
+<circle cx="512" cy="405" r="8" fill="#1E212B"/>
+<path d="M430 470C410 480 380 480 365 525" fill="none" stroke="#1E212B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M600 74L604.8 85.2L616 90L604.8 94.8L600 106L595.2 94.8L584 90L595.2 85.2Z" fill="#FFFFFF"/>
+<path d="M690.0 147.0 L693.6 153.8 L701.3 153.5 L697.1 160.0 L701.3 166.5 L693.6 166.2 L690.0 173.0 L686.4 166.2 L678.7 166.5 L682.9 160.0 L678.7 153.5 L686.4 153.8Z" fill="#FB72E4"/>
+<path d="M420 88L428.4 100L420 112L411.6 100Z" fill="#FFFFFF"/>
+<path d="M480 40c7.199999999999999 8.4 -7.199999999999999 14.399999999999999 0 22.8s6.0 9.6 0 18.0" fill="none" stroke="#7B88FA" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M660 60L660.5 60.2 L660.7 60.9 L660.4 61.6 L659.5 62.1 L658.3 62.1 L657.0 61.4 L656.2 60.0 L656.1 58.1 L657.0 56.1 L658.8 54.6 L661.4 54.1 L664.2 54.9 L666.5 57.0 L667.7 60.1 L667.4 63.7 L665.4 67.0 L661.9 69.2 L657.6 69.6 L653.3 68.0 L650.0 64.5 L648.5 59.7 L649.2 54.5 L652.4 49.9 L657.4 47.1 L663.5 46.7 L669.3 49.1 L673.6 54.0 L675.4 60.5 L674.1 67.4 L669.8 73.3 L663.2 76.8 L655.4 77.0 L648.1 73.7 L642.8 67.4 L640.8 59.2 L642.5 50.6 L648.0 43.5 L656.3 39.4 L665.7 39.3 L674.5 43.5" fill="none" stroke="#1E212B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="330" cy="120" r="7" fill="#FFFFFF"/>
+</svg>
