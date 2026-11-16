@@ -39,6 +39,8 @@ targets:
     info:
       path: Config/DIP-Info.plist
       properties:
+        # HTTPS only (Firebase/Google): exempt, so TestFlight does not ask the export-compliance question per build.
+        ITSAppUsesNonExemptEncryption: false
         NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
         NSPhotoLibraryAddUsageDescription: Save event photos to your library.
         # Push client feature flag (default NO; see docs/design/push-client.md).
@@ -78,6 +80,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: work.letsdip.app
+        # iPhone-only for now: an iPad build would need iPad screenshots and all four orientations.
+        TARGETED_DEVICE_FAMILY: "1"
         # Free-team builds use the generated Config/DIP.entitlements (no Associated Domains). Paid-team builds set
         # DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements in the untracked Local.xcconfig (docs/design/share-links.md).
         CODE_SIGN_ENTITLEMENTS: $(DIP_ENTITLEMENTS)
