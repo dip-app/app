@@ -15,6 +15,20 @@ final class ThemeCatalogTests: XCTestCase {
         XCTAssertEqual(DIPThemeCatalog.catalogURL(for: "fitness"), "catalog://theme/fitness")
     }
 
+    func testCatalogListsAllNineThemesWithBundledArtAndSuggestions() {
+        let keys = ["fitness", "sleep", "hydration", "mindfulness", "outdoors", "kindness", "learning", "creativity", "cooking"]
+        XCTAssertEqual(DIPThemeCatalog.themes.map(\.key), keys)
+        for key in keys {
+            let theme = DIPThemeCatalog.theme(coverImageURL: DIPThemeCatalog.catalogURL(for: key))
+            XCTAssertTrue(theme.isKnown, key)
+            XCTAssertNotNil(theme.illustration, key)
+            XCTAssertFalse(theme.goalUnitSuggestions.isEmpty, key)
+            XCTAssertFalse(theme.displayName.isEmpty, key)
+            if case .themed(let hex) = theme.accent { XCTAssertNotNil(hex.range(of: "^#[0-9A-F]{6}$", options: .regularExpression), key) }
+        }
+        XCTAssertEqual(DIPThemeCatalog.theme(key: "sleep").displayName, "Sleep")
+    }
+
     func testUnknownOrForeignValuesGetNeutralTitleOnlyFallback() {
         for url in ["catalog://theme/yoga", "catalog://theme/", "catalog://default/fitness", "https://example.test/photo.jpg",
                     "catalog://theme/Fitness", "catalog://theme/../fitness", "", "catalog://theme/fitness/extra"] {

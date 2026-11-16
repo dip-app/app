@@ -38,7 +38,7 @@ function newDraft(): ThemeDraft {
   const monday = nextMonday();
   return {
     title: fitness.displayName, description: fitness.defaultDescription, tagIds: [], type: "weekly",
-    goal: 3, goalUnit: fitness.goalUnits[0], coverImageURL: fitness.url,
+    goal: fitness.defaultGoal, goalUnit: fitness.goalUnits[0], coverImageURL: fitness.url,
     startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)), pointsReward: 50,
   };
 }
@@ -122,6 +122,11 @@ export function ThemeForm({ theme, onReload }: Props) {
       title: !current.title.trim() || current.title === previous.displayName ? next.displayName : current.title,
       description: !current.description.trim() || current.description === previous.defaultDescription ? next.defaultDescription : current.description,
       goalUnit: !current.goalUnit.trim() || current.goalUnit === previous.goalUnits[0] ? (next.goalUnits[0] ?? current.goalUnit) : current.goalUnit,
+      goal: current.goal === previous.defaultGoal && next.goalUnits.length ? next.defaultGoal : current.goal,
+      // A new theme follows the picked theme's tag until the organizer chooses tags themselves.
+      tagIds: !editing && !touched.current.tags && next.defaultTagName
+        ? tags.filter((tag) => tag.name.toLowerCase() === next.defaultTagName.toLowerCase()).map((tag) => tag.id)
+        : current.tagIds,
     }));
   }
 
@@ -186,7 +191,8 @@ export function ThemeForm({ theme, onReload }: Props) {
   const err = (key: string) => errors[key];
   const invalid = (key: string) => (errors[key] ? true : undefined);
   const describedBy = (key: string, hint?: string) => [err(key) ? `${FIELD_IDS[key] ?? key}-error` : "", hint ?? ""].filter(Boolean).join(" ") || undefined;
-  const units = resolveTheme(draft.coverImageURL).goalUnits;
+  const selected = resolveTheme(draft.coverImageURL);
+  const units = selected.goalUnits;
 
   return (
     <div className="form-layout">
@@ -208,7 +214,7 @@ export function ThemeForm({ theme, onReload }: Props) {
         <div className="section wide">
           <fieldset className="field">
             <legend>Theme</legend>
-            <span className="hint">Each theme is a designed illustration that ships with the app. More themes are coming.</span>
+            <span className="hint">Each theme is a designed illustration that ships with the app. Pick one to fill in a title, description, goal and tag you can still change.</span>
             <div className="covers">
               {THEMES.map((option, index) => (
                 <button key={option.key} id={index === 0 ? "theme-first" : undefined} type="button" className="cover-option theme-option"
@@ -218,6 +224,9 @@ export function ThemeForm({ theme, onReload }: Props) {
                 </button>
               ))}
             </div>
+            {selected.whyItsFun && (
+              <span className="hint" aria-live="polite"><strong>Why it’s fun:</strong> {selected.whyItsFun} Members post: {selected.submissionPrompt}</span>
+            )}
             {err("coverImageURL") && <span className="error" id="theme-first-error">{err("coverImageURL")}</span>}
           </fieldset>
           <div className="field">
