@@ -36,33 +36,33 @@ public enum DIPThemeCatalog {
         key: "fitness", displayName: "Fitness", illustration: .asset("Mascot"), accent: .challenge,
         goalUnitSuggestions: ["workouts", "classes", "walks", "active minutes"], isKnown: true)
 
-    public static let sleep = DIPTheme(
-        key: "sleep", displayName: "Sleep", illustration: .asset("MascotSleep"), accent: .themed(hex: "#1E212B"),
-        goalUnitSuggestions: ["nights", "hours"], isKnown: true)
-    public static let hydration = DIPTheme(
-        key: "hydration", displayName: "Hydration", illustration: .asset("MascotHydration"), accent: .themed(hex: "#7B88FA"),
-        goalUnitSuggestions: ["refills", "glasses", "bottles"], isKnown: true)
-    public static let mindfulness = DIPTheme(
-        key: "mindfulness", displayName: "Mindfulness", illustration: .asset("MascotMindfulness"), accent: .themed(hex: "#FFCC3E"),
-        goalUnitSuggestions: ["breaks", "minutes", "sessions"], isKnown: true)
     public static let outdoors = DIPTheme(
-        key: "outdoors", displayName: "Outdoors", illustration: .asset("MascotOutdoors"), accent: .themed(hex: "#6BFF9B"),
-        goalUnitSuggestions: ["outings", "walks", "minutes"], isKnown: true)
-    public static let kindness = DIPTheme(
-        key: "kindness", displayName: "Kindness", illustration: .asset("MascotKindness"), accent: .themed(hex: "#FF7C73"),
-        goalUnitSuggestions: ["acts", "notes", "shout-outs"], isKnown: true)
+        key: "outdoors", displayName: "Outdoors", illustration: .asset("MascotOutdoors"), accent: .themed(hex: "#6BE5D0"),
+        goalUnitSuggestions: ["outings", "hours"], isKnown: true)
+    public static let food = DIPTheme(
+        key: "food", displayName: "Food & Drink", illustration: .asset("MascotFood"), accent: .themed(hex: "#FF7C73"),
+        goalUnitSuggestions: ["gatherings", "meals", "tastings"], isKnown: true)
+    public static let arts = DIPTheme(
+        key: "arts", displayName: "Arts & Crafts", illustration: .asset("MascotArts"), accent: .themed(hex: "#7B88FA"),
+        goalUnitSuggestions: ["creations", "projects", "sessions"], isKnown: true)
+    public static let games = DIPTheme(
+        key: "games", displayName: "Games", illustration: .asset("MascotGames"), accent: .themed(hex: "#FFCC3E"),
+        goalUnitSuggestions: ["games", "sessions", "rounds"], isKnown: true)
+    public static let music = DIPTheme(
+        key: "music", displayName: "Music", illustration: .asset("MascotMusic"), accent: .themed(hex: "#66D9FF"),
+        goalUnitSuggestions: ["songs", "events", "sessions"], isKnown: true)
     public static let learning = DIPTheme(
-        key: "learning", displayName: "Learning", illustration: .asset("MascotLearning"), accent: .themed(hex: "#66D9FF"),
-        goalUnitSuggestions: ["lessons", "sessions", "chapters", "minutes"], isKnown: true)
-    public static let creativity = DIPTheme(
-        key: "creativity", displayName: "Creativity", illustration: .asset("MascotCreativity"), accent: .themed(hex: "#FB72E4"),
-        goalUnitSuggestions: ["creations", "sketches", "projects"], isKnown: true)
-    public static let cooking = DIPTheme(
-        key: "cooking", displayName: "Cooking", illustration: .asset("MascotCooking"), accent: .themed(hex: "#FFCC3E"),
-        goalUnitSuggestions: ["meals", "recipes", "dishes"], isKnown: true)
+        key: "learning", displayName: "Learning", illustration: .asset("MascotLearning"), accent: .themed(hex: "#6BFF9B"),
+        goalUnitSuggestions: ["lessons", "sessions", "chapters"], isKnown: true)
+    public static let volunteering = DIPTheme(
+        key: "volunteering", displayName: "Volunteering", illustration: .asset("MascotVolunteering"), accent: .themed(hex: "#1E212B"),
+        goalUnitSuggestions: ["shifts", "hours", "events"], isKnown: true)
+    public static let wellness = DIPTheme(
+        key: "wellness", displayName: "Wellness", illustration: .asset("MascotWellness"), accent: .themed(hex: "#FF7C73"),
+        goalUnitSuggestions: ["sessions", "minutes", "breaks"], isKnown: true)
 
     /// Approved themes, in organizer picker order. Copy and defaults: docs/design/theme-catalog.md.
-    public static let themes: [DIPTheme] = [fitness, sleep, hydration, mindfulness, outdoors, kindness, learning, creativity, cooking]
+    public static let themes: [DIPTheme] = [fitness, outdoors, food, arts, games, music, learning, volunteering, wellness]
 
     public static func catalogURL(for key: String) -> String { catalogPrefix + key }
 

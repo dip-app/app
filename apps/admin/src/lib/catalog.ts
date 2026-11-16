@@ -26,8 +26,8 @@ export const TAGS: Tag[] = [
   { id: "tag-fitness", name: "Fitness" }, { id: "tag-energetic", name: "Energetic" }, { id: "tag-hype", name: "Hype" },
   { id: "tag-outdoors", name: "Outdoors" }, { id: "tag-social", name: "Social" }, { id: "tag-cooking", name: "Cooking" },
   { id: "tag-games", name: "Games" }, { id: "tag-chill", name: "Chill" },
-  { id: "tag-sleep", name: "Sleep" }, { id: "tag-hydration", name: "Hydration" }, { id: "tag-mindfulness", name: "Mindfulness" },
-  { id: "tag-kindness", name: "Kindness" }, { id: "tag-learning", name: "Learning" }, { id: "tag-creativity", name: "Creativity" },
+  { id: "tag-food", name: "Food & Drink" }, { id: "tag-arts", name: "Arts & Crafts" }, { id: "tag-music", name: "Music" },
+  { id: "tag-learning", name: "Learning" }, { id: "tag-volunteering", name: "Volunteering" }, { id: "tag-wellness", name: "Wellness" },
 ];
 
 export const TAG_IDS = TAGS.map((tag) => tag.id);

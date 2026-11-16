@@ -4,7 +4,7 @@ User: sandervonk
 Date: 2026-11-16
 Workstream: theme-catalog
 Agent: Claude Code
-Status: active
+Status: completed
 
 ## Summary
 
@@ -32,3 +32,11 @@ Added eight weekly themes (sleep, hydration, mindfulness, outdoors, kindness, le
 
 Create the production tags (Sleep, Hydration, Mindfulness, Kindness, Learning, Creativity; Outdoors and Cooking may exist) before using the new themes.
 
+
+## Update (owner change of plan)
+
+The first set of eight single-habit themes was replaced by eight broad ones: outdoors, food, arts, games, music, learning, volunteering, wellness (display names Outdoors, Food & Drink, Arts & Crafts, Games, Music, Learning, Volunteering, Wellness). Old keys removed from the portal, server allow-list, iOS catalog, tests, docs and mock tags. iOS assets are Mascot<Key>. Accents for the seven new themes are placeholders until the art agent updates ACCENTS.md. Checks rerun: vitest themes+api, tsc, gcp challenges unit (23), swift ThemeCatalogTests (3). PR #169 intentionally not merged until the art lands.
+
+## Art v2 applied
+
+Merged origin/main (art v2). Accents from ACCENTS.md applied in themes.ts, ThemeCatalog.swift and the docs table. Title contrast (ink on #1E212B): ink text on teal 10.5:1, coral 6.4:1, yellow 10.7:1, blue 9.9:1, green 12.5:1; white on ink 16.1:1 and on purple 3.1:1 (large title text only). All eight PNGs and Mascot image sets exist. xcodebuild DIP generic/platform=iOS: BUILD SUCCEEDED. Targeted tests rerun and passing.

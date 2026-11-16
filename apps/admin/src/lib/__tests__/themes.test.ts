@@ -87,16 +87,16 @@ describe("theme catalog", () => {
     expect(unknown).toMatchObject({ key: "yoga", displayName: "Yoga week", illustration: null, accent: FALLBACK_ACCENT });
   });
 
-  it("lists Fitness plus the eight weekly themes with complete, valid defaults", () => {
+  it("lists Fitness plus the eight broad weekly themes with complete, valid defaults", () => {
     expect(THEMES.map((t) => t.key)).toEqual(
-      ["fitness", "sleep", "hydration", "mindfulness", "outdoors", "kindness", "learning", "creativity", "cooking"],
+      ["fitness", "outdoors", "food", "arts", "games", "music", "learning", "volunteering", "wellness"],
     );
     expect(new Set(THEMES.map((t) => t.url)).size).toBe(THEMES.length);
     for (const t of THEMES) {
       expect(t.url).toBe(`catalog://theme/${t.key}`);
       expect(t.illustration).toBe(`/img/themes/${t.key}.png`);
       expect(t.accent).toMatch(/^#[0-9A-F]{6}$/);
-      expect(t.displayName.split(" ").length).toBeLessThanOrEqual(2);
+      expect(t.displayName.split(" ").length).toBeLessThanOrEqual(3);
       expect(t.goalUnits.length).toBeGreaterThan(0);
       expect(t.goalUnits.every((u) => u.length > 0 && u.length <= 24)).toBe(true);
       expect(Number.isInteger(t.defaultGoal) && t.defaultGoal >= 1).toBe(true);
