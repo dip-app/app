@@ -204,13 +204,13 @@ struct AccountsStageView: View {
             if let text {
                 Text(text)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline))
-                    .lineLimit(1)
+                    .dipLineLimit(1)
                     .id(text)
                     .transition(reduceMotion ? .opacity : .push(from: .bottom))
             }
         }
         .padding(.horizontal, 16)
-        .frame(height: 32)
+        .dipFixedFrame(height: 32)
         .background(.white, in: Capsule())
         .clipShape(Capsule())
         .animation(reduceMotion ? .linear(duration: DIPMotion.reducedMotionDuration)
@@ -250,7 +250,8 @@ struct AccountsStageView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, showsStage ? DIPTokens.Spacing.sectionGap : 0)
         .mask(alignment: .top) { Rectangle().padding(.bottom, -4000) }
-        .animation(OnboardingMotion.stage, value: copy?.key)
+        // Reduce Motion: the entrance transitions already cross-fade; no extra spring on the container.
+        .animation(reduceMotion ? nil : OnboardingMotion.stage, value: copy?.key)
     }
 
     private func entrance(_ entrance: StageCopy.Entrance, delay: Double) -> AnyTransition {
@@ -398,7 +399,9 @@ struct AccountsStageView: View {
     private func runReel() async {
         let interval = reduceMotion ? StagePill.reducedReelInterval : StagePill.reelInterval
         let count = StagePill.entries.count
-        let changes = count * StagePill.reelCycles - reelIndex % count
+        // Reduce Motion: one pass through the entries, then rest on the first (no endless auto-advance).
+        let cycles = reduceMotion ? 1 : StagePill.reelCycles
+        let changes = count * cycles - reelIndex % count
         for change in 1...max(changes, 1) {
             do { try await Task.sleep(for: .seconds(interval)) } catch { return }
             reelIndex = (reelIndex + 1) % count

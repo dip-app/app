@@ -145,8 +145,12 @@ struct DIPHomeScreen: View {
             .frame(maxWidth: .infinity, alignment: .top)
             if let paginationError { Text(paginationError).font(.footnote).foregroundStyle(.secondary) }
             if let onLoadMore {
-                Button(loadingMore ? "Loading more…" : "Load more events", action: onLoadMore)
-                    .disabled(loadingMore).accessibilityIdentifier("home.events.more")
+                // HOME-Q13: the design system's secondary button (44 pt+, capsule). Loading more content is not a
+                // commit, so no haptic (DIPHaptics).
+                DIPButton(loadingMore ? "Loading more…" : "Load more events", emphasis: .secondary,
+                          isLoading: loadingMore, action: onLoadMore)
+                    .padding(.top, 8) // 16 pt below the cards (the column spaces by 8)
+                    .accessibilityIdentifier("home.events.more")
             }
         }
         .animation(swap, value: scope)
@@ -205,7 +209,7 @@ struct DIPHomeScreen: View {
             .padding(.horizontal, 20)
         }
         .scrollIndicators(.hidden)
-        .frame(height: 205).padding(.horizontal, -20)
+        .dipFixedFrame(height: 205).padding(.horizontal, -20)
         .accessibilityIdentifier("home.events")
     }
 
@@ -288,7 +292,7 @@ struct DIPHomeScreen: View {
         Text(text)
             .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
             .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
-            .padding(.horizontal, 12).frame(height: 28)
+            .padding(.horizontal, 12).dipFixedFrame(height: 28)
             .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.10), in: Capsule())
     }
 
@@ -296,7 +300,7 @@ struct DIPHomeScreen: View {
         Text(text)
             .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
             .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-            .padding(.horizontal, 12).frame(height: 28)
+            .padding(.horizontal, 12).dipFixedFrame(height: 28)
             .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 1.5))
     }
 
@@ -317,7 +321,7 @@ struct DIPHomeScreen: View {
                         onSelect("Recent attendees")
                     } label: {
                         Text("See All").font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                            .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 40)
+                            .foregroundStyle(.white).frame(maxWidth: .infinity).dipFixedFrame(height: 40)
                             .background(
                                 DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                     }
@@ -334,7 +338,8 @@ struct DIPHomeScreen: View {
     }
     private func sectionTitle(_ text: String, size: CGFloat = 17) -> some View {
         Text(text).font(DIPReferenceAssets.font("Figtree-Regular", size: size))
-            .foregroundStyle(.black).frame(height: 22, alignment: .leading)
+            .foregroundStyle(.black).dipFixedFrame(height: 22, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

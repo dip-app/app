@@ -24,8 +24,15 @@ enum EventBarAction {
     static func resolve(route: Route?, snapshot: DIPAppSnapshot?, isLoading: Bool, now: Date = Date()) -> DIPBottomBarAction? {
         switch route {
         case .event(let id):
+            if let event = snapshot?.eventDetails[id], event.isPast, event.metadata?.status != .cancelled,
+               case .empty(let canAdd) = albumContent(snapshot?.albums[id]) {
+                return canAdd ? DIPBottomBarAction(title: "Add Photos", identifier: "event.primary") : nil
+            }
             return forEvent(snapshot?.eventDetails[id], isLoading: isLoading, now: now)
         case .participants(let id) where snapshot?.eventDetails[id]?.isPast == true:
+            if case .empty(let canAdd) = albumContent(snapshot?.albums[id]) {
+                return canAdd ? DIPBottomBarAction(title: "Add Photos", identifier: "participants.album") : nil
+            }
             return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
         case .participants(let id):
             let joined = snapshot?.eventDetails[id]?.isJoined == true
@@ -44,6 +51,16 @@ enum EventBarAction {
         case .challenge, nil:
             return nil
         }
+    }
+
+    enum AlbumContent: Equatable { case unknown, hasPhotos, empty(canAdd: Bool) }
+
+    /// EVT-Q6: a loaded, empty album has nothing to view. Members who may add photos get "Add Photos" (the album page
+    /// holds the picker); everyone else gets no bar action. A not-yet-loaded, failed or populated album keeps "View Album".
+    static func albumContent(_ album: DIPAlbum?) -> AlbumContent {
+        guard let album, album.isLoaded, album.loadError == nil else { return .unknown }
+        if !album.photos.isEmpty { return .hasPhotos }
+        return .empty(canAdd: album.canAddPhotos && album.remainingUploads != 0)
     }
 
     /// The bar action on an event page. A nil event is still loading or no longer available.

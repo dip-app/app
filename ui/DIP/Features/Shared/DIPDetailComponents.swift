@@ -19,9 +19,14 @@ struct DIPDetailHeader: View {
     /// Open Duo: the detail pane's root page has no Back, and the 60 pt status-bar allowance shrinks.
     @Environment(\.dipDuoOpen) private var duoOpen
     @Environment(\.dipDuoHidesBack) private var hidesBack
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack {
+        // Back and the date pill share a row normally; at accessibility sizes the pill sits under Back so a
+        // large date label cannot push the row past the screen edge.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout())
+        layout {
             if !hidesBack {
                 Button(action: onBack) {
                     DIPReferenceAssets.image("event_BackButton").resizable()
@@ -30,7 +35,7 @@ struct DIPDetailHeader: View {
                 .buttonStyle(.plain).accessibilityLabel("Back")
                 .accessibilityIdentifier("\(identifierPrefix).back")
             }
-            Spacer(minLength: 10)
+            if dynamicTypeSize.isAccessibilitySize { EmptyView() } else { Spacer(minLength: 10) }
             if let calendarLabel, calendarState != .hidden {
                 Button(action: onCalendar) {
                     DIPCalendarPill(state: calendarState, label: calendarLabel)
@@ -51,9 +56,10 @@ struct DIPDetailHeader: View {
                     Text(timing)
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                         .foregroundStyle(.black)
+                        .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, widePill ? 28 : 0)
-                .frame(width: widePill ? nil : 164, height: 50)
+                .dipFixedFrame(width: widePill ? nil : 164, height: 50)
                 .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
             }
         }
@@ -66,15 +72,19 @@ struct DIPDetailHeader: View {
 struct DIPCalendarPill: View {
     let state: DIPCalendarPillState
     let label: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 8) {
             icon
             Text(state == .added ? "Added" : label)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 14)).lineLimit(1).fixedSize()
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
         }
         .foregroundStyle(foreground)
-        .padding(.horizontal, 18).frame(height: 50)
+        .padding(.horizontal, 18).dipFixedFrame(height: 50)
         .background(fill, in: Capsule())
         .overlay { if state == .added { Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2) } }
         .contentShape(Capsule())
@@ -180,6 +190,7 @@ struct DIPDetailPeopleRow: View {
                 Text(title)
                     .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                     .foregroundStyle(.black)
+                    .accessibilityAddTraits(.isHeader)
                 if capacity == nil, let trailingNote {
                     Spacer(minLength: 8)
                     Text(trailingNote)
@@ -196,7 +207,7 @@ struct DIPDetailPeopleRow: View {
                         .accessibilityIdentifier("\(identifierPrefix).capacity")
                 }
             }
-            .frame(height: 22)
+            .dipFixedFrame(height: 22)
             if total == 0 {
                 DIPEmptyState(
                     screen: "\(identifierPrefix)-attendees", title: emptyTitle, message: emptyText)
@@ -213,9 +224,11 @@ struct DIPDetailPeopleRow: View {
                             .frame(maxWidth: .infinity, minHeight: 40)
                             .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                             .contentShape(Capsule())
+                            // 40 pt pill, 44 pt hit area.
+                            .dipHitSlop(vertical: 2)
                     }
                     .buttonStyle(DIPPressFeedbackStyle())
-                    .accessibilityLabel("View all \(total)")
+                    .accessibilityLabel("View all \(total) \(total == 1 ? "attendee" : "attendees")")
                     .accessibilityIdentifier("\(identifierPrefix).attendees")
                 }
             }

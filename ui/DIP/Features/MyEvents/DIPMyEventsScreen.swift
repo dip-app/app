@@ -16,6 +16,7 @@ struct DIPMyEventsScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dipDuoOpen) private var duoOpen
     @Environment(\.dipDuoSelectedEvent) private var duoSelectedEvent
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let activeEvents: [DIPEventSummary]
     let memoryAlbums: [DIPMemory]
     let unreadCount: Int
@@ -88,7 +89,7 @@ struct DIPMyEventsScreen: View {
         ScrollView(.horizontal) {
             HStack(spacing: 0) {
                 page(.active, width: width) { activeEvents(width: width - 40) }
-                page(.memories, width: width) { memories }
+                page(.memories, width: width) { memories(width: width - 40) }
             }
             .scrollTargetLayout()
         }
@@ -171,11 +172,18 @@ struct DIPMyEventsScreen: View {
                     }
                     .foregroundStyle(.white)
                     .padding(15)
-                    .frame(width: width, height: 246, alignment: .bottomLeading)
+                    .frame(width: width, alignment: .bottomLeading)
+                    .dipFixedFrame(height: 246, alignment: .bottomLeading)
                     .background {
-                        DIPMedia(event.image)
-                            .resizable().scaledToFill().frame(width: width, height: 246)
-                            .overlay(.black.opacity(event.imageShade))
+                        if dynamicTypeSize.isAccessibilitySize {
+                            // The card grows with its text; the photo fills whatever size it ends up.
+                            DIPMedia(event.image).resizable().scaledToFill()
+                                .overlay(.black.opacity(event.imageShade))
+                        } else {
+                            DIPMedia(event.image)
+                                .resizable().scaledToFill().frame(width: width, height: 246)
+                                .overlay(.black.opacity(event.imageShade))
+                        }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .contentShape(RoundedRectangle(cornerRadius: 20))
@@ -189,73 +197,91 @@ struct DIPMyEventsScreen: View {
         }
     }
 
-    @ViewBuilder private var memories: some View {
+    @ViewBuilder private func memories(width: CGFloat) -> some View {
+        let relaxed = dynamicTypeSize.isAccessibilitySize
         if memoryAlbums.isEmpty {
             DIPEmptyState(
                 screen: "my-events-memories", title: "No memories yet",
                 message: "Events you’ve attended will show up here.")
         }
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], spacing: 18) {
-            ForEach(Array(memoryAlbums.enumerated()), id: \.offset) { index, memory in
-                GeometryReader { geometry in
-                    Button {
-                        onAlbum(memory.id)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(spacing: -4) {
-                                ForEach(Array(memory.avatars.enumerated()), id: \.offset) { _, avatar in
-                                    DIPMedia(avatar)
-                                        .resizable().frame(width: 22, height: 22)
-                                }
-                                Text("View Album")
-                                    .font(DIPReferenceAssets.font("Inter-Light", size: 10))
-                                    .foregroundStyle(.black).frame(height: 22).padding(.horizontal, 10)
-                                    .background(.white, in: Capsule())
-                            }
-                            .fixedSize().accessibilityHidden(true)
-                            Spacer(minLength: 0)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(memory.title.uppercased())
-                                    .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 20, relativeTo: .title3))
-                                    .lineLimit(3).minimumScaleFactor(0.75).multilineTextAlignment(.leading)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(memory.locality)
-                                    .font(DIPReferenceAssets.font("Inter-LightItalic", size: 11))
-                                    .lineLimit(2).multilineTextAlignment(.leading)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .foregroundStyle(.white).padding(10)
-                        }
-                        .padding(5)
-                        .frame(width: geometry.size.width, height: 205, alignment: .leading)
-                        .background {
-                            Group {
-                                if memory.id == "boat-ride" {
-                                    // Original Boat Ride instance uses this explicit image-fill transform.
-                                    DIPMedia(memory.image).resizable()
-                                        .frame(width: geometry.size.width * 1.6798, height: 205)
-                                        .frame(width: geometry.size.width, height: 205).clipped()
-                                } else {
-                                    DIPMedia(memory.image)
-                                        .resizable().scaledToFill()
-                                        .frame(width: geometry.size.width, height: 205)
-                                }
-                            }
-                            .overlay(.black.opacity(memory.imageShade))
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .contentShape(RoundedRectangle(cornerRadius: 20))
+        // One column at accessibility sizes: two 160 pt tiles cannot hold the enlarged title and chip.
+        LazyVGrid(
+            columns: relaxed
+                ? [GridItem(.flexible())]
+                : [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)],
+            spacing: 18
+        ) {
+            ForEach(Array(memoryAlbums.enumerated()), id: \.element.id) { index, memory in
+                if relaxed {
+                    memoryTile(index: index, memory: memory, width: width, relaxed: true)
+                } else {
+                    GeometryReader { geometry in
+                        memoryTile(index: index, memory: memory, width: geometry.size.width, relaxed: false)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("View album, \(memory.title), \(memory.locality.replacingOccurrences(of: "\n", with: ", "))")
-                    .accessibilityHint("Opens the photo album")
-                    .accessibilityIdentifier("events.album.\(index)")
+                    .frame(height: 205)
                 }
-                .frame(height: 205)
             }
         }
+    }
+
+    private func memoryTile(index: Int, memory: DIPMemory, width: CGFloat, relaxed: Bool) -> some View {
+        Button {
+            onAlbum(memory.id)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: -4) {
+                    ForEach(Array(memory.avatars.enumerated()), id: \.offset) { _, avatar in
+                        DIPMedia(avatar)
+                            .resizable().frame(width: 22, height: 22)
+                    }
+                    Text("View Album")
+                        .font(DIPReferenceAssets.font("Inter-Light", size: 10))
+                        .foregroundStyle(.black).dipFixedFrame(height: 22).padding(.horizontal, 10)
+                        .background(.white, in: Capsule())
+                }
+                .fixedSize(horizontal: !relaxed, vertical: true).accessibilityHidden(true)
+                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(memory.title.uppercased())
+                        .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 20, relativeTo: .title3))
+                        .lineLimit(3).minimumScaleFactor(0.75).multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(memory.locality)
+                        .font(DIPReferenceAssets.font("Inter-LightItalic", size: 11))
+                        .lineLimit(2).multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .foregroundStyle(.white).padding(10)
+            }
+            .padding(5)
+            .frame(width: width, alignment: .leading)
+            .dipFixedFrame(height: 205, alignment: .leading)
+            .background {
+                Group {
+                    if relaxed {
+                        DIPMedia(memory.image).resizable().scaledToFill()
+                    } else if memory.id == "boat-ride" {
+                        // Original Boat Ride instance uses this explicit image-fill transform.
+                        DIPMedia(memory.image).resizable()
+                            .frame(width: width * 1.6798, height: 205)
+                            .frame(width: width, height: 205).clipped()
+                    } else {
+                        DIPMedia(memory.image)
+                            .resizable().scaledToFill()
+                            .frame(width: width, height: 205)
+                    }
+                }
+                .overlay(.black.opacity(memory.imageShade))
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .contentShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("View album, \(memory.title), \(memory.locality.replacingOccurrences(of: "\n", with: ", "))")
+        .accessibilityHint("Opens the photo album")
+        .accessibilityIdentifier("events.album.\(index)")
     }
 
 }

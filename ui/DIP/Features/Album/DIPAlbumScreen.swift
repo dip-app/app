@@ -133,7 +133,7 @@ struct DIPAlbumScreen: View {
                     .padding(.horizontal, 20)
                     // 24 pt above the Add Photos pill (80 pt tall, 21 pt from the bottom), so it never covers photos.
                     .padding(.bottom, 125)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
                     .accessibilityIdentifier("album.toast")
             }
         }
@@ -332,7 +332,7 @@ struct DIPAlbumScreen: View {
         toastTask = Task {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+            withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeOut(duration: 0.2)) { toast = nil }
         }
     }
 

@@ -311,7 +311,9 @@ struct DIPProfileScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(interestCatalogError)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                Button("Retry interests") { onRetryInterestCatalog?() }
+                Button { onRetryInterestCatalog?() } label: {
+                    Text("Retry interests").dipHitSlop(horizontal: 8, vertical: 14)
+                }
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                     .accessibilityIdentifier("profile.interests.catalog.retry")
             }

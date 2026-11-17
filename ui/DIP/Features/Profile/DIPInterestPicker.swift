@@ -242,7 +242,7 @@ private struct InterestSaveErrorLabel: View {
 
     var body: some View {
         Label(message, systemImage: "exclamationmark.circle")
-            .font(.footnote).foregroundStyle(.red)
+            .font(.footnote).foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
             .accessibilityIdentifier("profile.interests.error")
     }
 }

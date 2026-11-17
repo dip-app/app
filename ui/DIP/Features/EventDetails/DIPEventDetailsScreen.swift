@@ -13,6 +13,8 @@ struct DIPEventDetailsScreen: View {
     let onJoin: () -> Void
     let photos: [DIPPhoto]
     let onAlbum: () -> Void
+    /// True until the first album read arrives (live), so the page shows tiles instead of "No photos yet".
+    let albumLoading: Bool
     let onLeave: () -> Void
     /// Leaves and reports whether the leave went through. When set it replaces `onLeave`, so "Leave and remove from
     /// calendar" removes the entry only after the leave is confirmed (a failed leave keeps the member in the activity).
@@ -33,6 +35,7 @@ struct DIPEventDetailsScreen: View {
     @State private var addingToCalendar = false
     @Environment(\.dipCalendar) private var calendar
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var conflicts: [DIPCalendarConflict] = []
     @State private var showsConflictAlert = false
     @State private var showsAccessAlert = false
@@ -56,6 +59,7 @@ struct DIPEventDetailsScreen: View {
         onChat: @escaping () -> Void,
         photos: [DIPPhoto] = [],
         onAlbum: @escaping () -> Void = {},
+        albumLoading: Bool = false,
         onLeave: @escaping () -> Void = {},
         onConfirmedLeave: (() async -> Bool)? = nil,
         participationPending: Bool = false,
@@ -69,6 +73,7 @@ struct DIPEventDetailsScreen: View {
         self.onLeave = onLeave
         self.photos = photos
         self.onAlbum = onAlbum
+        self.albumLoading = albumLoading
         self.event = event
         self.joined = joined
         self.onJoin = onJoin
@@ -116,6 +121,10 @@ struct DIPEventDetailsScreen: View {
                             Text(primaryTitle)
                                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
                                 .foregroundStyle(.white)
+                                // Accessibility sizes wrap then shrink instead of truncating (normal sizes unchanged).
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : nil)
+                                .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.4 : 1)
+                                .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity)
                             if showsChatAffordance {
                                 // Joined: the bar becomes the chat entry, with an icon circle that pops in.
@@ -123,12 +132,12 @@ struct DIPEventDetailsScreen: View {
                                     .frame(width: 30, height: 30)
                                     .frame(width: 64, height: 64)
                                     .background(.white, in: Circle())
-                                    .transition(.scale(scale: 0.3).combined(with: .opacity))
+                                    .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
                                     .accessibilityHidden(true)
                             }
                         }
                         .padding(.horizontal, showsChatAffordance ? 8 : 0)
-                        .frame(maxWidth: .infinity).frame(height: 80)
+                        .frame(maxWidth: .infinity).dipFixedFrame(height: 80)
                         .background(
                             joined
                                 ? DIPTokens.Color.actionPrimary.swiftUIColor
@@ -136,7 +145,7 @@ struct DIPEventDetailsScreen: View {
                             in: Capsule()
                         )
                         .contentShape(Capsule())
-                        .animation(.spring(response: 0.5, dampingFraction: 0.72), value: joined)
+                        .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.72), value: joined)
                     }
                     .buttonStyle(.plain)
                     .disabled(!primaryEnabled || (participationPending && !joined))
@@ -418,6 +427,7 @@ struct DIPEventDetailsScreen: View {
                 .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 40, relativeTo: .largeTitle))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("event.title")
             Text(event.description)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: event.isPast ? 15 : 14))
@@ -484,7 +494,7 @@ struct DIPEventDetailsScreen: View {
         Button { confirmingLeave = true } label: {
             Text("Leave Activity")
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 15))
-                .foregroundStyle(.red)
+                .foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(Rectangle())
         }
@@ -509,6 +519,28 @@ struct DIPEventDetailsScreen: View {
             Text("Photo Album")
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                 .foregroundStyle(.black)
+                .accessibilityAddTraits(.isHeader)
+            if photos.isEmpty && albumLoading {
+                // The first album read is still in flight: neutral tiles, not "No photos yet".
+                HStack(spacing: 10) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 20).fill(DIPTokens.Color.surfaceMuted.swiftUIColor).frame(width: 100, height: 134)
+                    }
+                }
+                .accessibilityElement(children: .ignore).accessibilityLabel("Loading photos")
+            } else if photos.isEmpty {
+                // EVT-Q6: a past activity nobody photographed shows a compact empty state, not an empty scroll.
+                HStack(alignment: .center, spacing: 14) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 16)).foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
+                        .frame(width: 34, height: 34)
+                        .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Circle())
+                        .accessibilityHidden(true)
+                    DIPEmptyState(screen: "event-album", title: "No photos yet",
+                                  message: "Photos from this activity will show up here.", style: .compact, faces: 0)
+                }
+            }
+            if !photos.isEmpty {
             ScrollView(.horizontal) {
                 HStack(spacing: 10) {
                     ForEach(Array(photos.prefix(8).enumerated()), id: \.element.id) { index, photo in
@@ -526,6 +558,7 @@ struct DIPEventDetailsScreen: View {
             }
             .scrollIndicators(.hidden)
             .padding(.horizontal, -20)
+            }
         }
         .accessibilityIdentifier("event.album.preview")
     }

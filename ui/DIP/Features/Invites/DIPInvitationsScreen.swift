@@ -23,6 +23,7 @@ struct DIPInvitationsScreen: View {
     @State private var graceTick = 0
     @State private var toastTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(model: DIPInvitesModel, initialTab: Tab = .received,
          rsvp: @escaping (String) -> Bool? = { _ in nil },
@@ -294,14 +295,14 @@ struct DIPInvitationsScreen: View {
             HStack(alignment: .top, spacing: 12) {
                 DIPMedia(invite.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 8) {
-                        Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).lineLimit(1)
+                    nameAndChip {
+                        Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         Spacer(minLength: 4)
                         statusChip("Going", color: DIPTokens.Color.eventsAccent.swiftUIColor)
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.tail)
+                        .dipLineLimit(1).truncationMode(.tail)
                 }
                 .foregroundStyle(.black)
             }
@@ -324,14 +325,14 @@ struct DIPInvitationsScreen: View {
             DIPMedia(invite.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 8) {
-                        Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).lineLimit(1)
+                    nameAndChip {
+                        Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         Spacer(minLength: 4)
                         statusChip("Cancelled", color: Color.black.opacity(0.62), spoken: "You cancelled your RSVP")
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.tail)
+                        .dipLineLimit(1).truncationMode(.tail)
                 }
                 .foregroundStyle(.black)
                 if let reason { InviteNotice(text: reason, identifier: "invitations.rejoin.error.\(invite.id)") }
@@ -342,7 +343,7 @@ struct DIPInvitationsScreen: View {
                             if busy { ProgressView().tint(.white) }
                             else { Text("Rejoin").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.white) }
                         }
-                        .frame(width: 120, height: 44)
+                        .dipFixedFrame(width: 120, height: 44)
                         .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                         .contentShape(Capsule())
                     }
@@ -379,9 +380,16 @@ struct DIPInvitationsScreen: View {
         }
     }
 
+    /// Name and status chip share a line normally; at accessibility sizes the chip drops below the name.
+    private func nameAndChip<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 8))
+        return layout { content() }
+    }
+
     /// Informational (outlined): not a button.
     private func statusChip(_ title: String, color: Color, spoken: String? = nil) -> some View {
-        Text(title).font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(color).lineLimit(1)
+        Text(title).font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(color).dipLineLimit(1)
             .padding(.horizontal, 14).frame(minHeight: 32)
             .overlay(Capsule().strokeBorder(color, lineWidth: 2))
             .accessibilityHidden(spoken == nil)
@@ -411,14 +419,14 @@ struct DIPInvitationsScreen: View {
             HStack(alignment: .top, spacing: 12) {
                 DIPMedia(invite.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 8) {
-                        Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).lineLimit(1)
+                    nameAndChip {
+                        Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         Spacer(minLength: 4)
                         statusChip(label.rawValue, color: color(label))
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.tail)
+                        .dipLineLimit(1).truncationMode(.tail)
                 }
                 .foregroundStyle(.black)
             }

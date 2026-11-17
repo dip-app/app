@@ -72,6 +72,9 @@ struct OnboardingTourView: View {
             case nil: break
             }
         }
+        .onChange(of: interests?.catalog == .failed) { _, failed in
+            if failed { AccessibilityNotification.Announcement(OnboardingInterestsModel.catalogFailedMessage).post() }
+        }
         .onChange(of: interests?.announcement) { _, text in
             if let text { AccessibilityNotification.Announcement(text).post() }
         }
@@ -495,6 +498,11 @@ struct OnboardingTourView: View {
                     DIPInterestPicker(options: interests.options, selection: interests.selectionBinding,
                                       embedded: interests.pickerState)
                         .frame(minHeight: 400)
+                } else if step == .interests {
+                    // ONB-Q4: the Stage strip that carries this message in the standard layout does not exist here.
+                    Label(OnboardingInterestsModel.catalogFailedMessage, systemImage: "exclamationmark.circle")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body))
+                        .accessibilityIdentifier("onboarding.tour.interests.failed")
                 }
             }
             .foregroundStyle(OnboardingTheme.ink)

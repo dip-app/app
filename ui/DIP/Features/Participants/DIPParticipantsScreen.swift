@@ -41,7 +41,7 @@ struct DIPParticipantsScreen: View {
                                     message: "Coworkers who join this event will show up here.")
                                     .padding(.top, 8)
                             }
-                            ForEach(Array(people.enumerated()), id: \.offset) { index, person in
+                            ForEach(Array(people.enumerated()), id: \.element.id) { index, person in
                                 VStack(spacing: 4) {
                                     personRow(person)
                                         .accessibilityElement(children: .combine)
@@ -68,9 +68,9 @@ struct DIPParticipantsScreen: View {
                         Text("Activity Chat")
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24, relativeTo: .title2))
                             .foregroundStyle(.white)
-                            .frame(height: 22)
+                            .dipFixedFrame(height: 22)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 80)
+                            .dipFixedFrame(height: 80)
                             .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
                             .contentShape(Capsule())
                     }
@@ -101,9 +101,10 @@ struct DIPParticipantsScreen: View {
             Text("\(participantCount) Participants")
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 14))
                 .foregroundStyle(.black)
-                .frame(height: 28.696)
+                .dipFixedFrame(height: 28.696)
                 .padding(.horizontal, 30)
-                .frame(height: 50)
+                .dipFixedFrame(height: 50)
+                .accessibilityAddTraits(.isHeader)
                 .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
         }
     }
@@ -126,16 +127,16 @@ struct DIPParticipantRow: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(person.name)
                     .font(DIPReferenceAssets.font("Figtree-Bold", size: 18))
-                    .frame(height: 22, alignment: .leading)
+                    .dipFixedFrame(height: 22, alignment: .leading)
                 Text(person.subtitle)
                     .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                    .lineLimit(1).truncationMode(.tail)
-                    .frame(height: 22, alignment: .leading)
+                    .dipLineLimit(1).truncationMode(.tail)
+                    .dipFixedFrame(height: 22, alignment: .leading)
             }
             .foregroundStyle(.black)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 5)
-        .frame(height: 75)
+        .dipFixedFrame(height: 75)
     }
 }
