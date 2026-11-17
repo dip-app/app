@@ -1,5 +1,5 @@
 import { buildEntry, summarizeChanges } from "../domain/changeLog";
-import { eventChangeEmail, eventFacts, reminderEmail, venueNameOf } from "./emailPayload";
+import { eventChangeEmail, eventFacts, reminderEmail, venueAddressOf, venueNameOf } from "./emailPayload";
 import { changePush, chatPush, reminderPush, shorten } from "../domain/push";
 import { dueWindow, reminderKey, REMINDER_WINDOWS } from "../domain/reminders";
 import { LEVELS_FOR } from "../domain/subscription";
@@ -172,12 +172,12 @@ export async function onEventDocumentUpdatedViaRouter(
   const title = typeof after.title === "string" ? after.title : "Activity update";
   const summary = summarizeChanges(entry.changes);
   const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
-  const facts = eventFacts({ eventId, title, startTime: after.startTime, endTime, venueName: venueNameOf(after), revision: entry.revision });
+  const facts = eventFacts({ eventId, title, startTime: after.startTime, endTime, venueName: venueNameOf(after), venueAddress: venueAddressOf(after), revision: entry.revision });
   const push = await deliverNotification(deps, {
     id: `event_${eventId}_${entry.revision}`, kind: cancelled ? "event_cancelled" : "event_changed", companyId, recipients,
     push: changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined),
     inApp: { title: shorten(title, 60), body: summary, targetType: "event", targetId: eventId },
-    email: eventChangeEmail(eventId, entry.revision, cancelled, entry.changes.map((change) => change.field), facts),
+    email: eventChangeEmail(eventId, entry.revision, cancelled, entry.changes.map((change) => change.field), facts, entry.changes, after),
   });
   return { appended, push };
 }

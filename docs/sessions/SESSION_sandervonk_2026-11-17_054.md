@@ -12,12 +12,7 @@ Third email session, after the push workstream's #235 landed (router-migrated tr
 
 ## Changes
 
-- `gcp/functions/src/modules/notifications/application/emailPayloads.ts` (new) has pure payload builders. These callers pass the payloads:
-  - `handlers.ts`, `newTriggers.ts`
-  - `transport/routedPush.ts`, `transport/routerDeps.ts` (`email: routerEmailChannel(...)`)
-  - `invites/infrastructure/invitePushNotifier.ts`
-  - `submissions` (points on approval)
-  - `EventSummary` gains optional venue address, cover and revision.
+- The push workstream wired trigger payloads first (#240), so my parallel wiring was dropped. This PR only extends their `notifications/application/emailPayload.ts` and the event-change caller in `handlers.ts` with `venueAddress` and `previous` (old values), and stops the email when nothing visible changed.
 - Event updated email: When and Where always show current values. The old value of each changed field is shown struck through above it; a time-only change strikes only the time, and venue name and address are struck independently. A changed title is struck too. Subjects name what changed. Updates with no visible change are not emailed (`hasVisibleChange`, shared by the renderer and the payload builder).
 - Footer: "Sent by DIP · Questions? support@letsdip.work". `EMAIL_POSTAL_ADDRESS` and its sender gate are removed.
 - iOS (EML-9): Email section in `DIPNotificationSettingsModel` and `DIPNotificationSettingsScreen`, showing invites, updates, reminders and challenges. Discovery is hidden because no template exists yet. Email switches work while push is denied. `toggle(_:on:to:)` is generalized. The repository saves one channel map at a time with a merge write. The mock is updated. The push section title is now "Push".
@@ -26,7 +21,7 @@ Third email session, after the push workstream's #235 landed (router-migrated tr
 ## Validation
 
 - `cd gcp/functions && npx tsc --noEmit`: clean.
-- Targeted unit tests (functions `tests/unit/*`, `gcp/tests/unit/notifications*`, `invites`, `email-*`, `challenge-submissions`, `admin-events`): 355 pass, 0 fail. `check:generated`, `test:docs`, `scripts/tests`: pass.
+- Targeted unit tests (functions `tests/unit/*`, `gcp/tests/unit/notifications*`, `invites`, `email-*`, `challenge-submissions`, `admin-events`): 363 pass, 0 fail, 6 todo (existing placeholders, not counted). `check:generated`, `test:docs`, `scripts/tests`: pass.
 - Email emulator suite on alternate ports: 9 of 9.
 - `swift test --package-path ui/Packages/DIPCore --filter DIPNotificationSettingsModelTests`: 21 of 21.
 - One simulator build. I checked the screen in the simulator with `--mock-member --notifications-push=denied`, then deleted the DerivedData (2.6 GB).

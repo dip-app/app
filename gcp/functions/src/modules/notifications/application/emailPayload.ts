@@ -20,6 +20,7 @@ export interface EventFactsInput {
   startTime: unknown;
   endTime: unknown;
   venueName?: unknown;
+  venueAddress?: unknown;
   revision?: number;
 }
 
@@ -30,6 +31,7 @@ export function eventFacts(input: EventFactsInput): Facts | null {
   if (!start || !end || input.title.trim().length === 0) return null;
   const facts: Facts = { eventId: input.eventId, eventTitle: input.title, startTime: start.toISOString(), endTime: end.toISOString() };
   if (typeof input.venueName === "string" && input.venueName.trim().length > 0) facts.venueName = input.venueName;
+  if (typeof input.venueAddress === "string" && input.venueAddress.trim().length > 0) facts.venueAddress = input.venueAddress;
   if (input.revision !== undefined) facts.revision = input.revision;
   return facts;
 }
@@ -43,6 +45,20 @@ export function firstNameOf(displayName: string): string | null {
 export function venueNameOf(eventDoc: Doc): unknown {
   const venue = eventDoc.venue;
   return venue && typeof venue === "object" ? (venue as Doc).name : undefined;
+}
+
+const ADDRESS_MAX = 200;
+
+/** One line "address, locality" (either part may be missing), capped at the template's limit; undefined when empty. */
+export function addressLine(address: unknown, locality: unknown): string | undefined {
+  const parts = [address, locality].filter((p): p is string => typeof p === "string" && p.trim().length > 0).map((p) => p.trim());
+  return parts.length > 0 ? parts.join(", ").slice(0, ADDRESS_MAX) : undefined;
+}
+
+export function venueAddressOf(eventDoc: Doc): string | undefined {
+  const venue = eventDoc.venue;
+  if (!venue || typeof venue !== "object") return undefined;
+  return addressLine((venue as Doc).address, (venue as Doc).locality);
 }
 
 export type ChangedField = "time" | "venue" | "title" | "details";
@@ -59,12 +75,50 @@ export function changedFieldsOf(fields: readonly string[]): ChangedField[] {
   return [...out];
 }
 
-/** `event_changed` / `event_canceled`; outbox id uses the event revision. */
-export function eventChangeEmail(eventId: string, revision: number, cancelled: boolean, changedFields: readonly string[], facts: Facts | null): EmailPayload | undefined {
+export interface PreviousValues { startTime?: string; endTime?: string; venueName?: string; venueAddress?: string; eventTitle?: string }
+export interface ChangeLike { field: string; from: string | null; to: string | null }
+
+/** Old values for the fields whose visible value differs from the new facts; empty when nothing visible changed. */
+export function previousOf(changes: readonly ChangeLike[], facts: Facts, after: Doc): PreviousValues {
+  const by = new Map(changes.map((c) => [c.field, c]));
+  const out: PreviousValues = {};
+  const differs = (old: string | null | undefined, now: unknown): old is string => typeof old === "string" && old.trim().length > 0 && old !== now;
+  const start = by.get("startTime");
+  if (start && differs(start.from, facts.startTime)) out.startTime = start.from!;
+  const end = by.get("endTime");
+  if (end && differs(end.from, facts.endTime)) out.endTime = end.from!;
+  const name = by.get("venue.name");
+  if (name && differs(name.from, facts.venueName)) out.venueName = name.from!;
+  const addr = by.get("venue.address");
+  const loc = by.get("venue.locality");
+  if (addr || loc) {
+    const venue = (after.venue && typeof after.venue === "object" ? after.venue : {}) as Doc;
+    const old = addressLine(addr ? addr.from : venue.address, loc ? loc.from : venue.locality);
+    if (differs(old, facts.venueAddress)) out.venueAddress = old;
+  }
+  const title = by.get("title");
+  if (title && differs(title.from, facts.eventTitle)) out.eventTitle = title.from!;
+  return out;
+}
+
+/**
+ * `event_changed` / `event_canceled`; outbox id uses the event revision. Without a cancellation, an update that changes nothing
+ * the email can show (time, venue name/address, title) yields no email; push and in-app are unaffected.
+ */
+export function eventChangeEmail(
+  eventId: string, revision: number, cancelled: boolean, changedFields: readonly string[], facts: Facts | null,
+  changes?: readonly ChangeLike[], after: Doc = {},
+): EmailPayload | undefined {
   if (!facts) return undefined;
   const base = { objectId: eventId, revisionOrWindow: String(revision) };
   if (cancelled) return { template: "event_canceled", variables: facts, ...base };
-  return { template: "event_changed", variables: { ...facts, changedFields: changedFieldsOf(changedFields) }, ...base };
+  const variables: Facts = { ...facts, changedFields: changedFieldsOf(changedFields) };
+  if (changes) {
+    const previous = previousOf(changes, facts, after);
+    if (Object.keys(previous).length === 0) return undefined;
+    variables.previous = previous;
+  }
+  return { template: "event_changed", variables, ...base };
 }
 
 /** `event_reminder`; the email is useless after the event starts, so `notAfter` is the start time. */
