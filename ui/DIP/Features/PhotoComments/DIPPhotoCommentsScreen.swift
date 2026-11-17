@@ -26,6 +26,7 @@ struct DIPPhotoCommentsScreen: View {
     @State private var toastTask: Task<Void, Never>?
     @State private var showsPermissionAlert = false
     @Environment(\.openURL) private var openURL
+    @Environment(\.dipDuoOpen) private var duoOpen
     @State private var draft = ""
     @State private var retryIntent: SendIntent?
     @State private var isSending = false
@@ -68,10 +69,10 @@ struct DIPPhotoCommentsScreen: View {
                     .padding(.bottom, belowComposer)
             }
             .overlay(alignment: .topLeading) {
-                closeButton.padding(.leading, 20).padding(.top, 60)
+                closeButton.padding(.leading, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen))
             }
             .overlay(alignment: .topTrailing) {
-                if position != nil || saver != nil { controlBar.padding(.trailing, 20).padding(.top, 60) }
+                if position != nil || saver != nil { controlBar.padding(.trailing, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)) }
             }
             .overlay(alignment: .top) {
                 if let toast { toastView(toast).padding(.top, 118).transition(.opacity.combined(with: .move(edge: .top))) }
@@ -81,7 +82,7 @@ struct DIPPhotoCommentsScreen: View {
         // Dark scheme: the status bar (clock, battery) turns light over the black scrim. Every control sets its own colours.
         .preferredColorScheme(.dark)
         .accessibilityElement(children: .contain)
-        .sheet(isPresented: $showsAllComments) { allComments.preferredColorScheme(.light) }
+        .sheet(isPresented: $showsAllComments) { allComments.preferredColorScheme(.light).dipDuoSheetSizing(duoOpen) }
         .onAppear { bubblesShown = true }
         .onChange(of: photo.id) { _, _ in
             // A new photo starts clean: no expanded comment, draft or stale error from the previous one.

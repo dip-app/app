@@ -14,6 +14,8 @@ struct DIPMyEventsScreen: View {
     /// The page the paging scroll view rests on; nil until first appear, then set without animation.
     @State private var pageID: Section?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipDuoSelectedEvent) private var duoSelectedEvent
     let activeEvents: [DIPEventSummary]
     let memoryAlbums: [DIPMemory]
     let unreadCount: Int
@@ -56,12 +58,11 @@ struct DIPMyEventsScreen: View {
             ZStack(alignment: .top) {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
-                    DIPHomeHeader(
+                    DIPTabHeader(
                         title: "My Events", unreadCount: unreadCount,
                         profileAvatar: { DIPMedia(profileAvatar) },
                         onNotifications: onNotifications, onProfile: onProfile
                     )
-                    .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     // The toggle is pinned above the pages. Each page is a full-width vertical scroll view that carries
                     // its own 20pt page padding, so while swiping the content travels to the display edge and the
                     // padding is the gap between the two pages (nothing is clipped at the padding).
@@ -109,7 +110,7 @@ struct DIPMyEventsScreen: View {
         ScrollView(.vertical) {
             VStack(spacing: 18) { content() }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.horizontal, 20).padding(.bottom, 120)
+                .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen))
         }
         .scrollIndicators(.hidden)
         .frame(width: width)
@@ -178,6 +179,7 @@ struct DIPMyEventsScreen: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .contentShape(RoundedRectangle(cornerRadius: 20))
+                    .dipDuoSelectionRing(duoSelectedEvent == event.id)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(event.title), \(event.locality.replacingOccurrences(of: "\n", with: ", "))")

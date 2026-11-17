@@ -26,6 +26,7 @@ struct DIPProfileScreen: View {
     @State private var isChoosingInterests = false
     @State private var isChoosingDraftInterests = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.dipDuoOpen) private var duoOpen
     @State private var draftDepartment = ""
     @State private var draftCity = ""
     @State private var draftInterests: Set<String> = []
@@ -63,61 +64,26 @@ struct DIPProfileScreen: View {
             ZStack(alignment: .top) {
                 Color.white
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
-                        ProfileHeaderCard(
-                            profile: profile, catalogReady: catalogReady,
-                            onEdit: beginEditing, onAddInterests: { isChoosingInterests = true })
-                        catalogStatus
-                        memories
-                        if let onReplayTour {
-                            Button(action: onReplayTour) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "sparkles").accessibilityHidden(true)
-                                    Text("How DIP works")
-                                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
-                                    Spacer(minLength: 0)
-                                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-                                        .accessibilityHidden(true)
-                                }
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 18)
-                                .frame(minHeight: 56)
-                                .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
-                                .contentShape(Capsule())
-                            }
-                            .buttonStyle(DIPPressFeedbackStyle())
-                            .accessibilityIdentifier("profile.howDIPWorks")
-                        }
-                        if let presentBugReport {
-                            reportProblem(presentBugReport)
-                        }
-                        if let onSignOut {
-                            DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
-                                isLoading: isSigningOut) {
-                                guard !isSigningOut else { return }
-                                DIPHaptics.commit()
-                                isSigningOut = true
-                                Task { await onSignOut(); isSigningOut = false }
-                            }
-                            .accessibilityIdentifier("profile.signout")
-                        }
-                    }
+                    profileLayout
                     .padding(.horizontal, 20)
-                    .padding(.top, 60)
-                    .padding(.bottom, 150)
+                    .padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen))
+                    .padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen, phone: 150))
                 }
                 .scrollIndicators(.hidden)
                 .padding(.bottom, 22)
-                LinearGradient(
-                    stops: [
-                        .init(color: .white, location: 0.35),
-                        .init(color: .white.opacity(0.88), location: 0.54221),
-                        .init(color: .white.opacity(0), location: 1),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: 60)
-                .allowsHitTesting(false)
+                // The fade hides content scrolling under the phone status bar; the Duo has none.
+                if !duoOpen {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white, location: 0.35),
+                            .init(color: .white.opacity(0.88), location: 0.54221),
+                            .init(color: .white.opacity(0), location: 1),
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(height: 60)
+                    .allowsHitTesting(false)
+                }
                 if showsBottomBar {
                     DIPFloatingNavigation(selected: .profile, onSelect: onSelectTab)
                         .padding(.horizontal, 20)
@@ -130,12 +96,78 @@ struct DIPProfileScreen: View {
         .ignoresSafeArea()
         .preferredColorScheme(.light)
         .accessibilityElement(children: .contain)
-        .sheet(isPresented: $isEditing) { editForm.environment(\.dynamicTypeSize, dynamicTypeSize) }
+        .sheet(isPresented: $isEditing) { editForm.environment(\.dynamicTypeSize, dynamicTypeSize).dipDuoSheetSizing(duoOpen) }
         .sheet(isPresented: $isChoosingInterests) {
             DIPInterestPicker(options: interestOptions, selection: Set(profile.interestTagIDs)) { interests in
                 try await onSave(.init(department: profile.department, city: profile.city, interestTagIDs: interests))
             }
             .environment(\.dynamicTypeSize, dynamicTypeSize)
+            .dipDuoSheetSizing(duoOpen)
+        }
+    }
+
+    /// Phone: one column (header card, status, memories, actions). Open Duo: the header card, status and actions on
+    /// the left, the favorite memories on the right.
+    @ViewBuilder private var profileLayout: some View {
+        if duoOpen {
+            HStack(alignment: .top, spacing: 28) {
+                VStack(alignment: .leading, spacing: 28) {
+                    ProfileHeaderCard(
+                        profile: profile, catalogReady: catalogReady,
+                        onEdit: beginEditing, onAddInterests: { isChoosingInterests = true })
+                    catalogStatus
+                }
+                .frame(width: 360, alignment: .topLeading)
+                VStack(alignment: .leading, spacing: 28) {
+                    memories
+                    profileActions
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 28) {
+                ProfileHeaderCard(
+                    profile: profile, catalogReady: catalogReady,
+                    onEdit: beginEditing, onAddInterests: { isChoosingInterests = true })
+                catalogStatus
+                memories
+                profileActions
+            }
+        }
+    }
+
+    @ViewBuilder private var profileActions: some View {
+        if let onReplayTour {
+            Button(action: onReplayTour) {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles").accessibilityHidden(true)
+                    Text("How DIP works")
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 18)
+                .frame(minHeight: 56)
+                .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .accessibilityIdentifier("profile.howDIPWorks")
+        }
+        if let presentBugReport {
+            reportProblem(presentBugReport)
+        }
+        if let onSignOut {
+            DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
+                isLoading: isSigningOut) {
+                guard !isSigningOut else { return }
+                DIPHaptics.commit()
+                isSigningOut = true
+                Task { await onSignOut(); isSigningOut = false }
+            }
+            .accessibilityIdentifier("profile.signout")
         }
     }
 
@@ -390,6 +422,7 @@ struct DIPProfileScreen: View {
                 draftInterests = Set(interests)
             }
             .environment(\.dynamicTypeSize, dynamicTypeSize)
+            .dipDuoSheetSizing(duoOpen)
         }
     }
 

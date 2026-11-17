@@ -38,6 +38,9 @@ struct DIPHomeScreen: View {
     let eventsPhase: DIPHomeEventsPhase
     let onRetryEvents: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Open iPhone Duo only: Home is the list pane, events are a two-column grid and the open one is outlined.
+    @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipDuoSelectedEvent) private var duoSelectedEvent
     init(
         home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
         onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void,
@@ -66,12 +69,11 @@ struct DIPHomeScreen: View {
             ZStack(alignment: .top) {
                 Color.white
                 VStack(spacing: 0) {
-                    DIPHomeHeader(
+                    DIPTabHeader(
                         title: "Home", unreadCount: home.unreadCount,
                         profileAvatar: { DIPMedia(home.profileAvatar) },
                         onNotifications: { onSelect("Notifications") }, onProfile: { onSelect("Profile") }
                     )
-                    .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 22) {
                             if let challengeState {
@@ -82,7 +84,7 @@ struct DIPHomeScreen: View {
                             eventsSection(width: geometry.size.width - 40)
                             recentAttendees
                         }
-                        .padding(.horizontal, 20).padding(.bottom, 120)
+                        .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen))
                     }
                     .scrollIndicators(.hidden)
                     .modifier(MemberEventRefresh(action: onRefresh))
@@ -156,7 +158,8 @@ struct DIPHomeScreen: View {
 
     @ViewBuilder private func eventsArea(_ content: DIPHomeEventsContent, width: CGFloat) -> some View {
         switch content {
-        case .list: eventCarousel(width: width)
+        case .list:
+            if duoOpen { eventGrid(width: width) } else { eventCarousel(width: width) }
         case .skeleton: eventSkeleton(width: width)
         case .failure(let message): eventFailure(message)
         case .emptyFiltered(let canLoadMore):
@@ -194,6 +197,28 @@ struct DIPHomeScreen: View {
         }
         .scrollIndicators(.hidden)
         .frame(height: 205).padding(.horizontal, -20)
+        .accessibilityIdentifier("home.events")
+    }
+
+    /// Open Duo: the same cards as a two-column grid in the list pane. Selecting one fills the detail pane.
+    private func eventGrid(width: CGFloat) -> some View {
+        let column = max(0, (width - 10) / 2)
+        return LazyVGrid(columns: [GridItem(.fixed(column), spacing: 10), GridItem(.fixed(column), spacing: 10)], spacing: 10) {
+            ForEach(home.events) { event in
+                DIPPhotoEventCard(
+                    title: event.title, locality: event.locality,
+                    identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
+                    rewardText: DIPPointsFormat.rewardShort(event.pointsValue),
+                    rewardAccessibility: DIPPointsFormat.rewardAccessibility(event.pointsValue),
+                    width: column, shade: event.imageShade,
+                    artwork: { DIPMedia(event.image).scaledToFill() },
+                    avatarStack: { DIPMediaStack(event.avatars) }
+                ) { onEvent(event.id) }
+                .dipDuoSelectionRing(duoSelectedEvent == event.id)
+                .accessibilityAddTraits(duoSelectedEvent == event.id ? .isSelected : [])
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("home.events")
     }
 

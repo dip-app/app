@@ -21,6 +21,7 @@ struct OnboardingTourView: View {
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.dipDuoOpen) private var duoOpen
     @Namespace private var crew
     @AccessibilityFocusState private var titleFocused: Bool
 
@@ -38,7 +39,10 @@ struct OnboardingTourView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let layout = TourLayout(size: geometry.size)
+            // The tour's scenes depict a phone and are measured on one. The open Duo shows it at phone width, centred;
+            // every other device uses the whole window as before.
+            let width = duoOpen ? min(geometry.size.width, DIPDuoLayout.maxColumnWidth) : geometry.size.width
+            let layout = TourLayout(size: CGSize(width: width, height: geometry.size.height))
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
                     accessibleLayout(layout)
@@ -46,7 +50,8 @@ struct OnboardingTourView: View {
                     standardLayout(layout)
                 }
             }
-            .frame(width: geometry.size.width, height: geometry.size.height)
+            .frame(width: width, height: geometry.size.height)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)

@@ -13,6 +13,7 @@ struct DIPChallengeDetailsScreen: View {
     /// Injected so previews and tests control "now" (phase and calendar eligibility depend on it).
     var now: Date = Date()
     @Environment(\.eventCalendarAdder) private var calendarAdder
+    @Environment(\.dipDuoOpen) private var duoOpen
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.challengeSubmissionContext) private var submissionContext
     @Environment(\.challengeEntryBar) private var entryBar
@@ -82,7 +83,7 @@ struct DIPChallengeDetailsScreen: View {
         .onChange(of: submission?.pageBarAction, initial: true) { _, _ in publishEntryAction() }
         .onDisappear { entryBar?.clear(owner: challenge.id); submission?.stop(); submission = nil }
         .sheet(isPresented: $showsEntrySheet) {
-            if let submission { DIPChallengeSubmissionSheet(model: submission) }
+            if let submission { DIPChallengeSubmissionSheet(model: submission).dipDuoSheetSizing(duoOpen) }
         }
     }
 

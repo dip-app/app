@@ -7,11 +7,18 @@ import UIKit
 ///
 /// The Duo reports its sensor island as a full-height side safe area (84 pt on the trailing edge in portrait; it mirrors
 /// in landscape). The prototype screens ignore safe areas and draw edge to edge, so on a Duo the app is hosted in a
-/// column that starts and ends inside that safe area and, when the free width exceeds a phone (open posture), is centred
-/// at no more than `maxColumnWidth`. Nothing is ever placed across the hinge.
+/// column that starts and ends inside that safe area. The folded outer display (and any Duo window narrower than
+/// `openMinWidth`) keeps a phone column centred at no more than `maxColumnWidth`. The unfolded inner display (landscape,
+/// 951x669 pt, 867 pt free beside the island) is the `open` posture: the column spans the whole free width and the app
+/// switches to its bespoke wide layout (`DIPDuoShell`). Nothing is ever placed across the hinge.
 struct DIPDuoLayout: Equatable {
     static let maxColumnWidth: CGFloat = 430
+    /// Free width from which the Duo is treated as the open (inner display) posture.
+    static let openMinWidth: CGFloat = 760
     static let none = DIPDuoLayout(leading: 0, trailing: 0)
+
+    /// True when a column `width` wide is the open posture on a hinge device. Regular phones and iPad never are.
+    static func isOpen(hingeAvailable: Bool, width: CGFloat) -> Bool { hingeAvailable && width >= openMinWidth }
 
     var leading: CGFloat
     var trailing: CGFloat
@@ -22,8 +29,18 @@ struct DIPDuoLayout: Equatable {
         guard hingeAvailable else { return .none }
         let leading = max(0, safeLeading), trailing = max(0, safeTrailing)
         let free = containerWidth - leading - trailing
-        let extra = free > maxColumnWidth ? (free - maxColumnWidth) / 2 : 0
+        let extra = free > maxColumnWidth && free < openMinWidth ? (free - maxColumnWidth) / 2 : 0
         return DIPDuoLayout(leading: leading + extra, trailing: trailing + extra)
+    }
+}
+
+private struct DIPDuoOpenKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    /// True only on a hinge device whose window is the open inner display. False on every regular iPhone and iPad.
+    var dipDuoOpen: Bool {
+        get { self[DIPDuoOpenKey.self] }
+        set { self[DIPDuoOpenKey.self] = newValue }
     }
 }
 
@@ -53,17 +70,26 @@ struct DIPDuoLayout: Equatable {
 private struct DIPDuoColumn<Content: View>: UIViewControllerRepresentable {
     let content: Content
 
-    func makeUIViewController(context: Context) -> DIPDuoColumnController<Content> { DIPDuoColumnController(rootView: content) }
-    func updateUIViewController(_ controller: DIPDuoColumnController<Content>, context: Context) { controller.host.rootView = content }
+    func makeUIViewController(context: Context) -> DIPDuoColumnController<Content> { DIPDuoColumnController(content: content) }
+    func updateUIViewController(_ controller: DIPDuoColumnController<Content>, context: Context) {
+        controller.content = content
+        controller.applyRoot()
+    }
 }
 
 private final class DIPDuoColumnController<Content: View>: UIViewController {
-    let host: UIHostingController<Content>
+    let host: UIHostingController<AnyView>
+    var content: Content
+    private var isOpen = false
 
-    init(rootView: Content) {
-        host = UIHostingController(rootView: rootView)
+    init(content: Content) {
+        self.content = content
+        host = UIHostingController(rootView: AnyView(content.environment(\.dipDuoOpen, false)))
         super.init(nibName: nil, bundle: nil)
     }
+
+    /// Re-renders the content with the posture the last layout pass found (open reads `\.dipDuoOpen` in the shell).
+    func applyRoot() { host.rootView = AnyView(content.environment(\.dipDuoOpen, isOpen)) }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
@@ -86,8 +112,10 @@ private final class DIPDuoColumnController<Content: View>: UIViewController {
         let insets = view.safeAreaInsets
         let layout = DIPDuoLayout.resolve(
             hingeAvailable: true, safeLeading: insets.left, safeTrailing: insets.right, containerWidth: view.bounds.width)
-        host.view.frame = CGRect(
-            x: layout.leading, y: 0, width: max(0, view.bounds.width - layout.leading - layout.trailing), height: view.bounds.height)
+        let width = max(0, view.bounds.width - layout.leading - layout.trailing)
+        host.view.frame = CGRect(x: layout.leading, y: 0, width: width, height: view.bounds.height)
+        let open = DIPDuoLayout.isOpen(hingeAvailable: true, width: width)
+        if open != isOpen { isOpen = open; applyRoot() }
     }
 }
 
