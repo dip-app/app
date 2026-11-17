@@ -1,6 +1,6 @@
 # Calendar conflicts and one-tap add (stretch S1)
 
-Status: design only. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Extends the shipped "add to calendar" flow.
+Status: CAL-1 to CAL-7 built (November 17, 2026; see [Decisions](#decisions-november-17-2026)); CAL-8 waits on the email workstream. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Extends the shipped "add to calendar" flow.
 
 ## Goal and user stories
 
@@ -118,6 +118,22 @@ The server cannot know about calendar conflicts, so it never suppresses or chang
 ## Risks
 
 Full-access prompt wording discourages opt-in (measure; Phase A still helps); stale calendar cache (refresh on store change and foreground); recurring and time zone edge cases; EventKit write-only bugs reported on iOS 17.5 ([thread](https://forums.developer.apple.com/forums/thread/742809), one report, UNVERIFIED fix); Apple review questions about calendar read (answer with the on-device explanation and the opt-in).
+
+## Decisions (November 17, 2026)
+
+The owner had not answered the open questions when this was built; each default below follows this doc's recommendation and is recorded in the PR.
+
+1. **Opt-in full access is adopted (Q1).** Phase A (DIP-to-DIP conflicts, no permission) is always on. Phase B (device calendar read, direct save) needs the build flag `DIP_CALENDAR_CONFLICTS_ENABLED` (Info.plist `DIPCalendarConflictsEnabled`: YES in Debug, NO in Release), the per-uid Profile toggle "Show calendar conflicts" (default off) and iOS full access. Without all three, the pill keeps the permissionless system editor.
+2. **"Add anyway" is allowed (Q2).** A conflict opens the "Overlaps with" alert (up to two names, then "and N more"; "May overlap with" when all are tentative) with Add anyway and Cancel.
+3. **No conflict-aware reminders (Q3)** and **no Google or Microsoft freebusy (Q4)**: out of scope.
+4. **No emailed invites from `events@letsdip.work` (Q5)**: CAL-8 (#185) stays open for the email workstream (EML-5); no ICS link was added.
+5. **Conflict pill is a solid amber fill** (new token `warningAmber` #FF9F43 behind semantic `calendarConflict`, ink text `textOnCalendarConflict`, warning triangle) rather than the amber outline sketched above, because the owner's design language reserves outlines for informational states and the pill stays pressable. Brand yellow was tried first and rejected in design crit (it read as a second back button). `calendarFree` aliases purple. The added state is an outlined, disabled capsule with a checkmark.
+6. **Free state:** without opt-in it looks exactly as before (solid purple, calendar icon, date). With opt-in it shows a calendar-plus icon and saves directly, then a toast "Added to your calendar" with Undo (5 s).
+7. **Entry tracking:** the entry URL is now the share link `https://letsdip.work/e/<id>` (the venue stays in the location field), so DIP excludes its own entries from conflicts and re-finds them. Records (`dip.calendar.v1.<uid>`: identifiers and times only, never titles) are cleared on sign-out. Times within a minute count as unchanged. Update and remove are offered only for entries DIP created: "This activity moved. Update your calendar entry." under the When row, and "Leave and remove from calendar" in the leave dialog. The adapter refuses to update or delete any entry whose URL is not a DIP share link.
+8. **Opt-in teaser:** a one-time card "See what overlaps" (Turn on / Not now) under the event info card; a denial leaves the setting off and offers Settings.
+9. **Home:** events that fit come first (stable order, nothing hidden) and overlapping cards get an amber warning badge with the VoiceOver value "Overlaps your calendar". No separate chip; the sort applies whenever a conflict is known, after the feed's first paint. My Events is unchanged.
+10. **All-day entries** are ignored unless "Count all-day events as busy" is on; free, declined and canceled entries are ignored; tentative is a soft conflict.
+11. **Privacy:** the policy page and the TestFlight checklist ([ops](../../ops/testflight-universal-links.md#calendar-conflicts-stretch-s1-app-store-privacy-and-review)) were updated in the same change. The App Store privacy label is unchanged because calendar data never leaves the device. `NSCalendarsFullAccessUsageDescription` was added next to the write-only string.
 
 ## Open questions for the owner
 

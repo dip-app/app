@@ -37,6 +37,8 @@ struct DIPHomeScreen: View {
     /// Freshness of the events list (skeleton, failure, offline label). `.ready` for fixtures.
     let eventsPhase: DIPHomeEventsPhase
     let onRetryEvents: (() -> Void)?
+    /// Ids of upcoming events that overlap the member's calendar; computed after first paint. Empty changes nothing.
+    let calendarConflictIDs: Set<String>
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Open iPhone Duo only: Home is the list pane, events are a two-column grid and the open one is outlined.
     @Environment(\.dipDuoOpen) private var duoOpen
@@ -48,8 +50,10 @@ struct DIPHomeScreen: View {
         eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil,
         challengeState: DIPChallengeCardState? = nil, onRetryChallenge: (() -> Void)? = nil,
         eventFilter: DIPHomeEventFilter? = nil, onFilterScope: @escaping (DIPHomeEventScope) -> Void = { _ in },
-        eventsPhase: DIPHomeEventsPhase = .ready, onRetryEvents: (() -> Void)? = nil
+        eventsPhase: DIPHomeEventsPhase = .ready, onRetryEvents: (() -> Void)? = nil,
+        calendarConflictIDs: Set<String> = []
     ) {
+        self.calendarConflictIDs = calendarConflictIDs
         self.eventsPhase = eventsPhase
         self.onRetryEvents = onRetryEvents
         self.eventFilter = eventFilter
@@ -109,6 +113,10 @@ struct DIPHomeScreen: View {
         .resolve(
             phase: eventsPhase, filterActive: eventFilter != nil, scope: scope, visibleCount: home.events.count,
             totalCount: eventFilter?.totalCount ?? home.events.count, canLoadMore: onLoadMore != nil)
+    }
+    /// Events that fit the calendar come first; conflicting ones follow in their original order (never hidden).
+    private var orderedEvents: [DIPEventSummary] {
+        DIPCalendarFit.prioritized(home.events, id: \.id, conflicted: calendarConflictIDs)
     }
     private var swap: Animation { DIPMotion.filter(reduceMotion: reduceMotion) }
 
@@ -181,7 +189,7 @@ struct DIPHomeScreen: View {
         let equal = DIPHomeCardLayout.equalColumnWidth(count: home.events.count, available: Double(width)).map { CGFloat($0) }
         return ScrollView(.horizontal) {
             HStack(spacing: 10) {
-                ForEach(home.events) { event in
+                ForEach(orderedEvents) { event in
                     DIPPhotoEventCard(
                         title: event.title, locality: event.locality,
                         identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
@@ -191,6 +199,7 @@ struct DIPHomeScreen: View {
                         artwork: { DIPMedia(event.image).scaledToFill() },
                         avatarStack: { DIPMediaStack(event.avatars) }
                     ) { onEvent(event.id) }
+                    .overlapsCalendar(calendarConflictIDs.contains(event.id))
                 }
             }
             .padding(.horizontal, 20)
@@ -204,7 +213,7 @@ struct DIPHomeScreen: View {
     private func eventGrid(width: CGFloat) -> some View {
         let column = max(0, (width - 10) / 2)
         return LazyVGrid(columns: [GridItem(.fixed(column), spacing: 10), GridItem(.fixed(column), spacing: 10)], spacing: 10) {
-            ForEach(home.events) { event in
+            ForEach(orderedEvents) { event in
                 DIPPhotoEventCard(
                     title: event.title, locality: event.locality,
                     identifier: Self.eventIdentifier(event), attendeeCount: event.attendeeCount,
@@ -214,6 +223,7 @@ struct DIPHomeScreen: View {
                     artwork: { DIPMedia(event.image).scaledToFill() },
                     avatarStack: { DIPMediaStack(event.avatars) }
                 ) { onEvent(event.id) }
+                .overlapsCalendar(calendarConflictIDs.contains(event.id))
                 .dipDuoSelectionRing(duoSelectedEvent == event.id)
                 .accessibilityAddTraits(duoSelectedEvent == event.id ? .isSelected : [])
             }

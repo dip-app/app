@@ -28,7 +28,7 @@ struct DIPChallengeDetailsScreen: View {
                     timing: challenge.timing, widePill: true, identifierPrefix: "challenge", onBack: onBack,
                     // Pressable (solid) only while the window can still be added; otherwise the informational outline pill.
                     calendarLabel: challenge.canAddToCalendar(now: now) ? challenge.timing : nil,
-                    calendarAdded: calendarResult == .added,
+                    calendarState: calendarResult == .added ? .added : .free(direct: false),
                     onCalendar: {
                         guard let fields = challenge.calendarFields() else { return }
                         Task { calendarResult = await calendarAdder.add(fields) }

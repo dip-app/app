@@ -13,4 +13,9 @@ DIP_ENTITLEMENTS = Config/DIP-Paid-Push.entitlements
 // Push client feature flag: ON. Delivery needs the APNs key uploaded in Firebase (docs/design/push-client.md).
 DIP_PUSH_ENABLED = YES
 
+// Calendar conflicts (stretch S1): OFF in Release until the privacy policy covering calendar access is deployed
+// (owner action). Debug builds turn it on for development and UI tests.
+DIP_CALENDAR_CONFLICTS_ENABLED = NO
+DIP_CALENDAR_CONFLICTS_ENABLED[config=Debug] = YES
+
 #include? "Local.xcconfig"
