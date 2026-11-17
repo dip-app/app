@@ -3,7 +3,9 @@ import { getFirestore } from "firebase-admin/firestore";
 import { defineBoolean } from "firebase-functions/params";
 import { cachedPreferences } from "../application/preferenceCache";
 import type { MessagingPort } from "../application/ports";
-import type { RouterDependencies } from "../application/router";
+import { routerEmailChannel } from "../../email/application/routerChannel";
+import { emailChannelDependencies } from "../../email/transport/emailFunctions";
+import type { EmailChannelPort, RouterDependencies } from "../application/router";
 import { FirestoreDeliveryReceipts, FirestorePushRateLimiter } from "../infrastructure/firestoreDelivery";
 import { FirestoreNotificationsStore } from "../infrastructure/firestoreNotificationsStore";
 import { FirestorePreferences } from "../infrastructure/firestorePreferences";
@@ -31,6 +33,19 @@ export function pushRouterEnabled(): boolean {
 const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
 
 /**
+ * The email channel for this invocation, or undefined when it cannot be built (a missing parameter or secret must
+ * never take the push path down). Whether email actually sends is decided inside the channel: it does nothing while
+ * EMAIL_ENABLED is false/unset (the emulator is the exception and records to its outbox).
+ */
+function emailChannel(): EmailChannelPort | undefined {
+  try {
+    return routerEmailChannel(emailChannelDependencies());
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Router dependencies for ONE invocation (fresh preference cache each call). Any module may call this; the
  * emulator never reaches FCM and records pushes in `emulatorPushOutbox` instead.
  */
@@ -38,9 +53,11 @@ export function routerDependencies(app: App): RouterDependencies & { store: Fire
   const db = getFirestore(app);
   const store = new FirestoreNotificationsStore(db);
   const messaging: MessagingPort = emulator() ? new EmulatorOutboxMessaging(db) : new FcmMessaging(app);
+  const email = emailChannel();
   return {
     store,
     messaging,
+    ...(email ? { email } : {}),
     devices: store,
     preferences: cachedPreferences(new FirestorePreferences(db)),
     receipts: new FirestoreDeliveryReceipts(db),

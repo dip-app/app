@@ -111,7 +111,11 @@ export interface AdminDeps {
   pushes?: AdminPushNotifier;
 }
 
-export interface AttendeeAddedPush { companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string }
+export interface AttendeeAddedPush {
+  companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string;
+  /** Event times, used only for the optional email. */
+  eventStartTime?: Date; eventEndTime?: Date;
+}
 export interface AdminPushNotifier {
   attendeeAdded(input: AttendeeAddedPush): Promise<void>;
 }

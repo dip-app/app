@@ -2,35 +2,31 @@
 
 User: sandervonk
 Date: 2026-11-17
-Workstream: secrets-wiring
-Agent: Claude Sonnet
-Status: handoff
+Workstream: stretch-push
+Agent: Claude (Opus lead, Sonnet subagents)
+Status: completed
 
 ## Summary
 
-Wired this repo to the private `dip-app/secrets` repo (sops + age) so builds, TestFlight, CI and backend deploys can fetch secrets and signing material without plaintext in git. Nothing deployed, no real secret read, written or pushed; `dip-app/secrets` was only read (README, `.sops.yaml`).
+Stretch S4 (#204) wrap-up: wires the email channel (EML-8, from the email workstream) into the routed push triggers, as the email lead's handoff asked of PUSH-3. Email stays off until `EMAIL_ENABLED`.
 
 ## Changes
 
-- `scripts/secrets/lib.sh`, `pull.sh`, `sync-gcp.sh`: clone/update into gitignored `.secrets-cache/` (gh token, `DIP_SECRETS_TOKEN` or `DIP_SECRETS_DEPLOY_KEY`, passed via env not argv), decrypt with `SOPS_AGE_KEY` or `~/.config/sops/age/keys.txt`, materialize `GoogleService-Info.plist`, `Local.xcconfig`, backend env, admin public env; overwrite protection; Secret Manager sync via stdin with `--dry-run` names only.
-- `scripts/testflight.sh`: optional `--use-secrets` (pull files, ASC API key to a temp 600 file, `-authenticationKey*` flags for archive and export). Default path unchanged.
-- `.gitignore`: `.secrets-cache/`, `*.dec.*`, `*.p8`, `*.pem`.
-- `.github/workflows/admin.yml`: commented, inactive example steps only.
-- `docs/ops/secrets.md` (model, layout, rotation, onboarding, recovery, owner steps, threat model); links from `docs/ops/README.md` and the TestFlight doc.
-- Tests: `scripts/tests/test_secrets.sh` (24 checks) and `test_secrets.py` wrapper (skips without sops/age).
+- `notifications/transport/routerDeps.ts`: `email: routerEmailChannel(emailChannelDependencies())`, omitted if construction throws.
+- `notifications/application/emailPayload.ts` (new) and payloads in `handlers.ts` (change, cancel, reminder), `newTriggers.ts` (attendee added, invite answered, challenge reviewed) and `invites/infrastructure/invitePushNotifier.ts` (invite). Chat is never emailed; weekly theme has no template.
+- Event start and end times passed through the admin and invite ports for templates; `respondToInvite` reads the event before writing.
+- `docs/design/stretch/push-triggers.md` status line.
 
 ## Validation
 
-- `bash scripts/tests/test_secrets.sh`: 24 of 24 passed with a throwaway age key, fake data and a fake firebase CLI (decrypt, materialize, idempotence, overwrite protection, dry-run, stdin-only delivery, missing sops, missing key, wrong key, missing file, invalid name, placeholder recipient).
-- `bash -n scripts/testflight.sh`. `npm run test:sessions` and `npm run test:docs` run before the PR.
-- Not run: `testflight.sh --use-secrets` end to end (needs real API key and paid team), real clone from `dip-app/secrets` (placeholder recipient), real `firebase functions:secrets:set`, CI steps.
+- `tsc --noEmit`; unit notification, email, invites, challenge-submissions, admin-events 348/348 (includes `notificationEmailPayloads.test.ts`, payloads checked against the real template validator).
+- Emulator (subagent, temporary ports): `notifications-triggers.test.ts` 7/7; build output loads (`require` of `lib/index.js`).
 
 ## Decisions
 
-- Signing via App Store Connect API key (cloud-managed signing) instead of importing a `.p12` and profiles into a temporary keychain: no certificate handling, nothing to clean in the login keychain, works headless. fastlane match and manual import are documented as alternatives.
-- Binary files are stored as `<name>.enc.json` (sops binary type) so the scaffold's `.sops.yaml` path rule matches without change.
-- The scaffold README names `scripts/secrets-sync-gcp.sh`; the script is `scripts/secrets/sync-gcp.sh` as requested.
+- Outbox ids follow the email doc rule; reminders use `${window}_${startMs}` and `notAfter` = activity start.
+- Invite answered emails only on accept, like the push.
 
 ## Handoff
 
-Owner steps are in `docs/ops/secrets.md` section 6: install tools, `age-keygen`, put the public key in `dip-app/secrets/.sops.yaml`, store the private key in the password manager and as CI secret `SOPS_AGE_KEY`, encrypt the first files, add a read-only token or deploy key, rotate anything pasted in chat. Then run `scripts/secrets/pull.sh --only backend && scripts/secrets/sync-gcp.sh --dry-run`.
+- Workstream complete in code. Open: PUSH-8 (#212, optional, deferred) and PUSH-9 (#213, blocked on the owner uploading the APNs key; steps and device script in `docs/ops/push-apns-runbook.md`). Nothing deployed.
