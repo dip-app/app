@@ -70,6 +70,11 @@ export interface RenderContext {
   unsubscribeURL: string;
   /** Postal address for the footer (owner-provided param). */
   postalAddress: string;
+  /**
+   * Signed open-tracking pixel (`https://letsdip.work/o/<token>.gif`), or null to render none. Opens are an
+   * approximate signal (Apple Mail Privacy Protection and Gmail's image proxy prefetch images).
+   */
+  openPixelURL?: string | null;
 }
 
 export interface RenderedEmail {
