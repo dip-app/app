@@ -150,3 +150,5 @@ Module `gcp/functions/src/modules/photos` (V2-05, FRONTEND_PLAN F5). Implemented
 ## Admin backend
 
 Album moderation, attendee management and attendance, member management, roster pre-provisioning, bulk import, audit log and the `organizer` role are specified in [admin.md](admin.md). `recordAttendanceV1` is implemented there (optional `checkedIn`); `updateEventV1` accepts `status: "completed"` and `statusReason`. Not deployed.
+
+`getEventIdeaContextV1` (GetEventIdeaContextRequest -> GetEventIdeaContextResponse) and `generateEventDraftsV1` (GenerateEventDraftsRequest -> GenerateEventDraftsResponse) are admin-only AI event idea callables (`ai.generate`); `generateEventDraftsV1` is idempotent by `requestId` and writes no events. See [AI event drafts](admin.md#ai-event-drafts-aigenerate-admin-only).

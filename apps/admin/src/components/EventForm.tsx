@@ -8,6 +8,7 @@ import {
   emptyDraft, normalizeDraft, validateDraft,
 } from "@/lib/contract";
 import { centsToDollars, dollarsToCents, isoToLocalInput, localInputToIso } from "@/lib/datetime";
+import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
 import { useApp } from "./AppProvider";
 import { Cover } from "./Cover";
 import { Toggle } from "./Toggle";
@@ -50,6 +51,21 @@ export function EventForm({ event, onReload }: Props) {
     api.listTags().then((list) => !cancelled && setTags(list), () => !cancelled && setTags([]));
     return () => { cancelled = true; };
   }, [api]);
+  // Create only, and only when arriving from Event ideas (?from=ai): fill the AI draft once. Venue and times stay empty.
+  const [fromAi, setFromAi] = useState(false);
+  const aiChecked = useRef(false);
+  useEffect(() => {
+    if (editing || aiChecked.current) return;
+    aiChecked.current = true;
+    if (new URLSearchParams(window.location.search).get("from") !== "ai") return;
+    let taken = null;
+    try { taken = takeAiDraft(window.sessionStorage); } catch { /* storage blocked: start empty */ }
+    if (!taken) return;
+    const fill = draftToPrefill(taken);
+    setDraft((current) => ({ ...current, ...fill }));
+    setPrice(centsToDollars(fill.costCents));
+    setFromAi(true);
+  }, [editing]);
   // One key per create attempt, kept across retries so a lost response can never create two events.
   const requestId = useRef(crypto.randomUUID());
 
@@ -101,6 +117,7 @@ export function EventForm({ event, onReload }: Props) {
   return (
     <div className="form-layout">
     <form className="form" onSubmit={submit} noValidate>
+      {fromAi && <p className="notice" role="status" style={{ gridColumn: "1 / -1", marginBottom: -12 }}>Filled from an AI draft. Pick a venue and time, review everything, then save.</p>}
       {Object.keys(errors).length > 0 && !failure && (
         <div className="banner error" role="alert">
           <span>Fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} to continue.</span>

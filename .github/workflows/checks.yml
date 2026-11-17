@@ -98,5 +98,6 @@ jobs:
       - run: npm run test:challenge-submissions:integration
       - run: npm run test:tags:integration
       - run: npm run test:adminapi:integration
+      - run: npm run test:ai:integration
       - run: npm ci --prefix apps/admin
       - run: npm run test:admin:live

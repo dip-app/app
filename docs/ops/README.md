@@ -10,4 +10,5 @@ Runbooks for people who deploy and operate DIP. Agents prepare these changes; a 
 | [Secrets and signing](secrets.md) | The encrypted `dip-app/secrets` repo (sops + age): layout, pull and GCP sync scripts, rotation, onboarding, owner steps, threat model |
 | [Seed and backfill conventions](seed-data.md) | Dry-run default, `seed-` IDs, manifests and undo for data scripts |
 | [Email setup](email-setup.md) | Mailboxes, Postmark, SPF, DKIM, DMARC, secrets, params, webhook, pilot enablement and verification for notification emails |
+| [AI event ideas](ai-events.md) | Anthropic key secret, budget values, TTL policies, pilot, kill switches |
 | [Push enablement](../design/push-client.md) | APNs key, entitlement, flag, device test plan |

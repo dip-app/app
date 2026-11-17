@@ -1,6 +1,6 @@
 # AI event ideas and prompt-to-event drafts (stretch S2)
 
-Status: design only. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Depends on [tag interest counts](tag-interest-counts.md). Model names, prices and limits below were read from Anthropic's docs on November 16, 2026; re-check before building because they change.
+Status: built November 17, 2026 (AI-1 to AI-6 and AI-8; AI-7 eval harness ready, live run pending; AI-9 deferred; AI-10 runbook written, pilot pending). Not deployed; needs the owner actions in the [AI events runbook](../../ops/ai-events.md). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Depends on [tag interest counts](tag-interest-counts.md). Model names, prices and limits below were read from Anthropic's docs on November 16, 2026; re-check before building because they change.
 
 ## Goal and user stories
 
@@ -125,6 +125,29 @@ Dark launch behind `AI_EVENTS_ENABLED` for our own company only, then a pilot co
 ## Risks
 
 Generic or repetitive drafts (mitigate with interests and the weekly theme in the prompt, evaluate tiers); prompt injection through the admin's text (data framing, no tools, schema-only output, human review); cost spikes (caps); image licensing (default catalog art); model name drift (config params); stale numbers in this doc.
+
+## Decisions (November 17, 2026)
+
+The owner questions below were not answered before building; these defaults were used and are easy to change.
+
+| Question | Default built | Where to change |
+| --- | --- | --- |
+| 1. Who may use it | Admins only: permission `ai.generate` | `PERMISSION_MATRIX` in `gcp/functions/src/modules/admin/domain/permissions.ts` and `can` in `apps/admin/src/lib/adminTypes.ts` |
+| 2. Budget | Per company: $5 per month (`AI_MONTHLY_BUDGET_CENTS=500`), 30 generations per month, 10 per admin per UTC day, 3 declined notes per admin per day; off unless both `AI_EVENTS_ENABLED=true` and `companies/{c}/aiSettings/current.enabled == true` | Environment of the functions; per-company overrides `monthlyBudgetCents`, `monthlyGenerationLimit`, `dailyGenerationLimit` in `aiSettings/current` |
+| 3. Images | Catalog art only. The model picks a cover category, the server maps it to an approved `catalog://default/*` value, so `createEventV1` and old app builds are unchanged. AI-9 (stock or generated covers) is deferred | `domain/covers.ts` |
+| 4. Weekly theme | Yes: the running theme's title and tags are in the prompt as data, with "fit it when it suits" | `domain/prompt.ts` |
+| 5. Privacy notice | Only rounded buckets (`5-9`, `10-19`, `20+`) reach the model or the portal; tags under 5 members are named without counts. A privacy page line is proposed in the runbook and must ship before the pilot | [runbook](../../ops/ai-events.md) |
+| 6. Web search | Off. No tools at all | `infrastructure/anthropicLlm.ts` |
+| 7. Company time zone | Not needed: drafts carry a daypart and a duration; the admin picks the exact time in the event form | n/a |
+
+Other build decisions:
+
+- **Models.** Drafting uses `claude-sonnet-5-5` and screening uses `claude-haiku-5-5` (owner instruction; the doc's earlier Haiku-only suggestion is now the cheaper alternative to evaluate in AI-7). Both are environment values (`AI_GENERATE_MODEL`, `AI_SCREEN_MODEL`). Effort `low`, adaptive thinking (the default; it cannot be disabled on Sonnet 5.5), structured output through `output_config.format`, the stable system prompt cached, and the server-side refusal fallback (`fallbacks: "default"`) on the drafting call. Opus 5.5 is not used: the task is short and the drafts are reviewed by a person.
+- **Flow.** Four card steps (interests, goal, group and setting, budget and timing) and a note step at `/admin/ideas/`; 1 to 3 drafts per run; "Open in editor" fills the normal event form (venue and time stay empty) and nothing is saved until the admin saves.
+- **Screening.** A non-empty note is screened first with Haiku (verdicts ok, off_topic, unsafe, injection, personal_data); anything but ok, a refusal, or a refusal while drafting is a declined note (`AI_PROMPT_REJECTED`) and counts toward the daily flag limit. An unreadable verdict fails closed (`AI_UNAVAILABLE`). Links, emails and phone numbers in the note are rejected before any model call.
+- **Metering.** The worst-case cost (screen plus two drafting attempts at `max_tokens`) is reserved in a transaction on `companies/{c}/aiUsage/{yyyymm}` before the call and settled with the real token cost afterward; only successful runs count as generations, but every call's cost is added to the monthly spend. Reservations expire after 5 minutes, so a crashed run cannot block the caps.
+- **Idempotency.** `companies/{c}/aiRequests/{uid}_{requestId}` stores the drafts for 24 hours; a retry with the same request returns them (`replay: true`) without spending.
+- **Interest counts.** Read through the tag-counts store (`modules/tags`, TAG-2) behind the AI `InterestSource` port; no counts yet means `interestDataAvailable: false` and the flow still works.
 
 ## Open questions for the owner
 

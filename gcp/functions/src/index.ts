@@ -5,6 +5,7 @@ export { registerDeviceV1, unregisterDeviceV1, onEventMessageCreated, onEventCha
 export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
 export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1, emailOpenV1 } from "./modules/email";
+export { getEventIdeaContextV1, generateEventDraftsV1 } from "./modules/ai";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";
 export { onUserInterestsWritten, reconcileTagStats } from "./modules/tags";
 export { sendInviteV1, respondToInviteV1, listCoworkersV1 } from "./modules/invites";

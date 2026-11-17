@@ -1,0 +1,41 @@
+import type { GetEventIdeaContextResponse } from "../../../generated/models";
+import { authorize, requireCaller } from "../../admin/application/context";
+import { summarizeInterests } from "../domain/interests";
+import { aiPaths, dayKey, monthKey } from "../domain/paths";
+import { worstCaseMicros } from "../domain/pricing";
+import { effectiveLimits, readDay, readMonth, usageSummary } from "../domain/quota";
+import { parseContextRequest } from "../domain/request";
+import type { AiDeps, Caller } from "./ports";
+
+/**
+ * getEventIdeaContextV1: the starting point of the idea flow. Admin only (`ai.generate`), read-only. Interest counts
+ * leave the server only as suppressed buckets; the switch state and remaining quota let the portal explain itself.
+ */
+export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null, data: unknown): Promise<GetEventIdeaContextResponse> {
+  const caller = requireCaller(rawCaller);
+  const { companyId } = parseContextRequest(data);
+  const now = deps.now();
+  const worst = worstCaseMicros(deps.settings);
+  const usage = await deps.store.runReadOnly(async tx => {
+    await authorize(tx, caller, companyId, "ai.generate");
+    const [settingsDoc, monthDoc, dayDoc] = await tx.getMany([
+      aiPaths.settings(companyId), aiPaths.month(companyId, monthKey(now)), aiPaths.day(companyId, dayKey(now), caller.uid),
+    ]);
+    const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
+    return { enabled: limits.enabled, summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst) };
+  });
+  const [stats, catalog, theme] = await Promise.all([
+    deps.interests.countsFor(companyId), deps.catalog.list(), deps.themes.current(companyId, now),
+  ]);
+  const interests = summarizeInterests(stats, catalog);
+  const known = new Set(catalog.map(tag => tag.id));
+  return {
+    contractVersion: 1,
+    enabled: usage.enabled,
+    interestDataAvailable: interests.available,
+    topInterests: interests.top,
+    thinInterestTagIds: interests.thinTagIds,
+    ...(theme ? { currentTheme: { title: theme.title, tagIds: theme.tagIds.filter(id => known.has(id)) } } : {}),
+    usage: usage.summary,
+  };
+}

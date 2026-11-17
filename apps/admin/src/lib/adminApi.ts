@@ -2,7 +2,7 @@ import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
-  RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  EventIdeaContext, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 
 /**
@@ -78,6 +78,12 @@ export interface AdminOpsApi {
   // ----- Insights
   /** getCompanyInsightsV1: usage overview for the company. `refresh` asks the server to bypass its 10-minute cache (honored at most once a minute). */
   companyInsights(refresh?: boolean): Promise<CompanyInsights>;
+
+  // ----- AI event ideas (admins only; getEventIdeaContextV1, generateEventDraftsV1)
+  /** Interest buckets, the running weekly theme and the remaining AI quota. `enabled` is false when the company has AI event ideas off. */
+  eventIdeaContext(): Promise<EventIdeaContext>;
+  /** Returns up to `count` drafts for review; nothing is written to events. Retrying with the same `requestId` replays the stored result without spending quota. */
+  generateEventDrafts(input: GenerateDraftsInput): Promise<GenerateDraftsResult>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;
