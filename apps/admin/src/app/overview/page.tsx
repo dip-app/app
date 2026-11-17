@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActivityChart, PeopleCard, PendingActions, QuietNotice, StatTiles, StatTilesSkeleton, ThemeCard, TopEvents, TopMembers } from "@/components/Overview";
+import { ActivityChart, InterestsCard, PeopleCard, PendingActions, QuietNotice, StatTiles, StatTilesSkeleton, ThemeCard, TopEvents, TopMembers } from "@/components/Overview";
 import { Shell } from "@/components/Shell";
 import { LoadError } from "@/components/Ui";
 import { useApp } from "@/components/AppProvider";
@@ -12,6 +12,9 @@ import { updatedLabel } from "@/lib/insights";
 export default function OverviewPage() {
   const { api, session } = useApp();
   const insights = useLoad((a) => a.companyInsights(), "insights");
+  // Interest counts load on their own, so the card still shows when insights fail. A failure or a denied read just hides it.
+  const tagStats = useLoad((a) => a.tagStats(), "tagStats");
+  const tagCatalog = useLoad((a) => a.listTags(), "tags");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
   const [now, setNow] = useState(() => new Date());
@@ -43,10 +46,15 @@ export default function OverviewPage() {
     </div>
   ) : undefined;
 
+  // The active total comes from insights; without it the card draws bars relative to the top interest.
+  const interests = tagStats.data && tagCatalog.data
+    ? <InterestsCard stats={tagStats.data} tags={tagCatalog.data} activeMembers={data ? data.members.active : null} />
+    : null;
+
   return (
     <Shell title="Overview" subtitle="How your company uses DIP over the last 30 days." requires="insights.view" action={action}>
-      {insights.error ? <LoadError error={insights.error} onRetry={insights.reload} />
-        : !data ? <StatTilesSkeleton />
+      {insights.error ? <div className="overview"><LoadError error={insights.error} onRetry={insights.reload} />{interests}</div>
+        : !data ? <><StatTilesSkeleton />{interests}</>
         : (
           <div className="overview">
             {refreshError && <p className="banner error" role="alert">{refreshError}</p>}
@@ -64,6 +72,7 @@ export default function OverviewPage() {
               <PeopleCard insights={data} />
               {can(role, "insights.points") && data.points && <TopMembers insights={data} />}
             </div>
+            {interests}
           </div>
         )}
     </Shell>

@@ -6,6 +6,9 @@ import { type CompanyInsights, type Role, can } from "@/lib/adminTypes";
 import {
   chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, shortDay,
 } from "@/lib/insights";
+import type { Tag } from "@/lib/catalog";
+import { type TagStat, hasStats, interestLabel, interestRows } from "@/lib/tagStats";
+import { TableRegion } from "./TableRegion";
 import { Avatar, formatDate } from "./Ui";
 
 // The Overview page's building blocks. Everything is presentational: numbers come from getCompanyInsightsV1
@@ -221,6 +224,51 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
             </li>
           ))}
         </ol>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Members per interest tag (companies/{c}/tagStats). The page hides the card when the role can't read the stats.
+ * `activeMembers` comes from the insights call and is null when that call failed: bars are then relative to the
+ * top tag and the share column is left out. An empty list shows a muted line, like the other Overview cards do.
+ */
+export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]; tags: Tag[]; activeMembers: number | null }) {
+  const rows = hasStats(stats) ? interestRows(stats, tags, activeMembers) : [];
+  const showShare = rows.some((row) => row.share !== null);
+  return (
+    <section className="panel interests-panel" aria-labelledby="interests-h">
+      <h2 id="interests-h">Interests</h2>
+      {rows.length === 0 ? (
+        <p className="muted">Interest counts appear once members pick interests.</p>
+      ) : (
+        <>
+          <p className="muted">Members who picked each interest</p>
+          <TableRegion label="Members per interest">
+            <table className="table compact interest-table">
+              <caption className="sr-only">Members who picked each interest</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Interest</th>
+                  <th scope="col"><span className="sr-only">{showShare ? "Share of active members" : "Relative to the most popular interest"}</span></th>
+                  <th scope="col" className="num">Members</th>
+                  {showShare && <th scope="col" className="num">Share</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.tagId} title={interestLabel(row.count)}>
+                    <th scope="row" className="interest-name">{row.name}</th>
+                    <td className="interest-bar"><div className="meter" aria-hidden><span style={{ width: `${row.percent}%` }} /></div></td>
+                    <td className="num">{row.count}</td>
+                    {showShare && <td className="num muted">{row.share}%</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableRegion>
+        </>
       )}
     </section>
   );

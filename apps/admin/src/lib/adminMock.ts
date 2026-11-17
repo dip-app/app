@@ -10,6 +10,7 @@ import type { KeyValueStore, Session } from "./api";
 import { t } from "./aiStrings";
 import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
+import { mockTagStats } from "./tagStatsMock";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
   MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
@@ -875,6 +876,14 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       ai.receipts[receiptKey] = result;
       aiSave(ai);
       return result;
+    },
+
+    // ----- tag interest counts (preview scenarios: ?tagstats=empty, ?tagstats=denied)
+    async tagStats() {
+      const session = staff("insights.view");
+      const scenario = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("tagstats");
+      if (scenario === "denied") return null;
+      return mockTagStats(session.companyId, scenario === "empty");
     },
 
     // ----- audit

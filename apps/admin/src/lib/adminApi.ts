@@ -4,6 +4,7 @@ import type {
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
   EventIdeaContext, EventIdeaSuggestions, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
+import type { TagStat } from "./tagStats";
 
 /**
  * Admin tools beyond events and themes (docs/contracts/admin.md). Implemented by the mock (adminMock.ts,
@@ -78,6 +79,10 @@ export interface AdminOpsApi {
   // ----- Insights
   /** getCompanyInsightsV1: usage overview for the company. `refresh` asks the server to bypass its 10-minute cache (honored at most once a minute). */
   companyInsights(refresh?: boolean): Promise<CompanyInsights>;
+
+  // ----- Tag interest counts (TAG-5)
+  /** `companies/{companyId}/tagStats`: member counts per interest tag. [] when the company has none yet; null when the role can't read them (counts are then hidden). */
+  tagStats(): Promise<TagStat[] | null>;
 
   // ----- AI event ideas (admins only; getEventIdeaContextV1, generateEventDraftsV1)
   /** Interest buckets, the running weekly theme and the remaining AI quota. `enabled` is false when the company has AI event ideas off. */
