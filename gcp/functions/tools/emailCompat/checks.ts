@@ -353,6 +353,7 @@ export const REVIEWED_DEGRADATIONS: Array<{ title: string; clients: string[]; re
   { title: "overflow", clients: ["outlook.windows", "outlook.windows-mail"], reason: "used only on hidden helpers and the rounded card; Word engine shows a square card" },
   { title: "white-space", clients: ["outlook.windows", "outlook.windows-mail"], reason: "only on the visually hidden helper" },
   { title: "role attribute", clients: ["outlook.windows-mail"], reason: 'role="presentation" is an accessibility hint only' },
+  { title: "aria-label attribute", clients: ["outlook.windows-mail"], reason: "accessible names on repeated link buttons only; the same name is in the title attribute and the visible text still reads" },
   { title: "<body> element", clients: ["outlook.macos"], reason: "background is also set on the outer table" },
 ];
 

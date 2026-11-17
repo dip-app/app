@@ -55,7 +55,7 @@ Seasonality, budget, repeats, capacity and calendar density are code, not questi
 ### Engines and fallbacks
 
 1. **Jev** (`JevDecisions`, model `AI_JEV_MODEL`, default `jev-latest`) when `SUGGESTIONS_DECISION_PROVIDER` is `jev` (the default) and `JEV_API_KEY` holds a real key.
-2. **OpenAI mini** (`OpenAiDecisions` over the configured decision model, `gpt-6-luna` by default) when Jev is not configured or fails and `OPENAI_API_KEY` is present.
+2. **OpenAI mini** (`OpenAiDecisions` over the configured decision model, `DEFAULT_DECISION_MODEL` in `aiConfig.ts`, `gpt-4o-mini` today) when Jev is not configured or fails and `OPENAI_API_KEY` is present.
 3. **Heuristic**: the prior score alone when both are unavailable, when the AI budget cannot cover the worst case, or when a provider errors. The email still goes out; the engine is recorded on the digest and in logs.
 
 Not enough data (fewer than 3 past events and no interest counts): the email says so in one calm line ("We don't have much activity from your team yet, so these come from our catalog of crowd favorites.") and ranks catalog ideas by season, theme variety and the weekly theme.

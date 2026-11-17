@@ -27,6 +27,7 @@ Built stretch S6, the admin weekly suggested-events email (parent issue #244, SU
 - Rules: `notification-preferences.test.ts` against a running emulator under an isolated project id: 9 pass.
 - Portal: `vitest run src/lib/__tests__/suggestions.test.ts` 15 pass, `tsc --noEmit` clean, static build passed once (deleted afterwards).
 - Screenshots (built-in browser) of the email at 600 and 390, light and dark, and of the portal page and deep-link hand-off; design auditor round 2 PASS.
+- After rebasing on main (cheap AI models #255, email hardening #251, email client checks #243, push rate classes #253): `npm run build` clean (added `admin_suggestions` to the push rate-class map so it stays total), targeted unit tests 513 pass, `npm run check:email` no error groups (aria-label on the repeated link buttons added to the reviewed degradations, redundant dark rule removed), portal vitest 26 pass.
 - Not run: Swift build for the regenerated `Models.swift` (additive, defaulted parameter), live Jev or OpenAI calls.
 
 ## Decisions

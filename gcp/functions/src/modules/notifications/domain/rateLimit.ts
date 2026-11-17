@@ -29,6 +29,8 @@ const KIND_CLASS: Readonly<Record<NotificationKind, RateClass>> = {
   challenge_changes_requested: "shared",
   weekly_theme: "shared",
   event_interest: "shared",
+  // Email only (push never offers the category); listed so the map stays total.
+  admin_suggestions: "shared",
 };
 
 export const rateClassOf = (kind: NotificationKind): RateClass => KIND_CLASS[kind];

@@ -135,7 +135,6 @@ const EXTRA_STYLE = `
     .idea-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
     .tint-box { background-color: #23252E !important; }
     .fit-pill { background-color: #2E313B !important; color: #ECEDEF !important; }
-    .btn2-td { border-color: #7B88FA !important; }
     .btn2-a { color: #ECEDEF !important; }
   }
   [data-ogsb] .idea-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
