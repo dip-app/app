@@ -32,7 +32,7 @@ public final class DIPNotificationSettingsModel {
     public enum MasterAction: Equatable, Sendable { case turnOn, openSettings }
 
     public static let perActivityTitle = "Per-activity settings"
-    public static let perActivityMessage = "Each activity has a bell in its chat. It overrides the chat, change and reminder switches above for that activity."
+    public static let perActivityMessage = "Each activity has a bell in its chat. It overrides the chat, change and reminder switches for that activity."
     public static let disabledFootnote = "Allow notifications to change these."
     public static let saveFailureMessage = "Couldn’t save that change. Check your connection and try again."
     public static let loadFailureMessage = "Couldn’t load your notification settings. Check your connection and try again."
