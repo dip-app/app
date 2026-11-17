@@ -31,3 +31,9 @@ __pycache__/
 .dd-*/
 *.xcresult
 site-dist/
+
+# Encrypted-secrets cache (scripts/secrets/pull.sh); holds decrypted output, never commit
+.secrets-cache/
+*.dec.*
+*.p8
+*.pem
