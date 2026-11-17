@@ -1,6 +1,6 @@
 # Tag interest counts (stretch S3)
 
-Status: in progress on `feature/stretch-tag-counts` (TAG-1, TAG-2, TAG-6 built and emulator-tested; nothing deployed). See [Decisions](#decisions). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Feeds [AI event creation](ai-event-creation.md) and the organizer tag picker.
+Status: in progress on `feature/stretch-tag-counts` (TAG-1 to TAG-4 and TAG-6 built and emulator-tested; nothing deployed). See [Decisions](#decisions). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Feeds [AI event creation](ai-event-creation.md) and the organizer tag picker.
 
 ## Goal and user stories
 
@@ -130,6 +130,8 @@ The owner has not answered the open questions yet; these defaults were taken fro
 6. **Receipt location.** One receipt per trigger event at `companies/{c}/tagStatReceipts/{eventId}` under the company the member counts in after the write (before the write when they stop counting). Event IDs that are not safe document IDs are hashed. `expireAt` is 7 days out; the TTL policy is an owner step.
 7. **Reconcile query.** `status != "deactivated"` excludes documents with no `status` field, so the reconcile counts `companyId == c AND interestTagIds array-contains t` and subtracts the same count with `status == "deactivated"`. Two composite indexes on `users` back these queries.
 8. **AI summary (TAG-6).** `getInterestSummary(deps, companyId)` in `gcp/functions/src/modules/tags` returns `top` and `thin` tags; counts under 5 are returned as `memberCount: null, suppressed: true`, and suppressed tags are ordered by name only so their order leaks nothing.
+
+9. **Reconcile versus trigger race.** `reconcileTagStats` (daily 03:30 UTC) skips stat documents written in the last 10 minutes (a trigger may be in flight), never creates zero documents, deletes stat documents for tags no longer in the catalog, and writes with a last-update-time precondition so an increment landing between the read and the write is reported as `skippedConcurrent` instead of being overwritten. A trigger delivered after its user write was already counted can still double count once; the next night's run corrects it. The backfill script uses the same code with `force` (no recent-window skip).
 
 ## Sources
 

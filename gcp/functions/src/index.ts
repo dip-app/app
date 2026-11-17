@@ -6,7 +6,7 @@ export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
 export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1 } from "./modules/email";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";
-export { onUserInterestsWritten } from "./modules/tags";
+export { onUserInterestsWritten, reconcileTagStats } from "./modules/tags";
 export { sendInviteV1, respondToInviteV1, listCoworkersV1 } from "./modules/invites";
 export { submitChallengeV1, approveChallengeV1, rejectChallengeV1, listChallengeSubmissionsV1 } from "./modules/submissions";
 export {

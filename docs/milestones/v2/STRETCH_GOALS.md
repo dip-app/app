@@ -8,7 +8,7 @@ Written November 16, 2026 from the owner's five stretch requests. These are **st
 | --- | --- | --- | --- | --- | --- |
 | S1 | Google and device calendar conflicts, one-tap add | `calendar` | [calendar](../../design/stretch/calendar.md) | CAL-1 to CAL-7 built November 17, 2026 (Phase B behind a flag, off in Release until the privacy page deploys); CAL-8 waits on email | CAL-1 to CAL-8 |
 | S2 | AI event ideas and prompt-to-event drafts | `ai` | [ai-event-creation](../../design/stretch/ai-event-creation.md) | Researched, awaiting owner decisions | AI-1 to AI-10 |
-| S3 | Tag interest counts | `tags` | [tag-interest-counts](../../design/stretch/tag-interest-counts.md) | In progress (backend trigger, rules and AI summary built; not deployed) | TAG-1 to TAG-6 |
+| S3 | Tag interest counts | `tags` | [tag-interest-counts](../../design/stretch/tag-interest-counts.md) | In progress (trigger, rules, reconcile, backfill and AI summary built; not deployed) | TAG-1 to TAG-6 |
 | S4 | Push triggers and category settings | `push` | [push-triggers](../../design/stretch/push-triggers.md) | In progress: PUSH-1 shared preference model landed ([notification preferences](../../design/stretch/notification-preferences.md)); pipeline still device-unverified | PUSH-1 to PUSH-9 |
 | S5 | Reminder and notification emails | `email` | [email](../../design/stretch/email.md) | Backend built behind `EMAIL_ENABLED` (off, not deployed): templates, ICS, outbox sender, unsubscribe, webhook; router hook and settings rows wait on PUSH-2 and PUSH-7; owner setup in [email setup](../../ops/email-setup.md) | EML-1 to EML-10 |
 
