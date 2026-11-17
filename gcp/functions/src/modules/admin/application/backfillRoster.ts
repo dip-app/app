@@ -4,7 +4,7 @@ import { emailHash, normalizeEmail } from "../domain/employee";
 import { statusOf } from "../domain/member";
 import { paths, SERVER_TIME } from "../domain/ops";
 import { parseBackfillRoster } from "../domain/requests";
-import { authorize, once, requireCaller, writeAudit } from "./context";
+import { authorize, once, requireCaller, writeAudit, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminStore, AdminTransaction, Caller, Doc } from "./ports";
 
 export interface BackfillResult { scanned: number; created: number; existing: number; skipped: number }
@@ -52,7 +52,7 @@ export async function backfillRosterPage(tx: AdminTransaction, companyId: string
 export async function backfillRosterCallable(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<BackfillRosterResponse> {
   const authenticated = requireCaller(caller);
   const req = parseBackfillRoster(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "roster.manage");
   const now = deps.now();
   const wire = (page: BackfillPage): BackfillRosterResponse => ({
     contractVersion: 1, dryRun: req.dryRun, scanned: page.scanned, created: page.created, existing: page.existing, skipped: page.skipped,

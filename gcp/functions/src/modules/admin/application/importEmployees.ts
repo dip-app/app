@@ -11,11 +11,13 @@ import { payloadHash } from "../domain/reader";
 import {
   chunkRows, decideRow, IMPORT_CHUNK_SIZE, IMPORT_MAX_ERRORS, planHashOf, planImport, progressFromTallies, tallyOf, totalsOf, type PlannedRow, type Tallies,
 } from "../domain/importPlan";
-import { authorize, requireCaller, writeAudit, type Actor } from "./context";
+import { authorize, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import { findMemberByEmail, loadEmployeeContext } from "./roster";
 import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
 const LEASE_MS = 120_000;
+/** Import jobs, chunks and results hold employee emails: Firestore TTL (field expireAt) removes them after this retention. */
+const IMPORT_RETENTION_MS = 30 * 86_400_000;
 const SCAN_PAGE = 500;
 const MAX_SCAN_PAGES = 100;
 
@@ -25,10 +27,11 @@ async function scanAll(tx: AdminTransaction, collection: string, where: Readonly
   for (let page = 0; page < MAX_SCAN_PAGES; page++) {
     const batch = await tx.list(collection, { where, limit: SCAN_PAGE, ...(afterId ? { afterId } : {}) });
     all.push(...batch);
-    if (batch.length < SCAN_PAGE) break;
+    if (batch.length < SCAN_PAGE) return all;
     afterId = batch[batch.length - 1]!.id;
   }
-  return all;
+  // Never plan against a silently truncated directory: a wrong plan would create duplicates or miss updates.
+  throw new AdminError("failed-precondition", "IMPORT_TOO_LARGE", "The directory is too large to import in one pass.");
 }
 
 const iso = (value: unknown) => (value instanceof Date && Number.isFinite(value.getTime()) ? value.toISOString() : new Date(0).toISOString());
@@ -61,7 +64,7 @@ async function loadPlanRows(tx: AdminTransaction, actor: Actor, jobId: string, c
 export async function importEmployees(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ImportEmployeesResponse> {
   const authenticated = requireCaller(caller);
   const req = parseImportEmployees(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "import.run");
   const hash = payloadHash({ fileName: req.fileName ?? null, rows: req.rows });
   const receiptPath = (actor: Actor) => paths.receipt(actor.companyId, actor.uid, req.requestId);
 
@@ -106,8 +109,9 @@ export async function importEmployees(deps: AdminDeps, caller: Caller | null, da
       companyId: actor.companyId, status: "planned", ...(req.fileName ? { fileName: req.fileName } : {}), totals,
       progress: { processed: 0, total: rows.length, created: 0, updated: 0, unchanged: 0, failed: 0 },
       planHash, chunkCount: chunks.length, nextChunk: 0, errors: [], errorsTruncated: false, createdBy: actor.uid, createdAt: SERVER_TIME, updatedAt: SERVER_TIME,
+      expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS),
     });
-    chunks.forEach((chunk, index) => tx.create(paths.importChunk(actor.companyId, jobId, index), { index, rows: chunk }));
+    chunks.forEach((chunk, index) => tx.create(paths.importChunk(actor.companyId, jobId, index), { index, rows: chunk, expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS) }));
     tx.create(receiptPath(actor), { command: "importEmployeesV1", hash, jobId, createdAt: now, expireAt: new Date(now.getTime() + 30 * 86_400_000) });
     writeAudit(tx, actor, {
       id: `${actor.uid}_${req.requestId}`, action: "import.plan", targetType: "import", targetId: jobId,
@@ -137,7 +141,7 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
         return { rowNumber: row.rowNumber, email: row.email, outcome: prior.outcome } satisfies RowOutcome;
       }
       const recorded = (outcome: "created" | "updated" | "unchanged"): RowOutcome => {
-        tx.create(resultPath, { rowNumber: row.rowNumber, email: row.email, outcome, createdAt: now });
+        tx.create(resultPath, { rowNumber: row.rowNumber, email: row.email, outcome, createdAt: now, expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS) });
         return { rowNumber: row.rowNumber, email: row.email, outcome };
       };
       for (const teamId of record.teamIds ?? []) {
@@ -193,7 +197,7 @@ function progressOf(job: Doc): ApplyEmployeeImportResponse["progress"] {
 export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ApplyEmployeeImportResponse> {
   const authenticated = requireCaller(caller);
   const req = parseApplyImport(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "import.run");
   const now = deps.now();
   const leaseId = deps.newId();
   const claimed = await deps.store.runTransaction(async tx => {
@@ -253,7 +257,7 @@ export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null
 export async function getEmployeeImport(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<GetEmployeeImportResponse> {
   const authenticated = requireCaller(caller);
   const req = parseGetImport(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "import.run");
   return deps.store.runReadOnly(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "import.run");
     const job = await tx.get(paths.importJob(actor.companyId, req.jobId));

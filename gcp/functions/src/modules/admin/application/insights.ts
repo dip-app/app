@@ -7,7 +7,7 @@ import {
 } from "../domain/insights";
 import { paths } from "../domain/ops";
 import { parseGetCompanyInsights } from "../domain/requests";
-import { authorize, requireCaller } from "./context";
+import { authorize, requireCaller, consumeAfterAuth } from "./context";
 import type { AdminDeps, Caller } from "./ports";
 
 /**
@@ -20,7 +20,7 @@ import type { AdminDeps, Caller } from "./ports";
 export async function getCompanyInsights(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<GetCompanyInsightsResponse> {
   const authenticated = requireCaller(caller);
   const req = parseGetCompanyInsights(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "insights.read");
   const actor = await deps.store.runReadOnly(tx => authorize(tx, authenticated, req.companyId, "insights.read"));
   const now = deps.now();
   const cachePath = paths.insightsSummary(actor.companyId);

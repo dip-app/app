@@ -59,8 +59,11 @@ function defaultDeps(): AdminDeps {
 }
 
 // Production requires App Check; only the official Functions emulator bypasses it.
-const base = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" } as const;
-const heavy = { ...base, timeoutSeconds: 300, memory: "512MiB" } as const;
+// Instance caps bound cost and Firestore fan-out from a compromised or abusive admin account.
+const base = {
+  region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true", maxInstances: 10, timeoutSeconds: 60, memory: "256MiB",
+} as const;
+const heavy = { ...base, maxInstances: 3, timeoutSeconds: 300, memory: "512MiB" } as const;
 const command = <T>(name: string, run: Command<T>) => (request: CallableRequest) => handleAdminCommand(name, run, defaultDeps(), request);
 
 export const removeEventPhotoV1 = onCall(base, command("removeEventPhotoV1", removeEventPhoto));

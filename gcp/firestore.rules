@@ -40,8 +40,11 @@ service cloud.firestore {
         && data.travelRadiusMiles is int && data.travelRadiusMiles >= 0
         && data.travelRadiusMiles <= 500;
     }
-    function memberCompany() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
+    // The caller's own membership document is not deactivated (setMemberStatusV1). A deactivated member may
+    // still read their own users/{uid} (the app shows "deactivated") but changes nothing.
+    function activeSelf() {
+      return verified()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', 'active') != 'deactivated';
     }
     // A deactivated member (status set by setMemberStatusV1) loses every same-company read.
     function sameCompany(companyId) {
@@ -62,7 +65,7 @@ service cloud.firestore {
     match /users/{uid} {
       // Missing self documents must be observable to enter company onboarding.
       allow get: if own(uid);
-      allow update: if own(uid)
+      allow update: if own(uid) && resource.data.get('status', 'active') != 'deactivated'
         // displayName comes from OAuth and is written only by resolveMembershipV1 (ADR 0007).
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'photoURL', 'avatarId', 'department', 'jobTitle', 'city',
@@ -70,8 +73,7 @@ service cloud.firestore {
         ]) && validProfile(request.resource.data);
     }
     match /companies/{companyId} {
-      allow get: if verified()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+      allow get: if sameCompany(companyId);
     }
     // Company lookup by companies.emailDomain happens only in resolveMembershipV1
     // (Admin SDK); clients may get their own company document but never list/query
@@ -106,7 +108,7 @@ service cloud.firestore {
       allow list: if verified()
         && request.query.limit != null && request.query.limit <= 100
         && resource.data.userId == request.auth.uid
-        && resource.data.companyId == memberCompany()
+        && sameCompany(resource.data.companyId)
         && resource.data.status == 'going';
     }
     // Weekly themes (challenges): written only by createChallengeV1/updateChallengeV1 (Admin SDK);
@@ -310,7 +312,7 @@ service cloud.firestore {
     match /users/{uid}/notifications/{notificationId} {
       allow get: if own(uid);
       allow list: if own(uid) && request.query.limit != null && request.query.limit <= 50;
-      allow update: if own(uid)
+      allow update: if own(uid) && activeSelf()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
         && request.resource.data.isRead is bool;
     }
@@ -336,7 +338,7 @@ service cloud.firestore {
           && (!('email' in data) || validEmail(data.email));
       }
       allow get: if own(uid) && settingId == 'notifications';
-      allow create, update: if own(uid) && settingId == 'notifications' && validPreferences(request.resource.data);
+      allow create, update: if own(uid) && activeSelf() && settingId == 'notifications' && validPreferences(request.resource.data);
     }
     // inviteRateLimits is server-only and falls through to the deny-all rule below.
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and

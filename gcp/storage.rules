@@ -28,6 +28,9 @@ service firebase.storage {
     // SDK access only; no download-token URLs are minted. Unpublished bytes are never visible to colleagues.
     // Cross-service rules may read at most two Firestore documents per evaluation: create reads RSVP + event,
     // read reads the caller's membership + the album document.
+    // Deactivation (known gap): create cannot also check `users/{uid}.status`; cross-service rules may read only two Firestore
+    // documents and this rule already spends them on the RSVP and the event. A deactivated member can therefore
+    // still upload an unpublished object; it is never visible to colleagues until finalizeEventPhotoV1 publishes it, so that callable must refuse deactivated members.
     // Assumption: membership never moves between companies (ADR 0007, domain-derived); the RSVP row written by
     // setRsvpV1 under companies/{c} is the upload's proof of membership.
     match /companies/{companyId}/events/{eventId}/photos/{uploaderId}/{slot} {

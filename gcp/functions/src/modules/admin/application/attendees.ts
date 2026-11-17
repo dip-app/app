@@ -6,7 +6,7 @@ import { AdminError, stored } from "../domain/errors";
 import { isDeactivated } from "../domain/member";
 import { paths, SERVER_TIME, increment } from "../domain/ops";
 import { parseAddAttendee, parseRecordAttendance, parseRemoveAttendee } from "../domain/requests";
-import { authorize, loadEvent, loadMember, once, requireCaller, writeAudit, type Actor } from "./context";
+import { authorize, loadEvent, loadMember, once, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminTransaction, AttendeeAddedPush, Caller, Doc } from "./ports";
 
 const MAX_CAPACITY = 10000;
@@ -63,7 +63,7 @@ export async function cancelAttendance(tx: AdminTransaction, actor: Actor, event
 export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<AddEventAttendeeResponse> {
   const authenticated = requireCaller(caller);
   const req = parseAddAttendee(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "attendee.manage");
   const now = deps.now();
   let push = null as AttendeeAddedPush | null;
   const result = (await deps.store.runTransaction(async tx => {
@@ -135,7 +135,7 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
 export async function removeEventAttendee(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<RemoveEventAttendeeResponse> {
   const authenticated = requireCaller(caller);
   const req = parseRemoveAttendee(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "attendee.manage");
   const now = deps.now();
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "attendee.manage");
@@ -158,7 +158,7 @@ export async function removeEventAttendee(deps: AdminDeps, caller: Caller | null
 export async function recordAttendance(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<RecordAttendanceResponse> {
   const authenticated = requireCaller(caller);
   const req = parseRecordAttendance(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "attendance.record");
   const now = deps.now();
   return deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "attendance.record");
@@ -181,7 +181,7 @@ export async function recordAttendance(deps: AdminDeps, caller: Caller | null, d
       if (!rsvp.checkedIn) return respond(0, false);
       tx.update(paths.rsvp(actor.companyId, req.eventId, req.userId), { checkedIn: false, checkedInAt: null, managedBy: actor.uid });
       writeAudit(tx, actor, { id: auditId, action: "attendance.record", targetType: "attendee", targetId: `${req.eventId}/${req.userId}`,
-        summary: `Marked a member as not attended at ${event.title}`, changes: [change("checkedIn", true, false)] });
+        summary: `Marked a member as not attended at ${event.title}`, changes: [change("checkedIn", true, false)], ...(actor.uid === req.userId ? { selfTarget: true as const } : {}) });
       return respond(0, true);
     }
     const award = !ledger && points > 0;
@@ -196,7 +196,8 @@ export async function recordAttendance(deps: AdminDeps, caller: Caller | null, d
     }
     writeAudit(tx, actor, { id: auditId, action: "attendance.record", targetType: "attendee", targetId: `${req.eventId}/${req.userId}`,
       summary: `Checked in a member at ${event.title}${award ? ` (+${points} points)` : ""}`,
-      changes: [change("checkedIn", rsvp.checkedIn, true), ...(award ? [change("pointsBalance", member.pointsBalance, (member.pointsBalance as number) + points)] : [])] });
+      changes: [change("checkedIn", rsvp.checkedIn, true), ...(award ? [change("pointsBalance", member.pointsBalance, (member.pointsBalance as number) + points)] : [])],
+      ...(actor.uid === req.userId ? { selfTarget: true as const } : {}) });
     return respond(award ? points : 0, !rsvp.checkedIn || award);
   });
 }

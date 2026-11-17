@@ -23,6 +23,8 @@ export interface EmployeeContext { companyDomain: string; teams: readonly TeamRe
 
 export const MAX_TEAMS_PER_MEMBER = 20;
 export const EMPLOYEE_KEYS = ["email", "displayName", "role", "teamIds", "workLocation", "department", "jobTitle", "managerEmail", "startDate"] as const;
+export const MAX_ROW_KEYS = 16;
+const MAX_FIELD_NAME = 60;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -48,7 +50,13 @@ export function normalizeEmployee(raw: unknown, ctx: EmployeeContext): { record:
     return { record, email: "", issues };
   }
   const input = raw as Record<string, unknown>;
-  for (const key of Object.keys(input)) if (!(EMPLOYEE_KEYS as readonly string[]).includes(key)) issue(key, "UNKNOWN_FIELD", "Unknown column.");
+  const keys = Object.keys(input);
+  if (keys.length > MAX_ROW_KEYS) {
+    // A row with thousands of keys would otherwise inflate the stored plan chunk past Firestore's 1 MiB document limit.
+    issue("row", "VALIDATION_FAILED", `At most ${MAX_ROW_KEYS} columns per row.`);
+    return { record, email: "", issues };
+  }
+  for (const key of keys) if (!(EMPLOYEE_KEYS as readonly string[]).includes(key)) issue(key.slice(0, MAX_FIELD_NAME), "UNKNOWN_FIELD", "Unknown column.");
   const cell = (key: string, max: number): string | undefined => {
     const value = input[key];
     if (value === undefined || value === null) return undefined;
