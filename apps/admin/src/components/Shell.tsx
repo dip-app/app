@@ -8,6 +8,7 @@ import { AdminOnly } from "./AdminOnly";
 import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
+import { Toaster } from "./Toast";
 
 interface Props {
   title: string;
@@ -195,6 +196,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         {children}
         </>)}
       </main>
+      <Toaster />
     </div>
   );
 }
