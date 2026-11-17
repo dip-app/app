@@ -81,12 +81,13 @@ class IndexingSwitch(unittest.TestCase):
 
 
 class PushSwitch(unittest.TestCase):
-    """Push stays off by default; enabling is the single `#include "Push.xcconfig"` line in Local.xcconfig."""
+    """Push is on by default (paid team); Push.xcconfig still holds the same two settings for overrides."""
 
-    def test_default_is_off_and_include_enables_it(self):
+    def test_default_is_on_and_push_file_matches(self):
         base = (ROOT / "ui/Config/Base.xcconfig").read_text()
-        self.assertIn("DIP_PUSH_ENABLED = NO", base)
-        self.assertLess(base.index("DIP_PUSH_ENABLED = NO"), base.index('#include? "Local.xcconfig"'))
+        self.assertIn("DIP_PUSH_ENABLED = YES", base)
+        self.assertIn("DIP_ENTITLEMENTS = Config/DIP-Paid-Push.entitlements", base)
+        self.assertLess(base.index("DIP_PUSH_ENABLED = YES"), base.index('#include? "Local.xcconfig"'))
         push = (ROOT / "ui/Config/Push.xcconfig").read_text()
         self.assertIn("DIP_PUSH_ENABLED = YES", push)
         self.assertIn("DIP_ENTITLEMENTS = Config/DIP-Paid-Push.entitlements", push)

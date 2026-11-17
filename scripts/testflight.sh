@@ -37,6 +37,14 @@ echo "Archiving (Release)…"
 xcodebuild archive -project DIP.xcodeproj -scheme DIP -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$out/DIP.xcarchive" -allowProvisioningUpdates ${extra[@]+"${extra[@]}"} \
   > "$out/archive.log" 2>&1 || { tail -30 "$out/archive.log"; exit 1; }
+# Guard: a Local.xcconfig that overrides DIP_ENTITLEMENTS can drop App Attest, push or Associated Domains.
+# Without App Attest the app cannot get an App Check token, so sign-in and every callable fail in production.
+app="$(ls -d "$out"/DIP.xcarchive/Products/Applications/*.app | head -1)"
+ents="$(codesign -d --entitlements :- "$app" 2>/dev/null | plutil -p - 2>/dev/null || true)"
+for key in com.apple.developer.devicecheck.appattest-environment aps-environment com.apple.developer.associated-domains; do
+  echo "$ents" | grep -q "$key" || { echo "Archive is missing the $key entitlement. Check DIP_ENTITLEMENTS in ui/Config/Local.xcconfig (default is Config/DIP-Paid-Push.entitlements); remove any override." >&2; exit 1; }
+done
+echo "$ents" | grep -q '"com.apple.developer.devicecheck.appattest-environment" => "production"' || { echo "App Attest environment is not production." >&2; exit 1; }
 if [ "$dry" = 1 ]; then echo "Dry run OK: archive built, nothing uploaded."; exit 0; fi
 echo "Uploading to App Store Connect…"
 xcodebuild -exportArchive -archivePath "$out/DIP.xcarchive" -exportOptionsPlist Config/ExportOptions-TestFlight.plist \
