@@ -9,15 +9,15 @@ import Observation
 public final class DIPNotificationSettingsModel {
     public enum Phase: Equatable, Sendable { case loading, ready, failed(String) }
 
-    /// Screen sections in order. The email workstream adds its case here; push is the only one for now.
+    /// Screen sections in order.
     public enum Section: String, CaseIterable, Sendable {
-        case push
+        case push, email
 
         public var title: String {
-            switch self { case .push: "Alert types" }
+            switch self { case .push: "Push"; case .email: "Email" }
         }
         public var channel: DIPNotificationChannel {
-            switch self { case .push: .push }
+            switch self { case .push: .push; case .email: .email }
         }
     }
 
@@ -33,6 +33,7 @@ public final class DIPNotificationSettingsModel {
 
     public static let perActivityTitle = "Per-activity settings"
     public static let perActivityMessage = "Each activity has a bell in its chat. It overrides the chat, change and reminder switches for that activity."
+    public static let emailFootnote = "Emails go to your Google account address. Every email has an unsubscribe link."
     public static let disabledFootnote = "Allow notifications to change these."
     public static let saveFailureMessage = "Couldn’t save that change. Check your connection and try again."
     public static let loadFailureMessage = "Couldn’t load your notification settings. Check your connection and try again."
@@ -45,7 +46,7 @@ public final class DIPNotificationSettingsModel {
     @ObservationIgnored private let repository: any DIPNotificationPreferencesRepository
     @ObservationIgnored private let permission: any DIPNotificationPermissionProviding
     @ObservationIgnored private var saveChain: Task<Void, Never>?
-    @ObservationIgnored private var failedChange: (category: DIPNotificationCategory, value: Bool)?
+    @ObservationIgnored private var failedChange: (category: DIPNotificationCategory, channel: DIPNotificationChannel, value: Bool)?
 
     public init(repository: any DIPNotificationPreferencesRepository, permission: any DIPNotificationPermissionProviding) {
         self.repository = repository; self.permission = permission
@@ -118,25 +119,48 @@ public final class DIPNotificationSettingsModel {
     /// Switches stay visible but cannot change while push is not allowed (the stored choice is untouched).
     public var areSwitchesEnabled: Bool { phase == .ready && canReceivePush }
 
+    /// Email switches do not depend on the iOS push permission; push switches do.
+    public func areSwitchesEnabled(in section: Section) -> Bool {
+        switch section {
+        case .push: areSwitchesEnabled
+        case .email: phase == .ready
+        }
+    }
+
     public func rows(in section: Section) -> [Row] {
-        DIPNotificationCategory.offered(on: section.channel).map {
+        Self.visibleCategories(on: section.channel).map {
             Row(category: $0, title: $0.title, summary: $0.summary, isOn: preferences.isEnabled($0, on: section.channel))
         }
     }
 
     public var pushRows: [Row] { rows(in: .push) }
+    public var emailRows: [Row] { rows(in: .email) }
+
+    /// Categories shown per channel. `discovery` stays hidden on email: no discovery email exists yet, so a switch
+    /// would promise something the server never sends. Show it when that email ships.
+    static func visibleCategories(on channel: DIPNotificationChannel) -> [DIPNotificationCategory] {
+        let offered = DIPNotificationCategory.offered(on: channel)
+        return channel == .email ? offered.filter { $0 != .discovery } : offered
+    }
 
     // MARK: Toggling
 
+    /// Push switch (kept for existing call sites).
     public func toggle(_ category: DIPNotificationCategory, to value: Bool) async {
-        guard areSwitchesEnabled, preferences.isEnabled(category, on: .push) != value else { return }
+        await toggle(category, on: .push, to: value)
+    }
+
+    public func toggle(_ category: DIPNotificationCategory, on channel: DIPNotificationChannel, to value: Bool) async {
+        let section: Section = channel == .push ? .push : .email
+        guard areSwitchesEnabled(in: section), Self.visibleCategories(on: channel).contains(category),
+              preferences.isEnabled(category, on: channel) != value else { return }
         saveError = nil
         failedChange = nil
-        preferences = preferences.setting(category, on: .push, to: value)
+        preferences = preferences.setting(category, on: channel, to: value)
         let previous = saveChain
         let task = Task { [weak self] in
             await previous?.value
-            await self?.persist(category, from: !value, to: value)
+            await self?.persist(category, on: channel, from: !value, to: value)
         }
         saveChain = task
         await task.value
@@ -145,20 +169,20 @@ public final class DIPNotificationSettingsModel {
     /// Re-applies the change that just failed.
     public func retryFailedChange() async {
         guard let failedChange else { return }
-        await toggle(failedChange.category, to: failedChange.value)
+        await toggle(failedChange.category, on: failedChange.channel, to: failedChange.value)
     }
 
     public func dismissSaveError() { saveError = nil; failedChange = nil }
 
-    private func persist(_ category: DIPNotificationCategory, from before: Bool, to value: Bool) async {
-        do { try await repository.save(preferences) }
+    private func persist(_ category: DIPNotificationCategory, on channel: DIPNotificationChannel, from before: Bool, to value: Bool) async {
+        do { try await repository.save(preferences, on: channel) }
         catch {
             // Put only this switch back; other switches the member has since moved keep their state.
-            if preferences.isEnabled(category, on: .push) == value {
-                preferences = preferences.setting(category, on: .push, to: before)
+            if preferences.isEnabled(category, on: channel) == value {
+                preferences = preferences.setting(category, on: channel, to: before)
             }
             saveError = Self.saveFailureMessage
-            failedChange = (category, value)
+            failedChange = (category, channel, value)
         }
     }
 }

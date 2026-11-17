@@ -89,7 +89,57 @@ describe("email payloads from router-mode handlers", () => {
     assert.equal(request.email!.revisionOrWindow, "5");
     assert.deepEqual(request.email!.variables, {
       eventId: E, eventTitle: "Sunrise run", startTime: base.startTime.toISOString(), endTime: base.endTime.toISOString(),
-      venueName: "Park", revision: 5, changedFields: ["title"],
+      venueName: "Park", venueAddress: "1 Main St, P", revision: 5, changedFields: ["title"], previous: { eventTitle: "Sunset run" },
+    });
+  });
+
+  describe("event_changed previous values", () => {
+    async function change(patch: Record<string, unknown>) {
+      const f = new Fixture();
+      f.subs.set("fan", "changes");
+      await onEventDocumentUpdatedViaRouter(f.deps(), C, E, base, { ...base, ...patch, revision: 5, updatedBy: "editor" }, NOW);
+      return f.emailCalls[0]?.request;
+    }
+    const vars = (r: NotificationRequest | undefined) => r!.email!.variables as Record<string, unknown>;
+    const hour = (n: number) => new Date(base.startTime.getTime() + n * HOUR);
+
+    test("time-only change carries old start and end only for what moved", async () => {
+      const r = await change({ startTime: hour(1) });
+      assert.deepEqual(vars(r).previous, { startTime: base.startTime.toISOString() });
+      assertValidEmail(r!, "event_changed");
+    });
+
+    test("date change carries both old times", async () => {
+      const day = 24 * HOUR;
+      const r = await change({ startTime: hour(24), endTime: new Date(base.endTime.getTime() + day) });
+      assert.deepEqual(vars(r).previous, { startTime: base.startTime.toISOString(), endTime: base.endTime.toISOString() });
+      assertValidEmail(r!, "event_changed");
+    });
+
+    test("venue name, address and title changes", async () => {
+      const name = await change({ venue: { ...base.venue, name: "Beach" } });
+      assert.deepEqual(vars(name).previous, { venueName: "Park" });
+      assertValidEmail(name!, "event_changed");
+      const addr = await change({ venue: { ...base.venue, address: "2 Side St" } });
+      assert.deepEqual(vars(addr).previous, { venueAddress: "1 Main St, P" });
+      assert.equal(vars(addr).venueAddress, "2 Side St, P");
+      assertValidEmail(addr!, "event_changed");
+      const loc = await change({ venue: { ...base.venue, locality: "Q" } });
+      assert.deepEqual(vars(loc).previous, { venueAddress: "1 Main St, P" });
+      const title = await change({ title: "Renamed" });
+      assert.deepEqual(vars(title).previous, { eventTitle: "Sunset run" });
+      assertValidEmail(title!, "event_changed");
+    });
+
+    test("a change with nothing visible in the email yields no email", async () => {
+      assert.equal(await change({ capacity: 20 }), undefined);
+      assert.equal(await change({ description: "More details" }), undefined);
+    });
+
+    test("a cancellation is unaffected and has no previous", async () => {
+      const r = await change({ status: "cancelled" });
+      assertValidEmail(r!, "event_canceled");
+      assert.equal("previous" in vars(r), false);
     });
   });
 

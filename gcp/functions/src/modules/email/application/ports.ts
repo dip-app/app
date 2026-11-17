@@ -153,7 +153,6 @@ export interface EmailPreferencesStore {
 export interface EmailConfig {
   enabled: boolean;
   unsubscribeKey: string;
-  postalAddress: string;
   defaultTimeZone: string;
   /** `https://letsdip.work`; links are built from it. */
   publicOrigin: string;

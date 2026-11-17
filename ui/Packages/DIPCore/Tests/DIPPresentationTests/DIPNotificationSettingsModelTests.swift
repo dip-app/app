@@ -159,7 +159,58 @@ import Testing
         #expect(model.areSwitchesEnabled)
     }
 
-    @Test func onlyPushSectionExistsForNow() {
-        #expect(DIPNotificationSettingsModel.Section.allCases == [.push])
+    @Test func sectionsArePushThenEmail() {
+        #expect(DIPNotificationSettingsModel.Section.allCases == [.push, .email])
+        #expect(DIPNotificationSettingsModel.Section.email.title == "Email")
+    }
+
+    @Test func emailRowsExcludeChatSocialAndDiscovery() async {
+        let (model, _, _) = await loaded()
+        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges])
+        #expect(model.emailRows.map(\.isOn) == [true, true, false, true])
+    }
+
+    @Test func emailToggleWritesOnlyTheEmailChannel() async {
+        let (model, repository, _) = await loaded()
+        await model.toggle(.reminders, on: .email, to: true)
+        #expect(model.emailRows.first { $0.category == .reminders }?.isOn == true)
+        #expect(await repository.savedChannels == [.email])
+        #expect(model.pushRows.map(\.isOn) == [true, true, true, true, true, false, false])
+        let reopened = DIPNotificationSettingsModel(repository: repository, permission: FakePermission(.authorized))
+        await reopened.load()
+        #expect(reopened.emailRows.first { $0.category == .reminders }?.isOn == true)
+    }
+
+    @Test func pushToggleStillWritesOnlyThePushChannel() async {
+        let (model, repository, _) = await loaded()
+        await model.toggle(.chat, to: false)
+        #expect(await repository.savedChannels == [.push])
+    }
+
+    @Test func emailSwitchesStayEnabledWhilePushIsDenied() async {
+        let (model, repository, _) = await loaded(.denied)
+        #expect(!model.areSwitchesEnabled(in: .push))
+        #expect(model.areSwitchesEnabled(in: .email))
+        await model.toggle(.invites, on: .email, to: false)
+        #expect(model.emailRows.first { $0.category == .invites }?.isOn == false)
+        #expect(await repository.savedChannels == [.email])
+    }
+
+    @Test func hiddenEmailCategoriesCannotBeToggled() async {
+        let (model, repository, _) = await loaded()
+        await model.toggle(.discovery, on: .email, to: true)
+        await model.toggle(.chat, on: .email, to: true)
+        #expect(await repository.saves.isEmpty)
+    }
+
+    @Test func failedEmailToggleRevertsAndRetrySavesEmail() async {
+        let (model, repository, _) = await loaded(behavior: .init(failingSaves: 1))
+        await model.toggle(.challenges, on: .email, to: false)
+        #expect(model.emailRows.first { $0.category == .challenges }?.isOn == true)
+        #expect(model.saveError == DIPNotificationSettingsModel.saveFailureMessage)
+        await model.retryFailedChange()
+        #expect(model.emailRows.first { $0.category == .challenges }?.isOn == false)
+        #expect(model.saveError == nil)
+        #expect(await repository.savedChannels == [.email])
     }
 }

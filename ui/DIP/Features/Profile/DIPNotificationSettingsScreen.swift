@@ -104,21 +104,27 @@ struct DIPNotificationSettingsScreen: View {
                 .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 24, relativeTo: .title2))
                 .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                 .accessibilityAddTraits(.isHeader)
-            if !model.canReceivePush {
+            if section == .email {
+                Text(DIPNotificationSettingsModel.emailFootnote)
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("notificationSettings.emailFootnote")
+            } else if !model.canReceivePush {
                 Text(DIPNotificationSettingsModel.disabledFootnote)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("notificationSettings.footnote")
             }
-            ForEach(model.rows(in: section)) { row in toggleRow(row, enabled: model.areSwitchesEnabled) }
+            ForEach(model.rows(in: section)) { row in toggleRow(row, channel: section.channel, enabled: model.areSwitchesEnabled(in: section)) }
         }
     }
 
-    private func toggleRow(_ row: DIPNotificationSettingsModel.Row, enabled: Bool) -> some View {
+    private func toggleRow(_ row: DIPNotificationSettingsModel.Row, channel: DIPNotificationChannel, enabled: Bool) -> some View {
         Toggle(isOn: Binding(
             get: { row.isOn },
-            set: { value in DIPHaptics.select(); Task { await model.toggle(row.category, to: value) } })
+            set: { value in DIPHaptics.select(); Task { await model.toggle(row.category, on: channel, to: value) } })
         ) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.title)
@@ -135,8 +141,10 @@ struct DIPNotificationSettingsScreen: View {
         .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
                     in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
         .opacity(enabled ? 1 : 0.5)
-        .accessibilityHint(enabled ? "" : "Turn on push notifications first")
-        .accessibilityIdentifier("notificationSettings.toggle.\(row.category.rawValue)")
+        .accessibilityHint(enabled || channel == .email ? "" : "Turn on push notifications first")
+        .accessibilityIdentifier(channel == .email
+            ? "notificationSettings.email.toggle.\(row.category.rawValue)"
+            : "notificationSettings.toggle.\(row.category.rawValue)")
     }
 
     // MARK: Cards

@@ -41,8 +41,13 @@ export interface EventFacts {
   eventTitle: string;
   startTime: string;
   endTime: string;
-  /** Venue display name only; never the street address or coordinates. */
+  /** Venue display name. */
   venueName?: string;
+  /**
+   * Venue street address and locality as one line (members of the event's company see it in the app; the email goes
+   * only to such members). Never coordinates.
+   */
+  venueAddress?: string;
   /** `catalog://default/<key>` or an approved https URL; anything else renders without an image. */
   coverImageURL?: string;
   /** Event revision, used as the ICS SEQUENCE so calendar clients replace older copies. */
@@ -53,7 +58,15 @@ export interface EventFacts {
 export interface TemplateVariables {
   invite_received: EventFacts & { inviterFirstName: string };
   invite_answered: EventFacts & { inviteeFirstName: string; answer: "accepted" | "declined" };
-  event_changed: EventFacts & { changedFields: Array<"time" | "venue" | "title" | "details"> };
+  /**
+   * `previous` holds the OLD values of the fields that changed (earliest old value when several changes are collapsed);
+   * the EventFacts fields hold the current values. Only time, venue and title changes are shown, so an update that
+   * touches nothing else visible is never emailed.
+   */
+  event_changed: EventFacts & {
+    changedFields: Array<"time" | "venue" | "title" | "details">;
+    previous?: { startTime?: string; endTime?: string; venueName?: string; venueAddress?: string; eventTitle?: string };
+  };
   event_canceled: EventFacts;
   attendee_added: EventFacts;
   event_reminder: EventFacts & { window: "24h" | "1h" };
@@ -68,8 +81,6 @@ export interface RenderContext {
   timeZone: string;
   /** Category-specific one-click unsubscribe URL (`https://letsdip.work/u/<token>`). */
   unsubscribeURL: string;
-  /** Postal address for the footer (owner-provided param). */
-  postalAddress: string;
   /**
    * Signed open-tracking pixel (`https://letsdip.work/o/<token>.gif`), or null to render none. Opens are an
    * approximate signal (Apple Mail Privacy Protection and Gmail's image proxy prefetch images).

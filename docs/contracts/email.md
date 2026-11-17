@@ -45,7 +45,7 @@ Router integration (EML-8): `deliverNotification` accepts an optional `request.e
 
 ## Send-time gates (in order)
 
-claim (lease) -> `notAfter` -> `EMAIL_ENABLED` -> postal address and key configured -> variables pass the template allow-list -> company enabled -> member exists, same company, active, has an email -> email switch for the category -> address not suppressed -> daily caps -> render, sign the unsubscribe link, send.
+claim (lease) -> `notAfter` -> `EMAIL_ENABLED` -> unsubscribe key configured -> variables pass the template allow-list -> company enabled -> member exists, same company, active, has an email -> email switch for the category -> address not suppressed -> daily caps -> render, sign the unsubscribe link, send.
 
 At most once: a send whose outcome is unknown (timeout, crash, abandoned lease) is never retried. Only a definite retryable rejection (429, 503, connection refused before sending) returns the document to `queued` and lets the runtime redeliver, up to 5 attempts.
 
@@ -53,7 +53,8 @@ At most once: a send whose outcome is unknown (timeout, crash, abandoned lease) 
 
 - From `DIP <notify@letsdip.work>`, Reply-To `support@letsdip.work`, Postmark stream `notifications`, Postmark's own open and link tracking off (our optional pixel is the only open signal).
 - Headers `List-Unsubscribe: <https://letsdip.work/u/<token>>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
-- Footer: reason, unsubscribe link, "Manage in the DIP app (Profile > Notifications)", postal address.
+- Footer: reason; Unsubscribe and "Manage in DIP: Profile > Notifications"; "Sent by DIP · Questions? support@letsdip.work" (mailto). No postal address (transactional mail only).
 - Links: `https://letsdip.work/e/<eventId>` for events (universal link, preview page for non-members), `https://letsdip.work/` otherwise.
 - An `event.ics` attachment (`METHOD:PUBLISH`, UID `<eventId>@letsdip.work`, `SEQUENCE` = event revision) on invites, reminders, changes, cancellations (`STATUS:CANCELLED`) and attendee-added emails.
-- Never: chat text, comments, photos, other members' email addresses, street address or coordinates of the venue.
+- Never: chat text, comments, photos, other members' email addresses, venue coordinates. The venue name and street address appear only in emails to members of the event's company, who already see them in the app.
+- Event updated: When and Where always show current values; a changed field shows its old value struck through directly above the new one (inline `<del>` with a hidden "was" for screen readers). An update that changes no time, place or title is not emailed.

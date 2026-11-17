@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { eventURL, formatEventTime, renderEmail, validateVariables } from "../../functions/src/modules/email/domain/templates/render";
+import { eventURL, formatEventTime, hasVisibleChange, renderEmail, validateVariables } from "../../functions/src/modules/email/domain/templates/render";
 import { TEMPLATE_IDS, type TemplateId } from "../../functions/src/modules/email/domain/templates/types";
 import { PREVIEW_CASES, SAMPLE_CTX } from "../../functions/src/modules/email/scripts/previewCases";
 
@@ -39,12 +39,11 @@ describe("email template invariants", () => {
     for (const id of TEMPLATE_IDS) assert.ok(covered.has(id), id);
   });
 
-  test("footer, unsubscribe, address and structure in every output", () => {
+  test("footer, unsubscribe, support contact and structure in every output", () => {
     for (const c of PREVIEW_CASES) {
       const out = render(c);
       for (const body of [out.html, out.text]) {
         assert.ok(body.includes(SAMPLE_CTX.unsubscribeURL), `${c.name} unsubscribe`);
-        assert.ok(body.includes(SAMPLE_CTX.postalAddress), `${c.name} address`);
         assert.ok(body.includes("Unsubscribe"), c.name);
         assert.ok(body.includes("You are getting this because"), c.name);
         assert.ok(body.includes("emails are on."), c.name);
@@ -52,6 +51,12 @@ describe("email template invariants", () => {
         assert.ok(body.includes("Hi Sam, "), c.name);
       }
       assert.ok(out.html.includes('href="https://letsdip.work/u/sample-token"'), c.name);
+      assert.ok(out.html.includes('Sent by DIP &middot; Questions? <a class="link" href="mailto:support@letsdip.work"'), c.name);
+      assert.ok(out.text.includes("Sent by DIP · Questions? support@letsdip.work"), c.name);
+      for (const body of [out.html, out.text]) {
+        const footer = body.slice(body.indexOf("You are getting this because"));
+        assert.ok(!/\d+\s+[A-Z][a-z]+\s+(Street|St|Ave|Avenue|Road|Rd|Blvd)\b/.test(footer) && !footer.includes("placeholder"), `${c.name} footer address`);
+      }
       assert.ok(out.html.includes("max-width:600px") && out.html.includes("#1E212B"), c.name);
       assert.ok(out.html.includes("v:roundrect"), c.name);
       assert.ok(out.html.includes("border-color: #2C2F38") && out.html.includes("[data-ogsc]"), c.name);
@@ -60,7 +65,6 @@ describe("email template invariants", () => {
       assert.ok(out.html.includes('name="color-scheme" content="light dark"'));
       assert.ok(out.html.includes("prefers-color-scheme: dark"));
       assert.ok(out.html.includes("letsdip.work"));
-      assert.ok(out.text.includes(`DIP · ${SAMPLE_CTX.postalAddress}`));
     }
   });
 
@@ -119,14 +123,15 @@ describe("email template invariants", () => {
       startTime: "2026-11-20T23:30:00Z",
       endTime: "2026-11-21T01:00:00Z",
       venueName: EVIL,
+      venueAddress: EVIL,
       coverImageURL: "catalog://default/hiking",
     };
     const outs = [
       renderEmail("invite_received", { ...base, inviterFirstName: EVIL }, { ...SAMPLE_CTX, recipientFirstName: EVIL }),
       renderEmail("invite_answered", { ...base, inviteeFirstName: EVIL, answer: "accepted" }, SAMPLE_CTX),
-      renderEmail("event_changed", { ...base, changedFields: ["time"] }, SAMPLE_CTX),
+      renderEmail("event_changed", { ...base, changedFields: ["time", "venue", "title"], previous: { eventTitle: EVIL, venueName: EVIL, venueAddress: EVIL, startTime: "2026-11-19T23:30:00Z" } }, SAMPLE_CTX),
       renderEmail("challenge_reviewed", { challengeId: "c1", challengeTitle: EVIL, outcome: "approved", points: 3 }, SAMPLE_CTX),
-      renderEmail("event_canceled", base, { ...SAMPLE_CTX, postalAddress: EVIL, unsubscribeURL: 'https://letsdip.work/u/a"b' }),
+      renderEmail("event_canceled", base, { ...SAMPLE_CTX, unsubscribeURL: 'https://letsdip.work/u/a"b' }),
     ];
     for (const out of outs) {
       assert.ok(!out.html.includes("<script>"));
@@ -209,6 +214,19 @@ describe("email template invariants", () => {
     }
   });
 
+  test("header and footer bands are full-bleed rows with the band color and a centered 600px inner table", () => {
+    for (const c of PREVIEW_CASES) {
+      const { html } = render(c);
+      const bands = html.match(/<tr><td class="art-cell" align="center" bgcolor="#F2F3FC" width="100%"[^>]*><table [^>]*width="600"[^>]*max-width:100%/g) ?? [];
+      assert.equal(bands.length, 2, c.name);
+      assert.ok(html.indexOf("header.png") < html.indexOf("<h1") && html.indexOf("<h1") < html.indexOf("footer.png"), c.name);
+      // the footer band is the last row of the outer table
+      assert.ok(/footer-dark\.png"[^>]*\/>(<img [^>]*width="1"[^>]*\/>)?<\/td><\/tr><\/table><\/td><\/tr>\n<\/table>\n<\/body>/.test(html), c.name);
+      assert.ok(html.includes("body, .bg-outer { background-color: #121318 !important; }") && html.includes("[data-ogsb] .art-cell { background-color: #23252E !important; }"), c.name);
+      assert.ok(!html.slice(html.indexOf('class="container bg-card')).includes("header.png"), c.name);
+    }
+  });
+
   test("footer banner is the last image (before only the pixel), after the unsubscribe link", () => {
     for (const c of PREVIEW_CASES) {
       const { html } = render(c);
@@ -246,6 +264,88 @@ describe("email template invariants", () => {
     assert.ok(r.text.includes("Hi Sam, Sunset hike at Frick Park starts tomorrow."));
     assert.ok(h.text.includes("Hi Sam, Sunset hike at Frick Park starts in about an hour."));
     assert.ok(r.html.includes(">Starts tomorrow<"));
+  });
+
+  test("event_changed shows struck old values only for what changed", () => {
+    const by = (n: string) => render(PREVIEW_CASES.find((c) => c.name === n)!);
+    const dels = (html: string) => [...html.matchAll(/<del style="text-decoration:line-through;color:#8A8F9E;">(.*?)<\/del>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ""));
+    // time only, same day: strike the old range only
+    const t = by("event_changed_time");
+    assert.deepEqual(dels(t.html), ["was 5:30\u00A0PM to 7:00\u00A0PM\u00A0EST".replace(/\u00A0/g, "&nbsp;")]);
+    assert.ok(t.text.includes("When: Fri, Nov 20, 6:30 PM to 8:00 PM EST  (was: 5:30 PM to 7:00 PM EST)"));
+    assert.ok(t.subject === "Updated: Sunset hike at Frick Park (time changed)");
+    assert.ok(t.html.includes("Frick Park, Hot Metal Street entrance") && t.html.includes("Hot Metal St, Pittsburgh, PA"));
+    // date change: strike the full old string
+    const d = by("event_changed_date");
+    assert.deepEqual(dels(d.html), ["was Thu, Nov 19, 6:30&nbsp;PM to 8:00&nbsp;PM&nbsp;EST"]);
+    assert.ok(d.text.includes("(was: Thu, Nov 19, 6:30 PM to 8:00 PM EST)"));
+    assert.ok(d.text.includes("Hi Sam, the date and time changed for this event."));
+    assert.equal(d.subject, "Updated: Sunset hike at Frick Park (date changed)");
+    assert.ok(t.text.includes("Hi Sam, the time changed for this event."));
+    // venue name only
+    const v = by("event_changed_venue");
+    assert.deepEqual(dels(v.html), ["was Schenley Park, Bartlett Street entrance"]);
+    assert.equal(v.subject, "Updated: Sunset hike at Frick Park (location changed)");
+    assert.ok(!v.text.includes("When: Fri, Nov 20, 6:30 PM to 8:00 PM EST  (was"));
+    // address only
+    const a = by("event_changed_address");
+    assert.deepEqual(dels(a.html), ["was Beechwood Blvd, Pittsburgh, PA"]);
+    assert.ok(a.text.includes("Hot Metal St, Pittsburgh, PA  (was: Beechwood Blvd, Pittsburgh, PA)"));
+    // time + venue
+    const b = by("event_changed_both");
+    assert.equal(dels(b.html).length, 3);
+    // old name and old address are grouped above the new name and address
+    const w = b.html.slice(b.html.indexOf(">Where<"));
+    const pos = ["Schenley Park", "Bartlett St, Pittsburgh", "Frick Park, Hot Metal", "Hot Metal St, Pittsburgh"].map((x) => w.indexOf(x));
+    assert.ok(pos.every((x, i) => x > 0 && (i === 0 || x > pos[i - 1]!)), pos.join());
+    for (const n of ["event_changed_time", "event_changed_date", "event_changed_venue", "event_changed_address", "event_changed_both", "event_changed_title"]) {
+      for (const m of by(n).html.matchAll(/<del\b[^>]*>/g)) assert.ok(m[0].includes("text-decoration:line-through"), n);
+    }
+    assert.equal(b.subject, "Updated: Sunset hike at Frick Park (time and location changed)");
+    assert.ok(b.text.includes("Hi Sam, the time and location changed for this event."));
+    // title
+    const ti = by("event_changed_title");
+    assert.deepEqual(dels(ti.html), ["was Evening walk at Frick Park"]);
+    assert.equal(ti.subject, "Updated: Sunset hike at Frick Park (title changed)");
+    assert.ok(ti.html.includes(">Updated<"));
+    // unchanged fields get no strike; dark-mode color override exists without a class
+    assert.ok(!by("event_changed").html.includes("<del"));
+    assert.ok(t.html.includes("del { color: #A3A7B3 !important; }") && t.html.includes("[data-ogsc] del"));
+    assert.ok(!/<del[^>]*class=/.test(t.html));
+    for (const n of ["event_changed_time", "event_changed_both", "event_changed_title"]) assert.ok(by(n).subject.length <= 78, n);
+  });
+
+  test("long titles are truncated so the changed suffix still fits in the subject", () => {
+    const out = renderEmail(
+      "event_changed",
+      { eventId: "e", eventTitle: "Quarterly cross-functional offsite planning session with lunch and games", startTime: "2026-11-20T23:30:00Z", endTime: "2026-11-21T01:00:00Z", changedFields: ["time", "venue"], previous: { startTime: "2026-11-20T20:30:00Z", venueName: "Old" } },
+      SAMPLE_CTX,
+    );
+    assert.ok(out.subject.length <= 78 && out.subject.endsWith("(time and location changed)") && out.subject.includes("..."), out.subject);
+  });
+
+  test("hasVisibleChange", () => {
+    const base = { eventId: "e", eventTitle: "T", startTime: "2026-11-20T23:30:00Z", endTime: "2026-11-21T01:00:00Z", venueName: "V", venueAddress: "A" };
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["details"] }), false);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["time"], previous: { startTime: "2026-11-20T23:30:00Z", endTime: "2026-11-21T01:00:00Z" } }), false);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["time"], previous: { startTime: "2026-11-20T22:30:00Z" } }), true);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["venue"], previous: { venueName: "V", venueAddress: "A" } }), false);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["venue"], previous: { venueAddress: "B" } }), true);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["title"], previous: { eventTitle: " T " } }), false);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["title"], previous: { eventTitle: "Old" } }), true);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["time", "details"] }), true);
+    assert.equal(hasVisibleChange({ ...base, changedFields: ["venue", "details"], previous: { venueName: "V" } }), false);
+  });
+
+  test("validateVariables handles venueAddress and previous", () => {
+    const ok = { eventId: "e", eventTitle: "T", startTime: "2026-11-20T23:30:00Z", endTime: "2026-11-21T01:00:00Z", venueAddress: "x".repeat(200), changedFields: ["time"], previous: { startTime: "2026-11-20T22:30:00Z", venueName: "Old", venueAddress: "Old addr", eventTitle: "Old T" } };
+    assert.deepEqual(validateVariables("event_changed", ok), ok);
+    assert.equal(validateVariables("event_changed", { ...ok, venueAddress: "x".repeat(201) }), null);
+    assert.equal(validateVariables("event_changed", { ...ok, previous: { startTime: "soon" } }), null);
+    assert.equal(validateVariables("event_changed", { ...ok, previous: { chatText: "hi" } }), null);
+    assert.equal(validateVariables("event_changed", { ...ok, previous: { venueName: "x".repeat(121) } }), null);
+    assert.equal(validateVariables("event_changed", { ...ok, previous: "x" }), null);
+    assert.equal(validateVariables("event_canceled", ok), null);
   });
 
   test("details block lists When and Where as a key/value table", () => {
@@ -343,7 +443,7 @@ describe("validateVariables", () => {
     const vars = validateVariables("invite_received", { ...good, inviterFirstName: "bob@example.com" });
     assert.ok(vars);
     const out = renderEmail("invite_received", vars, SAMPLE_CTX);
-    assert.ok(!out.html.includes("mailto:"));
+    assert.ok(!out.html.replace("mailto:support@letsdip.work", "").includes("mailto:"));
     assert.ok(!out.text.includes("mailto:"));
   });
 });

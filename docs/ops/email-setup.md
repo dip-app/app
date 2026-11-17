@@ -78,13 +78,12 @@ firebase functions:secrets:set EMAIL_WEBHOOK_PASSWORD --project team05-dip
 ```text
 EMAIL_ENABLED=false
 EMAIL_PROVIDER=postmark
-EMAIL_POSTAL_ADDRESS=<street, city, state ZIP of the business>
 EMAIL_DEFAULT_TIME_ZONE=America/New_York
 POSTMARK_MESSAGE_STREAM=notifications
 EMAIL_OPEN_TRACKING=false
 ```
 
-- `EMAIL_POSTAL_ADDRESS` is required by CAN-SPAM for commercial mail and shown in every footer; while it is empty the sender skips every email (`config_incomplete`). Do not start it with "DIP" (the footer adds "DIP ·").
+- No postal address param: the emails are transactional (invitations, updates, reminders and reviews the member opted into), and the footer gives `support@letsdip.work` as the contact. If a promotional email is ever added, a postal address or PO box becomes required (CAN-SPAM) before it ships.
 - `EMAIL_OPEN_TRACKING=true` adds the approximate open pixel (`/o/<token>.gif`, function `emailOpenV1`). The privacy page already describes it; leave it off if you do not want it.
 - `EMAIL_DEFAULT_TIME_ZONE` is used when `emailSettings/{companyId}.timeZone` is unset; every time in an email shows the zone abbreviation.
 
@@ -134,4 +133,4 @@ Rollback: set `EMAIL_ENABLED=false` (or `enabled: false` for the company) and re
 
 - Sign the provider's DPA (Postmark offers one in the account).
 - Update the privacy page "Service providers" paragraph to name the provider (`apps/landing/privacy/index.html`, the sentence that says "we name that provider here before the first email is sent").
-- Confirm the postal address param.
+- Make sure `support@letsdip.work` delivers to the owner's inbox (it is the footer contact and the Reply-To).

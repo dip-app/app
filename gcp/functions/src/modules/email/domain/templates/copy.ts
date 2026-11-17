@@ -38,7 +38,6 @@ export interface EmailCopy {
   ctaURL: string;
 }
 
-const CHANGED_WORDS = { time: "time", venue: "location", title: "title", details: "details" } as const;
 
 /** "time", "time and location", "time, location, and title". */
 export function joinWords(words: readonly string[]): string {
@@ -72,11 +71,58 @@ export function fitSubject(prefix: string, title: string, suffix = ""): string {
 
 const clean = (value: string): string => collapseWhitespace(value);
 
+type ChangedVars = TemplateVariables["event_changed"];
+
+/** What visibly changed in an `event_changed` email. `venue` is also true when the old values are unknown. */
+export interface ChangeSummary {
+  time: boolean;
+  /** The start day (in the recipient zone) differs from the old start day. */
+  date: boolean;
+  title: boolean;
+  venue: boolean;
+  /** Strike flags: only set when the old value is known and differs. */
+  venueName: boolean;
+  venueAddress: boolean;
+}
+
+const sameInstant = (a: string, b: string): boolean => new Date(a).getTime() === new Date(b).getTime();
+
+const dayKey = (iso: string, zone: string): string => new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "numeric", day: "numeric" }).format(new Date(iso));
+
+export function changeSummary(v: ChangedVars, zone = "America/New_York"): ChangeSummary {
+  const prev = v.previous;
+  const has = (f: ChangedVars["changedFields"][number]): boolean => v.changedFields.includes(f);
+  const timeKnown = prev !== undefined && (prev.startTime !== undefined || prev.endTime !== undefined);
+  const time =
+    has("time") && (!timeKnown || !sameInstant(prev?.startTime ?? v.startTime, v.startTime) || !sameInstant(prev?.endTime ?? v.endTime, v.endTime));
+  const titleKnown = prev?.eventTitle !== undefined;
+  const title = has("title") && (!titleKnown || clean(prev?.eventTitle ?? "") !== clean(v.eventTitle));
+  const venueKnown = prev !== undefined && (prev.venueName !== undefined || prev.venueAddress !== undefined);
+  const venueName = has("venue") && prev?.venueName !== undefined && clean(prev.venueName) !== clean(v.venueName ?? "");
+  const venueAddress = has("venue") && prev?.venueAddress !== undefined && clean(prev.venueAddress) !== clean(v.venueAddress ?? "");
+  const venue = has("venue") && (!venueKnown || venueName || venueAddress);
+  const date = time && prev?.startTime !== undefined && dayKey(prev.startTime, zone) !== dayKey(v.startTime, zone);
+  return { time, date, title, venue, venueName, venueAddress };
+}
+
+/** False when no time, venue or title value actually differs (for example only "details", or previous equals current). */
+export function hasVisibleChange(v: ChangedVars): boolean {
+  const c = changeSummary(v);
+  return c.time || c.title || c.venue;
+}
+
+function changedWords(v: ChangedVars, zone: string, subject = false): string[] {
+  const c = changeSummary(v, zone);
+  const timeWord = c.date ? (subject ? "date" : "date and time") : "time";
+  const words = [c.time ? timeWord : "", c.venue ? "location" : "", c.title ? "title" : ""].filter(Boolean);
+  return words.length ? words : ["details"];
+}
+
 function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "heading" | "preheader" | "lead" | "note"> & { badge?: string }): EmailCopy {
   return { badge: null, highlight: null, ...rest, event: facts, ctaLabel: "Open in DIP", ctaURL: eventURL(facts.eventId) };
 }
 
-export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T]): EmailCopy {
+export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T], zone = "America/New_York"): EmailCopy {
   const id: TemplateId = template;
   switch (id) {
     case "invite_received": {
@@ -104,11 +150,11 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
     }
     case "event_changed": {
       const e = variables as TemplateVariables["event_changed"];
-      const words = e.changedFields.map((f) => CHANGED_WORDS[f]);
-      const what = joinWords(words.length ? words : ["details"]);
+      const what = joinWords(changedWords(e, zone));
+      const subjectWhat = joinWords(changedWords(e, zone, true));
       return withEvent(e, {
         heading: "Event updated",
-        subject: fitSubject("Updated: ", clean(e.eventTitle)),
+        subject: fitSubject("Updated: ", clean(e.eventTitle), ` (${subjectWhat} changed)`),
         preheader: `The ${what} changed for ${clean(e.eventTitle)}.`,
         lead: `the ${what} changed for this event.`,
         note: null,

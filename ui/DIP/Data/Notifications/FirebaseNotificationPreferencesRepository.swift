@@ -4,7 +4,7 @@ import Foundation
 
 /// The member's own `users/{uid}/settings/notifications` document. The path comes from the signed-in scope, never from a
 /// caller-supplied id. The rules allow exactly `contractVersion`, `push`, `email` and `updatedAt` (= request time). A save
-/// merge-writes only the `push` map (plus `contractVersion` and a server timestamp), so it never overwrites `email`
+/// merge-writes only the saved channel's map, `push` or `email` (plus `contractVersion` and a server timestamp), so it never overwrites `email`
 /// switches the server changed (an unsubscribe link) or that the email section owns. A missing document loads as the
 /// registry defaults (the server resolves defaults on every read).
 final class FirebaseNotificationPreferencesRepository: DIPNotificationPreferencesRepository, @unchecked Sendable {
@@ -26,11 +26,11 @@ final class FirebaseNotificationPreferencesRepository: DIPNotificationPreference
         return DIPNotificationPreferences(firestore: snapshot.data())
     }
 
-    func save(_ preferences: DIPNotificationPreferences) async throws {
+    func save(_ preferences: DIPNotificationPreferences, on channel: DIPNotificationChannel) async throws {
         let all = preferences.firestoreFields()
         let fields: [String: Any] = [
             "contractVersion": all["contractVersion"] ?? 1,
-            "push": all["push"] ?? [:],
+            channel.rawValue: all[channel.rawValue] ?? [:],
             "updatedAt": FieldValue.serverTimestamp(),
         ]
         let reference = document

@@ -20,13 +20,12 @@ import { PostmarkProvider, PostmarkWebhookVerifier } from "../infrastructure/pos
 
 /*
  * Configuration (docs/ops/email-setup.md). Everything is off by default; nothing is sent until the owner sets
- * EMAIL_ENABLED=true, EMAIL_PROVIDER=postmark, a postal address, the secrets, and enables a company in
+ * EMAIL_ENABLED=true, EMAIL_PROVIDER=postmark, the secrets, and enables a company in
  * `emailSettings/{companyId}`. Secret values are bound per function and never logged.
  */
 export const EMAIL_ENABLED = defineBoolean("EMAIL_ENABLED", { default: false, description: "Master switch for all email sending." });
 export const EMAIL_PROVIDER = defineString("EMAIL_PROVIDER", { default: "log", description: "postmark | log (log-only fake)." });
 export const EMAIL_OPEN_TRACKING = defineBoolean("EMAIL_OPEN_TRACKING", { default: false, description: "Add an approximate open-tracking pixel to emails." });
-export const EMAIL_POSTAL_ADDRESS = defineString("EMAIL_POSTAL_ADDRESS", { default: "", description: "Postal address for the email footer (CAN-SPAM). Sending is skipped while empty." });
 export const EMAIL_DEFAULT_TIME_ZONE = defineString("EMAIL_DEFAULT_TIME_ZONE", { default: "America/New_York", description: "IANA zone for times when the company has none." });
 export const POSTMARK_MESSAGE_STREAM = defineString("POSTMARK_MESSAGE_STREAM", { default: "notifications", description: "Postmark message stream id for optional notifications." });
 export const EMAIL_UNSUBSCRIBE_KEY = defineSecret("EMAIL_UNSUBSCRIBE_KEY");
@@ -62,7 +61,6 @@ export function emailConfig(): EmailConfig {
     // `emailSettings/{companyId}.enabled`.
     enabled: EMAIL_ENABLED.value() || emulator(),
     unsubscribeKey: unsubscribeKey(),
-    postalAddress: EMAIL_POSTAL_ADDRESS.value() || (emulator() ? "Emulator, 1 Test Street, Testville" : ""),
     // Unset params read as "" at runtime outside a CLI deploy; fall back to the documented defaults.
     defaultTimeZone: EMAIL_DEFAULT_TIME_ZONE.value() || "America/New_York",
     publicOrigin: SHARE_ORIGIN,
