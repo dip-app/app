@@ -1,7 +1,7 @@
 import { FieldPath, FieldValue, Timestamp, type DocumentReference, type Firestore } from "firebase-admin/firestore";
 import type {
   ChangeLogStore, ClaimStore, DeviceDirectory, DeviceRegistry, DeviceRegistryTransaction, DeviceToken, EventReader,
-  EventSummary, InboxItem, InboxWriter, RecipientDirectory, SubscriptionStore, UpcomingEvents,
+  EventSummary, InboxItem, InboxWriter, RecipientDirectory, StaleDeviceStore, SubscriptionStore, UpcomingEvents,
 } from "../application/ports";
 import { mergeChangeLog } from "../domain/changeLog";
 import { isSubscriptionLevel, DEFAULT_LEVEL_ON_JOIN } from "../domain/subscription";
@@ -37,7 +37,7 @@ export function plainEvent(data: Record<string, unknown>): Record<string, unknow
  * derived from trigger parameters or the verified caller UID, never from client payload fields.
  */
 export class FirestoreNotificationsStore implements
-  DeviceDirectory, RecipientDirectory, ClaimStore, EventReader, UpcomingEvents, ChangeLogStore, SubscriptionStore, DeviceRegistry, InboxWriter {
+  DeviceDirectory, RecipientDirectory, ClaimStore, EventReader, UpcomingEvents, ChangeLogStore, SubscriptionStore, DeviceRegistry, InboxWriter, StaleDeviceStore {
   constructor(private readonly db: Firestore, private readonly now: () => Date = () => new Date()) {}
 
   private event(companyId: string, eventId: string): DocumentReference {
@@ -68,6 +68,28 @@ export class FirestoreNotificationsStore implements
       const batch = this.db.batch();
       for (const device of group) batch.delete(this.device(device.uid, device.tokenHash));
       await batch.commit();
+    }
+  }
+
+  /**
+   * Registry rows not refreshed since `cutoff`. Rows without `lastSeenAt` do not match the range query; nothing is
+   * deployed yet, so there are no legacy rows (every registerDeviceV1 write sets it). Only users/{uid}/devices/{hash}
+   * is accepted, never another collection that happens to be called "devices".
+   */
+  async staleBefore(cutoff: Date, limit: number): Promise<DeviceToken[]> {
+    const result: DeviceToken[] = [];
+    let query = this.db.collectionGroup("devices")
+      .where("lastSeenAt", "<", Timestamp.fromDate(cutoff)).orderBy("lastSeenAt").limit(limit);
+    // Rows outside users/{uid}/devices are skipped but still occupy query slots, so keep paging until the page is full.
+    for (;;) {
+      const snap = await query.get();
+      for (const doc of snap.docs) {
+        const user = doc.ref.parent.parent;
+        if (!user || user.parent.id !== "users" || user.parent.parent !== null) continue;
+        result.push({ uid: user.id, tokenHash: doc.id, token: "" });
+      }
+      if (snap.size < limit || result.length >= limit) return result.slice(0, limit);
+      query = query.startAfter(snap.docs[snap.docs.length - 1]!);
     }
   }
 
@@ -195,7 +217,7 @@ export class FirestoreNotificationsStore implements
         upsert: (uid, tokenHash, device) => {
           transaction.set(this.device(uid, tokenHash), {
             token: device.token, tokenHash, platform: device.platform, appVersion: device.appVersion,
-            updatedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(), lastSeenAt: FieldValue.serverTimestamp(),
           });
         },
         remove: (uid, tokenHash) => { transaction.delete(this.device(uid, tokenHash)); },

@@ -13,20 +13,16 @@ export const INVALID_TOKEN_ERRORS: ReadonlySet<string> = new Set([
 export interface PushStats { recipients: number; tokens: number; sent: number; failed: number; removed: number }
 
 /**
- * Reusable internal push service: resolves the users' tokens, sends in multicast batches of <=500, and
- * removes tokens FCM reports as unregistered/invalid. Users without tokens are skipped silently. A failed
- * batch is counted, never retried here (pushes are best-effort, at most once per claim).
+ * Sends one message to already-resolved devices: dedupes by token, sends in multicast batches of <=500 and
+ * removes tokens FCM reports as unregistered/invalid. A failed batch is counted, never retried here (pushes
+ * are best-effort, at most once per claim). `recipients` is the number of distinct users among the devices.
  */
-export async function sendPush(deps: Pick<PushDependencies, "messaging" | "devices">, uids: readonly string[], message: PushMessage): Promise<PushStats> {
-  const unique = [...new Set(uids)];
-  const stats: PushStats = { recipients: unique.length, tokens: 0, sent: 0, failed: 0, removed: 0 };
-  if (unique.length === 0) return stats;
-  const devices = await deps.devices.tokensFor(unique);
+export async function sendToDevices(deps: Pick<PushDependencies, "messaging" | "devices">, devices: readonly DeviceToken[], message: PushMessage): Promise<PushStats> {
   // The same token can only be registered under one user, but guard against duplicates anyway.
   const byToken = new Map<string, DeviceToken>();
   for (const device of devices) if (!byToken.has(device.token)) byToken.set(device.token, device);
   const targets = [...byToken.values()];
-  stats.tokens = targets.length;
+  const stats: PushStats = { recipients: new Set(targets.map((device) => device.uid)).size, tokens: targets.length, sent: 0, failed: 0, removed: 0 };
   const invalid: DeviceToken[] = [];
   for (let offset = 0; offset < targets.length; offset += MULTICAST_LIMIT) {
     const batch = targets.slice(offset, offset + MULTICAST_LIMIT);
@@ -49,4 +45,12 @@ export async function sendPush(deps: Pick<PushDependencies, "messaging" | "devic
     stats.removed = invalid.length;
   }
   return stats;
+}
+
+/** Resolves the users' tokens and sends. Users without tokens are skipped silently. */
+export async function sendPush(deps: Pick<PushDependencies, "messaging" | "devices">, uids: readonly string[], message: PushMessage): Promise<PushStats> {
+  const unique = [...new Set(uids)];
+  if (unique.length === 0) return { recipients: 0, tokens: 0, sent: 0, failed: 0, removed: 0 };
+  const stats = await sendToDevices(deps, await deps.devices.tokensFor(unique), message);
+  return { ...stats, recipients: unique.length };
 }

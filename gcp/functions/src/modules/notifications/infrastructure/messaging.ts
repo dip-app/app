@@ -5,6 +5,16 @@ import { getMessaging, type MulticastMessage } from "firebase-admin/messaging";
 import type { MessagingPort, SendResult } from "../application/ports";
 import type { PushMessage } from "../domain/push";
 
+/** Alert push at normal user-visible priority, optionally collapsing and expiring. Contains no secrets. */
+export function apnsHeaders(message: PushMessage): Record<string, string> {
+  return {
+    "apns-priority": "10",
+    "apns-push-type": "alert",
+    ...(message.collapseId ? { "apns-collapse-id": message.collapseId } : {}),
+    ...(message.expiresAt ? { "apns-expiration": String(Math.floor(message.expiresAt.getTime() / 1000)) } : {}),
+  };
+}
+
 /** Maps the domain message to an FCM multicast message with APNs grouping/collapse headers. */
 export function toMulticast(tokens: readonly string[], message: PushMessage): MulticastMessage {
   return {
@@ -12,8 +22,14 @@ export function toMulticast(tokens: readonly string[], message: PushMessage): Mu
     notification: { title: message.title, body: message.body },
     data: { ...message.data },
     apns: {
-      headers: message.collapseId ? { "apns-collapse-id": message.collapseId } : {},
-      payload: { aps: { threadId: message.threadId, sound: "default" } },
+      headers: apnsHeaders(message),
+      // Never time-sensitive and never content-available (silent pushes are out of scope).
+      payload: {
+        aps: {
+          threadId: message.threadId, sound: "default", "interruption-level": "active",
+          ...(message.apnsCategory ? { category: message.apnsCategory } : {}),
+        },
+      },
     },
   };
 }
@@ -45,6 +61,7 @@ export class EmulatorOutboxMessaging implements MessagingPort {
     await this.db.collection("emulatorPushOutbox").add({
       tokenHashes: tokens.map((token) => createHash("sha256").update(token, "utf8").digest("hex")),
       title: message.title, body: message.body, data: message.data, threadId: message.threadId,
+      category: message.category, apnsHeaders: apnsHeaders(message), apnsCategory: message.apnsCategory ?? null,
       createdAt: FieldValue.serverTimestamp(),
     });
     return tokens.map((token) => (token.startsWith("invalid-")

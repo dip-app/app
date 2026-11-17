@@ -129,6 +129,7 @@ export interface DeviceRegistration {
   platform: "ios";
   appVersion: string;
   updatedAt: string;
+  lastSeenAt?: string;
 }
 
 export interface RegisterDeviceRequest {
@@ -181,13 +182,17 @@ export interface NotificationPreferences {
 }
 
 export interface PushNotificationData {
-  type: "chat" | "event_changed" | "reminder";
+  type: "chat" | "event_changed" | "reminder" | "invite" | "invite_answered" | "attendee_added" | "event_cancelled" | "challenge_approved" | "challenge_changes_requested" | "weekly_theme" | "event_interest";
   companyId: string;
-  eventId: string;
+  eventId?: string;
   deepLink: string;
   messageId?: string;
   revision?: string;
   window?: "24h" | "1h";
+  category?: NotificationCategory;
+  inviteId?: string;
+  submissionId?: string;
+  challengeId?: string;
 }
 
 export interface RSVP {
