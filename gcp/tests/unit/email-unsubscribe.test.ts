@@ -29,6 +29,14 @@ const req = (method: string, token: string, body: unknown = undefined, contentTy
   ({ method, path: `/u/${token}`, body, contentType });
 const FORM = "application/x-www-form-urlencoded";
 
+describe("unsubscribe token lifetime", () => {
+  test("a default-lifetime token still verifies at day 300 and expires after a year", () => {
+    const token = tok("reminders");
+    assert.equal(verifyUnsubscribeToken(KEY, token, NOW_S + 300 * 86400).ok, true);
+    assert.equal(verifyUnsubscribeToken(KEY, token, NOW_S + 366 * 86400).ok, false);
+  });
+});
+
 describe("unsubscribe token", () => {
   test("round trip", () => {
     const r = verifyUnsubscribeToken(KEY, tok("invites"), NOW_S);

@@ -121,6 +121,8 @@ gcloud firestore fields ttls update expireAt --collection-group=emailCaps --enab
 
 Rollback: set `EMAIL_ENABLED=false` (or `enabled: false` for the company) and redeploy the sender. Queued outbox documents are skipped and expire.
 
+Reaper alert and index: `emailOutboxReaper` runs every 15 minutes and logs a warning `email.reaper` (fields `abandoned`, `staleQueued`, `errors`) only when it changed something or failed; alert on that log entry. Its stale-queued query needs the composite index `emailOutbox` (`status` ascending, `createdAt` ascending); deploy it with the Firestore indexes before relying on it (the sending pass uses a single-field range and needs none).
+
 ## 8. Verify
 
 - Internal accounts first: trigger an invite between two internal accounts of the pilot company. `emailOutbox/{id}` should reach `status: "sent"` with a `providerMessageId`.

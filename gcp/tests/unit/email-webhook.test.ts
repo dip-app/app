@@ -99,6 +99,19 @@ describe("handleWebhook", () => {
     const res = await handleWebhook(verifier({ ok: false, status: 400, reason: "malformed" }), setup().deps, post);
     assert.equal(res.status, 400);
   });
+  test("more than 500 events returns 413 and touches nothing", async () => {
+    const { deps, touched } = setup();
+    const events = Array.from({ length: 501 }, () => ev("hard_bounce"));
+    const res = await handleWebhook(verifier({ ok: true, events }), deps, post);
+    assert.equal(res.status, 413);
+    assert.equal(touched.length, 0);
+  });
+  test("exactly 500 events are processed", async () => {
+    const { deps, suppressed } = setup();
+    const res = await handleWebhook(verifier({ ok: true, events: Array.from({ length: 500 }, () => ev("hard_bounce")) }), deps, post);
+    assert.equal(res.status, 200);
+    assert.equal(suppressed.length, 500);
+  });
   test("GET returns 405 and never calls the verifier", async () => {
     let called = false;
     const v: EmailWebhookVerifier = { parse: () => { called = true; return { ok: true, events: [] }; } };

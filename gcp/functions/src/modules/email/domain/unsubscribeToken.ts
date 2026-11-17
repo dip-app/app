@@ -5,10 +5,10 @@ import { isEmailCategory, type EmailCategory } from "./categories";
  * Stateless unsubscribe tokens (docs/design/stretch/email.md, Preferences and unsubscribe):
  *   token = base64url("v1:" + uid + ":" + category + ":" + expiryEpochSeconds) + "." + base64url(HMAC-SHA256(key, payloadPart))
  * No lookup table and no guessable ids. The key comes from Secret Manager (EMAIL_UNSUBSCRIBE_KEY) and must be at
- * least 32 bytes. Links stay valid for 60 days, past the 30 days CAN-SPAM expects an opt-out mechanism to work.
+ * least 32 bytes. Links stay valid for 365 days: mail is kept far longer than the outbox, and one-click unsubscribe must keep working.
  */
 
-export const UNSUBSCRIBE_TOKEN_TTL_SECONDS = 60 * 24 * 60 * 60;
+export const UNSUBSCRIBE_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 export const MIN_KEY_BYTES = 32;
 const VERSION = "v1";
 const UID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
