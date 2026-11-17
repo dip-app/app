@@ -31,6 +31,8 @@ export interface EventFacts {
   venueName?: string;
   /** `catalog://default/<key>` or an approved https URL; anything else renders without an image. */
   coverImageURL?: string;
+  /** Event revision, used as the ICS SEQUENCE so calendar clients replace older copies. */
+  revision?: number;
 }
 
 /** Stored, allow-listed variables per template (what the outbox document carries). No email addresses, chat or comment text. */
