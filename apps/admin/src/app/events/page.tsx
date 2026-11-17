@@ -1,25 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { EventCard, EventTable } from "@/components/EventCard";
-import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
+import { Tabs, tabPanelProps } from "@/components/Tabs";
+import { Empty, LoadError, Loading } from "@/components/Ui";
 import { ApiError, type AdminEvent, classify } from "@/lib/contract";
+import { oneOf, useQueryState } from "@/lib/useQueryState";
 
 type Filter = "upcoming" | "past" | "cancelled";
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "upcoming", label: "Upcoming" },
   { id: "past", label: "Past" },
-  { id: "cancelled", label: "Cancelled" },
+  { id: "cancelled", label: "Canceled" },
 ];
+const IDS = FILTERS.map((item) => item.id);
+const EMPTY_BODY: Record<Filter, string> = {
+  upcoming: "Create an event to give your team something to join.",
+  past: "Events move here after they end.",
+  cancelled: "Events you cancel stay here for reference.",
+};
+const DEFAULTS = { filter: "upcoming" };
 
-export default function EventsPage() {
+function Events() {
   const { api, session } = useApp();
   const [events, setEvents] = useState<AdminEvent[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
-  const [filter, setFilter] = useState<Filter>("upcoming");
+  const [query, setQuery] = useQueryState(DEFAULTS);
+  const filter = oneOf(query.filter, IDS, "upcoming");
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -27,7 +37,7 @@ export default function EventsPage() {
     let cancelled = false;
     api.listEvents().then(
       (list) => !cancelled && (setEvents(list), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load events.")),
+      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load events. Check your connection and try again.")),
     );
     return () => {
       cancelled = true;
@@ -35,40 +45,29 @@ export default function EventsPage() {
   }, [api, session, attempt]);
 
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
+  const label = FILTERS.find((item) => item.id === filter)!.label;
 
   return (
-    <Shell title="Events" subtitle="Everything your company can see in the DIP app." action={can(session?.role, "events.manage") ? <Link className="pill-btn purple" href="/events/new/">New event</Link> : undefined}>
-      {error?.code === "permission-denied" ? (
-        <div className="empty" role="alert">
-          <h2>No organizer access</h2>
-          <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
-        </div>
-      ) : error ? (
-        <div className="banner error" role="alert">
-          <span>{error.message}</span>
-          <button className="pill-btn" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
-        </div>
-      ) : events === null ? (
-        <div className="skeleton-list" role="status" aria-label="Loading events"><div className="skeleton short" /><div className="skeleton short" /><div className="skeleton short" /></div>
-      ) : (
-        <>
-          <div className="tabs" role="group" aria-label="Filter events">
-            {FILTERS.map((item) => (
-              <button key={item.id} className="tab" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>
-                {item.label} ({events.filter((event) => classify(event) === item.id).length})
-              </button>
-            ))}
-          </div>
-          {shown.length === 0 ? (
-            <div className="empty">
-              <h2>No {filter} events</h2>
-              <p>{filter === "upcoming" ? "Create an event to give your team something to join." : "Nothing here yet."}</p>
+    <Shell title="Events" subtitle="Everything your company can see in the DIP app." requires="events.manage" action={<Link className="pill-btn purple" href="/events/new/">New event</Link>}>
+      {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
+        : events === null ? <Loading label="Loading events" />
+        : (
+          <>
+            <Tabs idBase="events" label="Filter events" value={filter} onChange={(id) => setQuery({ filter: id })}
+              items={FILTERS.map((item) => ({ id: item.id, label: item.label, count: events.filter((event) => classify(event) === item.id).length }))} />
+            <div {...tabPanelProps("events", filter)}>
+              {shown.length === 0 ? (
+                <Empty title={`No ${label.toLowerCase()} events`} body={EMPTY_BODY[filter]} />
+              ) : (
+                <EventTable>{shown.map((event) => <EventCard key={event.id} event={event} />)}</EventTable>
+              )}
             </div>
-          ) : (
-            <EventTable>{shown.map((event) => <EventCard key={event.id} event={event} />)}</EventTable>
-          )}
-        </>
-      )}
+          </>
+        )}
     </Shell>
   );
+}
+
+export default function EventsPage() {
+  return <Suspense fallback={<Loading label="Loading events" />}><Events /></Suspense>;
 }

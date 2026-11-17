@@ -12,9 +12,13 @@ import { THEMES, resolveTheme } from "@/lib/themes";
 import {
   THEME_TIME_ZONE_LABEL, addDays, formatWindow, lastDayOfIso, mondayOfIso, nextMonday, weekEndIso, weekStartIso,
 } from "@/lib/weeks";
+import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
+import { Dialog } from "./Dialog";
+import { RadioGrid } from "./RadioGrid";
 import { ThemeArt } from "./ThemeArt";
 import { ThemePreview } from "./ThemePreview";
+import { toast } from "./Toast";
 
 interface Props {
   /** Present when editing. */
@@ -59,6 +63,12 @@ export function ThemeForm({ theme, onReload }: Props) {
   const touched = useRef({ tags: false, weeks: false });
   // One key per create attempt, kept across retries so a lost response can never create two themes.
   const requestId = useRef(crypto.randomUUID());
+  const [discarding, setDiscarding] = useState(false);
+  const [saved, setSaved] = useState(false);
+  // Set by the organizer's own edits only: the tag and week defaults that fill in after mount don't count.
+  const [edited, setEdited] = useState(false);
+  const dirty = edited && !saved;
+  useUnsavedGuard(dirty);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +94,7 @@ export function ThemeForm({ theme, onReload }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
 
-  const set = <K extends keyof ThemeDraft>(key: K, value: ThemeDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
+  const set = <K extends keyof ThemeDraft>(key: K, value: ThemeDraft[K]) => { setEdited(true); setDraft((current) => ({ ...current, [key]: value })); };
 
   const startOptions = useMemo(
     () => startWeekOptions(others, new Date(), { currentStart: theme?.startDate ?? draft.startDate }),
@@ -104,6 +114,7 @@ export function ThemeForm({ theme, onReload }: Props) {
     const startDate = theme && monday === mondayOfIso(theme.startDate) ? theme.startDate : weekStartIso(monday);
     const sunday = addDays(monday, weeks * 7 - 1);
     const endDate = theme && sunday === lastDayOfIso(theme.endDate) ? theme.endDate : weekEndIso(sunday);
+    setEdited(true);
     setDraft((current) => ({ ...current, startDate, endDate }));
   }
 
@@ -115,6 +126,7 @@ export function ThemeForm({ theme, onReload }: Props) {
   function pickTheme(url: string) {
     const previous = resolveTheme(draft.coverImageURL);
     const next = resolveTheme(url);
+    setEdited(true);
     // Carry the catalog defaults over only where the organizer kept the previous theme's defaults.
     setDraft((current) => ({
       ...current,
@@ -153,6 +165,8 @@ export function ThemeForm({ theme, onReload }: Props) {
     try {
       if (theme) await api.updateTheme(theme.id, theme.revision, candidate);
       else await api.createTheme(requestId.current, candidate);
+      setSaved(true);
+      toast(editing ? `Saved changes to “${candidate.title}”.` : `Created “${candidate.title}”.`);
       router.push("/themes/");
     } catch (error) {
       if (error instanceof ApiError && error.reason === THEME_REASONS.overlap) {
@@ -215,15 +229,12 @@ export function ThemeForm({ theme, onReload }: Props) {
           <fieldset className="field">
             <legend>Theme</legend>
             <span className="hint">Each theme is a designed illustration that ships with the app. Pick one to fill in a title, description, goal and tag you can still change.</span>
-            <div className="covers">
-              {THEMES.map((option, index) => (
-                <button key={option.key} id={index === 0 ? "theme-first" : undefined} type="button" className="cover-option theme-option"
-                  aria-pressed={draft.coverImageURL === option.url} onClick={() => pickTheme(option.url)}>
-                  <ThemeArt url={option.url} className="swatch" />
-                  <span>{option.displayName}</span>
-                </button>
-              ))}
-            </div>
+            <RadioGrid label="Theme" value={draft.coverImageURL} onChange={pickTheme} optionClassName="theme-option"
+              describedBy={err("coverImageURL") ? "theme-first-error" : undefined} invalid={!!err("coverImageURL")}
+              options={THEMES.map((option, index) => ({
+                value: option.url, label: option.displayName, id: index === 0 ? "theme-first" : undefined,
+                content: <><ThemeArt url={option.url} className="swatch" /><span>{option.displayName}</span></>,
+              }))} />
             {selected.whyItsFun && (
               <span className="hint" aria-live="polite"><strong>Why it’s fun:</strong> {selected.whyItsFun} Members post: {selected.submissionPrompt}</span>
             )}
@@ -314,20 +325,26 @@ export function ThemeForm({ theme, onReload }: Props) {
             <label htmlFor="points">Points reward</label>
             <input id="points" type="number" min={0} max={THEME_LIMITS.pointsMax} step={1} inputMode="numeric" value={Number.isNaN(draft.pointsReward) ? "" : draft.pointsReward}
               aria-invalid={invalid("pointsReward")} aria-describedby={describedBy("pointsReward", "points-hint")} onChange={(e) => set("pointsReward", e.target.valueAsNumber)} />
-            <span className="hint" id="points-hint">Awarded by the server when an organizer approves a completed entry (0–{THEME_LIMITS.pointsMax}).</span>
+            <span className="hint" id="points-hint">Added to a member’s points when an organizer approves their entry (0 to {THEME_LIMITS.pointsMax}).</span>
             {err("pointsReward") && <span className="error" id="points-error">{err("pointsReward")}</span>}
           </div>
           {editing && theme && (
-            <p className="hint">{theme.participantCount} joined · {theme.completedCount} completed. Counts are kept by the server.</p>
+            <p className="hint">{theme.participantCount} joined · {theme.completedCount} completed. These counts update as members take part.</p>
           )}
         </div>
 
         <div className="actions">
           <button className="big-pill dark" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create theme"}</button>
-          <button className="big-pill gray" type="button" disabled={saving} onClick={() => router.push("/themes/")}>Cancel</button>
+            <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/themes/"))}>Cancel</button>
         </div>
       </form>
       <ThemePreview draft={draft} participantCount={theme?.participantCount ?? 0} />
+      {discarding && (
+        <Dialog danger title="Discard your changes?" confirmLabel="Discard changes" onClose={() => setDiscarding(false)}
+          onConfirm={async () => { setSaved(true); router.push("/themes/"); }}>
+          <p>{editing ? "The changes you made to this theme" : "The theme you started"} won’t be saved.</p>
+        </Dialog>
+      )}
     </div>
   );
 }

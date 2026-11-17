@@ -1,39 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
+import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { ThemeCard, ThemeTable } from "@/components/ThemeCard";
+import { Empty, LoadError, Loading } from "@/components/Ui";
 import { type ThemePhase, type WeeklyTheme, sortThemes, themePhase } from "@/lib/challenge";
 import { ApiError } from "@/lib/contract";
+import { oneOf, useQueryState } from "@/lib/useQueryState";
 
 const PHASES: { id: ThemePhase; label: string }[] = [
   { id: "current", label: "Current" },
   { id: "upcoming", label: "Upcoming" },
   { id: "past", label: "Past" },
 ];
+const IDS = PHASES.map((item) => item.id);
 
 const EMPTY: Record<ThemePhase, { title: string; body: string }> = {
   current: { title: "No theme this week", body: "Members see the Home challenge card only while a theme runs. Add one for this week or plan the next." },
   upcoming: { title: "Nothing planned", body: "Plan the next weeks so Home always has a challenge on Monday." },
   past: { title: "No past themes", body: "Themes move here once their last day ends." },
 };
+const DEFAULTS = { phase: "current" };
 
-export default function ThemesPage() {
+function Themes() {
   const { api, session } = useApp();
   const [themes, setThemes] = useState<WeeklyTheme[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
-  const [phase, setPhase] = useState<ThemePhase>("current");
+  const [query, setQuery] = useQueryState(DEFAULTS);
+  const phase = oneOf(query.phase, IDS, "current");
   const [attempt, setAttempt] = useState(0);
+  const canManage = can(session?.role, "themes.manage");
 
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
     api.listThemes().then(
       (list) => !cancelled && (setThemes(list), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load weekly themes.")),
+      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load weekly themes. Check your connection and try again.")),
     );
     return () => { cancelled = true; };
   }, [api, session, attempt]);
@@ -43,38 +50,26 @@ export default function ThemesPage() {
 
   return (
     <Shell title="Weekly themes" subtitle="The “This Week’s Challenge” card on the app’s Home screen."
-      action={can(session?.role, "themes.manage") ? <Link className="pill-btn purple" href="/themes/new/">New theme</Link> : undefined}>
-      {error?.code === "permission-denied" ? (
-        <div className="empty" role="alert">
-          <h2>No organizer access</h2>
-          <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
-        </div>
-      ) : error ? (
-        <div className="banner error" role="alert">
-          <span>{error.message}</span>
-          <button className="pill-btn" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
-        </div>
-      ) : themes === null ? (
-        <div className="skeleton-list" role="status" aria-label="Loading weekly themes"><div className="skeleton short" /><div className="skeleton short" /></div>
-      ) : (
-        <>
-          <div className="tabs" role="group" aria-label="Filter weekly themes">
-            {PHASES.map((item) => (
-              <button key={item.id} className="tab" aria-pressed={phase === item.id} onClick={() => setPhase(item.id)}>
-                {item.label} ({themes.filter((theme) => themePhase(theme, now) === item.id).length})
-              </button>
-            ))}
-          </div>
-          {shown.length === 0 ? (
-            <div className="empty">
-              <h2>{EMPTY[phase].title}</h2>
-              <p>{EMPTY[phase].body}</p>
+      action={canManage ? <Link className="pill-btn purple" href="/themes/new/">New theme</Link> : undefined}>
+      {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
+        : themes === null ? <Loading label="Loading weekly themes" />
+        : (
+          <>
+            <Tabs idBase="themes" label="Filter weekly themes" value={phase} onChange={(id) => setQuery({ phase: id })}
+              items={PHASES.map((item) => ({ id: item.id, label: item.label, count: themes.filter((theme) => themePhase(theme, now) === item.id).length }))} />
+            <div {...tabPanelProps("themes", phase)}>
+              {shown.length === 0 ? (
+                <Empty title={EMPTY[phase].title} body={EMPTY[phase].body} />
+              ) : (
+                <ThemeTable>{shown.map((theme) => <ThemeCard key={theme.id} theme={theme} phase={phase} canEdit={canManage} />)}</ThemeTable>
+              )}
             </div>
-          ) : (
-            <ThemeTable>{shown.map((theme) => <ThemeCard key={theme.id} theme={theme} phase={phase} />)}</ThemeTable>
-          )}
-        </>
-      )}
+          </>
+        )}
     </Shell>
   );
+}
+
+export default function ThemesPage() {
+  return <Suspense fallback={<Loading label="Loading weekly themes" />}><Themes /></Suspense>;
 }
