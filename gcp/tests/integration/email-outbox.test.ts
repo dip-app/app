@@ -180,7 +180,7 @@ test("email outbox trigger, unsubscribe and webhook against the emulators", { ti
       seededSuppressions.push(user.hash);
       assert.equal((await db.doc(`emailSuppressions/${user.hash}`).get()).get("reason"), "complaint");
       assert.deepEqual((await db.doc(`users/${user.uid}/settings/notifications`).get()).get("email"),
-        { invites: false, event_updates: false, reminders: false, challenges: false });
+        { invites: false, event_updates: false, reminders: false, challenges: false, discovery: false });
     });
   } finally {
     await Promise.allSettled([

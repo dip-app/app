@@ -15,6 +15,7 @@ export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
   event_updates: "event update",
   reminders: "reminder",
   challenges: "challenge",
+  discovery: "event suggestion",
 };
 
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */

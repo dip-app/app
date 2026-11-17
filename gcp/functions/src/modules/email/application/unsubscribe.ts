@@ -18,6 +18,7 @@ const CATEGORY_WORDS: Readonly<Record<EmailCategory, string>> = {
   event_updates: "event updates",
   reminders: "event reminders",
   challenges: "weekly theme reviews",
+  discovery: "event suggestions",
 };
 
 const BASE_HEADERS: Readonly<Record<string, string>> = {

@@ -1,3 +1,4 @@
+import type { NotificationKind } from "../../../notifications/domain/categories";
 import type { EmailCategory } from "../categories";
 
 /**
@@ -15,6 +16,19 @@ export const TEMPLATE_CATEGORY = {
 } as const satisfies Record<string, EmailCategory>;
 
 export type TemplateId = keyof typeof TEMPLATE_CATEGORY;
+
+/** Shared notification kind per template (notifications/domain/categories.ts); decides the per-event level gate. */
+export function templateKind(template: TemplateId, variables?: { outcome?: string }): NotificationKind {
+  switch (template) {
+    case "invite_received": return "invite";
+    case "invite_answered": return "invite_answered";
+    case "event_changed": return "event_changed";
+    case "event_canceled": return "event_cancelled";
+    case "attendee_added": return "attendee_added";
+    case "event_reminder": return "reminder";
+    case "challenge_reviewed": return variables?.outcome === "changes_requested" ? "challenge_changes_requested" : "challenge_approved";
+  }
+}
 export const TEMPLATE_IDS = Object.keys(TEMPLATE_CATEGORY) as TemplateId[];
 
 export function isTemplateId(value: unknown): value is TemplateId {

@@ -5,7 +5,7 @@ import type {
   CapStore, ClaimResult, CompanyEmailSettings, EmailPreferencesStore, EmailProviderPort, NewOutboxEntry, OutboxStore,
   OutgoingEmail, Recipient, SendOutcome,
 } from "../../functions/src/modules/email/application/ports";
-import { EMAIL_DEFAULTS, type EmailCategory } from "../../functions/src/modules/email/domain/categories";
+import { resolveEmailPreferences } from "../../functions/src/modules/email/domain/categories";
 import { MAX_ATTEMPTS, SEND_LEASE_MS, categoryOf, emailHash, type OutboxDocument, type OutboxStatus } from "../../functions/src/modules/email/domain/outbox";
 import { verifyUnsubscribeToken } from "../../functions/src/modules/email/domain/unsubscribeToken";
 
@@ -194,11 +194,11 @@ describe("sendOutboxEmail", () => {
   });
 
   test("reminders default off at send time", async () => {
-    assert.equal(EMAIL_DEFAULTS.reminders, false);
+    assert.equal(resolveEmailPreferences(null).reminders, false);
     const w = world();
     const id = await enqueue(w, "reminders_e1_u1_24h", { template: "event_reminder", variables: { ...vars, window: "24h" } as never });
     assert.equal((await sendOutboxEmail(w.deps, id)).reason, "preference_off");
-    w.emailMap = { reminders: true } as Record<EmailCategory, boolean>;
+    w.emailMap = { reminders: true };
     const id2 = await enqueue(w, "reminders_e1_u1_1h", { template: "event_reminder", variables: { ...vars, window: "1h" } as never });
     assert.equal((await sendOutboxEmail(w.deps, id2)).status, "sent");
   });

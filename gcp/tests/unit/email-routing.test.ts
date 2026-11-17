@@ -2,49 +2,73 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { emailChannel, enqueueEmail, type ChannelDeps } from "../../functions/src/modules/email/application/enqueueEmail";
 import type { NewOutboxEntry, OutboxStore } from "../../functions/src/modules/email/application/ports";
-import { EMAIL_CATEGORIES, EMAIL_DEFAULTS } from "../../functions/src/modules/email/domain/categories";
-import { decideEmail, type EmailRoutingInput } from "../../functions/src/modules/email/domain/policy";
+import { resolveEmailPreferences } from "../../functions/src/modules/email/domain/categories";
+import { decideEmail } from "../../functions/src/modules/email/domain/policy";
+import { CHANNEL_CATEGORIES, NOTIFICATION_KINDS, eventLevelsFor, type NotificationKind } from "../../functions/src/modules/notifications/domain/categories";
+import { resolvePreferences } from "../../functions/src/modules/notifications/domain/preferences";
+import type { SubscriptionLevel } from "../../functions/src/modules/notifications/domain/subscription";
 
-const base: EmailRoutingInput = {
-  category: "event_updates", globalEnabled: true, companyEnabled: true, emailPreference: true,
-  eventLevel: "all", eventScoped: true, pushWillDeliver: true,
-};
+const KINDS = Object.keys(NOTIFICATION_KINDS).filter((k) => CHANNEL_CATEGORIES.email.includes(NOTIFICATION_KINDS[k as NotificationKind].category)) as NotificationKind[];
+const LEVELS: Array<SubscriptionLevel | null> = [null, "all", "changes", "reminders", "none"];
+const prefs = (email: Record<string, boolean>) => resolvePreferences({ email });
 
 describe("decideEmail matrix", () => {
-  test("global and company flags", () => {
-    assert.deepEqual(decideEmail({ ...base, globalEnabled: false }), { send: false, reason: "disabled" });
-    assert.deepEqual(decideEmail({ ...base, companyEnabled: false }), { send: false, reason: "company_disabled" });
+  test("global and company flags win first", () => {
+    const input = { kind: "invite" as const, globalEnabled: true, companyEnabled: true, preferences: prefs({}), eventLevel: null, pushWillDeliver: false };
+    assert.deepEqual(decideEmail({ ...input, globalEnabled: false }), { send: false, reason: "disabled" });
+    assert.deepEqual(decideEmail({ ...input, companyEnabled: false }), { send: false, reason: "company_disabled" });
+    assert.deepEqual(decideEmail({ ...input, globalEnabled: false, companyEnabled: false }), { send: false, reason: "disabled" });
   });
 
-  test("categories email never offers", () => {
-    for (const category of ["chat", "social", "discovery", ""]) assert.deepEqual(decideEmail({ ...base, category }), { send: false, reason: "not_offered" });
-  });
-
-  test("category x preference x level x push", () => {
-    for (const category of EMAIL_CATEGORIES) {
-      for (const emailPreference of [true, false]) {
-        for (const eventScoped of [true, false]) {
-          for (const eventLevel of [null, "all", "changes", "reminders", "none"]) {
-            for (const pushWillDeliver of [true, false]) {
-              const got = decideEmail({ category, globalEnabled: true, companyEnabled: true, emailPreference, eventLevel, eventScoped, pushWillDeliver });
-              let want: string | true = true;
-              if (!emailPreference) want = "preference_off";
-              else if (eventScoped && (category === "event_updates" || category === "reminders")) {
-                const level = eventLevel ?? "changes";
-                const ok = category === "event_updates" ? ["all", "changes"].includes(level) : ["all", "changes", "reminders"].includes(level);
-                if (!ok) want = "event_level";
-              }
-              if (want === true && category === "challenges" && pushWillDeliver) want = "push_covers";
-              assert.deepEqual(got, want === true ? { send: true } : { send: false, reason: want }, JSON.stringify({ category, emailPreference, eventScoped, eventLevel, pushWillDeliver }));
-            }
+  test("kinds x preference x level x push", () => {
+    assert.ok(KINDS.length >= 8);
+    for (const kind of KINDS) {
+      const category = NOTIFICATION_KINDS[kind].category;
+      const levels = eventLevelsFor(kind);
+      for (const on of [true, false]) {
+        for (const eventLevel of LEVELS) {
+          for (const pushWillDeliver of [true, false]) {
+            const got = decideEmail({ kind, globalEnabled: true, companyEnabled: true, preferences: prefs({ [category]: on }), eventLevel, pushWillDeliver });
+            let want: string | true = true;
+            if (!on) want = "category_off";
+            else if (levels !== null && (eventLevel === null || !levels.includes(eventLevel))) want = "event_level";
+            else if (category === "challenges" && pushWillDeliver) want = "push_covers";
+            assert.deepEqual(got, want === true ? { send: true } : { send: false, reason: want }, JSON.stringify({ kind, on, eventLevel, pushWillDeliver }));
           }
         }
       }
     }
   });
 
-  test("invites ignore push and event level", () => {
-    assert.deepEqual(decideEmail({ ...base, category: "invites", eventLevel: "none", pushWillDeliver: true }), { send: true });
+  test("event-scoped kinds are blocked without a subscription; attendee_added and invites are not level-gated", () => {
+    const p = prefs({});
+    const run = (kind: NotificationKind, eventLevel: SubscriptionLevel | null) =>
+      decideEmail({ kind, globalEnabled: true, companyEnabled: true, preferences: p, eventLevel, pushWillDeliver: true });
+    for (const kind of ["event_changed", "event_cancelled"] as const) {
+      assert.deepEqual(run(kind, null), { send: false, reason: "event_level" });
+      assert.deepEqual(run(kind, "none"), { send: false, reason: "event_level" });
+      assert.deepEqual(run(kind, "reminders"), { send: false, reason: "event_level" });
+      assert.deepEqual(run(kind, "changes"), { send: true });
+      assert.deepEqual(run(kind, "all"), { send: true });
+    }
+    for (const kind of ["attendee_added", "invite", "invite_answered"] as const) {
+      for (const level of LEVELS) assert.deepEqual(run(kind, level), { send: true });
+    }
+  });
+
+  test("reminders and discovery default off and ignore push", () => {
+    const run = (kind: NotificationKind, p: ReturnType<typeof prefs>) =>
+      decideEmail({ kind, globalEnabled: true, companyEnabled: true, preferences: p, eventLevel: "all", pushWillDeliver: true });
+    assert.deepEqual(run("reminder", prefs({})), { send: false, reason: "category_off" });
+    assert.deepEqual(run("event_interest", prefs({})), { send: false, reason: "category_off" });
+    assert.deepEqual(run("reminder", prefs({ reminders: true })), { send: true });
+    assert.deepEqual(run("event_interest", prefs({ discovery: true })), { send: true });
+  });
+
+  test("categories email never offers are not email kinds", () => {
+    assert.ok(!KINDS.includes("chat"));
+    assert.deepEqual(decideEmail({ kind: "chat", globalEnabled: true, companyEnabled: true, preferences: prefs({ chat: true }), eventLevel: "all", pushWillDeliver: false }),
+      { send: false, reason: "category_off" });
   });
 });
 
@@ -72,7 +96,7 @@ function deps(over: { enabled?: boolean; company?: boolean | null; map?: Record<
 
 const candidate = {
   template: "event_changed" as const, variables: { ...facts, changedFields: ["time" as const] }, uid: "u1", companyId: "c1",
-  objectId: "e1", revisionOrWindow: "r3", eventScoped: true, eventLevel: "changes", pushWillDeliver: true,
+  objectId: "e1", revisionOrWindow: "r3", eventLevel: "changes" as SubscriptionLevel | null, pushWillDeliver: true,
 };
 
 describe("emailChannel", () => {
@@ -92,7 +116,7 @@ describe("emailChannel", () => {
   test("does not enqueue when the policy says no", async () => {
     for (const [over, reason] of [
       [{ enabled: false }, "disabled"], [{ company: false }, "company_disabled"], [{ company: null }, "company_disabled"],
-      [{ map: { event_updates: false } }, "preference_off"],
+      [{ map: { event_updates: false } }, "category_off"],
     ] as const) {
       const { outbox, d } = deps(over);
       const r = await emailChannel(d, candidate);
@@ -104,13 +128,13 @@ describe("emailChannel", () => {
 
   test("reminders follow the default-off preference", async () => {
     const reminder = { ...candidate, template: "event_reminder" as const, variables: { ...facts, window: "24h" as const }, revisionOrWindow: "24h" };
-    assert.equal(EMAIL_DEFAULTS.reminders, false);
+    assert.equal(resolveEmailPreferences(null).reminders, false);
     assert.equal((await emailChannel(deps().d, reminder)).decision.send, false);
     assert.equal((await emailChannel(deps({ map: { reminders: true } }).d, reminder)).decision.send, true);
   });
 
   test("challenge email only when push will not deliver", async () => {
-    const c = { ...candidate, template: "challenge_reviewed" as const, variables: { challengeId: "ch1", challengeTitle: "T", outcome: "approved" as const }, eventScoped: false, eventLevel: null };
+    const c = { ...candidate, template: "challenge_reviewed" as const, variables: { challengeId: "ch1", challengeTitle: "T", outcome: "approved" as const }, eventLevel: null };
     assert.deepEqual((await emailChannel(deps().d, { ...c, pushWillDeliver: true })).decision, { send: false, reason: "push_covers" });
     assert.equal((await emailChannel(deps().d, { ...c, pushWillDeliver: false })).enqueue?.enqueued, true);
   });

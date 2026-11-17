@@ -1,49 +1,44 @@
-import { EVENT_LEVEL_GATE, isEmailCategory } from "./categories";
+import { NOTIFICATION_KINDS, type NotificationKind } from "../../notifications/domain/categories";
+import { evaluateDelivery, type ResolvedPreferences } from "../../notifications/domain/preferences";
+import type { SubscriptionLevel } from "../../notifications/domain/subscription";
 
 /**
- * Email channel decision for one candidate notification (docs/design/stretch/email.md, Delivery routing with push).
- * Precedence follows the shared model: category preference, then the per-event level, then deliverability.
- * Suppression and caps are checked again by the sender at send time, where the address is known.
+ * Email channel decision for one recipient of one notification (docs/design/stretch/email.md, Delivery routing with push).
+ * Steps 1 and 2 (category switch, per-event level) are the shared `evaluateDelivery` rule; the destination step is
+ * deferred to the sender, which reads the address and checks suppression at send time. On top of that: the global and
+ * per-company switches, and the push-or-email policy.
  */
 
 export interface EmailRoutingInput {
-  /** Shared registry category id (may be one email never offers, such as `chat`). */
-  category: string;
+  kind: NotificationKind;
   /** EMAIL_ENABLED server param. */
   globalEnabled: boolean;
   /** `emailSettings/{companyId}.enabled` (server-owned). */
   companyEnabled: boolean;
-  /** Resolved email preference for this category (stored value or default). */
-  emailPreference: boolean;
-  /** Per-event subscription level for event-scoped categories; null when the notification is not event-scoped. */
-  eventLevel: string | null;
-  /** Whether the event-scoped gate applies to this notification. */
-  eventScoped: boolean;
-  /** Push will be delivered for this same notification (push category on and at least one device token). */
+  preferences: ResolvedPreferences;
+  /** Per-event subscription level (null = no subscription document, which the shared rule treats as `none`). */
+  eventLevel: SubscriptionLevel | null;
+  /** Push will be delivered for this same notification (push switch on, device token present, not rate limited). */
   pushWillDeliver: boolean;
 }
 
 export type EmailRoutingDecision =
   | { send: true }
-  | { send: false; reason: "disabled" | "company_disabled" | "not_offered" | "preference_off" | "event_level" | "push_covers" };
+  | { send: false; reason: "disabled" | "company_disabled" | "category_off" | "event_level" | "push_covers" };
 
 /**
  * Policy per category:
  * - invites, event_updates: email and push both (low volume, high value).
- * - reminders: follows the email preference (default off), regardless of push.
+ * - reminders, discovery: follow the email switch (default off), regardless of push.
  * - challenges: email only when push will not be delivered, to avoid double notifying.
  */
 export function decideEmail(input: EmailRoutingInput): EmailRoutingDecision {
   if (!input.globalEnabled) return { send: false, reason: "disabled" };
-  if (!isEmailCategory(input.category)) return { send: false, reason: "not_offered" };
   if (!input.companyEnabled) return { send: false, reason: "company_disabled" };
-  if (!input.emailPreference) return { send: false, reason: "preference_off" };
-  const gate = EVENT_LEVEL_GATE[input.category];
-  if (input.eventScoped && gate) {
-    // A missing level keeps today's behavior for joined events: the default level is `changes`.
-    const level = input.eventLevel ?? "changes";
-    if (!gate.includes(level)) return { send: false, reason: "event_level" };
-  }
-  if (input.category === "challenges" && input.pushWillDeliver) return { send: false, reason: "push_covers" };
+  const shared = evaluateDelivery({
+    kind: input.kind, channel: "email", preferences: input.preferences, eventLevel: input.eventLevel, hasDestination: true,
+  });
+  if (!shared.deliver) return { send: false, reason: shared.reason === "event_level" ? "event_level" : "category_off" };
+  if (NOTIFICATION_KINDS[input.kind].category === "challenges" && input.pushWillDeliver) return { send: false, reason: "push_covers" };
   return { send: true };
 }

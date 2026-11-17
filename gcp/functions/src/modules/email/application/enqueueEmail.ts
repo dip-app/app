@@ -1,7 +1,8 @@
-import { resolveEmailPreferences } from "../domain/categories";
+import { resolvePreferences } from "../../notifications/domain/preferences";
+import type { SubscriptionLevel } from "../../notifications/domain/subscription";
 import { categoryOf, outboxId } from "../domain/outbox";
 import { decideEmail, type EmailRoutingDecision } from "../domain/policy";
-import type { TemplateId, TemplateVariables } from "../domain/templates/types";
+import { templateKind, type TemplateId, type TemplateVariables } from "../domain/templates/types";
 import type { Clock, CompanySettingsReader, EmailPreferencesStore, OutboxStore } from "./ports";
 
 export interface EnqueueDeps {
@@ -49,27 +50,25 @@ export interface ChannelDeps extends EnqueueDeps {
 }
 
 export interface EmailCandidate extends EnqueueInput {
-  eventScoped: boolean;
-  /** Per-event subscription level, or null when not event-scoped. */
-  eventLevel: string | null;
+  /** Per-event subscription level for event-scoped kinds (null = no subscription document, treated as `none`). */
+  eventLevel: SubscriptionLevel | null;
+  /** Push will be delivered for this same notification (the router knows after its own push evaluation). */
   pushWillDeliver: boolean;
 }
 
 export interface ChannelResult { decision: EmailRoutingDecision; enqueue: EnqueueResult | null }
 
-/** Email channel of the shared push router: decides per recipient, then enqueues. */
+/** Email channel of the shared push router: decides per recipient with the shared precedence rule, then enqueues once. */
 export async function emailChannel(deps: ChannelDeps, candidate: EmailCandidate): Promise<ChannelResult> {
-  const category = categoryOf(candidate.template);
   if (!deps.config.enabled) return { decision: { send: false, reason: "disabled" }, enqueue: null };
   const company = await deps.companies.get(candidate.companyId);
-  const preference = resolveEmailPreferences(await deps.preferences.getEmailMap(candidate.uid))[category];
+  const emailMap = await deps.preferences.getEmailMap(candidate.uid);
   const decision = decideEmail({
-    category,
+    kind: templateKind(candidate.template, candidate.variables as { outcome?: string }),
     globalEnabled: deps.config.enabled,
     companyEnabled: company?.enabled === true,
-    emailPreference: preference,
+    preferences: resolvePreferences({ email: emailMap ?? {} }),
     eventLevel: candidate.eventLevel,
-    eventScoped: candidate.eventScoped,
     pushWillDeliver: candidate.pushWillDeliver,
   });
   if (!decision.send) return { decision, enqueue: null };
