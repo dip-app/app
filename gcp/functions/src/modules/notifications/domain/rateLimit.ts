@@ -1,24 +1,77 @@
+import type { NotificationKind } from "./categories";
+
 /** Hard caps on pushes per user, a backstop against runaway triggers (not a product feature). */
 export const PUSH_RATE_LIMITS = { perHour: 20, perDay: 100 } as const;
 
-export interface RateLimitState { hourKey: string; hourCount: number; dayKey: string; dayCount: number }
+/**
+ * Rate classes. High-volume social kinds (chat) get their own counter so a busy conversation can never use up the
+ * shared budget; event changes get a separate generous counter; cancellations and reminders are critical and never
+ * counted (their volume is bounded by organizer actions and the 15-minute schedule, and silently dropping them is
+ * worse than any runaway risk).
+ */
+export type RateClass = "shared" | "chat" | "changes" | "exempt";
+
+export const RATE_CLASS_LIMITS: Readonly<Record<Exclude<RateClass, "exempt">, { perHour: number; perDay: number }>> = {
+  shared: PUSH_RATE_LIMITS,
+  chat: { perHour: 30, perDay: 200 },
+  changes: { perHour: 60, perDay: 300 },
+};
+
+const KIND_CLASS: Readonly<Record<NotificationKind, RateClass>> = {
+  chat: "chat",
+  event_changed: "changes",
+  event_cancelled: "exempt",
+  reminder: "exempt",
+  invite: "shared",
+  invite_answered: "shared",
+  attendee_added: "shared",
+  challenge_approved: "shared",
+  challenge_changes_requested: "shared",
+  weekly_theme: "shared",
+  event_interest: "shared",
+};
+
+export const rateClassOf = (kind: NotificationKind): RateClass => KIND_CLASS[kind];
+
+export interface RateCounter { hourKey: string; hourCount: number; dayKey: string; dayCount: number }
+/**
+ * The shared counter lives in the top-level fields (unchanged shape). Other classes live under `buckets`; documents
+ * written before this field existed have no buckets and read as zero.
+ */
+export interface RateLimitState extends RateCounter { buckets?: Partial<Record<"chat" | "changes", RateCounter>> }
 
 /** "YYYY-MM-DDTHH" in UTC. */
 export const hourBucket = (now: Date): string => now.toISOString().slice(0, 13);
 /** "YYYY-MM-DD" in UTC. */
 export const dayBucket = (now: Date): string => now.toISOString().slice(0, 10);
 
-/**
- * Pure counter step: counts reset when the bucket key changes; a push is admitted only while both counts are
- * below their caps, and only an admitted push increments them.
- */
-export function nextCounts(state: RateLimitState | null, now: Date): { admitted: boolean; state: RateLimitState } {
+function step(counter: RateCounter | null | undefined, now: Date, limits: { perHour: number; perDay: number }): { admitted: boolean; counter: RateCounter } {
   const hourKey = hourBucket(now);
   const dayKey = dayBucket(now);
-  const hourCount = state && state.hourKey === hourKey ? state.hourCount : 0;
-  const dayCount = state && state.dayKey === dayKey ? state.dayCount : 0;
-  if (hourCount >= PUSH_RATE_LIMITS.perHour || dayCount >= PUSH_RATE_LIMITS.perDay) {
-    return { admitted: false, state: { hourKey, hourCount, dayKey, dayCount } };
+  const hourCount = counter && counter.hourKey === hourKey ? counter.hourCount : 0;
+  const dayCount = counter && counter.dayKey === dayKey ? counter.dayCount : 0;
+  if (hourCount >= limits.perHour || dayCount >= limits.perDay) return { admitted: false, counter: { hourKey, hourCount, dayKey, dayCount } };
+  return { admitted: true, counter: { hourKey, hourCount: hourCount + 1, dayKey, dayCount: dayCount + 1 } };
+}
+
+/**
+ * Pure counter step: counts reset when the bucket key changes; a push is admitted only while both counts of its
+ * class are below their caps, and only an admitted push increments them. The exempt class is always admitted
+ * and leaves the state untouched.
+ */
+export function nextCounts(state: RateLimitState | null, now: Date, rateClass: RateClass = "shared"): { admitted: boolean; state: RateLimitState } {
+  if (rateClass === "exempt") {
+    return { admitted: true, state: state ?? { hourKey: hourBucket(now), hourCount: 0, dayKey: dayBucket(now), dayCount: 0 } };
   }
-  return { admitted: true, state: { hourKey, hourCount: hourCount + 1, dayKey, dayCount: dayCount + 1 } };
+  const buckets = state?.buckets;
+  if (rateClass === "shared") {
+    const { admitted, counter } = step(state, now, RATE_CLASS_LIMITS.shared);
+    return { admitted, state: buckets ? { ...counter, buckets } : counter };
+  }
+  const { admitted, counter } = step(buckets?.[rateClass], now, RATE_CLASS_LIMITS[rateClass]);
+  const base: RateCounter = state ?? { hourKey: hourBucket(now), hourCount: 0, dayKey: dayBucket(now), dayCount: 0 };
+  return {
+    admitted,
+    state: { hourKey: base.hourKey, hourCount: base.hourCount, dayKey: base.dayKey, dayCount: base.dayCount, buckets: { ...buckets, [rateClass]: counter } },
+  };
 }

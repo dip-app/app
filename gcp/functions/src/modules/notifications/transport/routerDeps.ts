@@ -1,12 +1,14 @@
 import type { App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { logger } from "firebase-functions/v2";
 import { defineBoolean } from "firebase-functions/params";
 import { cachedPreferences } from "../application/preferenceCache";
 import type { MessagingPort } from "../application/ports";
 import { routerEmailChannel } from "../../email/application/routerChannel";
 import { emailChannelDependencies } from "../../email/transport/emailFunctions";
 import type { EmailChannelPort, RouterDependencies } from "../application/router";
-import { FirestoreDeliveryReceipts, FirestorePushRateLimiter } from "../infrastructure/firestoreDelivery";
+import type { DeliveryLog } from "../application/routerPorts";
+import { FirestoreDeliveryReceipts, FirestoreMembership, FirestorePushRateLimiter } from "../infrastructure/firestoreDelivery";
 import { FirestoreNotificationsStore } from "../infrastructure/firestoreNotificationsStore";
 import { FirestorePreferences } from "../infrastructure/firestorePreferences";
 import { EmulatorOutboxMessaging, FcmMessaging } from "../infrastructure/messaging";
@@ -29,6 +31,13 @@ export function pushRouterEnabled(): boolean {
     return true;
   }
 }
+
+/** Structured logger for the delivery path; the application layer only ever passes ids, codes and counts. */
+export const deliveryLog: DeliveryLog = {
+  info: (message, fields) => logger.info(message, fields),
+  warn: (message, fields) => logger.warn(message, fields),
+  error: (message, fields) => logger.error(message, fields),
+};
 
 const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
 
@@ -62,6 +71,8 @@ export function routerDependencies(app: App): RouterDependencies & { store: Fire
     preferences: cachedPreferences(new FirestorePreferences(db)),
     receipts: new FirestoreDeliveryReceipts(db),
     rateLimiter: new FirestorePushRateLimiter(db),
+    members: new FirestoreMembership(db),
+    logger: deliveryLog,
     inbox: store,
     clock: { now: () => new Date() },
   };

@@ -43,6 +43,25 @@ describe("FirestoreDeliveryReceipts", () => {
     assert.equal(await receipts.claim("event-e1-rev3"), false);
     assert.equal(await receipts.claim("another"), true);
   });
+
+  test("two-phase: processing blocks until the lease expires, done never reopens, legacy receipts count as done", async () => {
+    let clock = now;
+    const receipts = new FirestoreDeliveryReceipts(db, () => clock);
+    assert.equal(await receipts.claim("n1"), true);
+    assert.equal(await receipts.isDone("n1"), false);
+    clock = new Date(now.getTime() + 60_000);
+    assert.equal(await receipts.claim("n1"), false);
+    clock = new Date(now.getTime() + 6 * 60_000);
+    assert.equal(await receipts.claim("n1"), true, "lease expired");
+    await receipts.complete("n1");
+    assert.equal(await receipts.isDone("n1"), true);
+    clock = new Date(now.getTime() + 24 * 3600 * 1000);
+    assert.equal(await receipts.claim("n1"), false);
+    const legacyId = createHash("sha256").update("legacy", "utf8").digest("hex");
+    await db.doc(`notificationReceipts/${legacyId}`).set({ createdAt: new Date(), expireAt: new Date(now.getTime() + 1000) });
+    assert.equal(await receipts.isDone("legacy"), true);
+    assert.equal(await receipts.claim("legacy"), false);
+  });
 });
 
 describe("FirestorePushRateLimiter", () => {

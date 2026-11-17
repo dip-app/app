@@ -3,7 +3,8 @@ import { DEFAULT_RESOLVED_PREFERENCES, evaluateDelivery } from "../domain/prefer
 import type { PushMessage } from "../domain/push";
 import type { SubscriptionLevel } from "../domain/subscription";
 import type { Clock, DeviceDirectory, DeviceToken, InboxWriter, MessagingPort, PreferencesReader } from "./ports";
-import type { DeliveryReceipts, PushRateLimiter } from "./routerPorts";
+import { rateClassOf } from "../domain/rateLimit";
+import type { DeliveryLog, DeliveryReceipts, MembershipReader, PushRateLimiter } from "./routerPorts";
 import { sendToDevices, type PushStats } from "./sendPush";
 
 export interface NotificationRecipient { uid: string; eventLevel?: SubscriptionLevel | null }
@@ -40,6 +41,10 @@ export interface RouterDependencies {
   inbox?: InboxWriter;
   /** Optional; absent means push and in-app only (the behavior before email). */
   email?: EmailChannelPort;
+  /** Send-time membership check (same company, not deactivated). Production always wires it; absent skips the check. */
+  members?: MembershipReader;
+  /** Structured, PII-free logging of swallowed failures and send outcomes. Absent means silent. */
+  logger?: DeliveryLog;
   clock: Clock;
 }
 
@@ -48,8 +53,18 @@ export interface DeliveryStats extends PushStats {
   inApp: number;
   /** Outbox entries newly enqueued by the email channel (0 when email is not wired or not requested). */
   emailsEnqueued: number;
-  blocked: { category_off: number; event_level: number; no_destination: number; rate_limited: number };
+  /** True when the id is leased by another (possibly crashed) attempt: a retry after the lease expires will deliver. */
+  inProgress?: boolean;
+  blocked: { category_off: number; event_level: number; no_destination: number; rate_limited: number; inactive: number };
 }
+
+const EMAIL_PARALLELISM = 20;
+
+const safeLog = (log: DeliveryLog | undefined, level: "warn" | "error", message: string, fields: Record<string, unknown>) => {
+  try { log?.[level](message, fields); } catch { /* logging must not break delivery */ }
+};
+
+const errorName = (error: unknown): string => (error instanceof Error ? error.name : "UnknownError");
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,200}$/;
 
@@ -61,12 +76,23 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
   if (!ID_PATTERN.test(request.id)) throw new Error("INVALID_NOTIFICATION_ID");
   const stats: DeliveryStats = {
     recipients: 0, tokens: 0, sent: 0, failed: 0, removed: 0, duplicate: false, inApp: 0, emailsEnqueued: 0,
-    blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 },
+    blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0, inactive: 0 },
   };
   const byUid = new Map<string, NotificationRecipient>();
   for (const recipient of request.recipients) if (!byUid.has(recipient.uid)) byUid.set(recipient.uid, recipient);
-  const recipients = [...byUid.values()];
+  let recipients = [...byUid.values()];
   if (recipients.length === 0) return stats;
+  const context = { notificationId: request.id, kind: request.kind, companyId: request.companyId };
+
+  // Membership can change between the trigger and the send (deactivation, company change): drop recipients who are
+  // no longer active members of this company before any channel is touched. A read failure throws (fail closed).
+  if (deps.members) {
+    const active = await deps.members.activeIn(request.companyId, recipients.map((recipient) => recipient.uid));
+    const kept = recipients.filter((recipient) => active.has(recipient.uid));
+    stats.blocked.inactive = recipients.length - kept.length;
+    recipients = kept;
+    if (recipients.length === 0) return stats;
+  }
   const uids = recipients.map((recipient) => recipient.uid);
 
   // In-app notices are not governed by push switches. Ids are deterministic (create-only), so this is
@@ -76,13 +102,19 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
     const { title, body, targetType, targetId } = request.inApp;
     try {
       stats.inApp = await deps.inbox.createMany(uids.map((uid) => ({ uid, id: request.id, companyId: request.companyId, type: inAppType, title, body, targetType, targetId })));
-    } catch {
+    } catch (error) {
       // Best-effort: the push below must not depend on the in-app write.
+      safeLog(deps.logger, "warn", "in-app write failed", { ...context, recipients: uids.length, error: errorName(error) });
     }
   }
 
-  // Receipts are global; scope the key by company so equal ids in two tenants never collide.
-  if (!(await deps.receipts.claim(`${request.companyId}/${request.id}`))) return { ...stats, duplicate: true };
+  // Receipts are global; scope the key by company so equal ids in two tenants never collide. Two-phase: the claim is
+  // a lease, completed only after sending, so a crash in between is retried once the lease expires.
+  const receiptKey = `${request.companyId}/${request.id}`;
+  if (!(await deps.receipts.claim(receiptKey))) {
+    const inProgress = !(await deps.receipts.isDone(receiptKey));
+    return { ...stats, duplicate: true, ...(inProgress ? { inProgress } : {}) };
+  }
 
   const [preferences, devices] = await Promise.all([deps.preferences.preferencesFor(uids), deps.devices.tokensFor(uids)]);
   const tokensByUid = new Map<string, DeviceToken[]>();
@@ -101,24 +133,35 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
     });
     if (decision.deliver) passing.push(recipient.uid); else stats.blocked[decision.reason]++;
   }
-  const admitted = passing.length ? await deps.rateLimiter.admit(passing, deps.clock.now()) : new Set<string>();
+  const admitted = passing.length ? await deps.rateLimiter.admit(passing, deps.clock.now(), rateClassOf(request.kind)) : new Set<string>();
 
   // Email channel (EML-8): after the push decision, so the push-or-email policy knows whether a push goes out.
-  // Best-effort and idempotent (create-once outbox ids): an email failure never blocks the push.
+  // Best-effort and idempotent (create-once outbox ids): an email failure never blocks the push. Bounded parallelism.
   if (deps.email && request.email) {
-    for (const recipient of recipients) {
-      try {
-        if (await deps.email.deliver(request, recipient, admitted.has(recipient.uid))) stats.emailsEnqueued++;
-      } catch {
-        // The email channel logs ids and reasons only.
-      }
+    const email = deps.email;
+    let emailErrors = 0;
+    const emailErrorNames = new Set<string>();
+    for (let offset = 0; offset < recipients.length; offset += EMAIL_PARALLELISM) {
+      const results = await Promise.all(recipients.slice(offset, offset + EMAIL_PARALLELISM).map(async (recipient) => {
+        try {
+          return await email.deliver(request, recipient, admitted.has(recipient.uid));
+        } catch (error) {
+          emailErrors++;
+          emailErrorNames.add(errorName(error));
+          return false;
+        }
+      }));
+      stats.emailsEnqueued += results.filter(Boolean).length;
     }
+    if (emailErrors > 0) safeLog(deps.logger, "warn", "email delivery failed", { ...context, failed: emailErrors, errors: [...emailErrorNames] });
   }
   const toSend: DeviceToken[] = [];
   for (const uid of passing) {
     if (!admitted.has(uid)) { stats.blocked.rate_limited++; continue; }
     toSend.push(...(tokensByUid.get(uid) ?? []));
   }
-  if (toSend.length === 0) return stats;
-  return { ...stats, ...(await sendToDevices(deps, toSend, request.push)) };
+  let result: DeliveryStats = stats;
+  if (toSend.length > 0) result = { ...stats, ...(await sendToDevices(deps, toSend, request.push, context)) };
+  await deps.receipts.complete(receiptKey);
+  return result;
 }

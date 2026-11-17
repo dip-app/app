@@ -5,7 +5,8 @@ export type NotificationsErrorReason =
   | "VALIDATION_FAILED"
   | "EMAIL_NOT_VERIFIED"
   | "PROVIDER_NOT_ALLOWED"
-  | "MEMBERSHIP_REQUIRED";
+  | "MEMBERSHIP_REQUIRED"
+  | "ACCOUNT_DEACTIVATED";
 
 export class NotificationsError extends Error {
   constructor(

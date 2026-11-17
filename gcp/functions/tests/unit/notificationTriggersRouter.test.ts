@@ -20,6 +20,7 @@ class Harness {
   sent: { tokens: string[]; message: PushMessage }[] = [];
   inbox: InboxItem[] = [];
   receipts = new Set<string>();
+  leased = new Map<string, number>();
   subs = new Map<string, SubscriptionLevel>();
   going = new Set<string>();
   tokens = new Map<string, string[]>();
@@ -63,7 +64,15 @@ class Harness {
         remove: async () => undefined,
       },
       preferences: this.preferences,
-      receipts: { claim: async (id) => { if (this.receipts.has(id)) return false; this.receipts.add(id); return true; } },
+      receipts: {
+        claim: async (id) => {
+          if (this.receipts.has(id)) return false;
+          if (this.leased.has(id) && this.leased.get(id)! > NOW.getTime()) return false;
+          this.receipts.add(id); this.leased.delete(id); return true;
+        },
+        complete: async () => undefined,
+        isDone: async (id) => this.receipts.has(id),
+      },
       rateLimiter: { admit: async (uids) => new Set(uids) },
       inbox: {
         createMany: async (items) => {
@@ -184,7 +193,7 @@ describe("reminders via router", () => {
     h.join("a", "reminders"); h.join("b", "all"); h.join("c", "none");
     const start = h.events.get(`${C}/${E}`)!.startTime;
     const first = await sendDueRemindersViaRouter(h.deps());
-    assert.deepEqual(first, { events: 1, sent: 2, skipped: 0 });
+    assert.deepEqual(first, { events: 1, sent: 2, skipped: 0, failed: 0 });
     assert.ok(h.receipts.has(`${C}/reminder_${E}_1h_${start.getTime()}`));
     assert.deepEqual(h.inbox.map((i) => [i.uid, i.id, i.type, i.body]), [
       ["a", `reminder_${E}_1h_${start.getTime()}`, "reminder", "Starts in 30 minutes."],
@@ -192,7 +201,7 @@ describe("reminders via router", () => {
     ].map(([u, id, t, b]) => [u, id, t, b]));
     assert.equal(h.sent[0]!.message.expiresAt?.getTime(), start.getTime());
     const rerun = await sendDueRemindersViaRouter(h.deps());
-    assert.deepEqual(rerun, { events: 1, sent: 0, skipped: 1 });
+    assert.deepEqual(rerun, { events: 1, sent: 0, skipped: 1, failed: 0 });
     assert.equal(h.sent.length, 1);
     h.events.get(`${C}/${E}`)!.startTime = new Date(start.getTime() + 60_000);
     assert.equal((await sendDueRemindersViaRouter(h.deps())).sent, 2);
@@ -208,7 +217,7 @@ describe("reminders via router", () => {
     const cancelled = harness();
     cancelled.join("a", "all");
     cancelled.events.get(`${C}/${E}`)!.status = "cancelled";
-    assert.deepEqual(await sendDueRemindersViaRouter(cancelled.deps()), { events: 1, sent: 0, skipped: 1 });
+    assert.deepEqual(await sendDueRemindersViaRouter(cancelled.deps()), { events: 1, sent: 0, skipped: 1, failed: 0 });
   });
 });
 
@@ -223,5 +232,53 @@ describe("delivery mode selection", () => {
     assert.equal(deliveryMode(), "legacy");
     process.env.PUSH_ROUTER_ENABLED = "true";
     assert.equal(deliveryMode(), "router");
+  });
+});
+
+describe("hardening: redelivery, bad events and pre-checks", () => {
+  test("a redelivered change trigger (appended=false) still reaches the router and is deduped by the receipt", async () => {
+    const h = harness();
+    h.join("fan", "changes");
+    const after = { ...before, title: "Sunrise run", revision: 5, updatedBy: "editor" };
+    // First attempt: the changeLog entry was appended, then the process died before the router claimed anything.
+    h.logs.set(`${C}/${E}`, mergeChangeLog(undefined, { revision: 5, changes: [{ field: "title", from: "Sunset run", to: "Sunrise run" }] }).log);
+    const crashed = await onEventDocumentUpdatedViaRouter(h.deps(), C, E, before, after, NOW);
+    assert.equal(crashed.appended, false, "entry already existed");
+    assert.equal(crashed.push.sent, 1, "the redelivery delivers");
+    const again = await onEventDocumentUpdatedViaRouter(h.deps(), C, E, before, after, NOW);
+    assert.equal(again.appended, false);
+    assert.equal(again.push.duplicate, true);
+    assert.equal(h.sent.length, 1);
+  });
+
+  test("one failing event does not abort the reminder run and is logged with its ids only", async () => {
+    const h = harness();
+    h.join("a", "all");
+    const start = (offset: number) => new Date(NOW.getTime() + offset);
+    h.events.set(`${C}/bad`, { companyId: C, eventId: "bad", title: "Bad", status: "scheduled", startTime: start(20 * 60_000), endTime: start(2 * HOUR) });
+    h.events.set(`${C}/good`, { companyId: C, eventId: "good", title: "Good", status: "scheduled", startTime: start(40 * 60_000), endTime: start(2 * HOUR) });
+    const entries: unknown[] = [];
+    const deps = h.deps();
+    const realSubscribers = deps.recipients.subscribersWithLevels;
+    deps.recipients = { ...deps.recipients, subscribersWithLevels: async (c: string, e: string, levels: readonly SubscriptionLevel[]) => {
+      if (e === "bad") throw new Error("boom with secret");
+      return realSubscribers(c, e, levels);
+    } };
+    const result = await sendDueRemindersViaRouter({ ...deps, logger: { info: () => undefined, warn: () => undefined, error: (m, f) => { entries.push([m, f]); } } });
+    assert.equal(result.failed, 1);
+    assert.ok(result.sent >= 1, "later events still delivered");
+    assert.deepEqual(entries, [["reminder delivery failed", { eventId: "bad", companyId: C, error: "Error" }]]);
+  });
+
+  test("already delivered windows are skipped before any subscriber read", async () => {
+    const h = harness();
+    h.join("a", "all");
+    await sendDueRemindersViaRouter(h.deps());
+    const deps = h.deps();
+    let reads = 0;
+    deps.recipients = { ...deps.recipients, subscribersWithLevels: async (...args: Parameters<typeof deps.recipients.subscribersWithLevels>) => { reads++; return h.recipients.subscribersWithLevels(...args); } };
+    const rerun = await sendDueRemindersViaRouter(deps);
+    assert.equal(reads, 0);
+    assert.deepEqual(rerun, { events: 1, sent: 0, skipped: 1, failed: 0 });
   });
 });

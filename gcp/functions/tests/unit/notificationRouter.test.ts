@@ -4,11 +4,11 @@ import type {
   DeviceDirectory, DeviceToken, InboxItem, InboxWriter, MessagingPort, PreferencesReader, SendResult,
 } from "../../src/modules/notifications/application/ports";
 import { deliverNotification, type EmailChannelPort, type NotificationRequest, type RouterDependencies } from "../../src/modules/notifications/application/router";
-import type { DeliveryReceipts, PushRateLimiter } from "../../src/modules/notifications/application/routerPorts";
+import type { DeliveryLog, DeliveryReceipts, PushRateLimiter } from "../../src/modules/notifications/application/routerPorts";
 import { sendPush, sendToDevices } from "../../src/modules/notifications/application/sendPush";
 import { DEFAULT_RESOLVED_PREFERENCES, resolvePreferences, type ResolvedPreferences } from "../../src/modules/notifications/domain/preferences";
 import type { PushMessage } from "../../src/modules/notifications/domain/push";
-import { PUSH_RATE_LIMITS, dayBucket, hourBucket, nextCounts, type RateLimitState } from "../../src/modules/notifications/domain/rateLimit";
+import { PUSH_RATE_LIMITS, RATE_CLASS_LIMITS, dayBucket, hourBucket, nextCounts, rateClassOf, type RateLimitState } from "../../src/modules/notifications/domain/rateLimit";
 
 const message: PushMessage = {
   title: "t", body: "b", category: "event_updates", threadId: "event-e1",
@@ -21,6 +21,8 @@ class Harness {
   inbox: InboxItem[] = [];
   inboxFails = false;
   claimed = new Set<string>();
+  /** Receipt state: key -> {state, leaseUntil}. `claimed` mirrors every key ever claimed. */
+  receiptState = new Map<string, { state: "processing" | "done" | undefined; leaseUntil: number }>();
   counts = new Map<string, RateLimitState | null>();
   prefs = new Map<string, ResolvedPreferences>();
   tokens = new Map<string, string[]>();
@@ -41,13 +43,24 @@ class Harness {
     preferencesFor: async (uids) => new Map(uids.filter((uid) => this.prefs.has(uid)).map((uid) => [uid, this.prefs.get(uid)!])),
   };
   receipts: DeliveryReceipts = {
-    claim: async (id) => { if (this.claimed.has(id)) return false; this.claimed.add(id); return true; },
+    claim: async (id) => {
+      const existing = this.receiptState.get(id);
+      if (existing) {
+        const expired = existing.state === "processing" && existing.leaseUntil <= this.now.getTime();
+        if (!expired) return false;
+      }
+      this.claimed.add(id);
+      this.receiptState.set(id, { state: "processing", leaseUntil: this.now.getTime() + 5 * 60_000 });
+      return true;
+    },
+    complete: async (id) => { this.receiptState.set(id, { state: "done", leaseUntil: 0 }); },
+    isDone: async (id) => { const r = this.receiptState.get(id); return !!r && r.state !== "processing"; },
   };
   rateLimiter: PushRateLimiter = {
-    admit: async (uids, now) => {
+    admit: async (uids, now, rateClass) => {
       const allowed = new Set<string>();
       for (const uid of uids) {
-        const { admitted, state } = nextCounts(this.counts.get(uid) ?? null, now);
+        const { admitted, state } = nextCounts(this.counts.get(uid) ?? null, now, rateClass);
         this.counts.set(uid, state);
         if (admitted) allowed.add(uid);
       }
@@ -64,8 +77,20 @@ class Harness {
       return created;
     },
   };
+  /** When set, the membership reader only admits these uids. */
+  active: Set<string> | null = null;
+  logs: { level: string; message: string; fields: Record<string, unknown> }[] = [];
+  logger: DeliveryLog = {
+    info: (message, fields) => { this.logs.push({ level: "info", message, fields }); },
+    warn: (message, fields) => { this.logs.push({ level: "warn", message, fields }); },
+    error: (message, fields) => { this.logs.push({ level: "error", message, fields }); },
+  };
   deps(): RouterDependencies {
-    return { messaging: this.messaging, devices: this.devices, preferences: this.preferences, receipts: this.receipts, rateLimiter: this.rateLimiter, inbox: this.writer, clock: { now: () => this.now } };
+    return {
+      messaging: this.messaging, devices: this.devices, preferences: this.preferences, receipts: this.receipts, rateLimiter: this.rateLimiter, inbox: this.writer,
+      logger: this.logger, ...(this.active ? { members: { activeIn: async (_c: string, uids: readonly string[]) => new Set(uids.filter((uid) => this.active!.has(uid))) } } : {}),
+      clock: { now: () => this.now },
+    };
   }
 }
 
@@ -83,7 +108,7 @@ describe("deliverNotification precedence", () => {
     const h = new Harness();
     h.tokens.set("u1", ["tok1", "tok2"]);
     const stats = await deliverNotification(h.deps(), request());
-    assert.deepEqual(stats, { recipients: 1, tokens: 2, sent: 2, failed: 0, removed: 0, duplicate: false, inApp: 1, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 } });
+    assert.deepEqual(stats, { recipients: 1, tokens: 2, sent: 2, failed: 0, removed: 0, duplicate: false, inApp: 1, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0, inactive: 0 } });
     assert.deepEqual(h.sent[0]!.tokens, ["tok1", "tok2"]);
   });
 
@@ -132,7 +157,7 @@ describe("deliverNotification precedence", () => {
     const stats = await deliverNotification(h.deps(), request({
       recipients: [{ uid: "ok", eventLevel: "all" }, { uid: "off", eventLevel: "all" }, { uid: "lvl", eventLevel: "reminders" }, { uid: "none", eventLevel: "all" }],
     }));
-    assert.deepEqual(stats.blocked, { category_off: 1, event_level: 1, no_destination: 1, rate_limited: 0 });
+    assert.deepEqual(stats.blocked, { category_off: 1, event_level: 1, no_destination: 1, rate_limited: 0, inactive: 0 });
     assert.equal(stats.sent, 1);
     assert.equal(stats.recipients, 1);
     assert.deepEqual(h.sent[0]!.tokens, ["t-ok"]);
@@ -219,11 +244,13 @@ describe("deliverNotification idempotency and robustness", () => {
 });
 
 describe("deliverNotification rate caps", () => {
+  // The shared 20/hour, 100/day bucket applies to kinds without their own class (invite_answered here).
+  const capped = (overrides: Partial<NotificationRequest>) => request({ kind: "invite_answered", ...overrides });
   test("the 21st push in one hour is blocked", async () => {
     const h = new Harness();
     h.tokens.set("u1", ["tok1"]);
-    let last = await deliverNotification(h.deps(), request({ id: "n0" }));
-    for (let i = 1; i <= PUSH_RATE_LIMITS.perHour; i++) last = await deliverNotification(h.deps(), request({ id: `n${i}` }));
+    let last = await deliverNotification(h.deps(), capped({ id: "n0" }));
+    for (let i = 1; i <= PUSH_RATE_LIMITS.perHour; i++) last = await deliverNotification(h.deps(), capped({ id: `n${i}` }));
     assert.equal(last.blocked.rate_limited, 1);
     assert.equal(last.sent, 0);
     assert.equal(h.sent.length, PUSH_RATE_LIMITS.perHour);
@@ -235,30 +262,30 @@ describe("deliverNotification rate caps", () => {
     let n = 0;
     for (let hour = 0; hour < 5; hour++) {
       h.now = new Date(Date.UTC(2026, 2, 1, hour, 0, 0));
-      for (let i = 0; i < 20; i++) await deliverNotification(h.deps(), request({ id: `n${n++}` }));
+      for (let i = 0; i < 20; i++) await deliverNotification(h.deps(), capped({ id: `n${n++}` }));
     }
     assert.equal(h.sent.length, PUSH_RATE_LIMITS.perDay);
     h.now = new Date(Date.UTC(2026, 2, 1, 6, 0, 0));
-    const blocked = await deliverNotification(h.deps(), request({ id: `n${n++}` }));
+    const blocked = await deliverNotification(h.deps(), capped({ id: `n${n++}` }));
     assert.equal(blocked.blocked.rate_limited, 1);
     h.now = new Date(Date.UTC(2026, 2, 2, 0, 0, 0));
-    const reset = await deliverNotification(h.deps(), request({ id: `n${n++}` }));
+    const reset = await deliverNotification(h.deps(), capped({ id: `n${n++}` }));
     assert.equal(reset.sent, 1);
   });
 
   test("hour rollover resets the hour count", async () => {
     const h = new Harness();
     h.tokens.set("u1", ["tok1"]);
-    for (let i = 0; i < 20; i++) await deliverNotification(h.deps(), request({ id: `n${i}` }));
+    for (let i = 0; i < 20; i++) await deliverNotification(h.deps(), capped({ id: `n${i}` }));
     h.now = new Date("2026-03-01T11:00:00Z");
-    assert.equal((await deliverNotification(h.deps(), request({ id: "later" }))).sent, 1);
+    assert.equal((await deliverNotification(h.deps(), capped({ id: "later" }))).sent, 1);
   });
 
   test("blocked pushes do not consume the cap and users are independent", async () => {
     const h = new Harness();
     h.tokens.set("u1", ["t1"]); h.tokens.set("u2", ["t2"]);
-    h.prefs.set("u1", resolvePreferences({ push: { event_updates: false } }));
-    for (let i = 0; i < 30; i++) await deliverNotification(h.deps(), request({ id: `n${i}`, recipients: [{ uid: "u1", eventLevel: "all" }, { uid: "u2", eventLevel: "all" }] }));
+    h.prefs.set("u1", resolvePreferences({ push: { invites: false } }));
+    for (let i = 0; i < 30; i++) await deliverNotification(h.deps(), capped({ id: `n${i}`, recipients: [{ uid: "u1", eventLevel: "all" }, { uid: "u2", eventLevel: "all" }] }));
     assert.equal(h.counts.get("u1"), undefined);
     assert.equal(h.counts.get("u2")!.hourCount, 20);
   });
@@ -398,5 +425,161 @@ describe("sendToDevices", () => {
     const stats = await sendPush(h, ["u1", "u1", "u2"], message);
     assert.deepEqual(stats, { recipients: 2, tokens: 1, sent: 1, failed: 0, removed: 0 });
     assert.deepEqual(await sendPush(h, [], message), { recipients: 0, tokens: 0, sent: 0, failed: 0, removed: 0 });
+  });
+});
+
+describe("rate classes", () => {
+  test("a saturated chat bucket never blocks event_cancelled, reminder or event_changed", async () => {
+    const h = new Harness();
+    h.tokens.set("u1", ["tok1"]);
+    const chat = (id: string) => request({ id, kind: "chat", recipients: [{ uid: "u1", eventLevel: "all" }] });
+    for (let i = 0; i < 40; i++) await deliverNotification(h.deps(), chat(`c${i}`));
+    assert.equal(h.sent.length, RATE_CLASS_LIMITS.chat.perHour, "chat is capped by its own bucket");
+    const cancelled = await deliverNotification(h.deps(), request({ id: "x1", kind: "event_cancelled", recipients: [{ uid: "u1", eventLevel: "all" }] }));
+    const reminder = await deliverNotification(h.deps(), request({ id: "x2", kind: "reminder", recipients: [{ uid: "u1", eventLevel: "all" }] }));
+    const changed = await deliverNotification(h.deps(), request({ id: "x3", kind: "event_changed", recipients: [{ uid: "u1", eventLevel: "all" }] }));
+    for (const stats of [cancelled, reminder, changed]) assert.equal(stats.sent, 1);
+    // The shared bucket is untouched by chat.
+    const invite = await deliverNotification(h.deps(), request({ id: "x4", kind: "invite_answered", recipients: [{ uid: "u1" }] }));
+    assert.equal(invite.sent, 1);
+    assert.equal(h.counts.get("u1")!.hourCount, 1);
+  });
+
+  test("exempt kinds are never counted and never limited", () => {
+    const now = new Date("2026-03-01T10:00:00Z");
+    let state: RateLimitState | null = null;
+    for (let i = 0; i < 500; i++) {
+      const step = nextCounts(state, now, "exempt");
+      assert.equal(step.admitted, true);
+      state = step.state;
+    }
+    assert.equal(state!.hourCount, 0);
+  });
+
+  test("event_changed has its own generous bucket, separate from shared", () => {
+    const now = new Date("2026-03-01T10:00:00Z");
+    let state: RateLimitState | null = null;
+    for (let i = 0; i < RATE_CLASS_LIMITS.changes.perHour; i++) state = nextCounts(state, now, rateClassOf("event_changed")).state;
+    assert.equal(nextCounts(state, now, "changes").admitted, false);
+    assert.equal(nextCounts(state, now, "shared").admitted, true);
+  });
+
+  test("documents stored before buckets existed read as zero for new classes and keep shared counts", () => {
+    const legacy: RateLimitState = { hourKey: hourBucket(new Date("2026-03-01T10:00:00Z")), hourCount: 7, dayKey: "2026-03-01", dayCount: 9 };
+    const chat = nextCounts(legacy, new Date("2026-03-01T10:30:00Z"), "chat");
+    assert.equal(chat.admitted, true);
+    assert.equal(chat.state.buckets?.chat?.hourCount, 1);
+    assert.equal(chat.state.hourCount, 7);
+    const shared = nextCounts(chat.state, new Date("2026-03-01T10:31:00Z"), "shared");
+    assert.equal(shared.state.hourCount, 8);
+    assert.equal(shared.state.buckets?.chat?.hourCount, 1, "shared step preserves chat bucket");
+  });
+});
+
+describe("two-phase receipts", () => {
+  const T0 = new Date("2026-03-01T10:00:00Z");
+
+  test("crash after the claim: a retry within the lease is a duplicate, after expiry it delivers", async () => {
+    const h = new Harness(); h.tokens.set("u1", ["tok1"]); h.now = T0;
+    const realTokens = h.devices.tokensFor;
+    h.devices = { ...h.devices, tokensFor: async () => { throw new Error("crash"); } };
+    await assert.rejects(deliverNotification(h.deps(), request()));
+    assert.equal(h.receiptState.get("c1/n1")!.state, "processing");
+    h.devices = { ...h.devices, tokensFor: realTokens };
+
+    h.now = new Date(T0.getTime() + 60_000);
+    const within = await deliverNotification(h.deps(), request());
+    assert.equal(within.duplicate, true);
+    assert.equal(within.inProgress, true);
+    assert.equal(h.sent.length, 0);
+
+    h.now = new Date(T0.getTime() + 6 * 60_000);
+    const after = await deliverNotification(h.deps(), request());
+    assert.equal(after.duplicate, false);
+    assert.equal(after.sent, 1);
+    assert.equal(h.receiptState.get("c1/n1")!.state, "done");
+  });
+
+  test("a done receipt stays a duplicate after the lease time; a legacy receipt without state is done", async () => {
+    const h = new Harness(); h.tokens.set("u1", ["tok1"]); h.now = T0;
+    assert.equal((await deliverNotification(h.deps(), request())).sent, 1);
+    h.now = new Date(T0.getTime() + 24 * 3_600_000);
+    const again = await deliverNotification(h.deps(), request());
+    assert.equal(again.duplicate, true);
+    assert.equal(again.inProgress, undefined);
+    h.receiptState.set("c1/legacy", { state: undefined, leaseUntil: 0 });
+    const legacy = await deliverNotification(h.deps(), request({ id: "legacy" }));
+    assert.equal(legacy.duplicate, true);
+    assert.equal(await h.receipts.isDone("c1/legacy"), true);
+    assert.equal(h.sent.length, 1);
+  });
+});
+
+describe("membership at send time", () => {
+  test("recipients who are inactive or in another company are dropped and counted as blocked.inactive", async () => {
+    const h = new Harness();
+    h.tokens.set("in", ["t-in"]); h.tokens.set("gone", ["t-gone"]);
+    h.active = new Set(["in"]);
+    const stats = await deliverNotification(h.deps(), request({ recipients: [{ uid: "in", eventLevel: "all" }, { uid: "gone", eventLevel: "all" }] }));
+    assert.equal(stats.blocked.inactive, 1);
+    assert.deepEqual(h.sent.map((s) => s.tokens), [["t-in"]]);
+    assert.deepEqual(h.inbox.map((i) => i.uid), ["in"], "no in-app item for the dropped recipient");
+  });
+
+  test("when every recipient is inactive nothing is claimed", async () => {
+    const h = new Harness();
+    h.tokens.set("gone", ["t"]); h.active = new Set();
+    const stats = await deliverNotification(h.deps(), request({ recipients: [{ uid: "gone", eventLevel: "all" }] }));
+    assert.equal(stats.blocked.inactive, 1);
+    assert.equal(h.claimed.size, 0);
+  });
+});
+
+describe("failure logging", () => {
+  test("in-app and email failures are logged without message text, and sends log aggregated FCM codes without tokens", async () => {
+    const h = new Harness();
+    h.tokens.set("u1", ["SECRET-TOKEN-1"]); h.tokens.set("u2", ["SECRET-TOKEN-2"]);
+    h.inboxFails = true;
+    h.messaging = { sendMulticast: async (t) => t.map(() => ({ success: false, errorCode: "messaging/third-party-auth-error" })) };
+    const email: EmailChannelPort = { deliver: async () => { throw new Error("user@example.com bounced"); } };
+    await deliverNotification({ ...h.deps(), email }, request({
+      recipients: [{ uid: "u1", eventLevel: "all" }, { uid: "u2", eventLevel: "all" }],
+      email: { template: "event_changed", variables: {}, objectId: "e1", revisionOrWindow: "r1" },
+    }));
+    const levels = h.logs.map((l) => `${l.level}:${l.message}`);
+    assert.ok(levels.includes("warn:in-app write failed"));
+    assert.ok(levels.includes("warn:email delivery failed"));
+    const send = h.logs.find((l) => l.message.startsWith("push send failed"))!;
+    assert.equal(send.level, "error", "a wrong APNs key is an error");
+    assert.deepEqual(send.fields.errorCodes, { "messaging/third-party-auth-error": 2 });
+    assert.equal(send.fields.notificationId, "n1");
+    assert.equal(send.fields.companyId, "c1");
+    const serialized = JSON.stringify(h.logs);
+    for (const secret of ["SECRET-TOKEN", "example.com", "Time moved"]) assert.equal(serialized.includes(secret), false, secret);
+  });
+
+  test("stale-token errors alone are not logged, a throwing batch is", async () => {
+    const h = new Harness();
+    h.tokens.set("u1", ["tok1"]); h.failing.add("tok1");
+    await deliverNotification(h.deps(), request());
+    assert.equal(h.logs.length, 0);
+    const h2 = new Harness();
+    h2.tokens.set("u1", ["tok1"]);
+    h2.messaging = { sendMulticast: async () => { throw Object.assign(new Error("tok1 leaked?"), { code: "app/network-error" }); } };
+    await deliverNotification(h2.deps(), request());
+    assert.equal(h2.logs[0]!.level, "error");
+    assert.equal(JSON.stringify(h2.logs).includes("tok1"), false);
+  });
+
+  test("emails are delivered with bounded parallelism", async () => {
+    const h = new Harness();
+    let inFlight = 0; let peak = 0;
+    const email: EmailChannelPort = {
+      deliver: async () => { inFlight++; peak = Math.max(peak, inFlight); await new Promise((r) => setTimeout(r, 2)); inFlight--; return true; },
+    };
+    const recipients = Array.from({ length: 70 }, (_, i) => ({ uid: `u${i}`, eventLevel: "all" as const }));
+    const stats = await deliverNotification({ ...h.deps(), email }, request({ recipients, email: { template: "event_changed", variables: {}, objectId: "e1", revisionOrWindow: "r1" } }));
+    assert.equal(stats.emailsEnqueued, 70);
+    assert.ok(peak > 1 && peak <= 20, `peak ${peak}`);
   });
 });

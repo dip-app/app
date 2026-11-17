@@ -75,7 +75,7 @@ export interface SubscriptionStore {
 export interface StoredDevice { tokenHash: string; updatedAt: Date | null }
 
 export interface DeviceRegistryTransaction {
-  getMember(uid: string): Promise<{ companyId: string; role: string } | null>;
+  getMember(uid: string): Promise<{ companyId: string; role: string; status?: string } | null>;
   listDevices(uid: string): Promise<StoredDevice[]>;
   /** Other users currently holding this token (a phone that switched accounts). */
   ownersOf(tokenHash: string): Promise<string[]>;

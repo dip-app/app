@@ -15,7 +15,7 @@ import { NotificationsError } from "../domain/errors";
 import { REMINDER_SCHEDULE } from "../domain/reminders";
 import { FirestoreNotificationsStore, plainEvent } from "../infrastructure/firestoreNotificationsStore";
 import { EmulatorOutboxMessaging, FcmMessaging } from "../infrastructure/messaging";
-import { pushRouterEnabled, routerDependencies } from "./routerDeps";
+import { deliveryLog, pushRouterEnabled, routerDependencies } from "./routerDeps";
 
 const REGION = "us-central1";
 const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
@@ -26,12 +26,25 @@ function dependencies() {
   const store = new FirestoreNotificationsStore(db);
   // The emulator never reaches FCM; it records pushes in an outbox collection instead.
   const messaging: MessagingPort = emulator() ? new EmulatorOutboxMessaging(db) : new FcmMessaging(app);
-  return { store, messaging, clock: { now: () => new Date() } };
+  return { store, messaging, logger: deliveryLog, clock: { now: () => new Date() } };
 }
 
 /** Which delivery path the migrated triggers use (PUSH_ROUTER_ENABLED, default router). */
 export function deliveryMode(): "router" | "legacy" {
-  return pushRouterEnabled() ? "router" : "legacy";
+  if (pushRouterEnabled()) return "router";
+  warnLegacyOnce();
+  return "legacy";
+}
+
+let legacyWarned = false;
+/**
+ * The legacy path (PUSH_ROUTER_ENABLED=false) ignores notification preferences, the per-user rate caps and the
+ * two-phase receipts. Warn once per cold start so a forgotten rollback flag is visible in the logs.
+ */
+function warnLegacyOnce(): void {
+  if (legacyWarned) return;
+  legacyWarned = true;
+  logger.warn("PUSH_ROUTER_ENABLED=false: legacy push path bypasses notification preferences and rate caps; use only as a short rollback", { mode: "legacy" });
 }
 
 export function callerFromRequest(request: Pick<CallableRequest, "auth">): Caller | null {
@@ -62,14 +75,18 @@ export function handleUnregisterDevice(registry: DeviceRegistry, request: Pick<C
   return callable("unregisterDeviceV1", () => unregisterDevice(registry, callerFromRequest(request), request.data));
 }
 
-const callableOptions = { region: REGION, enforceAppCheck: !emulator() } as const;
+const callableOptions = { region: REGION, enforceAppCheck: !emulator(), timeoutSeconds: 60, memory: "256MiB", maxInstances: 20 } as const;
 
 export const registerDeviceV1 = onCall(callableOptions, (request) => handleRegisterDevice(dependencies().store, request));
 export const unregisterDeviceV1 = onCall(callableOptions, (request) => handleUnregisterDevice(dependencies().store, request));
 
 /** Chat message created -> push to `all` subscribers who are going, except the author. */
 export const onEventMessageCreated = onDocumentCreated(
-  { document: "companies/{companyId}/events/{eventId}/messages/{messageId}", region: REGION },
+  {
+    document: "companies/{companyId}/events/{eventId}/messages/{messageId}", region: REGION,
+    // Idempotent: the chat_{messageId} receipt dedupes a retry; a leased (crashed) attempt is retried by throwing.
+    retry: true, timeoutSeconds: 120, memory: "256MiB", maxInstances: 10,
+  },
   async (event) => {
     if (!event.data) return;
     const { companyId, eventId, messageId } = event.params;
@@ -78,6 +95,7 @@ export const onEventMessageCreated = onDocumentCreated(
       const stats = await onChatMessageCreatedViaRouter({ ...router, events: router.store, recipients: router.store },
         companyId, eventId, messageId, event.data.data());
       logger.info("chat push", { companyId, eventId, ...stats });
+      if (stats.inProgress) throw new Error("DELIVERY_IN_PROGRESS");
       return;
     }
     const { store, messaging } = dependencies();
@@ -88,7 +106,11 @@ export const onEventMessageCreated = onDocumentCreated(
 
 /** Event updated -> append changeLog (bounded, idempotent) and push the change to `all`/`changes` subscribers. */
 export const onEventChanged = onDocumentUpdated(
-  { document: "companies/{companyId}/events/{eventId}", region: REGION },
+  {
+    document: "companies/{companyId}/events/{eventId}", region: REGION,
+    // Idempotent: changeLog append is revision-keyed and the event_{id}_{revision} receipt is two-phase.
+    retry: true, timeoutSeconds: 120, memory: "512MiB", maxInstances: 10,
+  },
   async (event) => {
     if (!event.data) return;
     const { companyId, eventId } = event.params;
@@ -97,7 +119,8 @@ export const onEventChanged = onDocumentUpdated(
       const router = routerDependencies(defaultAdminApp());
       const routed = await onEventDocumentUpdatedViaRouter({ ...router, recipients: router.store, changeLog: router.store },
         companyId, eventId, plainEvent(event.data.before.data()), plainEvent(event.data.after.data()), updateTime);
-      if (routed.appended) logger.info("event change logged", { companyId, eventId, ...routed.push });
+      logger.info("event change delivered", { companyId, eventId, appended: routed.appended, ...routed.push });
+      if (routed.push.inProgress) throw new Error("DELIVERY_IN_PROGRESS");
       return;
     }
     const { store, messaging, clock } = dependencies();
@@ -108,7 +131,11 @@ export const onEventChanged = onDocumentUpdated(
 
 /** RSVP written by setRsvpV1 -> create the default `changes` subscription on join, remove it on leave. */
 export const onRsvpChanged = onDocumentWritten(
-  { document: "companies/{companyId}/events/{eventId}/rsvps/{userId}", region: REGION },
+  {
+    document: "companies/{companyId}/events/{eventId}/rsvps/{userId}", region: REGION,
+    // reconcile() derives the subscription from current state, so a retry converges.
+    retry: true, timeoutSeconds: 60, memory: "256MiB", maxInstances: 10,
+  },
   async (event) => {
     const { store } = dependencies();
     const { companyId, eventId, userId } = event.params;
@@ -118,11 +145,14 @@ export const onRsvpChanged = onDocumentWritten(
 
 /** Every 15 minutes (UTC): ~24 h and ~1 h reminders, exactly once per event, window and start time. */
 export const sendEventReminders = onSchedule(
-  { schedule: REMINDER_SCHEDULE, timeZone: "Etc/UTC", region: REGION, retryCount: 1 },
+  { schedule: REMINDER_SCHEDULE, timeZone: "Etc/UTC", region: REGION, retryCount: 1, timeoutSeconds: 540, memory: "512MiB", maxInstances: 1 },
   async () => {
     if (deliveryMode() === "router") {
       const router = routerDependencies(defaultAdminApp());
-      logger.info("reminders", await sendDueRemindersViaRouter({ ...router, recipients: router.store, upcoming: router.store }));
+      const result = await sendDueRemindersViaRouter({ ...router, recipients: router.store, upcoming: router.store });
+      logger.info("reminders", result);
+      // Surface a partial failure to the scheduler; receipts make the retry idempotent.
+      if (result.failed > 0) throw new Error("REMINDER_EVENTS_FAILED");
       return;
     }
     const { store, messaging, clock } = dependencies();
@@ -133,7 +163,7 @@ export const sendEventReminders = onSchedule(
 
 /** Daily: delete registry rows not refreshed for 60 days (the app re-registers on every launch). Counts only in logs. */
 export const pruneStaleDeviceTokens = onSchedule(
-  { schedule: "every day 03:30", timeZone: "Etc/UTC", region: REGION, retryCount: 1 },
+  { schedule: "every day 03:30", timeZone: "Etc/UTC", region: REGION, retryCount: 1, timeoutSeconds: 540, memory: "256MiB", maxInstances: 1 },
   async () => {
     const { store, clock } = dependencies();
     const result = await pruneStaleDevices({ stale: store, devices: store, clock });

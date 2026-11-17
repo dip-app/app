@@ -71,6 +71,8 @@ Cloud Scheduler job count for this codebase: three (`sendEventReminders`, `prune
 
 A boolean function parameter, default `true` (router on). Set `false` to fall back to the legacy direct-send path for chat, change and reminder pushes (the new triggers and the weekly theme job always use the router), then redeploy functions. Flip it between reminder windows (not near a :00, :15, :30 or :45 run, and not near an activity's 24 h or 1 h mark) so a reminder is not sent by both paths. Rollback to the legacy path is this flag plus a functions deploy; rules and indexes can stay.
 
+**Compliance warning:** the legacy path does not read notification preferences, applies no per-user rate caps, uses single-phase claims and skips the send-time membership check, so a member who switched a category off still gets the push. Treat `PUSH_ROUTER_ENABLED=false` as a short emergency rollback only, never a resting state. Every cold start with the flag off logs a single warning (`PUSH_ROUTER_ENABLED=false: legacy push path bypasses notification preferences ...`); alert on it.
+
 **2.5 Smoke after deploy**
 
 Check Cloud Logging (severity `ERROR`, Cloud Function) for ten minutes; confirm the three scheduler jobs exist; run section 3. Record the deploy (what, commit, time, results) in the session log and [CURRENT_STATE.md](../../CURRENT_STATE.md), and tag the commit as in the deploy runbook.
@@ -101,7 +103,7 @@ Needs the APNs key (section 1) and the deploy (section 2) first. Two physical iP
 | 18 | Collapse: A offline (airplane mode), make two quick changes to one activity, reconnect | One notification replaces the other; they do not stack | |
 | 19 | Expiry: A offline, a reminder window passes and the activity starts, reconnect | The stale reminder is not shown after start | |
 | 20 | A signs out; trigger a change | A's phone receives nothing; the device row is gone or moved | |
-| 21 | Rate cap sanity (20 per hour, 100 per day per member): B sends a burst of chat messages in a test activity | After the cap, further pushes are dropped (see logs) while in-app notices continue. Never run this against a real team | |
+| 21 | Rate cap sanity (shared 20 per hour and 100 per day per member; chat has its own 30 per hour and 200 per day; event changes 60 per hour and 300 per day; cancellations and reminders are never capped): B sends a burst of chat messages in a test activity | After the cap, further pushes are dropped (see logs) while in-app notices continue. Never run this against a real team | |
 
 Where to record: create a session log with `npm run session:new`, then add the build number, both devices and iOS versions, the deployed commit and Pass or Fail per row. No tokens, key ids or personal data. Then update [CURRENT_STATE.md](../../CURRENT_STATE.md) and the [push client checklist](../design/push-client.md#device-verification-and-enablement-checklist).
 
@@ -113,6 +115,9 @@ Where to record: create a session log with `npm run session:new`, then add the b
 | `messaging/registration-token-not-registered` or invalid token | Expected for uninstalled apps; the sender prunes that device row. If it happens for a fresh install, suspect an APNs environment mismatch (next row). |
 | Works on Xcode builds, not TestFlight (or the reverse) | Xcode Debug builds use the sandbox APNs environment; TestFlight and App Store builds use production. The `aps-environment` entitlement must match the build and the Firebase key must cover that environment (UNVERIFIED for one key, see section 1). Check the exported entitlements ([TestFlight checklist](testflight-universal-links.md), section C). |
 | No push but the in-app notice exists | Category switched off, per-activity level too low, permission denied, no device row, or a rate cap hit. Check the preference document, the bell level and the logs. |
+| Every send failed and logs show `push send failed: FCM/APNs credentials rejected` (severity ERROR) | `errorCodes` holds aggregated FCM codes (never tokens). `messaging/third-party-auth-error` means a wrong or missing APNs key: redo section 1. Stale-token errors alone are not logged. |
+| A push was lost after a crash or timeout | Receipts are two-phase: `notificationReceipts/{hash}` is `processing` with `leaseUntil` (5 minutes) until delivery completes, then `done`. A retry inside the lease is a duplicate (the Firestore triggers throw `DELIVERY_IN_PROGRESS` so the platform retries after the lease); after it expires the retry delivers. Receipts without a `state` field (older) count as done. |
+| Recipient dropped with `blocked.inactive` in the log stats | The member is deactivated or no longer in the notification's company at send time. `registerDeviceV1` also refuses deactivated accounts (`ACCOUNT_DEACTIVATED`). |
 | Reminder missing | Outside the 15-minute poll precision (about 1 hour), cancelled, already started, or the member left. |
 | Duplicate reminder after changing `PUSH_ROUTER_ENABLED` | The flag was flipped between the two paths inside one window. Wait for the next window. |
 

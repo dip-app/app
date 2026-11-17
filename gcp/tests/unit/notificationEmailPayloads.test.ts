@@ -49,7 +49,7 @@ class Fixture {
       messaging: this.messaging,
       devices: { tokensFor: async (uids) => uids.map((uid): DeviceToken => ({ uid, tokenHash: `h-${uid}`, token: `tok-${uid}` })), remove: async () => undefined },
       preferences: { preferencesFor: async () => new Map() },
-      receipts: { claim: async (id) => { if (this.receipts.has(id)) return false; this.receipts.add(id); return true; } },
+      receipts: { claim: async (id) => { if (this.receipts.has(id)) return false; this.receipts.add(id); return true; }, complete: async () => undefined, isDone: async (id) => this.receipts.has(id) },
       rateLimiter: { admit: async (uids) => new Set(uids) },
       inbox: { createMany: async (items) => items.length },
       email: this.email,
