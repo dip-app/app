@@ -1,6 +1,6 @@
 # Reminder and notification emails (stretch S5)
 
-Status: design only. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Reuses the category and preference model owned by [push triggers](push-triggers.md).
+Status: backend implemented behind `EMAIL_ENABLED` (off), nothing deployed, no provider chosen; see [Decisions](#decisions-defaults-taken-while-owner-questions-are-open), the [email contract](../../contracts/email.md) and the [setup runbook](../../ops/email-setup.md). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Reuses the category and preference model owned by [push triggers](push-triggers.md) ([notification preferences](notification-preferences.md)).
 
 ## Goal and user stories
 
@@ -128,6 +128,27 @@ Deliverability on a brand-new domain (warm-up, DMARC discipline); cost surprises
 5. Is `events@letsdip.work` still wanted as a calendar-invite sender, or is `notify@` enough?
 6. Can you share the relevant `mvtt-server` template files or describe the approach you liked?
 7. React in the Functions bundle (react-email) acceptable?
+
+## Decisions (defaults taken while owner questions are open)
+
+Recorded November 17, 2026 by the email workstream. Each can be revisited; none needs a data migration.
+
+1. **Provider (question 1):** code is provider-agnostic (`EmailProviderPort`, `EmailWebhookVerifier`); the only real adapter is Postmark, as recommended. Default `EMAIL_PROVIDER=log` sends nothing. No account was created and nothing was bought.
+2. **Templates (question 7):** no React in the Functions bundle. A small typed, dependency-free renderer (table layout, inline styles, dark-mode media query, Outlook VML button, plain-text alternative) replaced react-email; no new npm dependencies at all. Snapshot files live in `gcp/tests/unit/__snapshots__/email/`; `npm run email:preview -- <dir>` writes a gallery. Design crit passed in two rounds (desktop-first, compact, no purple blocks).
+3. **No cover image** in emails for now: a full-width hero dominated a notification and Outlook cannot crop. A pre-cropped 1200x280 banner can return later; the variable is still allow-listed.
+4. **Reminder emails default off (question 2)**, as in the shared registry; members opt in. `discovery` is offered (default off) but no template exists yet.
+5. **Time zone (question 3):** `emailSettings/{companyId}.timeZone` when set, else the `EMAIL_DEFAULT_TIME_ZONE` param (default `America/New_York`, the same assumption as the share page). Every time shows the zone abbreviation.
+6. **Postal address (question 4):** `EMAIL_POSTAL_ADDRESS` param; while empty, every email is skipped (`config_incomplete`).
+7. **Sender (question 5):** `notify@` only (From), `support@` as Reply-To; no `events@`.
+8. **mvtt-server (question 6):** not used; nothing was accessible.
+9. **Per-company enablement** lives in a new server-only `emailSettings/{companyId}` document rather than a field on `companies/{c}`, so no contract change was needed.
+10. **At most once:** an ambiguous provider outcome (timeout, crash, lost lease) is recorded as `unknown` and never resent; a duplicate email is worse than a missing one. Only definite retryable rejections are retried (5 attempts).
+11. **Unsubscribe GET does not unsubscribe** (scanners prefetch links); it shows a page whose button POSTs. The RFC 8058 POST from mail clients acts directly. Tokens are per category, valid 60 days, and the page also offers "all DIP emails".
+12. **Webhook auth:** Postmark does not sign webhooks, so the endpoint requires Basic credentials (secret password, at least 24 characters, constant-time compare). A complaint suppresses the address and turns every email category off for the member.
+13. **ICS:** `METHOD:PUBLISH` (not `REQUEST`, which would invite iTIP replies DIP cannot receive), UID `<eventId>@letsdip.work`, `SEQUENCE` = event revision, attached to invite, reminder, change, cancel and attendee-added emails.
+14. **No open or click tracking**, links unchanged (privacy, and keeps universal links working).
+15. **Caps:** 20 emails per member per day and 2,000 per company per day (overridable up to 50,000 in `emailSettings`).
+16. **Push-or-email policy:** invites and event updates go to both channels; reminders and discovery follow the email switch only; challenge emails are sent only when push will not be delivered.
 
 ## Work breakdown
 

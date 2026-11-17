@@ -10,7 +10,7 @@ Written November 16, 2026 from the owner's five stretch requests. These are **st
 | S2 | AI event ideas and prompt-to-event drafts | `ai` | [ai-event-creation](../../design/stretch/ai-event-creation.md) | Researched, awaiting owner decisions | AI-1 to AI-10 |
 | S3 | Tag interest counts | `tags` | [tag-interest-counts](../../design/stretch/tag-interest-counts.md) | In progress (backend trigger, rules and AI summary built; not deployed) | TAG-1 to TAG-6 |
 | S4 | Push triggers and category settings | `push` | [push-triggers](../../design/stretch/push-triggers.md) | In progress: PUSH-1 shared preference model landed ([notification preferences](../../design/stretch/notification-preferences.md)); pipeline still device-unverified | PUSH-1 to PUSH-9 |
-| S5 | Reminder and notification emails | `email` | [email](../../design/stretch/email.md) | Researched; needs domain and mailbox setup first | EML-1 to EML-10 |
+| S5 | Reminder and notification emails | `email` | [email](../../design/stretch/email.md) | Backend built behind `EMAIL_ENABLED` (off, not deployed): templates, ICS, outbox sender, unsubscribe, webhook; router hook and settings rows wait on PUSH-2 and PUSH-7; owner setup in [email setup](../../ops/email-setup.md) | EML-1 to EML-10 |
 
 Each doc contains a table with `ID | Title | Scope | Acceptance | Est | Area | Depends`; the GitHub sub-issues are generated from those rows. Estimates: S (about half a day or less), M (one to two days), L (three days or more). Area: ios, backend, admin, infra.
 
@@ -62,7 +62,7 @@ If only some items are selected for December 4, the smallest valuable slices are
 | Admin permissions | `can(role, permission)` matrix, audit log, request-id idempotency, rate limit | [admin contract](../../contracts/admin.md) |
 | Conventions | Firebase v2 `onCall` in `us-central1`, App Check enforced outside the emulator, versioned `V1` names, additive contract changes only, thin transport and application services | [callables](../../contracts/callables.md), root `AGENTS.md` |
 | Share and deep links | `https://letsdip.work/e/<id>` with preview page and universal links | [share links](../../design/share-links.md) |
-| Email | Nothing. No sending code, no mail DNS, no `support@` mailbox | n/a |
+| Email | Nothing at research time. Since November 17: `modules/email` (off by default), still no mail DNS and no `support@` mailbox | `gcp/functions/src/modules/email`, [email contract](../../contracts/email.md) |
 | AI | Nothing. No Anthropic code or secret | n/a |
 
 ## Existing board cards related to these items

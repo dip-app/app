@@ -8,4 +8,5 @@ Runbooks for people who deploy and operate DIP. Agents prepare these changes; a 
 | [Launch switches](launch-switches.md) | The noindex switch (`scripts/set-indexing.sh`), App Store ID and official badge wiring |
 | [TestFlight and Universal Links](testflight-universal-links.md) | Team ID, entitlements, build upload, TestFlight and App Store Connect steps |
 | [Seed and backfill conventions](seed-data.md) | Dry-run default, `seed-` IDs, manifests and undo for data scripts |
+| [Email setup](email-setup.md) | Mailboxes, Postmark, SPF, DKIM, DMARC, secrets, params, webhook, pilot enablement and verification for notification emails |
 | [Push enablement](../design/push-client.md) | APNs key, entitlement, flag, device test plan |

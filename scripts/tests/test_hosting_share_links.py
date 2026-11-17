@@ -18,7 +18,13 @@ class HostingShareLinks(unittest.TestCase):
         self.assertEqual(rewrites["/e/**"]["function"], {"functionId": "eventSharePageV1", "region": "us-central1"})
         aasa = rewrites["/.well-known/apple-app-site-association"]
         self.assertTrue((ROOT / "apps/admin/public" / aasa["destination"].lstrip("/")).is_file())
-        self.assertEqual(len(rewrites), 2)  # no catch-all that would shadow the admin site
+        # Function rewrites are path-scoped; no catch-all that would shadow the admin site.
+        self.assertTrue(set(rewrites) <= {"/.well-known/apple-app-site-association", "/e/**", "/u/**", "/o/**"}, sorted(rewrites))
+        self.assertTrue(all(source not in ("**", "/**") for source in rewrites))
+        if "/u/**" in rewrites:
+            self.assertEqual(rewrites["/u/**"]["function"], {"functionId": "emailUnsubscribeV1", "region": "us-central1"})
+        if "/o/**" in rewrites:
+            self.assertEqual(rewrites["/o/**"]["function"], {"functionId": "emailOpenV1", "region": "us-central1"})
 
     def test_app_association_is_disabled_so_our_aasa_is_served(self):
         # Firebase auto-generates an empty AASA on web.app unless appAssociation is NONE.
