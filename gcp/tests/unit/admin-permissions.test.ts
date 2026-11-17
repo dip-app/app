@@ -56,7 +56,7 @@ describe("permission matrix", () => {
       assert.equal(roles.includes("organizer"), can("organizer", permission as Permission));
     }
     for (const allowed of ["event.manage", "attendee.manage", "attendance.record", "album.moderate", "member.read"] as const) assert.equal(can("organizer", allowed), true);
-    for (const adminOnly of ["member.manage", "team.manage", "roster.manage", "import.run", "audit.read"] as const) assert.equal(can("organizer", adminOnly), false);
+    for (const adminOnly of ["member.manage", "team.manage", "roster.manage", "import.run", "audit.read", "ai.generate"] as const) assert.equal(can("organizer", adminOnly), false);
     assert.equal(can("superuser", "member.read"), false);
     assert.equal(can(undefined, "member.read"), false);
   });
