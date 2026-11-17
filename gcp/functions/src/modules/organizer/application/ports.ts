@@ -3,6 +3,8 @@ import type { ParsedDraft } from "../domain/eventDraft";
 export interface StoredOrganizer {
   companyId: string;
   role: string;
+  /** Server-owned account status; "deactivated" is refused, a missing status counts as active. */
+  status?: string;
 }
 
 /** The event fields the application service reads before deciding (server-owned values included). */

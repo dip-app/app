@@ -36,6 +36,9 @@ function eventFields(draft: ParsedDraft) {
  * Admin SDK adapter. Admin access bypasses Security Rules, so authorization is enforced by the application
  * service before any write is queued here. Paths follow docs/contracts/data-ownership.md.
  */
+/** commandReceipts.expireAt feeds the Firestore TTL policy. */
+const RECEIPT_RETENTION_MS = 30 * 86_400_000;
+
 export class FirestoreOrganizerStore implements OrganizerStore {
   constructor(private readonly db: Firestore) {}
 
@@ -50,7 +53,8 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           if (!snap.exists) return null;
           const companyId: unknown = snap.get("companyId");
           const role: unknown = snap.get("role");
-          return { companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "" };
+          const status: unknown = snap.get("status");
+          return { companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "", ...(typeof status === "string" ? { status } : {}) };
         },
         async getEvent(companyId, eventId) {
           const snap = await transaction.get(events(companyId).doc(eventId));
@@ -103,6 +107,7 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           transaction.create(receipts(companyId).doc(`${uid}_${requestId}`), {
             ...receipt,
             createdAt: FieldValue.serverTimestamp(),
+            expireAt: new Date(Date.now() + RECEIPT_RETENTION_MS),
           });
         },
         updateEvent(companyId, eventId, draft, status, nextRevision, updatedBy) {

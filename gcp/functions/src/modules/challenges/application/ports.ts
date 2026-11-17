@@ -3,6 +3,8 @@ import type { ParsedChallengeDraft, StoredChallenge } from "../domain/challengeD
 export interface StoredMembership {
   companyId: string;
   role: string;
+  /** Server-owned account status; "deactivated" is refused, a missing status counts as active. */
+  status?: string;
 }
 
 /** Private deduplication receipt for createChallengeV1. */

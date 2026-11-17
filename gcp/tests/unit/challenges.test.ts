@@ -343,3 +343,22 @@ describe("challenge transport", () => {
     await assert.rejects(handleCreateChallenge(store, { auth, data: { ...createRequest(), uid: "other-admin" } }), (e: any) => e.code === "invalid-argument");
   });
 });
+
+describe("deactivated accounts", () => {
+  test("a deactivated admin cannot create or update weekly themes and nothing is written", async () => {
+    const store = new FakeStore();
+    store.members.set("admin", { companyId: "acme", role: "admin", status: "deactivated" });
+    const created = await failure(createChallenge(store, admin, createRequest(), ids(), clock));
+    assert.equal(created.code, "permission-denied");
+    assert.equal(created.reason, "ACCOUNT_DEACTIVATED");
+    assert.equal((await failure(updateChallenge(store, admin, updateRequest(1), clock))).reason, "ACCOUNT_DEACTIVATED");
+    assert.deepEqual(store.writes, []);
+    assert.equal(store.receipts.size, 0);
+  });
+  test("active and status-less admins are unaffected", async () => {
+    const store = new FakeStore();
+    store.members.set("admin2", { companyId: "acme", role: "admin", status: "active" });
+    assert.ok((await createChallenge(store, { ...admin, uid: "admin2" }, createRequest(), ids(), clock)).challengeId);
+    assert.ok((await createChallenge(store, admin, createRequest(draftJson({ startDate: THIS_WEEK.startDate, endDate: THIS_WEEK.endDate }), { requestId: "8d444840-9dc0-41f4-9d0c-4d1f4b3a9f11" }), ids(), clock)).challengeId);
+  });
+});

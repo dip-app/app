@@ -246,3 +246,16 @@ test("comment trigger recounts the addressed photo only", async () => {
   await handlePhotoCommentCreated(counter, { companyId: "alpha", eventId: "", photoId: "alice_0" });
   assert.deepEqual(calls, [["alpha", "boat", "alice_0"]]);
 });
+
+test("a deactivated member cannot finalize a photo; active and status-less members can", async () => {
+  const { store, objects } = setup();
+  store.seed("users/alice", { ...store.get("users/alice"), status: "deactivated" });
+  await rejects(finalizeEventPhoto(store, objects, caller(), request(), now), "permission-denied", "ACCOUNT_DEACTIVATED");
+  assert.equal(store.writes, 0);
+  assert.equal(objects.inspected.length, 0);
+  assert.deepEqual(objects.removed, []);
+  store.seed("users/alice", { ...store.get("users/alice"), status: "active" });
+  assert.equal((await finalizeEventPhoto(store, objects, caller(), request(), now)).created, true);
+  const fresh = setup(); // no status field at all
+  assert.equal((await finalizeEventPhoto(fresh.store, fresh.objects, caller(), request(), now)).created, true);
+});

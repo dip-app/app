@@ -3,6 +3,7 @@ import {
   CHALLENGE_LIMITS, WEEKLY, challengeDraftHash, parseCreateChallengeRequest, parseUpdateChallengeRequest, rfc3339,
   toChallengeDto, windowChangeBlocked, windowsOverlap, type ParsedChallengeDraft, type StoredChallenge,
 } from "../domain/challengeDraft";
+import { isDeactivated } from "../../admin/domain/member";
 import { ChallengeError } from "../domain/errors";
 import type { ChallengeTransaction, ChallengeStore } from "./ports";
 
@@ -40,6 +41,7 @@ async function requireOrganizer(tx: ChallengeTransaction, caller: Caller, compan
   if (!membership || membership.role !== "admin") {
     throw new ChallengeError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage weekly themes.");
   }
+  if (isDeactivated(membership)) throw new ChallengeError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
   if (membership.companyId !== companyId) {
     throw new ChallengeError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's weekly themes.");
   }

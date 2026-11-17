@@ -297,3 +297,26 @@ describe("transport mapping", () => {
     assert.ok(!internal.message.includes("password"));
   });
 });
+
+describe("deactivated accounts", () => {
+  test("a deactivated admin or organizer cannot create or update events and nothing is written", async () => {
+    const store = new FakeStore();
+    store.members.set("admin", { companyId: "acme", role: "admin", status: "deactivated" });
+    store.members.set("organizer", { companyId: "acme", role: "organizer", status: "deactivated" });
+    for (const uid of ["admin", "organizer"]) {
+      const created = await failure(createEvent(store, { ...admin, uid }, createRequest(), ids("e1"), clock));
+      assert.equal(created.code, "permission-denied");
+      assert.equal(created.reason, "ACCOUNT_DEACTIVATED");
+      const request = { contractVersion: 1, companyId: "acme", eventId: "missing", expectedRevision: 1, event: draftJson(), status: "scheduled" };
+      assert.equal((await failure(updateEvent(store, { ...admin, uid }, request))).reason, "ACCOUNT_DEACTIVATED");
+    }
+    assert.deepEqual(store.writes, []);
+    assert.equal(store.receipts.size, 0);
+  });
+  test("active and status-less organizers are unaffected", async () => {
+    const store = new FakeStore();
+    store.members.set("organizer", { companyId: "acme", role: "organizer", status: "active" });
+    assert.equal((await createEvent(store, { ...admin, uid: "organizer" }, createRequest(), ids("e1"), clock)).eventId, "e1");
+    assert.equal((await createEvent(store, admin, createRequest(draftJson(), { requestId: "8d444840-9dc0-41f4-9d0c-4d1f4b3a9f11" }), ids("e2"), clock)).eventId, "e2");
+  });
+});
