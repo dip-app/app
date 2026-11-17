@@ -25,7 +25,7 @@ The scaffold's `.sops.yaml` rule matches `*.enc.env`, `*.enc.json`, `*.enc.yaml`
 
 | Path | Content | Used by |
 | --- | --- | --- |
-| `backend/functions.enc.env` | `NAME=value` lines: `OPENAI_API_KEY`, `JEV_API_KEY`, `POSTMARK_SERVER_TOKEN`, `EMAIL_UNSUBSCRIBE_KEY`, `EMAIL_WEBHOOK_PASSWORD`, ... Names are `UPPER_SNAKE_CASE` and equal the `defineSecret` names. | `sync-gcp.sh` |
+| `backend/functions.enc.env` | `NAME=value` lines: `OPENAI_API_KEY`, `JEV_API_KEY`, `POSTMARK_SERVER_TOKEN`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `EMAIL_UNSUBSCRIBE_KEY`, `EMAIL_WEBHOOK_PASSWORD`, ... Names are `UPPER_SNAKE_CASE` and equal the `defineSecret` names. | `sync-gcp.sh` |
 | `ios/GoogleService-Info.plist.enc.json` | the Firebase iOS config | `pull.sh --only ios` |
 | `ios/Local.xcconfig.enc.json` | the whole `ui/Config/Local.xcconfig` (see `Local.example.xcconfig`) | `pull.sh --only ios` |
 | `ios/signing.enc.env` | `ASC_KEY_ID`, `ASC_ISSUER_ID` (App Store Connect API key identifiers) | `testflight.sh --use-secrets` |

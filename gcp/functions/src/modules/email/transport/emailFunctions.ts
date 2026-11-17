@@ -7,7 +7,7 @@ import { defineBoolean, defineSecret, defineString } from "firebase-functions/pa
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
 import { SHARE_ORIGIN } from "../../share/domain/sharePage";
 import { emailChannel, type ChannelDeps } from "../application/enqueueEmail";
-import type { EmailConfig, EmailProviderPort } from "../application/ports";
+import type { EmailConfig, EmailProviderPort, EmailWebhookVerifier } from "../application/ports";
 import { RetryableEmailError, sendOutboxEmail, type EmailRenderer } from "../application/sendOutboxEmail";
 import { reapOutbox } from "../application/reapOutbox";
 import { handleOpenPixel } from "../application/openPixel";
@@ -19,20 +19,25 @@ import { renderEmail, validateVariables } from "../domain/templates/render";
 import { EmulatorOutboxEmailProvider, LogOnlyEmailProvider } from "../infrastructure/fakeProviders";
 import { FirestoreEmailStore } from "../infrastructure/firestoreEmailStore";
 import { PostmarkProvider, PostmarkWebhookVerifier } from "../infrastructure/postmarkProvider";
+import { ResendProvider, ResendWebhookVerifier } from "../infrastructure/resendProvider";
 
 /*
  * Configuration (docs/ops/email-setup.md). Everything is off by default; nothing is sent until the owner sets
- * EMAIL_ENABLED=true, EMAIL_PROVIDER=postmark, the secrets, and enables a company in
+ * EMAIL_ENABLED=true, EMAIL_PROVIDER=postmark|resend, the secrets, and enables a company in
  * `emailSettings/{companyId}`. Secret values are bound per function and never logged.
  */
 export const EMAIL_ENABLED = defineBoolean("EMAIL_ENABLED", { default: false, description: "Master switch for all email sending." });
-export const EMAIL_PROVIDER = defineString("EMAIL_PROVIDER", { default: "log", description: "postmark | log (log-only fake)." });
+export const EMAIL_PROVIDER = defineString("EMAIL_PROVIDER", { default: "log", description: "postmark | resend | log (log-only fake)." });
 export const EMAIL_OPEN_TRACKING = defineBoolean("EMAIL_OPEN_TRACKING", { default: false, description: "Add an approximate open-tracking pixel to emails." });
 export const EMAIL_DEFAULT_TIME_ZONE = defineString("EMAIL_DEFAULT_TIME_ZONE", { default: "America/New_York", description: "IANA zone for times when the company has none." });
 export const POSTMARK_MESSAGE_STREAM = defineString("POSTMARK_MESSAGE_STREAM", { default: "notifications", description: "Postmark message stream id for optional notifications." });
 export const EMAIL_UNSUBSCRIBE_KEY = defineSecret("EMAIL_UNSUBSCRIBE_KEY");
 export const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 export const EMAIL_WEBHOOK_PASSWORD = defineSecret("EMAIL_WEBHOOK_PASSWORD");
+// Resend (alternative provider). A functions deploy needs every bound secret to exist: create placeholder values
+// first (docs/ops/email-runbook.md); they are only read when EMAIL_PROVIDER=resend.
+export const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+export const RESEND_WEBHOOK_SECRET = defineSecret("RESEND_WEBHOOK_SECRET");
 
 const REGION = "us-central1";
 const WEBHOOK_USERNAME = "dip-email-webhook";
@@ -76,7 +81,14 @@ function provider(store: FirebaseFirestore.Firestore): EmailProviderPort {
   if (EMAIL_PROVIDER.value() === "postmark") {
     return new PostmarkProvider({ serverToken: POSTMARK_SERVER_TOKEN.value(), streams: { notifications: POSTMARK_MESSAGE_STREAM.value() || "notifications" } });
   }
+  if (EMAIL_PROVIDER.value() === "resend") return new ResendProvider({ apiKey: RESEND_API_KEY.value() });
   return new LogOnlyEmailProvider();
+}
+
+/** Resend signs with Svix (`whsec_...`); Postmark (and the emulator/log setups) use Basic credentials. */
+function webhookVerifier(): EmailWebhookVerifier {
+  if (!emulator() && EMAIL_PROVIDER.value() === "resend") return new ResendWebhookVerifier(RESEND_WEBHOOK_SECRET.value());
+  return new PostmarkWebhookVerifier(WEBHOOK_USERNAME, webhookPassword());
 }
 
 function stores() {
@@ -101,7 +113,7 @@ export { emailChannel };
 export const onEmailOutboxCreated = onDocumentCreated(
   {
     document: `${OUTBOX_COLLECTION}/{outboxId}`, region: REGION, retry: true, timeoutSeconds: 60, memory: "256MiB", maxInstances: 10,
-    secrets: [EMAIL_UNSUBSCRIBE_KEY, POSTMARK_SERVER_TOKEN],
+    secrets: [EMAIL_UNSUBSCRIBE_KEY, POSTMARK_SERVER_TOKEN, RESEND_API_KEY],
   },
   async (event) => {
     if (!event.data) return;
@@ -161,14 +173,14 @@ export const emailOpenV1 = onRequest(
     response.status(result.status).set(result.headers).send(result.body as unknown as string);
   });
 
-/** Provider bounce and complaint webhook (direct function URL with Basic credentials; see docs/ops/email-setup.md). */
+/** Provider bounce and complaint webhook (direct function URL; Basic credentials for Postmark, Svix signature for Resend; see docs/ops/email-setup.md). */
 export const emailWebhookV1 = onRequest(
-  { region: REGION, invoker: "public", cors: false, timeoutSeconds: 30, memory: "256MiB", maxInstances: 5, secrets: [EMAIL_WEBHOOK_PASSWORD] },
+  { region: REGION, invoker: "public", cors: false, timeoutSeconds: 30, memory: "256MiB", maxInstances: 5, secrets: [EMAIL_WEBHOOK_PASSWORD, RESEND_WEBHOOK_SECRET] },
   async (req, res) => {
     const response = res as unknown as HttpResponseLike;
     const { store } = stores();
     const result = await handleWebhook(
-      new PostmarkWebhookVerifier(WEBHOOK_USERNAME, webhookPassword()),
+      webhookVerifier(),
       { suppressions: store.suppressions, preferences: store.preferences, outbox: store.outbox, recipients: store.recipients, clock: { now: () => new Date() } },
       { method: req.method, headers: req.headers, rawBody: req.rawBody },
     );
