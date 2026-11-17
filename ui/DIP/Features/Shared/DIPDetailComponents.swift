@@ -9,9 +9,10 @@ struct DIPDetailHeader: View {
     var widePill = false
     let identifierPrefix: String
     let onBack: () -> Void
-    /// When set, the outlined pill becomes the add-to-calendar button (calendar icon left, label right).
+    /// When set (and `calendarState` is not `.hidden`), the outlined pill becomes the stateful add-to-calendar pill
+    /// (icon left, label right). `.hidden` keeps the informational pill.
     var calendarLabel: String?
-    var calendarAdded = false
+    var calendarState: DIPCalendarPillState = .hidden
     var onCalendar: () -> Void = {}
     /// Keeps the calendar glyph on the informational (outlined) pill so the header does not jump between states.
     var showsCalendarIcon = false
@@ -30,26 +31,14 @@ struct DIPDetailHeader: View {
                 .accessibilityIdentifier("\(identifierPrefix).back")
             }
             Spacer(minLength: 10)
-            if let calendarLabel {
+            if let calendarLabel, calendarState != .hidden {
                 Button(action: onCalendar) {
-                    HStack(spacing: 8) {
-                        if calendarAdded {
-                            Image(systemName: "checkmark").font(.system(size: 15, weight: .bold))
-                        } else {
-                            DIPReferenceAssets.image("HeroiconsOutlineCalendar").renderingMode(.template)
-                                .resizable().frame(width: 22, height: 22)
-                        }
-                        Text(calendarAdded ? "Added" : calendarLabel)
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 14)).lineLimit(1).fixedSize()
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18).frame(height: 50)
-                    .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
-                    .contentShape(Capsule())
+                    DIPCalendarPill(state: calendarState, label: calendarLabel)
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
-                .disabled(calendarAdded)
-                .accessibilityLabel(calendarAdded ? "Added to calendar" : "Add to calendar")
+                .disabled(!calendarState.isEnabled)
+                .accessibilityLabel(calendarState.accessibilityLabel)
+                .accessibilityValue(calendarState.accessibilityValue)
                 .accessibilityIdentifier("\(identifierPrefix).addToCalendar")
             } else {
                 HStack(spacing: 8) {
@@ -68,6 +57,73 @@ struct DIPDetailHeader: View {
             }
         }
         .padding(.horizontal, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)).padding(.bottom, 10)
+    }
+}
+
+/// The date pill in each calendar state. Solid fill = pressable, outline = informational; the icon and label change
+/// with the state so color is never the only signal.
+struct DIPCalendarPill: View {
+    let state: DIPCalendarPillState
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            icon
+            Text(state == .added ? "Added" : label)
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 14)).lineLimit(1).fixedSize()
+        }
+        .foregroundStyle(foreground)
+        .padding(.horizontal, 18).frame(height: 50)
+        .background(fill, in: Capsule())
+        .overlay { if state == .added { Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2) } }
+        .contentShape(Capsule())
+    }
+
+    @ViewBuilder private var icon: some View {
+        switch state {
+        case .conflict:
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 18, weight: .semibold))
+                .frame(width: 22, height: 22).accessibilityHidden(true)
+        case .free(direct: true):
+            Image(systemName: "calendar.badge.plus").font(.system(size: 18, weight: .regular))
+                .frame(width: 22, height: 22).accessibilityHidden(true)
+        case .adding:
+            ProgressView().tint(.white).frame(width: 22, height: 22).accessibilityHidden(true)
+        case .added:
+            Image(systemName: "checkmark").font(.system(size: 15, weight: .bold))
+                .frame(width: 22, height: 22).accessibilityHidden(true)
+        case .free, .hidden:
+            DIPReferenceAssets.image("HeroiconsOutlineCalendar").renderingMode(.template)
+                .resizable().frame(width: 22, height: 22).accessibilityHidden(true)
+        }
+    }
+
+    private var foreground: Color {
+        switch state {
+        case .conflict: DIPTokens.Color.textOnCalendarConflict.swiftUIColor
+        case .added: DIPTokens.Color.textPrimary.swiftUIColor
+        default: .white
+        }
+    }
+
+    private var fill: Color {
+        switch state {
+        case .conflict: DIPTokens.Color.calendarConflict.swiftUIColor
+        case .added: .white
+        case .free, .adding: DIPTokens.Color.calendarFree.swiftUIColor
+        case .hidden: .clear
+        }
+    }
+}
+
+extension DIPCalendarPillState {
+    /// Stable value for UI tests ("conflict", "free", "added").
+    var accessibilityValue: String {
+        switch self {
+        case .conflict: "conflict"
+        case .added: "added"
+        case .free, .adding, .hidden: "free"
+        }
     }
 }
 

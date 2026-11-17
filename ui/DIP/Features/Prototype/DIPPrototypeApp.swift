@@ -281,6 +281,9 @@ struct DIPPrototypeApp: View {
     @State private var headerTab: DIPHomeTab = .home
     /// Home's interest filter scope; persisted per member on this device.
     @State private var homeScope: DIPHomeEventScope = .all
+    @Environment(\.dipCalendar) private var calendar
+    /// Upcoming Home events that overlap the member's calendar; filled after the feed renders.
+    @State private var calendarConflictIDs: Set<String> = []
     // Avatar flight between the header capsule and the Profile badge (see `avatarFlyer`).
     @State private var flightFrame = CGRect.zero
     @State private var flightRing: CGFloat = 0
@@ -396,6 +399,7 @@ struct DIPPrototypeApp: View {
             onDeepLinkHandled?(id)
         }
         .task(id: observationID) { await model.observe() }
+        .task(id: calendarConflictKey) { await refreshCalendarConflicts() }
         .onChange(of: surface, initial: true) { _, surface in onSurfaceChange?(surface) }
         .alert("Couldn’t save", isPresented: Binding(
             get: { rsvpError != nil },
@@ -469,7 +473,8 @@ struct DIPPrototypeApp: View {
                     onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } },
                     eventFilter: eventFilter, onFilterScope: { setHomeScope($0, uid: member.id, shown: matchingCount, total: eventFilter?.totalCount) },
                     eventsPhase: eventsPhase(snapshot, hasEvents: !lists.discovery.isEmpty),
-                    onRetryEvents: { observationID = UUID() }))
+                    onRetryEvents: { observationID = UUID() },
+                    calendarConflictIDs: calendarConflictIDs))
             case .events:
                 if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
@@ -500,6 +505,25 @@ struct DIPPrototypeApp: View {
             }
         }
         return pages
+    }
+
+    /// Re-run key for the conflict pass: calendar changes plus a cheap signature of the loaded events.
+    private var calendarConflictKey: [String] {
+        let events = model.snapshot?.eventDetails.values.sorted { $0.id < $1.id } ?? []
+        let signature = events.map { "\($0.id):\($0.isPast):\($0.metadata?.revision ?? 0)" }.joined(separator: ",")
+        return [String(calendar.revision), signature]
+    }
+
+    /// Runs after the feed has rendered, so first paint is unchanged.
+    private func refreshCalendarConflicts() async {
+        guard let snapshot = model.snapshot else { calendarConflictIDs = []; return }
+        let all = Array(snapshot.eventDetails.values)
+        let candidates = DIPEventLists(snapshot: snapshot, now: Date()).discovery.compactMap { summary -> DIPEventDetail? in
+            guard let detail = snapshot.eventDetails[summary.id], detail.metadata != nil, !detail.isPast else { return nil }
+            return detail
+        }
+        let result = await calendar.conflictedEventIDs(candidates, among: all)
+        if result != calendarConflictIDs { calendarConflictIDs = result }
     }
 
     /// Freshness of Home's events. The snapshot only exists after a successful read, so a load error with a
@@ -909,7 +933,8 @@ struct DIPPrototypeApp: View {
                         onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { routes.append(.participants(id)) } }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
                         onLeave: { changeRSVP(id, going: false) },
-                        onInvite: invites == nil || participationUnavailable ? nil : { openInvite(id) })
+                        onInvite: invites == nil || participationUnavailable ? nil : { openInvite(id) },
+                        calendarEvents: Array(snapshot.eventDetails.values))
                     .disabled(isRSVPPending)
                 } else { missingResource }
             case .challenge(let id):

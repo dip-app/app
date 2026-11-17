@@ -2,6 +2,7 @@ import DIPAccounts
 import DIPCore
 import DIPDesignSystem
 import SwiftUI
+import UIKit
 
 /// Renders repository-owned profile data. Only form drafts and presentation state are local.
 struct DIPProfileScreen: View {
@@ -19,6 +20,7 @@ struct DIPProfileScreen: View {
     let onReplayTour: (() -> Void)?
     @State private var isSigningOut = false
     @Environment(\.presentBugReport) private var presentBugReport
+    @Environment(\.dipCalendar) private var calendar
     @AppStorage(ShakeGate.enabledKey) private var shakeToReport = true
     @AppStorage(ShakeGate.promptKey) private var askBeforeReporting = true
 
@@ -156,6 +158,9 @@ struct DIPProfileScreen: View {
             .buttonStyle(DIPPressFeedbackStyle())
             .accessibilityIdentifier("profile.howDIPWorks")
         }
+        if calendar.featureEnabled, calendar.device != nil {
+            calendarSection
+        }
         if let presentBugReport {
             reportProblem(presentBugReport)
         }
@@ -168,6 +173,61 @@ struct DIPProfileScreen: View {
                 Task { await onSignOut(); isSigningOut = false }
             }
             .accessibilityIdentifier("profile.signout")
+        }
+    }
+
+    /// Opt-in calendar conflicts (stretch S1). The calendar is read on this iPhone only.
+    private var calendarSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("CALENDAR")
+                .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 24, relativeTo: .title2))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                .accessibilityAddTraits(.isHeader)
+            Toggle(isOn: Binding(
+                get: { calendar.preferences.showsConflicts },
+                set: { new in Task { await calendar.setShowsConflicts(new) } })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Show calendar conflicts")
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                    Text("DIP checks your calendar on this iPhone and warns you when an activity overlaps. Your calendar never leaves your phone.")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                }
+            }
+            .tint(DIPTokens.Color.actionPrimary.swiftUIColor)
+            .padding(16)
+            .frame(minHeight: 44)
+            .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                        in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+            .accessibilityIdentifier("profile.calendarConflicts")
+            if calendar.preferences.showsConflicts {
+                Toggle(isOn: Binding(
+                    get: { calendar.preferences.treatsAllDayAsBusy },
+                    set: { calendar.setTreatsAllDayAsBusy($0) })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Count all-day events as busy")
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                        Text("Holidays and out-of-office days count as conflicts.")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                            .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                    }
+                }
+                .tint(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .padding(16)
+                .frame(minHeight: 44)
+                .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                            in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+                .accessibilityIdentifier("profile.calendarAllDay")
+            }
+            if calendar.accessDeniedNotice || calendar.access == .denied {
+                Text("Calendar access is off for DIP in iOS Settings.")
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                DIPButton("Open Settings", emphasis: .secondary) {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                }
+                .accessibilityIdentifier("profile.calendarSettings")
+            }
         }
     }
 

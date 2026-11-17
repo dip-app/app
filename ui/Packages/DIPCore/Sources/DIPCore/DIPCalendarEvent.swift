@@ -48,7 +48,9 @@ extension DIPEventMetadata {
         endTime > startTime ? endTime : startTime.addingTimeInterval(Self.calendarDefaultDuration)
     }
 
-    public func calendarFields(title: String, description: String, timeZone: TimeZone = .current) -> DIPCalendarEventFields {
+    /// With `eventID`, the entry URL is the event's share link (so DIP can re-find its own entry and exclude it
+    /// from conflicts); the venue stays in `location`. Without it, the maps URL is kept (weekly themes).
+    public func calendarFields(title: String, description: String, eventID: String? = nil, timeZone: TimeZone = .current) -> DIPCalendarEventFields {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let end = calendarEnd
@@ -60,7 +62,8 @@ extension DIPEventMetadata {
         return DIPCalendarEventFields(
             title: Self.clip(title, Self.calendarTitleLimit), startDate: startTime, endDate: end,
             isAllDay: allDay, timeZone: timeZone, location: location,
-            notes: Self.clip(description, Self.calendarNotesLimit), url: mapsURL)
+            notes: Self.clip(description, Self.calendarNotesLimit),
+            url: eventID.flatMap(DIPShareLink.url(forEventID:)) ?? mapsURL)
     }
 
     static func uniqueJoined(_ parts: [String]) -> String {

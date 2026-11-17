@@ -49,6 +49,16 @@ Everything here needs the paid Apple Developer Program team. None of it is done 
 
 A device with a TestFlight build opens a shared event link straight into the app, receives each push type in the push test plan, uploads an album photo, and the landing and share pages show the right store link. Record the outcome, build number and tester devices in the session log and update [CURRENT_STATE.md](../../CURRENT_STATE.md).
 
+## Calendar conflicts (stretch S1): App Store privacy and review
+
+Opt-in on-device calendar read ([design](../design/stretch/calendar.md#privacy-and-policy-impact)). Build flag `DIP_CALENDAR_CONFLICTS_ENABLED` (Info.plist `DIPCalendarConflictsEnabled`) is YES in Debug and NO in Release until the privacy page change is live.
+
+- [ ] **(owner)** App Privacy label: no new data type. Calendar data is processed only on the device and never leaves it, so it is not "collected" under [Apple's definition](https://developer.apple.com/app-store/app-privacy-details/). Leave the label as in section E; do not add Calendar or Other User Content for this feature.
+- [ ] Review notes (add to the existing text): "Calendar access is optional and off by default. Adding an event to the calendar opens the iOS event editor and needs no permission. If the member turns on Profile > Calendar > Show calendar conflicts, iOS asks for full calendar access. DIP reads event times, titles and free/busy status on the device only, to warn about overlaps and to update or remove entries DIP added. Calendar data is never uploaded, stored on our servers, shared or used for ads or analytics. To see it: sign in, open Profile > Calendar, turn on Show calendar conflicts and allow access."
+- [ ] Order of operations: (1) deploy the privacy page change to `https://letsdip.work/privacy/` and verify it is live; (2) set `DIP_CALENDAR_CONFLICTS_ENABLED = YES` (the Release default line) in `ui/Config/Base.xcconfig`; (3) archive with `scripts/testflight.sh`; (4) confirm `NSCalendarsFullAccessUsageDescription` and `NSCalendarsWriteOnlyAccessUsageDescription` are in the archived Info.plist.
+- [ ] Privacy manifest: EventKit is not on Apple's required-reason API list as far as known (UNVERIFIED). Re-check Apple's current list and the archive's privacy report at build time; add declarations only if required.
+- [ ] Rollback: set `DIP_CALENDAR_CONFLICTS_ENABLED = NO` in `ui/Config/Base.xcconfig` and ship a new build. The privacy page text may stay; it remains accurate.
+
 ## Publishing a build
 
 `scripts/testflight.sh` archives Release and uploads to App Store Connect (`--dry-run` archives only, `--version X.Y.Z` overrides the marketing version). It needs a release Xcode (a beta is rejected by App Store Connect), the paid team signed in under Xcode Settings, and the gitignored `GoogleService-Info.plist` and `Local.xcconfig`. App Store Connect assigns the build number. After about 10 to 30 minutes of processing the build appears in TestFlight. App Store Connect URLs: privacy policy `https://letsdip.work/privacy/`, support `https://letsdip.work/support/` (pages in `apps/landing/`; the contact address `support@letsdip.work` must exist).

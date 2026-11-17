@@ -56,6 +56,12 @@ public enum DIPTokens {
         public static let rewardOrangeCard = RGBColor(hex: "#FD4D03", red: 253.0 / 255.0, green: 77.0 / 255.0, blue: 3.0 / 255.0)
         /// Source: figma.
         public static let rewardBlueCard = RGBColor(hex: "#77C5FF", red: 119.0 / 255.0, green: 197.0 / 255.0, blue: 255.0 / 255.0)
+        /// Source: proposal.
+        public static let calendarFree = RGBColor(hex: "#7B88FA", red: 123.0 / 255.0, green: 136.0 / 255.0, blue: 250.0 / 255.0)
+        /// Source: proposal.
+        public static let calendarConflict = RGBColor(hex: "#FF9F43", red: 255.0 / 255.0, green: 159.0 / 255.0, blue: 67.0 / 255.0)
+        /// Source: proposal.
+        public static let textOnCalendarConflict = RGBColor(hex: "#1E212B", red: 30.0 / 255.0, green: 33.0 / 255.0, blue: 43.0 / 255.0)
     }
     public enum Spacing {
         public static let compact: Double = 5

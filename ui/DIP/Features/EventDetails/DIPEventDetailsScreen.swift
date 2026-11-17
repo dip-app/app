@@ -16,6 +16,8 @@ struct DIPEventDetailsScreen: View {
     let onLeave: () -> Void
     /// Opens the coworker picker; nil hides the action (no invitations adapter, or read-only live events).
     let onInvite: (() -> Void)?
+    /// The member's other events, used for DIP-vs-DIP conflicts on the date pill.
+    let calendarEvents: [DIPEventDetail]
     @State private var confirmingLeave = false
     @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
@@ -24,6 +26,16 @@ struct DIPEventDetailsScreen: View {
     @Environment(\.openURL) private var openURL
     /// True while the calendar editor is being presented, so a second tap (row or pill) cannot open another one.
     @State private var addingToCalendar = false
+    @Environment(\.dipCalendar) private var calendar
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var conflicts: [DIPCalendarConflict] = []
+    @State private var showsConflictAlert = false
+    @State private var showsAccessAlert = false
+    @State private var toast: CalendarToast?
+    @State private var toastTask: Task<Void, Never>?
+
+    /// A short confirmation below the header; `canUndo` adds the Undo button.
+    struct CalendarToast: Equatable { let text: String; let canUndo: Bool }
 
     init(
         event: DIPEventDetail,
@@ -36,8 +48,10 @@ struct DIPEventDetailsScreen: View {
         photos: [DIPPhoto] = [],
         onAlbum: @escaping () -> Void = {},
         onLeave: @escaping () -> Void = {},
-        onInvite: (() -> Void)? = nil
+        onInvite: (() -> Void)? = nil,
+        calendarEvents: [DIPEventDetail] = []
     ) {
+        self.calendarEvents = calendarEvents
         self.onInvite = onInvite
         self.onLeave = onLeave
         self.photos = photos
@@ -64,6 +78,7 @@ struct DIPEventDetailsScreen: View {
                                 activityDetails
                                 attendeeDetails
                                 if let metadata = event.metadata { eventMetadata(metadata) }
+                                if calendar.showsTeaser, addableMetadata != nil { calendarTeaser }
                                 if let log = event.metadata?.changeLog, DIPChangeLogText.visibleCount(log) > 0 { changesButton(log) }
                                 if joined, !event.isPast, event.metadata?.status != .cancelled { leaveButton }
                                 if event.isPast { albumPreview }
@@ -75,6 +90,13 @@ struct DIPEventDetailsScreen: View {
                     .scrollIndicators(.hidden)
                 }
                 .padding(.bottom, 22)
+                .overlay(alignment: .top) {
+                    if let toast {
+                        calendarToastView(toast)
+                            .padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen) + 66)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
                 if showsBottomBar {
                     Button(action: primaryAction) {
                         HStack(spacing: 0) {
@@ -124,8 +146,29 @@ struct DIPEventDetailsScreen: View {
         .sheet(isPresented: $showingChanges) {
             DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? []).dipDuoSheetSizing(duoOpen)
         }
+        .task(id: "\(event.id)-\(calendar.revision)-\(event.metadata?.revision ?? 0)") {
+            guard addableMetadata != nil else { conflicts = []; return }
+            conflicts = await calendar.conflicts(for: event, among: calendarEvents)
+        }
+        .alert("Calendar access is off", isPresented: $showsAccessAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You can allow it in Settings > DIP > Calendars.")
+        }
         .confirmationDialog("Leave this activity?", isPresented: $confirmingLeave, titleVisibility: .visible) {
             Button("Leave activity", role: .destructive, action: onLeave)
+            if calendar.canRemoveEntry(eventID: event.id) {
+                Button("Leave and remove from calendar", role: .destructive) {
+                    onLeave()
+                    Task {
+                        if let fields = calendarFields { await calendar.removeEntry(eventID: event.id, fields: fields) }
+                        calendarResult = nil
+                    }
+                }
+            }
             Button("Keep my place", role: .cancel) {}
         } message: {
             Text("Your place will be released. You can join again before the activity starts if space is available.")
@@ -135,8 +178,14 @@ struct DIPEventDetailsScreen: View {
     private var header: some View {
         return DIPDetailHeader(
             timing: Self.dateOnly(event), widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
-            calendarLabel: addableMetadata.map(Self.calendarLabel), calendarAdded: calendarResult == .added,
+            calendarLabel: addableMetadata.map(Self.calendarLabel), calendarState: pillState,
             onCalendar: addToCalendar)
+        .alert(DIPCalendarOverlapText.title(conflicts), isPresented: $showsConflictAlert) {
+            Button("Add anyway") { performAdd() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(DIPCalendarOverlapText.message(conflicts))
+        }
         .alert("Couldn’t add to calendar", isPresented: Binding(
             get: { if case .failed = calendarResult { return true } else { return false } },
             set: { if !$0 { calendarResult = nil } })) {
@@ -159,15 +208,138 @@ struct DIPEventDetailsScreen: View {
         event.metadata.flatMap { !event.isPast && $0.canAddToCalendar(now: Date()) ? $0 : nil }
     }
 
-    /// The one add-to-calendar action, used by the header pill and the When row.
+    private var calendarFields: DIPCalendarEventFields? {
+        event.metadata?.calendarFields(title: event.title, description: event.description, eventID: event.id)
+    }
+
+    private var pillState: DIPCalendarPillState {
+        let isAdded = addableMetadata != nil && calendarFields.map { calendar.isAdded(eventID: event.id, fields: $0) } == true
+        return DIPCalendarPillState.resolve(
+            canAdd: addableMetadata != nil, isAdded: isAdded || calendarResult == .added, isAdding: addingToCalendar,
+            direct: calendar.savesDirectly, conflicts: conflicts)
+    }
+
+    /// The one add-to-calendar action, used by the header pill and the When row. A conflict asks first.
     private func addToCalendar() {
-        guard let metadata = addableMetadata, !addingToCalendar else { return }
-        let fields = metadata.calendarFields(title: event.title, description: event.description)
+        guard addableMetadata != nil, !addingToCalendar, pillState.isEnabled else { return }
+        if case .conflict = pillState { showsConflictAlert = true } else { performAdd() }
+    }
+
+    private func performAdd() {
+        guard addableMetadata != nil, !addingToCalendar, let fields = calendarFields else { return }
         addingToCalendar = true
         Task {
             defer { addingToCalendar = false }
-            calendarResult = await calendarAdder.add(fields)
+            if calendar.savesDirectly {
+                let result = await calendar.addDirectly(fields, eventID: event.id)
+                calendarResult = result
+                if result == .added { show(toast: CalendarToast(text: "Added to your calendar", canUndo: true), seconds: 5) }
+            } else {
+                let result = await calendarAdder.add(fields)
+                calendarResult = result
+                if result == .added { await calendar.markAddedThroughEditor(fields, eventID: event.id) }
+            }
         }
+    }
+
+    private func undoAdd() {
+        guard let fields = calendarFields else { return }
+        Task {
+            await calendar.removeEntry(eventID: event.id, fields: fields)
+            calendarResult = nil
+            show(toast: CalendarToast(text: "Removed from your calendar", canUndo: false), seconds: 2.5)
+        }
+    }
+
+    private func show(toast message: CalendarToast, seconds: Double) {
+        toastTask?.cancel()
+        withAnimation(reduceMotion ? .linear(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.85)) { toast = message }
+        AccessibilityNotification.Announcement(message.text).post()
+        toastTask = Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+        }
+    }
+
+    private func calendarToastView(_ toast: CalendarToast) -> some View {
+        HStack(spacing: 8) {
+            Text(toast.text)
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                .foregroundStyle(.white)
+                .accessibilityIdentifier("event.calendarToast")
+            if toast.canUndo {
+                Button("Undo") { undoAdd() }
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body).weight(.bold))
+                    .foregroundStyle(.white).underline()
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityIdentifier("event.calendarUndo")
+            }
+        }
+        .padding(.leading, 20).padding(.trailing, toast.canUndo ? 12 : 20).padding(.vertical, 2).frame(minHeight: 44)
+        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Opt-in card (CAL-3): shown until the member turns conflicts on or dismisses it.
+    private var calendarTeaser: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("See what overlaps")
+                .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+            Text("DIP can warn you when an activity overlaps your calendar. Your calendar stays on your phone.")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                DIPButton("Turn on") {
+                    Task {
+                        await calendar.setShowsConflicts(true)
+                        if calendar.accessDeniedNotice {
+                            calendar.accessDeniedNotice = false
+                            showsAccessAlert = true
+                        }
+                    }
+                }
+                DIPButton("Not now", emphasis: .secondary) { calendar.dismissTeaser() }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                    in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("event.calendarTeaser")
+    }
+
+    /// CAL-5: the event moved since DIP wrote the calendar entry.
+    private var calendarUpdateRow: some View {
+        HStack(spacing: 12) {
+            Text("This activity moved. Update your calendar entry.")
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                guard let fields = calendarFields else { return }
+                Task {
+                    if await calendar.updateEntry(eventID: event.id, fields: fields) {
+                        show(toast: CalendarToast(text: "Calendar entry updated", canUndo: false), seconds: 2.5)
+                    }
+                }
+            } label: {
+                Text("Update")
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16).frame(minWidth: 44, minHeight: 44)
+                    .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(DIPPressFeedbackStyle())
+            .accessibilityIdentifier("event.calendarUpdate")
+        }
+        .accessibilityElement(children: .contain)
     }
 
     private var hero: some View {
@@ -301,6 +473,7 @@ struct DIPEventDetailsScreen: View {
                     .accessibilityIdentifier("event.cancelled")
             }
             whenRow(metadata)
+            if let fields = calendarFields, calendar.needsUpdate(eventID: event.id, fields: fields) { calendarUpdateRow }
             whereRow(metadata)
             metadataRow("ticket", title: "Price") {
                 Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
@@ -336,14 +509,19 @@ struct DIPEventDetailsScreen: View {
             }
         }
         if addableMetadata != nil {
-            let added = calendarResult == .added
+            let state = pillState
+            let glyph: String = switch state {
+            case .added: "checkmark"
+            case .conflict: "exclamationmark.triangle.fill"
+            default: "calendar.badge.plus"
+            }
             Button(action: addToCalendar) {
-                row(AnyView(rowGlyph(added ? "checkmark" : "calendar.badge.plus")))
+                row(AnyView(rowGlyph(glyph)))
                     .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
-            .disabled(added || addingToCalendar)
-            .accessibilityHint(added ? "Added to calendar" : "Add to calendar")
+            .disabled(!state.isEnabled)
+            .accessibilityHint(state.accessibilityLabel)
             .accessibilityIdentifier("event.when")
         } else {
             row(AnyView(EmptyView())).accessibilityIdentifier("event.when")

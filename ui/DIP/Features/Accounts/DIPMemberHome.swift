@@ -38,6 +38,9 @@ struct DIPMemberHome: View {
     /// Where bug reports go (Firebase when configured, the in-memory mock in unconfigured Debug builds). Nil: off.
     @State private var bugReporting: BugReportContext?
     private let bugReportSubmitter: (() -> (any BugReportSubmitting)?)?
+    /// Calendar conflicts for this member (per-uid local records; feature-flagged). Created once with the home.
+    @State private var calendar: DIPCalendarModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tour: OnboardingTourModel?
     @State private var tourInterests: OnboardingInterestsModel?
     @State private var replay: OnboardingTourModel?
@@ -80,6 +83,11 @@ struct DIPMemberHome: View {
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
+        var calendarModel = DIPCalendarModel.live(uid: context.uid)
+        #if DEBUG
+        if mockSnapshot != nil, let fake = DIPCalendarModel.fake(uid: context.uid) { calendarModel = fake }
+        #endif
+        _calendar = State(initialValue: calendarModel)
         let editor = ProfileEditor(context: context, repository: repository)
         _editor = State(initialValue: editor)
         _catalog = State(initialValue: InterestCatalog(repository: repository))
@@ -98,6 +106,7 @@ struct DIPMemberHome: View {
             // The shell stays transparent until the window reveal starts uncovering it.
             shell
                 .environment(\.bugReporting, bugReporting)
+                .environment(\.dipCalendar, calendar)
                 .environment(\.bugReportSuppressed, tour != nil || replay != nil)
                 .opacity(tourCoversShell ? 0 : 1)
                 .allowsHitTesting(tour == nil)
@@ -113,6 +122,9 @@ struct DIPMemberHome: View {
             if bugReporting == nil, let submitter = bugReportSubmitter?() {
                 bugReporting = BugReportContext.make(uid: context.uid, submitter: submitter)
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { calendar.refreshAccess() }
         }
         .onChange(of: currentSurface) { _, surface in
             tour?.reportSurface(surface)
@@ -171,6 +183,8 @@ struct DIPMemberHome: View {
         #if DEBUG
         (onboarding?.store as? UserDefaultsOnboardingRecordStore)?.removeRecord(for: context.uid)
         #endif
+        // Calendar preferences and the entries DIP added belong to this account on this device (all builds).
+        DIPCalendarLocalStore(uid: context.uid).removeAll()
         // Queued reports belong to this account on this device; they are not kept for the next person.
         await bugReporting?.sender.discardQueue(uid: context.uid)
         await onSignOut()

@@ -243,6 +243,14 @@ public enum DIPBadgeCount {
         let width: CGFloat
         let shade: Double
         let onSelect: () -> Void
+        /// Informational: the event overlaps the member's calendar. Never hides or disables the card.
+        private var overlapsCalendar = false
+        /// Marks the card with the calendar-overlap badge (trailing, below the going chip).
+        public func overlapsCalendar(_ on: Bool) -> Self {
+            var copy = self
+            copy.overlapsCalendar = on
+            return copy
+        }
         public init(
             title: String, locality: String, imageName: String, avatars: [String],
             attendeeCount: Int, width: CGFloat = 163, shade: Double = 0.1, onSelect: @escaping () -> Void
@@ -338,11 +346,25 @@ public enum DIPBadgeCount {
                                 .frame(height: 90)
                         }
                 }
+                .overlay(alignment: .topTrailing) {
+                    if overlapsCalendar {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(DIPTokens.Color.textOnCalendarConflict.swiftUIColor)
+                            .frame(width: 28, height: 28)
+                            .background(DIPTokens.Color.calendarConflict.swiftUIColor, in: Circle())
+                            // Below the going chip, which can span the card's full width.
+                            .padding(.top, 46).padding(.trailing, 10)
+                            .accessibilityHidden(true)
+                            .accessibilityIdentifier("home.event.calendarConflict")
+                    }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(spokenLabel)
+            .accessibilityValue(overlapsCalendar ? "Overlaps your calendar" : "")
             .accessibilityHint("Opens the event page")
             .accessibilityIdentifier("home.event.\(identifier)")
         }

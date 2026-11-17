@@ -42,9 +42,12 @@ targets:
         # HTTPS only (Firebase/Google): exempt, so TestFlight does not ask the export-compliance question per build.
         ITSAppUsesNonExemptEncryption: false
         NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
+        NSCalendarsFullAccessUsageDescription: DIP checks your calendar on this iPhone to warn you when an activity overlaps something you already have. Your calendar never leaves your phone.
         NSPhotoLibraryAddUsageDescription: Save event photos to your library.
         # Push client feature flag (default NO; see docs/design/push-client.md).
         DIPPushEnabled: $(DIP_PUSH_ENABLED)
+        # Calendar conflicts feature flag (default NO, Debug YES; see docs/design/stretch/calendar.md).
+        DIPCalendarConflictsEnabled: $(DIP_CALENDAR_CONFLICTS_ENABLED)
         # Containment: FCM never starts (no token, no network) unless PushComposition turns it on for the flag.
         FirebaseMessagingAutoInitEnabled: false
         CFBundleURLTypes:
