@@ -12,7 +12,7 @@ Fixed the verified audit findings for the admin API module and the shared Firest
 
 ## Changes
 
-- `gcp/firestore.indexes.json`: new COLLECTION index `challenges (type, endDate)` for the AI theme query; 15 TTL `fieldOverrides` (adminRateLimits, accountRateLimits, inviteRateLimits `expiresAt`; commandReceipts, importJobs, chunks, results, emailOutbox, emailCaps, aiRequests, aiUsageDaily, tagStatReceipts, notificationReceipts, pushRateLimits, pushReceipts `expireAt`). All other queries in the modules were checked against existing indexes: none missing.
+- `gcp/firestore.indexes.json`: new COLLECTION indexes `challenges (type, endDate)` for the AI theme query and `emailOutbox (status, createdAt)` for the email reaper (PR #251); 15 TTL `fieldOverrides` (adminRateLimits, accountRateLimits, inviteRateLimits `expiresAt`; commandReceipts, importJobs, chunks, results, emailOutbox, emailCaps, aiRequests, aiUsageDaily, tagStatReceipts, notificationReceipts, pushRateLimits, pushReceipts `expireAt`). All other queries in the modules were checked against existing indexes: none missing.
 - `gcp/functions/src/modules/admin`: `consumeAfterAuth` (context.ts) replaces 24 limiter calls (read-only authorize, then consume); `maxInstances` 10 and 3 (heavy), explicit timeout and memory; employee rows capped at 16 keys and unknown-column names cut to 60 characters; `scanAll` fails `IMPORT_TOO_LARGE` instead of truncating; `MAX_SCAN` 500; import job, chunks and results get `expireAt` (30 days); photo cleanup only when the photo existed and failures are logged (warn, ids only); audit keeps caption and comment lengths, not text; `selfTarget: true` on audit entries for self points adjustment and self attendance.
 - `gcp/firestore.rules`: `activeSelf()` helper; `users/{uid}` update, `companies/{id}` get (via `sameCompany`), collection-group `rsvps` list (via `sameCompany`), own notification update and notification settings write now require an active member. Own profile read stays allowed. `memberCompany()` removed (unused).
 - `gcp/storage.rules`: comment only (see Decisions).
@@ -30,6 +30,7 @@ Fixed the verified audit findings for the admin API module and the shared Firest
 
 ## Decisions
 
+- `aiUsagePlatform` (PR #252, one document per month) gets no TTL; listed in the runbook table as such.
 - Storage photo-create does not check `status`: cross-service Storage rules may read only two Firestore documents and the rule already reads the RSVP and the event. Documented in `storage.rules`; `finalizeEventPhotoV1` (photos module) should refuse deactivated members.
 - Self points adjustment is still allowed (owner policy question); it is flagged with `selfTarget`.
 - Insights cache single-flight left as is; `refresh` already needs `insights.read` and the admin rate limit.

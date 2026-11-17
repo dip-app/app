@@ -135,6 +135,7 @@ CI deploy (`.github/workflows/admin.yml`, only on `main`) is inactive until the 
    | `notificationReceipts` | `expireAt` | 30 days | notifications |
    | `pushRateLimits` | `expireAt` | 2 days | notifications |
    | `pushReceipts` | `expireAt` | 3 days | notifications |
+   | `aiUsagePlatform` | none | no TTL, tiny (one document per month) | ai |
 
    Children of a TTL-deleted document are not deleted with it, which is why `chunks` and `results` have their own policies. A project that already enabled `inviteRateLimits.expiresAt` by hand keeps it (the declared policy matches). `emailSuppressions` and `aiUsage` (month totals) have no expiry on purpose.
 3. **APIs and Auth.** Firebase Auth with Google sign-in enabled (the only provider, ADR 0007). Authorized domains (section 4). App Check registered for the iOS app (App Attest) and the web app (reCAPTCHA Enterprise). Cloud Scheduler and Eventarc APIs for `sendEventReminders` and Firestore triggers.
