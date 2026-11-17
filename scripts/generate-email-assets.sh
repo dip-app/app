@@ -75,4 +75,21 @@ SVG
 }
 build ""      "#F2F3FC" "#1E212B" "#FFFFFF" 0.85
 build "-dark" "#23252E" "#ECEDEF" "#2E313B" 1 "#E8EAF8"
-ls -l "$OUT"/*.png
+# 4. ideas/<theme>.png: 224x224 opaque tiles (shown at 112x112) for the admin weekly ideas email. The transparent theme art
+# is cropped to its mascot cluster (about x 290..730, y 30..500 of the shared 730x539 slot) and centered on the theme's accent
+# color (apps/admin/public/img/themes/ACCENTS.md), so the character fills most of the tile.
+mkdir -p "$OUT/ideas"
+tile() { # theme accent
+  cp "$IMG/themes/$1.png" "$TMP/tile-$1.png"
+  cat > "$TMP/tile-$1.svg" <<SVG
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="224" height="224" viewBox="0 0 224 224">
+<rect width="224" height="224" fill="$2"/>
+<image xlink:href="tile-$1.png" x="-100.5" y="1.5" width="304.6" height="224.9"/>
+</svg>
+SVG
+  rsvg-convert -w 224 -h 224 -o "$TMP/tile-$1-full.png" "$TMP/tile-$1.svg"
+  sips -s format png "$TMP/tile-$1-full.png" --out "$OUT/ideas/$1.png" > /dev/null   # opaque, lossless
+}
+tile fitness "#FB72E4"; tile outdoors "#6BE5D0"; tile food "#FF7C73"; tile arts "#7B88FA"; tile games "#FFCC3E"
+tile music "#66D9FF"; tile learning "#6BFF9B"; tile volunteering "#1E212B"; tile wellness "#FF7C73"
+ls -l "$OUT"/*.png "$OUT"/ideas/*.png

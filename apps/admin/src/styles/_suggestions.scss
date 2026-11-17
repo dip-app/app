@@ -1,0 +1,21 @@
+@use "@/styles/variables.scss" as *;
+
+// Weekly ideas email: panels reuse the portal's .panel; only the preview frame and the opening state are new.
+.suggestions { display: grid; max-width: 760px; min-width: 0;
+  .panel h2 { font-size: 20px; margin: 0; }
+  .muted { font-size: 15px; margin: 0; }
+  .actions.inline { padding: 0; }
+  .sug-preview { display: grid; gap: 12px; min-width: 0; }
+  .sug-subject { margin: 0; display: grid; gap: 2px; strong { font-weight: 600; } }
+  .sug-controls { display: flex; gap: 12px; flex-wrap: wrap; .tabs { margin-bottom: 0; } }
+  .sug-frame-wrap { overflow: auto; max-height: 720px; background: #f2f3f7; border: 1px solid #e2e4ec; border-radius: $radius-card; padding: 16px; }
+  .sug-frame { display: block; max-width: none; height: 1900px; border: 0; margin: 0 auto; background: $white; }
+  .pill-btn.gray { border: 1px solid #c4c8d6; &[disabled] { opacity: .55; border: 1px solid #c4c8d6; } }
+  .sug-text { margin: 0; background: $white; border-radius: $radius-card; padding: 16px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; max-height: 640px; overflow: auto; }
+}
+.sug-opening { display: grid; justify-items: center; gap: 12px; padding: 48px 0;
+  p { margin: 0; }
+  .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid $gray; border-top-color: $ink; animation: sug-spin .8s linear infinite; }
+}
+@keyframes sug-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sug-opening .spinner { animation-duration: 3s; } }

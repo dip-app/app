@@ -359,13 +359,15 @@ public struct EmailCategoryPreferences: Codable, Equatable, Sendable {
     public var reminders: Bool?
     public var challenges: Bool?
     public var discovery: Bool?
+    public var admin_suggestions: Bool?
 
-    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil) {
+    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil, admin_suggestions: Bool? = nil) {
         self.invites = invites
         self.event_updates = event_updates
         self.reminders = reminders
         self.challenges = challenges
         self.discovery = discovery
+        self.admin_suggestions = admin_suggestions
     }
 }
 
@@ -2770,5 +2772,108 @@ public struct GenerateEventDraftsResponse: Codable, Equatable, Sendable {
         self.drafts = drafts
         self.usage = usage
         self.replay = replay
+    }
+}
+
+public enum SuggestionsEmailAction: String, Codable, Equatable, Sendable {
+    case status = "status"
+    case preview = "preview"
+    case sendTest = "sendTest"
+    case subscribe = "subscribe"
+    case unsubscribe = "unsubscribe"
+    case setSchedule = "setSchedule"
+}
+
+public struct SuggestionsEmailSchedule: Codable, Equatable, Sendable {
+    public var weekday: Int
+    public var hour: Int
+
+    public init(weekday: Int, hour: Int) {
+        self.weekday = weekday
+        self.hour = hour
+    }
+}
+
+public struct ManageSuggestionsEmailRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var action: SuggestionsEmailAction
+    public var schedule: SuggestionsEmailSchedule?
+
+    public init(contractVersion: Int, companyId: String, action: SuggestionsEmailAction, schedule: SuggestionsEmailSchedule? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.action = action
+        self.schedule = schedule
+    }
+}
+
+public struct SuggestionsEmailPreview: Codable, Equatable, Sendable {
+    public var subject: String
+    public var preheader: String
+    public var html: String
+    public var text: String
+    public var engine: String
+    public var ideaCount: Int
+    public var dataLevel: String
+
+    public init(subject: String, preheader: String, html: String, text: String, engine: String, ideaCount: Int, dataLevel: String) {
+        self.subject = subject
+        self.preheader = preheader
+        self.html = html
+        self.text = text
+        self.engine = engine
+        self.ideaCount = ideaCount
+        self.dataLevel = dataLevel
+    }
+}
+
+public struct ManageSuggestionsEmailResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var subscribed: Bool
+    public var emailEnabled: Bool
+    public var aiEnabled: Bool
+    public var schedule: SuggestionsEmailSchedule
+    public var timeZone: String
+    public var nextSendAt: Date?
+    public var preview: SuggestionsEmailPreview?
+    public var testQueued: Bool?
+    public var testReason: String?
+
+    public init(contractVersion: Int, subscribed: Bool, emailEnabled: Bool, aiEnabled: Bool, schedule: SuggestionsEmailSchedule, timeZone: String, nextSendAt: Date? = nil, preview: SuggestionsEmailPreview? = nil, testQueued: Bool? = nil, testReason: String? = nil) {
+        self.contractVersion = contractVersion
+        self.subscribed = subscribed
+        self.emailEnabled = emailEnabled
+        self.aiEnabled = aiEnabled
+        self.schedule = schedule
+        self.timeZone = timeZone
+        self.nextSendAt = nextSendAt
+        self.preview = preview
+        self.testQueued = testQueued
+        self.testReason = testReason
+    }
+}
+
+public struct ResolveSuggestedIdeaRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var token: String
+
+    public init(contractVersion: Int, companyId: String, token: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.token = token
+    }
+}
+
+public struct ResolveSuggestedIdeaResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var ideaId: String
+    public var draft: GeneratedEventDraft
+
+    public init(contractVersion: Int, ideaId: String, draft: GeneratedEventDraft) {
+        self.contractVersion = contractVersion
+        self.ideaId = ideaId
+        self.draft = draft
     }
 }

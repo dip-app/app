@@ -119,6 +119,8 @@ export interface Recipient {
   email: string | null;
   displayName: string | null;
   status: string | null;
+  /** Member role (`member` | `organizer` | `admin`); optional so older fakes keep compiling. */
+  role?: string | null;
 }
 
 export interface RecipientDirectory {

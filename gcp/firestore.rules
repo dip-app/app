@@ -326,9 +326,9 @@ service cloud.firestore {
           && boolOrAbsent(m, 'chat') && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'social') && boolOrAbsent(m, 'discovery');
       }
       function validEmail(m) {
-        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery'])
+        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery', 'admin_suggestions'])
           && boolOrAbsent(m, 'invites') && boolOrAbsent(m, 'event_updates') && boolOrAbsent(m, 'reminders')
-          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery');
+          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery') && boolOrAbsent(m, 'admin_suggestions');
       }
       function validPreferences(data) {
         return data.keys().hasOnly(['contractVersion', 'push', 'email', 'updatedAt'])

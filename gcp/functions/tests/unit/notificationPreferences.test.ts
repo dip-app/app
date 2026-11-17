@@ -17,15 +17,17 @@ import { FirestorePreferences } from "../../src/modules/notifications/infrastruc
 
 describe("notification registry", () => {
   test("category ids and order are pinned", () => {
-    assert.deepEqual([...NOTIFICATION_CATEGORIES], ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery"]);
+    assert.deepEqual([...NOTIFICATION_CATEGORIES], ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "admin_suggestions"]);
     assert.deepEqual([...NOTIFICATION_CHANNELS], ["push", "email"]);
   });
 
-  test("email excludes chat and social; push offers everything", () => {
-    assert.deepEqual([...CHANNEL_CATEGORIES.email], ["invites", "event_updates", "reminders", "challenges", "discovery"]);
+  test("email excludes chat and social; push offers everything except the email-only admin_suggestions", () => {
+    assert.deepEqual([...CHANNEL_CATEGORIES.email], ["invites", "event_updates", "reminders", "challenges", "discovery", "admin_suggestions"]);
     assert.ok(!CHANNEL_CATEGORIES.email.includes("chat"));
     assert.ok(!CHANNEL_CATEGORIES.email.includes("social"));
-    assert.deepEqual([...CHANNEL_CATEGORIES.push], [...NOTIFICATION_CATEGORIES]);
+    assert.deepEqual([...CHANNEL_CATEGORIES.push], NOTIFICATION_CATEGORIES.filter(c => c !== "admin_suggestions"));
+    assert.equal(channelOffers("push", "admin_suggestions"), false);
+    assert.equal(channelOffers("email", "admin_suggestions"), true);
     assert.equal(channelOffers("email", "chat"), false);
     assert.equal(channelOffers("email", "social"), false);
     assert.equal(channelOffers("email", "invites"), true);
@@ -50,7 +52,7 @@ describe("notification registry", () => {
       chat: null, event_changed: "event_updated", event_cancelled: "event_cancelled", reminder: "reminder",
       invite: "invite", invite_answered: "invite_answered", attendee_added: "attendee_added",
       challenge_approved: "challenge_approved", challenge_changes_requested: "challenge_changes_requested",
-      weekly_theme: null, event_interest: null,
+      weekly_theme: null, event_interest: null, admin_suggestions: null,
     });
   });
 
@@ -59,21 +61,21 @@ describe("notification registry", () => {
     assert.deepEqual(eventLevelsFor("event_changed"), LEVELS_FOR.event_changed);
     assert.deepEqual(eventLevelsFor("event_cancelled"), LEVELS_FOR.event_changed);
     assert.deepEqual(eventLevelsFor("reminder"), LEVELS_FOR.reminder);
-    for (const kind of ["invite", "invite_answered", "attendee_added", "challenge_approved", "challenge_changes_requested", "weekly_theme", "event_interest"] as const) {
+    for (const kind of ["invite", "invite_answered", "attendee_added", "challenge_approved", "challenge_changes_requested", "weekly_theme", "event_interest", "admin_suggestions"] as const) {
       assert.equal(eventLevelsFor(kind), null, kind);
     }
   });
 
   test("defaults match the design table", () => {
     assert.deepEqual(DEFAULT_PREFERENCES.push, { invites: true, event_updates: true, reminders: true, chat: true, challenges: true, social: false, discovery: false });
-    assert.deepEqual(DEFAULT_PREFERENCES.email, { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false });
+    assert.deepEqual(DEFAULT_PREFERENCES.email, { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, admin_suggestions: false });
   });
 });
 
 describe("resolvePreferences", () => {
   const defaults = {
-    push: { invites: true, event_updates: true, reminders: true, chat: true, challenges: true, social: false, discovery: false },
-    email: { invites: true, event_updates: true, reminders: false, chat: false, challenges: true, social: false, discovery: false },
+    push: { invites: true, event_updates: true, reminders: true, chat: true, challenges: true, social: false, discovery: false, admin_suggestions: false },
+    email: { invites: true, event_updates: true, reminders: false, chat: false, challenges: true, social: false, discovery: false, admin_suggestions: false },
   };
 
   test("missing or garbage documents resolve to defaults", () => {
@@ -122,16 +124,17 @@ describe("evaluateDelivery precedence matrix", () => {
     event_changed: "event_updates", event_cancelled: "event_updates", attendee_added: "event_updates",
     reminder: "reminders", chat: "chat",
     challenge_approved: "challenges", challenge_changes_requested: "challenges", weekly_theme: "challenges",
-    event_interest: "discovery",
+    event_interest: "discovery", admin_suggestions: "admin_suggestions",
   };
   const DOC_GATE: Partial<Record<NotificationKind, string[]>> = {
     chat: ["all"], event_changed: ["all", "changes"], event_cancelled: ["all", "changes"], reminder: ["all", "changes", "reminders"],
   };
-  const DOC_EMAIL_OFFERED = new Set(["invites", "event_updates", "reminders", "challenges", "discovery"]);
+  const DOC_EMAIL_OFFERED = new Set(["invites", "event_updates", "reminders", "challenges", "discovery", "admin_suggestions"]);
+  const DOC_PUSH_OFFERED = (category: NotificationCategory) => category !== "admin_suggestions";
 
   function oracle(kind: NotificationKind, channel: NotificationChannel, categoryOn: boolean, level: SubscriptionLevel | null | undefined, hasDestination: boolean) {
     const category = DOC_CATEGORY[kind];
-    const on = categoryOn && (channel === "push" || DOC_EMAIL_OFFERED.has(category));
+    const on = categoryOn && (channel === "push" ? DOC_PUSH_OFFERED(category) : DOC_EMAIL_OFFERED.has(category));
     if (!on) return { deliver: false, reason: "category_off" };
     const gate = DOC_GATE[kind];
     if (gate && !(level != null && gate.includes(level))) return { deliver: false, reason: "event_level" };
@@ -162,7 +165,7 @@ describe("evaluateDelivery precedence matrix", () => {
         }
       }
     }
-    assert.equal(cases, 11 * 2 * 2 * 6 * 2);
+    assert.equal(cases, 12 * 2 * 2 * 6 * 2);
   });
 
   test("reason order: category_off before event_level before no_destination", () => {

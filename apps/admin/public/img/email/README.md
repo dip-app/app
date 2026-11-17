@@ -15,3 +15,7 @@ The `-dark` variants (wordmark `#ECEDEF`, clouds `#2E313B`) keep the mascots on 
 Sources (repo graphics only): Fjalla One (`ui/Packages/DIPDesignSystem/.../Fonts/FjallaOne-Regular.ttf`, OFL), clover `ui/DIP/Resources/AppIcon.icon/Assets/logo.svg` (recoloured `#7B88FA`), theme illustrations `apps/admin/public/img/themes/*.png` (header: learning, games, music; footer: arts, food, wellness).
 
 Regenerate with `scripts/generate-email-assets.sh` (needs `rsvg-convert` and `sips`; sets `PANGOCAIRO_BACKEND=fc` plus a temp fontconfig so the repo font is used). Commit the outputs.
+
+## Idea tiles (`ideas/<theme>.png`)
+
+Used by the admin weekly ideas email (`admin_suggestions`). One per weekly theme: fitness, outdoors, food, arts, games, music, learning, volunteering, wellness. 224x224, flat opaque (no alpha), shown at 112x112 (retina), fallback `bgcolor` = the theme accent from `apps/admin/public/img/themes/ACCENTS.md`, `alt=""` (decorative). Each is the transparent theme art (`apps/admin/public/img/themes/<theme>.png`) scaled to about 80% of the width and centered on the accent. Built by the same `scripts/generate-email-assets.sh` (step 4); commit the outputs. The renderer builds the URL as `EMAIL_ASSET_BASE + "ideas/<theme>.png"`.

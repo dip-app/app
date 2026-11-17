@@ -338,3 +338,22 @@ describe("sendOutboxEmail hardening", () => {
     assert.deepEqual([...seen], [id]);
   });
 });
+
+describe("sendOutboxEmail: admin_suggestions role gate", () => {
+  const suggestionVars = { weekKey: "2030-W01", weekLabel: "Week of Dec 31", dataNote: null, ideas: [] };
+
+  test("skips with not_admin when the recipient is no longer an admin (and sends for an admin)", async () => {
+    const w = world();
+    w.emailMap = { admin_suggestions: true };
+    w.recipient = { uid: "u1", companyId: "c1", email: ADDRESS, displayName: "Jane", status: "active", role: "member" };
+    const id = await enqueue(w, "admin_suggestions_c1-2030-W01_u1_2030-W01", { template: "admin_suggestions", variables: suggestionVars as never });
+    assert.deepEqual(await sendOutboxEmail(w.deps, id), { status: "skipped", reason: "not_admin" });
+    assert.equal(w.provider.sent.length, 0);
+
+    const ok = world();
+    ok.emailMap = { admin_suggestions: true };
+    ok.recipient = { uid: "u1", companyId: "c1", email: ADDRESS, displayName: "Jane", status: "active", role: "admin" };
+    const okId = await enqueue(ok, "admin_suggestions_c1-2030-W01_u1_2030-W01", { template: "admin_suggestions", variables: suggestionVars as never });
+    assert.deepEqual(await sendOutboxEmail(ok.deps, okId), { status: "sent" });
+  });
+});

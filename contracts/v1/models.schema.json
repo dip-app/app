@@ -757,6 +757,9 @@
         },
         "discovery": {
           "type": "boolean"
+        },
+        "admin_suggestions": {
+          "type": "boolean"
         }
       },
       "required": []
@@ -6407,6 +6410,236 @@
         "drafts",
         "usage",
         "replay"
+      ]
+    },
+    "SuggestionsEmailAction": {
+      "type": "string",
+      "description": "What manageSuggestionsEmailV1 does: read status, render a dry-run preview, queue a test email to the caller, turn the caller's own email preference on or off, or set the company schedule.",
+      "enum": [
+        "status",
+        "preview",
+        "sendTest",
+        "subscribe",
+        "unsubscribe",
+        "setSchedule"
+      ]
+    },
+    "SuggestionsEmailSchedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "When the weekly ideas email goes out, in the company time zone: weekday 1 (Monday) to 7 (Sunday) and hour 0 to 23.",
+      "properties": {
+        "weekday": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "hour": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        }
+      },
+      "required": [
+        "weekday",
+        "hour"
+      ]
+    },
+    "ManageSuggestionsEmailRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "manageSuggestionsEmailV1: the admin's weekly ideas email. ai.generate (admin). preview renders without sending.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "action": {
+          "$ref": "#/$defs/SuggestionsEmailAction"
+        },
+        "schedule": {
+          "$ref": "#/$defs/SuggestionsEmailSchedule"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "action"
+      ]
+    },
+    "SuggestionsEmailPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A server-rendered dry run of this week's email; nothing is sent.",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "preheader": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "html": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 50000
+        },
+        "engine": {
+          "type": "string",
+          "enum": [
+            "jev",
+            "openai",
+            "heuristic"
+          ],
+          "description": "Which ranking engine produced the ideas."
+        },
+        "ideaCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "dataLevel": {
+          "type": "string",
+          "enum": [
+            "none",
+            "some",
+            "rich"
+          ],
+          "description": "How much company activity the ranking could use."
+        }
+      },
+      "required": [
+        "subject",
+        "preheader",
+        "html",
+        "text",
+        "engine",
+        "ideaCount",
+        "dataLevel"
+      ]
+    },
+    "ManageSuggestionsEmailResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "subscribed": {
+          "type": "boolean",
+          "description": "The caller's own email.admin_suggestions preference."
+        },
+        "emailEnabled": {
+          "type": "boolean",
+          "description": "False when email is switched off for the deployment or this company."
+        },
+        "aiEnabled": {
+          "type": "boolean",
+          "description": "False when AI events are switched off; ideas then come from the heuristic engine."
+        },
+        "schedule": {
+          "$ref": "#/$defs/SuggestionsEmailSchedule"
+        },
+        "timeZone": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "IANA company time zone the schedule is read in."
+        },
+        "nextSendAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "Next scheduled send, or null when sending is off."
+        },
+        "preview": {
+          "$ref": "#/$defs/SuggestionsEmailPreview"
+        },
+        "testQueued": {
+          "type": "boolean",
+          "description": "sendTest only: true when a test email was queued."
+        },
+        "testReason": {
+          "type": "string",
+          "enum": [
+            "EMAIL_DISABLED",
+            "NOT_SUBSCRIBED",
+            "TEST_LIMIT",
+            "COMPANY_EMAIL_DISABLED"
+          ],
+          "description": "sendTest only: why no test email was queued."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "subscribed",
+        "emailEnabled",
+        "aiEnabled",
+        "schedule",
+        "timeZone",
+        "nextSendAt"
+      ]
+    },
+    "ResolveSuggestedIdeaRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "resolveSuggestedIdeaV1: turns the signed link of a weekly ideas email into an event draft. ai.generate (admin). Read-only.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "token"
+      ]
+    },
+    "ResolveSuggestedIdeaResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "ideaId": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
+        "draft": {
+          "$ref": "#/$defs/GeneratedEventDraft"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "ideaId",
+        "draft"
       ]
     }
   }

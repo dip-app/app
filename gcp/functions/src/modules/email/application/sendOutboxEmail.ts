@@ -126,6 +126,8 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
   if (recipient === null) return skip("no_member");
   if (recipient.companyId !== doc.companyId) return skip("tenant_mismatch");
   if (recipient.status !== null && recipient.status !== "active") return skip("inactive_member");
+  // Admin-only content: the role is re-checked at send time (a demoted admin must not receive the ideas email).
+  if (doc.template === "admin_suggestions" && recipient.role !== "admin") return skip("not_admin");
   const to = recipient.email?.trim() ?? "";
   if (to.length === 0) return skip("no_email");
 

@@ -47,7 +47,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `insights.read` | `getCompanyInsightsV1` (points and balances only for admin) | no | yes | yes |
 | `bugreport.manage` | `listBugReportsV1`, `getBugReportV1`, `updateBugReportV1` | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
-| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1` | no | no | yes |
+| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1` | no | no | yes |
 
 Only an admin can create another admin or organizer (through `updateMemberV1`, a roster entry or an import). The last admin of a company can never be demoted or deactivated. Clients cannot write `role`, `status`, `teamIds`, `workLocation`, counts, balances or ledger entries (rules allow-list, unchanged).
 
@@ -194,3 +194,12 @@ Implemented in `gcp/functions/src/modules/admin` (domain/application/infrastruct
 Index notes: member scans, last-admin checks and email lookups use equality filters ordered by document id (served by merged single-field indexes); deactivation uses the existing collection-group `rsvps` index (companyId, userId, status, eventStartTime). No new composite index is declared.
 
 Known limits: `listMembersV1` and `listRosterV1` scan at most 500 documents per call (clients follow the cursor; no overall cap) and order by id (the portal sorts each loaded page by name); stored member emails are matched case-sensitively against lower-cased import emails (Google tokens are lower-case); points reversal for attendance, undo of removals, report queue and welcome emails are not built.
+
+### Weekly ideas email (ai.generate, admin only)
+
+Two admin-only callables behind the weekly suggested-events email in [Admin weekly suggested-events email](../design/stretch/admin-suggestions-email.md). Neither writes an event or sends to anyone but the caller.
+
+- `manageSuggestionsEmailV1` (`ManageSuggestionsEmailRequest` -> `ManageSuggestionsEmailResponse`): `action` is one of `status`, `preview` (renders this week's email server-side and returns `SuggestionsEmailPreview`, nothing is sent), `sendTest` (queues one test email to the caller through the normal outbox; `testQueued` and, when refused, `testReason` `EMAIL_DISABLED` | `NOT_SUBSCRIBED` | `TEST_LIMIT` | `COMPANY_EMAIL_DISABLED`), `subscribe` and `unsubscribe` (the caller's own `email.admin_suggestions` preference), `setSchedule` (`SuggestionsEmailSchedule`: `weekday` 1 = Monday to 7, `hour` 0 to 23, in the company time zone). Every response carries `subscribed`, `emailEnabled`, `aiEnabled`, `schedule`, `timeZone` and `nextSendAt`.
+- `resolveSuggestedIdeaV1` (`ResolveSuggestedIdeaRequest` -> `ResolveSuggestedIdeaResponse`): read-only. Verifies the signed `token` from an email link and its expiry, requires the caller to be an admin of `companyId`, and returns `ideaId` with a `GeneratedEventDraft` built from the idea catalog.
+
+The preference key `admin_suggestions` is email only: `EmailCategoryPreferences` accepts it (default off) and `PushCategoryPreferences` does not.

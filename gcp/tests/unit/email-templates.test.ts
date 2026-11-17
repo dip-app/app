@@ -13,6 +13,9 @@ function render(c: (typeof PREVIEW_CASES)[number]) {
   return renderEmail(c.template, c.variables as never, c.ctx);
 }
 
+/** Cases of the event and challenge emails; the admin weekly ideas email has its own footer and layout (email-admin-suggestions.test.ts). */
+const LEGACY_CASES = PREVIEW_CASES.filter((c) => c.template !== "admin_suggestions");
+
 const EVIL = '<script>alert("x")</script> & "q"';
 
 describe("email template snapshots", () => {
@@ -40,7 +43,7 @@ describe("email template invariants", () => {
   });
 
   test("footer, unsubscribe, support contact and structure in every output", () => {
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const out = render(c);
       for (const body of [out.html, out.text]) {
         assert.ok(body.includes(SAMPLE_CTX.unsubscribeURL), `${c.name} unsubscribe`);
@@ -87,7 +90,7 @@ describe("email template invariants", () => {
 
   test("deep links are exactly the event URL", () => {
     assert.equal(eventURL("evt_1"), "https://letsdip.work/e/evt_1");
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const out = render(c);
       assert.ok(out.html.includes(">Open in DIP<"), c.name);
       if (c.template === "challenge_reviewed") {
@@ -110,7 +113,7 @@ describe("email template invariants", () => {
       formatEventTime("2026-11-20T23:30:00Z", "2026-11-21T01:00:00Z", "America/New_York"),
     );
     assert.match(formatEventTime("2026-11-21T03:00:00Z", "2026-11-21T08:00:00Z", "America/New_York"), /Fri, Nov 20, 10:00 PM to Sat, Nov 21, 3:00 AM EST/);
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       if (c.template === "challenge_reviewed") continue;
       assert.match(render(c).text, /\b(EST|EDT)\b/, c.name);
     }
@@ -160,7 +163,7 @@ describe("email template invariants", () => {
   });
 
   test("brand images are absolute https, sized, and every img has alt", () => {
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const { html } = render(c);
       const imgs = html.match(/<img\b[^>]*>/g) ?? [];
       assert.ok(imgs.length >= 2, c.name);
@@ -179,7 +182,7 @@ describe("email template invariants", () => {
   });
 
   test("open pixel renders only when openPixelURL is set, last in the body, never in text", () => {
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const out = render(c);
       const pixel = /<img src="[^"]*\/o\/[^"]*" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0" \/>/;
       if (c.ctx.openPixelURL) {
@@ -202,7 +205,7 @@ describe("email template invariants", () => {
   });
 
   test("primary button has a VML fallback and a tap height of at least 44px; purple only on the button", () => {
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const { html } = render(c);
       assert.ok(html.includes("<v:roundrect") && html.includes("height:44px"), c.name);
       assert.ok(/padding:0 28px;height:44px;[^"]*line-height:44px/.test(html) && !html.includes("min-height") && html.includes('height="44"'), c.name);
@@ -215,7 +218,7 @@ describe("email template invariants", () => {
   });
 
   test("header and footer bands are full-bleed rows with the band color and a centered 600px inner table", () => {
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const { html } = render(c);
       const bands = html.match(/<tr><td class="art-cell" align="center" bgcolor="#F2F3FC" width="100%"[^>]*><table [^>]*width="600"[^>]*max-width:100%/g) ?? [];
       assert.equal(bands.length, 2, c.name);
@@ -228,7 +231,7 @@ describe("email template invariants", () => {
   });
 
   test("footer banner is the last image (before only the pixel), after the unsubscribe link", () => {
-    for (const c of PREVIEW_CASES) {
+    for (const c of LEGACY_CASES) {
       const { html } = render(c);
       const imgs = html.match(/<img\b[^>]*>/g)!;
       const footerIdx = imgs.findIndex((i) => i.includes("footer-dark.png"));
