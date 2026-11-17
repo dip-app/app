@@ -1,4 +1,5 @@
 import type { FinalizeEventPhotoResponse } from "../../../generated/models";
+import { isDeactivated } from "../../admin/domain/member";
 import { PhotoError } from "../domain/errors";
 import { parseFinalizeRequest, validWireId, validateUpload, type PhotoContentType } from "../domain/photoPolicy";
 import type { Document, PhotoCaller, PhotoObjects, PhotoStore } from "./ports";
@@ -33,6 +34,7 @@ export async function finalizeEventPhoto(store: PhotoStore, objects: PhotoObject
       if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
         throw new PhotoError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
       }
+      if (isDeactivated(member)) throw new PhotoError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
       const event = await tx.getEvent(companyId, eventId);
       if (!event) throw new PhotoError("not-found", "EVENT_NOT_FOUND", "Event not found.");
       stored(event.companyId === companyId && date(event.startTime) && date(event.endTime) && typeof event.title === "string");

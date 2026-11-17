@@ -14,7 +14,7 @@ export function statusOf(member: Doc): MemberStatus {
   return member.status === "deactivated" ? "deactivated" : member.status === "invited" ? "invited" : "active";
 }
 
-export const isDeactivated = (member: Doc) => member.status === "deactivated";
+export const isDeactivated = (member: { status?: unknown }) => member.status === "deactivated";
 export const revisionOf = (member: Doc) => (typeof member.revision === "number" && Number.isSafeInteger(member.revision) ? member.revision : 0);
 
 export interface MemberSummary {

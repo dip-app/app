@@ -1,4 +1,5 @@
 import type { SetRsvpResponse } from "../../../generated/models";
+import { isDeactivated } from "../../admin/domain/member";
 import { ParticipationError } from "../domain/errors";
 import { parseRequest, validDocumentId } from "../domain/request";
 import type { Document, ParticipationIdentity, ParticipationStore, ParticipationTransaction } from "./ports";
@@ -24,6 +25,7 @@ export async function setRsvp(store: ParticipationStore, identity: Participation
     if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
       throw new ParticipationError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
     }
+    if (isDeactivated(member)) throw new ParticipationError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
     return applyRsvp(tx, member, companyId, eventId, uid, status, now);
   });
 }

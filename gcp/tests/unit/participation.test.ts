@@ -169,3 +169,19 @@ test("first join snapshots the member job title and department", async () => {
   assert.equal(store.get(rsvpPath)?.userJobTitle, "Software Engineer (Part-Time)");
   assert.equal(store.get(rsvpPath)?.userDepartment, "Engineering");
 });
+
+test("a deactivated member cannot RSVP or rejoin; nothing beyond the member is read or written", async () => {
+  const store = fixture();
+  assert.equal((await call(store)).attendeeCount, 1);
+  store.seed("users/a", { ...store.get("users/a"), status: "deactivated" });
+  store.reads.length = 0; const writes = store.writes;
+  await rejected(call(store, "going"), "permission-denied", "ACCOUNT_DEACTIVATED");
+  await rejected(call(store, "cancelled"), "permission-denied", "ACCOUNT_DEACTIVATED");
+  assert.deepEqual([...new Set(store.reads)], ["users/a"]);
+  assert.equal(store.writes, writes);
+  store.seed("users/a", { ...store.get("users/a"), status: "active" });
+  assert.equal((await call(store, "cancelled")).attendeeCount, 0);
+});
+test("a member without a status field is treated as active", async () => {
+  assert.equal((await call(fixture())).status, "going");
+});

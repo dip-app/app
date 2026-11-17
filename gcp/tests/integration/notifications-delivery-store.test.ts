@@ -65,9 +65,14 @@ describe("FirestoreDeliveryReceipts", () => {
 });
 
 describe("FirestorePushRateLimiter", () => {
-  test("30 parallel admits for one uid admit exactly the hourly cap", async () => {
+  test("30 contending admits for one uid admit exactly the hourly cap", async () => {
     const limiter = new FirestorePushRateLimiter(db);
-    const results = await Promise.all(Array.from({ length: 30 }, () => limiter.admit(["u1"], now)));
+    // Three waves of 10 concurrent transactions on one document: real contention, but below the emulator's lock
+    // timeout (30 at once intermittently failed with "ABORTED: Transaction lock timeout" in CI).
+    const results: Set<string>[] = [];
+    for (let wave = 0; wave < 3; wave++) {
+      results.push(...await Promise.all(Array.from({ length: 10 }, () => limiter.admit(["u1"], now))));
+    }
     assert.equal(results.filter((set) => set.has("u1")).length, PUSH_RATE_LIMITS.perHour);
     const doc = await db.doc("pushRateLimits/u1").get();
     assert.equal(doc.get("hourCount"), PUSH_RATE_LIMITS.perHour);

@@ -1,4 +1,5 @@
 import type { CreateEventResponse, UpdateEventResponse } from "../../../generated/models";
+import { isDeactivated } from "../../admin/domain/member";
 import { draftHash, parseCreateEventRequest, parseUpdateEventRequest } from "../domain/eventDraft";
 import { OrganizerError } from "../domain/errors";
 import type { OrganizerStore, OrganizerTransaction } from "./ports";
@@ -22,6 +23,7 @@ async function requireOrganizer(tx: OrganizerTransaction, caller: Caller, compan
   if (!membership || (membership.role !== "admin" && membership.role !== "organizer")) {
     throw new OrganizerError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage events.");
   }
+  if (isDeactivated(membership)) throw new OrganizerError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
   if (membership.companyId !== companyId) {
     throw new OrganizerError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's events.");
   }
