@@ -142,7 +142,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         heading: day ? "Starts tomorrow" : "Starts in about an hour",
         subject: fitSubject(day ? "Tomorrow: " : "Starting in about an hour: ", clean(e.eventTitle)),
         preheader: day ? `${clean(e.eventTitle)} is tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
-        lead: day ? "this event is tomorrow." : "this event starts in about an hour.",
+        lead: day ? `${clean(e.eventTitle)} starts tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
         note: null,
       });
     }

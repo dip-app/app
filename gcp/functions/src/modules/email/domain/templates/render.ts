@@ -190,6 +190,7 @@ const STYLE = `
     .px { padding-left: 20px !important; padding-right: 20px !important; }
     .btn-table { width: 100% !important; }
     .btn-a { display: block !important; text-align: center !important; }
+    .lbl { width: 56px !important; }
   }
   @media (prefers-color-scheme: dark) {
     body, .bg-outer { background-color: #121318 !important; }
@@ -199,18 +200,20 @@ const STYLE = `
     .border { border-color: #2C2F38 !important; }
     .pill { border-color: #2C2F38 !important; color: #ECEDEF !important; }
     .link { color: #ECEDEF !important; }
-    .art-cell { padding-left: 16px !important; padding-right: 16px !important; }
-    .art { border-radius: 8px !important; }
+    .art-cell { background-color: #23252E !important; }
+    .light-img { display: none !important; max-height: 0 !important; overflow: hidden !important; }
+    .dark-img { display: block !important; max-height: none !important; overflow: visible !important; }
   }
-  [data-ogsc] .art, [data-ogsb] .art { border-radius: 8px !important; }
-  [data-ogsb] .art-cell { background-color: #1B1D24 !important; }
+  [data-ogsc] .light-img, [data-ogsb] .light-img { display: none !important; max-height: 0 !important; overflow: hidden !important; }
+  [data-ogsc] .dark-img, [data-ogsb] .dark-img { display: block !important; max-height: none !important; overflow: visible !important; }
+  [data-ogsb] .art-cell { background-color: #23252E !important; }
   [data-ogsc] .text-main, [data-ogsc] .link { color: #ECEDEF !important; }
   [data-ogsc] .text-muted { color: #A3A7B3 !important; }
   [data-ogsc] .pill { color: #ECEDEF !important; border-color: #2C2F38 !important; }
   [data-ogsb] .bg-outer, [data-ogsb] body { background-color: #121318 !important; }
   [data-ogsb] .bg-card { background-color: #1B1D24 !important; border-color: #2C2F38 !important; }
   [data-ogsb] .border { border-color: #2C2F38 !important; }
-  [data-ogsb] .art-cell, [data-ogsc] .art-cell { padding-left: 16px !important; padding-right: 16px !important; }`;
+`;
 
 const MSO_STYLE = `<!--[if mso]>
 <style type="text/css">body, table, td, a, p, div, span, h1 { font-family: Arial, sans-serif !important; }</style>
@@ -258,8 +261,9 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
   const para = (text: string, margin = "16px"): string =>
     `<p class="text-main" style="margin:0 0 ${margin} 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(text)}</p>`;
 
+  const nb = (t: string): string => e(t).replace(/(\d) (AM|PM)\b/g, "$1&nbsp;$2").replace(/(AM|PM) ([A-Z]{2,5}(?:[+-]\d+)?)$/, "$1&nbsp;$2");
   const row = (label: string, value: string, first: boolean): string =>
-    `<tr><td class="text-muted${first ? "" : " border"}" valign="top" width="64" style="width:64px;padding:10px 12px 10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${label}</td><td dir="auto" class="text-main${first ? "" : " border"}" valign="top" style="padding:10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:15px;line-height:20px;color:${INK};"><bdi>${e(value)}</bdi></td></tr>`;
+    `<tr><td class="lbl text-muted${first ? "" : " border"}" valign="top" width="64" style="width:64px;padding:10px 12px 10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${label}</td><td dir="auto" class="text-main${first ? "" : " border"}" valign="top" style="padding:10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:15px;line-height:20px;color:${INK};"><bdi>${label === "When" ? nb(value) : e(value)}</bdi></td></tr>`;
 
   const pill = copy.badge
     ? `<div style="margin:0 0 10px 0;"><span class="pill border" style="display:inline-block;padding:2px 10px;border:1px solid ${HAIRLINE};border-radius:999px;font-family:${FONT};font-size:12px;line-height:16px;font-weight:600;color:${INK};">${e(copy.badge)}</span></div>`
@@ -288,9 +292,14 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
     ? `<img src="${e(ctx.openPixelURL)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0" />`
     : "";
 
-  const IMG_BASE = "display:block;width:100%;max-width:100%;height:auto;border:0;";
-  const header = `<tr><td class="art-cell" bgcolor="${ART_BG}" style="padding:0;background-color:${ART_BG};font-size:0;line-height:0;"><a href="${SHARE_ORIGIN}/" style="text-decoration:none;"><img class="art" src="${EMAIL_ASSET_BASE}header.png" width="600" height="100" alt="DIP" style="${IMG_BASE}font-family:${HEAD_FONT};font-size:20px;line-height:100px;color:${INK};" /></a></td></tr>`;
-  const footerArt = `<tr><td class="art-cell" bgcolor="${ART_BG}" style="padding:0;background-color:${ART_BG};font-size:0;line-height:0;"><img class="art" src="${EMAIL_ASSET_BASE}footer.png" width="600" height="100" alt="" style="${IMG_BASE}" />${pixel}</td></tr>`;
+  const IMG = "width:100%;max-width:100%;height:auto;border:0;";
+  const HIDDEN = "display:none;mso-hide:all;max-height:0;overflow:hidden;";
+  const pair = (file: "header" | "footer", alt: string, extraStyle: string): string =>
+    `<img class="art light-img" src="${EMAIL_ASSET_BASE}${file}.png" width="600" height="100" alt="${alt}" style="display:block;${IMG}${extraStyle}" /><img class="art dark-img" src="${EMAIL_ASSET_BASE}${file}-dark.png" width="600" height="100" alt="${alt}" style="${HIDDEN}${IMG}${extraStyle}" />`;
+  const artCell = (inner: string): string =>
+    `<tr><td class="art-cell" bgcolor="${ART_BG}" style="padding:0;background-color:${ART_BG};font-size:0;line-height:0;">${inner}</td></tr>`;
+  const header = artCell(`<a href="${SHARE_ORIGIN}/" style="text-decoration:none;">${pair("header", "DIP", `font-family:${HEAD_FONT};font-size:20px;line-height:100px;color:${INK};`)}</a>`);
+  const footerArt = artCell(`${pair("footer", "", "")}${pixel}`);
 
   const fine = `font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};`;
   const html = `<!doctype html>
@@ -312,7 +321,7 @@ ${MSO_STYLE}
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container bg-card border" style="width:600px;max-width:600px;background-color:#FFFFFF;border:1px solid ${HAIRLINE};border-radius:8px;border-collapse:separate;overflow:hidden;">
 ${header}
-<tr><td class="px" style="padding:28px 28px 32px 28px;">
+<tr><td class="px" style="padding:28px 28px 20px 28px;">
 <h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>
 ${para(lead, "20px")}
 ${card}
@@ -320,9 +329,12 @@ ${copy.note ? para(copy.note, "20px") : ""}
 ${highlight}
 ${button}
 </td></tr>
-<tr><td class="px" style="padding:8px 28px 16px 28px;font-family:${FONT};">
-<p class="text-muted" style="margin:0;${fine}">You are getting this because ${e(reason)} emails are on. <a class="link" href="${e(ctx.unsubscribeURL)}" style="display:inline-block;padding:12px 0;color:${INK};text-decoration:underline;">Unsubscribe</a> &middot; Manage in DIP: Profile &gt; Notifications</p>
-<p class="text-muted" style="margin:0;${fine}">DIP &middot; ${e(ctx.postalAddress)}</p>
+<tr><td class="px" style="padding:8px 28px 16px 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td class="text-muted" style="padding:0;${fine}">You are getting this because ${e(reason)} emails are on.</td></tr>
+<tr><td class="text-muted" style="padding:12px 0;${fine}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">Unsubscribe</a> &middot; Manage in DIP: Profile&nbsp;&gt;&nbsp;Notifications</td></tr>
+<tr><td class="text-muted" style="padding:0;${fine}">DIP &middot; ${e(ctx.postalAddress)}</td></tr>
+</table>
 </td></tr>
 ${footerArt}
 </table>

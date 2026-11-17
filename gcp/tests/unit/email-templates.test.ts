@@ -161,9 +161,13 @@ describe("email template invariants", () => {
       assert.ok(imgs.length >= 2, c.name);
       assert.ok(!html.includes("logo.png"), c.name);
       for (const img of imgs) assert.ok(/\salt="[^"]*"/.test(img), `${c.name}: ${img}`);
-      assert.ok(html.includes('<a href="https://letsdip.work/" style="text-decoration:none;"><img class="art" src="https://letsdip.work/img/email/header.png" width="600" height="100" alt="DIP"'), c.name);
+      assert.ok(html.includes('<a href="https://letsdip.work/" style="text-decoration:none;"><img class="art light-img" src="https://letsdip.work/img/email/header.png" width="600" height="100" alt="DIP"'), c.name);
       assert.ok(html.indexOf("header.png") < html.indexOf("<h1"), c.name);
       assert.ok(html.includes('src="https://letsdip.work/img/email/footer.png" width="600" height="100" alt=""'), c.name);
+      assert.ok(html.includes('class="art dark-img" src="https://letsdip.work/img/email/header-dark.png" width="600" height="100" alt="DIP" style="display:none;mso-hide:all;max-height:0;overflow:hidden;'), c.name);
+      assert.ok(html.includes('class="art dark-img" src="https://letsdip.work/img/email/footer-dark.png" width="600" height="100" alt="" style="display:none;mso-hide:all;max-height:0;overflow:hidden;'), c.name);
+      assert.ok(html.includes(".dark-img { display: block !important") && html.includes(".light-img { display: none !important") && html.includes("[data-ogsc] .dark-img"), c.name);
+      assert.ok(html.includes(".art-cell { background-color: #23252E !important; }"), c.name);
       assert.ok(html.includes('bgcolor="#F2F3FC"'), c.name);
       for (const m of html.matchAll(/<img\b[^>]*\ssrc="([^"]*)"/g)) assert.ok(m[1]!.startsWith("https://"), `${c.name}: ${m[1]}`);
     }
@@ -177,7 +181,7 @@ describe("email template invariants", () => {
         assert.ok(pixel.test(out.html), c.name);
         assert.ok(out.html.includes(`src="${c.ctx.openPixelURL}"`), c.name);
         const imgs = out.html.match(/<img\b[^>]*>/g)!;
-        assert.ok(imgs[imgs.length - 2]!.includes("footer.png") && imgs[imgs.length - 1]!.includes(c.ctx.openPixelURL), c.name);
+        assert.ok(imgs[imgs.length - 2]!.includes("footer-dark.png") && imgs[imgs.length - 1]!.includes(c.ctx.openPixelURL), c.name);
       } else {
         assert.ok(!pixel.test(out.html), c.name);
       }
@@ -201,7 +205,7 @@ describe("email template invariants", () => {
       assert.ok(!/#4F5BD5|#AEB7FF/i.test(html), c.name);
       const purple = html.split("\n").filter((l) => l.includes("#7B88FA"));
       assert.ok(purple.every((l) => /v:roundrect|btn-table/.test(l)), c.name);
-      assert.ok(/padding:12px 0;color:#1E212B;text-decoration:underline;">Unsubscribe/.test(html), c.name);
+      assert.ok(/<td class="text-muted" style="padding:12px 0;[^"]*"><a class="link" href="[^"]*" style="color:#1E212B;text-decoration:underline;">Unsubscribe/.test(html), c.name);
     }
   });
 
@@ -209,7 +213,7 @@ describe("email template invariants", () => {
     for (const c of PREVIEW_CASES) {
       const { html } = render(c);
       const imgs = html.match(/<img\b[^>]*>/g)!;
-      const footerIdx = imgs.findIndex((i) => i.includes("footer.png"));
+      const footerIdx = imgs.findIndex((i) => i.includes("footer-dark.png"));
       assert.ok(footerIdx === imgs.length - 1 || (footerIdx === imgs.length - 2 && imgs[imgs.length - 1]!.includes('width="1"')), c.name);
       assert.ok(html.indexOf("footer.png") > html.indexOf(">Unsubscribe<"), c.name);
       assert.ok(html.indexOf(">Unsubscribe<") > html.indexOf("Open in DIP"), c.name);
@@ -230,6 +234,18 @@ describe("email template invariants", () => {
       const out = render(PREVIEW_CASES.find((c) => c.name === n)!);
       for (const body of [out.html, out.text]) assert.ok(body.includes("\u201C10,000 steps for a week\u201D"), n);
     }
+  });
+
+  test("times use non-breaking spaces in html; reminder body names the event", () => {
+    const inv = render(PREVIEW_CASES[0]!);
+    assert.ok(/6:30&nbsp;PM to 8:00&nbsp;PM&nbsp;EST/.test(inv.html));
+    assert.ok(inv.text.includes("6:30 PM to 8:00 PM EST"));
+    assert.ok(inv.html.includes(".lbl { width: 56px !important; }"));
+    const r = render(PREVIEW_CASES.find((c) => c.name === "event_reminder_24h")!);
+    const h = render(PREVIEW_CASES.find((c) => c.name === "event_reminder_1h")!);
+    assert.ok(r.text.includes("Hi Sam, Sunset hike at Frick Park starts tomorrow."));
+    assert.ok(h.text.includes("Hi Sam, Sunset hike at Frick Park starts in about an hour."));
+    assert.ok(r.html.includes(">Starts tomorrow<"));
   });
 
   test("details block lists When and Where as a key/value table", () => {
