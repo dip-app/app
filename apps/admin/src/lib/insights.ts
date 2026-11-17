@@ -92,7 +92,7 @@ export function completionRate(participants: number, completed: number): number 
   return participants > 0 ? Math.min(1, completed / participants) : 0;
 }
 
-/** True when the company has produced nothing the page can chart yet. */
+/** True when the company has produced nothing the page can chart yet (never while a section is unavailable). */
 export function isQuiet(insights: CompanyInsights): boolean {
-  return insights.participation.rsvpsLast30Days === 0 && insights.events.completed === 0 && insights.events.upcoming === 0;
+  return insights.unavailable.length === 0 && insights.participation.rsvpsLast30Days === 0 && insights.events.completed === 0 && insights.events.upcoming === 0;
 }

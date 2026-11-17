@@ -124,6 +124,20 @@ describe("wire mapping", () => {
     expect(data.points).toBeNull();
     expect(data.challenges.current).toBeNull();
     expect(data.activity).toEqual([{ date: "2026-11-11", rsvps: 0, photos: 0 }]);
+    expect(data.unavailable).toEqual([]);
+  });
+
+  test("unavailable sections map through, unknown names are dropped, and a partial page is never 'quiet'", () => {
+    const data = insightsFromWire({ generatedAt: "2026-11-11T12:00:00Z", unavailable: ["activity", "bogus", "members", 3] });
+    expect(data.unavailable).toEqual(["members", "activity"]);
+    expect(isQuiet(data)).toBe(false);
+    expect(insightsFromWire({ unavailable: "members" }).unavailable).toEqual([]);
+  });
+
+  test("the partial mock scenario hides points from organizers", () => {
+    expect(buildMockInsights(input, "partial", "admin", NOW).unavailable).toEqual(["participation", "activity", "points"]);
+    expect(buildMockInsights(input, "partial", "organizer", NOW).unavailable).toEqual(["participation", "activity"]);
+    expect(scenarioFromSearch("?insights=partial")).toBe("partial");
   });
 
   test("points and the current theme map through", () => {

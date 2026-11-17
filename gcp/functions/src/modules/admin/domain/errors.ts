@@ -81,3 +81,21 @@ export const invalid = (fields: readonly string[] = []) =>
 export function stored(condition: boolean, what = "data"): asserts condition {
   if (!condition) throw new AdminError("internal", "INVALID_STORED_DATA", `Invalid stored ${what}.`);
 }
+
+export interface ErrorDiagnostics { error: string; code: string | number | null; message: string; indexUrl?: string }
+
+const INDEX_URL = /https:\/\/console\.firebase\.google\.com\/\S*indexes\?create_composite=[A-Za-z0-9_=-]+/;
+const MAX_MESSAGE = 500;
+
+/**
+ * What to log for an unexpected failure so it is diagnosable: the error name, its gRPC/Firebase code and a bounded
+ * message (Firestore messages describe the query, never document data), plus the index-creation link Firestore puts
+ * in FAILED_PRECONDITION messages. Request payloads are never part of it.
+ */
+export function errorDiagnostics(error: unknown): ErrorDiagnostics {
+  if (!(error instanceof Error)) return { error: typeof error, code: null, message: "" };
+  const raw = (error as { code?: unknown }).code;
+  const code = typeof raw === "string" || typeof raw === "number" ? raw : null;
+  const indexUrl = INDEX_URL.exec(error.message)?.[0];
+  return { error: error.name, code, message: error.message.slice(0, MAX_MESSAGE), ...(indexUrl ? { indexUrl } : {}) };
+}

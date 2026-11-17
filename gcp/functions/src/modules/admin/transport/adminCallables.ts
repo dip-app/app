@@ -16,7 +16,7 @@ import { removeEventPhoto, removeEventPhotoComment } from "../application/modera
 import type { AdminDeps, Caller } from "../application/ports";
 import { backfillRosterCallable } from "../application/backfillRoster";
 import { listRoster, resendRosterInvite, revokeRosterEntry, upsertRosterEntry } from "../application/roster";
-import { AdminError } from "../domain/errors";
+import { AdminError, errorDiagnostics } from "../domain/errors";
 import {
   AuthSessions, FirestoreAdminRateLimiter, FirestoreAdminStore, randomId, StorageObjects,
 } from "../infrastructure/firestoreAdminStore";
@@ -41,8 +41,9 @@ export async function handleAdminCommand<T>(name: string, command: Command<T>, d
   } catch (error) {
     const httpsError = toHttpsError(error);
     if (httpsError.code === "internal") {
+      // The caller sees a generic message; the log carries the underlying code, message and any index link.
       logger.error(`${name} failed`, {
-        uid: request.auth?.uid ?? null, reason: error instanceof AdminError ? error.reason : "UNEXPECTED", error: error instanceof Error ? error.name : "unknown",
+        uid: request.auth?.uid ?? null, reason: error instanceof AdminError ? error.reason : "UNEXPECTED", ...errorDiagnostics(error),
       });
     }
     throw httpsError;

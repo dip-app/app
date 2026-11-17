@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { type CompanyInsights, type Role, can } from "@/lib/adminTypes";
+import { type CompanyInsights, type InsightsSection, type Role, can } from "@/lib/adminTypes";
 import {
   chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, shortDay,
 } from "@/lib/insights";
@@ -14,33 +14,50 @@ import { Avatar, formatDate } from "./Ui";
 // The Overview page's building blocks. Everything is presentational: numbers come from getCompanyInsightsV1
 // (cached on the server), so nothing here fetches or computes company data.
 
-interface TileProps { label: string; value: string; note?: string; accent?: boolean }
+interface TileProps { label: string; value: string; note?: string; accent?: boolean; unavailable?: boolean }
 
-export function StatTile({ label, value, note, accent }: TileProps) {
+const off = (insights: CompanyInsights, section: InsightsSection) => insights.unavailable.includes(section);
+
+/** A section whose numbers the server could not compute this time: never show its placeholder zeros. */
+export function SectionUnavailable() {
+  return <p className="section-unavailable" role="status">This section is unavailable right now. Try Refresh in a few minutes.</p>;
+}
+
+export function StatTile({ label, value, note, accent, unavailable }: TileProps) {
   return (
     <div className={`stat-tile${accent ? " accent" : ""}`} role="group" aria-label={label}>
       <p className="stat-label">{label}</p>
-      <p className="stat-value">{value}</p>
-      {note && <p className="stat-note">{note}</p>}
+      {unavailable ? (
+        <>
+          <p className="stat-value" aria-hidden>–</p>
+          <p className="stat-note">Unavailable right now</p>
+        </>
+      ) : (
+        <>
+          <p className="stat-value">{value}</p>
+          {note && <p className="stat-note">{note}</p>}
+        </>
+      )}
     </div>
   );
 }
 
 export function StatTiles({ insights, role }: { insights: CompanyInsights; role: Role }) {
   const { members, events, participation, content, points } = insights;
+  const m = off(insights, "members"), e = off(insights, "events"), p = off(insights, "participation");
   return (
     <section className="stat-grid" aria-label="Key numbers">
-      <StatTile accent label="Members" value={formatCount(members.total)} note={`${formatCount(members.active)} active accounts`} />
-      <StatTile label="Active, last 30 days" value={formatCount(members.activeLast30Days)} note={members.activeCapped ? "At least this many" : "Members who joined an event"} />
-      <StatTile label="Invited, not joined" value={formatCount(members.invited)} note={members.invited === 1 ? "Person yet to sign in" : "People yet to sign in"} />
-      <StatTile label="Upcoming events" value={formatCount(events.upcoming)} note={`${formatCount(events.thisMonth)} this month`} />
-      <StatTile label="RSVPs, last 30 days" value={formatCount(participation.rsvpsLast30Days)} note="Going, across all events" />
-      <StatTile label="Average attendance" value={formatPercent(participation.attendanceRate)}
+      <StatTile accent unavailable={m} label="Members" value={formatCount(members.total)} note={`${formatCount(members.active)} active accounts`} />
+      <StatTile unavailable={m} label="Active, last 30 days" value={formatCount(members.activeLast30Days)} note={members.activeCapped ? "At least this many" : "Members who joined an event"} />
+      <StatTile unavailable={m} label="Invited, not joined" value={formatCount(members.invited)} note={members.invited === 1 ? "Person yet to sign in" : "People yet to sign in"} />
+      <StatTile unavailable={e} label="Upcoming events" value={formatCount(events.upcoming)} note={`${formatCount(events.thisMonth)} this month`} />
+      <StatTile unavailable={p} label="RSVPs, last 30 days" value={formatCount(participation.rsvpsLast30Days)} note="Going, across all events" />
+      <StatTile unavailable={p} label="Average attendance" value={formatPercent(participation.attendanceRate)}
         note={participation.attendanceSample > 0 ? `Latest ${participation.attendanceSample} completed ${participation.attendanceSample === 1 ? "event" : "events"}` : "After the first completed event"} />
-      <StatTile label="Photos, last 30 days" value={formatCount(content.photosLast30Days)} note={`${formatCount(content.commentsLast30Days)} ${content.commentsLast30Days === 1 ? "comment" : "comments"}`} />
+      <StatTile unavailable={off(insights, "content")} label="Photos, last 30 days" value={formatCount(content.photosLast30Days)} note={`${formatCount(content.commentsLast30Days)} ${content.commentsLast30Days === 1 ? "comment" : "comments"}`} />
       {can(role, "insights.points") && points
-        ? <StatTile label="Points issued, 30 days" value={formatCount(points.issuedLast30Days)} note="New points awarded" />
-        : <StatTile label="Events completed" value={formatCount(events.completed)} note={`${formatCount(events.cancelled)} canceled`} />}
+        ? <StatTile unavailable={off(insights, "points")} label="Points issued, 30 days" value={formatCount(points.issuedLast30Days)} note="New points awarded" />
+        : <StatTile unavailable={e} label="Events completed" value={formatCount(events.completed)} note={`${formatCount(events.cancelled)} canceled`} />}
     </section>
   );
 }
@@ -66,6 +83,7 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
     return () => observer.disconnect();
   }, []);
   const model = chartModel(insights.activity, Math.max(280, width), width < 480 ? 220 : 260);
+  const unavailable = off(insights, "activity");
   const quiet = model.total.rsvps === 0 && model.total.photos === 0;
   const first = insights.activity[0]?.date, last = insights.activity[insights.activity.length - 1]?.date;
   const summary = `RSVPs and photos per day, ${first ? shortDay(first) : ""} to ${last ? shortDay(last) : ""}. ${formatCount(model.total.rsvps)} RSVPs and ${formatCount(model.total.photos)} photos in total.`;
@@ -73,12 +91,12 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
     <section className="panel chart-panel" aria-labelledby={`${id}-h`}>
       <div className="panel-head">
         <h2 id={`${id}-h`}>Activity, last 30 days</h2>
-        <ul className="legend" aria-label="Legend">
+        {!unavailable && <ul className="legend" aria-label="Legend">
           <li><span className="swatch bar" aria-hidden />RSVPs <strong>{formatCount(model.total.rsvps)}</strong></li>
           <li><span className="swatch line" aria-hidden />Photos <strong>{formatCount(model.total.photos)}</strong></li>
-        </ul>
+        </ul>}
       </div>
-      {quiet ? (
+      {unavailable ? <SectionUnavailable /> : quiet ? (
         <p className="chart-empty">No RSVPs or photos in the last 30 days. Activity shows up here as soon as people join events.</p>
       ) : (
         <div ref={frame} className="chart-frame"><svg className="chart" viewBox={`0 0 ${model.width} ${model.height}`} role="img" aria-labelledby={`${id}-t ${id}-d`} preserveAspectRatio="xMidYMid meet">
@@ -97,7 +115,7 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
           {model.labels.map((label) => <text key={label.text} x={label.x} y={model.height - 8} textAnchor={label.anchor} className="axis">{label.text}</text>)}
         </svg></div>
       )}
-      <details className="data-table">
+      {!unavailable && <details className="data-table">
         <summary>View as table</summary>
         <div className="table-scroll">
           <table className="table compact">
@@ -110,17 +128,19 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
             </tbody>
           </table>
         </div>
-      </details>
+      </details>}
     </section>
   );
 }
 
 export function PendingActions({ insights, role }: { insights: CompanyInsights; role: Role }) {
   const items = pendingActions(insights, role);
+  // Both sources down: nothing to show. One down: show what is known, never "all caught up".
+  const partial = off(insights, "challenges") || off(insights, "members");
   return (
     <section className="panel" aria-labelledby="pending-h">
       <h2 id="pending-h">Needs attention</h2>
-      {items.length === 0 ? (
+      {partial && items.length === 0 ? <SectionUnavailable /> : items.length === 0 ? (
         <p className="muted">You’re all caught up. Reviews and unanswered invites appear here.</p>
       ) : (
         <ul className="action-list">
@@ -134,6 +154,7 @@ export function PendingActions({ insights, role }: { insights: CompanyInsights; 
           })}
         </ul>
       )}
+      {partial && items.length > 0 && <p className="muted">Some items couldn’t be checked right now.</p>}
     </section>
   );
 }
@@ -143,7 +164,7 @@ export function TopEvents({ insights }: { insights: CompanyInsights }) {
   return (
     <section className="panel" aria-labelledby="top-events-h">
       <h2 id="top-events-h">Top events by attendees</h2>
-      {events.length === 0 ? (
+      {off(insights, "participation") ? <SectionUnavailable /> : events.length === 0 ? (
         <p className="muted">No events with attendees yet.</p>
       ) : (
         <ol className="rank-list">
@@ -173,7 +194,7 @@ export function ThemeCard({ insights, role }: { insights: CompanyInsights; role:
   return (
     <section className="panel" aria-labelledby="theme-h">
       <h2 id="theme-h">This week’s theme</h2>
-      {!theme ? (
+      {off(insights, "challenges") ? <SectionUnavailable /> : !theme ? (
         <p className="muted">No weekly theme is running right now.{can(role, "themes.manage") && <> <Link href="/themes/" className="inline-link">Plan the next one</Link>.</>}</p>
       ) : (
         <>
@@ -198,10 +219,12 @@ export function PeopleCard({ insights }: { insights: CompanyInsights }) {
   return (
     <section className="panel" aria-labelledby="people-h">
       <h2 id="people-h">People</h2>
-      <dl className="breakdown">
-        {rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatCount(value)}</dd></div>)}
-        <div className="total"><dt>Total members</dt><dd>{formatCount(members.total)}</dd></div>
-      </dl>
+      {off(insights, "members") ? <SectionUnavailable /> : (
+        <dl className="breakdown">
+          {rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatCount(value)}</dd></div>)}
+          <div className="total"><dt>Total members</dt><dd>{formatCount(members.total)}</dd></div>
+        </dl>
+      )}
     </section>
   );
 }
@@ -212,7 +235,7 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
   return (
     <section className="panel" aria-labelledby="top-members-h">
       <h2 id="top-members-h">Top members by points</h2>
-      {members.length === 0 ? (
+      {off(insights, "points") ? <SectionUnavailable /> : members.length === 0 ? (
         <p className="muted">No points earned yet.</p>
       ) : (
         <ol className="rank-list">
@@ -272,6 +295,12 @@ export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]
       )}
     </section>
   );
+}
+
+/** Shown above the page when any section failed, so placeholder sections are never read as real numbers. */
+export function UnavailableNotice({ insights }: { insights: CompanyInsights }) {
+  if (insights.unavailable.length === 0) return null;
+  return <p className="notice" role="status">Some sections couldn’t be loaded. Everything else is up to date; try Refresh in a few minutes.</p>;
 }
 
 export function QuietNotice({ insights }: { insights: CompanyInsights }) {

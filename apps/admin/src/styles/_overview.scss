@@ -31,7 +31,7 @@
   .axis { font-family: var(--font-figtree), sans-serif; font-size: 12px; fill: $ink; }
   .bar { fill: $purple; }
   .series { fill: none; stroke: $ink; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; } }
-.chart-empty { background: $white; border-radius: $radius-inset; padding: 40px 20px; text-align: center; color: var(--muted); }
+.chart-empty, .section-unavailable { background: $white; border-radius: $radius-inset; padding: 40px 20px; text-align: center; color: var(--muted); }
 
 .data-table { summary { cursor: pointer; font-family: var(--font-figtree), sans-serif; font-size: 15px; width: fit-content; padding: 6px 0; &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }
   .table-scroll { max-height: 280px; overflow: auto; background: $white; border-radius: $radius-inset; padding: 4px 12px; margin-top: 8px; }
