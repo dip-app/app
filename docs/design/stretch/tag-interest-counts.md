@@ -1,6 +1,6 @@
 # Tag interest counts (stretch S3)
 
-Status: design only, nothing implemented. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Feeds [AI event creation](ai-event-creation.md) and the organizer tag picker.
+Status: in progress on `feature/stretch-tag-counts` (TAG-1, TAG-2, TAG-6 built and emulator-tested; nothing deployed). See [Decisions](#decisions). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Feeds [AI event creation](ai-event-creation.md) and the organizer tag picker.
 
 ## Goal and user stories
 
@@ -117,6 +117,19 @@ Drift if the trigger is down (mitigated by reconcile); a writer that bypasses `u
 | TAG-4 | Tag stats backfill script | Dry-run-default script that populates stats from users, with a report | Dry run prints per-company diffs; a real run needs an explicit flag; documented in the ops runbook | S | infra | TAG-2 |
 | TAG-5 | Portal interest counts | Counts beside tags in the event form and an Interests card on Overview | Portal tests with mock data show counts and the empty state; counts hidden when no stats exist | M | admin | TAG-1 |
 | TAG-6 | Interest summary helper for AI | Server helper returning top and thin tags with small-cell suppression, shared with the AI flow | Unit tests for suppression under 5, ordering and tenant scoping | S | backend | TAG-2 |
+
+## Decisions
+
+The owner has not answered the open questions yet; these defaults were taken from the recommendations above and can be revisited.
+
+1. **Per-company counts** at `companies/{c}/tagStats/{tagId}`, not on the global `tags/{tagId}` document (open question 1). No platform-wide rollup is built.
+2. **Members never see counts** (open question 2). Rules allow `get` and `list` (limit <= 200) for organizers and admins only.
+3. **No sharding** (open question 3). One stat document per company and tag.
+4. **Deactivated members do not count** (open question 4). A missing `status` counts as active, matching `sameCompany` in the rules.
+5. **Trigger name and scope.** `onUserInterestsWritten` (`onDocumentWritten users/{uid}`, `retry: true`) skips writes that do not change `companyId`, `status` or the de-duplicated set of `interestTagIds` without reading anything, so ordinary profile edits cost nothing.
+6. **Receipt location.** One receipt per trigger event at `companies/{c}/tagStatReceipts/{eventId}` under the company the member counts in after the write (before the write when they stop counting). Event IDs that are not safe document IDs are hashed. `expireAt` is 7 days out; the TTL policy is an owner step.
+7. **Reconcile query.** `status != "deactivated"` excludes documents with no `status` field, so the reconcile counts `companyId == c AND interestTagIds array-contains t` and subtracts the same count with `status == "deactivated"`. Two composite indexes on `users` back these queries.
+8. **AI summary (TAG-6).** `getInterestSummary(deps, companyId)` in `gcp/functions/src/modules/tags` returns `top` and `thin` tags; counts under 5 are returned as `memberCount: null, suppressed: true`, and suppressed tags are ordered by name only so their order leaks nothing.
 
 ## Sources
 

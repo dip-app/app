@@ -247,6 +247,35 @@
         "sortOrder"
       ]
     },
+    "TagStat": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "companies/{companyId}/tagStats/{tagId}: server-owned count of counting members (companyId set, status not deactivated) whose interestTagIds hold the tag. Maintained by the onUserInterestsWritten trigger and corrected by the nightly reconcileTagStats job. Readable by organizers and admins of the company; never written by clients. memberCount can briefly go below zero after an out-of-order retry; display max(0, memberCount).",
+      "properties": {
+        "tagId": {
+          "type": "string"
+        },
+        "memberCount": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reconciledAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "tagId",
+        "memberCount",
+        "updatedAt"
+      ]
+    },
     "Partner": {
       "type": "object",
       "additionalProperties": false,

@@ -117,6 +117,20 @@ public struct Tag: Codable, Equatable, Sendable {
     }
 }
 
+public struct TagStat: Codable, Equatable, Sendable {
+    public var tagId: String
+    public var memberCount: Int
+    public var updatedAt: Date
+    public var reconciledAt: Date?
+
+    public init(tagId: String, memberCount: Int, updatedAt: Date, reconciledAt: Date? = nil) {
+        self.tagId = tagId
+        self.memberCount = memberCount
+        self.updatedAt = updatedAt
+        self.reconciledAt = reconciledAt
+    }
+}
+
 public struct Partner: Codable, Equatable, Sendable {
     public var id: String?
     public var name: String
