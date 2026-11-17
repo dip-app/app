@@ -80,7 +80,7 @@ Send each of these templates to every address below: `invite_received`, `event_c
 - [ ] **Outlook for Windows** (classic): button visible, text readable, card with square corners is acceptable, header and footer art present.
 - [ ] **Outlook.com** (web) and **Outlook iOS/Android**: layout, then switch the client to dark mode.
 - [ ] **Apple Mail on macOS** and **iOS Mail**: layout, then switch the device to dark mode; light header and footer art are replaced by the dark art, no white boxes around logos.
-- [ ] **Dark mode in each client above**: text legible, struck-through old values still visible but muted, button still purple with white text, hairlines visible, no inverted art.
+- [ ] **Dark mode in each client above**: text legible, struck-through old values still visible but muted, button still purple with ink (#1E212B) text, hairlines visible, no inverted art.
 - [ ] **Images blocked**: preheader and heading still convey the message; header `alt` shows.
 - [ ] **Plain-text view** (Gmail "Show original" or Apple Mail View > Message > Plain Text): readable, links intact.
 - [ ] **Right-to-left title**: the Hebrew or Arabic sample renders in the right order and does not break the layout.
@@ -97,3 +97,7 @@ Not required and not signed up for. If the owner wants real-device screenshots a
 - New client family: extend `CLIENT_GLOBS` in `gcp/functions/tools/emailCompat/checks.ts` (caniemail glob syntax, for example `yahoo.*`).
 - Updating data: `npm update caniemail --workspace @dip/functions` refreshes the support tables; new errors mean a client changed, review before adding to `REVIEWED_DEGRADATIONS`.
 - Dependencies are dev-only (`caniemail`, `html-validate`, `htmlparser2`); nothing is added to the deployed functions bundle.
+
+## Primary button contrast rule
+
+Any purple (`#7B88FA`) filled element that carries text uses **white (`#FFFFFF`) text in light mode and ink (`#1E212B`) text in dark mode**. White on `#7B88FA` is only about 3.1:1; ink is about 5.2:1. The inline style is the white base (Gmail-safe, works when `<style>` is dropped). The dark override is `.btn-a, .btn-t { color: #1E212B !important; }` inside `prefers-color-scheme: dark` plus the `[data-ogsc]` mirror for Outlook.com, applied to both the link (`btn-a`) and an inner span (`btn-t`) because clients restyle the `<a>`. The fill stays purple in both modes. The classic Outlook VML fallback stays white (no dark CSS there). The outlined admin "Start this event" button has no fill and keeps ink text. `email-templates.test.ts` asserts the rule for every template.
