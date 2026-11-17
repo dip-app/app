@@ -20,9 +20,9 @@ AI event ideas and prompt-to-event drafts (stretch S2, #186), second PR after th
 
 ## Validation
 
-- Unit, integration and rules tests: see PR (results filled in by the lead).
-- `npm run check:generated`, `npm run test:contracts`, `npm run test:docs`, `tsc --noEmit` in `gcp/functions`: see PR.
-- Portal: lint, typecheck, `ideas.test.ts`, `api.test.ts` and build: see PR.
+- Unit: `ai-domain`, `ai-infra`, `ai-application`, `admin-permissions`, `tags`: 211 pass. Firestore emulator `ai-usage.test.ts`: 12 pass (run on port 18080 because another agent held 8080). Rules `gcp/tests/rules/ai.test.ts`: 4 pass (earlier in the session; rules unchanged since).
+- `npm run check:generated`, `npm run test:contracts` (49), `npm run test:docs`, `tsc --noEmit` in `gcp/functions`: clean after rebasing on main.
+- Portal: lint, typecheck, `ideas.test.ts` + `api.test.ts` (27) and `npm run build`: clean; design crit with the shared auditor: PASS in round 3 (UI unchanged by the provider switch).
 - Eval runner: `node --import tsx gcp/tests/ai-eval/run.ts` offline run completes (20 cases, 19 generated, demo triage accuracy 85% as expected because the demo only flags the literal injection phrase). Live maximum for the default models with `--jev` is about $31.87; typical about $4.
 - Not run: any live OpenAI or TypeSafe AI call (owner action, `gcp/tests/ai-eval`), full test suites (targeted only by standing instruction), the functions emulator end to end through the callables.
 
