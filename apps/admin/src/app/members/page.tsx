@@ -113,7 +113,7 @@ function Members() {
                   <tbody>
                     {list.items.map((m) => (
                       <tr key={m.id}>
-                        <th scope="row"><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span></span></Link></th>
+                        <th scope="row"><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} photoURL={m.photoURL} avatarId={m.avatarId} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span></span></Link></th>
                         <td data-label="Role">{ROLE_LABEL[m.role]}</td>
                         <td data-label="Teams">{m.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
                         <td data-label="Work location">{m.workLocation || <span className="muted">Not set</span>}</td>

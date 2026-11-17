@@ -40,6 +40,7 @@ export async function resolveMembership(
       return { contractVersion: 1, companyId, role: decision.profile.role };
     }
     if (decision.refreshDisplayName) tx.updateDisplayName(eligible.uid, decision.refreshDisplayName);
+    if (decision.fillPhotoURL) tx.fillPhotoURL(eligible.uid, decision.fillPhotoURL);
     return { contractVersion: 1, companyId: decision.companyId, role: decision.role };
   });
 }

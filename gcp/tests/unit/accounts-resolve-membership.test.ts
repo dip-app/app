@@ -54,6 +54,7 @@ class FakeStore implements MembershipStore {
         getMembership: async (uid) => {
           const data = await read(`users/${uid}`);
           return data ? { companyId: String(data.companyId), role: String(data.role), displayName: String(data.displayName ?? ""),
+            photoURL: String(data.photoURL ?? ""),
             ...(typeof data.status === "string" ? { status: data.status } : {}) } : null;
         },
         getRosterEntry: async (companyId, email) => {
@@ -69,6 +70,7 @@ class FakeStore implements MembershipStore {
         },
         createMember: (uid: string, profile: NewMemberProfile) => { writes.push([`users/${uid}`, { ...profile, createdAt: "SERVER_TIMESTAMP" }, "create"]); },
         updateDisplayName: (uid: string, displayName: string) => { writes.push([`users/${uid}`, { displayName }, "update"]); },
+        fillPhotoURL: (uid: string, photoURL: string) => { writes.push([`users/${uid}`, { photoURL }, "update"]); },
       };
       const result = await work(tx);
       await tick();
@@ -315,10 +317,10 @@ describe("resolveMembershipV1 transport", () => {
     const identity = identityFromRequest({
       auth: { uid: "u1", rawToken: "", token: { email: "a@alpha.test", email_verified: true, name: "A", firebase: { sign_in_provider: "google.com" } } as never },
     });
-    assert.deepEqual(identity, { uid: "u1", email: "a@alpha.test", emailVerified: true, signInProvider: "google.com", name: "A" });
+    assert.deepEqual(identity, { uid: "u1", email: "a@alpha.test", emailVerified: true, signInProvider: "google.com", name: "A", picture: null });
     assert.equal(identityFromRequest({}), null);
     const bare = identityFromRequest({ auth: { uid: "u2", rawToken: "", token: {} as never } });
-    assert.deepEqual(bare, { uid: "u2", email: null, emailVerified: false, signInProvider: null, name: null });
+    assert.deepEqual(bare, { uid: "u2", email: null, emailVerified: false, signInProvider: null, name: null, picture: null });
   });
 
   test("domain errors map to callable errors with reason/fields details", () => {

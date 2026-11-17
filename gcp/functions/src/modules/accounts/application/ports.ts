@@ -24,6 +24,8 @@ export interface MembershipTransaction {
   recordRosterJoin(companyId: string, entryId: string, action: RosterAction, uid: string, profile: NewMemberProfile): void;
   /** Server-side refresh of the OAuth display name on an existing profile. */
   updateDisplayName(uid: string, displayName: string): void;
+  /** Server-side fill of an empty photoURL from the validated OAuth photo; the caller guarantees the stored value was empty. */
+  fillPhotoURL(uid: string, photoURL: string): void;
 }
 
 export interface MembershipStore {

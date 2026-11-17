@@ -1,5 +1,6 @@
 import { emailHash } from "../../admin/domain/employee";
 import { AccountsError } from "./errors";
+import { normalizeGooglePhotoUrl } from "./photoUrl";
 import { isPersonalEmailDomain, rootDomainOfEmail } from "./emailDomain";
 
 export type MembershipRole = "member" | "organizer" | "admin";
@@ -17,6 +18,8 @@ export interface AuthIdentity {
   signInProvider: string | null;
   /** OAuth profile name (`name` claim), if any. */
   name: string | null;
+  /** OAuth profile photo (`picture` claim), if any; validated by normalizeGooglePhotoUrl before it is stored. */
+  picture?: string | null;
 }
 
 /** An identity that passed every pre-lookup check. */
@@ -31,6 +34,8 @@ export interface StoredMembership {
   companyId: string;
   role: string;
   displayName: string;
+  /** Stored profile photo URL; "" or missing means none (the OAuth photo may then fill it). */
+  photoURL?: string;
   /** "deactivated" blocks the account; missing means active. */
   status?: string;
 }
@@ -122,7 +127,7 @@ function isRole(value: string): value is MembershipRole {
 
 export type MembershipDecision =
   | { kind: "create"; profile: NewMemberProfile; roster: RosterJoin }
-  | { kind: "existing"; companyId: string; role: MembershipRole; refreshDisplayName: string | null };
+  | { kind: "existing"; companyId: string; role: MembershipRole; refreshDisplayName: string | null; fillPhotoURL: string | null };
 
 /**
  * Pure decision once the root domain resolved to `targetCompanyId`.
@@ -147,7 +152,9 @@ export function decideMembership(
       throw new AccountsError("internal", "INVALID_STORED_MEMBERSHIP", "Stored membership has an unknown role.");
     }
     const refreshDisplayName = existing.displayName === identity.displayName ? null : identity.displayName;
-    return { kind: "existing", companyId: existing.companyId, role: existing.role, refreshDisplayName };
+    // Fill-if-empty: a photo the member chose themselves (or an earlier fill) is never overwritten.
+    const fillPhotoURL = existing.photoURL ? null : normalizeGooglePhotoUrl(identity.picture);
+    return { kind: "existing", companyId: existing.companyId, role: existing.role, refreshDisplayName, fillPhotoURL };
   }
   // First sign-in: anyone with a verified company-domain email joins (today's behaviour). An invited roster entry whose
   // email equals the verified token email is claimed (its role, teams and org attributes apply). Everyone else gets the
@@ -178,7 +185,7 @@ function defaultProfile(identity: EligibleIdentity, targetCompanyId: string): Ne
     companyId: targetCompanyId,
     displayName: identity.displayName,
     email: identity.email,
-    photoURL: "",
+    photoURL: normalizeGooglePhotoUrl(identity.picture) ?? "",
     avatarId: "",
     department: "",
     jobTitle: "",

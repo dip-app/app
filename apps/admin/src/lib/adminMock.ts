@@ -61,7 +61,7 @@ interface StoredBug extends BugReport {
   updatedAt: string | null; updatedByName: string | null;
 }
 
-const KEY = "dip-admin-mock-ops-v3";
+const KEY = "dip-admin-mock-ops-v4";
 const AI_KEY = "dip-admin-mock-ai-v1";
 /** Preview usage: some of the quota is already spent so the meter has something to show. */
 interface AiState { usage: Record<string, { monthly: number; daily: number }>; receipts: Record<string, GenerateDraftsResult> }
@@ -71,6 +71,7 @@ const DEPARTMENTS = ["Engineering", "People", "Marketing", "Finance", "Operation
 const FIRST = ["Alex", "Pat", "Casey", "Riley", "Sam", "Jordan", "Morgan", "Taylor", "Avery", "Quinn", "Jamie", "Robin", "Drew", "Skyler", "Cameron", "Reese", "Emery", "Harper", "Rowan", "Sage", "Blake", "Dana", "Kai", "Lee", "Noor", "Ola", "Pia", "Quin", "Remy", "Tess"];
 const LAST = ["Admin", "Member", "Novak", "Chen", "Okafor", "Rivera", "Patel", "Haas", "Kim", "Silva", "Brandt", "Costa", "Dubois", "Evans", "Fischer", "Gupta", "Hughes", "Ito", "Jensen", "Khan", "Lopez", "Mendes", "Nair", "Ortiz", "Park", "Quill", "Roth", "Stone", "Tran", "Ueda"];
 
+const MOCK_PHOTOS: Record<number, string> = { 0: "/img/mock-photos/p1.svg", 1: "/img/mock-photos/p2.svg", 2: "/img/mock-photos/p3.svg", 6: "/img/mock-photos/p4.svg", 9: "/img/mock-photos/p5.svg" };
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const isoAgo = (now: Date, days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
 
@@ -89,13 +90,15 @@ export function seedOps(now: Date): OpsState {
       displayName: `${first} ${last}`, role, teamIds: [teams[i % 5].id, ...(i % 4 === 0 ? [teams[(i + 2) % 5].id] : [])],
       workLocation: LOCATIONS[i % 4], department: DEPARTMENTS[i % 5], jobTitle: i % 3 === 0 ? "Manager" : "Specialist",
       status: i === 20 ? "deactivated" : "active", pointsBalance: (i * 137) % 900, createdAt: isoAgo(now, 200 - i * 6),
-      avatarId: `avatar-${(i % 8) + 1}`, city: LOCATIONS[i % 4], revision: 1,
+      avatarId: i % 5 === 4 ? "" : `avatar-${(i % 8) + 1}`, city: LOCATIONS[i % 4], revision: 1,
+      // A few members have a Google photo (local art here so screenshots need no network); i % 5 === 4 have neither photo nor avatar (initials).
+      photoURL: MOCK_PHOTOS[i] ?? "",
     };
   });
   members.push({
     companyId: "globex", id: "uid-other-admin", email: "gale@globex.com", displayName: "Gale Globex", role: "admin", teamIds: [],
     workLocation: "Remote", department: "Operations", jobTitle: "Director", status: "active", pointsBalance: 0, createdAt: isoAgo(now, 90),
-    avatarId: "avatar-1", city: "Remote", revision: 1,
+    avatarId: "avatar-1", photoURL: "", city: "Remote", revision: 1,
   });
   const invite = (first: string, last: string, days: number, teamIndex: number): StoredRoster => ({
     companyId: "acme", entryId: `${slug(first)}.${slug(last)}@acme.com`, email: `${slug(first)}.${slug(last)}@acme.com`, displayName: `${first} ${last}`, role: "member",
@@ -556,7 +559,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       reasonRequired(reason);
       const m = member(state, session, id);
       const changes = [{ field: "avatar", before: m.avatarId, after: "" }, { field: "city", before: m.city, after: "" }];
-      Object.assign(m, { avatarId: "", city: "", revision: m.revision + 1 });
+      Object.assign(m, { avatarId: "", photoURL: "", city: "", revision: m.revision + 1 });
       log(state, session, { action: "member.reset", targetType: "member", targetId: m.id, summary: `Reset ${m.displayName}’s profile; identity, role and points kept`, reason, changes });
       save(state);
       return view(session, m);
