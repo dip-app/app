@@ -11,6 +11,7 @@ import {
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
+import type { TagStat } from "./tagStats";
 
 // Live adapter for the admin tools, following docs/contracts/admin.md. Lists are Firestore reads allowed by
 // the rules (album, RSVPs, teams, roster and audit log for admins); members come from listMembersV1 because
@@ -44,6 +45,14 @@ export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
     state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
     ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), invitedAt: iso(d.createdAt),
     ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
+  };
+}
+
+/** A `tagStats` document -> portal TagStat. */
+export function tagStatFromDoc(id: string, d: DocumentData): TagStat {
+  return {
+    tagId: str(d.tagId) || id, memberCount: typeof d.memberCount === "number" ? d.memberCount : 0, updatedAt: iso(d.updatedAt),
+    ...(iso(d.reconciledAt) ? { reconciledAt: iso(d.reconciledAt) } : {}),
   };
 }
 
@@ -416,6 +425,18 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     companyInsights: (refresh = false) => run(async () => {
       const session = await organizer();
       return insightsFromWire(await call<DocumentData>(ADMIN_CALLABLES.getInsights, session, refresh ? { refresh: true } : {}, false));
+    }),
+
+    // Organizer and admin read; the rules cap list queries at 200. A denial means "no stats": counts stay hidden.
+    tagStats: () => run(async () => {
+      const session = await organizer();
+      try {
+        const snap = await getDocs(query(col(session, "tagStats"), limit(200)));
+        return snap.docs.map((d) => tagStatFromDoc(d.id, d.data()));
+      } catch (failure) {
+        if ((failure as { code?: string } | null)?.code === "permission-denied") return null;
+        throw failure;
+      }
     }),
 
     eventIdeaContext: () => run(async () => {

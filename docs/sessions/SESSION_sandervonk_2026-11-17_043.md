@@ -19,9 +19,10 @@ Stretch S3 tag interest counts, part 3 (#202 TAG-5) and wrap-up: portal counts o
 
 ## Validation
 
-- `npx vitest run` on `tagStats`, `insights`, `api` test files: 43 pass. `npx tsc --noEmit -p .` and `npx eslint src` clean (in `apps/admin`).
+- First pass (old base): vitest `tagStats`, `insights`, `api`: 43 pass.
+- Re-ported after main's admin quality pass (#262) and Dipbot (#258) made the PR conflict: the Interests list now uses the shared compact table (`TableRegion`) and contrast tokens, chip counts have no one-sided border, and the card loads `tagStats` and the catalog on its own so it still renders (relative bars, no share column) when `getCompanyInsightsV1` fails. In `apps/admin`: `tsc --noEmit` and `eslint src` clean; vitest (`tagStats`, `components/__tests__` including the new `InterestsCard.test.tsx`, `api`, `adminTools`, `insights`): 99 pass; `npm run build` passes.
 - `adminTools.test.ts` has two known date-dependent failures on main (not touched here).
-- Mock-mode screenshots of the Overview card and event form chips at 1440 px; design crit with an auditor subagent: round 1 FAIL (bar length, inner scroll, no share, faint chip counts), fixes applied, round 2 PASS.
+- Mock-mode screenshots of the Overview card and event form chips at 1440 px; design crit with an auditor subagent: round 1 FAIL (bar length, inner scroll, no share, faint chip counts), fixes applied, round 2 PASS; after the re-port, round 3 PASS on the new design system.
 - `npm run test:docs`: links clean.
 
 ## Decisions

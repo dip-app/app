@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; // tags load from the shared catalog
 import { COVERS, type Tag } from "@/lib/catalog";
+import { type TagStat, countsByTag, hasStats, interestLabel } from "@/lib/tagStats";
 import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
   emptyDraft, normalizeDraft, validateDraft,
@@ -51,9 +52,12 @@ export function EventForm({ event, onReload }: Props) {
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
+  // Interest counts (organizers and admins). Shown only once the company has stat docs; any failure hides them.
+  const [stats, setStats] = useState<TagStat[] | null>(null);
   useEffect(() => {
     let cancelled = false;
     api.listTags().then((list) => !cancelled && setTags(list), () => !cancelled && setTags([]));
+    api.tagStats().then((list) => !cancelled && setStats(list), () => !cancelled && setStats(null));
     return () => { cancelled = true; };
   }, [api]);
   // Create only, and only when arriving from Dipbot (?from=ai): fill the AI draft once. Venue and times stay empty.
@@ -71,6 +75,7 @@ export function EventForm({ event, onReload }: Props) {
     setPrice(centsToDollars(fill.costCents));
     setFromAi(true);
   }, [editing]);
+  const tagCounts = hasStats(stats) ? countsByTag(stats) : null;
   // One key per create attempt, kept across retries so a lost response can never create two events.
   const requestId = useRef(crypto.randomUUID());
   const [confirmCancel, setConfirmCancel] = useState<EventDraft | null>(null);
@@ -170,8 +175,10 @@ export function EventForm({ event, onReload }: Props) {
             {tags.length === 0 && <span className="hint">Loading tags…</span>}
             {tags.map((tag) => (
               <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
+                aria-label={tagCounts ? `${tag.name}, ${interestLabel(tagCounts.get(tag.id) ?? 0)}` : undefined}
                 onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((t) => t !== tag.id) : [...draft.tagIds, tag.id])}>
                 {tag.name}
+                {tagCounts && <span className="chip-count" title={interestLabel(tagCounts.get(tag.id) ?? 0)} aria-hidden>{tagCounts.get(tag.id) ?? 0}</span>}
               </button>
             ))}
           </div>

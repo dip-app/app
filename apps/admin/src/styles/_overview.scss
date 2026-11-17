@@ -78,4 +78,12 @@
   .mini-stats dd { font-size: 24px; }
 }
 
+// Interests card: a compact shared table (name, bar, count, share). The bar fill is the AA primary, never the brand purple.
+.interest-table { .interest-name { font-weight: 500; text-align: left; white-space: nowrap; }
+  .interest-bar { width: 45%; min-width: 120px; }
+  .meter { height: 6px; background: $white; span { background: var(--primary); } }
+  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } }
+.chip .chip-count { margin-left: 8px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); line-height: 1.2; }
+.chip[aria-pressed="true"] .chip-count { color: inherit; }
+
 .info-pill.full { min-height: 24px; padding: 0 10px; font-size: 13px; border-color: $purple; }
