@@ -5984,6 +5984,24 @@
             "$ref": "#/$defs/InsightsActivityDay"
           },
           "description": "Oldest first, the last 30 UTC days including today."
+        },
+        "unavailable": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 7,
+          "items": {
+            "type": "string",
+            "enum": [
+              "members",
+              "events",
+              "participation",
+              "content",
+              "challenges",
+              "points",
+              "activity"
+            ]
+          },
+          "description": "Sections whose queries failed this time. Each listed section still has its required shape but holds zeros and must be shown as unavailable, not as real numbers. Absent or empty when every section was computed."
         }
       },
       "required": [

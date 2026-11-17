@@ -2610,8 +2610,9 @@ public struct GetCompanyInsightsResponse: Codable, Equatable, Sendable {
     public var challenges: InsightsChallenges
     public var points: InsightsPoints?
     public var activity: [InsightsActivityDay]
+    public var unavailable: [String]?
 
-    public init(contractVersion: Int, generatedAt: Date, windowDays: Int, members: InsightsMembers, events: InsightsEvents, participation: InsightsParticipation, content: InsightsContent, challenges: InsightsChallenges, points: InsightsPoints? = nil, activity: [InsightsActivityDay]) {
+    public init(contractVersion: Int, generatedAt: Date, windowDays: Int, members: InsightsMembers, events: InsightsEvents, participation: InsightsParticipation, content: InsightsContent, challenges: InsightsChallenges, points: InsightsPoints? = nil, activity: [InsightsActivityDay], unavailable: [String]? = nil) {
         self.contractVersion = contractVersion
         self.generatedAt = generatedAt
         self.windowDays = windowDays
@@ -2622,6 +2623,7 @@ public struct GetCompanyInsightsResponse: Codable, Equatable, Sendable {
         self.challenges = challenges
         self.points = points
         self.activity = activity
+        self.unavailable = unavailable
     }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActivityChart, InterestsCard, PeopleCard, PendingActions, QuietNotice, StatTiles, StatTilesSkeleton, ThemeCard, TopEvents, TopMembers } from "@/components/Overview";
+import { ActivityChart, InterestsCard, PeopleCard, PendingActions, QuietNotice, StatTiles, StatTilesSkeleton, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "@/components/Overview";
 import { Shell } from "@/components/Shell";
 import { LoadError } from "@/components/Ui";
 import { useApp } from "@/components/AppProvider";
@@ -48,7 +48,7 @@ export default function OverviewPage() {
 
   // The active total comes from insights; without it the card draws bars relative to the top interest.
   const interests = tagStats.data && tagCatalog.data
-    ? <InterestsCard stats={tagStats.data} tags={tagCatalog.data} activeMembers={data ? data.members.active : null} />
+    ? <InterestsCard stats={tagStats.data} tags={tagCatalog.data} activeMembers={data && !data.unavailable.includes("members") ? data.members.active : null} />
     : null;
 
   return (
@@ -58,6 +58,7 @@ export default function OverviewPage() {
         : (
           <div className="overview">
             {refreshError && <p className="banner error" role="alert">{refreshError}</p>}
+            <UnavailableNotice insights={data} />
             <QuietNotice insights={data} />
             <StatTiles insights={data} role={role} />
             <div className="overview-row wide-left">

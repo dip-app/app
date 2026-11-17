@@ -158,4 +158,7 @@ test('company insights request and response', () => {
   accepts('GetCompanyInsightsResponse', {...response, points: {issuedLast30Days: 120, topMembers: [{userId: 'u1', displayName: 'Ada', pointsBalance: 90}]}});
   rejects('GetCompanyInsightsResponse', {...response, activity: activity.slice(1)}, 'a 29-day series');
   rejects('GetCompanyInsightsResponse', {...response, members: {...response.members, total: -1}}, 'negative total');
+  accepts('GetCompanyInsightsResponse', {...response, unavailable: ['content', 'activity']});
+  rejects('GetCompanyInsightsResponse', {...response, unavailable: ['content', 'content']}, 'duplicate section');
+  rejects('GetCompanyInsightsResponse', {...response, unavailable: ['everything']}, 'unknown section');
 });

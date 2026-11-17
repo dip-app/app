@@ -326,6 +326,9 @@ export interface InsightsEvent { eventId: string; title: string; startTime: stri
 export interface InsightsTheme {
   challengeId: string; title: string; startDate: string; endDate: string; participantCount: number; completedCount: number; pendingReviews: number;
 }
+/** Overview sections the server can report as unavailable (a failed query; the rest of the page still renders). */
+export const INSIGHTS_SECTIONS = ["members", "events", "participation", "content", "challenges", "points", "activity"] as const;
+export type InsightsSection = (typeof INSIGHTS_SECTIONS)[number];
 export interface CompanyInsights {
   /** When the numbers were computed (the server caches them for up to 10 minutes). */
   generatedAt: string;
@@ -339,6 +342,8 @@ export interface CompanyInsights {
   points: { issuedLast30Days: number; topMembers: { userId: string; displayName: string; pointsBalance: number }[] } | null;
   /** The last 30 UTC days, oldest first. */
   activity: InsightsDay[];
+  /** Sections whose numbers could not be computed this time: show "unavailable", never their placeholder zeros. */
+  unavailable: InsightsSection[];
 }
 
 // ---------- Bug reports (shake-to-report inbox, docs/contracts/admin.md#bug-reports-inbox-bugreportmanage-admin-only)

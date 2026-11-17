@@ -1307,6 +1307,7 @@ export interface GetCompanyInsightsResponse {
   challenges: InsightsChallenges;
   points?: InsightsPoints;
   activity: Array<InsightsActivityDay>;
+  unavailable?: Array<"members" | "events" | "participation" | "content" | "challenges" | "points" | "activity">;
 }
 
 export interface AiInterestTag {

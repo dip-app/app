@@ -239,7 +239,7 @@ $ctl-h: 36px;
   .overview-row { gap: 14px; align-items: start; }
   .legend { font-size: 12px; }
   .chart { max-height: 220px; .grid { stroke: $line; stroke-width: 1; } .series { stroke-width: 2; } .axis { font-size: 11px; } }
-  .chart-empty { background: $subtle; border-radius: $r-ctl; padding: 24px 16px; }
+  .chart-empty, .section-unavailable { background: $subtle; border-radius: $r-ctl; padding: 24px 16px; }
   .data-table .table-scroll { background: $white; border: 1px solid $line; border-radius: $r-ctl; padding: 0 8px; }
   .data-table .table thead th { background: $subtle; }
   .action-list, .rank-list { gap: 0; }

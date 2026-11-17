@@ -3,13 +3,13 @@ import type { CompanyInsights, InsightsDay, Role } from "./adminTypes";
 /**
  * Preview data for the Overview. The mock derives what it can from the preview company (members, roster,
  * events, themes, review queue) and fills the 30-day activity with a deterministic curve, so the page looks the
- * same on every visit. `?insights=` picks a scenario for design review: empty, low, high, error or slow.
+ * same on every visit. `?insights=` picks a scenario for design review: empty, low, high, partial (some sections unavailable), error or slow.
  */
-export type InsightsScenario = "default" | "empty" | "low" | "high" | "error" | "slow";
+export type InsightsScenario = "default" | "empty" | "low" | "high" | "partial" | "error" | "slow";
 
 export function scenarioFromSearch(search: string): InsightsScenario {
   const value = new URLSearchParams(search).get("insights");
-  return value === "empty" || value === "low" || value === "high" || value === "error" || value === "slow" ? value : "default";
+  return value === "empty" || value === "low" || value === "high" || value === "partial" || value === "error" || value === "slow" ? value : "default";
 }
 
 export interface MockInsightsInput {
@@ -73,5 +73,6 @@ export function buildMockInsights(input: MockInsightsInput, scenario: InsightsSc
         .map((m) => ({ userId: m.id, displayName: m.displayName, pointsBalance: high ? m.pointsBalance * 9 : m.pointsBalance })),
     },
     activity,
+    unavailable: scenario === "partial" ? ["participation", "activity", ...(role === "admin" ? ["points" as const] : [])] : [],
   };
 }
