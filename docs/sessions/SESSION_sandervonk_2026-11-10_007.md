@@ -20,9 +20,6 @@ App icon is now an Icon Composer bundle built from the Figma logo SVG (node 3228
 
 ## Decisions
 
-Use an Icon Composer bundle so iOS applies the glass and layered styling; the old raster appiconset is dropped.
 
 ## Handoff
-
-Check the icon on a device.
 
