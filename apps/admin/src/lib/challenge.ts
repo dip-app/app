@@ -92,17 +92,17 @@ export function normalizeThemeDraft(draft: ThemeDraft): ThemeDraft {
 export function validateThemeDraft(draft: ThemeDraft, options: { knownTagIds?: string[]; now?: Date } = {}): FieldErrors {
   const errors: FieldErrors = {};
   const title = draft.title.trim();
-  if (title.length < 1 || title.length > THEME_LIMITS.titleMax) errors.title = `Title must be 1–${THEME_LIMITS.titleMax} characters.`;
+  if (title.length < 1 || title.length > THEME_LIMITS.titleMax) errors.title = `Title must be 1 to ${THEME_LIMITS.titleMax} characters.`;
   const description = draft.description.trim();
   if (description.length < 1 || description.length > THEME_LIMITS.descriptionMax) {
-    errors.description = `Description must be 1–${THEME_LIMITS.descriptionMax} characters.`;
+    errors.description = `Description must be 1 to ${THEME_LIMITS.descriptionMax} characters.`;
   }
   if (!THEME_URLS.includes(draft.coverImageURL)) errors.coverImageURL = "Pick a theme from the catalog.";
   if (!(Number.isFinite(draft.goal) && draft.goal > 0 && draft.goal <= THEME_LIMITS.goalMax)) {
     errors.goal = `Goal must be more than 0 and at most ${THEME_LIMITS.goalMax.toLocaleString("en-US")}.`;
   }
   const unit = draft.goalUnit.trim();
-  if (unit.length < 1 || unit.length > THEME_LIMITS.goalUnitMax) errors.goalUnit = `Unit must be 1–${THEME_LIMITS.goalUnitMax} characters.`;
+  if (unit.length < 1 || unit.length > THEME_LIMITS.goalUnitMax) errors.goalUnit = `Unit must be 1 to ${THEME_LIMITS.goalUnitMax} characters.`;
   if (!Number.isInteger(draft.pointsReward) || draft.pointsReward < 0 || draft.pointsReward > THEME_LIMITS.pointsMax) {
     errors.pointsReward = `Points must be a whole number from 0 to ${THEME_LIMITS.pointsMax}.`;
   }
@@ -135,7 +135,7 @@ export function findOverlap(
   return themes.find((theme) => theme.id !== excludeId && theme.type === "weekly" && windowsOverlap(window, theme));
 }
 
-/** "Overlaps “Fitness” (Nov 9 – Nov 15, 2026). Pick a free week." */
+/** "Overlaps “Fitness” (Nov 9 to Nov 15, 2026). Pick a free week." */
 export function overlapMessage(conflict: WeeklyTheme): string {
   return `Overlaps “${conflict.title}” (${formatWindow(conflict.startDate, conflict.endDate)}). Pick a week without a theme.`;
 }

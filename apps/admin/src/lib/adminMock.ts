@@ -1,3 +1,4 @@
+import { asset } from "./asset";
 import type { AdminOpsApi } from "./adminApi";
 import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
@@ -116,7 +117,7 @@ export function seedOps(now: Date): OpsState {
     photos.push({
       companyId: "acme", id, eventId: "game-cafe", uploaderId: uploader.id, uploaderName: uploader.displayName,
       caption: i % 2 ? "" : "Best table of the night", commentCount: count, createdAt: isoAgo(now, 13 - i * 0.3),
-      storagePath: `companies/acme/events/game-cafe/photos/${uploader.id}/${i}`, previewImage: `/img/events/${images[i % 5]}.jpg`,
+      storagePath: `companies/acme/events/game-cafe/photos/${uploader.id}/${i}`, previewImage: asset(`/img/events/${images[i % 5]}.jpg`),
     });
     for (let c = 0; c < count; c += 1) {
       const author = members[(i + c * 5 + 2) % 20];
@@ -168,7 +169,7 @@ function seedBugReports(state: OpsState, now: Date): void {
       companyId: "acme", id: `7f3c2a1${i.toString(16)}-0b5d-4c3e-9a41-${String(1000 + i * 37).padStart(12, "0")}`, category: s.cat, description: s.text, source: s.source ?? "shake", screen: s.screen,
       createdAt: isoAgo(now, 0.05 + i * 0.6), reporterId: who.id, reporterName: who.displayName, appVersion: i % 5 === 4 ? "2.0" : "2.1", hasScreenshot: !!s.shot, status: s.status ?? "new", hasNote: !!s.note,
       ...(assignee ? { assigneeId: assignee.id, assigneeName: assignee.displayName } : {}),
-      reporterEmail: who.email, screenshot: s.shot ? `/admin/img/events/${s.shot}.jpg` : null, note: s.note ?? "", revision: s.status || s.note ? 1 : 0,
+      reporterEmail: who.email, screenshot: s.shot ? asset(`/img/events/${s.shot}.jpg`) : null, note: s.note ?? "", revision: s.status || s.note ? 1 : 0,
       updatedAt: s.status ? isoAgo(now, 0.2 + i * 0.3) : null, updatedByName: s.status ? "Alex Admin" : null,
       diagnostics: { appVersion: i % 5 === 4 ? "2.0" : "2.1", appBuild: i % 5 === 4 ? "398" : "418", osVersion: os, deviceModel: model, locale: "en_US", screen: s.screen, installId: `0a1b2c3d-1111-2222-3333-4444555566${String(10 + i)}` },
     };
@@ -384,7 +385,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)).map(({ companyId: _c, eventId: _e, ...rest }) => (void _c, void _e, rest));
     },
     async photoImage(photo) {
-      return photo.previewImage ?? "/img/events/games.jpg";
+      return photo.previewImage ?? asset("/img/events/games.jpg");
     },
     async removePhoto(eventId, photoId, reason) {
       const state = load();
@@ -738,7 +739,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     },
     async submissionEvidence(submission) {
       const pictures = ["fitness", "outdoors", "hiking", "games", "cooking"];
-      return `/img/events/${pictures[submission.userId.length % pictures.length]}.jpg`;
+      return asset(`/img/events/${pictures[submission.userId.length % pictures.length]}.jpg`);
     },
     async approveSubmission(submission) {
       const state = load();

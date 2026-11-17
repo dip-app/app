@@ -6,7 +6,7 @@ $sidebar-width: 232px;
 $nav-muted: #b9bccb; // 9:1 on ink
 $nav-text: #e6e8f0;
 
-.app { min-height: 100dvh; display: grid; grid-template-columns: $sidebar-width minmax(0, 1fr); }
+.app { min-height: 100dvh; display: grid; grid-template-columns: $sidebar-width minmax(0, 1fr); align-content: start; }
 .topbar, .scrim, .menu-btn.close-btn { display: none; }
 
 .sidebar {
@@ -28,18 +28,18 @@ $nav-text: #e6e8f0;
   svg { flex: none; width: 18px; height: 18px; opacity: .8; }
   .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   &:hover { background: rgba(255, 255, 255, .08); color: $white; svg { opacity: 1; } }
-  &[aria-current="page"], &[aria-current="true"] { background: rgba(255, 255, 255, .17); color: $white; font-weight: 600; svg { opacity: 1; }
-    &::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: $purple; } }
+  &[aria-current="page"], &[aria-current="true"] { background: rgba(255, 255, 255, .17); color: $white; font-weight: 600; svg { opacity: 1; } }
   &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; }
 }
-.nav-badge { margin-left: auto; flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: $purple; color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
+.nav-badge { margin-left: auto; flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--primary); color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
 .menu-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 6px; color: $white; background: transparent;
   &:hover { background: rgba(255, 255, 255, .1); } &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; } }
 
 .content { padding: 24px clamp(20px, 3.5vw, 64px) 72px; }
 
 @media (max-width: 900px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
+  // Block flow on narrow screens: the sticky top bar stays put and short pages start at the top (a stretched grid row pushed them down).
+  .app { display: block; }
   .topbar { display: flex; align-items: center; gap: 4px; position: sticky; top: 0; z-index: 30; height: 56px; padding: 0 12px 0 6px; background: $ink; color: $white; }
   .menu-btn.close-btn { display: grid; }
   .sidebar {

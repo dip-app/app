@@ -9,9 +9,11 @@
 // Laid out for the web: sidebar navigation, wide content, multi-column grids.
 :root {
   --ink: #{$ink};
-  --purple: #{$purple};
+  --purple: #{$purple}; // brand accent: decorative fills, charts, the login page. Never behind white text (3.1:1).
+  --primary: #5562dc; // filled surfaces with white text (5.0:1)
+  --primary-hover: #4a56d6;
   --gray: #{$gray};
-  --muted: #454960; // 8.9:1 on white, 7.2:1 on #ececec
+  --muted: #4b4f66; // 7.6:1 on white
   --error: #b3125e; // 6.4:1 on white; the brand pink stays for outlines
 }
 
@@ -35,7 +37,7 @@ button { cursor: pointer; border: 0; background: none; }
 
 // ---------- Controls
 .pill-btn, .big-pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-family: var(--font-figtree), sans-serif; transition: transform .12s ease, opacity .12s ease; white-space: nowrap; &:active { transform: scale(.98); } &[disabled] { opacity: .45; cursor: not-allowed; } }
-.pill-btn { min-height: 48px; padding: 0 28px; font-size: 18px; &.purple { background: $purple; color: $white; } &.gray { background: $gray; color: $ink; } &.dark { background: $ink; color: $white; } }
+.pill-btn { min-height: 48px; padding: 0 28px; font-size: 18px; &.purple { background: var(--primary); color: $white; } &.gray { background: $gray; color: $ink; } &.dark { background: $ink; color: $white; } }
 .big-pill { min-height: 56px; padding: 0 40px; font-size: 20px; &.dark { background: $ink; color: $white; } &.gray { background: $gray; color: $ink; } }
 .tabs { display: flex; gap: 4px; margin-bottom: 28px; overflow-x: auto; padding: 4px; background: $gray; border-radius: 999px; width: fit-content; max-width: 100%; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
 .tab { flex: none; background: transparent; color: $ink; border-radius: 999px; min-height: 44px; padding: 0 24px; font-family: var(--font-figtree), sans-serif; font-size: 17px; transition: background .2s ease, color .2s ease; &[aria-pressed="true"] { background: $ink; color: $white; } }
@@ -78,19 +80,19 @@ button { cursor: pointer; border: 0; background: none; }
   .error { color: var(--error); font-size: 15px; }
   input:not([type="checkbox"]), select, textarea { background: $gray; border: 2px solid transparent; border-radius: $radius-pill; padding: 12px 22px; height: 52px; width: 100%; font-size: 16px; }
   textarea { height: auto; min-height: 160px; border-radius: $radius-card; resize: vertical; }
-  input::placeholder { color: #666a7d; }
+  input::placeholder { color: #646a80; }
   input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] { border-color: $events-pink; background: $white; } }
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .row > * { min-width: 0; }
 .chips { display: flex; gap: 10px; flex-wrap: wrap; }
-.chip { background: $gray; color: $ink; border-radius: 999px; min-height: 44px; padding: 0 20px; font-size: 15px; font-family: var(--font-figtree), sans-serif; display: inline-flex; align-items: center; &[aria-pressed="true"] { background: $purple; color: $white; } }
+.chip { background: $gray; color: $ink; border-radius: 999px; min-height: 44px; padding: 0 20px; font-size: 15px; font-family: var(--font-figtree), sans-serif; display: inline-flex; align-items: center; &[aria-pressed="true"] { background: var(--primary); color: $white; } }
 .covers { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
 .cover-option { border-radius: $radius-card; background: $gray; padding: 8px 8px 12px; text-align: center; font-size: 15px; font-family: var(--font-figtree), sans-serif; display: grid; gap: 10px;
   .swatch { height: 120px; aspect-ratio: 3 / 2; width: 100%; border-radius: inner-radius($radius-card, 8px); object-fit: cover; display: block; }
   &[aria-pressed="true"] { background: $ink; color: $white; } }
 .actions { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 0 32px; }
 .banner { grid-column: 1 / -1; border-radius: $radius-card; padding: 16px 22px; display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;
-  &.error { background: $ink; color: $white; border-left: 8px solid $events-pink; .pill-btn { background: $white; color: $ink; min-height: 44px; font-size: 16px; } } }
+  &.error { background: #fff4f9; color: $ink; border: 1px solid #f0a8c9; .pill-btn { background: $white; color: $ink; min-height: 44px; font-size: 16px; } } }
 
 // ---------- Switch (replaces checkboxes)
 .toggle { display: flex; align-items: center; gap: 16px; text-align: left; min-height: 64px; width: 100%; background: $gray; border-radius: $radius-card; padding: 12px 20px;
@@ -98,7 +100,7 @@ button { cursor: pointer; border: 0; background: none; }
   .label { font-family: var(--font-figtree), sans-serif; font-size: 18px; }
   .hint { color: var(--muted); font-size: 15px; }
   .state { font-family: var(--font-figtree), sans-serif; font-size: 16px; min-width: 28px; text-align: right; }
-  .track { width: 60px; height: 34px; border-radius: 999px; background: #b4b7c4; position: relative; flex: none; transition: background .2s ease; }
+  .track { width: 60px; height: 34px; border-radius: 999px; background: #8a8fa5; position: relative; flex: none; transition: background .2s ease; }
   .knob { position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: $white; transition: transform .2s ease; }
   &[aria-checked="true"] .track { background: $ink; }
   &[aria-checked="true"] .knob { transform: translateX(26px); } }

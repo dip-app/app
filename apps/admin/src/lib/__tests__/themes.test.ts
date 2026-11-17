@@ -72,8 +72,8 @@ describe("weeks (Eastern Time)", () => {
   });
 
   it("formats windows and spots non-aligned ones", () => {
-    expect(formatWindow(week("2026-11-09").startDate, week("2026-11-09").endDate)).toBe("Nov 9 – Nov 15, 2026");
-    expect(formatWindow(week("2026-12-28").startDate, week("2026-12-28").endDate)).toBe("Dec 28, 2026 – Jan 3, 2027");
+    expect(formatWindow(week("2026-11-09").startDate, week("2026-11-09").endDate)).toBe("Nov 9 to Nov 15, 2026");
+    expect(formatWindow(week("2026-12-28").startDate, week("2026-12-28").endDate)).toBe("Dec 28, 2026 to Jan 3, 2027");
     expect(formatWindow("", "x")).toBe("");
     expect(isWeekAligned(week("2026-11-09", 2).startDate, week("2026-11-09", 2).endDate)).toBe(true);
     expect(isWeekAligned("2026-11-10T05:00:00.000Z", week("2026-11-09").endDate)).toBe(false);
@@ -94,7 +94,7 @@ describe("theme catalog", () => {
     expect(new Set(THEMES.map((t) => t.url)).size).toBe(THEMES.length);
     for (const t of THEMES) {
       expect(t.url).toBe(`catalog://theme/${t.key}`);
-      expect(t.illustration).toBe(`/img/themes/${t.key}.png`);
+      expect(t.illustration).toBe(`/admin/img/themes/${t.key}.png`);
       expect(t.accent).toMatch(/^#[0-9A-F]{6}$/);
       expect(t.displayName.split(" ").length).toBeLessThanOrEqual(3);
       expect(t.goalUnits.length).toBeGreaterThan(0);
@@ -158,7 +158,7 @@ describe("overlap, phases and week pickers", () => {
     expect(findOverlap(week("2026-11-23", 2), themes)?.id).toBe("later");
     expect(findOverlap(week("2026-11-09"), themes)?.id).toBe("this");
     expect(findOverlap(week("2026-11-09"), themes, "this")).toBeUndefined();
-    expect(overlapMessage(themes[1])).toBe("Overlaps “Fitness” (Nov 9 – Nov 15, 2026). Pick a week without a theme.");
+    expect(overlapMessage(themes[1])).toBe("Overlaps “Fitness” (Nov 9 to Nov 15, 2026). Pick a week without a theme.");
   });
 
   it("classifies and sorts by window", () => {

@@ -17,8 +17,8 @@ export function EventPreview({ draft, price }: { draft: EventDraft; price: strin
           <dl>
             <div><dt>When</dt><dd>{Number.isNaN(start) ? "Pick a start time" : <><span className="line">{formatWhen(draft.startTime, draft.endTime)}</span>{formatDuration(draft.startTime, draft.endTime) && <span className="line muted">{formatDuration(draft.startTime, draft.endTime)}</span>}</>}</dd></div>
             <div><dt>Where</dt><dd><span className="line">{draft.venue.name.trim() || "Add a venue"}</span>{(draft.venue.address.trim() || draft.venue.locality.trim()) && <span className="line muted">{[draft.venue.address.trim(), draft.venue.locality.trim()].filter(Boolean).join(", ")}</span>}</dd></div>
-            <div><dt>Price</dt><dd>{Number.isNaN(cents) ? "—" : formatPrice(cents)}</dd></div>
-            <div><dt>Spots</dt><dd>{Number.isNaN(draft.capacity) ? "—" : draft.capacity}</dd></div>
+            <div><dt>Price</dt><dd>{Number.isNaN(cents) ? "Not set" : formatPrice(cents)}</dd></div>
+            <div><dt>Spots</dt><dd>{Number.isNaN(draft.capacity) ? "Not set" : draft.capacity}</dd></div>
           </dl>
         </div>
       </div>

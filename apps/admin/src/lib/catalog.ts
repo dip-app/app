@@ -1,3 +1,4 @@
+import { asset } from "./asset";
 // Default event images from the app's prototype assets (public/img/events). The approved
 // catalog is pending design (callables.md); V1 has no uploads.
 export interface CoverOption {
@@ -8,11 +9,11 @@ export interface CoverOption {
 }
 
 export const COVERS: CoverOption[] = [
-  { id: "fitness", label: "Fitness", url: "catalog://default/fitness", image: "/img/events/fitness.jpg" },
-  { id: "outdoors", label: "Outdoors", url: "catalog://default/outdoors", image: "/img/events/outdoors.jpg" },
-  { id: "hiking", label: "Hiking", url: "catalog://default/hiking", image: "/img/events/hiking.jpg" },
-  { id: "games", label: "Games", url: "catalog://default/games", image: "/img/events/games.jpg" },
-  { id: "cooking", label: "Cooking", url: "catalog://default/cooking", image: "/img/events/cooking.jpg" },
+  { id: "fitness", label: "Fitness", url: "catalog://default/fitness", image: asset("/img/events/fitness.jpg") },
+  { id: "outdoors", label: "Outdoors", url: "catalog://default/outdoors", image: asset("/img/events/outdoors.jpg") },
+  { id: "hiking", label: "Hiking", url: "catalog://default/hiking", image: asset("/img/events/hiking.jpg") },
+  { id: "games", label: "Games", url: "catalog://default/games", image: asset("/img/events/games.jpg") },
+  { id: "cooking", label: "Cooking", url: "catalog://default/cooking", image: asset("/img/events/cooking.jpg") },
 ];
 
 export function coverFor(url: string): CoverOption | undefined {

@@ -104,11 +104,11 @@ export function validateDraft(
   const errors: FieldErrors = {};
   const title = draft.title.trim();
   if (title.length < 1 || title.length > LIMITS.titleMax) {
-    errors.title = `Title must be 1–${LIMITS.titleMax} characters.`;
+    errors.title = `Title must be 1 to ${LIMITS.titleMax} characters.`;
   }
   const description = draft.description.trim();
   if (description.length < 1 || description.length > LIMITS.descriptionMax) {
-    errors.description = `Description must be 1–${LIMITS.descriptionMax} characters.`;
+    errors.description = `Description must be 1 to ${LIMITS.descriptionMax} characters.`;
   }
   const start = Date.parse(draft.startTime);
   const end = Date.parse(draft.endTime);
@@ -129,7 +129,7 @@ export function validateDraft(
     errors.capacity =
       minCapacity > LIMITS.capacityMin
         ? `Capacity can’t be below the ${minCapacity} people already going (max ${LIMITS.capacityMax}).`
-        : `Capacity must be ${LIMITS.capacityMin}–${LIMITS.capacityMax}.`;
+        : `Capacity must be ${LIMITS.capacityMin} to ${LIMITS.capacityMax}.`;
   }
   const known = options.knownTagIds ?? TAG_IDS;
   if (draft.tagIds.some((id) => !known.includes(id)) || new Set(draft.tagIds).size !== draft.tagIds.length) {
@@ -185,7 +185,7 @@ export function formatDuration(startIso: string, endIso: string): string {
   return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
 }
 
-/** "Mon, Nov 16 · 9:00 – 11:00 AM": date plus start and end, so date, time and length read at a glance. */
+/** "Mon, Nov 16 · 9:00 to 11:00 AM": date plus start and end, so date, time and length read at a glance. */
 export function formatWhen(startIso: string, endIso: string): string {
   const start = new Date(startIso);
   const end = new Date(endIso);
@@ -195,5 +195,5 @@ export function formatWhen(startIso: string, endIso: string): string {
   if (Number.isNaN(end.getTime())) return `${day} · ${from}`;
   const to = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const sameDay = start.toDateString() === end.toDateString();
-  return sameDay ? `${day} · ${from} – ${to}` : `${day} ${from} – ${end.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} ${to}`;
+  return sameDay ? `${day} · ${from} to ${to}` : `${day} ${from} to ${end.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} ${to}`;
 }

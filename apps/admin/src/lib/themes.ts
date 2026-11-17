@@ -1,3 +1,4 @@
+import { asset } from "./asset";
 // Weekly theme catalog (spec "Theme catalog"): a theme's `coverImageURL` is `catalog://theme/<key>` and
 // selects a BUNDLED illustration plus accent colour, never a photo. The server accepts only approved keys
 // (APPROVED_THEME_URLS); the iOS app has the same catalog (DIPThemeCatalog). Copy and defaults for every
@@ -32,7 +33,7 @@ export const THEMES: ThemeOption[] = [
     key: "fitness",
     displayName: "Fitness",
     url: `${THEME_URL_PREFIX}fitness`,
-    illustration: "/img/themes/fitness.png",
+    illustration: asset("/img/themes/fitness.png"),
     accent: "#FB72E4",
     goalUnits: ["workouts", "classes", "walks", "minutes"],
     defaultGoal: 3,
@@ -45,7 +46,7 @@ export const THEMES: ThemeOption[] = [
     key: "outdoors",
     displayName: "Outdoors",
     url: `${THEME_URL_PREFIX}outdoors`,
-    illustration: "/img/themes/outdoors.png",
+    illustration: asset("/img/themes/outdoors.png"),
     accent: "#6BE5D0", // ACCENTS.md
     goalUnits: ["outings", "hours"],
     defaultGoal: 2,
@@ -58,7 +59,7 @@ export const THEMES: ThemeOption[] = [
     key: "food",
     displayName: "Food & Drink",
     url: `${THEME_URL_PREFIX}food`,
-    illustration: "/img/themes/food.png",
+    illustration: asset("/img/themes/food.png"),
     accent: "#FF7C73", // ACCENTS.md
     goalUnits: ["gatherings", "meals", "tastings"],
     defaultGoal: 2,
@@ -71,7 +72,7 @@ export const THEMES: ThemeOption[] = [
     key: "arts",
     displayName: "Arts & Crafts",
     url: `${THEME_URL_PREFIX}arts`,
-    illustration: "/img/themes/arts.png",
+    illustration: asset("/img/themes/arts.png"),
     accent: "#7B88FA", // ACCENTS.md
     goalUnits: ["creations", "projects", "sessions"],
     defaultGoal: 2,
@@ -84,7 +85,7 @@ export const THEMES: ThemeOption[] = [
     key: "games",
     displayName: "Games",
     url: `${THEME_URL_PREFIX}games`,
-    illustration: "/img/themes/games.png",
+    illustration: asset("/img/themes/games.png"),
     accent: "#FFCC3E", // ACCENTS.md
     goalUnits: ["games", "sessions", "rounds"],
     defaultGoal: 3,
@@ -97,7 +98,7 @@ export const THEMES: ThemeOption[] = [
     key: "music",
     displayName: "Music",
     url: `${THEME_URL_PREFIX}music`,
-    illustration: "/img/themes/music.png",
+    illustration: asset("/img/themes/music.png"),
     accent: "#66D9FF", // ACCENTS.md
     goalUnits: ["songs", "events", "sessions"],
     defaultGoal: 3,
@@ -110,7 +111,7 @@ export const THEMES: ThemeOption[] = [
     key: "learning",
     displayName: "Learning",
     url: `${THEME_URL_PREFIX}learning`,
-    illustration: "/img/themes/learning.png",
+    illustration: asset("/img/themes/learning.png"),
     accent: "#6BFF9B", // ACCENTS.md
     goalUnits: ["lessons", "sessions", "chapters"],
     defaultGoal: 3,
@@ -123,7 +124,7 @@ export const THEMES: ThemeOption[] = [
     key: "volunteering",
     displayName: "Volunteering",
     url: `${THEME_URL_PREFIX}volunteering`,
-    illustration: "/img/themes/volunteering.png",
+    illustration: asset("/img/themes/volunteering.png"),
     accent: "#1E212B", // ACCENTS.md
     goalUnits: ["shifts", "hours", "events"],
     defaultGoal: 1,
@@ -136,7 +137,7 @@ export const THEMES: ThemeOption[] = [
     key: "wellness",
     displayName: "Wellness",
     url: `${THEME_URL_PREFIX}wellness`,
-    illustration: "/img/themes/wellness.png",
+    illustration: asset("/img/themes/wellness.png"),
     accent: "#FF7C73", // ACCENTS.md
     goalUnits: ["sessions", "minutes", "breaks"],
     defaultGoal: 3,
