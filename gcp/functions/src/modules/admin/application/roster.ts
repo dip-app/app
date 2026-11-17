@@ -125,6 +125,22 @@ const SCAN_BATCH = 250;
 const MAX_SCAN = 500;
 
 /**
+ * Claimed entries carry their member's stored photo and avatar id so the portal draws the same avatar as the member list. One batched
+ * read of at most a page of users documents; a user outside the caller's company (or a missing one) adds nothing.
+ */
+async function attachMemberProfiles(tx: AdminTransaction, companyId: string, entries: RosterEntry[]): Promise<void> {
+  const claimed = entries.filter(e => e.status === "claimed" && e.claimedBy);
+  if (claimed.length === 0) return;
+  const users = await tx.getMany(claimed.map(e => paths.user(e.claimedBy as string)));
+  claimed.forEach((entry, i) => {
+    const user = users[i];
+    if (!user || user.companyId !== companyId) return;
+    if (typeof user.photoURL === "string" && user.photoURL) entry.memberPhotoURL = user.photoURL.slice(0, 2048);
+    if (typeof user.avatarId === "string" && user.avatarId) entry.memberAvatarId = user.avatarId.slice(0, 120);
+  });
+}
+
+/**
  * listRosterV1: a page of the roster. Scans entries in id order (bounded per call), filters by state and search text in memory and
  * returns the id cursor, so any roster size pages without a composite index. The first page also carries exact counts per state.
  */
@@ -151,6 +167,7 @@ export async function listRoster(deps: AdminDeps, caller: Caller | null, data: u
       if (batch.length < SCAN_BATCH) { exhausted = true; break; }
     }
     const nextPageToken = exhausted ? undefined : afterId;
+    await attachMemberProfiles(tx, actor.companyId, entries);
     let counts: RosterCounts | undefined;
     if (!req.pageToken) {
       const [all, invited, revoked, claimed, deactivated] = await Promise.all([

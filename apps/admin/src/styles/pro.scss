@@ -152,6 +152,7 @@ $ctl-h: 36px;
   .facts { gap: 4px; div { grid-template-columns: 110px 1fr; } dt { font-size: 13px; } }
   .detail-layout { gap: 14px; }
   .avatar { width: 32px; height: 32px; font-size: 12px; font-weight: 600; background: #e8eaf1; color: $ink; outline: 1px solid rgba(20, 22, 40, 0.1); outline-offset: -1px; object-fit: cover; }
+  .avatar.crew, .queue-item[aria-current="true"] .avatar.crew { background: transparent; }
   .person { gap: 10px; }
   .person.big { .avatar { width: 40px; height: 40px; font-size: 14px; } h2 { font-size: 18px; font-weight: 600; } }
   .dropzone { border: 1px dashed $line-strong; border-radius: $r-box; padding: 28px 16px; gap: 10px; &.over { border-color: var(--primary); background: $tint; } }
@@ -210,6 +211,7 @@ $ctl-h: 36px;
   .bug-item[aria-current="true"] { .muted { color: var(--muted); } .info-pill.warn { color: $ink; border-color: $line-strong; } }
   .queue-chips, .bug-meta { gap: 4px; }
   .review-layout { grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 1000px) { .review-layout { grid-template-columns: minmax(0, 1fr); } }
   @media (min-width: 1001px) { .bug-detail.review-detail { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow: auto; } }
   .review-detail { top: 12px; h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; } }
   .viewer-side h3, .sample-row h3, .panel h3 { font-size: 14px; font-weight: 600; }
@@ -230,12 +232,12 @@ $ctl-h: 36px;
   .theme-name { font-size: 15px; font-weight: 600; }
 
   // ---------- Overview
-  .overview { gap: 14px; }
+  .overview { gap: 14px; .panel, .notice { margin-bottom: 0; } }
   .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .stat-tile { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 10px 12px;
     .stat-label { font-size: 12px; font-weight: 500; } .stat-value { font-size: 26px; } .stat-note { font-size: 12px; }
     &.accent { background: $white; color: $ink; .stat-label, .stat-note { color: var(--muted); } }
-    &.skeleton-tile { min-height: 84px; background: $subtle; } }
+    &.skeleton-tile { min-height: 89px; background: $subtle; } }
   .overview-row { gap: 14px; align-items: start; }
   .legend { font-size: 12px; }
   .chart { max-height: 220px; .grid { stroke: $line; stroke-width: 1; } .series { stroke-width: 2; } .axis { font-size: 11px; } }

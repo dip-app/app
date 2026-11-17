@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { type CompanyInsights, type InsightsSection, type Role, can } from "@/lib/adminTypes";
 import {
   chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, shortDay,
@@ -60,6 +60,11 @@ export function StatTiles({ insights, role }: { insights: CompanyInsights; role:
         : <StatTile unavailable={e} label="Events completed" value={formatCount(events.completed)} note={`${formatCount(events.cancelled)} canceled`} />}
     </section>
   );
+}
+
+/** The loading page: skeleton tiles and whatever else is ready (the Interests card), stacked in the same `.overview` grid as the loaded page so every section keeps one gap. */
+export function OverviewLoading({ children }: { children?: ReactNode }) {
+  return <div className="overview"><StatTilesSkeleton />{children}</div>;
 }
 
 export function StatTilesSkeleton() {
@@ -242,7 +247,7 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
           {members.map((member, index) => (
             <li key={member.userId}>
               <span className="rank" aria-hidden>{index + 1}</span>
-              <div className="rank-main person"><Avatar name={member.displayName} /><Link href={`/members/detail/?id=${encodeURIComponent(member.userId)}`} className="rank-title">{member.displayName}</Link></div>
+              <div className="rank-main person"><Avatar name={member.displayName} userId={member.userId} photoURL={member.photoURL} avatarId={member.avatarId} /><Link href={`/members/detail/?id=${encodeURIComponent(member.userId)}`} className="rank-title">{member.displayName}</Link></div>
               <span className="rank-value"><strong>{formatCount(member.pointsBalance)}</strong><span className="muted"> pts</span></span>
             </li>
           ))}

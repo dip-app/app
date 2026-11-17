@@ -113,7 +113,7 @@ function Attendees() {
               <ul className="pick-list">
                 {candidates.map((m) => (
                   <li key={m.id}>
-                    <Avatar name={m.displayName} photoURL={m.photoURL} avatarId={m.avatarId} />
+                    <Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} />
                     <span className="grow"><strong>{m.displayName}</strong><span className="muted"> {m.email}</span></span>
                     <button className="pill-btn dark small" onClick={() => { setCandidate(m); setNotify(true); }}>Add</button>
                   </li>
@@ -140,7 +140,7 @@ function Attendees() {
             <tbody>
               {shown.map((a) => (
                 <tr key={a.memberId}>
-                  <th scope="row"><span className="person"><Avatar name={a.name} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></th>
+                  <th scope="row"><span className="person"><Avatar name={a.name} userId={a.memberId} photoURL={a.photoURL} avatarId={a.avatarId} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></th>
                   <td data-label="Department">{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
                   <td data-label="RSVP">{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>Added by staff</Info></>}</td>
                   <td data-label="Attendance">

@@ -271,7 +271,7 @@ function Review() {
                 {items.map((item) => (
                   <li key={item.id}>
                     <button className="queue-item" aria-current={item.id === selectedId ? "true" : undefined} onClick={() => { setSelectedId(item.id); detail.current?.scrollIntoView?.({ block: "nearest" }); }}>
-                      <Avatar name={item.userName} />
+                      <Avatar name={item.userName} userId={item.userId} photoURL={item.photoURL} avatarId={item.avatarId} />
                       <span className="queue-text">
                         <strong>{item.userName}</strong>
                         <span className="muted">{item.progress} of {theme?.goal ?? "?"} {theme?.goalUnit ?? ""} · {formatDateTime(item.updatedAt)}</span>
@@ -287,7 +287,7 @@ function Review() {
             {selected && theme && (
               <article className="review-detail panel" ref={detail} aria-label={`Submission from ${selected.userName}`}>
                 <div className="review-head">
-                  <div className="person big"><Avatar name={selected.userName} /><div><h2>{selected.userName}</h2><p className="muted">Submitted {formatDateTime(selected.createdAt)}{selected.updatedAt !== selected.createdAt ? `, updated ${formatDateTime(selected.updatedAt)}` : ""}</p></div></div>
+                  <div className="person big"><Avatar name={selected.userName} userId={selected.userId} photoURL={selected.photoURL} avatarId={selected.avatarId} /><div><h2>{selected.userName}</h2><p className="muted">Submitted {formatDateTime(selected.createdAt)}{selected.updatedAt !== selected.createdAt ? `, updated ${formatDateTime(selected.updatedAt)}` : ""}</p></div></div>
                   <div className="review-pills">
                     <Info tone={selected.status === "approved" ? "ok" : selected.status === "rejected" ? "warn" : undefined}>{STATUS_LABEL[selected.status]}</Info>
                     {selected.attempt > 1 && <Info>Attempt {selected.attempt}</Info>}

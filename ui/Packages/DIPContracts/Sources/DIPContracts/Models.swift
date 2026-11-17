@@ -1203,6 +1203,8 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var source: String
     public var importJobId: String?
     public var claimedBy: String?
+    public var memberPhotoURL: String?
+    public var memberAvatarId: String?
     public var claimedAt: Date?
     public var invitedBy: String?
     public var createdAt: Date
@@ -1213,7 +1215,7 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var lastResentAt: Date?
     public var lastResentBy: String?
 
-    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil) {
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, memberPhotoURL: String? = nil, memberAvatarId: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.email = email
@@ -1229,6 +1231,8 @@ public struct RosterEntry: Codable, Equatable, Sendable {
         self.source = source
         self.importJobId = importJobId
         self.claimedBy = claimedBy
+        self.memberPhotoURL = memberPhotoURL
+        self.memberAvatarId = memberAvatarId
         self.claimedAt = claimedAt
         self.invitedBy = invitedBy
         self.createdAt = createdAt
@@ -2286,6 +2290,8 @@ public struct AdminBugReport: Codable, Equatable, Sendable {
     public var createdAt: Date
     public var reporterId: String
     public var reporterName: String
+    public var reporterPhotoURL: String?
+    public var reporterAvatarId: String?
     public var appVersion: String?
     public var hasScreenshot: Bool
     public var status: String
@@ -2293,7 +2299,7 @@ public struct AdminBugReport: Codable, Equatable, Sendable {
     public var assigneeId: String?
     public var assigneeName: String?
 
-    public init(id: String, category: String, description: String, source: String, screen: String, createdAt: Date, reporterId: String, reporterName: String, appVersion: String? = nil, hasScreenshot: Bool, status: String, hasNote: Bool, assigneeId: String? = nil, assigneeName: String? = nil) {
+    public init(id: String, category: String, description: String, source: String, screen: String, createdAt: Date, reporterId: String, reporterName: String, reporterPhotoURL: String? = nil, reporterAvatarId: String? = nil, appVersion: String? = nil, hasScreenshot: Bool, status: String, hasNote: Bool, assigneeId: String? = nil, assigneeName: String? = nil) {
         self.id = id
         self.category = category
         self.description = description
@@ -2302,6 +2308,8 @@ public struct AdminBugReport: Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.reporterId = reporterId
         self.reporterName = reporterName
+        self.reporterPhotoURL = reporterPhotoURL
+        self.reporterAvatarId = reporterAvatarId
         self.appVersion = appVersion
         self.hasScreenshot = hasScreenshot
         self.status = status
@@ -2482,11 +2490,15 @@ public struct InsightsTopEvent: Codable, Equatable, Sendable {
 public struct InsightsTopMember: Codable, Equatable, Sendable {
     public var userId: String
     public var displayName: String
+    public var photoURL: String?
+    public var avatarId: String?
     public var pointsBalance: Int
 
-    public init(userId: String, displayName: String, pointsBalance: Int) {
+    public init(userId: String, displayName: String, photoURL: String? = nil, avatarId: String? = nil, pointsBalance: Int) {
         self.userId = userId
         self.displayName = displayName
+        self.photoURL = photoURL
+        self.avatarId = avatarId
         self.pointsBalance = pointsBalance
     }
 }
