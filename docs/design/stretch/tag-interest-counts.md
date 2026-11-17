@@ -1,6 +1,6 @@
 # Tag interest counts (stretch S3)
 
-Status: in progress on `feature/stretch-tag-counts` (TAG-1 to TAG-4 and TAG-6 built and emulator-tested; nothing deployed). See [Decisions](#decisions). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Feeds [AI event creation](ai-event-creation.md) and the organizer tag picker.
+Status: built (TAG-1 to TAG-6, PRs #230, #234 and the portal PR); emulator- and portal-tested, nothing deployed and no backfill run. See [Decisions](#decisions). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Feeds [AI event creation](ai-event-creation.md) and the organizer tag picker.
 
 ## Goal and user stories
 
@@ -132,6 +132,8 @@ The owner has not answered the open questions yet; these defaults were taken fro
 8. **AI summary (TAG-6).** `getInterestSummary(deps, companyId)` in `gcp/functions/src/modules/tags` returns `top` and `thin` tags; counts under 5 are returned as `memberCount: null, suppressed: true`, and suppressed tags are ordered by name only so their order leaks nothing.
 
 9. **Reconcile versus trigger race.** `reconcileTagStats` (daily 03:30 UTC) skips stat documents written in the last 10 minutes (a trigger may be in flight), never creates zero documents, deletes stat documents for tags no longer in the catalog, and writes with a last-update-time precondition so an increment landing between the read and the write is reported as `skippedConcurrent` instead of being overwritten. A trigger delivered after its user write was already counted can still double count once; the next night's run corrects it. The backfill script uses the same code with `force` (no recent-window skip). Safety guards: an empty tag catalog aborts the company (a failed or wiped catalog read must not delete every stat doc), a plan that deletes more than half of a company's stat docs is refused with a warning unless `allowMassDelete` (`--allow-mass-delete` on the script; `force` does not lift it), and counts are clamped to zero because the two non-atomic count queries can briefly disagree. One failing company is logged with its id and skipped; the nightly job fails (and retries) only if every company failed. Companies run four at a time.
+
+10. **Portal read path.** The portal reads `companies/{c}/tagStats` directly (organizer rules, `limit(200)`), not through `getCompanyInsightsV1`. The Overview Interests card shows count and share of active members; event form chips show counts only once the company has stat documents; a permission denial hides counts.
 
 ## Sources
 
