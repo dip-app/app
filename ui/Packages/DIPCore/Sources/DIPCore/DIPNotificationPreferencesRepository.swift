@@ -4,8 +4,16 @@ import Foundation
 /// the document to the signed-in member; callers never supply a uid. A missing document loads as the registry defaults.
 public protocol DIPNotificationPreferencesRepository: Sendable {
     func load() async throws -> DIPNotificationPreferences
-    /// Writes the whole document (every offered switch resolved) with a server `updatedAt`.
-    func save(_ preferences: DIPNotificationPreferences) async throws
+    /// Writes only the given channel's map (every offered switch of that channel resolved) with a server `updatedAt`,
+    /// so a push save never overwrites email switches and the reverse.
+    func save(_ preferences: DIPNotificationPreferences, on channel: DIPNotificationChannel) async throws
+}
+
+extension DIPNotificationPreferencesRepository {
+    /// Push save, kept so existing call sites compile unchanged.
+    public func save(_ preferences: DIPNotificationPreferences) async throws {
+        try await save(preferences, on: .push)
+    }
 }
 
 /// What the settings screen needs to know about the system permission. `@MainActor` because the real adapter talks to

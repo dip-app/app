@@ -12,7 +12,6 @@ export const SAMPLE_CTX: RenderContext = {
   recipientFirstName: "Sam",
   timeZone: "America/New_York",
   unsubscribeURL: "https://letsdip.work/u/sample-token",
-  postalAddress: "123 Example Street, Pittsburgh, PA 15213 (placeholder)",
 };
 
 const EVENT = {
@@ -21,6 +20,7 @@ const EVENT = {
   startTime: "2026-11-20T23:30:00Z",
   endTime: "2026-11-21T01:00:00Z",
   venueName: "Frick Park, Hot Metal Street entrance",
+  venueAddress: "Hot Metal St, Pittsburgh, PA",
   coverImageURL: "catalog://default/hiking",
 };
 
@@ -80,6 +80,41 @@ export const PREVIEW_CASES: PreviewCase[] = [
     startTime: "2026-11-20T17:00:00Z",
     endTime: "2026-11-20T18:00:00Z",
     changedFields: ["time"],
+  }),
+  make("event_changed_time", "event_changed", {
+    ...EVENT,
+    changedFields: ["time"],
+    previous: { startTime: "2026-11-20T22:30:00Z", endTime: "2026-11-21T00:00:00Z" },
+  }),
+  make("event_changed_date", "event_changed", {
+    ...EVENT,
+    changedFields: ["time"],
+    previous: { startTime: "2026-11-19T23:30:00Z", endTime: "2026-11-20T01:00:00Z" },
+  }),
+  make("event_changed_venue", "event_changed", {
+    ...EVENT,
+    changedFields: ["venue"],
+    previous: { venueName: "Schenley Park, Bartlett Street entrance" },
+  }),
+  make("event_changed_address", "event_changed", {
+    ...EVENT,
+    changedFields: ["venue"],
+    previous: { venueAddress: "Beechwood Blvd, Pittsburgh, PA" },
+  }),
+  make("event_changed_both", "event_changed", {
+    ...EVENT,
+    changedFields: ["time", "venue"],
+    previous: {
+      startTime: "2026-11-20T22:30:00Z",
+      endTime: "2026-11-21T00:00:00Z",
+      venueName: "Schenley Park, Bartlett Street entrance",
+      venueAddress: "Bartlett St, Pittsburgh, PA",
+    },
+  }),
+  make("event_changed_title", "event_changed", {
+    ...EVENT,
+    changedFields: ["title"],
+    previous: { eventTitle: "Evening walk at Frick Park" },
   }),
   make("invite_received_with_pixel", "invite_received", { ...EVENT, inviterFirstName: "Priya" }, { ...SAMPLE_CTX, openPixelURL: "https://letsdip.work/o/sample-token.gif" }),
 ];

@@ -93,7 +93,7 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date): Promise<
 
   if (doc.notAfter !== null && now.getTime() > doc.notAfter.getTime()) return finish("expired", { reason: "expired" });
   if (!deps.config.enabled) return skip("disabled");
-  if (deps.config.postalAddress.trim().length === 0 || Buffer.byteLength(deps.config.unsubscribeKey, "utf8") < MIN_KEY_BYTES) {
+  if (Buffer.byteLength(deps.config.unsubscribeKey, "utf8") < MIN_KEY_BYTES) {
     return skip("config_incomplete");
   }
   const variables = deps.renderer.validate(doc.template, doc.variables);
@@ -125,7 +125,6 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date): Promise<
     recipientFirstName: firstName(recipient.displayName),
     timeZone: company.timeZone ?? deps.config.defaultTimeZone,
     unsubscribeURL,
-    postalAddress: deps.config.postalAddress,
     openPixelURL: deps.config.openTracking
       ? `${deps.config.publicOrigin}/o/${signOpenToken(deps.config.unsubscribeKey, doc.id, nowSeconds)}.gif`
       : null,

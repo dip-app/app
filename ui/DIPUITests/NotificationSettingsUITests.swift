@@ -55,6 +55,21 @@ final class NotificationSettingsUITests: XCTestCase {
         XCTAssertFalse(chat.isEnabled)
     }
 
+    func testEmailSectionShowsAndKeepsReminderChoiceEvenWhenPushIsDenied() {
+        let app = launch(permission: "denied")
+        openSettings(app)
+        let reminders = app.switches["notificationSettings.email.toggle.reminders"]
+        XCTAssertTrue(reminders.waitForExistence(timeout: 10))
+        XCTAssertTrue(reminders.isEnabled, "email does not depend on push permission")
+        XCTAssertEqual(reminders.value as? String, "0", "email reminders default to off")
+        XCTAssertTrue(app.switches["notificationSettings.email.toggle.invites"].exists)
+        XCTAssertFalse(app.switches["notificationSettings.email.toggle.chat"].exists)
+        XCTAssertFalse(app.switches["notificationSettings.email.toggle.social"].exists)
+        XCTAssertFalse(app.switches["notificationSettings.email.toggle.discovery"].exists)
+        reminders.tap()
+        XCTAssertEqual(reminders.value as? String, "1")
+    }
+
     func testFailedSaveRevertsTheSwitchAndShowsAnError() {
         let app = launch(permission: "authorized", extra: ["--notification-settings=save-failed"])
         openSettings(app)

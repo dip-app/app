@@ -92,7 +92,7 @@ function world(overrides: Partial<SendDeps["config"]> = {}): World {
     suppressions: { isSuppressed: async (h) => w.suppressed.has(h), suppress: async (h) => { w.suppressWrites.push(h); } },
     caps, preferences, provider: w.provider, renderer,
     clock: { now: () => w.clockNow },
-    config: { enabled: true, unsubscribeKey: KEY, postalAddress: "1 Main St", defaultTimeZone: "UTC", publicOrigin: "https://letsdip.work", openTracking: false, ...overrides },
+    config: { enabled: true, unsubscribeKey: KEY, defaultTimeZone: "UTC", publicOrigin: "https://letsdip.work", openTracking: false, ...overrides },
     log: (event, fields) => { w.logs.push(`${event} ${JSON.stringify(fields)}`); },
   };
   return w;
@@ -163,7 +163,6 @@ describe("sendOutboxEmail", () => {
 
   const skipCases: Array<[string, (w: World) => void, string, Partial<SendDeps["config"]>?]> = [
     ["disabled", () => undefined, "disabled", { enabled: false }],
-    ["config_incomplete address", () => undefined, "config_incomplete", { postalAddress: "  " }],
     ["config_incomplete key", () => undefined, "config_incomplete", { unsubscribeKey: "short" }],
     ["company missing", (w) => { w.company = null; }, "company_disabled"],
     ["company disabled", (w) => { w.company = { enabled: false, dailyCap: 5, timeZone: null }; }, "company_disabled"],

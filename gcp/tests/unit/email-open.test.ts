@@ -129,7 +129,7 @@ describe("sender open pixel", () => {
       caps: { consume: async () => "ok" },
       preferences: { getEmailMap: async () => null, disable: async () => true },
       clock: { now: () => NOW },
-      config: { enabled: true, unsubscribeKey: KEY, postalAddress: "1 Main St", defaultTimeZone: "UTC", publicOrigin: "https://letsdip.work", openTracking },
+      config: { enabled: true, unsubscribeKey: KEY, defaultTimeZone: "UTC", publicOrigin: "https://letsdip.work", openTracking },
       log: () => {},
     };
     await sendOutboxEmail(deps, ID);

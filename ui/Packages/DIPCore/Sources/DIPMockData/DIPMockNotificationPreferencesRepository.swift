@@ -19,6 +19,8 @@ public actor DIPMockNotificationPreferencesRepository: DIPNotificationPreference
     private var stored: DIPNotificationPreferences
     private var behavior: Behavior
     public private(set) var saves: [DIPNotificationPreferences] = []
+    /// The channel each entry of `saves` wrote, in the same order.
+    public private(set) var savedChannels: [DIPNotificationChannel] = []
 
     public init(preferences: DIPNotificationPreferences = .defaults, behavior: Behavior = Behavior()) {
         self.stored = preferences; self.behavior = behavior
@@ -30,11 +32,17 @@ public actor DIPMockNotificationPreferencesRepository: DIPNotificationPreference
         return stored
     }
 
-    public func save(_ preferences: DIPNotificationPreferences) async throws {
+    public func save(_ preferences: DIPNotificationPreferences, on channel: DIPNotificationChannel) async throws {
         if behavior.latency > .zero { try await Task.sleep(for: behavior.latency) }
         if behavior.failingSaves > 0 { behavior.failingSaves -= 1; throw Failure() }
-        stored = preferences
+        // Like the merge write: only this channel's switches change, the other channel keeps its stored state.
+        var merged = stored
+        for category in DIPNotificationCategory.offered(on: channel) {
+            merged = merged.setting(category, on: channel, to: preferences.isEnabled(category, on: channel))
+        }
+        stored = merged
         saves.append(preferences)
+        savedChannels.append(channel)
     }
 
     public func setBehavior(_ behavior: Behavior) { self.behavior = behavior }
