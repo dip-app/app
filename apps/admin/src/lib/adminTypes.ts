@@ -118,6 +118,9 @@ export interface RosterRow {
   /** invited: no account yet; active/deactivated: the member exists; revoked: invite withdrawn. */
   state: "invited" | "active" | "deactivated" | "revoked";
   memberId?: string;
+  /** The claiming member's stored photo and avatar id (the server joins them for claimed entries only); absent for invited people. */
+  photoURL?: string;
+  avatarId?: string;
   invitedAt: string;
   /** How many times an admin resent the invite message, and when last. */
   resendCount?: number;
@@ -184,6 +187,9 @@ export interface AlbumComment {
 export interface Attendee {
   memberId: string;
   name: string;
+  /** From the RSVP profile snapshot or the member list; either may be empty (real accounts start with neither). */
+  photoURL?: string;
+  avatarId?: string;
   email: string;
   department: string;
   jobTitle: string;
@@ -304,6 +310,8 @@ export interface Submission {
   challengeId: string;
   userId: string;
   userName: string;
+  photoURL?: string;
+  avatarId?: string;
   caption: string;
   progress: number;
   status: SubmissionStatus;
@@ -339,7 +347,7 @@ export interface CompanyInsights {
   content: { photosLast30Days: number; commentsLast30Days: number };
   challenges: { pendingReviews: number; current: InsightsTheme | null };
   /** Admins only; null for organizers (the backend never sends it to them). */
-  points: { issuedLast30Days: number; topMembers: { userId: string; displayName: string; pointsBalance: number }[] } | null;
+  points: { issuedLast30Days: number; topMembers: { userId: string; displayName: string; pointsBalance: number; photoURL?: string; avatarId?: string }[] } | null;
   /** The last 30 UTC days, oldest first. */
   activity: InsightsDay[];
   /** Sections whose numbers could not be computed this time: show "unavailable", never their placeholder zeros. */
@@ -365,6 +373,8 @@ export interface BugReport {
   createdAt: string;
   reporterId: string;
   reporterName: string;
+  reporterPhotoURL?: string;
+  reporterAvatarId?: string;
   appVersion?: string;
   hasScreenshot: boolean;
   status: BugStatus;

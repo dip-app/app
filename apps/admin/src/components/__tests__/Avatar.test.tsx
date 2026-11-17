@@ -69,3 +69,39 @@ describe("Avatar fallback chain", () => {
     expect(bare.container.querySelector(".avatar")!.getAttribute("aria-hidden")).toBe("true");
   });
 });
+
+describe("Avatar chain: photo, stored avatar, generated avatar, initials", () => {
+  it("real accounts (no photo, no avatar id) get the generated character for their user id, not initials", () => {
+    const { container } = render(<Avatar name="Pat Lee" userId="uid-123" photoURL="" avatarId="" />);
+    expect(container.querySelector("img")).toBeNull();
+    const crew = container.querySelector("svg.avatar.crew")!;
+    expect(crew.getAttribute("data-avatar")).toBe("crew-square-wink-white");
+    expect(crew.getAttribute("aria-hidden")).toBe("true");
+    expect(container.textContent).toBe("");
+  });
+  it("a photo that fails to load falls to the stored avatar, then to the generated one, never straight to initials", () => {
+    const { container } = render(<Avatar name="Pat Lee" userId="uid-123" photoURL={GOOGLE} avatarId="avatar-2" />);
+    fireEvent.error(container.querySelector("img")!);
+    const mascot = container.querySelector("img")!;
+    expect(mascot.getAttribute("src")).toBe("/admin/img/avatars/red.webp");
+    fireEvent.error(mascot);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("svg.crew")!.getAttribute("data-avatar")).toBe("crew-square-wink-white");
+  });
+  it("a failed photo with no stored avatar falls to the generated avatar", () => {
+    const { container } = render(<Avatar name="Pat Lee" userId="member-1" photoURL={GOOGLE} />);
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("svg.crew")!.getAttribute("data-avatar")).toBe("crew-round-calm-yellow");
+  });
+  it("initials only appear when the user id is unknown too", () => {
+    const { container } = render(<Avatar name="Pat Lee" />);
+    expect(container.querySelector("svg")).toBeNull();
+    expect(container.textContent).toBe("PL");
+  });
+  it("sizes the generated avatar like the other stages", () => {
+    const { container } = render(<Avatar name="Pat Lee" userId="u" size={64} />);
+    const crew = container.querySelector("svg.crew")!;
+    expect(crew.getAttribute("width")).toBe("64");
+    expect(crew.getAttribute("data-avatar")).toBe("crew-square-wink-grey");
+  });
+});

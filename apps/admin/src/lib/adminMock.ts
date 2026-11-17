@@ -75,6 +75,8 @@ const LAST = ["Admin", "Member", "Novak", "Chen", "Okafor", "Rivera", "Patel", "
 const MOCK_PHOTOS: Record<number, string> = { 0: "/img/mock-photos/p1.svg", 1: "/img/mock-photos/p2.svg", 2: "/img/mock-photos/p3.svg", 6: "/img/mock-photos/p4.svg", 9: "/img/mock-photos/p5.svg" };
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const isoAgo = (now: Date, days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+/** The stored photo and avatar id a person list carries (empty ones are left out, as the live adapter does). */
+const profileOf = (m: { photoURL?: string; avatarId?: string }) => ({ ...(m.photoURL ? { photoURL: m.photoURL } : {}), ...(m.avatarId ? { avatarId: m.avatarId } : {}) });
 
 export function seedOps(now: Date): OpsState {
   const teams = TEAMS.map((name) => ({ id: `team-${slug(name)}`, name }));
@@ -91,8 +93,8 @@ export function seedOps(now: Date): OpsState {
       displayName: `${first} ${last}`, role, teamIds: [teams[i % 5].id, ...(i % 4 === 0 ? [teams[(i + 2) % 5].id] : [])],
       workLocation: LOCATIONS[i % 4], department: DEPARTMENTS[i % 5], jobTitle: i % 3 === 0 ? "Manager" : "Specialist",
       status: i === 20 ? "deactivated" : "active", pointsBalance: (i * 137) % 900, createdAt: isoAgo(now, 200 - i * 6),
-      avatarId: i % 5 === 4 ? "" : `avatar-${(i % 8) + 1}`, city: LOCATIONS[i % 4], revision: 1,
-      // A few members have a Google photo (local art here so screenshots need no network); i % 5 === 4 have neither photo nor avatar (initials).
+      avatarId: i % 3 === 0 ? `avatar-${(i % 8) + 1}` : "", city: LOCATIONS[i % 4], revision: 1,
+      // A few members have a Google photo (local art here so screenshots need no network); most have neither photo nor avatar, like real accounts (they show the generated character).
       photoURL: MOCK_PHOTOS[i] ?? "",
     };
   });
@@ -109,7 +111,7 @@ export function seedOps(now: Date): OpsState {
   // Everyone who signed in has a claimed entry, except the last five: they joined before the roster listed everyone (the backfill adds them).
   const claimed = members.filter((m) => m.companyId === "acme").slice(0, -5).map((m): StoredRoster => ({
     companyId: "acme", entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
-    jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt,
+    jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
   }));
   const roster: StoredRoster[] = [...claimed, invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
   const photos: Stored<AlbumPhoto>[] = [];
@@ -172,7 +174,7 @@ function seedBugReports(state: OpsState, now: Date): void {
     const assignee = s.assignee ? admins.find((a) => a.id === s.assignee) : undefined;
     return {
       companyId: "acme", id: `7f3c2a1${i.toString(16)}-0b5d-4c3e-9a41-${String(1000 + i * 37).padStart(12, "0")}`, category: s.cat, description: s.text, source: s.source ?? "shake", screen: s.screen,
-      createdAt: isoAgo(now, 0.05 + i * 0.6), reporterId: who.id, reporterName: who.displayName, appVersion: i % 5 === 4 ? "2.0" : "2.1", hasScreenshot: !!s.shot, status: s.status ?? "new", hasNote: !!s.note,
+      createdAt: isoAgo(now, 0.05 + i * 0.6), reporterId: who.id, reporterName: who.displayName, ...(who.photoURL ? { reporterPhotoURL: who.photoURL } : {}), ...(who.avatarId ? { reporterAvatarId: who.avatarId } : {}), appVersion: i % 5 === 4 ? "2.0" : "2.1", hasScreenshot: !!s.shot, status: s.status ?? "new", hasNote: !!s.note,
       ...(assignee ? { assigneeId: assignee.id, assigneeName: assignee.displayName } : {}),
       reporterEmail: who.email, screenshot: s.shot ? asset(`/img/events/${s.shot}.jpg`) : null, note: s.note ?? "", revision: s.status || s.note ? 1 : 0,
       updatedAt: s.status ? isoAgo(now, 0.2 + i * 0.3) : null, updatedByName: s.status ? "Alex Admin" : null,
@@ -202,7 +204,7 @@ function seedSubmissions(state: OpsState, companyId: string, theme: { id: string
     const kind = i % 7 === 4 ? "rejected" : i % 7 >= 5 ? "approved" : "submitted";
     const at = isoAgo(now, 3 - (i % 3) * 0.7 - i * 0.03);
     state.submissions!.push({
-      companyId, id: `${theme.id}_${m.id}`, challengeId: theme.id, userId: m.id, userName: m.displayName, caption: NOTES[i % NOTES.length], progress: 1 + (i % 3),
+      companyId, id: `${theme.id}_${m.id}`, challengeId: theme.id, userId: m.id, userName: m.displayName, ...profileOf(m), caption: NOTES[i % NOTES.length], progress: 1 + (i % 3),
       status: kind, createdAt: at, updatedAt: at, storagePath: i % 8 === 4 ? null : `companies/${companyId}/challenges/${theme.id}/submissions/${m.id}/0`,
       attempt: i % 9 === 2 ? 2 : 1, reviewedAt: kind === "submitted" ? null : isoAgo(now, 1), reviewNote: kind === "rejected" ? "The photo is too dark to see the activity. Please add a clearer one." : null,
       pointsAwarded: kind === "approved" ? 50 : 0,
@@ -360,7 +362,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       state.attendees[key] = Array.from({ length: Math.min(event.attendeeCount, pool.length) }, (_, i) => {
         const m = pool[(i + offset) % pool.length];
         return {
-          memberId: m.id, name: m.displayName, email: m.email, department: m.department, jobTitle: m.jobTitle,
+          memberId: m.id, name: m.displayName, email: m.email, ...profileOf(m), department: m.department, jobTitle: m.jobTitle,
           rsvpAt: isoAgo(now(), 20 - (i % 10)), checkedIn: past && i % 5 !== 4, addedByAdmin: false,
         };
       });
@@ -440,7 +442,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const full = event.attendeeCount >= event.capacity;
       if (full && !input.capacityOverrideReason) throw new ApiError("resource-exhausted", "This event is full. Add the person anyway with a reason.", {}, "EVENT_FULL");
       if (full) reasonRequired(input.capacityOverrideReason ?? "", "capacityOverrideReason");
-      list.push({ memberId: m.id, name: m.displayName, email: m.email, department: m.department, jobTitle: m.jobTitle, rsvpAt: now().toISOString(), checkedIn: false, addedByAdmin: true });
+      list.push({ memberId: m.id, name: m.displayName, email: m.email, ...profileOf(m), department: m.department, jobTitle: m.jobTitle, rsvpAt: now().toISOString(), checkedIn: false, addedByAdmin: true });
       const result = deps.bumpAttendees(session.companyId, input.eventId, 1, full ? event.attendeeCount + 1 : undefined);
       state.receipts[receiptKey] = m.id;
       log(state, session, {
@@ -631,7 +633,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         if (!dryRun) {
           state.roster.push({
             companyId: session.companyId, entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation,
-            department: m.department, jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt,
+            department: m.department, jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
           });
         }
       }

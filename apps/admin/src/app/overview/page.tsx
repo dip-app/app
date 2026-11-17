@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActivityChart, InterestsCard, PeopleCard, PendingActions, QuietNotice, StatTiles, StatTilesSkeleton, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "@/components/Overview";
+import { ActivityChart, InterestsCard, OverviewLoading, PeopleCard, PendingActions, QuietNotice, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "@/components/Overview";
 import { Shell } from "@/components/Shell";
 import { LoadError } from "@/components/Ui";
 import { useApp } from "@/components/AppProvider";
@@ -54,7 +54,7 @@ export default function OverviewPage() {
   return (
     <Shell title="Overview" subtitle="How your company uses DIP over the last 30 days." requires="insights.view" action={action}>
       {insights.error ? <div className="overview"><LoadError error={insights.error} onRetry={insights.reload} />{interests}</div>
-        : !data ? <><StatTilesSkeleton />{interests}</>
+        : !data ? <OverviewLoading>{interests}</OverviewLoading>
         : (
           <div className="overview">
             {refreshError && <p className="banner error" role="alert">{refreshError}</p>}

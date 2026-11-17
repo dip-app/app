@@ -2,7 +2,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompanyInsights } from "@/lib/adminTypes";
-import { PeopleCard, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "../Overview";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { OverviewLoading, PeopleCard, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "../Overview";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 
@@ -41,5 +43,35 @@ describe("Overview unavailable sections", () => {
     expect(screen.queryByText(/Some sections couldn’t be loaded/)).toBeNull();
     expect(screen.queryByText(/This section is unavailable/)).toBeNull();
     expect(screen.getByText("No events with attendees yet.")).toBeTruthy();
+  });
+});
+
+describe("Overview people and stacking", () => {
+  it("top members use the shared Avatar: photo, stored avatar, then the generated character", () => {
+    const data = insights([]);
+    data.points = { issuedLast30Days: 10, topMembers: [
+      { userId: "uid-123", displayName: "Pat Lee", pointsBalance: 90, photoURL: "https://lh3.googleusercontent.com/a/abc" },
+      { userId: "member-1", displayName: "Sam Roe", pointsBalance: 60, avatarId: "teal" },
+      { userId: "u", displayName: "Kim Fox", pointsBalance: 30 },
+    ] };
+    const { container } = render(<TopMembers insights={data} />);
+    const rows = container.querySelectorAll(".rank-main");
+    expect(rows[0].querySelector("img.avatar.photo")).not.toBeNull();
+    expect(rows[1].querySelector("img.avatar.mascot")!.getAttribute("src")).toBe("/admin/img/avatars/teal.webp");
+    expect(rows[2].querySelector("svg.avatar.crew")!.getAttribute("data-avatar")).toBe("crew-square-wink-grey");
+    expect(container.querySelector(".avatar:not(img):not(svg)")).toBeNull();
+  });
+
+  it("the loading page stacks skeleton tiles and the Interests card inside one .overview grid, like the loaded page", () => {
+    const { container } = render(<OverviewLoading><section className="panel" aria-label="Interests" /></OverviewLoading>);
+    const stack = container.querySelector(".overview")!;
+    expect([...stack.children].map((c) => c.className)).toEqual(["stat-grid", "panel"]);
+  });
+
+  it("the stack has a gap in both style sheets (no flush sections)", () => {
+    const sheet = readFileSync(join(__dirname, "../../styles/_overview.scss"), "utf8");
+    const pro = readFileSync(join(__dirname, "../../styles/pro.scss"), "utf8");
+    expect(sheet).toMatch(/\.overview \{ display: grid; gap: \d+px;/);
+    expect(pro).toMatch(/\.overview \{ gap: \d+px; \.panel, \.notice \{ margin-bottom: 0; \}/);
   });
 });

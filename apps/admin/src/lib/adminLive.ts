@@ -43,7 +43,7 @@ export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
     entryId: id, email: str(d.email), displayName: str(d.displayName), role: roleOf(d.role), teamIds: strings(d.teamIds), workLocation: str(d.workLocation),
     department: str(d.department), jobTitle: str(d.jobTitle), managerEmail: str(d.managerEmail), startDate: str(d.startDate),
     state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
-    ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), invitedAt: iso(d.createdAt),
+    ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), ...(str(d.memberPhotoURL) ? { photoURL: str(d.memberPhotoURL) } : {}), ...(str(d.memberAvatarId) ? { avatarId: str(d.memberAvatarId) } : {}), invitedAt: iso(d.createdAt),
     ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
   };
 }
@@ -108,7 +108,7 @@ const BUG_CATEGORIES: readonly string[] = ["bug", "confusing", "looksWrong", "id
 export function bugReportFromWire(d: DocumentData): BugReport {
   return {
     id: str(d.id), category: (BUG_CATEGORIES.includes(str(d.category)) ? str(d.category) : "unspecified") as BugCategory, description: str(d.description),
-    source: d.source === "profile" ? "profile" : "shake", screen: str(d.screen) || "other", createdAt: iso(d.createdAt), reporterId: str(d.reporterId), reporterName: str(d.reporterName),
+    source: d.source === "profile" ? "profile" : "shake", screen: str(d.screen) || "other", createdAt: iso(d.createdAt), reporterId: str(d.reporterId), reporterName: str(d.reporterName), ...(str(d.reporterPhotoURL) ? { reporterPhotoURL: str(d.reporterPhotoURL) } : {}), ...(str(d.reporterAvatarId) ? { reporterAvatarId: str(d.reporterAvatarId) } : {}),
     ...(str(d.appVersion) ? { appVersion: str(d.appVersion) } : {}), hasScreenshot: d.hasScreenshot === true, status: bugStatus(d.status), hasNote: d.hasNote === true,
     ...(str(d.assigneeId) ? { assigneeId: str(d.assigneeId) } : {}), ...(str(d.assigneeName) ? { assigneeName: str(d.assigneeName) } : {}),
   };
@@ -117,7 +117,7 @@ export function bugReportFromWire(d: DocumentData): BugReport {
 /** A ChallengeSubmission from listChallengeSubmissionsV1 (dates arrive as RFC 3339 strings). */
 export function submissionFromWire(d: DocumentData): Submission {
   return {
-    id: str(d.id), challengeId: str(d.challengeId), userId: str(d.userId), userName: str(d.userName), caption: str(d.caption), progress: Number(d.progress ?? 0),
+    id: str(d.id), challengeId: str(d.challengeId), userId: str(d.userId), userName: str(d.userName), ...(str(d.photoURL) ? { photoURL: str(d.photoURL) } : {}), ...(str(d.userAvatarId) ? { avatarId: str(d.userAvatarId) } : {}), caption: str(d.caption), progress: Number(d.progress ?? 0),
     status: d.status === "approved" ? "approved" : d.status === "rejected" ? "rejected" : "submitted", createdAt: iso(d.createdAt), updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : iso(d.updatedAt), // sent back verbatim as expectedUpdatedAt
     storagePath: typeof d.storagePath === "string" && d.storagePath ? d.storagePath : null, attempt: Number(d.attempt ?? 1),
     reviewedAt: iso(d.reviewedAt) || null, reviewNote: typeof d.reviewNote === "string" ? d.reviewNote : null, pointsAwarded: Number(d.pointsAwarded ?? 0),
@@ -159,7 +159,7 @@ export function insightsFromWire(d: DocumentData): CompanyInsights {
     },
     points: points && {
       issuedLast30Days: num(points.issuedLast30Days),
-      topMembers: list(points.topMembers).map((m) => ({ userId: str(m.userId), displayName: str(m.displayName), pointsBalance: num(m.pointsBalance) })),
+      topMembers: list(points.topMembers).map((m) => ({ userId: str(m.userId), displayName: str(m.displayName), pointsBalance: num(m.pointsBalance), ...(str(m.photoURL) ? { photoURL: str(m.photoURL) } : {}), ...(str(m.avatarId) ? { avatarId: str(m.avatarId) } : {}) })),
     },
     activity: list(d.activity).map((a) => ({ date: str(a.date), rsvps: num(a.rsvps), photos: num(a.photos) })),
     unavailable: INSIGHTS_SECTIONS.filter((s) => Array.isArray(d.unavailable) && d.unavailable.includes(s)),
@@ -272,11 +272,11 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         if (snap.docs.length < 100) break;
       }
       // RSVP snapshots carry no email; join it from the member list (organizers may read it).
-      const emails = new Map((await listMembersAll(session).catch(() => [] as Member[])).map((m) => [m.id, m.email]));
+      const people = new Map((await listMembersAll(session).catch(() => [] as Member[])).map((m) => [m.id, m]));
       return docs.map((d): Attendee => {
         const id = str(d.get("userId")) || d.id;
         return {
-          memberId: id, name: str(d.get("userName")), email: emails.get(id) ?? "", department: str(d.get("userDepartment")),
+          memberId: id, name: str(d.get("userName")), email: people.get(id)?.email ?? "", photoURL: people.get(id)?.photoURL || undefined, avatarId: people.get(id)?.avatarId || str(d.get("userAvatarId")) || undefined, department: str(d.get("userDepartment")),
           jobTitle: str(d.get("userJobTitle")), rsvpAt: iso(d.get("createdAt")), checkedIn: d.get("checkedIn") === true, addedByAdmin: d.get("source") === "admin",
         };
       }).sort((a, b) => a.name.localeCompare(b.name));

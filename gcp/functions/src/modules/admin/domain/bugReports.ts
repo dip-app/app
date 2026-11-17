@@ -35,7 +35,15 @@ export function dayStart(value: string): Date { return new Date(`${value}T00:00:
 export function dayEnd(value: string): Date { return new Date(`${value}T23:59:59.999Z`); }
 export const validDay = (value: string) => validDate(value);
 
-export interface Reporter { name: string; email: string }
+export interface Reporter { name: string; email: string; photoURL?: string; avatarId?: string }
+
+/** The reporter as a report shows them: name, plus the stored photo and avatar id when set (small, same-company users document). */
+export function reporterOf(user: Doc, fallbackName: string): Reporter {
+  const out: Reporter = { name: typeof user.displayName === "string" ? user.displayName : fallbackName, email: "" };
+  if (typeof user.photoURL === "string" && user.photoURL !== "") out.photoURL = user.photoURL.slice(0, 2048);
+  if (typeof user.avatarId === "string" && user.avatarId !== "") out.avatarId = user.avatarId.slice(0, 120);
+  return out;
+}
 
 /** The diagnostics block exactly as the app sent it, restricted to known string fields. */
 export function toDiagnostics(raw: unknown): AdminBugReportDiagnostics | undefined {
@@ -80,6 +88,8 @@ export function toReport(id: string, doc: Doc, reporter: Reporter, triage: Triag
     screen: text(doc.screen, 32) ?? "other", createdAt: doc.createdAt.toISOString(), reporterId: doc.uid, reporterName: reporter.name,
     hasScreenshot: typeof doc.screenshotPath === "string" && doc.screenshotPath !== "", status: triage.status, hasNote: triage.note !== "",
   };
+  if (reporter.photoURL) report.reporterPhotoURL = reporter.photoURL;
+  if (reporter.avatarId) report.reporterAvatarId = reporter.avatarId;
   if (diagnostics?.appVersion) report.appVersion = diagnostics.appVersion;
   if (triage.assigneeId) report.assigneeId = triage.assigneeId;
   if (triage.assigneeName) report.assigneeName = triage.assigneeName;

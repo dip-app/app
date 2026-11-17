@@ -36,7 +36,7 @@ export function AdminOnly({ page, capability, role }: { page: string; capability
         <div className="admin-block">
           <p className="muted">Admins at your company</p>
           <ul className="admin-list">
-            {list.map((a) => <li key={a.id}><Avatar name={a.displayName} /><span><strong>{a.displayName}</strong><br /><span className="muted">{a.email}</span></span></li>)}
+            {list.map((a) => <li key={a.id}><Avatar name={a.displayName} userId={a.id} photoURL={a.photoURL} avatarId={a.avatarId} /><span><strong>{a.displayName}</strong><br /><span className="muted">{a.email}</span></span></li>)}
           </ul>
         </div>
       )}

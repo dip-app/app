@@ -13,7 +13,7 @@ export function scenarioFromSearch(search: string): InsightsScenario {
 }
 
 export interface MockInsightsInput {
-  members: { id: string; displayName: string; status: string; pointsBalance: number }[];
+  members: { id: string; displayName: string; status: string; pointsBalance: number; photoURL?: string; avatarId?: string }[];
   invited: number;
   events: { id: string; title: string; status: string; startTime: string; attendeeCount: number; capacity: number }[];
   photos: number;
@@ -70,7 +70,7 @@ export function buildMockInsights(input: MockInsightsInput, scenario: InsightsSc
     points: role !== "admin" ? null : {
       issuedLast30Days: empty ? 0 : high ? 48_250 : scenario === "low" ? 120 : 3_420,
       topMembers: empty ? [] : [...active].sort((a, b) => b.pointsBalance - a.pointsBalance).slice(0, scenario === "low" ? 1 : 5)
-        .map((m) => ({ userId: m.id, displayName: m.displayName, pointsBalance: high ? m.pointsBalance * 9 : m.pointsBalance })),
+        .map((m) => ({ userId: m.id, displayName: m.displayName, pointsBalance: high ? m.pointsBalance * 9 : m.pointsBalance, ...(m.photoURL ? { photoURL: m.photoURL } : {}), ...(m.avatarId ? { avatarId: m.avatarId } : {}) })),
     },
     activity,
     unavailable: scenario === "partial" ? ["participation", "activity", ...(role === "admin" ? ["points" as const] : [])] : [],

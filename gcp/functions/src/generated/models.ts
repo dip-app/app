@@ -606,6 +606,8 @@ export interface RosterEntry {
   source: "manual" | "import" | "signup";
   importJobId?: string;
   claimedBy?: string;
+  memberPhotoURL?: string;
+  memberAvatarId?: string;
   claimedAt?: string;
   invitedBy?: string;
   createdAt: string;
@@ -1144,6 +1146,8 @@ export interface AdminBugReport {
   createdAt: string;
   reporterId: string;
   reporterName: string;
+  reporterPhotoURL?: string;
+  reporterAvatarId?: string;
   appVersion?: string;
   hasScreenshot: boolean;
   status: "new" | "triaged" | "resolved";
@@ -1239,6 +1243,8 @@ export interface InsightsTopEvent {
 export interface InsightsTopMember {
   userId: string;
   displayName: string;
+  photoURL?: string;
+  avatarId?: string;
   pointsBalance: number;
 }
 

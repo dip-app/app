@@ -144,7 +144,7 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
     <article className="review-detail panel bug-detail" aria-label={`Bug report from ${report.reporterName}`}>
       <button type="button" className="pill-btn gray small to-list" onClick={onBackToList}><span aria-hidden>‹ </span>All reports</button>
       <div className="review-head">
-        <div className="person big"><Avatar name={report.reporterName} /><div><h2>{report.reporterName}</h2><p className="muted">{detail?.reporterEmail || " "}</p></div></div>
+        <div className="person big"><Avatar name={report.reporterName} userId={report.reporterId} photoURL={report.reporterPhotoURL} avatarId={report.reporterAvatarId} /><div><h2>{report.reporterName}</h2><p className="muted">{detail?.reporterEmail || " "}</p></div></div>
         <div className="review-pills">
           <Info>{BUG_CATEGORY_LABEL[report.category]}</Info>
           <Info tone={STATUS_TONE[detail?.report.status ?? report.status]}>{BUG_STATUS_LABEL[detail?.report.status ?? report.status]}</Info>
@@ -319,6 +319,7 @@ function BugReports() {
                     <li key={item.id}>
                       <button className="queue-item bug-item" aria-current={item.id === selected?.id ? "true" : undefined}
                         onClick={() => { setQs({ report: item.id }); detailTop.current?.scrollIntoView?.({ block: "nearest" }); }}>
+                        <Avatar name={item.reporterName} userId={item.reporterId} photoURL={item.reporterPhotoURL} avatarId={item.reporterAvatarId} />
                         <span className="queue-text">
                           <span className="bug-meta"><Info>{BUG_CATEGORY_LABEL[item.category]}</Info><Info tone={STATUS_TONE[item.status]}>{BUG_STATUS_LABEL[item.status]}</Info></span>
                           <span className="bug-snippet">{item.description.trim() || "No description"}</span>
