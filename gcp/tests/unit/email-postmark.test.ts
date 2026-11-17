@@ -96,13 +96,22 @@ describe("PostmarkProvider response mapping", () => {
 });
 
 describe("PostmarkWebhookVerifier", () => {
-  const v = new PostmarkWebhookVerifier("hook", "pa:ss");
-  const auth = { authorization: `Basic ${Buffer.from("hook:pa:ss").toString("base64")}` };
+  const password = "pa:ss-long-enough-for-the-minimum-0001";
+  const v = new PostmarkWebhookVerifier("hook", password);
+  const auth = { authorization: `Basic ${Buffer.from(`hook:${password}`).toString("base64")}` };
   const body = (value: unknown) => Buffer.from(JSON.stringify(value));
 
   test("auth failures are 401", () => {
     for (const headers of [{}, { authorization: "Basic xxx" }, { authorization: `Basic ${Buffer.from("hook:wrong").toString("base64")}` }, { authorization: "" }]) {
       assert.deepEqual(v.parse(headers, body({})), { ok: false, status: 401, reason: "unauthorized" });
+    }
+  });
+
+  test("an unset or weak secret rejects everything, including the matching empty credentials", () => {
+    for (const weak of ["", "short"]) {
+      const verifier = new PostmarkWebhookVerifier("hook", weak);
+      const headers = { authorization: `Basic ${Buffer.from(`hook:${weak}`).toString("base64")}` };
+      assert.deepEqual(verifier.parse(headers, body({ RecordType: "Delivery" })), { ok: false, status: 401, reason: "unauthorized" });
     }
   });
 
