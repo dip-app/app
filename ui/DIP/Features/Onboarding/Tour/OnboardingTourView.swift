@@ -31,6 +31,7 @@ struct OnboardingTourView: View {
     @State private var revealStarted = false
     @State private var stageContentFaded = false
     @State private var barDissolved = false
+    @State private var revealTask: Task<Void, Never>?
 
     private var isResume: Bool { if case .resume = model.entrance { true } else { false } }
     private var reduceMotion: Bool { systemReduceMotion || model.configuration.forceReduceMotion }
@@ -74,8 +75,15 @@ struct OnboardingTourView: View {
         .onChange(of: interests?.announcement) { _, text in
             if let text { AccessibilityNotification.Announcement(text).post() }
         }
-        .accessibilityAction(named: Text(OnboardingCopy.previousStep)) { goBack() }
+        // "Previous step" exists only where Back does, and not while B5's save is in flight.
+        .accessibilityActions {
+            if model.flow.canGoBack && !isSavingInterests { Button(OnboardingCopy.previousStep) { goBack() } }
+        }
+        .onDisappear { revealTask?.cancel(); revealTask = nil }
     }
+
+    /// B5's save is writing: leaving the step now would let the late result finish the wrong step.
+    private var isSavingInterests: Bool { interests?.isSaving == true }
 
     // MARK: Standard layout
 
@@ -219,6 +227,7 @@ struct OnboardingTourView: View {
                 .background(OnboardingTheme.muted, in: Circle())
         }
         .buttonStyle(DIPPressFeedbackStyle())
+        .disabled(isSavingInterests)
         .accessibilityLabel(Text(OnboardingCopy.back))
         .accessibilityIdentifier("onboarding.tour.back")
     }
@@ -258,6 +267,7 @@ struct OnboardingTourView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(isSavingInterests)
         .accessibilityIdentifier("onboarding.tour.skip")
     }
 
@@ -373,10 +383,13 @@ struct OnboardingTourView: View {
         }
         withAnimation(.easeOut(duration: OnboardingHandoff.stageFadeDuration / speed)
             .delay(OnboardingHandoff.stageFadeAt / speed)) { stageContentFaded = true }
-        Task { @MainActor in
+        revealTask?.cancel()
+        revealTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(OnboardingHandoff.windowAt / speed))
+            guard !Task.isCancelled else { return }
             withAnimation(motion(OnboardingMotion.reveal)) { revealStarted = true }
             try? await Task.sleep(for: .seconds((OnboardingHandoff.barAt - OnboardingHandoff.windowAt) / speed))
+            guard !Task.isCancelled else { return }
             if surface.barTreatment == .dissolveToTabs {
                 withAnimation(DIPMotion.navigation(reduceMotion: false).speed(speed)) { barDissolved = true }
             }
@@ -424,10 +437,12 @@ struct OnboardingTourView: View {
     }
 
     private func goBack() {
+        guard !isSavingInterests else { return }
         withAnimation(motion(OnboardingMotion.stage)) { model.back() }
     }
 
     private func skip() {
+        guard !isSavingInterests else { return }
         withAnimation(motion(OnboardingMotion.stage)) { model.skip() }
     }
 

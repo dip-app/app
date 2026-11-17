@@ -44,22 +44,38 @@ public final class DIPNotificationSettingsModel {
     public private(set) var saveError: String?
 
     @ObservationIgnored private let repository: any DIPNotificationPreferencesRepository
-    @ObservationIgnored private let permission: any DIPNotificationPermissionProviding
+    /// nil when the push client is off in this build: the screen then offers email only.
+    @ObservationIgnored private let permission: (any DIPNotificationPermissionProviding)?
     @ObservationIgnored private var saveChain: Task<Void, Never>?
+    /// Counts every accepted toggle, and the saves not finished yet; `load()` uses both to avoid clobbering newer state.
+    @ObservationIgnored private var edits = 0
+    @ObservationIgnored private var inFlightSaves = 0
     @ObservationIgnored private var failedChange: (category: DIPNotificationCategory, channel: DIPNotificationChannel, value: Bool)?
 
-    public init(repository: any DIPNotificationPreferencesRepository, permission: any DIPNotificationPermissionProviding) {
+    /// - Parameter permission: the iOS permission seam; pass nil when push is unavailable (flag off). Email preferences
+    ///   do not depend on push, so the screen stays reachable and shows the Email section only.
+    public init(repository: any DIPNotificationPreferencesRepository, permission: (any DIPNotificationPermissionProviding)?) {
         self.repository = repository; self.permission = permission
     }
+
+    /// False when the push client is off in this build: no permission row and no Push section.
+    public var isPushAvailable: Bool { permission != nil }
+
+    /// The sections to show, in order.
+    public var sections: [Section] { isPushAvailable ? [.push, .email] : [.email] }
 
     // MARK: Loading
 
     public func load() async {
         // Reopening the screen refreshes quietly; only a first load or a retry shows the loading state.
         if phase != .ready { phase = .loading }
-        authorization = await permission.status()
+        authorization = await permission?.status() ?? .notDetermined
+        let editsAtStart = edits
         do {
-            preferences = try await repository.load()
+            let loaded = try await repository.load()
+            // A switch moved (or is still saving) since this read began: the read predates it and would put the old
+            // value back under the member's finger. Keep the optimistic state; the writes are the newer truth.
+            if edits == editsAtStart, inFlightSaves == 0 { preferences = loaded }
             phase = .ready
         } catch {
             // A quiet refresh that fails keeps what is on screen.
@@ -68,7 +84,7 @@ public final class DIPNotificationSettingsModel {
     }
 
     /// Called when the app returns to the foreground: a permission changed in iOS Settings shows up here.
-    public func refreshPermission() async { authorization = await permission.status() }
+    public func refreshPermission() async { if let permission { authorization = await permission.status() } }
 
     // MARK: Permission (master row)
 
@@ -91,10 +107,11 @@ public final class DIPNotificationSettingsModel {
     }
 
     public var masterAction: MasterAction? {
+        guard isPushAvailable else { return nil }
         switch authorization {
-        case .authorized, .provisional, .ephemeral: nil
-        case .denied: .openSettings
-        case .notDetermined: .turnOn
+        case .authorized, .provisional, .ephemeral: return nil
+        case .denied: return .openSettings
+        case .notDetermined: return .turnOn
         }
     }
 
@@ -108,8 +125,8 @@ public final class DIPNotificationSettingsModel {
 
     public func performMasterAction() async {
         switch masterAction {
-        case .openSettings: permission.openSettings()
-        case .turnOn: authorization = await permission.turnOn()
+        case .openSettings: permission?.openSettings()
+        case .turnOn: if let permission { authorization = await permission.turnOn() }
         case nil: break
         }
     }
@@ -117,7 +134,7 @@ public final class DIPNotificationSettingsModel {
     // MARK: Rows
 
     /// Switches stay visible but cannot change while push is not allowed (the stored choice is untouched).
-    public var areSwitchesEnabled: Bool { phase == .ready && canReceivePush }
+    public var areSwitchesEnabled: Bool { phase == .ready && isPushAvailable && canReceivePush }
 
     /// Email switches do not depend on the iOS push permission; push switches do.
     public func areSwitchesEnabled(in section: Section) -> Bool {
@@ -156,6 +173,8 @@ public final class DIPNotificationSettingsModel {
               preferences.isEnabled(category, on: channel) != value else { return }
         saveError = nil
         failedChange = nil
+        edits += 1
+        inFlightSaves += 1
         preferences = preferences.setting(category, on: channel, to: value)
         let previous = saveChain
         let task = Task { [weak self] in
@@ -175,6 +194,7 @@ public final class DIPNotificationSettingsModel {
     public func dismissSaveError() { saveError = nil; failedChange = nil }
 
     private func persist(_ category: DIPNotificationCategory, on channel: DIPNotificationChannel, from before: Bool, to value: Bool) async {
+        defer { inFlightSaves -= 1 }
         do { try await repository.save(preferences, on: channel) }
         catch {
             // Put only this switch back; other switches the member has since moved keep their state.

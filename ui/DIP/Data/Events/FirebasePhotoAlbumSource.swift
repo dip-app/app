@@ -176,13 +176,10 @@ import Foundation
         uploads.values.forEach { $0.cancel() }; uploads.removeAll()
     }
 
-    /// Completion-based write with a 15 s timeout so an offline comment fails visibly (idempotent on the ID).
+    /// Completion-based write. A write Firestore still has queued after 15 s counts as pending, not failed (it is
+    /// delivered later and is idempotent on the ID); only real errors throw, so an edit-and-resend cannot duplicate it.
     private static func write(_ start: (@escaping (Error?) -> Void) -> Void) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let gate = AlbumWriteGate()
-            start { error in gate.once { if let error { continuation.resume(throwing: error) } else { continuation.resume() } } }
-            Task { try? await Task.sleep(for: .seconds(15)); gate.once { continuation.resume(throwing: AlbumFailure.unavailable) } }
-        }
+        try await FirebaseParticipationSource.write(start)
     }
 
     nonisolated static func md5Base64(_ data: Data) -> String {
@@ -248,10 +245,4 @@ import Foundation
         if error.domain == NSURLErrorDomain { return .unavailable }
         return .unknown
     }
-}
-
-private final class AlbumWriteGate: @unchecked Sendable {
-    private let lock = NSLock()
-    private var done = false
-    func once(_ body: () -> Void) { lock.lock(); defer { lock.unlock() }; guard !done else { return }; done = true; body() }
 }

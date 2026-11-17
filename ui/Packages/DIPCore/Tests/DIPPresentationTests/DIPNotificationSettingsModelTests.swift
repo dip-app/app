@@ -19,6 +19,20 @@ import Testing
     func openSettings() { openSettingsCalls += 1 }
 }
 
+/// A repository whose save waits until the test releases it, to observe the model while a write is in flight.
+private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
+    var stored: DIPNotificationPreferences = .defaults
+    private var waiting: CheckedContinuation<Void, Never>?
+    private(set) var saveStarted = false
+    func load() async throws -> DIPNotificationPreferences { stored }
+    func save(_ preferences: DIPNotificationPreferences, on channel: DIPNotificationChannel) async throws {
+        saveStarted = true
+        await withCheckedContinuation { waiting = $0 }
+        stored = preferences
+    }
+    func release() { waiting?.resume(); waiting = nil }
+}
+
 @MainActor @Suite struct DIPNotificationSettingsModelTests {
     private func loaded(
         _ authorization: DIPPushAuthorization = .authorized,
@@ -91,9 +105,10 @@ import Testing
 
     @Test func failureOnlyRevertsItsOwnSwitch() async {
         let (model, _, _) = await loaded(behavior: .init(failingSaves: 1))
-        async let first: Void = model.toggle(.chat, to: false)
-        async let second: Void = model.toggle(.social, to: true)
-        _ = await (first, second)
+        // Main-actor tasks start in the order they were created, so the first save is always chat's (the one that fails).
+        let first = Task { await model.toggle(.chat, to: false) }
+        let second = Task { await model.toggle(.social, to: true) }
+        await first.value; await second.value
         #expect(model.pushRows.first { $0.category == .chat }?.isOn == true)
         #expect(model.pushRows.first { $0.category == .social }?.isOn == true)
     }
@@ -211,6 +226,48 @@ import Testing
         await model.retryFailedChange()
         #expect(model.emailRows.first { $0.category == .challenges }?.isOn == false)
         #expect(model.saveError == nil)
+        #expect(await repository.savedChannels == [.email])
+    }
+
+    @Test func reloadDuringAnInFlightSaveKeepsTheOptimisticSwitch() async {
+        let repository = GatedPreferencesRepository()
+        let model = DIPNotificationSettingsModel(repository: repository, permission: FakePermission(.authorized))
+        await model.load()
+        let toggle = Task { await model.toggle(.chat, to: false) }
+        while await !repository.saveStarted { await Task.yield() }
+        await model.load()                                        // the screen reappears while the write is queued
+        #expect(model.pushRows.first { $0.category == .chat }?.isOn == false, "A stale read must not undo the tap")
+        await repository.release()
+        await toggle.value
+        #expect(model.pushRows.first { $0.category == .chat }?.isOn == false)
+        #expect(model.saveError == nil)
+        await model.load()                                        // settled: the stored value is authoritative again
+        #expect(model.pushRows.first { $0.category == .chat }?.isOn == false)
+    }
+
+    @Test func pushAndEmailFailuresAreIndependent() async {
+        let (model, _, _) = await loaded(behavior: .init(failingSaves: 1))
+        await model.toggle(.invites, on: .push, to: false)        // fails and reverts
+        #expect(model.pushRows.first { $0.category == .invites }?.isOn == true)
+        #expect(model.saveError != nil)
+        await model.toggle(.invites, on: .email, to: false)       // a different channel still saves
+        #expect(model.emailRows.first { $0.category == .invites }?.isOn == false)
+        #expect(model.pushRows.first { $0.category == .invites }?.isOn == true, "The failed push switch stays reverted")
+        #expect(model.saveError == nil)
+    }
+
+    @Test func withoutThePushClientOnlyEmailIsOfferedAndStillSaves() async {
+        let repository = DIPMockNotificationPreferencesRepository(preferences: .defaults, behavior: .init())
+        let model = DIPNotificationSettingsModel(repository: repository, permission: nil)
+        await model.load()
+        #expect(model.phase == .ready)
+        #expect(!model.isPushAvailable)
+        #expect(model.sections == [.email])
+        #expect(model.masterAction == nil)
+        #expect(!model.areSwitchesEnabled(in: .push))
+        #expect(model.areSwitchesEnabled(in: .email))
+        await model.toggle(.invites, on: .email, to: false)
+        #expect(model.emailRows.first { $0.category == .invites }?.isOn == false)
         #expect(await repository.savedChannels == [.email])
     }
 }

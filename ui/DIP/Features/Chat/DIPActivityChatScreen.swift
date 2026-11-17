@@ -182,7 +182,7 @@ struct DIPActivityChatScreen: View {
     private var composer: some View {
         DIPMessageComposer(
             text: $draft, placeholder: "Message", isSending: isSending,
-            errorMessage: sendError, identifierPrefix: "event.chat", onSend: send,
+            errorMessage: sendError, identifierPrefix: "event.chat", maximumLength: Self.maximumLength, onSend: send,
             onFocusChange: { composerFocused = $0 }
         )
         .onChange(of: draft) { _, _ in sendError = nil }
@@ -208,6 +208,7 @@ struct DIPActivityChatScreen: View {
         retryIntent = intent
         sendError = nil
         isSending = true
+        DIPHaptics.commit()
         Task { @MainActor in
             defer { isSending = false }
             do {

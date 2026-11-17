@@ -48,9 +48,10 @@ struct DIPNotificationSettingsScreen: View {
             DIPEmptyState(screen: "notification-settings-error", title: "Couldn’t load settings", message: message, faces: 3,
                           actionTitle: "Try again", action: { DIPHaptics.select(); Task { await model.load() } })
         case .ready:
-            master
+            // Without the push client (flag off) only the Email section exists: email does not depend on push.
+            if model.isPushAvailable { master }
             if let error = model.saveError { saveError(error) }
-            ForEach(DIPNotificationSettingsModel.Section.allCases, id: \.self) { section in
+            ForEach(model.sections, id: \.self) { section in
                 switches(section)
             }
             perActivityCard
@@ -124,7 +125,12 @@ struct DIPNotificationSettingsScreen: View {
     private func toggleRow(_ row: DIPNotificationSettingsModel.Row, channel: DIPNotificationChannel, enabled: Bool) -> some View {
         Toggle(isOn: Binding(
             get: { row.isOn },
-            set: { value in DIPHaptics.select(); Task { await model.toggle(row.category, on: channel, to: value) } })
+            set: { value in
+                // A haptic only for a change that really happens (the model ignores no-ops and disabled switches).
+                guard value != row.isOn, enabled else { return }
+                DIPHaptics.select()
+                Task { await model.toggle(row.category, on: channel, to: value) }
+            })
         ) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.title)
@@ -153,9 +159,14 @@ struct DIPNotificationSettingsScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             InviteNotice(text: text, identifier: "notificationSettings.error")
             HStack(spacing: 16) {
-                Button("Try again") { DIPHaptics.select(); Task { await model.retryFailedChange() } }
+                // 44 pt hit areas; the text keeps its look.
+                Button("Try again") { DIPHaptics.commit(); Task { await model.retryFailedChange() } }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                     .accessibilityIdentifier("notificationSettings.error.retry")
                 Button("Dismiss") { model.dismissSaveError() }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                     .accessibilityIdentifier("notificationSettings.error.dismiss")
             }
             .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))

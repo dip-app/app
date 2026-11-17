@@ -82,28 +82,43 @@ struct DIPMemberHome: View {
         self.notificationsFactory = notificationsFactory
         self.notificationPreferencesFactory = notificationPreferencesFactory
         self.pushPermission = pushPermission
-        _liveNotifications = State(initialValue: eventReadFactory == nil ? nil : notificationsFactory?(context))
-        _liveNotificationPreferences = State(initialValue: eventReadFactory == nil ? nil : notificationPreferencesFactory?(context))
-        _liveInvites = State(initialValue: eventReadFactory == nil ? nil : invitesFactory?(context))
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
         self.onSignOut = onSignOut
-        var calendarModel = DIPCalendarModel.live(uid: context.uid)
-        #if DEBUG
-        if mockSnapshot != nil, let fake = DIPCalendarModel.fake(uid: context.uid) { calendarModel = fake }
-        #endif
-        _calendar = State(initialValue: calendarModel)
-        let editor = ProfileEditor(context: context, repository: repository)
-        _editor = State(initialValue: editor)
-        _catalog = State(initialValue: InterestCatalog(repository: repository))
-        if let onboarding, onboarding.prepare(uid: context.uid) {
-            _tour = State(initialValue: OnboardingTourModel(
-                mode: .firstRun, uid: context.uid, store: onboarding.store, configuration: onboarding.configuration,
-                announce: { AccessibilityNotification.Announcement($0).post() }))
-            _tourInterests = State(initialValue: OnboardingInterestsModel(editor: editor, uid: context.uid))
+        // SwiftUI re-runs this init on every parent update. Everything with side effects (the calendar's observers, the
+        // tour's stored defaults, live repositories) is built once per account scope and reused until the home goes away.
+        let scope = HomeScope.obtain(context: context) {
+            let live = eventReadFactory != nil
+            var calendarModel = DIPCalendarModel.live(uid: context.uid)
+            #if DEBUG
+            if mockSnapshot != nil, let fake = DIPCalendarModel.fake(uid: context.uid) { calendarModel = fake }
+            #endif
+            let editor = ProfileEditor(context: context, repository: repository)
+            var tour: OnboardingTourModel?
+            var tourInterests: OnboardingInterestsModel?
+            if let onboarding, onboarding.prepare(uid: context.uid) {
+                tour = OnboardingTourModel(
+                    mode: .firstRun, uid: context.uid, store: onboarding.store, configuration: onboarding.configuration,
+                    announce: { AccessibilityNotification.Announcement($0).post() })
+                tourInterests = OnboardingInterestsModel(editor: editor, uid: context.uid)
+            }
+            return HomeScope(
+                editor: editor, catalog: InterestCatalog(repository: repository), calendar: calendarModel,
+                prototypeRepository: DIPMockRepository(initialSnapshot: MemberProfileBridge.seed(
+                    context: context, oauthPhotoURL: oauthPhotoURL, base: mockSnapshot ?? DIPMockFixtures.reference)),
+                notifications: live ? notificationsFactory?(context) : nil,
+                notificationPreferences: live ? notificationPreferencesFactory?(context) : nil,
+                invites: live ? invitesFactory?(context) : nil, tour: tour, tourInterests: tourInterests)
         }
-        _prototypeRepository = State(initialValue: DIPMockRepository(
-            initialSnapshot: MemberProfileBridge.seed(context: context, oauthPhotoURL: oauthPhotoURL, base: mockSnapshot ?? DIPMockFixtures.reference)))
+        _liveNotifications = State(initialValue: scope.notifications)
+        _liveNotificationPreferences = State(initialValue: scope.notificationPreferences)
+        _liveInvites = State(initialValue: scope.invites)
+        _calendar = State(initialValue: scope.calendar)
+        _editor = State(initialValue: scope.editor)
+        _catalog = State(initialValue: scope.catalog)
+        _tour = State(initialValue: scope.tour)
+        _tourInterests = State(initialValue: scope.tourInterests)
+        _prototypeRepository = State(initialValue: scope.prototypeRepository)
     }
 
     var body: some View {
@@ -182,16 +197,10 @@ struct DIPMemberHome: View {
 
     // MARK: Onboarding
 
-    /// Sign out from Profile or the tour's first step. Debug builds also forget this account's tour record, so
-    /// the next sign-in plays the whole tour again (owner request, Nov 11). Release keeps the record.
+    /// Sign out from Profile or the tour's first step. Nothing is wiped here: the app root wipes this account's
+    /// device-local data (calendar records, queued reports, queued links, Debug tour record) when the session has
+    /// really ended, so a sign-out that fails remotely can never leave a live session with its data already gone.
     private func signOut() async {
-        #if DEBUG
-        (onboarding?.store as? UserDefaultsOnboardingRecordStore)?.removeRecord(for: context.uid)
-        #endif
-        // Calendar preferences and the entries DIP added belong to this account on this device (all builds).
-        DIPCalendarLocalStore(uid: context.uid).removeAll()
-        // Queued reports belong to this account on this device; they are not kept for the next person.
-        await bugReporting?.sender.discardQueue(uid: context.uid)
         await onSignOut()
     }
 
@@ -281,6 +290,44 @@ struct DIPMemberHome: View {
     private func saveProfile(_ edit: ProfileEdit) async throws {
         try await MemberProfileBridge.save(edit, editor: editor, uid: context.uid)
         // ProfileEditor acknowledges the command; membership observation remains the displayed source.
+    }
+}
+
+/// What the member home builds once per (uid, company) scope. Cached so a parent re-init (or a container swap that
+/// rebuilds the view) reuses it; evicted, and the calendar model invalidated, only when the session really ends
+/// (`DIPApp.sessionEnded`), never on a transient disappear, so a live home never holds an invalidated model.
+@MainActor final class HomeScope {
+    let editor: ProfileEditor
+    let catalog: InterestCatalog
+    let calendar: DIPCalendarModel
+    let prototypeRepository: DIPMockRepository
+    let notifications: (any DIPNotificationsRepository)?
+    let notificationPreferences: (any DIPNotificationPreferencesRepository)?
+    let invites: (any DIPInvitesRepository)?
+    let tour: OnboardingTourModel?
+    let tourInterests: OnboardingInterestsModel?
+
+    init(editor: ProfileEditor, catalog: InterestCatalog, calendar: DIPCalendarModel, prototypeRepository: DIPMockRepository,
+         notifications: (any DIPNotificationsRepository)?, notificationPreferences: (any DIPNotificationPreferencesRepository)?,
+         invites: (any DIPInvitesRepository)?, tour: OnboardingTourModel?, tourInterests: OnboardingInterestsModel?) {
+        self.editor = editor; self.catalog = catalog; self.calendar = calendar; self.prototypeRepository = prototypeRepository
+        self.notifications = notifications; self.notificationPreferences = notificationPreferences; self.invites = invites
+        self.tour = tour; self.tourInterests = tourInterests
+    }
+
+    private static var cache: [String: HomeScope] = [:]
+    private static func key(_ context: MembershipContext) -> String { context.uid + "|" + context.companyID }
+
+    static func obtain(context: MembershipContext, make: () -> HomeScope) -> HomeScope {
+        if let existing = cache[key(context)] { return existing }
+        let scope = make()
+        cache[key(context)] = scope
+        return scope
+    }
+
+    /// Drops every scope of `uid` (all companies) when that account's session ends.
+    static func evictAll(uid: String) {
+        for key in cache.keys where key.hasPrefix(uid + "|") { cache.removeValue(forKey: key)?.calendar.invalidate() }
     }
 }
 

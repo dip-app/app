@@ -31,6 +31,9 @@ struct AccountsStageView: View {
     @State private var warnings = 0
     @State private var lastNotice: AccountsNotice?
     @AccessibilityFocusState private var titleFocused: Bool
+    /// Unstructured follow-ups of the choreography; cancelled when the copy changes or the view goes away.
+    @State private var focusTask: Task<Void, Never>?
+    @State private var winkTask: Task<Void, Never>?
     @Environment(\.dipDuoOpen) private var duoOpen
 
     /// Set by `AccountsRootView` while it holds "Finding your company" for its minimum display time; nil shows
@@ -91,6 +94,7 @@ struct AccountsStageView: View {
             .receive(on: RunLoop.main)) { _ in
                 lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
             }
+        .onDisappear { focusTask?.cancel(); focusTask = nil; winkTask?.cancel(); winkTask = nil }
         .onChange(of: route, initial: true) { _, _ in arrived(scene) }
         .task(id: ReelKey(active: scene.pill == .reel && !session.isSubmitting && loopsAllowed, run: reelRun)) {
             guard scene.pill == .reel, !session.isSubmitting, loopsAllowed else { return }
@@ -343,8 +347,10 @@ struct AccountsStageView: View {
             if scene.tone == .offline { linkTrim = reduceMotion ? 0.4 : 1 }
         }
         if scene.notice != nil {
-            Task { @MainActor in
+            focusTask?.cancel()
+            focusTask = Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
                 titleFocused = true
                 AccessibilityNotification.ScreenChanged(nil).post()
             }
@@ -399,7 +405,7 @@ struct AccountsStageView: View {
             guard !reduceMotion else { continue }
             let member = CrewMember.allCases[(change - 1) % CrewMember.allCases.count]
             withAnimation(OnboardingMotion.hop) { hopping = member }
-            if change % 3 == 0 { Task { await wink() } }
+            if change % 3 == 0 { winkTask?.cancel(); winkTask = Task { await wink() } }
             try? await Task.sleep(for: .milliseconds(250))
             withAnimation(OnboardingMotion.hop) { hopping = nil }
         }
@@ -410,6 +416,7 @@ struct AccountsStageView: View {
     private func wink() async {
         withAnimation(.easeInOut(duration: OnboardingMotion.winkClose)) { yellowEye = 0 }
         try? await Task.sleep(for: .seconds(OnboardingMotion.winkClose + OnboardingMotion.winkHold))
+        guard !Task.isCancelled else { yellowEye = nil; return }
         withAnimation(.easeInOut(duration: OnboardingMotion.winkOpen)) { yellowEye = 1 }
         try? await Task.sleep(for: .seconds(OnboardingMotion.winkOpen))
         yellowEye = nil

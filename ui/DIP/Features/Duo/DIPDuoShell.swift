@@ -23,6 +23,23 @@ enum DIPDuoPaneLayout {
 
     /// The event a freshly opened Home or My Events shows in the detail pane (the first one listed).
     static func defaultSelection(in ids: [String]) -> String? { ids.first }
+
+    /// The default event in the order the Home grid shows: events that fit the member's calendar first, conflicting
+    /// ones after (the same `DIPCalendarFit` rule `DIPHomeScreen` applies), so the detail pane opens the first card.
+    static func defaultSelection(in ids: [String], conflicted: Set<String>) -> String? {
+        defaultSelection(in: DIPCalendarFit.prioritized(ids, id: { $0 }, conflicted: conflicted))
+    }
+
+    /// Pushes `route` unless it is already the top page, so a rapid double tap cannot stack the same page twice.
+    static func appending<Route: Equatable>(_ route: Route, to routes: [Route]) -> [Route] {
+        routes.last == route ? routes : routes + [route]
+    }
+
+    /// The event the detail pane should show: the selected one while it still exists, else the default.
+    static func resolvedSelection(selected: String?, exists: (String) -> Bool, fallback: String?) -> String? {
+        if let selected, exists(selected) { return selected }
+        return fallback
+    }
 }
 
 private struct DIPDuoSelectedEventKey: EnvironmentKey { static let defaultValue: String? = nil }
@@ -171,6 +188,7 @@ struct DIPDuoRail: View {
         .frame(width: DIPDuoPaneLayout.railWidth, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .accessibilityElement(children: .contain)
+        .accessibilityLabel("Main navigation")
         .accessibilityIdentifier("duo.rail")
     }
 }

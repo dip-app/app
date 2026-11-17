@@ -12,16 +12,22 @@ final class DIPShareLinkTests: XCTestCase {
     }
 
     func testRoundTripIncludingPercentEncoding() throws {
-        for id in ["abc123", "puppy-yoga", "a_b.c~d", "é", "x?y#z%", "100%"] {
+        for id in ["abc123", "puppy-yoga", "a_b-C9", String(repeating: "x", count: 128)] {
             let url = try XCTUnwrap(DIPShareLink.url(forEventID: id), id)
             XCTAssertEqual(DIPShareLink.eventID(from: url), id)
         }
-        XCTAssertEqual(DIPShareLink.url(forEventID: "x?y#z")?.absoluteString, "https://\(host)/e/x%3Fy%23z")
     }
 
     func testRejectsInvalidIDs() {
-        for id in ["", "a/b", String(repeating: "x", count: 129), "a\nb", " "] {
+        for id in ["", "a/b", String(repeating: "x", count: 129), "a\nb", " ", ".", "..", "__x__", "é", "a.b", "x?y", "100%", "a%2Fb", "a b"] {
             XCTAssertNil(DIPShareLink.url(forEventID: id), id)
+        }
+    }
+
+    func testParsingRejectsDotsReservedNamesUnicodeAndEscapedSeparators() {
+        for string in ["https://\(host)/e/..", "https://\(host)/e/.", "dip://events/__x__", "dip://events/%C3%A9",
+                       "dip://events/a%2Fb", "dip://events/a%00b", "dip://events/a.b", "dip://events/%2E%2E"] {
+            XCTAssertNil(DIPShareLink.eventID(from: URL(string: string)!), string)
         }
     }
 

@@ -39,6 +39,9 @@ struct DIPProfileScreen: View {
     @State private var draftRadius = 20
     @State private var isSaving = false
     @State private var saveError: String?
+    /// The drafts as they were when Edit opened; a difference means unsaved changes.
+    @State private var draftBaseline = DraftSnapshot()
+    @State private var confirmsDiscard = false
 
     init(
         profile: DIPProfile,
@@ -167,6 +170,19 @@ struct DIPProfileScreen: View {
         }
     }
 
+    /// The switch reads "on" only when the member opted in AND iOS gave full access.
+    private var conflictsActive: Bool { calendar.preferences.showsConflicts && calendar.access == .fullAccess }
+
+    /// Why conflicts cannot work right now, in the words of the iOS state; nil when there is nothing to fix in Settings.
+    private var calendarAccessCopy: String? {
+        switch calendar.access {
+        case .denied: "Calendar access is off for DIP in iOS Settings."
+        case .restricted: "Calendar access is restricted on this iPhone (for example by Screen Time or a device profile), so DIP can’t check for conflicts."
+        case .writeOnly: "DIP can add events to your calendar, but checking for conflicts needs full access. Allow full access in iOS Settings."
+        case .notDetermined, .fullAccess: calendar.accessDeniedNotice ? "Calendar access is off for DIP in iOS Settings." : nil
+        }
+    }
+
     /// Opt-in calendar conflicts (stretch S1). The calendar is read on this iPhone only.
     private var calendarSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -175,7 +191,8 @@ struct DIPProfileScreen: View {
                 .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                 .accessibilityAddTraits(.isHeader)
             Toggle(isOn: Binding(
-                get: { calendar.preferences.showsConflicts },
+                // On only while DIP can really read the calendar: a stored opt-in without full access must not look active.
+                get: { conflictsActive },
                 set: { new in Task { await calendar.setShowsConflicts(new) } })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Show calendar conflicts")
@@ -191,7 +208,7 @@ struct DIPProfileScreen: View {
             .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
                         in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
             .accessibilityIdentifier("profile.calendarConflicts")
-            if calendar.preferences.showsConflicts {
+            if conflictsActive {
                 Toggle(isOn: Binding(
                     get: { calendar.preferences.treatsAllDayAsBusy },
                     set: { calendar.setTreatsAllDayAsBusy($0) })) {
@@ -210,10 +227,11 @@ struct DIPProfileScreen: View {
                             in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
                 .accessibilityIdentifier("profile.calendarAllDay")
             }
-            if calendar.accessDeniedNotice || calendar.access == .denied {
-                Text("Calendar access is off for DIP in iOS Settings.")
+            if let copy = calendarAccessCopy {
+                Text(copy)
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
+                    .accessibilityIdentifier("profile.calendarAccessCopy")
                 DIPButton("Open Settings", emphasis: .secondary) {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
@@ -402,8 +420,24 @@ struct DIPProfileScreen: View {
         draftAvailability = profile.availability
         draftRadius = profile.travelRadiusMiles ?? 20
         saveError = nil
+        draftBaseline = draftSnapshot
         isEditing = true
     }
+
+    /// Everything the form edits, comparable; availability as a set (its order is not the member's choice).
+    private struct DraftSnapshot: Equatable {
+        var department = "", city = "", jobTitle = ""
+        var interests: Set<String> = []
+        var availability: Set<String> = []
+        var radius = 20
+    }
+
+    private var draftSnapshot: DraftSnapshot {
+        DraftSnapshot(department: draftDepartment, city: draftCity, jobTitle: draftJobTitle, interests: draftInterests,
+                      availability: Set(draftAvailability), radius: draftRadius)
+    }
+
+    private var hasUnsavedChanges: Bool { draftSnapshot != draftBaseline }
 
     private func labeledField(_ title: String, text: Binding<String>, id: String) -> some View {
         LabeledContent(title) {
@@ -476,8 +510,10 @@ struct DIPProfileScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { isEditing = false }
-                        .disabled(isSaving)
+                    Button("Cancel") {
+                        if hasUnsavedChanges { confirmsDiscard = true } else { isEditing = false }
+                    }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSaving ? "Saving…" : "Save") {
@@ -487,7 +523,12 @@ struct DIPProfileScreen: View {
                     .accessibilityIdentifier("profile.edit.save")
                 }
             }
-            .interactiveDismissDisabled(isSaving)
+            // A swipe-down must not throw away typing: with unsaved changes only Cancel (which asks) closes the sheet.
+            .interactiveDismissDisabled(isSaving || hasUnsavedChanges)
+            .confirmationDialog("Discard your changes?", isPresented: $confirmsDiscard, titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) { isEditing = false }
+                Button("Keep editing", role: .cancel) {}
+            }
         }
         .sheet(isPresented: $isChoosingDraftInterests) {
             DIPInterestPicker(options: interestOptions, selection: draftInterests) { interests in
@@ -520,6 +561,7 @@ struct DIPProfileScreen: View {
         } catch {
             DIPHaptics.failure()
             saveError = "Your profile could not be saved. Try again."
+            AccessibilityNotification.Announcement("Your profile could not be saved. Try again.").post()
         }
     }
 }

@@ -14,12 +14,15 @@ import UserNotifications
     init(functions: Functions) { self.functions = functions }
 
     func register(token: String, appVersion: String) async throws {
-        _ = try await functions.httpsCallable("registerDeviceV1")
-            .call(["contractVersion": 1, "token": token, "platform": "ios", "appVersion": appVersion])
+        let callable = functions.httpsCallable("registerDeviceV1")
+        callable.timeoutInterval = 15   // sign-out waits behind an in-flight register; never for long
+        _ = try await callable.call(["contractVersion": 1, "token": token, "platform": "ios", "appVersion": appVersion])
     }
 
     func unregister(token: String) async throws {
-        _ = try await functions.httpsCallable("unregisterDeviceV1").call(["contractVersion": 1, "token": token])
+        let callable = functions.httpsCallable("unregisterDeviceV1")
+        callable.timeoutInterval = 15
+        _ = try await callable.call(["contractVersion": 1, "token": token])
     }
 }
 
@@ -54,7 +57,9 @@ import UserNotifications
 
     func currentToken() async -> String? { try? await Messaging.messaging().token() }
 
-    func deleteToken() async { try? await Messaging.messaging().deleteToken() }
+    func deleteToken() async -> Bool {
+        do { try await Messaging.messaging().deleteToken(); return true } catch { return false }
+    }
 
     nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken else { return }
@@ -62,6 +67,7 @@ import UserNotifications
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        // Extract the plain string here: UNNotificationResponse and userInfo are not Sendable and must not cross actors.
         guard let link = response.notification.request.content.userInfo["deepLink"] as? String else { return }
         await MainActor.run { self.onDeepLink?(link) }
     }
@@ -72,9 +78,25 @@ import UserNotifications
     }
 }
 
+/// SwiftUI apps have no app delegate unless one is adapted in, and relying on Firebase's method swizzling to see the
+/// APNs token is fragile. Hands the token to FCM explicitly; does nothing unless the push flag is on and Firebase is configured.
+@MainActor final class DIPAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        guard PushFeature.isEnabled, FirebaseApp.app() != nil else { return }
+        Messaging.messaging().apnsToken = deviceToken
+    }
+}
+
 final class UserDefaultsPushStateStore: PushStateStore {
     private let defaults: UserDefaults
-    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        // Older builds stored only a token (no owner) that could never be unregistered safely: delete the FCM token instead.
+        if defaults.string(forKey: "dip.push.pendingUnregister") != nil {
+            defaults.removeObject(forKey: "dip.push.pendingUnregister")
+            defaults.set(true, forKey: "dip.push.pendingTokenDeletion")
+        }
+    }
     var hasPrimed: Bool {
         get { defaults.bool(forKey: "dip.push.primed") }
         set { defaults.set(newValue, forKey: "dip.push.primed") }
@@ -83,9 +105,13 @@ final class UserDefaultsPushStateStore: PushStateStore {
         get { defaults.string(forKey: "dip.push.registered") }
         set { defaults.set(newValue, forKey: "dip.push.registered") }
     }
-    var pendingUnregisterToken: String? {
-        get { defaults.string(forKey: "dip.push.pendingUnregister") }
-        set { defaults.set(newValue, forKey: "dip.push.pendingUnregister") }
+    var pendingUnregister: String? {
+        get { defaults.string(forKey: "dip.push.pendingUnregisterKey") }
+        set { defaults.set(newValue, forKey: "dip.push.pendingUnregisterKey") }
+    }
+    var pendingTokenDeletion: Bool {
+        get { defaults.bool(forKey: "dip.push.pendingTokenDeletion") }
+        set { defaults.set(newValue, forKey: "dip.push.pendingTokenDeletion") }
     }
 }
 

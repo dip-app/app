@@ -23,8 +23,8 @@ struct DIPPrototypeApp: View {
     private let readsOriginalPhotos: Bool
     /// `--comment-count=N` (review builds): how many comments the comment fixtures put on each photo.
     private static var commentCount: Int {
-        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--comment-count=") }
-            .flatMap { Int($0.dropFirst("--comment-count=".count)) } ?? 5
+        MockLaunch.Flags.value(of: "--comment-count=")
+            .flatMap { Int($0) } ?? 5
     }
     @State private var invites: DIPInvitesModel?
     @State private var showInvitations = false
@@ -92,11 +92,11 @@ struct DIPPrototypeApp: View {
         let resolvedPermission = pushPermission
         #endif
         self.pushPermission = resolvedPermission
-        // Settings need the push client (flag), the system permission seam and a preferences adapter.
-        if PushFeature.isEnabled, let resolvedPermission,
-           let source = notificationPreferencesRepository ?? (repository == nil ? Self.fixtureNotificationPreferences() : nil) {
-            _notificationSettings = State(initialValue: DIPNotificationSettingsModel(
-                repository: source, permission: PushPermissionProvider(control: resolvedPermission)))
+        // Settings need a preferences adapter. Push controls need the push client (flag) and the permission seam; without
+        // them the screen still opens with the Email section, because email preferences do not depend on push.
+        if let source = notificationPreferencesRepository ?? (repository == nil ? Self.fixtureNotificationPreferences() : nil) {
+            let permission = PushFeature.isEnabled ? resolvedPermission.map { PushPermissionProvider(control: $0) } : nil
+            _notificationSettings = State(initialValue: DIPNotificationSettingsModel(repository: source, permission: permission))
         }
         self.deepLinkOpensChat = deepLinkOpensChat
         self.onJoined = onJoined
@@ -119,8 +119,8 @@ struct DIPPrototypeApp: View {
         self.onSignOut = onSignOut
         // Only a Storage-backed repository can return the stored original; fixtures save the photo as shown.
         self.readsOriginalPhotos = repository != nil
-        let argument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--screen=") }
-        let screen = initialScreen ?? argument.map { String($0.dropFirst("--screen=".count)) } ?? "home"
+        let argument = MockLaunch.Flags.value(of: "--screen=")
+        let screen = initialScreen ?? argument ?? "home"
         _selectedTab = State(
             initialValue: screen == "profile" ? .profile : screen == "rewards" ? .rewards : ["events", "memories"].contains(screen) ? .events : .home)
         initialMemories = screen == "memories"
@@ -134,19 +134,19 @@ struct DIPPrototypeApp: View {
         }
         let model = DIPAppViewModel(repository: repository ?? DIPMockRepository(
             initialSnapshot: Self.emptyStateFixture().map(DIPMockFixtures.emptyStateReview)
-                ?? (ProcessInfo.processInfo.arguments.contains("--event-full") || ProcessInfo.processInfo.arguments.contains("--event-cancelled")
+                ?? (MockLaunch.Flags.contains("--event-full") || MockLaunch.Flags.contains("--event-cancelled")
                 ? Self.fullEventReview()
-                : ProcessInfo.processInfo.arguments.contains("--many-tags")
+                : MockLaunch.Flags.contains("--many-tags")
                 ? DIPMockFixtures.manyTagsReview()
-                : ProcessInfo.processInfo.arguments.contains("--v1-event-fixtures")
+                : MockLaunch.Flags.contains("--v1-event-fixtures")
                 ? DIPMockFixtures.v1Events()
-                : ProcessInfo.processInfo.arguments.contains("--empty-social-fixtures")
+                : MockLaunch.Flags.contains("--empty-social-fixtures")
                 ? DIPMockFixtures.emptySocialReview
-                : ProcessInfo.processInfo.arguments.contains("--chat-grouping-fixtures")
+                : MockLaunch.Flags.contains("--chat-grouping-fixtures")
                 ? DIPMockFixtures.chatGroupingReview
-                : ProcessInfo.processInfo.arguments.contains("--chat-history-fixtures")
+                : MockLaunch.Flags.contains("--chat-history-fixtures")
                 ? DIPMockFixtures.chatHistoryReview
-                : ProcessInfo.processInfo.arguments.contains("--comment-bubble-fixtures")
+                : MockLaunch.Flags.contains("--comment-bubble-fixtures")
                 ? DIPMockFixtures.photoCommentReview(count: Self.commentCount)
                 : ["event", "event-joined", "past-event", "invite-picker"].contains(screen)
                 ? Self.eventReview(unjoined: screen == "event") : DIPMockFixtures.reference),
@@ -172,7 +172,7 @@ struct DIPPrototypeApp: View {
         _notifications = State(initialValue: notificationSource.map { DIPNotificationsModel(repository: $0) })
         _showNotifications = State(initialValue: notificationSource != nil && screen == "notifications")
         #if DEBUG
-        _showNotificationSettings = State(initialValue: screen == "notification-settings" && PushFeature.isEnabled && resolvedPermission != nil)
+        _showNotificationSettings = State(initialValue: screen == "notification-settings" && (notificationPreferencesRepository != nil || repository == nil))
         #endif
     }
 
@@ -236,7 +236,7 @@ struct DIPPrototypeApp: View {
     /// retry, finished) for design review and UI tests; nothing is sent anywhere.
     private static func uploadReview() -> AlbumUploadQueue? {
         #if DEBUG
-        guard ProcessInfo.processInfo.arguments.contains("--album-upload-review") else { return nil }
+        guard MockLaunch.Flags.contains("--album-upload-review") else { return nil }
         let queue = AlbumUploadQueue(send: { _, photo, progress in
             if photo.data.first == 1 { progress(0.4); try await Task.sleep(for: .seconds(3600)) }
             if photo.data.first == 2 { throw DIPRepositoryError.invalidInput(AlbumFailure.unavailable.message) }
@@ -263,7 +263,7 @@ struct DIPPrototypeApp: View {
     /// (Directions replaces Invite Coworker when inviting is not possible).
     private static func fullEventReview() -> DIPAppSnapshot {
         var snapshot = DIPMockFixtures.v1Events()
-        if ProcessInfo.processInfo.arguments.contains("--event-cancelled") {
+        if MockLaunch.Flags.contains("--event-cancelled") {
             snapshot.eventDetails["puppy-yoga"]?.metadata?.status = .cancelled
         } else if let capacity = snapshot.eventDetails["puppy-yoga"]?.metadata?.capacity {
             snapshot.eventDetails["puppy-yoga"]?.attendeeCount = capacity
@@ -280,16 +280,16 @@ struct DIPPrototypeApp: View {
     }
 
     private static func emptyStateFixture() -> DIPEmptyStateFixture? {
-        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--empty-state=") }
-            .flatMap { DIPEmptyStateFixture(rawValue: String($0.dropFirst("--empty-state=".count))) }
+        MockLaunch.Flags.value(of: "--empty-state=")
+            .flatMap { DIPEmptyStateFixture(rawValue: $0) }
     }
 
     /// Deterministic failure paths for local preview/UI testing only.
     private static func previewFailures() -> [DIPMockOperation: String] {
         var failures: [DIPMockOperation: String] = [:]
-        if ProcessInfo.processInfo.arguments.contains("--fail-profile-once") { failures[.profile] = "Preview failure" }
-        if ProcessInfo.processInfo.arguments.contains("--fail-chat-once") { failures[.message] = "Preview failure" }
-        if ProcessInfo.processInfo.arguments.contains("--fail-comment-once") { failures[.comment] = "Preview failure" }
+        if MockLaunch.Flags.contains("--fail-profile-once") { failures[.profile] = "Preview failure" }
+        if MockLaunch.Flags.contains("--fail-chat-once") { failures[.message] = "Preview failure" }
+        if MockLaunch.Flags.contains("--fail-comment-once") { failures[.comment] = "Preview failure" }
         return failures
     }
 
@@ -518,7 +518,7 @@ struct DIPPrototypeApp: View {
             case .profile:
                 AnyView(DIPProfileScreen(
                     profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
-                    onMemory: { event, photo in memoryPhotoIDs[event] = photo; routes.append(.album(event)) },
+                    onMemory: { event, photo in memoryPhotoIDs[event] = photo; pushRoute(.album(event)) },
                     onSave: { edit in
                         if let onProfileSave { try await onProfileSave(edit) }
                         else { try await model.updateProfile(edit) }
@@ -895,11 +895,11 @@ struct DIPPrototypeApp: View {
     private func performBottomAction() {
         switch routes.last {
         case .event(let id):
-            if model.snapshot?.eventDetails[id]?.isPast == true { routes.append(.album(id)) }
+            if model.snapshot?.eventDetails[id]?.isPast == true { pushRoute(.album(id)) }
             else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
         case .participants(let id):
-            if model.snapshot?.eventDetails[id]?.isPast == true { routes.append(.album(id)) }
+            if model.snapshot?.eventDetails[id]?.isPast == true { pushRoute(.album(id)) }
             else if model.snapshot?.eventDetails[id]?.isJoined == true { openChat(id) }
             else { join(id) }
         case .album: albumPickerPresented = true
@@ -917,9 +917,12 @@ struct DIPPrototypeApp: View {
     /// Pull-to-refresh reloads the weekly theme alongside events.
     private var homeRefresh: (() async -> Void)? {
         guard challengeFeed != nil || onRefreshEvents != nil else { return nil }
-        return { [challengeFeed, onRefreshEvents] in
-            await challengeFeed?.load()
-            await onRefreshEvents?()
+        // Both reads are independent: run them together. The events closure is created and run on the main actor.
+        nonisolated(unsafe) let refreshEvents = onRefreshEvents
+        return { [challengeFeed] in
+            async let challenge: Void = { @MainActor in await challengeFeed?.load() }()
+            async let events: Void = { @MainActor in await refreshEvents?() }()
+            _ = await (challenge, events)
         }
     }
 
@@ -938,25 +941,44 @@ struct DIPPrototypeApp: View {
     }
 
     private func changeRSVP(_ eventID: String, going: Bool) {
-        guard !participationUnavailable else { notice = "RSVP"; return }
-        guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return }
+        guard beginRSVP(eventID, going: going) else { return }
+        Task { _ = await commitRSVP(eventID, going: going) }
+    }
+
+    /// Leave from the event page's confirmation: true only when the server confirmed (the page removes the
+    /// calendar entry after that, never on a refused or rolled-back leave).
+    private func confirmLeave(_ eventID: String) async -> Bool {
+        guard beginRSVP(eventID, going: false) else { return false }
+        return await commitRSVP(eventID, going: false)
+    }
+
+    /// Synchronous gate before the optimistic flip; false means nothing was started.
+    private func beginRSVP(_ eventID: String, going: Bool) -> Bool {
+        guard !participationUnavailable else { notice = "RSVP"; return false }
+        guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return false }
         // Local reasonableness check before the optimistic flip: a refused change gets the failure haptic and
         // a clear message, and the state never changes.
         if let event = model.snapshot?.eventDetails[eventID], let metadata = event.metadata,
            let denial = DIPParticipationRules.denial(going: going, metadata: metadata, attendeeCount: event.attendeeCount,
                                                      isGoing: event.isJoined, now: Date()) {
-            DIPHaptics.failure(); rsvpError = denial.message; return
+            DIPHaptics.failure(); rsvpError = denial.message; return false
         }
         // The repository flips the state immediately, so the success haptic plays now; a server failure rolls back.
-        DIPHaptics.success()
-        Task {
-            do {
-                try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() }
-                UIAccessibility.post(notification: .announcement, argument: Self.rsvpAnnouncement(title: model.snapshot?.eventDetails[eventID]?.title, going: going))
-            } catch {
-                DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error)
-                UIAccessibility.post(notification: .announcement, argument: Self.rsvpMessage(error))
-            }
+        // Join comes from the persistent bar, whose commit haptic already marked the tap: one haptic per action.
+        if !going { DIPHaptics.success() }
+        return true
+    }
+
+    /// Runs the RSVP; the one spoken confirmation (or the failure) comes from here, never from the page.
+    private func commitRSVP(_ eventID: String, going: Bool) async -> Bool {
+        do {
+            try await model.setRSVP(eventID: eventID, going: going); if going { onJoined?() }
+            UIAccessibility.post(notification: .announcement, argument: Self.rsvpAnnouncement(title: model.snapshot?.eventDetails[eventID]?.title, going: going))
+            return true
+        } catch {
+            DIPHaptics.failure(); rsvpError = Self.rsvpMessage(error)
+            UIAccessibility.post(notification: .announcement, argument: Self.rsvpMessage(error))
+            return false
         }
     }
 
@@ -974,12 +996,13 @@ struct DIPPrototypeApp: View {
                     DIPEventDetailsScreen(
                         event: event, joined: event.isJoined, showsBottomBar: false,
                         onJoin: { join(id) }, onBack: pop,
-                        onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { routes.append(.participants(id)) } }, onChat: { openChat(id) },
-                        photos: snapshot.albums[id]?.photos ?? [], onAlbum: { routes.append(.album(id)) },
+                        onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { pushRoute(.participants(id)) } }, onChat: { openChat(id) },
+                        photos: snapshot.albums[id]?.photos ?? [], onAlbum: { pushRoute(.album(id)) },
                         onLeave: { changeRSVP(id, going: false) },
+                        onConfirmedLeave: { await confirmLeave(id) },
+                        participationPending: isRSVPPending,
                         onInvite: invites == nil || participationUnavailable ? nil : { openInvite(id) },
                         calendarEvents: Array(snapshot.eventDetails.values))
-                    .disabled(isRSVPPending)
                 } else { missingResource }
             case .challenge(let id):
                 if let challenge = challengeFeed?.detail(id) ?? snapshot.challengeDetails[id] {
@@ -1020,18 +1043,29 @@ struct DIPPrototypeApp: View {
 
     /// What the selection sync reacts to; one `onChange` keeps the body's modifier chain short.
     private struct DuoSyncKey: Equatable {
-        var open: Bool; var tab: DIPHomeTab; var routesEmpty: Bool; var firstEvent: String?
+        var open: Bool; var tab: DIPHomeTab; var routesEmpty: Bool; var firstEvent: String?; var rootMissing: Bool
     }
     private var duoSyncKey: DuoSyncKey {
-        DuoSyncKey(open: duoOpen, tab: selectedTab, routesEmpty: routes.isEmpty, firstEvent: duoDefaultEventID())
+        DuoSyncKey(open: duoOpen, tab: selectedTab, routesEmpty: routes.isEmpty, firstEvent: duoDefaultEventID(),
+                   rootMissing: duoRootEventMissing)
+    }
+
+    /// True when the detail pane's root is an event that is no longer in the snapshot (removed or filtered away).
+    private var duoRootEventMissing: Bool {
+        guard duoOpen, isMasterDetailTab, let snapshot = model.snapshot, routes.count == 1,
+              case .event(let id)? = routes.first else { return false }
+        return snapshot.eventDetails[id] == nil
     }
 
     private var isMasterDetailTab: Bool { selectedTab == .home || selectedTab == .events }
 
     /// Opens a page from a list. On the open Duo's Home and My Events it replaces the detail pane; elsewhere it pushes.
     private func openRoute(_ route: Route) {
-        if duoOpen && isMasterDetailTab { routes = [route]; duoAutoRoute = nil } else { routes.append(route) }
+        if duoOpen && isMasterDetailTab { routes = [route]; duoAutoRoute = nil } else { pushRoute(route) }
     }
+
+    /// Pushes a page unless it is already on top (a rapid double tap must not stack it twice).
+    private func pushRoute(_ route: Route) { routes = DIPDuoPaneLayout.appending(route, to: routes) }
 
     /// The detail pane is never blank while events exist: Home and My Events open their first event. Folding the Duo
     /// drops a selection the shell made itself, so the phone layout starts on its list.
@@ -1041,6 +1075,7 @@ struct DIPPrototypeApp: View {
             duoAutoRoute = nil
             return
         }
+        if duoRootEventMissing { routes = []; duoAutoRoute = nil }
         guard routes.isEmpty, let id = duoDefaultEventID() else { return }
         routes = [.event(id)]
         duoAutoRoute = .event(id)
@@ -1051,8 +1086,12 @@ struct DIPPrototypeApp: View {
     private func duoDefaultEventID() -> String? {
         guard duoOpen, isMasterDetailTab, let snapshot = model.snapshot else { return nil }
         let lists = DIPEventLists(snapshot: snapshot, now: Date())
-        let ids = selectedTab == .home ? visibleHomeEvents(snapshot, lists: lists).map(\.id) : lists.upcoming.map(\.id)
-        return DIPDuoPaneLayout.defaultSelection(in: ids)
+        // Home lists calendar-friendly events first (`DIPHomeScreen.orderedEvents`); the default is that first card.
+        if selectedTab == .home {
+            return DIPDuoPaneLayout.defaultSelection(
+                in: visibleHomeEvents(snapshot, lists: lists).map(\.id), conflicted: calendarConflictIDs)
+        }
+        return DIPDuoPaneLayout.defaultSelection(in: lists.upcoming.map(\.id))
     }
 
     /// The events Home lists, after the member's interest scope (the same rule `tabBuilder` applies).
@@ -1063,8 +1102,14 @@ struct DIPPrototypeApp: View {
         return DIPInterestFilter.visibleEvents(lists.discovery, scope: homeScope, activeInterests: interests).events
     }
 
+    /// The detail pane's root page: the first route, else the default event, so a tab switch never flashes the placeholder
+    /// while the selection sync catches up.
+    private var duoEffectiveRoot: Route? {
+        routes.first ?? duoDefaultEventID().map { Route.event($0) }
+    }
+
     private var duoSelectedEventID: String? {
-        if case .event(let id)? = routes.first { return id }
+        if case .event(let id)? = duoEffectiveRoot { return id }
         return nil
     }
 
@@ -1120,11 +1165,11 @@ struct DIPPrototypeApp: View {
             set: { routes = (routes.first.map { [$0] } ?? []) + $0 })
         return NavigationStack(path: pushed) {
             Group {
-                if let root = routes.first {
+                if let root = duoEffectiveRoot {
                     destination(root).environment(\.dipDuoHidesBack, true)
                 } else { DIPDuoDetailPlaceholder() }
             }
-            .id(routes.first)
+            .id(duoEffectiveRoot)
             .ignoresSafeArea()
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Route.self) { route in
@@ -1134,6 +1179,8 @@ struct DIPPrototypeApp: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
         .overlay(alignment: .bottom) { duoActionBar }
+        // The detail pane changes content without a navigation transition; tell VoiceOver the layout changed.
+        .onChange(of: duoEffectiveRoot) { _, _ in UIAccessibility.post(notification: .screenChanged, argument: nil) }
     }
 
     /// Join / Activity Chat / Add Photos action, contained in the pane it belongs to instead of spanning the window.

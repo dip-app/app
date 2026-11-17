@@ -171,9 +171,11 @@ struct DemoStage<Scene: DemoScene>: View {
                 // so the ZStack isn't re-centred around it (that left a dead band under the phone).
                 DemoDeviceFrame(screen: canvasFrame, scale: scale)
                     .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+                    .accessibilityHidden(true)
                 canvasLayer(scale: scale)
                     .frame(width: canvasFrame.width, height: canvasFrame.height)
                     .position(x: canvasFrame.midX, y: canvasFrame.midY)
+                    .accessibilityHidden(true)
                 if reduceMotion, !scene.reducedStills.isEmpty {
                     stillDots
                         .position(x: geometry.size.width / 2, y: geometry.size.height - Layout.dotsInset)
@@ -192,11 +194,12 @@ struct DemoStage<Scene: DemoScene>: View {
         .contentShape(Rectangle())
         .onTapGesture { replay() }
         .gesture(scrubGesture, including: canScrub ? .all : .none)
-        .accessibilityElement(children: .ignore)
+        // `.contain` (not `.ignore`) so the Replay button stays an accessibility element; the drawing itself is hidden
+        // below and described by this container's value.
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Example"))
         .accessibilityValue(Text(scene.description))
         .accessibilityIdentifier("onboarding.stage")
-        .accessibilityAction(named: Text("Replay")) { replay() }
         .onAppear {
             if !prepared {
                 scene.prepare()
@@ -280,7 +283,9 @@ struct DemoStage<Scene: DemoScene>: View {
                 .contentShape(Circle())
         }
         .buttonStyle(DIPPressFeedbackStyle())
-        .accessibilityHidden(true)
+        // Reachable by Voice Control ("Tap Replay") and VoiceOver: the stage container keeps its children visible for it.
+        .accessibilityLabel(Text("Replay"))
+        .accessibilityIdentifier("onboarding.stage.replay")
     }
 
     // MARK: Playback

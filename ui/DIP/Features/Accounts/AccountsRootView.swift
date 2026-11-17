@@ -14,6 +14,8 @@ struct AccountsRootView<MemberContent: View>: View {
     @State private var resolvingSince: Date?
     /// While true the Stage keeps showing "Finding your company" although the session already moved on.
     @State private var holdingResolving = false
+    /// The pending end of the hold; cancelled when the view goes away so it can never touch a dead view or a new hold.
+    @State private var holdTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -30,12 +32,21 @@ struct AccountsRootView<MemberContent: View>: View {
             holdResolvingIfNeeded(leaving: route)
             switch route {
             case .resolving: sawResolving = true
-            case .member where sawResolving:
+            case .member where sawResolving && !holdingResolving:
                 sawResolving = false
                 DIPHaptics.success()
+            case .welcome, .noCompany, .problem:
+                sawResolving = false   // the resolution ended without a member: the next one starts clean
             default: break
             }
         }
+        // The success haptic belongs to the moment the member sees the result, not to the moment the session resolved.
+        .onChange(of: holdingResolving) { _, holding in
+            guard !holding, sawResolving, case .member = AccountsRoute(session.state) else { return }
+            sawResolving = false
+            DIPHaptics.success()
+        }
+        .onDisappear { holdTask?.cancel(); holdTask = nil; holdingResolving = false }
     }
 
     /// Pads "Finding your company" to `AccountsStage.minimumResolvingDuration` (owner request: the animation
@@ -52,8 +63,10 @@ struct AccountsRootView<MemberContent: View>: View {
                                                              reduceMotion: reduceMotion)
         guard remaining > 0 else { return }
         holdingResolving = true
-        Task { @MainActor in
+        holdTask?.cancel()
+        holdTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(remaining))
+            guard !Task.isCancelled else { return }
             holdingResolving = false
         }
     }
@@ -64,9 +77,9 @@ enum AccountsStage {
     /// The least time "Finding your company" stays up, from when it appears (owner request, Nov 11).
     /// Rounded up to whole turns of the Bar's face wheel so it ends on a clean beat. `--no-resolving-delay`
     /// sets it to 0 for UI tests.
-    static let minimumResolvingDuration: Double = ProcessInfo.processInfo.arguments.contains("--no-resolving-delay") ? 0 : 2.0
+    static let minimumResolvingDuration: Double = MockLaunch.Flags.contains("--no-resolving-delay") ? 0 : 2.0
     /// Reduce Motion: a shorter hold with the static indicator.
-    static let reducedMotionMinimumResolvingDuration: Double = ProcessInfo.processInfo.arguments.contains("--no-resolving-delay") ? 0 : 0.8
+    static let reducedMotionMinimumResolvingDuration: Double = MockLaunch.Flags.contains("--no-resolving-delay") ? 0 : 0.8
     /// One turn of the progress wheel (`DIPProgressWheel.turn`).
     static let wheelTurn = 0.55
 

@@ -37,8 +37,9 @@ struct DIPDetailHeader: View {
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
                 .disabled(!calendarState.isEnabled)
-                .accessibilityLabel(calendarState.accessibilityLabel)
-                .accessibilityValue(calendarState.accessibilityValue)
+                // The visible date first, then the action; the hint says whether it saves directly or opens the editor.
+                .accessibilityLabel(calendarState.accessibilityLabel(date: calendarLabel))
+                .accessibilityHint(calendarState.accessibilityHint)
                 .accessibilityIdentifier("\(identifierPrefix).addToCalendar")
             } else {
                 HStack(spacing: 8) {
@@ -112,17 +113,6 @@ struct DIPCalendarPill: View {
         case .added: .white
         case .free, .adding: DIPTokens.Color.calendarFree.swiftUIColor
         case .hidden: .clear
-        }
-    }
-}
-
-extension DIPCalendarPillState {
-    /// Stable value for UI tests ("conflict", "free", "added").
-    var accessibilityValue: String {
-        switch self {
-        case .conflict: "conflict"
-        case .added: "added"
-        case .free, .adding, .hidden: "free"
         }
     }
 }

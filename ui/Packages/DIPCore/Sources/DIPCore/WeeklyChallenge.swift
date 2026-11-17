@@ -92,11 +92,30 @@ public enum DIPChallengeProjection {
     /// "Nov 9 - Nov 15". The end is inclusive: a window ending Monday 00:00 (or Sunday 23:59:59)
     /// shows Sunday, so the last instant is formatted rather than the exclusive boundary.
     public static func windowText(start: Date, end: Date, timeZone: TimeZone = displayTimeZone, locale: Locale = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = locale; formatter.timeZone = timeZone
-        formatter.setLocalizedDateFormatFromTemplate("MMMd")
         let last = max(start, end.addingTimeInterval(-1))
-        return "\(formatter.string(from: start)) - \(formatter.string(from: last))"
+        return windowFormatters.format(start: start, last: last, timeZone: timeZone, locale: locale)
+    }
+
+    /// Formatters are expensive to build and `detail` runs from view bodies, so they are cached per locale and time
+    /// zone (a changed locale or zone gets its own entry). Access is serialized because `DateFormatter` is not Sendable.
+    private static let windowFormatters = WindowFormatterCache()
+
+    private final class WindowFormatterCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var formatters: [String: DateFormatter] = [:]
+
+        func format(start: Date, last: Date, timeZone: TimeZone, locale: Locale) -> String {
+            lock.lock(); defer { lock.unlock() }
+            let key = "\(locale.identifier)|\(timeZone.identifier)"
+            let formatter: DateFormatter
+            if let cached = formatters[key] { formatter = cached } else {
+                formatter = DateFormatter()
+                formatter.locale = locale; formatter.timeZone = timeZone
+                formatter.setLocalizedDateFormatFromTemplate("MMMd")
+                formatters[key] = formatter
+            }
+            return "\(formatter.string(from: start)) - \(formatter.string(from: last))"
+        }
     }
 
     public static func goalText(goal: Double, unit: String) -> String? {

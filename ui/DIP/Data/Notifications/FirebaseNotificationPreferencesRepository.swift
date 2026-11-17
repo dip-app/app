@@ -8,7 +8,8 @@ import Foundation
 /// switches the server changed (an unsubscribe link) or that the email section owns. A missing document loads as the
 /// registry defaults (the server resolves defaults on every read).
 final class FirebaseNotificationPreferencesRepository: DIPNotificationPreferencesRepository, @unchecked Sendable {
-    /// An offline write stays queued; the screen should not wait on it forever.
+    /// An offline write stays queued in Firestore; the screen should not wait on its acknowledgement forever, and the
+    /// queued write counts as saved (pending sync).
     static let writeTimeout: Duration = .seconds(15)
 
     private let firestore: Firestore
@@ -36,12 +37,18 @@ final class FirebaseNotificationPreferencesRepository: DIPNotificationPreference
         let reference = document
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let gate = Gate()
-            reference.setData(fields, merge: true) { error in
-                gate.once { if let error { continuation.resume(throwing: error) } else { continuation.resume() } }
-            }
-            Task {
+            // Firestore applied the write to its local cache and queued it. Offline, the server acknowledgement (the
+            // completion handler) only comes later, so after the timeout the change counts as saved and syncs by itself.
+            // Reporting a failure here would revert a switch whose write is about to land. A write the server rejects
+            // (rules, auth) is reported by the handler right away when online.
+            let timeout = Task {
                 try? await Task.sleep(for: Self.writeTimeout)
-                gate.once { continuation.resume(throwing: URLError(.timedOut)) }
+                guard !Task.isCancelled else { return }
+                gate.once { continuation.resume() }
+            }
+            reference.setData(fields, merge: true) { error in
+                timeout.cancel()
+                gate.once { if let error { continuation.resume(throwing: error) } else { continuation.resume() } }
             }
         }
     }

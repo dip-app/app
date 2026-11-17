@@ -223,6 +223,18 @@ final class OnboardingTourModelTests: XCTestCase {
         XCTAssertEqual(store.records["u1"]?.outcome, .finished)
     }
 
+    func testALateInterestsResultAfterLeavingTheStepIsIgnored() {
+        let store = MemoryStore()
+        store.records["u1"] = OnboardingRecord(lastStep: .interests, outcome: nil, updatedAt: date)
+        let model = OnboardingTourModel(mode: .firstRun, uid: "u1", store: store, configuration: configuration())
+        model.back()                                   // the member left B5 while its save was still running
+        XCTAssertNotEqual(model.step, .interests)
+        model.finishInterests(saved: true)             // the save's late result must not end the tour
+        XCTAssertFalse(model.isHandingOff)
+        XCTAssertFalse(model.interestsSaved)
+        XCTAssertNil(store.records["u1"]?.outcome)
+    }
+
     func testReplayNeverWritesAndSaysDone() {
         let store = MemoryStore()
         let model = OnboardingTourModel(mode: .replay, uid: "u1", store: store, configuration: configuration())

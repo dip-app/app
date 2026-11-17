@@ -33,13 +33,16 @@ public struct DIPMessageComposer: View {
     private let sendIcon: AnyView
     private let onSend: () -> Void
     private let onFocusChange: (Bool) -> Void
+    /// Default limit (photo comments). Chat passes its own, smaller one.
     public static let maximumLength = 2_000
+    private let limit: Int
 
     public init(
         text: Binding<String>, placeholder: String, isSending: Bool = false,
-        errorMessage: String? = nil, identifierPrefix: String, onSend: @escaping () -> Void,
-        onFocusChange: @escaping (Bool) -> Void = { _ in }
+        errorMessage: String? = nil, identifierPrefix: String, maximumLength: Int = DIPMessageComposer.maximumLength,
+        onSend: @escaping () -> Void, onFocusChange: @escaping (Bool) -> Void = { _ in }
     ) {
+        limit = maximumLength
         _text = text; self.placeholder = placeholder; self.isSending = isSending
         self.errorMessage = errorMessage; self.identifierPrefix = identifierPrefix
         self.style = .standard; self.avatar = nil
@@ -50,9 +53,10 @@ public struct DIPMessageComposer: View {
     public init<Avatar: View, SendIcon: View>(
         text: Binding<String>, placeholder: String, isSending: Bool = false,
         errorMessage: String? = nil, identifierPrefix: String, style: Style = .photoOverlay,
-        avatar: () -> Avatar, sendIcon: () -> SendIcon, onSend: @escaping () -> Void,
+        maximumLength: Int = DIPMessageComposer.maximumLength, avatar: () -> Avatar, sendIcon: () -> SendIcon, onSend: @escaping () -> Void,
         onFocusChange: @escaping (Bool) -> Void = { _ in }
     ) {
+        limit = maximumLength
         _text = text; self.placeholder = placeholder; self.isSending = isSending
         self.errorMessage = errorMessage; self.identifierPrefix = identifierPrefix; self.style = style
         self.avatar = AnyView(avatar()); self.sendIcon = AnyView(sendIcon()); self.onSend = onSend; self.onFocusChange = onFocusChange
@@ -61,13 +65,13 @@ public struct DIPMessageComposer: View {
     /// The send control's three states: nothing (or too much) to send, ready, or a send in flight.
     public enum SendState: Equatable, Sendable { case disabled, ready, sending }
 
-    public static func sendState(text: String, isSending: Bool) -> SendState {
+    public static func sendState(text: String, isSending: Bool, maximumLength: Int = DIPMessageComposer.maximumLength) -> SendState {
         if isSending { return .sending }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return !trimmed.isEmpty && text.count <= maximumLength ? .ready : .disabled
     }
 
-    private var sendState: SendState { Self.sendState(text: text, isSending: isSending) }
+    private var sendState: SendState { Self.sendState(text: text, isSending: isSending, maximumLength: limit) }
     private var canSend: Bool { sendState == .ready }
 
     /// Placeholder ink: the text colour at 70% (about 5.9:1 on white; the earlier light grey failed 4.5:1).
@@ -164,7 +168,9 @@ public struct DIPMessageComposer: View {
                     Label(errorMessage, systemImage: "exclamationmark.circle")
                         .font(.footnote).foregroundStyle(.red)
                         .accessibilityIdentifier(identifierPrefix + ".error")
-                    Button("Try Again", action: onSend)
+                    Button(action: onSend) {
+                        Text("Try Again").dipHitSlop(horizontal: 12, vertical: 14)
+                    }
                         .font(.footnote.weight(.semibold))
                         .disabled(!canSend)
                         .accessibilityIdentifier(identifierPrefix + ".retry")
@@ -175,9 +181,9 @@ public struct DIPMessageComposer: View {
                             in: RoundedRectangle(cornerRadius: 16))
             }
             if style == .photoOverlay { photoRow } else { standardRow }
-            if text.count > Self.maximumLength - 200 {
-                Text("\(text.count)/\(Self.maximumLength)")
-                    .font(.caption).foregroundStyle(text.count > Self.maximumLength ? .red : .secondary)
+            if text.count > limit - 200 {
+                Text("\(text.count)/\(limit)")
+                    .font(.caption).foregroundStyle(text.count > limit ? .red : .secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .accessibilityIdentifier(identifierPrefix + ".length")
             }
@@ -257,3 +263,13 @@ public struct DIPPhotoAttributionTag: View {
     }
 }
 #endif
+
+extension View {
+    /// Grows the tap target by the given slop on each side without changing layout: the padding and shape are applied
+    /// inside a `Button` label and the layout padding is taken back out. Use to reach the 44 pt minimum on small text.
+    public func dipHitSlop(horizontal: CGFloat = 0, vertical: CGFloat = 0) -> some View {
+        padding(.horizontal, horizontal).padding(.vertical, vertical)
+            .contentShape(Rectangle())
+            .padding(.horizontal, -horizontal).padding(.vertical, -vertical)
+    }
+}

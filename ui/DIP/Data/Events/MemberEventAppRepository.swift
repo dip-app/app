@@ -127,7 +127,11 @@ import DIPAccounts
     func selectDetail(_ id: String?) {
         detailTask?.cancel(); detailTask = nil; detailID = id
         // Keep the chat listener while a chat sheet may still be open (nil = left the event page).
-        if let id { chatCandidateID = id; syncChat(); syncAlbum(id) }
+        if let id {
+            chatCandidateID = id; syncChat()
+            // Only an ended event has an album; upcoming events must not hold a photo listener.
+            if isPastEvent(id) { syncAlbum(id) }
+        } else { stopAlbum() }
         guard let id, !stopped else { return }
         Task { [weak self] in await self?.loadAttendees(id) }
         detailTask = Task { [weak self, reads] in
@@ -173,9 +177,10 @@ import DIPAccounts
     }
     private func publish() {
         guard !stopped else { return }
+        // The open event's album starts as soon as the event is known to have ended (it may load or end after opening).
+        if let id = detailID, albumEventID != id, isPastEvent(id) { syncAlbum(id) }
         var details: [String: DIPEventDetail] = [:]
-        let badgeDate = DateFormatter()
-        badgeDate.setLocalizedDateFormatFromTemplate("MMMdjm")
+        let badgeDate = Self.badgeDateFormatter()
         for (id, event) in joinedRecords.merging(records, uniquingKeysWith: { _, feed in feed }) {
             guard let metadata = try? MemberEventsRepository.metadata(event) else { continue }
             // V1-08: category-based default image from the approved catalog URL (falls back to tags).
@@ -403,6 +408,29 @@ import DIPAccounts
         return [id: DIPAlbum(id: id, eventID: id, title: event.title, photos: photos,
                              canAddPhotos: canUpload(id),
                              remainingUploads: remaining, isLoaded: albumLoaded, loadError: albumError)]
+    }
+
+    /// Reused across publishes (rebuilt only when the locale or time zone changes): formatters are costly to create.
+    private static var cachedBadgeFormatter: (key: String, formatter: DateFormatter)?
+    private static func badgeDateFormatter() -> DateFormatter {
+        let key = Locale.current.identifier + "|" + TimeZone.current.identifier
+        if let cached = cachedBadgeFormatter, cached.key == key { return cached.formatter }
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("MMMdjm")
+        cachedBadgeFormatter = (key, formatter)
+        return formatter
+    }
+
+    /// Same rule `publish` uses for `DIPEventDetail.isPast`; false while the event is not loaded.
+    private func isPastEvent(_ id: String) -> Bool {
+        guard let event = joinedRecords[id] ?? records[id] else { return false }
+        return event.endTime <= clock() || event.status == "completed"
+    }
+
+    /// Leaving the event page: the photo listener and its images are released.
+    private func stopAlbum() {
+        albumTask?.cancel(); albumTask = nil; albumEventID = nil
+        albumRecords = []; albumImages = [:]; albumImagesLoading = []; albumLoaded = false; albumError = nil
     }
 
     /// Follows the last opened event; the listener is replaced when another event is opened.

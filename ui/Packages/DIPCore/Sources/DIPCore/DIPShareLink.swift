@@ -13,7 +13,7 @@ public enum DIPShareLink {
 
     private static let maxIDLength = 128
 
-    /// `https://<host>/e/<eventId>`, or nil for an id that is not a plain opaque id (empty, too long, containing `/`).
+    /// `https://<host>/e/<eventId>`, or nil for an id that is not a plain opaque id (see `isValidID`).
     public static func url(forEventID eventID: String) -> URL? {
         guard isValidID(eventID) else { return nil }
         var allowed = CharacterSet.urlPathAllowed
@@ -63,8 +63,10 @@ public enum DIPShareLink {
         return Destination(eventID: id, opensChat: chat)
     }
 
+    /// Opaque ids are Firestore auto-ids or fixture slugs: `[A-Za-z0-9_-]{1,128}` only. This rejects ".", "..",
+    /// reserved "__x__" names, unicode, whitespace, separators and anything a percent-escape could smuggle in.
     private static func isValidID(_ id: String) -> Bool {
-        !id.isEmpty && id.count <= maxIDLength && !id.contains("/")
-            && id.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) && !CharacterSet.whitespacesAndNewlines.contains($0) }
+        guard (1...maxIDLength).contains(id.utf8.count), !(id.hasPrefix("__") && id.hasSuffix("__")) else { return false }
+        return id.utf8.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A) || $0 == 0x5F || $0 == 0x2D }
     }
 }

@@ -91,13 +91,18 @@ extension FirebaseParticipationSource: ChatSource {
         return .notGoing
     }
 
-    /// Completion-based write with a 15 s timeout so an offline send fails visibly (the write stays queued and
-    /// is idempotent on the message ID, so retrying can never duplicate it).
-    private static func write(_ start: (@escaping (Error?) -> Void) -> Void) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+    /// How a write ended: acknowledged by the server, or still queued by Firestore after `timeout` (offline or slow).
+    enum WriteOutcome: Equatable, Sendable { case committed, pending }
+
+    /// Completion-based write. Firestore keeps an unacknowledged write queued and delivers it later, so running out of
+    /// time is `.pending`, not a failure: failing it would show a ghost message plus a duplicate once the member edits
+    /// and resends under a new ID. Real errors (denied, invalid) still throw. Idempotent on the document ID.
+    @discardableResult
+    static func write(timeout: Duration = .seconds(15), _ start: (@escaping (Error?) -> Void) -> Void) async throws -> WriteOutcome {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<WriteOutcome, Error>) in
             let gate = WriteGate()
-            start { error in gate.once { if let error { continuation.resume(throwing: error) } else { continuation.resume() } } }
-            Task { try? await Task.sleep(for: .seconds(15)); gate.once { continuation.resume(throwing: ChatFailure.unavailable) } }
+            start { error in gate.once { if let error { continuation.resume(throwing: error) } else { continuation.resume(returning: .committed) } } }
+            Task { try? await Task.sleep(for: timeout); gate.once { continuation.resume(returning: .pending) } }
         }
     }
 

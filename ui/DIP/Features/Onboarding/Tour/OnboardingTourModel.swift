@@ -141,7 +141,8 @@ final class OnboardingTourModel {
 
     /// B5 finished (saved, unchanged or "Skip for now"): `next()` on the last step writes `.finished`.
     func finishInterests(saved: Bool) {
-        guard !isHandingOff else { return }
+        // A late result for a step the member already left (or a repeat) must not finish the tour.
+        guard !isHandingOff, step == .interests else { return }
         if saved { interestsSaved = true }
         apply(flow.next(at: now()), direction: .forward)
     }
