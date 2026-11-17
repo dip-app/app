@@ -133,7 +133,7 @@ Deliverability on a brand-new domain (warm-up, DMARC discipline); cost surprises
 
 Recorded November 17, 2026 by the email workstream. Each can be revisited; none needs a data migration.
 
-1. **Provider (question 1):** code is provider-agnostic (`EmailProviderPort`, `EmailWebhookVerifier`); the only real adapter is Postmark, as recommended. Default `EMAIL_PROVIDER=log` sends nothing. No account was created and nothing was bought.
+1. **Provider (question 1):** code is provider-agnostic (`EmailProviderPort`, `EmailWebhookVerifier`); the real adapters are Postmark (recommended) and Resend (`EMAIL_PROVIDER=resend`, added while Postmark approval was pending). Default `EMAIL_PROVIDER=log` sends nothing. No account was created and nothing was bought.
 2. **Templates (question 7):** no React in the Functions bundle. A small typed, dependency-free renderer (table layout, inline styles, dark-mode media query, Outlook VML button, plain-text alternative) replaced react-email; no new runtime npm dependencies (dev-only checkers: `npm run check:email`, see [email compatibility](../../ops/email-compatibility.md)). Snapshot files live in `gcp/tests/unit/__snapshots__/email/`; `npm run email:preview -- <dir> [--asset-base <url>]` writes a gallery. The look follows the admin site (see the style guide below).
 3. **No per-event cover image:** a full-width event photo dominated a notification and Outlook cannot crop. Instead every email carries the same on-brand header and footer art (hosted, 1200 wide shown at 600). The cover variable is still allow-listed for later.
 4. **Reminder emails default off (question 2)**, as in the shared registry; members opt in. `discovery` is offered (default off) but no template exists yet.
