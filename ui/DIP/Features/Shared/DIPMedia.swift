@@ -17,8 +17,10 @@ struct DIPMedia: View {
             AsyncImage(url: url) { phase in
                 if let image = phase.image {
                     image.resizable()
+                } else if case .failure = phase {
+                    DIPMediaFailed()
                 } else {
-                    placeholder
+                    DIPMediaLoading()
                 }
             }
         case .generatedAvatar(let userID):
@@ -31,13 +33,30 @@ struct DIPMedia: View {
 
     // Matches the familiar Image composition API; all images above are resizable.
     func resizable() -> Self { self }
-    private var placeholder: some View { DIPMediaPlaceholder() }
 }
 
-private struct DIPMediaPlaceholder: View {
+/// Still waiting for bytes: a plain muted tile, decorative.
+private struct DIPMediaLoading: View {
+    var body: some View {
+        Rectangle().fill(DIPTokens.Color.surfaceMuted.swiftUIColor).accessibilityHidden(true)
+    }
+}
+
+/// ALB-Q6 / DS-Q5: missing or undecodable bytes and a failed download are distinct from loading: a broken-photo
+/// glyph and a spoken label. (AsyncImage has no retry hook, so there is no tap-to-retry here; the surrounding
+/// screens retry by reloading.)
+private struct DIPMediaFailed: View {
     var body: some View {
         Rectangle().fill(DIPTokens.Color.surfaceMuted.swiftUIColor)
-            .overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
+            .overlay {
+                Image(systemName: "photo.badge.exclamationmark")
+                    .font(.caption).imageScale(.medium)
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.65))
+                    .minimumScaleFactor(0.5)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Photo couldn’t load")
+            .accessibilityIdentifier("media.failed")
     }
 }
 
@@ -97,9 +116,9 @@ private struct DIPDataImage: View {
             if let image {
                 Image(uiImage: image).resizable()
             } else if failed {
-                DIPMediaPlaceholder()
+                DIPMediaFailed()
             } else {
-                Rectangle().fill(DIPTokens.Color.surfaceMuted.swiftUIColor)
+                DIPMediaLoading()
             }
         }
         .task(id: DIPDecodedImageCache.key(for: bytes)) {

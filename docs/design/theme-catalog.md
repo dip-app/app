@@ -34,6 +34,6 @@ Themes are broad on purpose: each one holds many different events and activities
 
 ## Notes
 
-- Accent hexes come from `apps/admin/public/img/themes/ACCENTS.md`; Fitness uses `challengeAccent`. Title text is white on dark or mid-tone accents (purple, ink, Fitness pink) and ink on the lighter ones (rule in `DIPHomeChallengeSection.swift`, checked against real contrast ratios).
+- Accent hexes come from `apps/admin/public/img/themes/ACCENTS.md`; Fitness uses `challengeAccent`. Title text is whichever of white or ink has the higher WCAG contrast (`DIPThemeAccent.prefersLightTitle` in DIPCore), except white stays on the brand purple (locked owner decision, 3.1:1). Result: white on purple (Arts) and on Volunteering's dark fill, ink on the rest including Fitness pink (6.6:1; white was 2.43:1). A unit test asserts every accent reaches 3:1.
 - Tags: the portal's mock tag catalog includes all nine names. Production tags are managed by the trusted tag tooling (`tags/`); the seed script `scripts/seed-weekly-theme.mjs` aborts if no tag with the theme's name exists.
 - Unknown keys resolve to a neutral gray title-only card on every client, so an older app never breaks on a newer theme.

@@ -94,6 +94,8 @@ struct ProfileHeaderCard: View {
                 .foregroundStyle(ink)
                 .padding(.horizontal, 16).frame(minHeight: 40)
                 .background(.white, in: Capsule())
+                // Hit area grows to the 44 pt minimum; layout is unchanged.
+                .dipHitSlop(vertical: 2)
         }
         .buttonStyle(DIPPressFeedbackStyle())
         .accessibilityLabel("Edit profile")
@@ -167,15 +169,17 @@ struct ProfileHeaderCard: View {
                     Text(interest.name)
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
                         .foregroundStyle(ink)
-                        .padding(.horizontal, 14).frame(height: 32)
+                        .padding(.horizontal, 14).dipFixedFrame(height: 32)
                         .background(.white, in: Capsule())
                 }
                 Button(action: onAddInterests) {
                     Label(profile.interestTagIDs.isEmpty ? "Add interests" : "Add", systemImage: "plus")
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
                         .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
-                        .padding(.horizontal, 14).frame(height: 32)
+                        .padding(.horizontal, 14).dipFixedFrame(height: 32)
                         .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                        // 32 pt pill, 44 pt hit area.
+                        .dipHitSlop(vertical: 6)
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
                 .disabled(!catalogReady)

@@ -12,6 +12,7 @@ struct DIPInviteSheet: View {
     let onClose: () -> Void
     @FocusState private var searchFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(spacing: 0) {
@@ -122,15 +123,18 @@ struct DIPInviteSheet: View {
 
     private func row(_ coworker: DIPCoworker) -> some View {
         let state = model.state(of: coworker)
+        // Name and Invite control sit side by side normally; at accessibility sizes the control drops below the name.
+        let rowLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
         return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 12) {
+            rowLayout {
                 HStack(spacing: 16) {
                     DIPMedia(coworker.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(coworker.name).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).lineLimit(1)
+                        Text(coworker.name).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         if !coworker.team.isEmpty {
                             Text(coworker.team).font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout))
-                                .foregroundStyle(.secondary).lineLimit(1)
+                                .foregroundStyle(.secondary).dipLineLimit(1)
                         }
                     }
                     .foregroundStyle(.black)
@@ -191,7 +195,7 @@ struct DIPInviteSheet: View {
                     if sending { ProgressView().tint(.white) }
                     else { Text("Invite").font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(.white) }
                 }
-                .frame(width: 84, height: 44)
+                .dipFixedFrame(width: 84, height: 44)
                 .background(DIPTokens.Color.eventsAccent.swiftUIColor, in: Capsule())
                 .contentShape(Capsule())
             }

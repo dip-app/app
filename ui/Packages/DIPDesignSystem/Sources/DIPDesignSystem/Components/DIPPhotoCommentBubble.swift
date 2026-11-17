@@ -48,7 +48,7 @@ public struct DIPPhotoCommentBubble: View {
                         .frame(maxWidth: 84, alignment: .leading)
                 }
                 .padding(.leading, 4).padding(.trailing, 8)
-                .frame(height: 32)
+                .dipFixedFrame(height: 32)
                 .fixedSize(horizontal: true, vertical: true)
                 .background(.white, in: Capsule())
                 .accessibilityElement(children: .ignore)

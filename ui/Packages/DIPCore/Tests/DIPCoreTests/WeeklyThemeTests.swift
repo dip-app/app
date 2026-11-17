@@ -3,6 +3,24 @@ import DIPMockData
 import XCTest
 
 final class ThemeCatalogTests: XCTestCase {
+    /// HOME-Q10: every catalog accent's title reaches the 3:1 large-text minimum. The locked white-on-purple (3.1:1) passes too.
+    func testEveryCatalogAccentTitleReachesLargeTextContrast() throws {
+        for theme in DIPThemeCatalog.themes {
+            let hex: String
+            switch theme.accent {
+            case .challenge: hex = DIPThemeAccent.challengeHex
+            case .neutral: continue
+            case .themed(let value): hex = value
+            }
+            let ratio = try XCTUnwrap(DIPThemeAccent.titleContrast(onHex: hex), theme.key)
+            XCTAssertGreaterThanOrEqual(ratio, 3.0, "\(theme.key) \(hex)")
+        }
+        XCTAssertFalse(DIPThemeAccent.challenge.prefersLightTitle)
+        XCTAssertTrue(DIPThemeAccent.themed(hex: DIPThemeAccent.brandPurpleHex).prefersLightTitle)
+        XCTAssertTrue(DIPThemeAccent.themed(hex: "#1E212B").prefersLightTitle)
+        XCTAssertFalse(DIPThemeAccent.themed(hex: "#FFCC3E").prefersLightTitle)
+    }
+
     func testFitnessKeyResolvesToBundledMascotOnChallengeAccent() {
         let theme = DIPThemeCatalog.theme(coverImageURL: "catalog://theme/fitness")
         XCTAssertTrue(theme.isKnown)

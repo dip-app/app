@@ -413,6 +413,25 @@ final class AlbumBarActionTests: XCTestCase {
         return snapshot
     }
 
+    func testPastEventBarOffersAddPhotosOrNothingWhenAlbumIsEmpty() throws {
+        var base = DIPMockFixtures.reference
+        let past = try XCTUnwrap(base.eventDetails.values.first { $0.isPast && $0.metadata?.status != .cancelled })
+        func bar(_ album: DIPAlbum?) -> DIPBottomBarAction? {
+            base.albums = album.map { [past.id: $0] } ?? [:]
+            return EventBarAction.resolve(route: .event(past.id), snapshot: base, isLoading: false)
+        }
+        let photo = DIPPhoto(id: "p", image: .asset("EventCard"))
+        var album = DIPAlbum(id: past.id, eventID: past.id, title: past.title, photos: [])
+        XCTAssertEqual(bar(album)?.title, "Add Photos")
+        album.canAddPhotos = false
+        XCTAssertNil(bar(album))
+        album.canAddPhotos = true; album.photos = [photo]
+        XCTAssertEqual(bar(album)?.title, "View Album")
+        album.photos = []; album.isLoaded = false
+        XCTAssertEqual(bar(album)?.title, "View Album")
+        XCTAssertEqual(bar(nil)?.title, "View Album")
+    }
+
     func testAddPhotosIsOfferedOnlyToMembersWhoMayUpload() {
         let base = DIPAlbum(id: "boat", eventID: "boat", title: "Boat Ride", photos: [])
         XCTAssertEqual(EventBarAction.resolve(route: .album("boat"), snapshot: snapshot(base), isLoading: false)?.title, "Add Photos")

@@ -44,6 +44,7 @@ struct DIPEventChangesSheet: View {
                         Text("Done").font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(.white)
                             .padding(.horizontal, 20).frame(height: 40)
                             .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                            .dipHitSlop(vertical: 2)
                     }
                     .buttonStyle(DIPPressFeedbackStyle())
                     .accessibilityIdentifier("event.changes.done")

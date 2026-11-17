@@ -166,7 +166,7 @@ public struct DIPMessageComposer: View {
             if let errorMessage {
                 VStack(alignment: .leading, spacing: 6) {
                     Label(errorMessage, systemImage: "exclamationmark.circle")
-                        .font(.footnote).foregroundStyle(.red)
+                        .font(.footnote).foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
                         .accessibilityIdentifier(identifierPrefix + ".error")
                     Button(action: onSend) {
                         Text("Try Again").dipHitSlop(horizontal: 12, vertical: 14)
@@ -183,7 +183,7 @@ public struct DIPMessageComposer: View {
             if style == .photoOverlay { photoRow } else { standardRow }
             if text.count > limit - 200 {
                 Text("\(text.count)/\(limit)")
-                    .font(.caption).foregroundStyle(text.count > limit ? .red : .secondary)
+                    .font(.caption).foregroundStyle(text.count > limit ? DIPTokens.Color.textError.swiftUIColor : .secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .accessibilityIdentifier(identifierPrefix + ".length")
             }
@@ -272,4 +272,43 @@ extension View {
             .contentShape(Rectangle())
             .padding(.horizontal, -horizontal).padding(.vertical, -vertical)
     }
+}
+
+/// The layout decision behind `dipFixedFrame`: fixed sizes hold at every size except accessibility Dynamic Type,
+/// where they become minimums so text can grow and wrap instead of clipping.
+public enum DIPAdaptiveSizing {
+    public static func isRelaxed(_ size: DynamicTypeSize) -> Bool { size.isAccessibilitySize }
+    /// The line limit to apply: `limit` normally, unlimited at accessibility sizes.
+    public static func lineLimit(_ limit: Int?, size: DynamicTypeSize) -> Int? { isRelaxed(size) ? nil : limit }
+}
+
+private struct DIPFixedFrame: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let width: CGFloat?
+    let height: CGFloat?
+    let alignment: Alignment
+    func body(content: Content) -> some View {
+        let relaxed = DIPAdaptiveSizing.isRelaxed(dynamicTypeSize)
+        content.frame(
+            minWidth: width, maxWidth: relaxed ? nil : width,
+            minHeight: height, maxHeight: relaxed ? nil : height, alignment: alignment)
+    }
+}
+
+private struct DIPAdaptiveLineLimit: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let limit: Int?
+    func body(content: Content) -> some View {
+        content.lineLimit(DIPAdaptiveSizing.lineLimit(limit, size: dynamicTypeSize))
+    }
+}
+
+extension View {
+    /// A fixed width and/or height at normal sizes (identical to `.frame(width:height:)`), a minimum at
+    /// accessibility Dynamic Type sizes so content can grow.
+    public func dipFixedFrame(width: CGFloat? = nil, height: CGFloat? = nil, alignment: Alignment = .center) -> some View {
+        modifier(DIPFixedFrame(width: width, height: height, alignment: alignment))
+    }
+    /// `lineLimit(limit)` at normal sizes, unlimited at accessibility Dynamic Type sizes.
+    public func dipLineLimit(_ limit: Int?) -> some View { modifier(DIPAdaptiveLineLimit(limit: limit)) }
 }

@@ -61,6 +61,8 @@ public enum DIPTokens {
         /// Source: proposal.
         public static let calendarConflict = RGBColor(hex: "#FF9F43", red: 255.0 / 255.0, green: 159.0 / 255.0, blue: 67.0 / 255.0)
         /// Source: proposal.
+        public static let textError = RGBColor(hex: "#C62828", red: 198.0 / 255.0, green: 40.0 / 255.0, blue: 40.0 / 255.0)
+        /// Source: proposal.
         public static let textOnCalendarConflict = RGBColor(hex: "#1E212B", red: 30.0 / 255.0, green: 33.0 / 255.0, blue: 43.0 / 255.0)
     }
     public enum Spacing {

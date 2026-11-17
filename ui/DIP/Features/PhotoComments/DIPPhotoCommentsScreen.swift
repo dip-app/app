@@ -75,7 +75,7 @@ struct DIPPhotoCommentsScreen: View {
                 if position != nil || saver != nil { controlBar.padding(.trailing, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)) }
             }
             .overlay(alignment: .top) {
-                if let toast { toastView(toast).padding(.top, 118).transition(.opacity.combined(with: .move(edge: .top))) }
+                if let toast { toastView(toast).padding(.top, 118).transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top))) }
             }
         }
         .ignoresSafeArea(.container)
@@ -200,7 +200,7 @@ struct DIPPhotoCommentsScreen: View {
         toastTask = Task {
             try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+            withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeOut(duration: 0.2)) { toast = nil }
         }
     }
 

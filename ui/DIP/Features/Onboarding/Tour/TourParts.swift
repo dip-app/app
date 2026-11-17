@@ -392,7 +392,7 @@ struct InterestsStrip: View {
         ZStack(alignment: .topLeading) {
             if failed {
                 VStack(spacing: 10) {
-                    CrewMember.gray.face(size: 64, mood: .calm)
+                    CrewMember.gray.face(size: 64, mood: .calm).accessibilityHidden(true)
                     Text(OnboardingInterestsModel.catalogFailedMessage)
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                         .multilineTextAlignment(.center)
@@ -409,14 +409,15 @@ struct InterestsStrip: View {
                 .animation(reduceMotion ? .easeInOut(duration: 0.12) : OnboardingMotion.hop, value: names)
             }
         }
-        .accessibilityHidden(true)
+        // ONB-Q4: the chips repeat the picker (hidden); the failure message is the one thing here VoiceOver must read.
+        .accessibilityHidden(!failed)
     }
 
     private func chip(_ title: String, selected: Bool) -> some View {
         Text(title)
             .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
             .foregroundStyle(selected ? .white : OnboardingTheme.ink)
-            .padding(.horizontal, 12).frame(height: 32)
+            .padding(.horizontal, 12).dipFixedFrame(height: 32)
             .background(selected ? OnboardingTheme.accent : .white, in: Capsule())
             .transition(reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity))
     }

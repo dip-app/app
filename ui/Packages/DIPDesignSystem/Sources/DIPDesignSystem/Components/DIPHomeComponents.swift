@@ -8,6 +8,9 @@ public enum DIPBadgeCount {
 #if canImport(SwiftUI)
     import SwiftUI
     import CoreText
+    #if canImport(UIKit)
+        import UIKit
+    #endif
 
     /// Original Home reference resources. No network or Firebase dependency.
     public enum DIPReferenceAssets {
@@ -26,7 +29,25 @@ public enum DIPBadgeCount {
         }()
         public static func font(_ name: String, size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
             _ = registration
-            return .custom(name, size: size, relativeTo: style)
+            return .custom(boldTextEnabled ? boldVariant(of: name) : name, size: size, relativeTo: style)
+        }
+        /// The next heavier bundled face for Bold Text users (iOS Settings > Display > Bold Text). Faces without a
+        /// heavier sibling (Fjalla One, Figtree Bold) are returned unchanged. Default users never reach this.
+        public static func boldVariant(of name: String) -> String {
+            switch name {
+            case "Figtree-Regular": return "Figtree-Bold"
+            case "Inter-Light": return "Inter-Regular"
+            case "Inter-LightItalic": return "Inter-Italic"
+            case "Inter-Regular": return "Inter-Medium"
+            default: return name
+            }
+        }
+        private static var boldTextEnabled: Bool {
+            #if canImport(UIKit)
+                return UIAccessibility.isBoldTextEnabled
+            #else
+                return false
+            #endif
         }
     }
 
@@ -90,7 +111,7 @@ public enum DIPBadgeCount {
                 }
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 20))
                 .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                .frame(height: 22)
+                .frame(height: 22).accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, 20).padding(.vertical, 14)
                 // Informational label, so outlined (pill rule: solid = pressable, outline = informational).
                 .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
@@ -107,12 +128,15 @@ public enum DIPBadgeCount {
                         }
                         .padding(.leading, 10).padding(.trailing, 12)
                         .frame(height: 40).background(.white, in: Capsule())
+                        // Hit area grows to the 44 pt minimum; layout is unchanged.
+                        .dipHitSlop(vertical: 2)
                     }
                     .accessibilityLabel("Notifications, \(unreadCount) unread").accessibilityIdentifier(
                         "home.notifications")
                     Rectangle().fill(Color.black.opacity(0.2)).frame(width: 1, height: 14).frame(width: 0)
                     Button(action: onProfile) {
                         profileAvatar.frame(width: 40, height: 40)
+                            .dipHitSlop(horizontal: 2, vertical: 2)
                     }
                     .accessibilityLabel("Open profile").accessibilityIdentifier("home.profile")
                 }
@@ -120,6 +144,9 @@ public enum DIPBadgeCount {
                 .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
             }
             .buttonStyle(.plain)
+            // Fixed shell chrome (the page reserves 50 pt for it): its text stops growing past xxxLarge so the
+            // pinned bar never covers the page. Normal sizes are untouched.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
     }
 
@@ -174,12 +201,20 @@ public enum DIPBadgeCount {
                     RoundedRectangle(cornerRadius: 20).fill(accent)
                     if let artwork {
                         // Export is the original image fill; replicate its Figma crop within the mascot node.
-                        artwork
-                            .frame(width: 314.16, height: 231.968)
-                            .offset(x: 28.315, y: -17.427)
-                            .frame(width: 350, height: 222, alignment: .topLeading).clipped()
-                            .offset(y: -19)
-                            .accessibilityHidden(true)
+                        // The crop was drawn for a 362 pt card (402 pt screen); it scales with the card width
+                        // (0.8x to 1.1x) and is masked to the card's sides and bottom so narrow screens never spill.
+                        GeometryReader { proxy in
+                            artwork
+                                .frame(width: 314.16, height: 231.968)
+                                .offset(x: 28.315, y: -17.427)
+                                .frame(width: 350, height: 222, alignment: .topLeading).clipped()
+                                .offset(y: -19)
+                                .scaleEffect(min(max(proxy.size.width / 362, 0.8), 1.1), anchor: .topLeading)
+                        }
+                        // Sides and bottom follow the card's rounded shape; the top stays open because the artwork
+                        // deliberately rises above the card edge (Figma).
+                        .mask(UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20).padding(.top, -80))
+                        .accessibilityHidden(true)
                     }
                     VStack(alignment: .leading, spacing: 0) {
                         Spacer(minLength: 0)
@@ -243,6 +278,7 @@ public enum DIPBadgeCount {
         let width: CGFloat
         let shade: Double
         let onSelect: () -> Void
+        @Environment(\.dynamicTypeSize) private var dynamicTypeSize
         /// Informational: the event overlaps the member's calendar. Never hides or disables the card.
         private var overlapsCalendar = false
         /// Marks the card with the calendar-overlap badge (trailing, below the going chip).
@@ -300,10 +336,11 @@ public enum DIPBadgeCount {
                             avatarStack
                             Text("\(attendeeCount) going")
                                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                .foregroundStyle(.black).frame(height: 22).padding(.horizontal, 7)
+                                .foregroundStyle(.black).dipFixedFrame(height: 22).padding(.horizontal, 7)
                                 .background(.white, in: Capsule())
                         }
-                        .fixedSize()
+                        // At accessibility sizes the chip may wrap inside the card instead of overflowing it.
+                        .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
                     }
                     if let rewardText {
                         // Informational (not tappable): the same white chip as "going", with a filled star.
@@ -312,7 +349,7 @@ public enum DIPBadgeCount {
                                 .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
                             Text(rewardText).font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(.black)
                         }
-                        .frame(height: 22).padding(.horizontal, 8)
+                        .dipFixedFrame(height: 22).padding(.horizontal, 8)
                         .background(.white, in: Capsule())
                         .padding(.top, 6)
                         .accessibilityElement(children: .ignore)
@@ -336,7 +373,8 @@ public enum DIPBadgeCount {
                     .foregroundStyle(.white).padding(10)
                 }
                 .padding(5)
-                .frame(width: width, height: 205, alignment: .leading)
+                .frame(width: width, alignment: .leading)
+                .dipFixedFrame(height: 205, alignment: .leading)
                 .background {
                     artwork
                         .overlay(.black.opacity(shade))
@@ -469,7 +507,7 @@ public enum DIPBadgeCount {
                 .frame(width: 60, height: 60)
                 .offset(x: x, y: 10)
                 // Follows the finger exactly while dragging, then settles with a spring.
-                .animation(dragMarkerX == nil ? DIPMotion.marker : nil, value: x)
+                .animation(dragMarkerX == nil && !reduceMotion ? DIPMotion.marker : nil, value: x)
                 .accessibilityHidden(true)
         }
 

@@ -495,7 +495,7 @@ struct DIPPrototypeApp: View {
                     home: home, showsBottomBar: false,
                     onEvent: { openRoute(.event($0)) },
                     onChallenge: { openRoute(.challenge($0)) }, onSelect: homeSelection,
-                    onLoadMore: onLoadMoreEvents, loadingMore: loadingMoreEvents,
+                    onLoadMore: onLoadMoreEvents ?? Self.previewLoadMore, loadingMore: loadingMoreEvents || Self.previewLoadingMore,
                     paginationError: eventPaginationError,
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
                     onRefresh: homeRefresh, challengeState: challengeFeed?.state,
@@ -572,6 +572,22 @@ struct DIPPrototypeApp: View {
         if let forced = Self.previewPointsDisplay { return forced }
         guard let real else { return .balance(520) }
         return model.loadError == nil ? .balance(real) : .stale(real)
+    }
+
+    /// `--home-load-more` / `--home-load-more=loading` show the pagination button for design review (DEBUG only).
+    private static var previewLoadMore: (() -> Void)? {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--home-load-more") }) ? {} : nil
+        #else
+        return nil
+        #endif
+    }
+    private static var previewLoadingMore: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("--home-load-more=loading")
+        #else
+        return false
+        #endif
     }
 
     /// `--home-events-state=loading|failed|offline` for design review and UI tests only.
@@ -998,6 +1014,7 @@ struct DIPPrototypeApp: View {
                         onJoin: { join(id) }, onBack: pop,
                         onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { pushRoute(.participants(id)) } }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { pushRoute(.album(id)) },
+                        albumLoading: snapshot.albums[id].map { !$0.isLoaded && $0.loadError == nil } ?? false,
                         onLeave: { changeRSVP(id, going: false) },
                         onConfirmedLeave: { await confirmLeave(id) },
                         participationPending: isRSVPPending,

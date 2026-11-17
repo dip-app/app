@@ -3,12 +3,54 @@ import Foundation
 /// Accent of a weekly theme, named by its semantic design token. DIPCore has no UI dependency,
 /// so the app resolves the colour (`challenge` -> `challengeAccent`, `neutral` -> `surfaceMuted`).
 public enum DIPThemeAccent: Equatable, Sendable {
-    /// `challengeAccent` (#FB72E4) with a white display title, as in the Home reference.
+    /// `challengeAccent` (#FB72E4). The title is ink (white measures 2.43:1 on it).
     case challenge
     /// `surfaceMuted` with a dark title: the fallback for a theme this client does not know.
     case neutral
     /// A catalog theme's own background colour (`#RRGGBB`), taken from the theme art set so the card blends with its illustration.
     case themed(hex: String)
+}
+
+extension DIPThemeAccent {
+    /// The brand purple. Owner rule: text on it is always white, even though ink would measure higher.
+    public static let brandPurpleHex = "#7B88FA"
+    /// `challengeAccent` and `ink`, mirrored here because DIPCore cannot see the design tokens.
+    public static let challengeHex = "#FB72E4"
+    static let inkHex = "#1E212B"
+
+    /// Whether the card title is white (true) or ink (false) on this accent: whichever has the higher WCAG
+    /// contrast, except white stays on the brand purple (locked owner decision).
+    public var prefersLightTitle: Bool {
+        switch self {
+        case .neutral: false
+        case .challenge: Self.prefersLightTitle(onHex: Self.challengeHex)
+        case .themed(let hex): Self.prefersLightTitle(onHex: hex)
+        }
+    }
+
+    public static func prefersLightTitle(onHex hex: String) -> Bool {
+        if hex.uppercased() == brandPurpleHex { return true }
+        guard let background = relativeLuminance(hex: hex), let ink = relativeLuminance(hex: inkHex) else { return false }
+        return contrast(1.0, background) > contrast(ink, background)
+    }
+
+    /// WCAG contrast ratio of the title on this accent (white or ink per `prefersLightTitle`).
+    public static func titleContrast(onHex hex: String) -> Double? {
+        guard let background = relativeLuminance(hex: hex), let ink = relativeLuminance(hex: inkHex) else { return nil }
+        return contrast(prefersLightTitle(onHex: hex) ? 1.0 : ink, background)
+    }
+
+    private static func contrast(_ a: Double, _ b: Double) -> Double { (max(a, b) + 0.05) / (min(a, b) + 0.05) }
+
+    static func relativeLuminance(hex: String) -> Double? {
+        let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        func lin(_ shift: UInt32) -> Double {
+            let c = Double((value >> shift) & 0xFF) / 255
+            return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * lin(16) + 0.7152 * lin(8) + 0.0722 * lin(0)
+    }
 }
 
 /// One bundled weekly-theme presentation. The stored challenge only carries
