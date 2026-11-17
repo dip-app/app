@@ -11,7 +11,7 @@ import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
-  MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, promptRejected, usageOf,
+  MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
 } from "./ideasMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
@@ -835,6 +835,15 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const session = staff("ai.generate");
       const { monthly, daily } = aiUsage(session.companyId);
       return mockIdeaContext(aiScenario(), monthly, daily);
+    },
+    // A fake Jev provider: fixed, typed answers (no model call). `?jev=` picks a scenario, `?ai=nodata` has no suggestions.
+    async eventIdeaSuggestions() {
+      staff("ai.generate");
+      if (aiScenario() === "off") throw new ApiError("failed-precondition", "AI event ideas are off for your company.", {}, "AI_DISABLED");
+      const scenario = typeof window === "undefined" ? "default" as const : suggestScenarioFromSearch(window.location.search);
+      await aiDelay(scenario === "slow" ? 6000 : 400);
+      if (scenario === "error") throw new ApiError("failed-precondition", "Suggestions are not available right now.", {}, "AI_UNAVAILABLE");
+      return mockSuggestions(aiScenario() === "nodata" ? "none" : scenario);
     },
     async generateEventDrafts(input): Promise<GenerateDraftsResult> {
       const session = staff("ai.generate");

@@ -47,23 +47,79 @@ $r-box: 8px;
   .two-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   @media (min-width: 700px) { .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 
-  // ---------- Option cards: a real input inside a label, styled as a compact card
-  .opt-grid { display: grid; align-items: stretch; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .opt-grid.cols-1 { grid-template-columns: minmax(0, 1fr); }
-  @media (min-width: 700px) {
-    .opt-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .opt-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  }
-  .opt { position: relative; display: block; height: 100%; cursor: pointer; }
+  // ---------- Option cards: a real input inside a label, styled as a compact card. Columns follow the width of the
+  // step panel (a container query), not the window: 4 across when there is room, then 3, 2 and 1, never overflowing.
+  .step-panel { container: step / inline-size; }
+  .opt-grid { display: grid; align-items: stretch; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+  // Interests: 4 across on wide desktops, 3 around 1100 px, 2 on tablets, 1 on phones. Goals: 3, 2, 1.
+  @media (min-width: 600px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1000px) { .opt-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1360px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); } }
+  .opt-grid.cols-3 { --cols: 3; }
+  .opt-grid.cols-4 { --cols: 4; }
+  // A narrow panel (rail beside it, small window) never squeezes cards below about 170 px.
+  @container step (max-width: 520px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); } }
+  .opt { position: relative; display: block; height: 100%; cursor: pointer; min-width: 0; }
   .opt-input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: inherit; }
   .opt-body { position: relative; box-sizing: border-box; height: 100%; display: grid; align-content: center; gap: 2px; min-height: 56px; padding: 8px 28px 8px 12px; background: $white; border: 1px solid $line-strong; border-radius: $r-ctl; color: $ink; }
   .opt:hover .opt-body { border-color: #8a8fa5; }
-  .opt-name { font-size: 14px; font-weight: 600; }
-  .opt-meta { font-size: 12px; color: var(--muted); }
+  .opt-name { font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+  .opt-meta { font-size: 12px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
+  // The check sits in the top-right corner; the name keeps that corner free so nothing collides with it.
   .opt-check { position: absolute; top: 8px; right: 8px; opacity: 0; color: $purple; }
   .opt-input:checked + .opt-body { border-color: $purple; box-shadow: inset 0 0 0 1px $purple; background: $tint; .opt-check { opacity: 1; } }
   .opt-input:focus-visible + .opt-body { outline: 2px solid $purple; outline-offset: 2px; }
   .opt[data-disabled="true"] { cursor: not-allowed; .opt-body { border-style: dashed; .opt-name, .opt-meta { color: #646a80; } } }
+
+  // Cards with an illustration: a stable two-column layout. Art left (shrinks with the card, 4:3), text block right
+  // (min-width 0, wraps), the suggestion tag on its own row below, the check in the reserved top-right corner.
+  .opt[data-art] .opt-body {
+    grid-template-columns: clamp(36px, 26%, 52px) minmax(0, 1fr);
+    grid-template-areas: "art text" "sg sg";
+    align-items: start; align-content: start; column-gap: 10px; row-gap: 6px; padding: 8px;
+    .opt-name { padding-right: 18px; }
+  }
+  .opt-grid.cols-1 .opt[data-art] .opt-body { grid-template-areas: "art text" "art sg"; padding-right: 28px; .opt-name { padding-right: 0; } }
+  .opt-text { grid-area: text; display: grid; gap: 2px; min-width: 0; align-content: start; }
+  .opt-art { grid-area: art; width: 100%; aspect-ratio: 4 / 3; border-radius: 4px; overflow: hidden; display: block; box-shadow: inset 0 0 0 1px rgba(30, 33, 43, .06);
+    img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    &[data-kind="theme"] img { object-fit: cover; }
+    &[data-kind="avatar"] img { padding: 12%; box-sizing: border-box; } }
+  .opt-sg { grid-area: sg; display: flex; min-width: 0; }
+  .opt-grid.cols-1 .opt-sg { align-self: start; }
+
+  // ---------- Suggestions: informational only. The suggested card gets a lighter purple hairline and an outline tag;
+  // selection (tint + 2px purple) stays the only filled state, and nothing is selected for the admin.
+  $sg-ink: #3f4bc4; // purple text that passes 4.5:1 on white and on the selected tint
+  $sg-line: #8f99f6;
+  .opt[data-suggested] .opt-body { border-color: $sg-line; }
+  .opt[data-suggested]:hover .opt-body { border-color: $purple; }
+  .sg-tag { position: relative; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 20px; padding: 0 7px 0 6px; border: 1px solid $sg-line; border-radius: 999px; background: transparent; color: $sg-ink; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: inherit;
+    svg { flex: none; }
+    &[data-level="perfect"] { border-color: $purple; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .sg-tag { animation: sg-in .24s ease-out both; }
+    @keyframes sg-in { from { opacity: 0; transform: translateY(2px) scale(.96); } to { opacity: 1; transform: none; } }
+  }
+  .opt:hover, .opt:focus-within { z-index: 4; }
+  .sg-tip { position: absolute; left: -7px; top: calc(100% + 6px); z-index: 5; display: grid; gap: 2px; width: max-content; max-width: 240px; padding: 6px 9px; border-radius: 4px; background: $ink; color: $white; font-size: 12px; font-weight: 400; line-height: 1.35; white-space: normal; text-align: left; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s ease;
+    strong { font-weight: 600; } }
+  @media (hover: hover) { .opt:hover .sg-tip { opacity: 1; visibility: visible; } }
+  .opt-input:focus-visible + .opt-body .sg-tip { opacity: 1; visibility: visible; }
+
+  .sg-bar { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; background: $white; border: 1px solid $line; border-radius: $r-box; font-size: 13px;
+    p { flex: 1; min-width: 0; text-wrap: pretty; strong { font-weight: 600; } }
+    .pill-btn { flex: none; } }
+  .scout-icon { width: 36px; height: 36px; border-radius: 50%; flex: none; display: block; }
+  .sg-bar[data-state="loading"] p { color: var(--muted); }
+  @media (prefers-reduced-motion: no-preference) { .sg-bar[data-state="loading"] .scout-icon { animation: pulse 1.4s ease-in-out infinite; } }
+  @media (max-width: 699px) { .sg-bar { flex-wrap: wrap; .pill-btn { flex-basis: 100%; min-height: 40px; } } }
+  .jev-credit { color: $sg-ink; font-weight: 500; }
+  .sg-caption { list-style: none; margin: -2px 0 10px; padding: 0; display: grid; gap: 2px; font-size: 13px;
+    li { display: flex; align-items: baseline; gap: 6px; }
+    li > svg { color: $purple; flex: none; position: relative; top: 1px; }
+    strong { font-weight: 600; } }
+
   .level { display: flex; gap: 2px; margin-top: 4px;
     i { width: 16px; height: 3px; border-radius: 2px; background: $line; }
     &[data-level="1"] i:nth-child(-n+1), &[data-level="2"] i:nth-child(-n+2), &[data-level="3"] i { background: $purple; } }
@@ -103,6 +159,12 @@ $r-box: 8px;
 
   // ---------- Generating
   .status-line { font-size: 14px; font-weight: 500; }
+  .status-row { display: flex; align-items: center; gap: 12px; }
+  .state-art { display: block; flex: none; border-radius: 4px; background: #f1f2fd; }
+  .status-row .state-art { width: 64px; height: 48px; }
+  .results-bar .state-art { width: 40px; height: 30px; margin: -2px 0; }
+  .results-bar { justify-content: flex-start; > p { flex: 1; min-width: 12em; } }
+  @media (prefers-reduced-motion: no-preference) { .status-row .state-art { animation: pulse 1.4s ease-in-out infinite; } }
   .draft-skeletons { display: grid; gap: 8px; }
   .draft-skeleton { display: flex; gap: 12px; padding: 12px; border: 1px solid $line; border-radius: $r-box; }
   .sk-thumb { width: 120px; height: 80px; border-radius: 6px; background: $subtle; flex: none; }
@@ -111,7 +173,7 @@ $r-box: 8px;
 
   // ---------- Results
   .results { display: grid; gap: 12px; }
-  .results-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid $line; border-left: 3px solid $purple; border-radius: $r-ctl; background: $white; font-size: 13px; strong { font-weight: 600; } }
+  .results-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid $line; border-radius: $r-box; background: $white; font-size: 13px; strong { font-weight: 600; } }
   .results-actions { display: flex; gap: 8px; }
   .draft-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   .draft-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px; background: $white; border: 1px solid $line; border-radius: $r-box; }

@@ -60,6 +60,7 @@ export const ADMIN_CALLABLES = {
   updateBugReport: "updateBugReportV1",
   eventIdeaContext: "getEventIdeaContextV1",
   generateEventDrafts: "generateEventDraftsV1",
+  eventIdeaSuggestions: "getEventIdeaSuggestionsV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -439,5 +440,10 @@ export interface GeneratedEventDraft {
   isOutdoor: boolean;
   rationale: string;
 }
+/** getEventIdeaSuggestionsV1: the option the decision model ranks first for each choice (a hint, never a selection). */
+export type AiSuggestionQuestion = "interest" | "goal" | "groupSize" | "setting" | "budget" | "timing";
+export type AiSuggestionProvider = "jev" | "openai" | "heuristic" | "none";
+export interface AiStepSuggestion { question: AiSuggestionQuestion; value: string; probability: number; reason: string }
+export interface EventIdeaSuggestions { provider: AiSuggestionProvider; suggestions: AiStepSuggestion[] }
 export interface GenerateDraftsInput { requestId: string; choices: AiEventChoices; prompt: string; count: number }
 export interface GenerateDraftsResult { drafts: GeneratedEventDraft[]; usage: AiUsage; replay: boolean }

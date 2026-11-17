@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import type { EventIdeaContext, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
+import type { AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
+import { type Art, SCOUT_ICON, SPOT_BG, assetUrl, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
+import {
+  type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied,
+} from "@/lib/suggestionLabels";
 import { COVERS, TAGS, tagName } from "@/lib/catalog";
 import { ApiError } from "@/lib/contract";
 import {
@@ -10,6 +14,7 @@ import {
   bucketLevel, bucketText, capacityLabel, chooseSurprise, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
   presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleInterest, venueLabel,
 } from "@/lib/ideas";
+import { POWERED_BY_JEV, SCOUT } from "@/lib/scout";
 import { useApp } from "./AppProvider";
 import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
@@ -25,7 +30,7 @@ const LIMIT_MESSAGES: Record<string, (ctx: EventIdeaContext | null) => string> =
   AI_UNAVAILABLE: () => "The AI service is busy right now. Nothing was counted against your limit. Try again in a moment.",
   REQUEST_IN_PROGRESS: () => "This request is still running. Wait a moment, then try again.",
   REQUEST_REUSED: () => "That request was already used for different choices. Generate again to start a new one.",
-  INSUFFICIENT_ROLE: () => "Only admins can use AI event ideas.",
+  INSUFFICIENT_ROLE: () => SCOUT.adminsOnly,
 };
 
 function failureMessage(error: unknown, ctx: EventIdeaContext | null): string {
@@ -40,15 +45,52 @@ const Check = () => (
   <svg className="opt-check" viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg>
 );
 
-interface OptionProps { type: "radio" | "checkbox"; name: string; label: string; hint?: string; checked: boolean; disabled?: boolean; onChange: () => void; children?: React.ReactNode }
-function Option({ type, name, label, hint, checked, disabled, onChange, children }: OptionProps) {
+const Sparkle = ({ filled = true }: { filled?: boolean }) => (
+  <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M6 .8l1.3 3.9L11.2 6 7.3 7.3 6 11.2 4.7 7.3.8 6l3.9-1.3z" /></svg>
+);
+const TickSmall = () => (
+  <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.3l2.3 2.2 4.7-5" /></svg>
+);
+
+interface Shown { level: SuggestionLevel; reason: string; provider: AiSuggestionProvider }
+
+/** Informational outline tag (not a control): label plus a hover/focus tooltip with who suggested it and why. */
+function SuggestTag({ s }: { s: Shown }) {
   return (
-    <label className="opt" data-disabled={disabled ? "true" : undefined}>
+    <span className="sg-tag" data-level={s.level}>
+      {s.level === "good" ? <TickSmall /> : <Sparkle filled={s.level === "perfect"} />}
+      <span aria-hidden>{labelOf(s.level)}</span>
+      <span className="sr-only">. {spokenSuggestion(s.level, s.provider)}. {s.reason}</span>
+      <span className="sg-tip" aria-hidden><strong>{suggestedBy(s.provider)}</strong><span>{s.reason}</span></span>
+    </span>
+  );
+}
+
+function OptArt({ art }: { art: Art }) {
+  return (
+    <span className="opt-art" data-kind={art.kind} style={{ background: art.bg }} aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images */}
+      <img src={art.src} alt="" loading="lazy" />
+    </span>
+  );
+}
+
+interface OptionProps {
+  type: "radio" | "checkbox"; name: string; label: string; hint?: string; checked: boolean; disabled?: boolean; onChange: () => void;
+  children?: React.ReactNode; art?: Art; suggestion?: Shown | null;
+}
+function Option({ type, name, label, hint, checked, disabled, onChange, children, art, suggestion }: OptionProps) {
+  return (
+    <label className="opt" data-disabled={disabled ? "true" : undefined} data-suggested={suggestion ? suggestion.level : undefined} data-art={art ? "true" : undefined}>
       <input className="opt-input" type={type} name={name} checked={checked} disabled={disabled} onChange={onChange} />
       <span className="opt-body">
-        <span className="opt-name">{label}</span>
-        {hint && <span className="opt-meta">{hint}</span>}
-        {children}
+        {art && <OptArt art={art} />}
+        <span className="opt-text">
+          <span className="opt-name">{label}</span>
+          {hint && <span className="opt-meta">{hint}</span>}
+          {children}
+        </span>
+        {suggestion && <span className="opt-sg"><SuggestTag s={suggestion} /></span>}
         <Check />
       </span>
     </label>
@@ -73,6 +115,21 @@ export function Ideas() {
   const moved = useRef(false);
   const presetDone = useRef(false);
   const noteId = useId();
+  // Suggestions: one request per visit (the server caches it by sessionId); a failure is simply "no suggestions".
+  const sessionId = useRef<string>("");
+  const [suggest, setSuggest] = useState<EventIdeaSuggestions | "loading" | null>(null);
+  const enabled = ctx?.enabled === true;
+  useEffect(() => {
+    if (!enabled) return;
+    if (!sessionId.current) sessionId.current = crypto.randomUUID();
+    let live = true;
+    setSuggest("loading");
+    api.eventIdeaSuggestions(sessionId.current)
+      .then((s) => { if (live) setSuggest(s); })
+      .catch(() => { if (live) setSuggest(null); });
+    return () => { live = false; };
+  }, [api, enabled]);
+  const panelRef = useRef<HTMLElement>(null);
 
   const goStep = useCallback((index: number) => {
     moved.current = true;
@@ -84,6 +141,16 @@ export function Ideas() {
   useEffect(() => {
     if (moved.current && phase === "edit") heading.current?.focus();
   }, [step, phase]);
+
+  // The suggested card is brought into view when it is off screen (never selected for the admin).
+  useEffect(() => {
+    if (phase !== "edit" || typeof window === "undefined") return;
+    const card = panelRef.current?.querySelector<HTMLElement>(".opt[data-suggested]");
+    if (!card) return;
+    const box = card.getBoundingClientRect();
+    if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+    card.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [step, phase, suggest]);
 
   const generate = useCallback(async (source: Answers, regenerate: boolean) => {
     const choices = choicesOf(source);
@@ -143,9 +210,9 @@ export function Ideas() {
   }, [ctx, api.mode, generate]);
 
   if (ctxState.error) return <LoadError error={ctxState.error} onRetry={ctxState.reload} />;
-  if (!ctx) return <Loading label="Loading event ideas" />;
+  if (!ctx) return <Loading label={`Loading ${SCOUT.name}`} />;
   if (!ctx.enabled) {
-    return <Empty title="AI event ideas are off for your company" body="An owner can turn them on. Until then, create events the usual way." action={<a className="pill-btn gray" href="/events/new/">New event</a>} />;
+    return <Empty art={stateArt("empty")} title={SCOUT.off} body="An owner can turn it on. Until then, create events the usual way." action={<a className="pill-btn gray" href="/events/new/">New event</a>} />;
   }
 
   const usage = ctx.usage;
@@ -206,7 +273,7 @@ export function Ideas() {
         <p className="usage-sub">Monthly: {usage.monthlyGenerationsUsed} of {usage.monthlyGenerationLimit} used</p>
         <div className="bar-track" role="img" aria-label={`${usage.monthlyGenerationsUsed} of ${usage.monthlyGenerationLimit} monthly generations used`}><span style={{ width: `${monthlyPct}%` }} /></div>
       </section>
-      <p className="privacy">The AI sees rounded interest counts and your choices. It never sees names or personal data.</p>
+      <p className="privacy">{SCOUT.privacy}</p>
     </aside>
   );
 
@@ -215,6 +282,73 @@ export function Ideas() {
     ? ctx.topInterests.map((t) => ({ id: t.tagId, name: tagName(t.tagId), bucket: t.bucket as "5-9" | "10-19" | "20+" | null }))
     : TAGS.map((t) => ({ id: t.id, name: t.name, bucket: null as null }));
   const atMax = answers.focusTagIds.length >= MAX_FOCUS;
+
+  // ---------- Suggestions: at most one labeled option per question; nothing is ever selected for the admin.
+  const OPTIONS: Record<AiSuggestionQuestion, readonly string[]> = {
+    interest: interestCards.map((c) => c.id), goal: GOALS.map((o) => o.value), groupSize: GROUP_SIZES.map((o) => o.value),
+    setting: SETTINGS.map((o) => o.value), budget: BUDGETS.map((o) => o.value), timing: TIMINGS.map((o) => o.value),
+  };
+  const loaded = suggest && suggest !== "loading" ? suggest : null;
+  const provider: AiSuggestionProvider = loaded?.provider ?? "none";
+  const labeled = loaded ? labeledSuggestions(loaded.suggestions, provider, (q, v) => OPTIONS[q].includes(v)) : {};
+  const labeledCount = Object.keys(labeled).length;
+  const shown = (question: AiSuggestionQuestion, value: string): Shown | null => {
+    const s = labeled[question];
+    return s && s.value === value ? { level: s.level, reason: s.reason, provider } : null;
+  };
+  const applied = labeledCount > 0 && suggestionsApplied(answers, labeled);
+  const byJev = provider === "jev";
+  // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
+  const scoutIcon = <img className="scout-icon" src={SCOUT_ICON} alt="" width={36} height={36} />;
+
+  // Not on the note step: nothing there can be suggested.
+  const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
+    suggest === "loading"
+      ? (
+        <div className="sg-bar" data-state="loading" role="status">
+          {scoutIcon}
+          <p>{SCOUT.name} is looking at your members’ interests and past events…</p>
+        </div>
+      )
+      : labeledCount === 0
+        ? (
+          <div className="sg-bar" data-state="none">
+            {scoutIcon}
+            <p className="muted">{provider === "none" ? `No suggestions yet. ${SCOUT.name} suggests choices once members pick interests or your company has past events.` : "No clear favorites this time, so every option is open."}</p>
+          </div>
+        )
+        : (
+          <div className="sg-bar" role="region" aria-label={SCOUT.suggestsFeature}>
+            {scoutIcon}
+            <p>
+              <strong>{applied ? `Your choices match ${SCOUT.name}’s suggestions.` : SCOUT.suggestsCount(labeledCount)}</strong>{" "}
+              {!applied && byJev && <><span className="jev-credit">{POWERED_BY_JEV}.</span>{" "}</>}
+              <span className="muted">{applied ? "Change anything before you generate." : "Nothing is selected until you choose."}</span>
+            </p>
+            <button type="button" className="pill-btn gray small" disabled={applied || busy} onClick={() => set(applySuggestions(answers, labeled))}>
+              {applied ? "Applied" : "Use suggestions"}
+            </button>
+          </div>
+        )
+  );
+
+  /** One line per suggested choice under a step heading: what and why (the phone's version of the tooltip). */
+  const suggestCaption = (questions: AiSuggestionQuestion[]) => {
+    const items = questions.map((q) => labeled[q]).filter((s): s is LabeledSuggestion => Boolean(s));
+    if (items.length === 0) return null;
+    const name = (s: LabeledSuggestion) => s.question === "interest" ? tagName(s.value)
+      : [...GOALS, ...GROUP_SIZES, ...SETTINGS, ...BUDGETS, ...TIMINGS].find((o) => o.value === s.value)?.label ?? s.value;
+    return (
+      <ul className="sg-caption" aria-label={SCOUT.suggestsFeature}>
+        {items.map((s) => (
+          <li key={s.question}>
+            <Sparkle />
+            <span><strong>{name(s)}</strong>{" "}<span className="muted">{s.reason}.</span></span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   const body = () => {
     switch (current.id) {
@@ -232,18 +366,19 @@ export function Ideas() {
                 <span>This week’s theme: <strong>{ctx.currentTheme.title}</strong>. Drafts can fit it.</span>
               </p>
             )}
-            {!ctx.interestDataAvailable && <p className="info-note" role="note">Interest counts are not available yet, so pick any interests or let the AI surprise you.</p>}
+            {!ctx.interestDataAvailable && <p className="info-note" role="note">Interest counts are not available yet, so pick any interests or let Scout choose.</p>}
+            {suggestCaption(["interest"])}
             <div className="opt-grid cols-4">
               {interestCards.map((c) => {
                 const checked = answers.focusTagIds.includes(c.id);
                 return (
                   <Option key={c.id} type="checkbox" name="interest" label={c.name} hint={c.bucket ? bucketText(c.bucket) : undefined} checked={checked}
-                    disabled={!checked && atMax} onChange={() => set(toggleInterest(answers, c.id))}>
+                    disabled={!checked && atMax} onChange={() => set(toggleInterest(answers, c.id))} art={interestArt(c.id)} suggestion={shown("interest", c.id)}>
                     {c.bucket && <span className="level" data-level={bucketLevel(c.bucket)} aria-hidden><i /><i /><i /></span>}
                   </Option>
                 );
               })}
-              <Option type="checkbox" name="interest" label="Surprise me" hint="Let the AI choose" checked={answers.surprise} onChange={() => set(answers.surprise ? { surprise: false } : chooseSurprise(answers))} />
+              <Option type="checkbox" name="interest" label={SCOUT.surprise} hint={SCOUT.surpriseHint} checked={answers.surprise} onChange={() => set(answers.surprise ? { surprise: false } : chooseSurprise(answers))} art={{ src: SCOUT_ICON, bg: SPOT_BG, kind: "avatar" }} />
             </div>
             {thin.length > 0 && <p className="muted thin-line">Fewer than 5 members: {thin.join(", ")}</p>}
           </fieldset>
@@ -253,8 +388,9 @@ export function Ideas() {
           <fieldset className="opt-fieldset">
             <legend className="sr-only">{current.heading}</legend>
             <div className="step-head"><h2 ref={heading} tabIndex={-1}>{current.heading}</h2></div>
+            {suggestCaption(["goal"])}
             <div className="opt-grid cols-3">
-              {GOALS.map((o) => <Option key={o.value} type="radio" name="goal" label={o.label} hint={o.hint} checked={answers.goal === o.value} onChange={() => set({ goal: o.value })} />)}
+              {GOALS.map((o) => <Option key={o.value} type="radio" name="goal" label={o.label} hint={o.hint} checked={answers.goal === o.value} onChange={() => set({ goal: o.value })} art={spotArt("goal", o.value)} suggestion={shown("goal", o.value)} />)}
             </div>
           </fieldset>
         );
@@ -262,14 +398,15 @@ export function Ideas() {
         return (
           <div>
             <div className="step-head"><h2 ref={heading} tabIndex={-1}>{current.heading}</h2></div>
+            {suggestCaption(["groupSize", "setting"])}
             <div className="two-col">
               <fieldset className="opt-fieldset">
                 <legend>Group size</legend>
-                <div className="opt-grid cols-1">{GROUP_SIZES.map((o) => <Option key={o.value} type="radio" name="size" label={o.label} hint={o.hint} checked={answers.groupSize === o.value} onChange={() => set({ groupSize: o.value })} />)}</div>
+                <div className="opt-grid cols-1">{GROUP_SIZES.map((o) => <Option key={o.value} type="radio" name="size" label={o.label} hint={o.hint} checked={answers.groupSize === o.value} onChange={() => set({ groupSize: o.value })} art={spotArt("size", o.value)} suggestion={shown("groupSize", o.value)} />)}</div>
               </fieldset>
               <fieldset className="opt-fieldset">
                 <legend>Setting</legend>
-                <div className="opt-grid cols-1">{SETTINGS.map((o) => <Option key={o.value} type="radio" name="setting" label={o.label} hint={o.hint} checked={answers.setting === o.value} onChange={() => set({ setting: o.value })} />)}</div>
+                <div className="opt-grid cols-1">{SETTINGS.map((o) => <Option key={o.value} type="radio" name="setting" label={o.label} hint={o.hint} checked={answers.setting === o.value} onChange={() => set({ setting: o.value })} art={spotArt("setting", o.value)} suggestion={shown("setting", o.value)} />)}</div>
               </fieldset>
             </div>
           </div>
@@ -278,14 +415,15 @@ export function Ideas() {
         return (
           <div>
             <div className="step-head"><h2 ref={heading} tabIndex={-1}>{current.heading}</h2></div>
+            {suggestCaption(["budget", "timing"])}
             <div className="two-col">
               <fieldset className="opt-fieldset">
                 <legend>Budget per person</legend>
-                <div className="opt-grid cols-1">{BUDGETS.map((o) => <Option key={o.value} type="radio" name="budget" label={o.label} hint={o.hint} checked={answers.budget === o.value} onChange={() => set({ budget: o.value })} />)}</div>
+                <div className="opt-grid cols-1">{BUDGETS.map((o) => <Option key={o.value} type="radio" name="budget" label={o.label} hint={o.hint} checked={answers.budget === o.value} onChange={() => set({ budget: o.value })} art={spotArt("budget", o.value)} suggestion={shown("budget", o.value)} />)}</div>
               </fieldset>
               <fieldset className="opt-fieldset">
                 <legend>Timing</legend>
-                <div className="opt-grid cols-1">{TIMINGS.map((o) => <Option key={o.value} type="radio" name="timing" label={o.label} hint={o.hint} checked={answers.timing === o.value} onChange={() => set({ timing: o.value })} />)}</div>
+                <div className="opt-grid cols-1">{TIMINGS.map((o) => <Option key={o.value} type="radio" name="timing" label={o.label} hint={o.hint} checked={answers.timing === o.value} onChange={() => set({ timing: o.value })} art={spotArt("timing", o.value)} suggestion={shown("timing", o.value)} />)}</div>
               </fieldset>
             </div>
           </div>
@@ -295,7 +433,7 @@ export function Ideas() {
           <div className="note-step">
             <div className="step-head"><h2 ref={heading} tabIndex={-1}>{current.heading}</h2></div>
             <div className="field">
-              <label htmlFor={noteId}>Note for the AI (optional)</label>
+              <label htmlFor={noteId}>{SCOUT.noteLabel}</label>
               <textarea id={noteId} ref={noteField} value={answers.prompt} maxLength={MAX_PROMPT} aria-invalid={noteError ? true : undefined}
                 aria-describedby={`${noteId}-count${noteError ? ` ${noteId}-error` : ""}`}
                 placeholder="For example: something new, vegetarian food, easy for people who use a wheelchair"
@@ -330,7 +468,7 @@ export function Ideas() {
   const lastStep = step === STEPS.length - 1;
   const exhausted = remaining <= 0;
   const edit = (
-    <section className="step-panel" aria-label={current.label}>
+    <section className="step-panel" aria-label={current.label} ref={panelRef}>
       {body()}
       <div className="step-actions">
         {lastStep && (
@@ -348,7 +486,11 @@ export function Ideas() {
 
   const generating = (
     <section className="step-panel" aria-label="Generating drafts" aria-busy="true">
-      <p className="status-line" role="status" aria-live="polite">Writing {answers.count} {answers.count === 1 ? "draft" : "drafts"}. This can take up to a minute.</p>
+      <div className="status-row">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="state-art" src={stateArt("thinking")} alt="" width={64} height={48} />
+        <p className="status-line" role="status" aria-live="polite">Writing {answers.count} {answers.count === 1 ? "draft" : "drafts"}. This can take up to a minute.</p>
+      </div>
       <div className="draft-skeletons" aria-hidden>
         {Array.from({ length: answers.count }, (_, i) => (
           <div className="draft-skeleton" key={i}><span className="sk-thumb" /><span className="sk-lines"><i /><i /><i /></span></div>
@@ -368,9 +510,11 @@ export function Ideas() {
   );
 
   const results = result && (
-    <section className="results" aria-label="Draft results">
+    <section className="results" aria-label={SCOUT.drafts}>
       <div className="results-bar">
-        <p><strong>AI suggestions.</strong> Review every detail before publishing.</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} />
+        <p><strong>{SCOUT.drafts}: {result?.drafts.length ?? 0} ready.</strong> Review every detail before publishing.</p>
         <div className="results-actions">
           <button type="button" className="pill-btn gray" disabled={remaining <= 0} onClick={() => void generate(answers, true)}>
             Regenerate{remaining > 0 ? ` (${remaining} left)` : ""}
@@ -394,6 +538,7 @@ export function Ideas() {
       <div className="ideas-layout">
         <div className="ideas-main">
           {stepper}
+          {suggestBar}
           {phase === "generating" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
         </div>
         {rail}
@@ -417,7 +562,7 @@ function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpen: () =
   return (
     <li className="draft-card">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="draft-thumb" src={cover.image} alt="" width={120} height={80} />
+      <img className="draft-thumb" src={assetUrl(cover.image)} alt="" width={120} height={80} />
       <div className="draft-main">
         <h3>{draft.title}</h3>
         <p className="rationale">{draft.rationale}</p>

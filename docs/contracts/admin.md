@@ -47,7 +47,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `insights.read` | `getCompanyInsightsV1` (points and balances only for admin) | no | yes | yes |
 | `bugreport.manage` | `listBugReportsV1`, `getBugReportV1`, `updateBugReportV1` | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
-| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1` | no | no | yes |
+| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `getEventIdeaSuggestionsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1` | no | no | yes |
 
 Only an admin can create another admin or organizer (through `updateMemberV1`, a roster entry or an import). The last admin of a company can never be demoted or deactivated. Clients cannot write `role`, `status`, `teamIds`, `workLocation`, counts, balances or ledger entries (rules allow-list, unchanged).
 
@@ -162,6 +162,7 @@ Reads are not audited; all three calls consume the per-caller rate limit. Operat
 Two admin-only callables behind the idea flow in [AI event creation](../design/stretch/ai-event-creation.md). Neither writes an event: the admin reviews a draft and saves it through `createEventV1`.
 
 - `getEventIdeaContextV1` (`GetEventIdeaContextRequest` -> `GetEventIdeaContextResponse`): read-only, no `requestId`. Returns `enabled`, `topInterests` (`AiInterestTag`, bucket `5-9` | `10-19` | `20+`, never exact counts; tags with fewer than 5 members are suppressed), `thinInterestTagIds`, optional `currentTheme` (`AiIdeaTheme`) and `usage` (`AiUsageSummary`). Still answers when AI is off (`enabled: false`) so the portal can explain itself.
+- `getEventIdeaSuggestionsV1` (`GetEventIdeaSuggestionsRequest` -> `GetEventIdeaSuggestionsResponse`): `sessionId` (UUID, one per portal visit). Fails with `AI_DISABLED` when AI is off. Returns `provider` (`jev`, `openai`, `heuristic` or `none`), up to six `AiStepSuggestion` (`question`, `value`, `probability` 0 to 1, a server-written `reason`) and `cached`. At most one decision call per admin and session (cached for an hour); its cost counts toward the AI spend caps but not the generation limits. Suggestions are hints: the portal never selects them for the admin.
 - `generateEventDraftsV1` (`GenerateEventDraftsRequest` -> `GenerateEventDraftsResponse`): `choices` (`AiEventChoices`, enums only, `focusTagIds` <= 3), an optional free-text `prompt` (<= 500, checked by the AI provider's free moderation and typed triage questions first, and treated as untrusted data) and `count` 1 to 3. Drafts are written by OpenAI and each is moderated and checked before it is returned. Returns 1 to 3 `GeneratedEventDraft` (no venue or exact times; cover is always a `catalog://default/` image), `usage` and `replay`.
 
 Authorization: `ai.generate` is checked first in the command's transaction, admins only (organizers and members get `INSUFFICIENT_ROLE`). Both calls consume the per-caller rate limit.

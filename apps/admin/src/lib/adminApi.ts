@@ -2,7 +2,7 @@ import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
-  EventIdeaContext, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  EventIdeaContext, EventIdeaSuggestions, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 
 /**
@@ -84,6 +84,8 @@ export interface AdminOpsApi {
   eventIdeaContext(): Promise<EventIdeaContext>;
   /** Returns up to `count` drafts for review; nothing is written to events. Retrying with the same `requestId` replays the stored result without spending quota. */
   generateEventDrafts(input: GenerateDraftsInput): Promise<GenerateDraftsResult>;
+  /** getEventIdeaSuggestionsV1: per-step suggestions (Jev, then the OpenAI fallback, then a heuristic). One call per `sessionId`, cached by the server. */
+  eventIdeaSuggestions(sessionId: string): Promise<EventIdeaSuggestions>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

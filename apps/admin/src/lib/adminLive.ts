@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type AiBucket, type AiUsage, type EventIdeaContext, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type AiBucket, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -67,6 +67,16 @@ export function ideaContextFromWire(d: DocumentData): EventIdeaContext {
     ...(theme && str(theme.title) ? { currentTheme: { title: str(theme.title), tagIds: strings(theme.tagIds) } } : {}),
     usage: usageFromWire(d.usage),
   };
+}
+const SUGGEST_QUESTIONS: readonly string[] = ["interest", "goal", "groupSize", "setting", "budget", "timing"];
+const SUGGEST_PROVIDERS: readonly string[] = ["jev", "openai", "heuristic", "none"];
+/** GetEventIdeaSuggestionsResponse -> EventIdeaSuggestions; malformed entries are dropped (no suggestion). */
+export function suggestionsFromWire(d: DocumentData): EventIdeaSuggestions {
+  const provider = (SUGGEST_PROVIDERS.includes(str(d.provider)) ? str(d.provider) : "none") as AiSuggestionProvider;
+  const suggestions = list(d.suggestions)
+    .filter((s) => SUGGEST_QUESTIONS.includes(str(s.question)) && str(s.value) && typeof s.probability === "number" && s.probability >= 0 && s.probability <= 1)
+    .map((s): AiStepSuggestion => ({ question: str(s.question) as AiStepSuggestion["question"], value: str(s.value), probability: s.probability as number, reason: str(s.reason) }));
+  return { provider, suggestions };
 }
 /** GenerateEventDraftsResponse -> GenerateDraftsResult. */
 export function draftsFromWire(d: DocumentData): GenerateDraftsResult {
@@ -411,6 +421,10 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     eventIdeaContext: () => run(async () => {
       const session = await organizer();
       return ideaContextFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaContext, session, {}, false));
+    }),
+    eventIdeaSuggestions: (sessionId) => run(async () => {
+      const session = await organizer();
+      return suggestionsFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaSuggestions, session, { sessionId }, false));
     }),
     // The caller owns the requestId (one per attempt), so `call` sends it as given.
     generateEventDrafts: (input) => run(async () => {

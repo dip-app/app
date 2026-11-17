@@ -5,6 +5,7 @@ import type {
   AiBudget, AiDaypart, AiEventChoices, AiGoal, AiGroupSize, AiSetting, AiTiming, AiVenueType, GeneratedEventDraft,
 } from "./adminTypes";
 import { COVERS, TAG_IDS } from "./catalog";
+import { SCOUT } from "./scout";
 import type { EventDraft } from "./contract";
 
 export const MAX_FOCUS = 3;
@@ -16,7 +17,7 @@ export const STEPS: { id: StepId; label: string; heading: string }[] = [
   { id: "goal", label: "Goal", heading: "What is the goal?" },
   { id: "group", label: "Group and setting", heading: "Who is it for, and where?" },
   { id: "budget", label: "Budget and timing", heading: "What budget, and when?" },
-  { id: "note", label: "Note", heading: "Anything else?" },
+  { id: "note", label: SCOUT.askLabel, heading: SCOUT.askHeading },
 ];
 
 interface Option<T extends string> { value: T; label: string; hint: string }
@@ -115,7 +116,7 @@ const labelOf = <T extends string>(options: Option<T>[], value: T | null) => opt
 export interface SummaryLine { step: number; label: string; value: string }
 /** The "Your choices" list. Unanswered lines read "Not set". */
 export function summaryLines(a: Answers, tagName: (id: string) => string): SummaryLine[] {
-  const interests = a.surprise ? "Surprise me" : a.focusTagIds.map(tagName).join(", ");
+  const interests = a.surprise ? SCOUT.surprise : a.focusTagIds.map(tagName).join(", ");
   const group = [labelOf(GROUP_SIZES, a.groupSize), labelOf(SETTINGS, a.setting)].filter(Boolean).join(", ");
   const budget = [labelOf(BUDGETS, a.budget), labelOf(TIMINGS, a.timing)].filter(Boolean).join(", ");
   const note = a.prompt.trim();
@@ -124,7 +125,7 @@ export function summaryLines(a: Answers, tagName: (id: string) => string): Summa
     { step: 1, label: "Goal", value: labelOf(GOALS, a.goal) || "Not set" },
     { step: 2, label: "Group and setting", value: group || "Not set" },
     { step: 3, label: "Budget and timing", value: budget || "Not set" },
-    { step: 4, label: "Note", value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : "None" },
+    { step: 4, label: SCOUT.askLabel, value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : "None" },
   ];
 }
 

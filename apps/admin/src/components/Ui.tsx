@@ -38,9 +38,11 @@ export function LoadMore({ shown, total, loading, onClick, label = "Load more" }
   );
 }
 
-export function Empty({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+export function Empty({ title, body, action, art }: { title: string; body: string; action?: React.ReactNode; /** Optional decorative illustration URL. */ art?: string }) {
   return (
     <div className="empty">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images */}
+      {art && <img className="empty-art" src={art} alt="" width={120} height={90} />}
       <h2>{title}</h2>
       <p>{body}</p>
       {action && <div className="empty-action">{action}</div>}
