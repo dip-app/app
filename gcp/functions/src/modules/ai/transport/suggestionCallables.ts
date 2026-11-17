@@ -66,7 +66,7 @@ function deps(): SuggestionDeps {
 const base = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" } as const;
 
 export const getEventIdeaSuggestionsV1 = onCall(
-  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY], timeoutSeconds: 60 },
+  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY], timeoutSeconds: 60, memory: "256MiB", maxInstances: 10 },
   async (request: CallableRequest) => {
     try {
       return await getEventIdeaSuggestions(deps(), callerFromRequest(request), request.data);
