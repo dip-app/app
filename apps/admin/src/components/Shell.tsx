@@ -65,7 +65,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const sidebar = useRef<HTMLDivElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -127,14 +127,14 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
     };
   }, [open, close]);
 
-  // Each page names itself in the tab and history; the template in layout.tsx covers only server-set titles.
-  useEffect(() => { if (session) document.title = `${title} | DIP Admin`; }, [title, session]);
 
   if (!session) return null;
   const visible = NAV.map((group) => ({ ...group, items: group.items.filter((item) => !item.requires || can(session.role, item.requires)) })).filter((group) => group.items.length > 0);
 
   return (
     <div className="app">
+      {/* Each page names itself in the tab and history (React hoists <title> into the head). */}
+      <title>{`${title} | DIP Admin`}</title>
       <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById("main"); main?.focus(); main?.scrollIntoView(); }}>Skip to content</a>
       <header className="topbar" inert={open}>
         <button type="button" ref={menuButton} className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
@@ -143,7 +143,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={28} /><span>DIP Admin</span></Link>
       </header>
       <div className="scrim" data-open={open ? "true" : undefined} onClick={() => close()} aria-hidden />
-      <div id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label={open ? "Menu" : undefined} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
+      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label={open ? "Menu" : "App navigation"} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
         <div className="sidebar-top">
           <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={30} /><span>DIP Admin</span></Link>
           <button type="button" ref={closeButton} className="menu-btn close-btn" aria-label="Close menu" onClick={() => close()}>
@@ -176,7 +176,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
             <span className="label">Sign out</span>
           </button>
         </div>
-      </div>
+      </aside>
       <main id="main" tabIndex={-1} className="content" inert={open}>
         {!isStaff(session.role) ? (
           <div className="empty">

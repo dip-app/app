@@ -32,8 +32,9 @@
 .toaster { position: fixed; right: 16px; bottom: 16px; z-index: 200; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); pointer-events: none;
   > div { display: grid; gap: 8px; }
   .toast { pointer-events: auto; display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px; border-radius: 8px; background: $ink; color: $white; font-family: var(--font-figtree), system-ui, sans-serif; font-size: 14px; line-height: 1.4;
-    box-shadow: 0 6px 24px rgba(20, 22, 40, .28); border-left: 4px solid var(--primary); }
-  .toast.error { border-left-color: #ff8a8a; }
+    box-shadow: 0 6px 24px rgba(20, 22, 40, .28); }
+  // Errors get their own fill (white text 9:1) rather than a one-sided stripe.
+  .toast.error { background: #7a0f3f; }
   .toast-text { flex: 1; margin: 0; overflow-wrap: anywhere; }
   .toast-btn { min-height: 36px; padding: 0 10px; border-radius: 6px; background: transparent; color: $white; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer;
     &:hover { background: rgba(255, 255, 255, .14); } &:focus-visible { outline: 2px solid $white; outline-offset: 1px; box-shadow: none; } }

@@ -70,7 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!value) return <div className="boot-state" role="status"><span className="sr-only">Loading DIP Admin</span></div>;
+  if (!value) return <div className="boot-state" role="status"><title>DIP Admin</title><span className="sr-only">Loading DIP Admin</span></div>;
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

@@ -60,6 +60,8 @@ $ctl-h: 36px;
   // Destructive buttons are outlined; only the confirm dialog gets the solid fill.
   .pill-btn.danger { background: $white; color: var(--error); box-shadow: inset 0 0 0 1px var(--error); &:hover:not([disabled]) { background: #fff4f9; } }
   .dialog .pill-btn.danger { background: var(--error); color: $white; box-shadow: none; }
+  // In table rows a red outline on every row is noise: neutral outline, red label, red outline on hover/focus.
+  .table .pill-btn.danger { box-shadow: inset 0 0 0 1px $ctl-border; &:hover:not([disabled]), &:focus-visible { box-shadow: inset 0 0 0 1px var(--error); } }
   .pill-btn[disabled], .big-pill[disabled] { opacity: 1; background: #eceef4; color: $placeholder; box-shadow: none; cursor: not-allowed; }
   .panel > .pill-btn, .panel > .actions { justify-self: start; }
   .big-pill { padding: 0 18px; }
@@ -275,15 +277,19 @@ $ctl-h: 36px;
     .table-wrap { max-height: none; }
     .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .events-table, .themes-table, .audit-table { min-width: 0; }
+    // Tablet: data tables keep readable columns and scroll inside their focusable region instead of wrapping dates.
+    .table.responsive { min-width: 720px; td:not(:first-child) { white-space: nowrap; } }
   }
 }
 @media (max-width: 700px) {
   .content {
+    .table.responsive { min-width: 0; td:not(:first-child) { white-space: normal; } }
     .table.responsive tr { border: 1px solid $line; border-radius: $r-box; padding: 10px 12px; gap: 4px; background: $white; }
     .table.responsive tbody { gap: 8px; }
     .table.responsive tbody td { border: 0; }
     .table.responsive td.num, .table.responsive td.right, .table.responsive th.right { text-align: left; }
-    .filters { grid-template-columns: minmax(0, 1fr); }
+    // Phones: search on its own row, the selects two per row so the list stays near the top.
+    .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } }
     .bug-filters { grid-template-columns: minmax(0, 1fr) auto; &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .covers:has(.theme-option) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .table.responsive td[data-label] { position: relative; padding-left: 96px; min-height: 20px; }

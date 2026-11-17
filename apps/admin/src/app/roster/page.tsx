@@ -167,7 +167,7 @@ function Roster() {
                         <div className="row-actions">
                           {r.state === "invited" && <button className="pill-btn dark small" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={`Resend invite to ${r.displayName}`}>{busy === r.entryId ? "Resending…" : "Resend invite"}</button>}
                           {r.state === "invited" && <button className="pill-btn gray small quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}
-                          {r.state === "revoked" && <button className="pill-btn dark small" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={`Invite ${r.displayName} again`}>Invite again</button>}
+                          {r.state === "revoked" && <button className="pill-btn dark small" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={`Invite again: ${r.displayName}`}>Invite again</button>}
                         </div>
                       </td>
                     </tr>

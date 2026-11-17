@@ -50,7 +50,7 @@ function Screenshot({ url, who, onExpired }: { url: string; who: string; onExpir
   }
   return (
     <>
-      <button className="evidence shot" onClick={() => setOpen(true)} aria-label={`Open ${who}’s screenshot full size`}>
+      <button className="evidence shot" onClick={() => setOpen(true)} aria-label={`View full size: screenshot from ${who}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={`Screenshot from ${who}`} onError={() => setBroken(true)} />
         <span className="view-full">View full size</span>

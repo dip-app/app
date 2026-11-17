@@ -80,7 +80,7 @@ function Evidence({ submission }: { submission: Submission }) {
   if (!url) return <div className="evidence loading" role="status" aria-label="Loading photo" />;
   return (
     <>
-      <button className="evidence" onClick={() => setOpen(true)} aria-label={`Open ${submission.userName}’s photo full size`}>
+      <button className="evidence" onClick={() => setOpen(true)} aria-label={`View full size: photo from ${submission.userName}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={`Evidence from ${submission.userName}`} />
         <span className="view-full">View full size</span>

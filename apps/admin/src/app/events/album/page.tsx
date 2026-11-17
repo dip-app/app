@@ -134,7 +134,7 @@ function Album() {
         <ul className="photo-grid" aria-label="Album photos">
           {photos.data.map((photo) => (
             <li key={photo.id}>
-              <button className="photo-tile" onClick={() => setOpen(photo)} aria-label={`Open photo by ${photo.uploaderName}, ${photo.commentCount} comments`}>
+              <button className="photo-tile" onClick={() => setOpen(photo)} aria-label={`${photo.uploaderName}, ${formatDateTime(photo.createdAt)}, ${photo.commentCount} ${photo.commentCount === 1 ? "comment" : "comments"}: open photo`}>
                 <PhotoImage photo={photo} />
                 <span className="photo-meta">
                   <strong>{photo.uploaderName}</strong>
