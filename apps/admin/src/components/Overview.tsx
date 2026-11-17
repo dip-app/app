@@ -37,7 +37,7 @@ export function StatTiles({ insights, role }: { insights: CompanyInsights; role:
       <StatTile label="Photos, last 30 days" value={formatCount(content.photosLast30Days)} note={`${formatCount(content.commentsLast30Days)} ${content.commentsLast30Days === 1 ? "comment" : "comments"}`} />
       {can(role, "insights.points") && points
         ? <StatTile label="Points issued, 30 days" value={formatCount(points.issuedLast30Days)} note="New points awarded" />
-        : <StatTile label="Events completed" value={formatCount(events.completed)} note={`${formatCount(events.cancelled)} cancelled`} />}
+        : <StatTile label="Events completed" value={formatCount(events.completed)} note={`${formatCount(events.cancelled)} canceled`} />}
     </section>
   );
 }

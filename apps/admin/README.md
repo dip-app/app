@@ -43,6 +43,22 @@ Tickets #121 to #126. All of it sits behind `AdminOpsApi` (`src/lib/adminApi.ts`
 - Mock mode: admin only, 30 per month and 10 per day (starts at 12 and 3 used), replay by `requestId`, a note containing "ignore previous instructions" is rejected. Scenarios by query, mock only: `?ai=off`, `nodata`, `quota`, `error` (generate fails with `AI_UNAVAILABLE`), `slow` (8 s).
 - Screenshot states, mock only: `/ideas/?step=1` to `?step=5` (earlier steps answered), `/ideas/?step=results` (presets, generates on load); combine with `&ai=`.
 
+## UI conventions (quality pass, November 2026)
+
+Findings and remaining work: [`docs/quality/admin-audit-2026-11.md`](../../docs/quality/admin-audit-2026-11.md).
+
+- **Shared building blocks:**
+  - `Tabs` is a tablist with arrow keys.
+  - `RadioGrid` is used by the cover and theme pickers.
+  - `TableRegion` wraps every data table in a named, focusable scroll region.
+  - `Toast` / `toast()` gives success and error feedback and an optional Undo.
+  - `Dialog` handles confirmations; danger dialogs start on Cancel.
+  - `Ui.tsx` has `LoadError`, `Loading`, `Empty`, `SearchBox`, `ResultCount` and `LoadMore`.
+- **URL state:** list filters, search, tabs and the selected item live in the URL (`useQueryState`), so reload, Back and shared links restore them. Press `/` to focus a list's search.
+- **Colors:** filled purple surfaces with white text use `--primary` (#5562dc, 5:1). The brand purple #7b88fa is only for decoration. Control borders are #8a8fa5 (3:1). Notices and banners use full tinted borders, never a one-sided stripe.
+- **Images:** bundled images go through `asset()` (`src/lib/asset.ts`) so they resolve under the `/admin` base path.
+- **Page titles:** each page's title is set by `Shell` ("Page | DIP Admin").
+
 ## Mock mode and live mode
 
 `src/lib/api.ts` defines the `AdminApi` interface the UI depends on, with two implementations chosen at build time:

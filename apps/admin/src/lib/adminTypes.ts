@@ -293,7 +293,7 @@ export interface ApplyStepResponse {
 // ---------- Challenge submissions (docs/contracts/challenge-submissions.md)
 
 export type SubmissionStatus = "submitted" | "approved" | "rejected";
-export const SUBMISSION_STATUS_LABEL: Record<SubmissionStatus, string> = { submitted: "Pending", rejected: "Needs changes", approved: "Approved" };
+export const SUBMISSION_STATUS_LABEL: Record<SubmissionStatus, string> = { submitted: "Pending", rejected: "Changes requested", approved: "Approved" };
 
 export interface Submission {
   /** `{challengeId}_{userId}` */

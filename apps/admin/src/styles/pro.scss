@@ -289,11 +289,11 @@ $ctl-h: 36px;
     .table.responsive tbody td { border: 0; }
     .table.responsive td.num, .table.responsive td.right, .table.responsive th.right { text-align: left; }
     // Phones: search on its own row, the selects two per row so the list stays near the top.
-    .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } }
+    .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } > .field:last-child:nth-child(even) { grid-column: 1 / -1; } }
     .bug-filters { grid-template-columns: minmax(0, 1fr) auto; &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .covers:has(.theme-option) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .table.responsive td[data-label] { position: relative; padding-left: 96px; min-height: 20px; }
-    .table.responsive td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
+    .table.responsive td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
     .going { justify-items: start; }
     .table-wrap:has(.responsive) { border: 0; background: transparent; overflow: visible; }
     .page-header { flex-wrap: wrap; align-items: flex-start; }
