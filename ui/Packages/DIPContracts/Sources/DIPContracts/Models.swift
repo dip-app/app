@@ -2622,3 +2622,153 @@ public struct GetCompanyInsightsResponse: Codable, Equatable, Sendable {
         self.activity = activity
     }
 }
+
+public struct AiInterestTag: Codable, Equatable, Sendable {
+    public var tagId: String
+    public var bucket: String
+
+    public init(tagId: String, bucket: String) {
+        self.tagId = tagId
+        self.bucket = bucket
+    }
+}
+
+public struct AiIdeaTheme: Codable, Equatable, Sendable {
+    public var title: String
+    public var tagIds: [String]
+
+    public init(title: String, tagIds: [String]) {
+        self.title = title
+        self.tagIds = tagIds
+    }
+}
+
+public struct AiUsageSummary: Codable, Equatable, Sendable {
+    public var monthlyGenerationLimit: Int
+    public var monthlyGenerationsUsed: Int
+    public var dailyGenerationLimit: Int
+    public var dailyGenerationsUsed: Int
+    public var generationsRemaining: Int
+    public var budgetExhausted: Bool
+
+    public init(monthlyGenerationLimit: Int, monthlyGenerationsUsed: Int, dailyGenerationLimit: Int, dailyGenerationsUsed: Int, generationsRemaining: Int, budgetExhausted: Bool) {
+        self.monthlyGenerationLimit = monthlyGenerationLimit
+        self.monthlyGenerationsUsed = monthlyGenerationsUsed
+        self.dailyGenerationLimit = dailyGenerationLimit
+        self.dailyGenerationsUsed = dailyGenerationsUsed
+        self.generationsRemaining = generationsRemaining
+        self.budgetExhausted = budgetExhausted
+    }
+}
+
+public struct GetEventIdeaContextRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+
+    public init(contractVersion: Int, companyId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+    }
+}
+
+public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var enabled: Bool
+    public var interestDataAvailable: Bool
+    public var topInterests: [AiInterestTag]
+    public var thinInterestTagIds: [String]
+    public var currentTheme: AiIdeaTheme?
+    public var usage: AiUsageSummary
+
+    public init(contractVersion: Int, enabled: Bool, interestDataAvailable: Bool, topInterests: [AiInterestTag], thinInterestTagIds: [String], currentTheme: AiIdeaTheme? = nil, usage: AiUsageSummary) {
+        self.contractVersion = contractVersion
+        self.enabled = enabled
+        self.interestDataAvailable = interestDataAvailable
+        self.topInterests = topInterests
+        self.thinInterestTagIds = thinInterestTagIds
+        self.currentTheme = currentTheme
+        self.usage = usage
+    }
+}
+
+public struct AiEventChoices: Codable, Equatable, Sendable {
+    public var focusTagIds: [String]
+    public var goal: String
+    public var groupSize: String
+    public var setting: String
+    public var budget: String
+    public var timing: String
+
+    public init(focusTagIds: [String], goal: String, groupSize: String, setting: String, budget: String, timing: String) {
+        self.focusTagIds = focusTagIds
+        self.goal = goal
+        self.groupSize = groupSize
+        self.setting = setting
+        self.budget = budget
+        self.timing = timing
+    }
+}
+
+public struct GenerateEventDraftsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var choices: AiEventChoices
+    public var prompt: String
+    public var count: Int
+
+    public init(contractVersion: Int, companyId: String, requestId: String, choices: AiEventChoices, prompt: String, count: Int) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.choices = choices
+        self.prompt = prompt
+        self.count = count
+    }
+}
+
+public struct GeneratedEventDraft: Codable, Equatable, Sendable {
+    public var title: String
+    public var description: String
+    public var tagIds: [String]
+    public var coverImageURL: String
+    public var suggestedDaypart: String
+    public var durationMinutes: Int
+    public var venueType: String
+    public var venueSearchHint: String
+    public var costCents: Int
+    public var costNote: String
+    public var capacity: Int
+    public var isOutdoor: Bool
+    public var rationale: String
+
+    public init(title: String, description: String, tagIds: [String], coverImageURL: String, suggestedDaypart: String, durationMinutes: Int, venueType: String, venueSearchHint: String, costCents: Int, costNote: String, capacity: Int, isOutdoor: Bool, rationale: String) {
+        self.title = title
+        self.description = description
+        self.tagIds = tagIds
+        self.coverImageURL = coverImageURL
+        self.suggestedDaypart = suggestedDaypart
+        self.durationMinutes = durationMinutes
+        self.venueType = venueType
+        self.venueSearchHint = venueSearchHint
+        self.costCents = costCents
+        self.costNote = costNote
+        self.capacity = capacity
+        self.isOutdoor = isOutdoor
+        self.rationale = rationale
+    }
+}
+
+public struct GenerateEventDraftsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var drafts: [GeneratedEventDraft]
+    public var usage: AiUsageSummary
+    public var replay: Bool
+
+    public init(contractVersion: Int, drafts: [GeneratedEventDraft], usage: AiUsageSummary, replay: Bool) {
+        self.contractVersion = contractVersion
+        self.drafts = drafts
+        self.usage = usage
+        self.replay = replay
+    }
+}

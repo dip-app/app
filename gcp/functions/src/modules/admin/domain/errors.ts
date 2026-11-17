@@ -10,6 +10,7 @@ export type AdminErrorCode =
   | "failed-precondition"
   | "resource-exhausted"
   | "aborted"
+  | "unavailable"
   | "internal";
 
 export type AdminErrorReason =
@@ -50,7 +51,16 @@ export type AdminErrorReason =
   | "COMPANY_NOT_FOUND"
   | "BUG_REPORT_NOT_FOUND"
   | "ASSIGNEE_NOT_FOUND"
-  | "INVALID_STORED_DATA";
+  | "INVALID_STORED_DATA"
+  | "REQUEST_IN_PROGRESS"
+  | "AI_DISABLED"
+  | "AI_PROMPT_REJECTED"
+  | "AI_FLAG_LIMIT"
+  | "AI_DAILY_LIMIT"
+  | "AI_MONTHLY_LIMIT"
+  | "AI_BUDGET_EXHAUSTED"
+  | "AI_OUTPUT_INVALID"
+  | "AI_UNAVAILABLE";
 
 export class AdminError extends Error {
   constructor(

@@ -1307,3 +1307,78 @@ export interface GetCompanyInsightsResponse {
   points?: InsightsPoints;
   activity: Array<InsightsActivityDay>;
 }
+
+export interface AiInterestTag {
+  tagId: string;
+  bucket: "5-9" | "10-19" | "20+";
+}
+
+export interface AiIdeaTheme {
+  title: string;
+  tagIds: Array<string>;
+}
+
+export interface AiUsageSummary {
+  monthlyGenerationLimit: number;
+  monthlyGenerationsUsed: number;
+  dailyGenerationLimit: number;
+  dailyGenerationsUsed: number;
+  generationsRemaining: number;
+  budgetExhausted: boolean;
+}
+
+export interface GetEventIdeaContextRequest {
+  contractVersion: number;
+  companyId: string;
+}
+
+export interface GetEventIdeaContextResponse {
+  contractVersion: number;
+  enabled: boolean;
+  interestDataAvailable: boolean;
+  topInterests: Array<AiInterestTag>;
+  thinInterestTagIds: Array<string>;
+  currentTheme?: AiIdeaTheme;
+  usage: AiUsageSummary;
+}
+
+export interface AiEventChoices {
+  focusTagIds: Array<string>;
+  goal: "team_bonding" | "wellness" | "learning" | "give_back" | "celebrate" | "competition";
+  groupSize: "small" | "team" | "company";
+  setting: "indoors" | "outdoors" | "offsite";
+  budget: "free" | "under_15" | "from_15_to_50" | "over_50";
+  timing: "weekday_lunch" | "after_work" | "weekend";
+}
+
+export interface GenerateEventDraftsRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  choices: AiEventChoices;
+  prompt: string;
+  count: number;
+}
+
+export interface GeneratedEventDraft {
+  title: string;
+  description: string;
+  tagIds: Array<string>;
+  coverImageURL: string;
+  suggestedDaypart: "weekday_morning" | "weekday_lunch" | "weekday_afternoon" | "after_work" | "weekend_daytime" | "weekend_evening";
+  durationMinutes: number;
+  venueType: "office" | "park_or_outdoors" | "restaurant_or_cafe" | "activity_venue" | "community_site";
+  venueSearchHint: string;
+  costCents: number;
+  costNote: string;
+  capacity: number;
+  isOutdoor: boolean;
+  rationale: string;
+}
+
+export interface GenerateEventDraftsResponse {
+  contractVersion: number;
+  drafts: Array<GeneratedEventDraft>;
+  usage: AiUsageSummary;
+  replay: boolean;
+}

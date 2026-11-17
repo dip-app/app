@@ -5994,6 +5994,420 @@
         "challenges",
         "activity"
       ]
+    },
+    "AiInterestTag": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One common interest in the caller's company, as a rounded bucket (never an exact count).",
+      "properties": {
+        "tagId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "bucket": {
+          "type": "string",
+          "enum": [
+            "5-9",
+            "10-19",
+            "20+"
+          ],
+          "description": "Rounded member count; tags with fewer than 5 interested members are never counted (small-cell suppression)."
+        }
+      },
+      "required": [
+        "tagId",
+        "bucket"
+      ]
+    },
+    "AiIdeaTheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The company's current weekly theme, when one is running.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tagIds": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "tagIds"
+      ]
+    },
+    "AiUsageSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "monthlyGenerationLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "monthlyGenerationsUsed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dailyGenerationLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Per admin, per UTC day."
+        },
+        "dailyGenerationsUsed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The caller's generations today (UTC)."
+        },
+        "generationsRemaining": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "What the caller can still run now: the smallest of the monthly, daily and budget headroom."
+        },
+        "budgetExhausted": {
+          "type": "boolean",
+          "description": "The company's monthly AI spending cap is reached."
+        }
+      },
+      "required": [
+        "monthlyGenerationLimit",
+        "monthlyGenerationsUsed",
+        "dailyGenerationLimit",
+        "dailyGenerationsUsed",
+        "generationsRemaining",
+        "budgetExhausted"
+      ]
+    },
+    "GetEventIdeaContextRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "getEventIdeaContextV1: what the AI idea flow starts from. ai.generate (admin). Read-only, no requestId.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId"
+      ]
+    },
+    "GetEventIdeaContextResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "False when AI drafts are switched off for the deployment or this company; the rest is still returned."
+        },
+        "interestDataAvailable": {
+          "type": "boolean",
+          "description": "False until per-company interest counts exist."
+        },
+        "topInterests": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/AiInterestTag"
+          },
+          "description": "Most common interests first."
+        },
+        "thinInterestTagIds": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "description": "Catalog tags with fewer than 5 interested members (no counts)."
+        },
+        "currentTheme": {
+          "$ref": "#/$defs/AiIdeaTheme"
+        },
+        "usage": {
+          "$ref": "#/$defs/AiUsageSummary"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "enabled",
+        "interestDataAvailable",
+        "topInterests",
+        "thinInterestTagIds",
+        "usage"
+      ]
+    },
+    "AiEventChoices": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The card answers of the idea flow; every value is an enum.",
+      "properties": {
+        "focusTagIds": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "description": "Empty means surprise me."
+        },
+        "goal": {
+          "type": "string",
+          "enum": [
+            "team_bonding",
+            "wellness",
+            "learning",
+            "give_back",
+            "celebrate",
+            "competition"
+          ]
+        },
+        "groupSize": {
+          "type": "string",
+          "enum": [
+            "small",
+            "team",
+            "company"
+          ]
+        },
+        "setting": {
+          "type": "string",
+          "enum": [
+            "indoors",
+            "outdoors",
+            "offsite"
+          ]
+        },
+        "budget": {
+          "type": "string",
+          "enum": [
+            "free",
+            "under_15",
+            "from_15_to_50",
+            "over_50"
+          ],
+          "description": "Per person."
+        },
+        "timing": {
+          "type": "string",
+          "enum": [
+            "weekday_lunch",
+            "after_work",
+            "weekend"
+          ]
+        }
+      },
+      "required": [
+        "focusTagIds",
+        "goal",
+        "groupSize",
+        "setting",
+        "budget",
+        "timing"
+      ]
+    },
+    "GenerateEventDraftsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "generateEventDraftsV1: AI event drafts for review. ai.generate (admin). Writes no events; a retry with the same requestId returns the stored drafts.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "choices": {
+          "$ref": "#/$defs/AiEventChoices"
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "The admin's own words; treated as untrusted data. May be empty."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "choices",
+        "prompt",
+        "count"
+      ]
+    },
+    "GeneratedEventDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "An AI suggestion shaped like EventDraft, without a venue or exact times (the admin picks those in the event form).",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "tagIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "coverImageURL": {
+          "type": "string",
+          "pattern": "^catalog://default/[a-z]+$",
+          "description": "Always one of the approved catalog covers accepted by createEventV1."
+        },
+        "suggestedDaypart": {
+          "type": "string",
+          "enum": [
+            "weekday_morning",
+            "weekday_lunch",
+            "weekday_afternoon",
+            "after_work",
+            "weekend_daytime",
+            "weekend_evening"
+          ]
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 720
+        },
+        "venueType": {
+          "type": "string",
+          "enum": [
+            "office",
+            "park_or_outdoors",
+            "restaurant_or_cafe",
+            "activity_venue",
+            "community_site"
+          ]
+        },
+        "venueSearchHint": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Words to search venues with; never a specific venue."
+        },
+        "costCents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Per person."
+        },
+        "costNote": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "isOutdoor": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "description": "One line on why this fits the company."
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "tagIds",
+        "coverImageURL",
+        "suggestedDaypart",
+        "durationMinutes",
+        "venueType",
+        "venueSearchHint",
+        "costCents",
+        "costNote",
+        "capacity",
+        "isOutdoor",
+        "rationale"
+      ]
+    },
+    "GenerateEventDraftsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "drafts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/GeneratedEventDraft"
+          }
+        },
+        "usage": {
+          "$ref": "#/$defs/AiUsageSummary"
+        },
+        "replay": {
+          "type": "boolean",
+          "description": "True when the stored result of an earlier call with this requestId was returned."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "drafts",
+        "usage",
+        "replay"
+      ]
     }
   }
 }
