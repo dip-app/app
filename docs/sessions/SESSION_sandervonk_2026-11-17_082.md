@@ -19,13 +19,14 @@ Fixed the verified audit findings in the push notification router: per-class rat
 - `application/handlers.ts`: change trigger reaches the router when the changeLog entry already exists; reminders catch per event, log, count `failed`, and pre-check the receipt.
 - `application/devices.ts`, `domain/errors.ts`, `ports.ts`, store: `registerDeviceV1` refuses deactivated users (`ACCOUNT_DEACTIVATED`).
 - `transport/notificationFunctions.ts`, `routedTriggers.ts`, `routerDeps.ts`: timeout, memory and maxInstances on every function; `retry: true` on chat, event change and RSVP triggers; in-progress and failed reminders throw so the platform retries; one-time legacy-path warning; router wired with members and logger.
+- `domain/staleness.ts` (`isStaleEvent`, `MAX_EVENT_AGE_MS`) and `transport/notificationFunctions.ts`: retried triggers drop events older than 10 min (chat), 1 h (event change, RSVP), logging `trigger.dropped_stale` with trigger, companyId, eventId, ageMs, and return without throwing.
 - Tests: `gcp/functions/tests/unit/notificationRouter.test.ts`, `notificationTriggersRouter.test.ts`, `gcp/tests/unit/notifications.test.ts`, `notificationEmailPayloads.test.ts`, `gcp/tests/integration/notifications-delivery-store.test.ts`.
 - Docs: `docs/ops/push-apns-runbook.md`, `docs/design/stretch/push-triggers.md`, `docs/design/stretch/notification-preferences.md`.
 
 ## Validation
 
 - `cd gcp/functions && node --import tsx --test tests/unit/notificationRouter.test.ts tests/unit/notificationTriggersRouter.test.ts tests/unit/notificationPreferences.test.ts ../tests/unit/notifications.test.ts ../tests/unit/notificationEmailPayloads.test.ts ../tests/unit/email-router-channel.test.ts ../tests/unit/notifications-new-triggers.test.ts`: passing.
-- `npm run build`: passing.
+- `npm run build`: passing. `isStaleEvent` unit tests added to `notificationRouter.test.ts`.
 - `npm run test:notifications:integration`: not run to completion; the Firestore emulator port was already in use on this machine. The new integration test for lease semantics is therefore unexecuted.
 
 ## Decisions

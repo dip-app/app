@@ -8,6 +8,7 @@ import type { DeliveryLog, DeliveryReceipts, PushRateLimiter } from "../../src/m
 import { sendPush, sendToDevices } from "../../src/modules/notifications/application/sendPush";
 import { DEFAULT_RESOLVED_PREFERENCES, resolvePreferences, type ResolvedPreferences } from "../../src/modules/notifications/domain/preferences";
 import type { PushMessage } from "../../src/modules/notifications/domain/push";
+import { MAX_EVENT_AGE_MS, isStaleEvent } from "../../src/modules/notifications/domain/staleness";
 import { PUSH_RATE_LIMITS, RATE_CLASS_LIMITS, dayBucket, hourBucket, nextCounts, rateClassOf, type RateLimitState } from "../../src/modules/notifications/domain/rateLimit";
 
 const message: PushMessage = {
@@ -581,5 +582,20 @@ describe("failure logging", () => {
     const stats = await deliverNotification({ ...h.deps(), email }, request({ recipients, email: { template: "event_changed", variables: {}, objectId: "e1", revisionOrWindow: "r1" } }));
     assert.equal(stats.emailsEnqueued, 70);
     assert.ok(peak > 1 && peak <= 20, `peak ${peak}`);
+  });
+});
+
+describe("isStaleEvent", () => {
+  const now = new Date("2026-03-01T12:00:00Z");
+  test("older than the cutoff is stale, younger or equal is not", () => {
+    assert.equal(isStaleEvent("2026-03-01T11:49:59Z", now, MAX_EVENT_AGE_MS.chat), true);
+    assert.equal(isStaleEvent("2026-03-01T11:50:00Z", now, MAX_EVENT_AGE_MS.chat), false);
+    assert.equal(isStaleEvent("2026-03-01T10:59:59Z", now, MAX_EVENT_AGE_MS.eventChange), true);
+    assert.equal(isStaleEvent("2026-03-01T11:30:00Z", now, MAX_EVENT_AGE_MS.rsvp), false);
+  });
+  test("future, missing and unparseable times are not stale", () => {
+    assert.equal(isStaleEvent("2026-03-01T13:00:00Z", now, 1), false);
+    assert.equal(isStaleEvent(undefined, now, 1), false);
+    assert.equal(isStaleEvent("garbage", now, 1), false);
   });
 });

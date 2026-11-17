@@ -13,12 +13,21 @@ import { pruneStaleDevices } from "../application/pruneDevices";
 import type { Caller, DeviceRegistry, MessagingPort } from "../application/ports";
 import { NotificationsError } from "../domain/errors";
 import { REMINDER_SCHEDULE } from "../domain/reminders";
+import { isStaleEvent, MAX_EVENT_AGE_MS } from "../domain/staleness";
 import { FirestoreNotificationsStore, plainEvent } from "../infrastructure/firestoreNotificationsStore";
 import { EmulatorOutboxMessaging, FcmMessaging } from "../infrastructure/messaging";
 import { deliveryLog, pushRouterEnabled, routerDependencies } from "./routerDeps";
 
 const REGION = "us-central1";
 const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
+
+/** Drops a retried trigger whose event is older than the cutoff; logs ids and age only. */
+function droppedAsStale(trigger: string, eventTime: string, params: { companyId: string; eventId: string }, maxAgeMs: number): boolean {
+  const now = new Date();
+  if (!isStaleEvent(eventTime, now, maxAgeMs)) return false;
+  logger.error("trigger.dropped_stale", { trigger, companyId: params.companyId, eventId: params.eventId, ageMs: now.getTime() - Date.parse(eventTime) });
+  return true;
+}
 
 function dependencies() {
   const app = defaultAdminApp();
@@ -90,6 +99,7 @@ export const onEventMessageCreated = onDocumentCreated(
   async (event) => {
     if (!event.data) return;
     const { companyId, eventId, messageId } = event.params;
+    if (droppedAsStale("onEventMessageCreated", event.time, { companyId, eventId }, MAX_EVENT_AGE_MS.chat)) return;
     if (deliveryMode() === "router") {
       const router = routerDependencies(defaultAdminApp());
       const stats = await onChatMessageCreatedViaRouter({ ...router, events: router.store, recipients: router.store },
@@ -114,6 +124,7 @@ export const onEventChanged = onDocumentUpdated(
   async (event) => {
     if (!event.data) return;
     const { companyId, eventId } = event.params;
+    if (droppedAsStale("onEventChanged", event.time, { companyId, eventId }, MAX_EVENT_AGE_MS.eventChange)) return;
     const updateTime = event.data.after.updateTime?.toDate() ?? new Date(event.time);
     if (deliveryMode() === "router") {
       const router = routerDependencies(defaultAdminApp());
@@ -139,6 +150,7 @@ export const onRsvpChanged = onDocumentWritten(
   async (event) => {
     const { store } = dependencies();
     const { companyId, eventId, userId } = event.params;
+    if (droppedAsStale("onRsvpChanged", event.time, { companyId, eventId }, MAX_EVENT_AGE_MS.rsvp)) return;
     const writeTime = event.data?.after.updateTime?.toDate() ?? new Date(event.time);
     await onRsvpWritten(store, companyId, eventId, userId, writeTime);
   });
