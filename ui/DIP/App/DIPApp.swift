@@ -60,6 +60,7 @@ struct DIPApp: App {
                 memberHome(context)
                     .id(EventReadScope(uid: context.uid, companyID: context.companyID))
             }
+            .dipDuoLayout()
             .task { session.start(); push?.onLink = { eventLinks.receive($0) } }
             .onChange(of: scenePhase) { _, phase in
                 // Permission granted later in iOS Settings takes effect when the app returns to the foreground.
