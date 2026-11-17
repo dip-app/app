@@ -55,6 +55,25 @@ jobs:
         with:
           name: admin-out
           path: apps/admin/out
+      # EXAMPLE, inactive (owner step, docs/ops/secrets.md section 7): fetch encrypted secrets from the private
+      # dip-app/secrets repo instead of storing each value as a GitHub secret. Needs two repository secrets:
+      #   SOPS_AGE_KEY            the age PRIVATE key (also kept in the password manager)
+      #   DIP_SECRETS_TOKEN       read-only (Contents: read) fine-grained token limited to dip-app/secrets,
+      #                           or use DIP_SECRETS_DEPLOY_KEY (read-only deploy key, private half) instead
+      # To enable: uncomment, and keep the step after checkout and before the deploy step. Do not echo outputs.
+      # - name: Install sops
+      #   if: env.HAS_SECRET == 'true'
+      #   run: |
+      #     curl -sSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
+      #     chmod +x /usr/local/bin/sops
+      # - name: Pull public web config from dip-app/secrets
+      #   if: env.HAS_SECRET == 'true'
+      #   env:
+      #     SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      #     DIP_SECRETS_TOKEN: ${{ secrets.DIP_SECRETS_TOKEN }}
+      #   run: scripts/secrets/pull.sh --only admin
+      # Backend secrets (Secret Manager) are synced by an owner or a manually triggered job, never on push:
+      #   run: scripts/secrets/sync-gcp.sh --project team05-dip   (same env as above plus Google credentials)
       - name: Assemble the Hosting root (landing at /, admin at /admin/)
         if: env.HAS_SECRET == 'true'
         run: scripts/build-site.sh --skip-admin-build
