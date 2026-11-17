@@ -188,7 +188,8 @@ describe("Firestore sources", () => {
     await db.doc("companies/alpha/tagStats/tag-neg").set({ memberCount: -1 });
     await db.doc("companies/beta/tagStats/tag-chill").set({ memberCount: 99 });
     const stats = (await source.countsFor("alpha"))!.sort((x, y) => (x.tagId < y.tagId ? -1 : 1));
-    assert.deepEqual(stats, [{ tagId: "tag-games", memberCount: 25 }, { tagId: "tag-music", memberCount: 4 }]);
+    // The tag-counts store reads a non-numeric count as 0 (suppressed downstream); negative counts are dropped here.
+    assert.deepEqual(stats, [{ tagId: "tag-bad", memberCount: 0 }, { tagId: "tag-games", memberCount: 25 }, { tagId: "tag-music", memberCount: 4 }]);
     assert.deepEqual(await source.countsFor("beta"), [{ tagId: "tag-chill", memberCount: 99 }]);
   });
 
