@@ -86,7 +86,8 @@ export async function sendInvite(store: InviteStore, notifier: InviteNotifier | 
       userId: toUserId, companyId, type: "invite", title: notice.title, body: notice.body,
       targetType: "invite", targetId: inviteId, isRead: false,
     });
-    pushInput = { companyId, eventId, eventTitle: event.title as string, inviteId, toUserId, fromName: sender.displayName as string };
+    pushInput = { companyId, eventId, eventTitle: event.title as string, inviteId, toUserId, fromName: sender.displayName as string,
+      ...(event.startTime instanceof Date ? { eventStartTime: event.startTime } : {}), ...(event.endTime instanceof Date ? { eventEndTime: event.endTime } : {}) };
     return { contractVersion: 1, inviteId, status: "pending", created: true } satisfies SendInviteResponse;
   });
   if (response.created && pushInput && notifier) {

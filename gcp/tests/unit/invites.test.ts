@@ -78,7 +78,7 @@ function world(overrides: { attendeeCount?: number; capacity?: number; status?: 
   store.seed("users/friend", member("alpha", "Fran Friend"));
   store.seed("users/outsider", member("beta", "Olive Outsider"));
   store.seed("companies/alpha/events/event", {
-    companyId: "alpha", title: "Pasta Night", status: overrides.status ?? "scheduled", startTime: overrides.start ?? new Date("2030-01-02T18:00:00Z"),
+    companyId: "alpha", title: "Pasta Night", status: overrides.status ?? "scheduled", startTime: overrides.start ?? new Date("2030-01-02T18:00:00Z"), endTime: new Date("2030-01-02T20:00:00Z"),
     capacity: overrides.capacity ?? 10, attendeeCount: overrides.attendeeCount ?? 3,
   });
   return store;
@@ -323,7 +323,7 @@ test("accepting notifies only the original sender, once; declines and replays ar
   await sendInvite(store, null, caller(), send, now);
   await respondToInvite(store, caller("friend"), respond("accepted"), now, notifier);
   await respondToInvite(store, caller("friend"), respond("accepted"), now, notifier);
-  assert.deepEqual(calls, [{ companyId: "alpha", eventId: "event", eventTitle: "Pasta Night", inviteId: "event_friend", senderId: "sender", responderName: "Fran Friend" }]);
+  assert.deepEqual(calls, [{ companyId: "alpha", eventId: "event", eventTitle: "Pasta Night", inviteId: "event_friend", senderId: "sender", responderName: "Fran Friend", eventStartTime: new Date("2030-01-02T18:00:00Z"), eventEndTime: new Date("2030-01-02T20:00:00Z") }]);
 
   const declined = world(); const quiet = answerNotifier();
   await sendInvite(declined, null, caller(), send, now);

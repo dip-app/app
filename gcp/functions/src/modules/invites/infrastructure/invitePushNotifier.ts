@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { deliverNotification } from "../../notifications/application/router";
 import { sendPush } from "../../notifications/application/sendPush";
 import type { MessagingPort } from "../../notifications/application/ports";
+import { eventFacts, inviteReceivedEmail } from "../../notifications/application/emailPayload";
 import { invitePush } from "../../notifications/domain/push";
 import { FirestoreNotificationsStore } from "../../notifications/infrastructure/firestoreNotificationsStore";
 import { EmulatorOutboxMessaging, FcmMessaging } from "../../notifications/infrastructure/messaging";
@@ -33,6 +34,8 @@ export class PushInviteNotifier implements InviteNotifier {
       await deliverNotification(routerDependencies(this.app), {
         id: `invite_${input.inviteId}`, kind: "invite", companyId: input.companyId, recipients: [{ uid: input.toUserId }],
         push: invitePush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.fromName),
+        email: inviteReceivedEmail(input.inviteId, input.fromName,
+          eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
       });
       return;
     }

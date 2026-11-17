@@ -52,6 +52,8 @@ export async function respondToInvite(store: InviteStore, callerIn: InviteCaller
       tx.markResponded(companyId, inviteId, "declined");
       return { contractVersion: 1, inviteId, status: "declined" } satisfies RespondToInviteResponse;
     }
+    // Read before any write (transaction rule); only the times feed the optional email to the sender.
+    const eventDoc = await tx.getEvent(companyId, eventId);
     // ParticipationError (EVENT_FULL, EVENT_CLOSED, EVENT_NOT_FOUND) aborts everything, leaving the invite pending.
     const joined = await applyRsvp(tx, member, companyId, eventId, uid, "going", now);
     tx.markResponded(companyId, inviteId, "accepted");
@@ -59,6 +61,8 @@ export async function respondToInvite(store: InviteStore, callerIn: InviteCaller
       push = {
         companyId, eventId, eventTitle: typeof invite.eventTitle === "string" ? invite.eventTitle : "", inviteId, senderId: invite.fromUserId,
         responderName: typeof member?.displayName === "string" ? member.displayName : (typeof invite.toUserName === "string" ? invite.toUserName : ""),
+        ...(eventDoc?.startTime instanceof Date ? { eventStartTime: eventDoc.startTime } : {}),
+        ...(eventDoc?.endTime instanceof Date ? { eventEndTime: eventDoc.endTime } : {}),
       };
     }
     return { contractVersion: 1, inviteId, status: "accepted", rsvpStatus: "going", attendeeCount: joined.attendeeCount } satisfies RespondToInviteResponse;

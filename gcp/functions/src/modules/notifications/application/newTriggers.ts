@@ -1,3 +1,4 @@
+import { attendeeAddedEmail, challengeReviewedEmail, eventFacts, inviteAnsweredEmail } from "./emailPayload";
 import type { NotificationRequest } from "./router";
 import type { MemberPager, WeeklyTheme, WeeklyThemeReader } from "./routerPorts";
 import { attendeeAddedPush, challengeReviewedPush, inviteAnsweredPush, weeklyThemePush } from "../domain/push";
@@ -9,22 +10,34 @@ import { attendeeAddedPush, challengeReviewedPush, inviteAnsweredPush, weeklyThe
  * `invite_answered`, which has no other writer.
  */
 
-export interface AttendeeAddedInput { companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string }
+export interface AttendeeAddedInput {
+  companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string;
+  /** Optional event times for the email; without both, no email is requested. */
+  eventStartTime?: Date; eventEndTime?: Date;
+}
 export function attendeeAddedRequest(input: AttendeeAddedInput): NotificationRequest {
   return {
     id: input.notificationId, kind: "attendee_added", companyId: input.companyId,
     recipients: [{ uid: input.userId }],
     push: attendeeAddedPush(input.companyId, input.eventId, input.eventTitle),
+    email: attendeeAddedEmail(input.eventId, input.notificationId,
+      eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
   };
 }
 
-export interface InviteAcceptedInput { companyId: string; eventId: string; eventTitle: string; inviteId: string; senderId: string; responderName: string }
+export interface InviteAcceptedInput {
+  companyId: string; eventId: string; eventTitle: string; inviteId: string; senderId: string; responderName: string;
+  /** Optional event times for the email; without both, no email is requested. */
+  eventStartTime?: Date; eventEndTime?: Date;
+}
 export function inviteAnsweredRequest(input: InviteAcceptedInput): NotificationRequest {
   const push = inviteAnsweredPush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.responderName);
   return {
     id: `invite_answered_${input.inviteId}`, kind: "invite_answered", companyId: input.companyId,
     recipients: [{ uid: input.senderId }], push,
     inApp: { title: push.title, body: push.body, targetType: "event", targetId: input.eventId },
+    email: inviteAnsweredEmail(input.inviteId, input.responderName,
+      eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
   };
 }
 
@@ -37,6 +50,7 @@ export function challengeReviewedRequest(input: ChallengeReviewedInput): Notific
     id: input.notificationId, kind: input.approved ? "challenge_approved" : "challenge_changes_requested", companyId: input.companyId,
     recipients: [{ uid: input.userId }],
     push: challengeReviewedPush(input.companyId, input.challengeId, input.submissionId, input.approved, input.challengeTitle),
+    email: challengeReviewedEmail(input.challengeId, input.challengeTitle, input.approved, input.notificationId),
   };
 }
 
