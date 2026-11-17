@@ -1,7 +1,59 @@
-import type { AiEventChoices, GeneratedEventDraft } from "../../../generated/models";
+import { z } from "zod";
+import type { AiEventChoices, EventDraft, GeneratedEventDraft } from "../../../generated/models";
+import { APPROVED_COVER_URLS, LIMITS as ORGANIZER_LIMITS } from "../../organizer/domain/eventDraft";
 import { coverURLFor } from "./covers";
+import { modelDraftsSchema } from "./prompt";
 import { containsContactInfo } from "./request";
 import { BUDGET_CENTS, DAYPARTS, GROUP_CAPACITY, LIMITS, VENUE_TYPES } from "./vocabulary";
+
+const TAG_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const approvedCover = z.string().refine(url => APPROVED_COVER_URLS.has(url));
+const uniqueIds = (ids: readonly string[]) => new Set(ids).size === ids.length;
+
+/** Mirrors the contract GeneratedEventDraft bounds exactly; the last gate before a draft leaves the server. */
+export const GeneratedEventDraftSchema = z.strictObject({
+  title: z.string().min(1).max(LIMITS.titleMax),
+  description: z.string().min(1).max(LIMITS.descriptionMax),
+  tagIds: z.array(z.string().regex(TAG_ID)).min(1).max(LIMITS.tagsPerDraftMax).refine(uniqueIds),
+  coverImageURL: approvedCover,
+  suggestedDaypart: z.enum(DAYPARTS),
+  durationMinutes: z.number().int().min(LIMITS.durationMin).max(LIMITS.durationMax),
+  venueType: z.enum(VENUE_TYPES),
+  venueSearchHint: z.string().max(LIMITS.venueHintMax),
+  costCents: z.number().int().min(0).max(LIMITS.costCentsMax),
+  costNote: z.string().max(LIMITS.costNoteMax),
+  capacity: z.number().int().min(1).max(10_000),
+  isOutdoor: z.boolean(),
+  rationale: z.string().min(1).max(LIMITS.rationaleMax),
+});
+
+/** The createEventV1 EventDraft fields the admin form pre-fills from a generated draft (organizer LIMITS). */
+export const EventDraftPrefillSchema = z.strictObject({
+  title: z.string().min(1).max(ORGANIZER_LIMITS.titleMax),
+  description: z.string().min(1).max(ORGANIZER_LIMITS.descriptionMax),
+  tagIds: z.array(z.string().regex(TAG_ID)).max(ORGANIZER_LIMITS.maxTags).refine(uniqueIds),
+  coverImageURL: approvedCover,
+  costCents: z.number().int().min(0),
+  costNote: z.string().max(ORGANIZER_LIMITS.textMax),
+  capacity: z.number().int().min(ORGANIZER_LIMITS.capacityMin).max(ORGANIZER_LIMITS.capacityMax),
+  isOutdoor: z.boolean(),
+});
+
+export type EventDraftPrefill = Pick<EventDraft, "title" | "description" | "tagIds" | "coverImageURL" | "costCents" | "costNote" | "capacity" | "isOutdoor">;
+
+/** Fields of a generated draft that map onto createEventV1; the admin adds venue, start and end. Throws if out of bounds. */
+export function toEventDraftPrefill(draft: GeneratedEventDraft): EventDraftPrefill {
+  return EventDraftPrefillSchema.parse({
+    title: draft.title,
+    description: draft.description,
+    tagIds: [...draft.tagIds],
+    coverImageURL: draft.coverImageURL,
+    costCents: draft.costCents,
+    costNote: draft.costNote,
+    capacity: draft.capacity,
+    isOutdoor: draft.isOutdoor,
+  });
+}
 
 /** The model returned nothing usable; the caller reports AI_OUTPUT_INVALID. */
 export class InvalidModelOutput extends Error {}
@@ -114,15 +166,23 @@ function parseOne(raw: unknown, ctx: DraftContext): GeneratedEventDraft | null {
   };
 }
 
-/** Validates untrusted model output. Bad drafts are dropped; no usable draft at all throws InvalidModelOutput. */
-export function parseModelDrafts(json: unknown, ctx: DraftContext): GeneratedEventDraft[] {
-  if (!isRecord(json) || !Array.isArray(json.drafts)) throw new InvalidModelOutput("drafts missing");
+/**
+ * Validates untrusted model output in three layers: the zod output schema (shape, enums, catalog tag ids), a per-draft
+ * repair (clean text, drop forbidden content, clamp numbers, map the cover, dedupe) and the contract schema. Bad drafts
+ * are dropped; no usable draft at all throws InvalidModelOutput.
+ */
+export function parseModelDrafts(value: unknown, ctx: DraftContext): GeneratedEventDraft[] {
+  const shape = modelDraftsSchema([...ctx.catalogIds]).safeParse(value);
+  if (!shape.success) throw new InvalidModelOutput("output does not match the schema");
   const seen = new Set<string>();
   const out: GeneratedEventDraft[] = [];
-  for (const raw of json.drafts) {
+  for (const raw of shape.data.drafts) {
     if (out.length >= ctx.count) break;
-    const draft = parseOne(raw, ctx);
-    if (!draft) continue;
+    const repaired = parseOne(raw, ctx);
+    if (!repaired) continue;
+    const checked = GeneratedEventDraftSchema.safeParse(repaired);
+    if (!checked.success) continue;
+    const draft: GeneratedEventDraft = { ...checked.data, tagIds: [...checked.data.tagIds] };
     const key = draft.title.toLowerCase().trim();
     if (seen.has(key)) continue;
     seen.add(key);

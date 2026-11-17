@@ -7,7 +7,7 @@ Written November 16, 2026 from the owner's five stretch requests. These are **st
 | # | Item | Label | Design doc | Status | Sub-items |
 | --- | --- | --- | --- | --- | --- |
 | S1 | Google and device calendar conflicts, one-tap add | `calendar` | [calendar](../../design/stretch/calendar.md) | CAL-1 to CAL-7 built November 17, 2026 (Phase B behind a flag, off in Release until the privacy page deploys); CAL-8 waits on email | CAL-1 to CAL-8 |
-| S2 | AI event ideas and prompt-to-event drafts | `ai` | [ai-event-creation](../../design/stretch/ai-event-creation.md) | Built November 17, 2026 (AI-1 to AI-6, AI-8; admin portal `/ideas/`), off by default and not deployed; needs the Anthropic key and pilot ([runbook](../../ops/ai-events.md)); AI-7 live eval and AI-10 pilot pending, AI-9 deferred | AI-1 to AI-10 |
+| S2 | AI event ideas and prompt-to-event drafts | `ai` | [ai-event-creation](../../design/stretch/ai-event-creation.md) | Built November 17, 2026 (AI-1 to AI-6, AI-8; admin portal `/ideas/`), off by default and not deployed; generation by OpenAI with Jev-ready decision checks (TypeSafe AI, falls back to an OpenAI mini model), needs `OPENAI_API_KEY` (and optionally `JEV_API_KEY`) and a pilot ([runbook](../../ops/ai-events.md)); AI-7 live eval and AI-10 pilot pending, AI-9 deferred | AI-1 to AI-10 |
 | S3 | Tag interest counts | `tags` | [tag-interest-counts](../../design/stretch/tag-interest-counts.md) | In progress (trigger, rules, reconcile, backfill and AI summary built; not deployed) | TAG-1 to TAG-6 |
 | S4 | Push triggers and category settings | `push` | [push-triggers](../../design/stretch/push-triggers.md) | Implemented, not deployed: PUSH-1 to PUSH-7 ([notification preferences](../../design/stretch/notification-preferences.md)); PUSH-8 optional, deferred; PUSH-9 blocked on the APNs key ([runbook](../../ops/push-apns-runbook.md)) | PUSH-1 to PUSH-9 |
 | S5 | Reminder and notification emails | `email` | [email](../../design/stretch/email.md) | Built behind `EMAIL_ENABLED` (off, not deployed): templates (admin-site style, hosted art), ICS, outbox sender, unsubscribe, webhook, approximate opens, router channel with trigger payloads, Email section in Profile > Notifications; owner setup in [email setup](../../ops/email-setup.md) | EML-1 to EML-10 |
@@ -63,7 +63,7 @@ If only some items are selected for December 4, the smallest valuable slices are
 | Conventions | Firebase v2 `onCall` in `us-central1`, App Check enforced outside the emulator, versioned `V1` names, additive contract changes only, thin transport and application services | [callables](../../contracts/callables.md), root `AGENTS.md` |
 | Share and deep links | `https://letsdip.work/e/<id>` with preview page and universal links | [share links](../../design/share-links.md) |
 | Email | Nothing at research time. Since November 17: `modules/email` (off by default), still no mail DNS and no `support@` mailbox | `gcp/functions/src/modules/email`, [email contract](../../contracts/email.md) |
-| AI | Nothing. No Anthropic code or secret | n/a |
+| AI | Nothing. No AI provider code or secret | n/a |
 
 ## Existing board cards related to these items
 
@@ -73,7 +73,7 @@ The project board already has draft cards "Push notifications: enable and verify
 
 - `contracts/v1/models.schema.json` is a shared choke point. Every addition in these docs is additive within v1 (new types, new callables, new optional fields); renaming or removing a stored field, or changing what an existing field accepts for old clients, needs a new contract version and a migration plan. The one place that approaches this is a new `coverImageURL` scheme (AI-9); it is flagged for contract-owner review.
 - Rules and indexes are also choke points: assign one integrator when TAG-1, PUSH-1 and AI-1 land.
-- Nothing is deployed from this work. Secrets (Anthropic key, email provider key, webhook and unsubscribe keys) go in Secret Manager, never in source.
+- Nothing is deployed from this work. Secrets (OpenAI key, Jev key, email provider key, webhook and unsubscribe keys) go in Secret Manager, never in source.
 - Pending tests do not count toward V2 coverage targets.
 
 ## How to filter on GitHub

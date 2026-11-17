@@ -1,48 +1,103 @@
+import type { z } from "zod";
 import type { AdminStore, Caller, RateLimiter } from "../../admin/application/ports";
 
 export type { Caller };
 
-/** Token counts reported by the provider for one call. */
+/** Token counts reported by a provider for one call (cached input is a subset of input; reasoning a subset of output). */
 export interface LlmUsage {
   inputTokens: number;
+  cachedInputTokens: number;
   outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
+  reasoningTokens: number;
+}
+
+/** Steps of the flow. Each has its own provider and model id in the config module (infrastructure/aiConfig.ts). */
+export type DecisionStep = "triage" | "draftCheck";
+/** "generate" drafts events; decision steps reach the LLM only through the OpenAI fallback of the DecisionPort. */
+export type GenerationStep = "generate" | DecisionStep;
+
+/**
+ * One structured-output generation call. The zod schema is the single source of truth: the adapter turns it into the
+ * provider's JSON schema and parses the reply with it. The parsed value is still untrusted business data; the domain
+ * repairs and validates it again against the contract.
+ */
+export interface LlmRequest<T> {
+  step: GenerationStep;
+  instructions: string;
+  input: string;
+  schema: z.ZodType<T>;
+  schemaName: string;
+  maxOutputTokens: number;
 }
 
 /**
- * One structured-output call. `purpose` picks the model tier (screen: cheap classifier, generate: drafting); the
- * adapter owns model ids, effort and SDK details. `schema` is the JSON schema the provider constrains output to.
+ * ok: parsed by the schema. refusal: the provider declined. truncated: hit the output limit. malformed: no parseable
+ * output. Every outcome carries usage so spend is always metered.
  */
-export interface LlmRequest {
-  purpose: "screen" | "generate";
-  system: string;
-  user: string;
-  schema: Record<string, unknown>;
-  maxTokens: number;
-}
-
-/**
- * ok: parsed JSON (still untrusted; the domain validates it). refusal: the provider's safety stop. truncated: hit
- * max_tokens. malformed: text that is not JSON. Every outcome carries usage so spend is always metered.
- */
-export type LlmOutcome =
-  | { kind: "ok"; json: unknown; usage: LlmUsage; model: string }
+export type LlmOutcome<T> =
+  | { kind: "ok"; value: T; usage: LlmUsage; model: string }
   | { kind: "refusal" | "truncated" | "malformed"; usage: LlmUsage; model: string };
 
 /** Thrown by adapters for transport, auth, rate-limit or server errors (nothing billable is known). */
 export class LlmUnavailableError extends Error {
-  constructor(readonly status: number | null, message = "LLM provider unavailable") {
+  constructor(readonly status: number | null, message = "AI provider unavailable") {
     super(message);
     this.name = "LlmUnavailableError";
   }
 }
 
-export interface LlmPort {
-  complete(request: LlmRequest): Promise<LlmOutcome>;
+export interface ModerationResult {
+  flagged: boolean;
+  /** Category names that were flagged (never the text). */
+  categories: string[];
 }
 
-/** Per-company interest counts (companies/{c}/tagStats, built by the tag-counts work, TAG-1 to TAG-6). */
+export interface LlmPort {
+  generate<T>(request: LlmRequest<T>): Promise<LlmOutcome<T>>;
+  /** Free provider moderation (OpenAI omni-moderation). One result per input, in order. */
+  moderate(inputs: readonly string[]): Promise<ModerationResult[]>;
+}
+
+/**
+ * Decision questions (the TypeSafe AI "System One" primitives, https://docs.typesafe.ai/primitives): typed answers
+ * picked from options defined in advance, each with a probability. Never free text.
+ */
+export type DecisionQuestion =
+  | { type: "choice"; instructions: string; criteria: Readonly<Record<string, string>> }
+  | { type: "score"; instructions: string; criteria: readonly string[] }
+  | { type: "noul"; instructions: string; criteria?: string };
+
+export type DecisionAnswer =
+  | { type: "choice"; choice: string; probabilities: Record<string, number>; confidence: number }
+  /** `score` is a position along the levels (0 = first level), possibly between two. */
+  | { type: "score"; score: number; probabilities: Record<string, number>; confidence: number }
+  /** Probability that the answer is yes. */
+  | { type: "noul"; noul: number };
+
+export interface DecisionRequest {
+  step: DecisionStep;
+  /** The data the questions are about (plain text or JSON-encoded text). Treated as data, never as instructions. */
+  state: string;
+  questions: Readonly<Record<string, DecisionQuestion>>;
+}
+
+export interface DecisionResult {
+  /** Same keys as the request; every answer validated against the question (zod) before it is returned. */
+  answers: Record<string, DecisionAnswer>;
+  usage: LlmUsage;
+  model: string;
+  provider: "jev" | "openai";
+}
+
+/**
+ * Decision provider: Jev (TypeSafe AI) when configured with a key, otherwise an OpenAI mini-tier model answering the
+ * same questions. Answers are hints for server logic (thresholds and fallbacks), never the only safety gate.
+ */
+export interface DecisionPort {
+  decide(request: DecisionRequest): Promise<DecisionResult>;
+}
+
+/** Per-company interest counts (companies/{c}/tagStats, built by the tag-counts module). */
 export interface InterestStat { tagId: string; memberCount: number }
 
 export interface InterestSource {
@@ -64,14 +119,16 @@ export interface ThemeSource {
   current(companyId: string, now: Date): Promise<CurrentTheme | null>;
 }
 
-/** Deployment-wide settings (environment); a company document can narrow or widen limits and must opt in. */
+/** Deployment-wide settings (environment and secrets presence); a company document can change limits and must opt in. */
 export interface AiSettings {
-  /** Global kill switch (AI_EVENTS_ENABLED). */
+  /** AI_EVENTS_ENABLED and the OpenAI key present. False makes the whole feature a clean no-op (AI_DISABLED). */
   enabled: boolean;
-  generateModel: string;
-  screenModel: string;
+  /** Model id per step, used for pricing; the adapters read the same config module. */
+  models: { generate: string; triage: string; draftCheck: string; moderation: string };
   /** Monthly spending cap per company in micro-USD (1 USD = 1,000,000). */
   monthlyBudgetMicros: number;
+  /** Daily (UTC) spending cap per company in micro-USD. */
+  dailyBudgetMicros: number;
   monthlyGenerationLimit: number;
   /** Per admin, per UTC day. */
   dailyGenerationLimit: number;
@@ -85,6 +142,7 @@ export type AiLog = (event: string, fields: Readonly<Record<string, string | num
 export interface AiDeps {
   store: AdminStore;
   llm: LlmPort;
+  decisions: DecisionPort;
   interests: InterestSource;
   catalog: TagCatalog;
   themes: ThemeSource;

@@ -1,21 +1,25 @@
 import type {
-  AiSettings, CatalogTag, CurrentTheme, InterestSource, InterestStat, LlmOutcome, TagCatalog, ThemeSource,
+  AiSettings, CatalogTag, CurrentTheme, DecisionAnswer, DecisionRequest, DecisionResult, InterestSource, InterestStat, LlmOutcome, LlmUsage,
+  TagCatalog, ThemeSource,
 } from "../../../functions/src/modules/ai/application/ports";
 import { DEFAULT_TAGS } from "../../../functions/src/modules/ai/infrastructure/firestoreSources";
+import { benignDecision } from "../../../functions/src/modules/ai/infrastructure/fakes";
 
 /** Shared builders for the AI event-draft tests. Nothing here talks to a real provider. */
 
 export const SETTINGS: AiSettings = {
   enabled: true,
-  generateModel: "claude-sonnet-5-5",
-  screenModel: "claude-haiku-5-5",
+  models: { generate: "gpt-6.1-sol", triage: "jev-latest", draftCheck: "jev-latest", moderation: "omni-moderation-latest" },
   monthlyBudgetMicros: 10_000_000,
+  dailyBudgetMicros: 5_000_000,
   monthlyGenerationLimit: 5,
   dailyGenerationLimit: 3,
   dailyFlagLimit: 2,
 };
 
-export const USAGE = { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 0, cacheWriteTokens: 0 };
+export const USAGE: LlmUsage = { inputTokens: 1000, cachedInputTokens: 0, outputTokens: 500, reasoningTokens: 0 };
+/** Jev bills input tokens only. */
+export const JEV_USAGE: LlmUsage = { inputTokens: 800, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0 };
 
 export const CHOICES = {
   focusTagIds: ["tag-games"], goal: "team_bonding", groupSize: "small", setting: "indoors", budget: "under_15", timing: "after_work",
@@ -39,10 +43,19 @@ export function modelDraft(i: number, extra: Record<string, unknown> = {}) {
   };
 }
 
-export const ok = (json: unknown, model = SETTINGS.generateModel): LlmOutcome => ({ kind: "ok", json, usage: USAGE, model });
-export const drafts = (n = 3): LlmOutcome => ok({ drafts: Array.from({ length: n }, (_, i) => modelDraft(i)) });
-export const verdict = (v: string): LlmOutcome => ok({ verdict: v }, SETTINGS.screenModel);
-export const bad = (kind: "refusal" | "truncated" | "malformed", model = SETTINGS.generateModel): LlmOutcome => ({ kind, usage: USAGE, model });
+export const ok = (value: unknown, model = SETTINGS.models.generate): LlmOutcome<unknown> => ({ kind: "ok", value, usage: USAGE, model });
+export const drafts = (n = 3): LlmOutcome<unknown> => ok({ drafts: Array.from({ length: n }, (_, i) => modelDraft(i)) });
+export const bad = (kind: "refusal" | "truncated" | "malformed", model = SETTINGS.models.generate): LlmOutcome<unknown> => ({ kind, usage: USAGE, model });
+
+/** A benign decision with Jev-priced usage, so tests can see the spend; `override` replaces single answers. */
+export function decision(request: DecisionRequest, override: Record<string, DecisionAnswer> = {}, usage: LlmUsage = JEV_USAGE): DecisionResult {
+  const base = benignDecision(request);
+  return { ...base, answers: { ...base.answers, ...override }, usage, model: "jev-latest", provider: "jev" };
+}
+
+export const noulAnswer = (noul: number): DecisionAnswer => ({ type: "noul", noul });
+export const scoreAnswer = (score: number): DecisionAnswer => ({ type: "score", score, probabilities: { [String(Math.round(score))]: 0.8 }, confidence: 0.8 });
+export const choiceAnswer = (choice: string, probability: number): DecisionAnswer => ({ type: "choice", choice, probabilities: { [choice]: probability }, confidence: probability });
 
 export class MemoryInterests implements InterestSource {
   readonly asked: string[] = [];

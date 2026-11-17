@@ -1,18 +1,25 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
-import { APPROVED_COVER_URLS } from "../../functions/src/modules/organizer/domain/eventDraft";
-import type { AiSettings } from "../../functions/src/modules/ai/application/ports";
+import { APPROVED_COVER_URLS, parseEventDraft } from "../../functions/src/modules/organizer/domain/eventDraft";
+import type { GeneratedEventDraft } from "../../functions/src/generated/models";
+import type { AiSettings, LlmUsage } from "../../functions/src/modules/ai/application/ports";
 import { TAG_COVER, coverURLFor } from "../../functions/src/modules/ai/domain/covers";
-import { InvalidModelOutput, cleanText, hasForbiddenContent, parseModelDrafts, type DraftContext } from "../../functions/src/modules/ai/domain/drafts";
+import {
+  EventDraftPrefillSchema, GeneratedEventDraftSchema, InvalidModelOutput, cleanText, hasForbiddenContent, parseModelDrafts, toEventDraftPrefill,
+  type DraftContext,
+} from "../../functions/src/modules/ai/domain/drafts";
 import { SUPPRESSION_THRESHOLD, bucketFor, summarizeInterests } from "../../functions/src/modules/ai/domain/interests";
 import { aiPaths, dayKey, monthKey } from "../../functions/src/modules/ai/domain/paths";
-import { GENERATE_MAX_TOKENS, MODEL_PRICES, SCREEN_MAX_TOKENS, costMicros, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
+import { DECISION_MAX_TOKENS, GENERATE_MAX_TOKENS, MODEL_PRICES, costMicros, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
+import { modelDraftsSchema } from "../../functions/src/modules/ai/domain/prompt";
 import {
-  RESERVATION_TTL_MS, checkReservation, effectiveLimits, monthDocument, readDay, readMonth, usageSummary,
+  RESERVATION_TTL_MS, addSpend, checkReservation, dayOfMonth, effectiveLimits, monthDocument, readDay, readMonth, usageSummary,
   type DayState, type Limits, type MonthState,
 } from "../../functions/src/modules/ai/domain/quota";
-import { containsContactInfo, parseContextRequest, parseGenerateRequest, sanitizeNote } from "../../functions/src/modules/ai/domain/request";
+import {
+  ContextRequestSchema, GenerateRequestSchema, containsContactInfo, parseContextRequest, parseGenerateRequest, sanitizeNote,
+} from "../../functions/src/modules/ai/domain/request";
 import { COVER_CATEGORIES } from "../../functions/src/modules/ai/domain/vocabulary";
 
 const CATALOG_IDS = [
@@ -108,6 +115,25 @@ describe("request parsing", () => {
     fails(() => parseContextRequest({ contractVersion: 1, companyId: "alpha", x: 1 }), "invalid-argument", "VALIDATION_FAILED", ["x"]);
     fails(() => parseContextRequest({ contractVersion: 0, companyId: "alpha" }), "invalid-argument", "VALIDATION_FAILED", ["contractVersion"]);
     fails(() => parseContextRequest(null), "invalid-argument", "VALIDATION_FAILED");
+  });
+  test("exported zod schemas are strict and carry the same rules", () => {
+    const schema = GenerateRequestSchema(ids);
+    assert.ok(schema.safeParse(request()).success);
+    assert.ok(!schema.safeParse({ ...request(), extra: 1 }).success);
+    assert.ok(!schema.safeParse(withChoices({ extra: 1 })).success);
+    assert.ok(!schema.safeParse(request({ prompt: "x".repeat(501) })).success);
+    assert.ok(!schema.safeParse(withChoices({ focusTagIds: ["tag-games", "tag-games"] })).success);
+    assert.ok(!GenerateRequestSchema(new Set()).safeParse(request()).success, "focus tags are refined against the catalog");
+    assert.equal(schema.parse(request({ prompt: "  a \t b  " })).prompt, "a b", "the schema sanitizes the note");
+    assert.ok(ContextRequestSchema.safeParse({ contractVersion: 1, companyId: "alpha" }).success);
+    assert.ok(!ContextRequestSchema.safeParse({ contractVersion: 1, companyId: "alpha", x: 1 }).success);
+  });
+  test("the sanitized note must still fit 500 characters, and nested problems report the list", () => {
+    fails(() => parseGenerateRequest(request({ prompt: `${"x".repeat(250)}​${"y".repeat(250)}` }), ids), "invalid-argument", "VALIDATION_FAILED", ["prompt"]);
+    fails(() => parseGenerateRequest(request({ prompt: "㎒".repeat(200) }), ids), "invalid-argument", "VALIDATION_FAILED", ["prompt"]);
+    fails(() => parseGenerateRequest(withChoices({ focusTagIds: [5] }), ids), "invalid-argument", "VALIDATION_FAILED", ["choices.focusTagIds"]);
+    fails(() => parseGenerateRequest(request({ choices: "x" }), ids), "invalid-argument", "VALIDATION_FAILED", ["choices"]);
+    fails(() => parseGenerateRequest(request({ count: 4, requestId: "no" }), ids), "invalid-argument", "VALIDATION_FAILED", ["count", "requestId"]);
   });
 });
 
@@ -264,21 +290,41 @@ describe("drafts", () => {
     assert.equal(hasForbiddenContent("Bring snacks"), false);
     assert.equal(run([raw({ title: "Bad https://x.test" }), raw({ title: "Good" })]).length, 1);
   });
-  test("tags: unknown filtered, deduped, capped, focus fallback", () => {
-    assert.deepEqual(run([raw({ tagIds: ["tag-ghost", "tag-games", "tag-games"] })])[0]!.tagIds, ["tag-games"]);
+  test("tags: deduped, capped, focus fallback for an empty list; a tag outside the catalog fails the schema", () => {
+    assert.deepEqual(run([raw({ tagIds: ["tag-games", "tag-games"] })])[0]!.tagIds, ["tag-games"]);
     assert.equal(run([raw({ tagIds: CATALOG_IDS })])[0]!.tagIds.length, 5);
-    assert.deepEqual(run([raw({ tagIds: ["tag-ghost"] })])[0]!.tagIds, ["tag-games"]);
+    assert.deepEqual(run([raw({ tagIds: [] })])[0]!.tagIds, ["tag-games"]);
     const noFocus = ctx({ choices: { ...ctx().choices, focusTagIds: [] } });
-    assert.throws(() => run([raw({ tagIds: ["tag-ghost"] })], noFocus), InvalidModelOutput);
+    assert.throws(() => run([raw({ tagIds: [] })], noFocus), InvalidModelOutput);
+    assert.throws(() => run([raw({ tagIds: ["tag-ghost", "tag-games"] })]), InvalidModelOutput);
+  });
+  test("the output schema is checked first: wrong shapes throw at the top level", () => {
+    const schema = modelDraftsSchema(CATALOG_IDS);
+    assert.ok(schema.safeParse({ drafts: [raw()] }).success);
+    const bads: unknown[] = [
+      { drafts: [raw()], extra: 1 }, { drafts: [{ ...raw(), extra: 1 }] }, { drafts: [raw({ coverCategory: "bogus" })] },
+      { drafts: [raw({ suggestedDaypart: "midnight" })] }, { drafts: [raw({ venueType: "moon" })] }, { drafts: [raw({ durationMinutes: 52.5 })] },
+      { drafts: [raw({ costCents: 2000.6 })] }, { drafts: [raw({ isOutdoor: "yes" })] }, { drafts: [raw({ title: 5 })] },
+      { drafts: [raw({ capacity: Number.NaN })] }, { drafts: [raw({ tagIds: "tag-games" })] }, { drafts: [raw({ costCents: null })] },
+    ];
+    for (const value of bads) assert.throws(() => parseModelDrafts(value, ctx()), InvalidModelOutput, JSON.stringify(value).slice(0, 80));
+    // One bad draft rejects the whole reply (the caller retries once).
+    assert.throws(() => run([raw(), raw({ title: "Two", coverCategory: "bogus" })]), InvalidModelOutput);
+  });
+  test("repaired drafts pass the contract schema; one that cannot is dropped", () => {
+    for (const draft of run([raw(), raw({ title: "Second", costCents: 999_999, capacity: 500, durationMinutes: 1 })])) {
+      assert.ok(GeneratedEventDraftSchema.safeParse(draft).success);
+    }
+    // A title made only of markdown is empty after cleaning, so that draft never reaches the contract schema.
+    assert.throws(() => run([raw({ title: "  ** " })]), InvalidModelOutput);
   });
   test("cover comes from the validated category or tags", () => {
     assert.equal(run([raw({ coverCategory: "cooking" })])[0]!.coverImageURL, "catalog://default/cooking");
-    assert.equal(run([raw({ coverCategory: "bogus", tagIds: ["tag-food"] })])[0]!.coverImageURL, "catalog://default/cooking");
+    assert.throws(() => run([raw({ coverCategory: "bogus", tagIds: ["tag-food"] })]), InvalidModelOutput, "an unknown category fails the schema");
   });
   test("cost clamps to the budget and free forces zero", () => {
     assert.equal(run([raw({ costCents: 100 })])[0]!.costCents, 1500);
     assert.equal(run([raw({ costCents: 999_999 })])[0]!.costCents, 5000);
-    assert.equal(run([raw({ costCents: 2000.6 })])[0]!.costCents, 2001);
     const free = ctx({ choices: { ...ctx().choices, budget: "free" } });
     assert.equal(run([raw({ costCents: 900 })], free)[0]!.costCents, 0);
     const over = ctx({ choices: { ...ctx().choices, budget: "over_50" } });
@@ -298,22 +344,11 @@ describe("drafts", () => {
     assert.equal(run([raw({ durationMinutes: 1 })])[0]!.durationMinutes, 15);
     assert.equal(run([raw({ durationMinutes: 5000 })])[0]!.durationMinutes, 720);
   });
-  test("invalid daypart and venue type fall back from the choices", () => {
-    const [draft] = run([raw({ suggestedDaypart: "midnight", venueType: "moon" })]);
-    assert.equal(draft!.suggestedDaypart, "after_work");
-    assert.equal(draft!.venueType, "activity_venue");
-    const outdoor = ctx({ choices: { ...ctx().choices, timing: "weekend", setting: "outdoors" } });
-    const [d2] = run([raw({ suggestedDaypart: 1, venueType: null })], outdoor);
-    assert.equal(d2!.suggestedDaypart, "weekend_daytime");
-    assert.equal(d2!.venueType, "park_or_outdoors");
-  });
-  test("drafts with missing or mistyped fields are dropped", () => {
+  test("a missing field fails the schema; drafts left empty by cleaning are dropped", () => {
     const { rationale: _r, ...noRationale } = raw();
+    assert.throws(() => run([noRationale]), InvalidModelOutput);
     const kept = raw({ title: "Keeper" });
-    const dropped = [
-      null, "x", noRationale, raw({ title: 5 }), raw({ isOutdoor: "yes" }), raw({ durationMinutes: "60" }), raw({ capacity: NaN }),
-      raw({ tagIds: "tag-games" }), raw({ title: "  ** " }), raw({ costCents: null }),
-    ];
+    const dropped = [raw({ title: "  ** " }), raw({ description: "# " }), raw({ rationale: "`` " })];
     assert.deepEqual(run([...dropped, kept]).map(d => d.title), ["Keeper"]);
   });
   test("dedupes titles, caps the count", () => {
@@ -334,53 +369,149 @@ describe("drafts", () => {
   });
 });
 
+describe("contract schemas", () => {
+  const draft = (over: Record<string, unknown> = {}): GeneratedEventDraft => ({
+    title: "Board Game Night", description: "Pick a game.", tagIds: ["tag-games"], coverImageURL: "catalog://default/games", suggestedDaypart: "after_work",
+    durationMinutes: 90, venueType: "activity_venue", venueSearchHint: "board game cafe", costCents: 2000, costNote: "Snacks", capacity: 20, isOutdoor: false,
+    rationale: "Games are popular", ...over,
+  } as GeneratedEventDraft);
+  const accepts = (over: Record<string, unknown>) => GeneratedEventDraftSchema.safeParse(draft(over)).success;
+
+  test("GeneratedEventDraftSchema mirrors the contract bounds", () => {
+    assert.ok(accepts({}));
+    assert.ok(accepts({ title: "t".repeat(120), description: "d".repeat(2000), venueSearchHint: "v".repeat(120), costNote: "c".repeat(200), rationale: "r".repeat(160) }));
+    assert.ok(!accepts({ title: "" }) && !accepts({ title: "t".repeat(121) }));
+    assert.ok(!accepts({ description: "" }) && !accepts({ description: "d".repeat(2001) }));
+    assert.ok(!accepts({ venueSearchHint: "v".repeat(121) }) && !accepts({ costNote: "c".repeat(201) }));
+    assert.ok(!accepts({ rationale: "" }) && !accepts({ rationale: "r".repeat(161) }));
+    assert.ok(!accepts({ tagIds: [] }) && accepts({ tagIds: ["a", "b", "c", "d", "e"] }) && !accepts({ tagIds: ["a", "b", "c", "d", "e", "f"] }));
+    assert.ok(!accepts({ tagIds: ["a", "a"] }) && !accepts({ tagIds: ["has space"] }));
+    assert.ok(!accepts({ coverImageURL: "https://evil.example/x.png" }) && !accepts({ coverImageURL: "catalog://default/space" }));
+    for (const url of APPROVED_COVER_URLS) assert.ok(accepts({ coverImageURL: url }), url);
+    assert.ok(!accepts({ suggestedDaypart: "midnight" }) && !accepts({ venueType: "moon" }));
+    assert.ok(accepts({ durationMinutes: 15 }) && accepts({ durationMinutes: 720 }) && !accepts({ durationMinutes: 14 }) && !accepts({ durationMinutes: 721 }) && !accepts({ durationMinutes: 60.5 }));
+    assert.ok(accepts({ costCents: 0 }) && accepts({ costCents: 100_000 }) && !accepts({ costCents: -1 }) && !accepts({ costCents: 100_001 }) && !accepts({ costCents: 1.5 }));
+    assert.ok(accepts({ capacity: 1 }) && accepts({ capacity: 10_000 }) && !accepts({ capacity: 0 }) && !accepts({ capacity: 10_001 }) && !accepts({ capacity: 2.5 }));
+    assert.ok(!accepts({ isOutdoor: "no" }) && !accepts({ extra: 1 }));
+  });
+
+  test("toEventDraftPrefill returns exactly the admin form's pre-fill fields", () => {
+    const prefill = toEventDraftPrefill(draft({ tagIds: ["tag-games", "tag-social"], isOutdoor: true }));
+    assert.deepEqual(Object.keys(prefill).sort(), ["capacity", "costCents", "costNote", "coverImageURL", "description", "isOutdoor", "tagIds", "title"]);
+    assert.deepEqual(prefill.tagIds, ["tag-games", "tag-social"]);
+    assert.ok(EventDraftPrefillSchema.safeParse(prefill).success);
+  });
+
+  test("a prefill plus a venue and a future start and end passes the organizer parseEventDraft", () => {
+    const start = new Date(Date.now() + 7 * 86_400_000);
+    const end = new Date(start.getTime() + 90 * 60_000);
+    const venue = { name: "Board Game Cafe", address: "1 Main St", locality: "Pittsburgh", latitude: 40.44, longitude: -79.99 };
+    for (const base of [draft(), draft({ title: "t".repeat(120), description: "d".repeat(2000), costNote: "c".repeat(200), tagIds: ["a", "b", "c", "d", "e"], capacity: 10_000, costCents: 100_000 })]) {
+      const event = parseEventDraft({ ...toEventDraftPrefill(base), venue, startTime: start.toISOString(), endTime: end.toISOString() });
+      assert.equal(event.title, base.title);
+      assert.equal(event.capacity, base.capacity);
+      assert.equal(event.costCents, base.costCents);
+      assert.deepEqual(event.tagIds, base.tagIds);
+      assert.equal(event.startTime.getTime(), start.getTime());
+    }
+  });
+
+  test("EventDraftPrefillSchema enforces the organizer limits", () => {
+    const ok = toEventDraftPrefill(draft());
+    const accepts = (over: Record<string, unknown>) => EventDraftPrefillSchema.safeParse({ ...ok, ...over }).success;
+    assert.ok(accepts({ title: "t".repeat(120), description: "d".repeat(5000), costNote: "c".repeat(500), tagIds: Array.from({ length: 10 }, (_, i) => `t${i}`), capacity: 10_000 }));
+    assert.ok(!accepts({ title: "t".repeat(121) }) && !accepts({ title: "" }) && !accepts({ description: "d".repeat(5001) }) && !accepts({ costNote: "c".repeat(501) }));
+    assert.ok(!accepts({ tagIds: Array.from({ length: 11 }, (_, i) => `t${i}`) }) && !accepts({ coverImageURL: "catalog://default/space" }));
+    assert.ok(!accepts({ costCents: -1 }) && !accepts({ costCents: 1.5 }) && !accepts({ capacity: 0 }) && !accepts({ capacity: 10_001 }) && !accepts({ venue: {} }));
+    assert.throws(() => toEventDraftPrefill(draft({ coverImageURL: "https://evil.example/x.png" })));
+  });
+});
+
 describe("pricing", () => {
-  const usage = { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 0, cacheWriteTokens: 0 };
-  test("known model cost", () => {
-    assert.equal(costMicros("claude-sonnet-5-5", usage), 1000 * 2 + 500 * 10);
-    assert.equal(costMicros("claude-haiku-5-5", usage), Math.ceil(1000 * 0.1 + 500 * 0.5));
-    assert.equal(costMicros("claude-sonnet-5-5", { inputTokens: 0, outputTokens: 0, cacheReadTokens: 1000, cacheWriteTokens: 1000 }), 200 + 2500);
+  const usage: LlmUsage = { inputTokens: 1000, cachedInputTokens: 0, outputTokens: 500, reasoningTokens: 0 };
+  const M = 1_000_000;
+
+  test("the table holds the verified prices (micro-USD per token = USD per million)", () => {
+    const row = (model: string) => MODEL_PRICES[model]!;
+    const expected: Array<[string, number, number, number]> = [
+      ["gpt-6-astra", 10, 1, 50], ["gpt-6.1-sol", 2, 0.2, 10], ["gpt-6.1-terra", 1, 0.1, 5], ["gpt-6-luna", 0.1, 0.01, 0.5], ["gpt-5.6-luna", 0.2, 0.02, 1.2],
+      ["gpt-5.5", 5, 0.5, 30], ["gpt-5.4", 2.5, 0.25, 15], ["gpt-5.4-mini", 0.75, 0.075, 4.5], ["gpt-5.4-nano", 0.2, 0.02, 1.25],
+      ["omni-moderation-latest", 0, 0, 0], ["jev-latest", 0.042, 0.042, 0], ["jev-1.14.0", 0.042, 0.042, 0], ["jev-1.13.0", 0.042, 0.042, 0],
+    ];
+    for (const [model, input, cached, output] of expected) assert.deepEqual([row(model).input, row(model).cachedInput, row(model).output], [input, cached, output], model);
+    assert.equal(Object.keys(MODEL_PRICES).length, expected.length);
+    assert.ok(!Object.keys(MODEL_PRICES).some(model => model.startsWith("claude")), "no Claude entries");
+  });
+  test("known model cost, with cached and reasoning tokens", () => {
+    assert.equal(costMicros("gpt-6.1-sol", usage), 1000 * 2 + 500 * 10);
+    assert.equal(costMicros("gpt-5.4-mini", usage), Math.ceil(1000 * 0.75 + 500 * 4.5));
+    // 600 of 1000 input tokens are cached; reasoning tokens are already part of the output count and add nothing.
+    const cached: LlmUsage = { inputTokens: 1000, cachedInputTokens: 600, outputTokens: 500, reasoningTokens: 400 };
+    assert.equal(costMicros("gpt-6.1-sol", cached), 400 * 2 + 600 * 0.2 + 500 * 10);
+    assert.equal(costMicros("gpt-6.1-sol", { ...cached, reasoningTokens: 0 }), costMicros("gpt-6.1-sol", cached));
+    assert.equal(costMicros("gpt-6-astra", { inputTokens: M, cachedInputTokens: M, outputTokens: M, reasoningTokens: 0 }), 1 * M + 50 * M);
+    assert.equal(costMicros("omni-moderation-latest", { inputTokens: 5000, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0 }), 0);
+  });
+  test("Jev bills input tokens only", () => {
+    assert.equal(costMicros("jev-latest", { inputTokens: 1000, cachedInputTokens: 0, outputTokens: 700, reasoningTokens: 0 }), Math.ceil(1000 * 0.042));
+    assert.equal(costMicros("jev-1.14.0", usage), costMicros("jev-latest", usage));
+  });
+  test("more cached tokens than input never cost more than input", () => {
+    const odd: LlmUsage = { inputTokens: 100, cachedInputTokens: 900, outputTokens: 0, reasoningTokens: 0 };
+    assert.equal(costMicros("gpt-6.1-sol", odd), Math.ceil(100 * 0.2));
   });
   test("suffixed ids use the longest known prefix", () => {
-    assert.equal(costMicros("claude-sonnet-5-5-20300101", usage), costMicros("claude-sonnet-5-5", usage));
-    assert.equal(costMicros("claude-haiku-5-5-20300101", usage), costMicros("claude-haiku-5-5", usage));
+    assert.equal(costMicros("gpt-6.1-sol-2026-11-01", usage), costMicros("gpt-6.1-sol", usage));
+    assert.equal(costMicros("gpt-5.4-mini-2026-03-17", usage), costMicros("gpt-5.4-mini", usage), "not the shorter gpt-5.4 prefix");
+    assert.equal(costMicros("gpt-5.4-nano-preview", usage), costMicros("gpt-5.4-nano", usage));
   });
   test("unknown model is priced conservatively", () => {
-    assert.equal(costMicros("mystery-model", usage), costMicros("claude-opus-5-5", usage));
+    assert.equal(costMicros("mystery-model", usage), costMicros("gpt-6-astra", usage));
     assert.ok(costMicros("mystery-model", usage) >= Math.max(...Object.keys(MODEL_PRICES).map(m => costMicros(m, usage))));
+    assert.equal(costMicros("claude-sonnet-5-5", usage), costMicros("gpt-6-astra", usage), "retired ids fall to the conservative price");
   });
   test("bad token counts count as zero, result is whole", () => {
-    assert.equal(costMicros("claude-sonnet-5-5", { inputTokens: NaN, outputTokens: -5, cacheReadTokens: Infinity, cacheWriteTokens: 0 }), 0);
-    assert.equal(costMicros("claude-haiku-5-5", { ...usage, inputTokens: 1 }), Math.ceil(0.1 + 250 - 1e-9));
-    assert.ok(Number.isInteger(costMicros("claude-haiku-5-5", { ...usage, inputTokens: 3 })));
+    assert.equal(costMicros("gpt-6.1-sol", { inputTokens: Number.NaN, cachedInputTokens: Number.NaN, outputTokens: -5, reasoningTokens: 0 }), 0);
+    assert.equal(costMicros("gpt-6-luna", { ...usage, inputTokens: 1, outputTokens: 0 }), 1);
+    assert.ok(Number.isInteger(costMicros("jev-latest", { ...usage, inputTokens: 3 })));
   });
-  test("worst case exceeds a typical generation", () => {
-    const settings = { generateModel: "claude-sonnet-5-5", screenModel: "claude-haiku-5-5" };
-    const worst = worstCaseMicros(settings);
-    assert.equal(worst, Math.ceil(2000 * 0.1 + SCREEN_MAX_TOKENS * 0.5 + 2 * (6000 * 2 + GENERATE_MAX_TOKENS * 10)));
-    const typical = costMicros("claude-haiku-5-5", { inputTokens: 600, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 })
-      + costMicros("claude-sonnet-5-5", { inputTokens: 3000, outputTokens: 3000, cacheReadTokens: 0, cacheWriteTokens: 0 });
+  test("worst case is triage + 2 generates + 3 draft checks at the token ceilings", () => {
+    assert.equal(GENERATE_MAX_TOKENS, 12_000);
+    assert.equal(DECISION_MAX_TOKENS, 2000);
+    const models = { generate: "gpt-6.1-sol", triage: "jev-latest", draftCheck: "gpt-5.4-mini", moderation: "omni-moderation-latest" };
+    const worst = worstCaseMicros({ models });
+    const triage = Math.ceil(2000 * 0.042);
+    const generate = 6000 * 2 + GENERATE_MAX_TOKENS * 10;
+    const check = Math.ceil(1500 * 0.75 + DECISION_MAX_TOKENS * 4.5);
+    assert.equal(worst, triage + 2 * generate + 3 * check);
+    const typical = costMicros("jev-latest", { inputTokens: 800, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0 })
+      + costMicros("gpt-6.1-sol", { inputTokens: 3000, cachedInputTokens: 0, outputTokens: 3000, reasoningTokens: 0 });
     assert.ok(worst > typical);
-    assert.ok(worstCaseMicros({ generateModel: "unknown", screenModel: "unknown" }) > worst);
+    const unknown = { generate: "unknown", triage: "unknown", draftCheck: "unknown", moderation: "unknown" };
+    assert.ok(worstCaseMicros({ models: unknown }) > worst);
+    assert.equal(worstCaseMicros({ models: { ...models, moderation: "something-else" } }), worst, "moderation is free and not part of the bound");
   });
 });
 
 describe("quota", () => {
   const settings: AiSettings = {
-    enabled: true, generateModel: "claude-sonnet-5-5", screenModel: "claude-haiku-5-5",
-    monthlyBudgetMicros: 5_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3,
+    enabled: true, models: { generate: "gpt-6.1-sol", triage: "jev-latest", draftCheck: "jev-latest", moderation: "omni-moderation-latest" },
+    monthlyBudgetMicros: 5_000_000, dailyBudgetMicros: 2_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3,
   };
   const limits = (over: Partial<Limits> = {}): Limits => ({ ...effectiveLimits(settings, { enabled: true }), ...over });
-  const month = (over: Partial<MonthState> = {}): MonthState => ({ generations: 0, spentMicros: 0, pending: {}, ...over });
+  const month = (over: Partial<MonthState> = {}): MonthState => ({ generations: 0, spentMicros: 0, inputTokens: 0, outputTokens: 0, days: {}, pending: {}, ...over });
   const day = (over: Partial<DayState> = {}): DayState => ({ generations: 0, flags: 0, ...over });
   const WORST = 200_000;
   const future = new Date(NOW.getTime() + RESERVATION_TTL_MS);
+  const today = { spentMicros: 0, inputTokens: 0, outputTokens: 0 };
+  const check = (m: MonthState, d: DayState, l: Limits, uid = "me") => checkReservation(m, d, uid, l, WORST, NOW);
+  const summary = (m: MonthState, d: DayState, l: Limits, uid = "me") => usageSummary(m, d, uid, l, WORST, NOW);
 
   test("readMonth and readDay", () => {
-    assert.deepEqual(readMonth(null, NOW), { generations: 0, spentMicros: 0, pending: {} });
+    assert.deepEqual(readMonth(null, NOW), { generations: 0, spentMicros: 0, inputTokens: 0, outputTokens: 0, days: {}, pending: {} });
     assert.deepEqual(readDay(null), { generations: 0, flags: 0 });
     const state = readMonth({
-      generations: 2, spentMicros: 300,
+      generations: 2, spentMicros: 300, inputTokens: 40, outputTokens: 5, days: { "02": { spentMicros: 300, inputTokens: 40, outputTokens: 5 } },
       pending: {
         live: { uid: "u1", micros: 10, expiresAt: future },
         old: { uid: "u1", micros: 10, expiresAt: new Date(NOW.getTime() - 1) },
@@ -393,6 +524,8 @@ describe("quota", () => {
     }, NOW);
     assert.deepEqual(Object.keys(state.pending), ["live"]);
     assert.equal(state.generations, 2);
+    assert.equal(state.inputTokens, 40);
+    assert.deepEqual(state.days, { "02": { spentMicros: 300, inputTokens: 40, outputTokens: 5 } });
     assert.deepEqual(readDay({ generations: 4, flags: 1 }), { generations: 4, flags: 1 });
     assert.deepEqual(readDay({}), { generations: 0, flags: 0 });
     for (const doc of [{ generations: -1 }, { spentMicros: 1.5 }, { generations: "2" }, { pending: [] }]) {
@@ -400,20 +533,52 @@ describe("quota", () => {
     }
     assert.throws(() => readDay({ flags: -2 }), (e: unknown) => e instanceof AdminError && e.reason === "INVALID_STORED_DATA");
   });
-  test("monthDocument serializes pending as a map", () => {
-    const doc = monthDocument(month({ generations: 1, spentMicros: 5, pending: { k: { uid: "u", micros: 7, expiresAt: future } } }));
-    assert.deepEqual(doc, { generations: 1, spentMicros: 5, pending: { k: { uid: "u", micros: 7, expiresAt: future } } });
-    assert.deepEqual(readMonth(doc, NOW), month({ generations: 1, spentMicros: 5, pending: { k: { uid: "u", micros: 7, expiresAt: future } } }));
+  test("readMonth tolerates documents without token or per-day fields and validates the ones present", () => {
+    assert.deepEqual(readMonth({ generations: 1, spentMicros: 5, pending: {} }, NOW), month({ generations: 1, spentMicros: 5 }));
+    assert.deepEqual(readMonth({ days: { "03": { spentMicros: 7 } } }, NOW).days, { "03": { spentMicros: 7, inputTokens: 0, outputTokens: 0 } });
+    const invalid = (e: unknown) => e instanceof AdminError && e.reason === "INVALID_STORED_DATA";
+    for (const doc of [
+      { inputTokens: -1 }, { outputTokens: 1.5 }, { days: [] }, { days: "x" }, { days: { "2": today } }, { days: { "02": null } },
+      { days: { "02": { spentMicros: -1 } } }, { days: { "02": { inputTokens: "9" } } },
+    ]) assert.throws(() => readMonth(doc, NOW), invalid, JSON.stringify(doc));
+  });
+  test("monthDocument serializes pending, token totals and days, and round-trips", () => {
+    const state = month({
+      generations: 1, spentMicros: 5, inputTokens: 30, outputTokens: 4, days: { "02": { spentMicros: 5, inputTokens: 30, outputTokens: 4 } },
+      pending: { k: { uid: "u", micros: 7, expiresAt: future } },
+    });
+    const doc = monthDocument(state);
+    assert.deepEqual(doc, {
+      generations: 1, spentMicros: 5, inputTokens: 30, outputTokens: 4,
+      days: { "02": { spentMicros: 5, inputTokens: 30, outputTokens: 4 } }, pending: { k: { uid: "u", micros: 7, expiresAt: future } },
+    });
+    assert.deepEqual(readMonth(doc, NOW), state);
+  });
+  test("addSpend updates the month totals and the day entry", () => {
+    const state = month();
+    addSpend(state, "02", { spentMicros: 10, inputTokens: 100, outputTokens: 20 });
+    addSpend(state, "02", { spentMicros: 5, inputTokens: 50, outputTokens: 0 });
+    addSpend(state, "03", { spentMicros: 1, inputTokens: 1, outputTokens: 1 });
+    assert.deepEqual(state, month({
+      spentMicros: 16, inputTokens: 151, outputTokens: 21,
+      days: { "02": { spentMicros: 15, inputTokens: 150, outputTokens: 20 }, "03": { spentMicros: 1, inputTokens: 1, outputTokens: 1 } },
+    }));
+    assert.equal(dayOfMonth(NOW), "02");
+    assert.equal(dayOfMonth(new Date(Date.UTC(2030, 0, 31, 23, 59))), "31");
   });
   test("effective limits and overrides", () => {
     assert.equal(effectiveLimits(settings, null).enabled, false);
     assert.equal(effectiveLimits(settings, { enabled: false }).enabled, false);
     assert.equal(effectiveLimits({ ...settings, enabled: false }, { enabled: true }).enabled, false);
     const base = effectiveLimits(settings, { enabled: true });
-    assert.deepEqual(base, { enabled: true, monthlyBudgetMicros: 5_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3 });
-    const over = effectiveLimits(settings, { enabled: true, monthlyBudgetCents: 250, monthlyGenerationLimit: 7, dailyGenerationLimit: 2 });
-    assert.deepEqual(over, { enabled: true, monthlyBudgetMicros: 2_500_000, monthlyGenerationLimit: 7, dailyGenerationLimit: 2, dailyFlagLimit: 3 });
-    const junk = effectiveLimits(settings, { enabled: true, monthlyBudgetCents: -1, monthlyGenerationLimit: "9", dailyGenerationLimit: 1.5 });
+    assert.deepEqual(base, {
+      enabled: true, monthlyBudgetMicros: 5_000_000, dailyBudgetMicros: 2_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3,
+    });
+    const over = effectiveLimits(settings, { enabled: true, monthlyBudgetCents: 250, dailyBudgetCents: 40, monthlyGenerationLimit: 7, dailyGenerationLimit: 2 });
+    assert.deepEqual(over, {
+      enabled: true, monthlyBudgetMicros: 2_500_000, dailyBudgetMicros: 400_000, monthlyGenerationLimit: 7, dailyGenerationLimit: 2, dailyFlagLimit: 3,
+    });
+    const junk = effectiveLimits(settings, { enabled: true, monthlyBudgetCents: -1, dailyBudgetCents: "5", monthlyGenerationLimit: "9", dailyGenerationLimit: 1.5 });
     assert.deepEqual(junk, base);
     assert.equal(effectiveLimits(settings, { enabled: true, dailyGenerationLimit: 0 }).dailyGenerationLimit, 0);
   });
@@ -421,51 +586,82 @@ describe("quota", () => {
     const pending = {
       a: { uid: "me", micros: 100_000, expiresAt: future }, b: { uid: "other", micros: 100_000, expiresAt: future },
     };
-    const summary = usageSummary(month({ generations: 5, spentMicros: 1_000_000, pending }), day({ generations: 3 }), "me", limits(), WORST);
-    assert.equal(summary.monthlyGenerationLimit, 100);
-    assert.equal(summary.monthlyGenerationsUsed, 5);
-    assert.equal(summary.dailyGenerationLimit, 10);
-    assert.equal(summary.dailyGenerationsUsed, 3);
-    // daily: 10 - 3 - 1 own pending = 6; monthly: 100 - 5 - 2 = 93; budget: (5M - 1M - 200k) / 200k = 19.
-    assert.equal(summary.generationsRemaining, 6);
-    assert.equal(summary.budgetExhausted, false);
+    const s = summary(month({ generations: 5, spentMicros: 1_000_000, days: { "02": { ...today, spentMicros: 1_000_000 } }, pending }), day({ generations: 3 }), limits());
+    assert.equal(s.monthlyGenerationLimit, 100);
+    assert.equal(s.monthlyGenerationsUsed, 5);
+    assert.equal(s.dailyGenerationLimit, 10);
+    assert.equal(s.dailyGenerationsUsed, 3);
+    // admin daily: 10 - 3 - 1 own pending = 6; monthly: 100 - 5 - 2 = 93; month budget: 19; day budget: (2M - 1M - 200k) / 200k = 4.
+    assert.equal(s.generationsRemaining, 4);
+    assert.equal(s.budgetExhausted, false);
   });
-  test("budget exhaustion", () => {
-    const summary = usageSummary(month({ spentMicros: 4_900_000 }), day(), "me", limits(), WORST);
-    assert.equal(summary.budgetExhausted, true);
-    assert.equal(summary.generationsRemaining, 0);
-    const some = usageSummary(month({ spentMicros: 4_500_000 }), day(), "me", limits(), WORST);
-    assert.equal(some.generationsRemaining, 2);
-    fails(() => checkReservation(month({ spentMicros: 4_900_000 }), day(), "me", limits(), WORST), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
-    checkReservation(month({ spentMicros: 4_800_000 }), day(), "me", limits(), WORST);
+  test("budget exhaustion (month)", () => {
+    const wide = limits({ dailyBudgetMicros: 99_000_000 });
+    const s = summary(month({ spentMicros: 4_900_000 }), day(), wide);
+    assert.equal(s.budgetExhausted, true);
+    assert.equal(s.generationsRemaining, 0);
+    assert.equal(summary(month({ spentMicros: 4_500_000 }), day(), wide).generationsRemaining, 2);
+    fails(() => check(month({ spentMicros: 4_900_000 }), day(), wide), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    check(month({ spentMicros: 4_800_000 }), day(), wide);
   });
-  test("pending reservations count against the budget", () => {
+  test("daily company budget: today's spend, other days ignored, pending counted", () => {
+    const spent = (n: number, key = "02") => month({ spentMicros: n, days: { [key]: { ...today, spentMicros: n } } });
+    const s = summary(spent(1_900_000), day(), limits());
+    assert.equal(s.budgetExhausted, true);
+    assert.equal(s.generationsRemaining, 0);
+    assert.equal(summary(spent(1_500_000), day(), limits()).generationsRemaining, 2, "(2M - 1.5M) / 200k");
+    try {
+      check(spent(1_900_000), day(), limits());
+      assert.fail("expected AI_BUDGET_EXHAUSTED");
+    } catch (error) {
+      assert.ok(error instanceof AdminError);
+      assert.equal(error.code, "resource-exhausted");
+      assert.equal(error.reason, "AI_BUDGET_EXHAUSTED");
+      assert.equal(error.message, "Today's idea budget is used up. Try again tomorrow.");
+    }
+    check(spent(1_800_000), day(), limits());
+    // Spend of another day of the month counts toward the month only.
+    check(spent(1_900_000, "01"), day(), limits());
+    assert.equal(summary(spent(1_900_000, "01"), day(), limits()).budgetExhausted, false);
+    // A reservation held by anyone counts against today.
+    const pending = { a: { uid: "other", micros: 1_900_000, expiresAt: future } };
+    fails(() => check(month({ pending }), day(), limits()), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    // Both exhausted: the daily message wins.
+    assert.throws(() => check(month({ spentMicros: 4_900_000, days: { "02": { ...today, spentMicros: 1_900_000 } } }), day(), limits()), /Today's idea budget/);
+  });
+  test("generationsRemaining is bounded by the daily budget headroom", () => {
+    const s = summary(month({ spentMicros: 400_000, days: { "02": { ...today, spentMicros: 400_000 } } }), day(), limits());
+    assert.equal(s.generationsRemaining, 8, "(2M - 400k) / 200k = 8, below the admin's 10 and the month's 100");
+  });
+  test("pending reservations count against the monthly budget", () => {
     const pending = { a: { uid: "other", micros: 4_900_000, expiresAt: future } };
-    fails(() => checkReservation(month({ pending }), day(), "me", limits(), WORST), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    fails(() => check(month({ pending }), day(), limits({ dailyBudgetMicros: 99_000_000 })), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
   });
   test("disabled reports nothing remaining", () => {
-    assert.equal(usageSummary(month(), day(), "me", limits({ enabled: false }), WORST).generationsRemaining, 0);
+    assert.equal(summary(month(), day(), limits({ enabled: false })).generationsRemaining, 0);
   });
-  test("check order: flags, daily, monthly, budget", () => {
-    const all = { spentMicros: 5_000_000, generations: 100 };
-    fails(() => checkReservation(month(all), day({ flags: 3, generations: 10 }), "me", limits(), WORST), "resource-exhausted", "AI_FLAG_LIMIT");
-    fails(() => checkReservation(month(all), day({ generations: 10 }), "me", limits(), WORST), "resource-exhausted", "AI_DAILY_LIMIT");
-    fails(() => checkReservation(month(all), day(), "me", limits(), WORST), "resource-exhausted", "AI_MONTHLY_LIMIT");
-    fails(() => checkReservation(month({ spentMicros: 5_000_000 }), day(), "me", limits(), WORST), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
-    checkReservation(month(), day({ flags: 2, generations: 9 }), "me", limits(), WORST);
+  test("check order: flags, daily count, monthly count, daily budget, monthly budget", () => {
+    const all = { spentMicros: 5_000_000, generations: 100, days: { "02": { ...today, spentMicros: 5_000_000 } } };
+    fails(() => check(month(all), day({ flags: 3, generations: 10 }), limits()), "resource-exhausted", "AI_FLAG_LIMIT");
+    fails(() => check(month(all), day({ generations: 10 }), limits()), "resource-exhausted", "AI_DAILY_LIMIT");
+    fails(() => check(month(all), day(), limits()), "resource-exhausted", "AI_MONTHLY_LIMIT");
+    fails(() => check(month({ spentMicros: 5_000_000 }), day(), limits()), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    check(month(), day({ flags: 2, generations: 9 }), limits());
   });
   test("daily pending counts only the caller", () => {
     const pending = { a: { uid: "me", micros: 1, expiresAt: future } };
-    fails(() => checkReservation(month({ pending }), day({ generations: 9 }), "me", limits(), WORST), "resource-exhausted", "AI_DAILY_LIMIT");
-    checkReservation(month({ pending }), day({ generations: 9 }), "someone-else", limits(), WORST);
+    fails(() => check(month({ pending }), day({ generations: 9 }), limits()), "resource-exhausted", "AI_DAILY_LIMIT");
+    check(month({ pending }), day({ generations: 9 }), limits(), "someone-else");
   });
   test("monthly pending counts everyone", () => {
     const pending = { a: { uid: "other", micros: 1, expiresAt: future } };
-    fails(() => checkReservation(month({ generations: 99, pending }), day(), "me", limits(), WORST), "resource-exhausted", "AI_MONTHLY_LIMIT");
+    fails(() => check(month({ generations: 99, pending }), day(), limits()), "resource-exhausted", "AI_MONTHLY_LIMIT");
   });
   test("company overrides apply", () => {
     const tight = effectiveLimits(settings, { enabled: true, dailyGenerationLimit: 1 });
-    fails(() => checkReservation(month(), day({ generations: 1 }), "me", tight, WORST), "resource-exhausted", "AI_DAILY_LIMIT");
-    assert.equal(usageSummary(month(), day(), "me", tight, WORST).dailyGenerationLimit, 1);
+    fails(() => check(month(), day({ generations: 1 }), tight), "resource-exhausted", "AI_DAILY_LIMIT");
+    assert.equal(summary(month(), day(), tight).dailyGenerationLimit, 1);
+    const budget = effectiveLimits(settings, { enabled: true, dailyBudgetCents: 10 });
+    fails(() => check(month(), day(), budget), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
   });
 });

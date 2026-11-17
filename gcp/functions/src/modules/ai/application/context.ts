@@ -22,7 +22,7 @@ export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null
       aiPaths.settings(companyId), aiPaths.month(companyId, monthKey(now)), aiPaths.day(companyId, dayKey(now), caller.uid),
     ]);
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
-    return { enabled: limits.enabled, summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst) };
+    return { enabled: limits.enabled, summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst, now) };
   });
   const [stats, catalog, theme] = await Promise.all([
     deps.interests.countsFor(companyId), deps.catalog.list(), deps.themes.current(companyId, now),

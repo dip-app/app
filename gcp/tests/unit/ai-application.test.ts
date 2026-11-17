@@ -2,16 +2,21 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { getEventIdeaContext } from "../../functions/src/modules/ai/application/context";
 import { generateEventDrafts } from "../../functions/src/modules/ai/application/generate";
-import { LlmUnavailableError, type AiDeps, type AiSettings } from "../../functions/src/modules/ai/application/ports";
+import {
+  LlmUnavailableError, type AiDeps, type AiSettings, type DecisionRequest, type DecisionResult, type ModerationResult,
+} from "../../functions/src/modules/ai/application/ports";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { payloadHash } from "../../functions/src/modules/admin/domain/reader";
 import { APPROVED_COVER_URLS } from "../../functions/src/modules/organizer/domain/eventDraft";
 import { costMicros, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
-import { GENERATE_SYSTEM_PROMPT, SCREEN_SYSTEM_PROMPT } from "../../functions/src/modules/ai/domain/prompt";
-import { ScriptedLlm, type ScriptStep } from "../../functions/src/modules/ai/infrastructure/fakeLlm";
+import { GENERATE_SYSTEM_PROMPT } from "../../functions/src/modules/ai/domain/prompt";
+import {
+  ScriptedDecisions, ScriptedLlm, type DecisionStepScript, type GenerateStep, type ModerateStep,
+} from "../../functions/src/modules/ai/infrastructure/fakes";
 import { NOW, caller, seedCompany, FakeAdminStore } from "./helpers/adminFakes";
 import {
-  CHOICES, SETTINGS, USAGE, bad, blockOf, drafts, modelDraft, MemoryCatalog, MemoryInterests, MemoryThemes, occurrences, ok, request, uuid, verdict,
+  CHOICES, JEV_USAGE, SETTINGS, USAGE, bad, blockOf, choiceAnswer, decision, drafts, modelDraft, MemoryCatalog, MemoryInterests, MemoryThemes,
+  noulAnswer, occurrences, ok, request, scoreAnswer, uuid,
 } from "./helpers/aiFakes";
 
 const MONTH = "companies/alpha/aiUsage/203001";
@@ -31,10 +36,13 @@ async function fails(promise: Promise<unknown>, code: string, reason: string, fi
 
 interface Rig {
   store: FakeAdminStore; interests: MemoryInterests; catalog: MemoryCatalog; themes: MemoryThemes; logs: Array<{ event: string; fields: unknown }>;
-  llm: ScriptedLlm; deps: AiDeps;
+  llm: ScriptedLlm; decisions: ScriptedDecisions; deps: AiDeps;
 }
 
-function rig(steps: ScriptStep[] = [], settings: Partial<AiSettings> = {}, enabled: boolean | "missing" = true): Rig {
+interface Scripts { moderation?: ModerateStep[]; decisions?: DecisionStepScript[] }
+
+/** `steps` script the generate calls, `scripts.moderation` the moderation calls and `scripts.decisions` the decision calls. */
+function rig(steps: GenerateStep[] = [], settings: Partial<AiSettings> = {}, enabled: boolean | "missing" = true, scripts: Scripts = {}): Rig {
   const store = new FakeAdminStore();
   seedCompany(store);
   const user = (companyId: string, role: string, extra: Record<string, unknown> = {}) => ({ companyId, role, displayName: `${role} person`, email: `${role}@x.test`, ...extra });
@@ -45,9 +53,10 @@ function rig(steps: ScriptStep[] = [], settings: Partial<AiSettings> = {}, enabl
   const catalog = new MemoryCatalog();
   const themes = new MemoryThemes();
   const logs: Rig["logs"] = [];
-  const llm = new ScriptedLlm(steps);
-  const deps: AiDeps = { store, llm, interests, catalog, themes, settings: { ...SETTINGS, ...settings }, now: () => NOW, log: (event, fields) => logs.push({ event, fields }) };
-  return { store, interests, catalog, themes, logs, llm, deps };
+  const llm = new ScriptedLlm(steps, scripts.moderation ?? []);
+  const decisions = new ScriptedDecisions(scripts.decisions ?? []);
+  const deps: AiDeps = { store, llm, decisions, interests, catalog, themes, settings: { ...SETTINGS, ...settings }, now: () => NOW, log: (event, fields) => logs.push({ event, fields }) };
+  return { store, interests, catalog, themes, logs, llm, decisions, deps };
 }
 
 const untouched = (r: Rig) => {
@@ -55,7 +64,14 @@ const untouched = (r: Rig) => {
     assert.deepEqual(r.store.children(`companies/alpha/${collection}`), [], `${collection} must stay empty`);
   }
   assert.equal(r.llm.calls.length, 0, "no LLM call");
+  assert.equal(r.llm.moderationCalls.length, 0, "no moderation call");
+  assert.equal(r.decisions.calls.length, 0, "no decision call");
 };
+
+const flaggedModeration: ModerationResult[] = [{ flagged: true, categories: ["harassment"] }];
+const triageWith = (override: Parameters<typeof decision>[1]): DecisionStepScript => (req: DecisionRequest): DecisionResult => decision(req, override);
+/** Three draft checks (one per draft, in call order) from per-draft answer overrides. */
+const checks = (...overrides: Array<Parameters<typeof decision>[1]>): DecisionStepScript[] => overrides.map(o => triageWith(o));
 
 const month = (r: Rig) => r.store.get(MONTH)!;
 const audit = (r: Rig) => r.store.children("companies/alpha/auditLog");
@@ -154,11 +170,17 @@ describe("generateEventDraftsV1 happy path", () => {
     assert.equal(new Set(response.drafts.map(d => d.title)).size, 3);
     assert.equal(response.usage.monthlyGenerationsUsed, 1);
     assert.equal(response.usage.dailyGenerationsUsed, 1);
-    assert.equal(r.llm.calls.length, 1, "empty note skips the screen");
+    assert.equal(r.llm.calls.length, 1, "empty note skips moderation and triage of the note");
+    assert.equal(r.llm.moderationCalls.length, 1, "only the drafts are moderated");
+    assert.equal(r.llm.moderationCalls[0]!.length, 3);
+    assert.deepEqual(r.decisions.calls.map(c => c.step), ["draftCheck", "draftCheck", "draftCheck"]);
 
     assert.equal(month(r).generations, 1);
-    assert.equal(month(r).spentMicros, costMicros(SETTINGS.generateModel, USAGE));
+    assert.equal(month(r).spentMicros, costMicros(SETTINGS.models.generate, USAGE));
     assert.ok((month(r).spentMicros as number) > 0);
+    assert.equal(month(r).inputTokens, USAGE.inputTokens);
+    assert.equal(month(r).outputTokens, USAGE.outputTokens);
+    assert.deepEqual(month(r).days, { "02": { spentMicros: month(r).spentMicros, inputTokens: USAGE.inputTokens, outputTokens: USAGE.outputTokens } });
     assert.deepEqual(month(r).pending, {}, "reservation released");
     assert.equal(r.store.get(DAY("admin1"))!.generations, 1);
     assert.equal(r.store.get(DAY("admin1"))!.flags, 0);
@@ -169,21 +191,45 @@ describe("generateEventDraftsV1 happy path", () => {
     assert.equal(r.store.children("companies/alpha/events").some(e => e.id !== "past" && e.id !== "live" && e.id !== "soon" && e.id !== "cancelled"), false);
   });
 
-  test("empty note: one generate call, no screen; non-empty note screens first", async () => {
+  test("empty note: no note moderation or triage; non-empty note is moderated and triaged first", async () => {
     const empty = rig([drafts()]);
     await generateEventDrafts(empty.deps, caller("admin1"), request(1));
-    assert.deepEqual(empty.llm.calls.map(c => c.purpose), ["generate"]);
+    assert.deepEqual(empty.llm.calls.map(c => c.step), ["generate"]);
+    assert.ok(!empty.decisions.calls.some(c => c.step === "triage"));
 
-    const noted = rig([verdict("ok"), drafts()]);
-    await generateEventDrafts(noted.deps, caller("admin1"), request(1, { prompt: "Something relaxed for the team" }));
-    assert.deepEqual(noted.llm.calls.map(c => c.purpose), ["screen", "generate"]);
-    assert.equal(month(noted).spentMicros, costMicros(SETTINGS.screenModel, USAGE) + costMicros(SETTINGS.generateModel, USAGE));
-    assert.equal(noted.llm.calls[0]!.system, SCREEN_SYSTEM_PROMPT);
-    assert.equal(noted.llm.calls[1]!.system, GENERATE_SYSTEM_PROMPT);
+    const note = "Something relaxed for the team";
+    const noted = rig([drafts()]);
+    await generateEventDrafts(noted.deps, caller("admin1"), request(1, { prompt: note }));
+    assert.deepEqual(noted.llm.moderationCalls[0], [note]);
+    assert.deepEqual(noted.decisions.calls.map(c => c.step), ["triage", "draftCheck", "draftCheck", "draftCheck"]);
+    assert.deepEqual(noted.llm.calls.map(c => c.step), ["generate"]);
+    assert.equal(noted.llm.calls[0]!.instructions, GENERATE_SYSTEM_PROMPT);
+    assert.equal(noted.llm.calls[0]!.schemaName, "event_drafts");
+    assert.equal(noted.llm.calls[0]!.maxOutputTokens, 12_000);
+  });
+
+  test("every call is metered: generate and decisions by their own model prices, moderation is free", async () => {
+    const r = rig([drafts()], {}, true, { decisions: [triageWith({}), ...checks({}, {}, {})] });
+    await generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "Something relaxed" }));
+    const jev = costMicros("jev-latest", JEV_USAGE);
+    assert.ok(jev > 0);
+    assert.equal(month(r).spentMicros, costMicros(SETTINGS.models.generate, USAGE) + 4 * jev);
+    assert.equal(month(r).inputTokens, USAGE.inputTokens + 4 * JEV_USAGE.inputTokens);
+    assert.equal(month(r).outputTokens, USAGE.outputTokens);
+    const changes = audit(r)[0]!.data.changes as Array<{ field: string; after: string }>;
+    const field = (name: string) => changes.find(c => c.field === name)!.after;
+    assert.equal(field("models"), "jev-latest,gpt-6.1-sol");
+    assert.equal(field("tokens"), `${USAGE.inputTokens + 4 * JEV_USAGE.inputTokens} in, ${USAGE.outputTokens} out`);
+    assert.equal(field("costUsd"), ((costMicros(SETTINGS.models.generate, USAGE) + 4 * jev) / 1_000_000).toFixed(4));
+    const log = r.logs.find(l => l.event === "ai.generate")!.fields as Record<string, unknown>;
+    assert.equal(log.calls, 5);
+    assert.equal(log.decisionProviders, "jev");
+    assert.equal(log.models, "jev-latest,gpt-6.1-sol");
+    assert.equal(log.tokensIn, USAGE.inputTokens + 4 * JEV_USAGE.inputTokens);
   });
 
   test("the operational log carries ids, counts and cost only", async () => {
-    const r = rig([verdict("ok"), drafts()]);
+    const r = rig([drafts()]);
     const note = "Secret picnic plan";
     const response = await generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: note }));
     assert.ok(r.logs.length > 0);
@@ -270,8 +316,8 @@ describe("model output handling", () => {
     const r = rig([bad("malformed"), drafts(3)]);
     const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
     assert.equal(response.drafts.length, 3);
-    assert.deepEqual(r.llm.calls.map(c => c.purpose), ["generate", "generate"]);
-    assert.equal(month(r).spentMicros, 2 * costMicros(SETTINGS.generateModel, USAGE), "both calls are metered");
+    assert.deepEqual(r.llm.calls.map(c => c.step), ["generate", "generate"]);
+    assert.equal(month(r).spentMicros, 2 * costMicros(SETTINGS.models.generate, USAGE), "both calls are metered");
     assert.equal(month(r).generations, 1);
   });
 
@@ -288,7 +334,7 @@ describe("model output handling", () => {
     assert.equal(month(r).generations, 0);
     assert.equal(r.store.get(DAY("admin1"))!.generations, 0);
     assert.equal(r.store.get(DAY("admin1"))!.flags, 0);
-    assert.equal(month(r).spentMicros, 2 * costMicros(SETTINGS.generateModel, USAGE));
+    assert.equal(month(r).spentMicros, 2 * costMicros(SETTINGS.models.generate, USAGE));
     assert.ok((month(r).spentMicros as number) > 0);
     assert.deepEqual(month(r).pending, {});
     const doc = r.store.get(REQ("admin1", 1))!;
@@ -315,14 +361,14 @@ describe("model output handling", () => {
     assert.equal(r.store.get(REQ("admin1", 1))!.status, "failed");
   });
 
-  test("urls, emails and phone numbers are dropped; unknown tags are filtered", async () => {
+  test("urls, emails and phone numbers are dropped; duplicate tags are removed", async () => {
     const r = rig([ok({
       drafts: [
         modelDraft(0, { title: "Visit www.example.com" }),
         modelDraft(1, { description: "Email us at fun@example.com for details." }),
         modelDraft(2, { rationale: "Call 412 555 0188 to join." }),
         modelDraft(3, { costNote: "Pay at https://pay.example.org" }),
-        modelDraft(4, { tagIds: ["tag-bogus", "tag-music", "tag-games", "tag-music"] }),
+        modelDraft(4, { tagIds: ["tag-music", "tag-games", "tag-music"] }),
       ],
     })]);
     const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
@@ -330,22 +376,113 @@ describe("model output handling", () => {
     assert.deepEqual(response.drafts[0]!.tagIds, ["tag-music", "tag-games"]);
     const text = JSON.stringify(response.drafts);
     assert.ok(!/example|555|https?:/.test(text));
+    assert.equal(r.decisions.calls.length, 1, "dropped drafts are not checked");
   });
 
-  test("a draft with only unknown tags falls back to the focus tag, and without focus is dropped", async () => {
-    const r = rig([ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] })]);
+  test("a tag outside the catalog fails the output schema: retried, then AI_OUTPUT_INVALID", async () => {
+    const r = rig([ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] }), ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] })]);
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_OUTPUT_INVALID");
+    assert.equal(r.llm.calls.length, 2);
+    assert.equal(r.llm.moderationCalls.length, 0, "nothing parsed, nothing moderated");
+    assert.equal(r.decisions.calls.length, 0);
+  });
+
+  test("a draft with an empty tag list falls back to the focus tag, and without focus is dropped", async () => {
+    const r = rig([ok({ drafts: [modelDraft(0, { tagIds: [] })] })]);
     const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
     assert.deepEqual(response.drafts[0]!.tagIds, ["tag-games"]);
 
-    const none = rig([ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] }), ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] })]);
+    const none = rig([ok({ drafts: [modelDraft(0, { tagIds: [] })] }), ok({ drafts: [modelDraft(0, { tagIds: [] })] })]);
     const body = request(1, { choices: { ...CHOICES, focusTagIds: [] } });
     await fails(generateEventDrafts(none.deps, caller("admin1"), body), "unavailable", "AI_OUTPUT_INVALID");
   });
 
   test("a model cover outside the approved set never reaches the response", async () => {
-    const r = rig([ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] })]);
+    const r = rig([ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] }), ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] })]);
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_OUTPUT_INVALID");
+    const fine = rig([drafts(3)]);
+    for (const draft of (await generateEventDrafts(fine.deps, caller("admin1"), request(1))).drafts) assert.ok(APPROVED_COVER_URLS.has(draft.coverImageURL));
+  });
+
+  test("output moderation drops the flagged draft only", async () => {
+    const clean: ModerationResult = { flagged: false, categories: [] };
+    const r = rig([drafts(3)], {}, true, { moderation: [[clean, { flagged: true, categories: ["hate"] }, clean]] });
     const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
-    assert.ok(APPROVED_COVER_URLS.has(response.drafts[0]!.coverImageURL));
+    assert.deepEqual(response.drafts.map(d => d.title), ["Board game afternoon", "Park walk and picnic"]);
+    assert.equal(r.decisions.calls.length, 2, "the flagged draft is not checked");
+    assert.equal(r.llm.moderationCalls[0]!.length, 3, "all draft texts are moderated in one call");
+    assert.ok(r.llm.moderationCalls[0]![0]!.startsWith("Board game afternoon\n"));
+    assert.equal(month(r).generations, 1);
+  });
+
+  test("all drafts flagged counts as invalid output and retries once", async () => {
+    const flaggedAll: ModerationResult[] = [1, 2, 3].map(() => ({ flagged: true, categories: ["violence"] }));
+    const r = rig([drafts(3), drafts(3)], {}, true, { moderation: [flaggedAll] });
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(response.drafts.length, 3);
+    assert.equal(r.llm.calls.length, 2);
+    assert.equal(month(r).spentMicros, 2 * costMicros(SETTINGS.models.generate, USAGE));
+
+    const never = rig([drafts(3), drafts(3)], {}, true, { moderation: [flaggedAll, flaggedAll] });
+    await fails(generateEventDrafts(never.deps, caller("admin1"), request(1)), "unavailable", "AI_OUTPUT_INVALID");
+    assert.equal(never.llm.calls.length, 2);
+    assert.equal(month(never).generations, 0);
+  });
+
+  test("a failing output moderation fails closed: AI_UNAVAILABLE, nothing counted, spend metered", async () => {
+    const r = rig([drafts(3)], {}, true, { moderation: [new LlmUnavailableError(500)] });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(month(r).generations, 0);
+    assert.equal(month(r).spentMicros, costMicros(SETTINGS.models.generate, USAGE));
+    assert.equal(r.decisions.calls.length, 0);
+  });
+
+  test("a draft the check calls unsafe is dropped", async () => {
+    const r = rig([drafts(3)], {}, true, { decisions: checks({}, { unsafe: noulAnswer(0.9) }, {}) });
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.deepEqual(response.drafts.map(d => d.title), ["Board game afternoon", "Park walk and picnic"]);
+    const borderline = rig([drafts(3)], {}, true, { decisions: checks({ unsafe: noulAnswer(0.69) }, { unsafe: noulAnswer(0.7) }, {}) });
+    assert.equal((await generateEventDrafts(borderline.deps, caller("admin1"), request(1))).drafts.length, 2, "0.7 and above is a yes");
+  });
+
+  test("a failing draft check keeps the draft (moderation and validators already gate it)", async () => {
+    const r = rig([drafts(3)], {}, true, { decisions: [new LlmUnavailableError(503), new Error("boom"), triageWith({})] });
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(response.drafts.length, 3);
+    assert.equal(r.decisions.calls.length, 3);
+  });
+
+  test("the cover is replaced only when the cover choice is concentrated enough", async () => {
+    const r = rig([drafts(3)], {}, true, {
+      decisions: checks(
+        { cover: choiceAnswer("cooking", 0.8) },
+        { cover: choiceAnswer("cooking", 0.5) },
+        { cover: choiceAnswer("bogus", 0.99) },
+      ),
+    });
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    const cover = (title: string) => response.drafts.find(d => d.title === title)!.coverImageURL;
+    assert.equal(cover("Board game afternoon"), "catalog://default/cooking");
+    assert.equal(cover("Lunchtime cooking swap"), "catalog://default/games", "0.5 is below the threshold: the model's own pick stays");
+    assert.equal(cover("Park walk and picnic"), "catalog://default/games", "an unknown category is ignored");
+  });
+
+  test("drafts are ordered by fit, best first; ties and unknown fit keep the model's order", async () => {
+    const r = rig([drafts(3)], {}, true, { decisions: checks({ fit: scoreAnswer(1) }, { fit: scoreAnswer(3) }, { fit: scoreAnswer(2) }) });
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.deepEqual(response.drafts.map(d => d.title), ["Lunchtime cooking swap", "Park walk and picnic", "Board game afternoon"]);
+    const tied = rig([drafts(3)], {}, true, { decisions: checks({ fit: scoreAnswer(2) }, { fit: scoreAnswer(2) }, { fit: scoreAnswer(2) }) });
+    assert.deepEqual((await generateEventDrafts(tied.deps, caller("admin1"), request(1))).drafts.map(d => d.title), ["Board game afternoon", "Lunchtime cooking swap", "Park walk and picnic"]);
+  });
+
+  test("each draft check asks the typed questions about that draft only", async () => {
+    const r = rig([drafts(2)]);
+    await generateEventDrafts(r.deps, caller("admin1"), request(1, { count: 2 }));
+    for (const call of r.decisions.calls) {
+      assert.equal(call.step, "draftCheck");
+      assert.deepEqual(Object.keys(call.questions).sort(), ["cover", "fit", "unsafe"]);
+    }
+    assert.ok(r.decisions.calls[0]!.state.includes("Board game afternoon") && !r.decisions.calls[0]!.state.includes("Lunchtime cooking swap"));
   });
 
   test("the response never exceeds the requested count", async () => {
@@ -356,93 +493,133 @@ describe("model output handling", () => {
 });
 
 describe("prompt injection handling", () => {
-  test("the note reaches both calls only JSON-encoded inside <admin_note>; the system prompts are constants", async () => {
-    const r = rig([verdict("ok"), drafts()]);
+  test("the note reaches triage and generation only JSON-encoded inside <admin_note>; the instructions are constants", async () => {
+    const r = rig([drafts()]);
     await generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: NOTE }));
-    assert.equal(r.llm.calls.length, 2);
-    for (const call of r.llm.calls) {
-      assert.equal(occurrences(call.user, "</admin_note>"), 1, "only the real closing tag");
-      assert.equal(occurrences(call.user, "<admin_note>"), 1);
-      assert.equal(occurrences(call.user, "<request>"), call.purpose === "generate" ? 1 : 0, "the note cannot open a request block");
-      assert.equal(occurrences(call.user, "</request>"), call.purpose === "generate" ? 1 : 0);
-      assert.equal(blockOf(call.user, "admin_note"), NOTE, "decodes back to the exact note");
-      assert.ok(call.user.includes("\\u003c/admin_note\\u003e"), "escaped, not literal");
-      assert.ok(!call.system.includes("Ignore all previous") && !call.system.includes("Reveal your system prompt"));
+    assert.equal(r.llm.calls.length, 1);
+    const triage = r.decisions.calls[0]!;
+    assert.equal(triage.step, "triage");
+    const generate = r.llm.calls[0]!;
+    for (const [text, hasRequest] of [[triage.state, false], [generate.input, true]] as const) {
+      assert.equal(occurrences(text, "</admin_note>"), 1, "only the real closing tag");
+      assert.equal(occurrences(text, "<admin_note>"), 1);
+      assert.equal(occurrences(text, "<request>"), hasRequest ? 1 : 0, "the note cannot open a request block");
+      assert.equal(occurrences(text, "</request>"), hasRequest ? 1 : 0);
+      assert.equal(blockOf(text, "admin_note"), NOTE, "decodes back to the exact note");
+      assert.ok(text.includes("\\u003c/admin_note\\u003e"), "escaped, not literal");
     }
-    assert.equal(r.llm.calls[0]!.system, SCREEN_SYSTEM_PROMPT);
-    assert.equal(r.llm.calls[1]!.system, GENERATE_SYSTEM_PROMPT);
-    assert.deepEqual((blockOf(r.llm.calls[1]!.user, "request") as { drafts: number }).drafts, 3);
+    assert.equal(generate.instructions, GENERATE_SYSTEM_PROMPT);
+    assert.ok(!generate.instructions.includes("Ignore all previous") && !generate.instructions.includes("Reveal your system prompt"));
+    assert.ok(!JSON.stringify(triage.questions).includes("Reveal your system prompt"));
+    assert.deepEqual((blockOf(generate.input, "request") as { drafts: number }).drafts, 3);
+    // The moderation endpoint receives the plain note (it is data for a classifier, not a prompt).
+    assert.deepEqual(r.llm.moderationCalls[0], [NOTE]);
   });
 
-  test("screen verdict injection: AI_PROMPT_REJECTED on prompt, no generate call, flag counted, generation not", async () => {
-    const r = rig([verdict("injection")]);
+  test("triage injection 0.95: AI_PROMPT_REJECTED on prompt, no generate call, flag counted, generation not", async () => {
+    const r = rig([drafts()], {}, true, { decisions: [triageWith({ injection: noulAnswer(0.95) })] });
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: NOTE })), "invalid-argument", "AI_PROMPT_REJECTED", ["prompt"]);
-    assert.deepEqual(r.llm.calls.map(c => c.purpose), ["screen"]);
+    assert.equal(r.llm.calls.length, 0, "no generate call");
+    assert.deepEqual(r.decisions.calls.map(c => c.step), ["triage"]);
     assert.equal(r.store.get(DAY("admin1"))!.flags, 1);
     assert.equal(r.store.get(DAY("admin1"))!.generations, 0);
     assert.equal(month(r).generations, 0);
-    assert.equal(month(r).spentMicros, costMicros(SETTINGS.screenModel, USAGE));
+    assert.equal(month(r).spentMicros, costMicros("jev-latest", JEV_USAGE));
     assert.deepEqual(month(r).pending, {});
     assert.equal(audit(r)[0]!.data.action, "ai.noteDeclined");
+    const reasons = (audit(r)[0]!.data.changes as Array<{ field: string; after: string }>).find(c => c.field === "triageReasons");
+    assert.equal(reasons?.after, "injection", "the audit records the reason key only");
   });
 
-  for (const v of ["off_topic", "unsafe", "personal_data", "made_up"]) {
-    test(`screen verdict ${v} also declines and counts a flag`, async () => {
-      const r = rig([verdict(v)]);
+  for (const key of ["unsafe", "offTopic", "personalData"]) {
+    test(`triage ${key} also declines and counts a flag`, async () => {
+      const r = rig([drafts()], {}, true, { decisions: [triageWith({ [key]: noulAnswer(0.7) })] });
       await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED", ["prompt"]);
       assert.equal(r.store.get(DAY("admin1"))!.flags, 1);
+      assert.equal(r.llm.calls.length, 0);
     });
   }
 
-  test("after dailyFlagLimit flags the next call fails AI_FLAG_LIMIT before any LLM call", async () => {
-    const r = rig([verdict("injection"), verdict("injection"), drafts()]);
+  test("a triage answer just under the threshold passes", async () => {
+    const r = rig([drafts()], {}, true, { decisions: [triageWith({ injection: noulAnswer(0.69), unsafe: noulAnswer(0.3) })] });
+    assert.equal((await generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" }))).replay, false);
+  });
+
+  test("a missing or malformed triage answer fails closed as a declined note", async () => {
+    const missing = (req: DecisionRequest): DecisionResult => {
+      const result = decision(req);
+      delete result.answers.offTopic;
+      return result;
+    };
+    const r = rig([drafts()], {}, true, { decisions: [missing] });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED");
+    assert.equal(r.llm.calls.length, 0);
+    assert.equal(r.store.get(DAY("admin1"))!.flags, 1);
+
+    const malformed = rig([drafts()], {}, true, { decisions: [triageWith({ injection: scoreAnswer(0) })] });
+    await fails(generateEventDrafts(malformed.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED");
+    const nan = rig([drafts()], {}, true, { decisions: [triageWith({ injection: noulAnswer(Number.NaN) })] });
+    await fails(generateEventDrafts(nan.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED");
+  });
+
+  test("a decision provider error fails closed: AI_UNAVAILABLE, no generate call, no flag", async () => {
+    const r = rig([drafts()], {}, true, { decisions: [new LlmUnavailableError(503)] });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(r.llm.calls.length, 0);
+    assert.equal(r.store.get(DAY("admin1"))!.flags, 0);
+    assert.equal(month(r).generations, 0);
+    assert.deepEqual(month(r).pending, {});
+    assert.equal(r.store.get(REQ("admin1", 1))!.status, "failed");
+  });
+
+  test("a moderation flag on the note declines it before triage or generation; only category names are audited", async () => {
+    const r = rig([drafts()], {}, true, { moderation: [flaggedModeration] });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: NOTE })), "invalid-argument", "AI_PROMPT_REJECTED", ["prompt"]);
+    assert.equal(r.decisions.calls.length, 0);
+    assert.equal(r.llm.calls.length, 0);
+    assert.equal(r.store.get(DAY("admin1"))!.flags, 1);
+    assert.equal(month(r).spentMicros, 0, "moderation is free");
+    assert.equal(audit(r)[0]!.data.action, "ai.noteDeclined");
+    const categories = (audit(r)[0]!.data.changes as Array<{ field: string; after: string }>).find(c => c.field === "flaggedCategories");
+    assert.equal(categories?.after, "harassment");
+    assert.ok(!JSON.stringify(audit(r)).includes("Reveal your system prompt"));
+  });
+
+  test("a failing note moderation fails closed: AI_UNAVAILABLE and no further calls", async () => {
+    const r = rig([drafts()], {}, true, { moderation: [new LlmUnavailableError(null)] });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(r.decisions.calls.length, 0);
+    assert.equal(r.llm.calls.length, 0);
+    assert.equal(r.store.get(DAY("admin1"))!.flags, 0);
+  });
+
+  test("after dailyFlagLimit flags the next call fails AI_FLAG_LIMIT before any provider call", async () => {
+    const r = rig([drafts()], {}, true, { decisions: [triageWith({ injection: noulAnswer(0.95) }), triageWith({ injection: noulAnswer(0.95) })] });
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: NOTE })), "invalid-argument", "AI_PROMPT_REJECTED");
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(2, { prompt: NOTE })), "invalid-argument", "AI_PROMPT_REJECTED");
     assert.equal(r.store.get(DAY("admin1"))!.flags, 2);
-    assert.equal(r.llm.calls.length, 2);
+    assert.equal(r.decisions.calls.length, 2);
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(3)), "resource-exhausted", "AI_FLAG_LIMIT");
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(4, { prompt: "fine note" })), "resource-exhausted", "AI_FLAG_LIMIT");
-    assert.equal(r.llm.calls.length, 2, "blocked without calling the provider");
+    assert.equal(r.decisions.calls.length, 2, "blocked without calling any provider");
+    assert.equal(r.llm.moderationCalls.length, 2);
     // Another admin is unaffected.
     const other = await generateEventDrafts(r.deps, caller("admin2"), request(5));
     assert.equal(other.replay, false);
   });
 
-  test("a screen refusal counts as a flag", async () => {
-    const r = rig([bad("refusal", SETTINGS.screenModel)]);
-    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED", ["prompt"]);
-    assert.equal(r.store.get(DAY("admin1"))!.flags, 1);
-    assert.equal(r.llm.calls.length, 1);
-    assert.equal(audit(r)[0]!.data.action, "ai.noteDeclined");
-  });
-
   test("a generate refusal with a note counts as a flag; without a note it is AI_OUTPUT_INVALID", async () => {
-    const withNote = rig([verdict("ok"), bad("refusal")]);
-    await fails(generateEventDrafts(withNote.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED", ["prompt"]);
+    const withNote = rig([bad("refusal")]);
+    await fails(generateEventDrafts(withNote.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED");
     assert.equal(withNote.store.get(DAY("admin1"))!.flags, 1);
+    assert.equal(withNote.llm.calls.length, 1, "a refusal is not retried");
     const noNote = rig([bad("refusal")]);
     await fails(generateEventDrafts(noNote.deps, caller("admin1"), request(1)), "unavailable", "AI_OUTPUT_INVALID");
     assert.equal(noNote.store.get(DAY("admin1"))!.flags, 0);
   });
 
-  for (const kind of ["malformed", "truncated"] as const) {
-    test(`a ${kind} screen outcome fails closed: AI_UNAVAILABLE and no generate call`, async () => {
-      const r = rig([bad(kind, SETTINGS.screenModel), drafts()]);
-      await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "unavailable", "AI_UNAVAILABLE");
-      assert.deepEqual(r.llm.calls.map(c => c.purpose), ["screen"]);
-      assert.equal(r.store.get(DAY("admin1"))!.flags, 0);
-      assert.equal(month(r).generations, 0);
-    });
-  }
-
-  test("a screen json without a verdict fails closed as a declined note", async () => {
-    const r = rig([ok({}, SETTINGS.screenModel)]);
-    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "note" })), "invalid-argument", "AI_PROMPT_REJECTED");
-    assert.equal(r.llm.calls.length, 1);
-  });
-
   test("notes with links, emails or phone numbers are rejected before any call", async () => {
-    const r = rig([verdict("ok"), drafts()]);
+    const r = rig([drafts()]);
     for (const prompt of ["see https://example.com", "mail me a@b.co", "call 412-555-0188"]) {
       await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt })), "invalid-argument", "AI_PROMPT_REJECTED", ["prompt"]);
     }
@@ -479,6 +656,53 @@ describe("caps", () => {
     const ctx = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
     assert.equal(ctx.usage.budgetExhausted, true);
     assert.equal(ctx.usage.generationsRemaining, 0);
+  });
+
+  test("daily company budget below the worst case: AI_BUDGET_EXHAUSTED for today", async () => {
+    const worst = worstCaseMicros(SETTINGS);
+    const r = rig([], { dailyBudgetMicros: worst - 1 });
+    await assert.rejects(generateEventDrafts(r.deps, caller("admin1"), request(1)), (e: unknown) => {
+      assert.ok(e instanceof AdminError);
+      assert.equal(e.reason, "AI_BUDGET_EXHAUSTED");
+      assert.equal(e.message, "Today's idea budget is used up. Try again tomorrow.");
+      return true;
+    });
+    assert.equal(r.llm.calls.length, 0);
+    const ctx = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
+    assert.equal(ctx.usage.budgetExhausted, true);
+    assert.equal(ctx.usage.generationsRemaining, 0);
+  });
+
+  test("today's spend counts against the daily budget, other days do not", async () => {
+    const worst = worstCaseMicros(SETTINGS);
+    const day = (spentMicros: number) => ({ spentMicros, inputTokens: 1, outputTokens: 1 });
+    const tight = rig([drafts()]);
+    const todaySpend = SETTINGS.dailyBudgetMicros - worst + 1;
+    tight.store.seed(MONTH, { generations: 1, spentMicros: todaySpend, inputTokens: 1, outputTokens: 1, days: { "02": day(todaySpend) }, pending: {} });
+    await fails(generateEventDrafts(tight.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    assert.equal(tight.llm.calls.length, 0);
+
+    const yesterday = rig([drafts()]);
+    yesterday.store.seed(MONTH, { generations: 1, spentMicros: SETTINGS.dailyBudgetMicros, inputTokens: 1, outputTokens: 1, days: { "01": day(SETTINGS.dailyBudgetMicros) }, pending: {} });
+    assert.equal((await generateEventDrafts(yesterday.deps, caller("admin1"), request(1))).replay, false);
+    const days = month(yesterday).days as Record<string, { spentMicros: number }>;
+    assert.equal(days["01"]!.spentMicros, SETTINGS.dailyBudgetMicros, "earlier days stay in the document");
+    assert.equal(days["02"]!.spentMicros, costMicros(SETTINGS.models.generate, USAGE));
+  });
+
+  test("a live pending reservation counts against the daily budget", async () => {
+    const worst = worstCaseMicros(SETTINGS);
+    const r = rig([drafts()], { dailyBudgetMicros: worst * 2 - 1 });
+    r.store.seed(MONTH, { generations: 0, spentMicros: 0, pending: { other_x: { uid: "admin2", micros: worst, expiresAt: new Date(NOW.getTime() + 60_000) } } });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+  });
+
+  test("the company dailyBudgetCents override applies", async () => {
+    const r = rig([drafts()]);
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, dailyBudgetCents: 1 });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, dailyBudgetCents: 100_000 });
+    assert.equal((await generateEventDrafts(r.deps, caller("admin1"), request(2))).replay, false);
   });
 
   test("budget spent earlier in the month counts", async () => {
@@ -552,7 +776,9 @@ describe("concurrency (fake store; optimistic retry, not emulator evidence)", ()
 describe("audit and privacy", () => {
   test("one content-free audit entry per attempt", async () => {
     const note = "Our quiet teammate Zorblax needs a gentle quiz night";
-    const r = rig([verdict("ok"), drafts(3), verdict("injection"), new LlmUnavailableError(500)]);
+    const r = rig([drafts(3), new LlmUnavailableError(500)], {}, true, {
+      decisions: [triageWith({}), ...checks({}, {}, {}), triageWith({ injection: noulAnswer(0.95) })],
+    });
     const first = await generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: note }));
     await fails(generateEventDrafts(r.deps, caller("admin2"), request(2, { prompt: NOTE })), "invalid-argument", "AI_PROMPT_REJECTED");
     await fails(generateEventDrafts(r.deps, caller("admin3"), request(3)), "unavailable", "AI_UNAVAILABLE");
@@ -580,7 +806,7 @@ describe("audit and privacy", () => {
       { tagId: "tag-fitness", memberCount: 3 }, { tagId: "tag-cooking", memberCount: 7 }, { tagId: "tag-music", memberCount: 12 }, { tagId: "tag-games", memberCount: 25 },
     ];
     await generateEventDrafts(r.deps, caller("admin1"), request(1, { count: 2 }));
-    const user = r.llm.calls[0]!.user;
+    const user = r.llm.calls[0]!.input;
     const interests = blockOf(user, "company_interests") as { common: Array<Record<string, unknown>>; fewMembers: string[] };
     assert.deepEqual(interests.common.map(c => [c.tagId, c.members]), [["tag-games", "20+"], ["tag-music", "10-19"], ["tag-cooking", "5-9"]]);
     for (const entry of interests.common) assert.deepEqual(Object.keys(entry).sort(), ["members", "name", "tagId"]);

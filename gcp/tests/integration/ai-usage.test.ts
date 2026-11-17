@@ -8,7 +8,7 @@ import { getEventIdeaContext } from "../../functions/src/modules/ai/application/
 import { generateEventDrafts } from "../../functions/src/modules/ai/application/generate";
 import type { AiDeps, AiSettings } from "../../functions/src/modules/ai/application/ports";
 import { monthKey, dayKey } from "../../functions/src/modules/ai/domain/paths";
-import { ScriptedLlm, type ScriptStep } from "../../functions/src/modules/ai/infrastructure/fakeLlm";
+import { ScriptedDecisions, ScriptedLlm, type GenerateStep } from "../../functions/src/modules/ai/infrastructure/fakes";
 import {
   DEFAULT_TAGS, FirestoreInterestSource, FirestoreTagCatalog, FirestoreThemeSource,
 } from "../../functions/src/modules/ai/infrastructure/firestoreSources";
@@ -35,7 +35,7 @@ let db: ReturnType<typeof getFirestore>;
 
 const asUser = (uid: string): Caller => ({ uid, emailVerified: true, signInProvider: "google.com" });
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-const slowDrafts = (ms = 200): ScriptStep => async () => { await sleep(ms); return drafts(3); };
+const slowDrafts = (ms = 200): GenerateStep => async () => { await sleep(ms); return drafts(3); };
 const ADMINS = Array.from({ length: 8 }, (_, i) => `ai-admin${i + 1}`);
 
 async function reason(promise: Promise<unknown>): Promise<string> {
@@ -43,10 +43,10 @@ async function reason(promise: Promise<unknown>): Promise<string> {
   return "OK";
 }
 
-function makeDeps(steps: ScriptStep[], settings: Partial<AiSettings> = {}): AiDeps & { llm: ScriptedLlm } {
+function makeDeps(steps: GenerateStep[], settings: Partial<AiSettings> = {}): AiDeps & { llm: ScriptedLlm } {
   const llm = new ScriptedLlm(steps);
   return {
-    store: new FirestoreAdminStore(db), llm, interests: new FirestoreInterestSource(db), catalog: new FirestoreTagCatalog(db),
+    store: new FirestoreAdminStore(db), llm, decisions: new ScriptedDecisions(), interests: new FirestoreInterestSource(db), catalog: new FirestoreTagCatalog(db),
     themes: new FirestoreThemeSource(db), settings: { ...SETTINGS, ...settings }, now: () => new Date(),
   };
 }
@@ -102,6 +102,21 @@ describe("reservations against the real Firestore adapter", () => {
     assert.deepEqual((await db.doc(monthPath()).get()).data()!.pending, {});
   });
 
+  test("the daily company budget serializes too, and spend and tokens land in the month totals and today's entry", async () => {
+    const { worstCaseMicros } = await import("../../functions/src/modules/ai/domain/pricing");
+    const deps = makeDeps(Array.from({ length: 5 }, () => slowDrafts(2500)), { dailyBudgetMicros: worstCaseMicros(SETTINGS) * 2, monthlyGenerationLimit: 50 });
+    const outcomes = await Promise.all(ADMINS.slice(0, 5).map((uid, i) => reason(generateEventDrafts(deps, asUser(uid), request(250 + i)))));
+    assert.equal(outcomes.filter(o => o === "OK").length, 2, outcomes.join(","));
+    assert.deepEqual([...new Set(outcomes.filter(o => o !== "OK"))], ["AI_BUDGET_EXHAUSTED"]);
+    const month = (await db.doc(monthPath()).get()).data()!;
+    assert.deepEqual(month.pending, {});
+    const dd = String(new Date().getUTCDate()).padStart(2, "0");
+    assert.ok(month.spentMicros > 0);
+    assert.equal(month.inputTokens, 2 * 1000);
+    assert.equal(month.outputTokens, 2 * 500);
+    assert.deepEqual(month.days[dd], { spentMicros: month.spentMicros, inputTokens: month.inputTokens, outputTokens: month.outputTokens });
+  });
+
   test("the same requestId fired twice in parallel: one runs, the other is refused or replays; one generation counted", async () => {
     const deps = makeDeps([slowDrafts(300), slowDrafts(300)]);
     const [a, b] = await Promise.allSettled([
@@ -123,7 +138,7 @@ describe("reservations against the real Firestore adapter", () => {
 
   test("a live reservation is a Timestamp in Firestore and the stored replay survives a fresh store instance", async () => {
     let midFlight: Record<string, any> | undefined;
-    const peek: ScriptStep = async () => { midFlight = (await db.doc(monthPath()).get()).data(); return drafts(3); };
+    const peek: GenerateStep = async () => { midFlight = (await db.doc(monthPath()).get()).data(); return drafts(3); };
     const first = makeDeps([peek]);
     const before = Date.now();
     const done = await generateEventDrafts(first, asUser(ADMINS[0]!), request(400));

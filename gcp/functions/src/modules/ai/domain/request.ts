@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { AiEventChoices } from "../../../generated/models";
 import { AdminError, invalid } from "../../admin/domain/errors";
 import { BUDGETS, GOALS, GROUP_SIZES, LIMITS, SETTINGS, TIMINGS } from "./vocabulary";
@@ -13,36 +14,36 @@ export interface ParsedGenerateRequest {
   count: number;
 }
 
-type Rec = Record<string, unknown>;
+const companyId = z.string().regex(ID_PATTERN);
 
-const isRecord = (value: unknown): value is Rec => typeof value === "object" && value !== null && !Array.isArray(value);
+/** Strict schema of getEventIdeaContextV1. */
+export const ContextRequestSchema = z.strictObject({ contractVersion: z.literal(1), companyId });
 
-/** Throws when `record` does not have exactly the `allowed` keys. */
-function exactKeys(record: Rec, allowed: readonly string[], prefix: string) {
-  const name = (key: string) => (prefix ? `${prefix}.${key}` : key);
-  const extra = Object.keys(record).filter(key => !allowed.includes(key)).map(name);
-  const missing = allowed.filter(key => !(key in record)).map(name);
-  if (extra.length || missing.length) throw invalid([...extra, ...missing]);
-}
-
-function oneOf<T extends string>(record: Rec, key: string, values: readonly T[], bad: string[]): T {
-  const value = record[key];
-  if (typeof value !== "string" || !(values as readonly string[]).includes(value)) {
-    bad.push(`choices.${key}`);
-    return values[0]!;
+/**
+ * Field paths of a failed parse as VALIDATION_FAILED fields: dotted paths ("choices.goal"), unknown keys named by
+ * their own path, list members reported on the list. An unparseable body is reported as "request".
+ */
+function fieldsOf(error: z.ZodError): string[] {
+  const fields = new Set<string>();
+  for (const issue of error.issues) {
+    const path = issue.path.map(String);
+    const numeric = path.findIndex(part => /^\d+$/.test(part));
+    const base = (numeric === -1 ? path : path.slice(0, numeric)).join(".");
+    if (issue.code === "unrecognized_keys") {
+      for (const key of issue.keys) fields.add(base ? `${base}.${key}` : key);
+    } else {
+      fields.add(base || "request");
+    }
   }
-  return value as T;
+  return [...fields];
 }
 
 export function parseContextRequest(data: unknown): { companyId: string } {
-  if (!isRecord(data)) throw invalid(["request"]);
-  exactKeys(data, ["contractVersion", "companyId"], "");
-  const bad: string[] = [];
-  if (data.contractVersion !== 1) bad.push("contractVersion");
-  if (typeof data.companyId !== "string" || !ID_PATTERN.test(data.companyId)) bad.push("companyId");
-  if (bad.length) throw invalid(bad);
-  return { companyId: data.companyId as string };
+  const parsed = ContextRequestSchema.safeParse(data);
+  if (!parsed.success) throw invalid(fieldsOf(parsed.error));
+  return { companyId: parsed.data.companyId };
 }
+
 const LINE_BREAKS = new RegExp("\\r\\n?|\\u2028|\\u2029", "g");
 
 /** Normalizes the admin note: NFKC, no control, format or bidi characters, tidy whitespace. Never rewrites words. */
@@ -81,52 +82,37 @@ export function containsContactInfo(text: string): boolean {
   return false;
 }
 
+const promptField = z.string().max(LIMITS.promptMax)
+  .transform(sanitizeNote)
+  .pipe(z.string().max(LIMITS.promptMax));
+
+/** Strict schema of generateEventDraftsV1; focus tags must be unique catalog ids. */
+export function GenerateRequestSchema(catalogIds: ReadonlySet<string>) {
+  return z.strictObject({
+    contractVersion: z.literal(1),
+    companyId,
+    requestId: z.string().regex(UUID_PATTERN),
+    choices: z.strictObject({
+      focusTagIds: z.array(z.string()).max(LIMITS.focusTagsMax)
+        .refine(ids => new Set(ids).size === ids.length)
+        .refine(ids => ids.every(id => catalogIds.has(id))),
+      goal: z.enum(GOALS),
+      groupSize: z.enum(GROUP_SIZES),
+      setting: z.enum(SETTINGS),
+      budget: z.enum(BUDGETS),
+      timing: z.enum(TIMINGS),
+    }),
+    prompt: promptField,
+    count: z.number().int().min(1).max(LIMITS.draftsMax),
+  });
+}
+
 export function parseGenerateRequest(data: unknown, catalogIds: ReadonlySet<string>): ParsedGenerateRequest {
-  if (!isRecord(data)) throw invalid(["request"]);
-  exactKeys(data, ["contractVersion", "companyId", "requestId", "choices", "prompt", "count"], "");
-  const bad: string[] = [];
-  if (data.contractVersion !== 1) bad.push("contractVersion");
-  if (typeof data.companyId !== "string" || !ID_PATTERN.test(data.companyId)) bad.push("companyId");
-  if (typeof data.requestId !== "string" || !UUID_PATTERN.test(data.requestId)) bad.push("requestId");
-  if (!Number.isInteger(data.count) || (data.count as number) < 1 || (data.count as number) > LIMITS.draftsMax) bad.push("count");
-
-  let choices: AiEventChoices = { focusTagIds: [], goal: GOALS[0], groupSize: GROUP_SIZES[0], setting: SETTINGS[0], budget: BUDGETS[0], timing: TIMINGS[0] };
-  if (!isRecord(data.choices)) bad.push("choices");
-  else {
-    const raw = data.choices;
-    exactKeys(raw, ["focusTagIds", "goal", "groupSize", "setting", "budget", "timing"], "choices");
-    const focus = raw.focusTagIds;
-    let focusTagIds: string[] = [];
-    if (
-      !Array.isArray(focus) || focus.length > LIMITS.focusTagsMax || new Set(focus).size !== focus.length ||
-      !focus.every(id => typeof id === "string" && catalogIds.has(id))
-    ) bad.push("choices.focusTagIds");
-    else focusTagIds = focus as string[];
-    choices = {
-      focusTagIds,
-      goal: oneOf(raw, "goal", GOALS, bad),
-      groupSize: oneOf(raw, "groupSize", GROUP_SIZES, bad),
-      setting: oneOf(raw, "setting", SETTINGS, bad),
-      budget: oneOf(raw, "budget", BUDGETS, bad),
-      timing: oneOf(raw, "timing", TIMINGS, bad),
-    };
-  }
-
-  let prompt = "";
-  if (typeof data.prompt !== "string" || data.prompt.length > LIMITS.promptMax) bad.push("prompt");
-  else {
-    prompt = sanitizeNote(data.prompt);
-    if (prompt.length > LIMITS.promptMax) bad.push("prompt");
-  }
-  if (bad.length) throw invalid(bad);
+  const parsed = GenerateRequestSchema(catalogIds).safeParse(data);
+  if (!parsed.success) throw invalid(fieldsOf(parsed.error));
+  const { choices, prompt, ...rest } = parsed.data;
   if (containsContactInfo(prompt)) {
     throw new AdminError("invalid-argument", "AI_PROMPT_REJECTED", "Leave out links, email addresses and phone numbers.", ["prompt"]);
   }
-  return {
-    companyId: data.companyId as string,
-    requestId: data.requestId as string,
-    choices,
-    prompt,
-    count: data.count as number,
-  };
+  return { ...rest, choices: { ...choices, focusTagIds: [...choices.focusTagIds] }, prompt };
 }

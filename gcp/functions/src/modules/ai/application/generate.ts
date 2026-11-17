@@ -1,47 +1,52 @@
 import type { GeneratedEventDraft, GenerateEventDraftsResponse } from "../../../generated/models";
 import { authorize, requireCaller, writeAudit, type Actor } from "../../admin/application/context";
 import type { AdminTransaction, Doc } from "../../admin/application/ports";
-import { change } from "../../admin/domain/audit";
+import { change, type AuditChange } from "../../admin/domain/audit";
 import { AdminError, type AdminErrorReason } from "../../admin/domain/errors";
 import { payloadHash } from "../../admin/domain/reader";
+import { draftCheckQuestions, draftState, interpretDraftCheck, TRIAGE_QUESTIONS, triageState, triageVerdict } from "../domain/decisions";
 import { InvalidModelOutput, parseModelDrafts } from "../domain/drafts";
 import { summarizeInterests } from "../domain/interests";
 import { aiPaths, dayKey, monthKey } from "../domain/paths";
-import { costMicros, GENERATE_MAX_TOKENS, SCREEN_MAX_TOKENS, worstCaseMicros } from "../domain/pricing";
+import { costMicros, GENERATE_MAX_TOKENS, worstCaseMicros } from "../domain/pricing";
+import { buildGenerateUserContent, GENERATE_SYSTEM_PROMPT, modelDraftsSchema } from "../domain/prompt";
 import {
-  buildGenerateUserContent, buildScreenUserContent, GENERATE_SYSTEM_PROMPT, generateOutputSchema, SCREEN_OUTPUT_SCHEMA, SCREEN_SYSTEM_PROMPT,
-} from "../domain/prompt";
-import {
-  checkReservation, effectiveLimits, monthDocument, readDay, readMonth, RESERVATION_TTL_MS, usageSummary, type Limits,
+  addSpend, checkReservation, effectiveLimits, monthDocument, readDay, readMonth, RESERVATION_TTL_MS, usageSummary, type Limits,
 } from "../domain/quota";
 import { parseGenerateRequest, type ParsedGenerateRequest } from "../domain/request";
-import { LlmUnavailableError, type AiDeps, type Caller, type CatalogTag, type LlmOutcome } from "./ports";
+import { LlmUnavailableError, type AiDeps, type Caller, type CatalogTag, type LlmUsage } from "./ports";
 
 const REQUEST_RETENTION_MS = 24 * 3_600_000;
 const DAY_RETENTION_MS = 8 * 86_400_000;
 /** Thin interests named in the prompt (names only, never counts). */
 const THIN_IN_PROMPT = 8;
 
-/** What one model run produced; spend is always metered, whatever the outcome. */
+/** Metered spend of one run, whatever the outcome. */
+interface Meter { spentMicros: number; tokensIn: number; tokensOut: number; calls: number; models: string[]; providers: string[] }
+
+/** What one model run produced. `extra` holds content-free audit details (names of reasons or categories, never text). */
 type RunResult =
-  | { status: "done"; drafts: GeneratedEventDraft[]; spentMicros: number; tokensIn: number; tokensOut: number; model: string; calls: number }
-  | { status: "flagged" | "failed"; reason: AdminErrorReason; detail: string; spentMicros: number; tokensIn: number; tokensOut: number; model: string; calls: number };
+  | ({ status: "done"; drafts: GeneratedEventDraft[]; extra: AuditChange[] } & Meter)
+  | ({ status: "flagged" | "failed"; reason: AdminErrorReason; detail: string; extra: AuditChange[] } & Meter);
+
+type Record_ = (model: string, usage: LlmUsage, provider?: string) => void;
 
 interface Reservation {
   actor: Actor; limits: Limits; attempt: number; month: string; day: string;
 }
 
 /**
- * generateEventDraftsV1 (docs/design/stretch/ai-event-creation.md). Three steps so the slow model call never holds a
+ * generateEventDraftsV1 (docs/design/stretch/ai-event-creation.md). Three steps so the slow model calls never hold a
  * transaction open:
  * 1. Reserve (transaction): authorize `ai.generate`, honor the kill switches, replay a finished requestId, refuse a
- *    concurrent duplicate, check the per-admin daily, company monthly and budget caps, and reserve the worst-case cost.
- *    Concurrent calls serialize on the month document, so parallel requests cannot pass a cap.
- * 2. Run (no transaction): screen the admin's note with the cheap model, then draft with structured output; invalid
- *    output is retried once. Nothing is written to events.
- * 3. Settle (transaction): release the reservation, add the actual cost, count the generation only on success (a
- *    declined note counts toward the daily flag limit instead), store the result for replay and write a content-free
- *    audit entry. Expired reservations (a crashed run) are dropped on the next read, so the caps heal themselves.
+ *    concurrent duplicate, check the per-admin daily, company monthly and daily/monthly budget caps, and reserve the
+ *    worst-case cost. Concurrent calls serialize on the month document, so parallel requests cannot pass a cap.
+ * 2. Run (no transaction): moderate and triage the admin's note, draft with structured output (invalid output is
+ *    retried once), then moderate and check every draft. Nothing is written to events.
+ * 3. Settle (transaction): release the reservation, add the actual cost and tokens to the month and day totals, count
+ *    the generation only on success (a declined note counts toward the daily flag limit instead), store the result
+ *    for replay and write a content-free audit entry. Expired reservations (a crashed run) are dropped on the next
+ *    read, so the caps heal themselves.
  */
 export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null, data: unknown): Promise<GenerateEventDraftsResponse> {
   const caller = requireCaller(rawCaller);
@@ -69,14 +74,14 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
         throw new AdminError("failed-precondition", "REQUEST_REUSED", "This request ID was already used with different details.", ["requestId"]);
       }
       if (requestDoc.status === "done") {
-        return { replay: { contractVersion: 1, drafts: storedDrafts(requestDoc), usage: usageSummary(monthState, dayState, caller.uid, limits, worst), replay: true } };
+        return { replay: { contractVersion: 1, drafts: storedDrafts(requestDoc), usage: usageSummary(monthState, dayState, caller.uid, limits, worst, now), replay: true } };
       }
       if (requestDoc.status === "pending" && key in monthState.pending) {
         throw new AdminError("aborted", "REQUEST_IN_PROGRESS", "These ideas are still being written. Wait a moment.");
       }
     }
     if (!limits.enabled) throw new AdminError("failed-precondition", "AI_DISABLED", "AI event ideas are turned off for this company.");
-    checkReservation(monthState, dayState, caller.uid, limits, worst);
+    checkReservation(monthState, dayState, caller.uid, limits, worst, now);
     monthState.pending[key] = { uid: caller.uid, micros: worst, expiresAt: new Date(now.getTime() + RESERVATION_TTL_MS) };
     put(tx, aiPaths.month(companyId, month), monthDoc ?? null, monthDocument(monthState));
     const attempt = (typeof requestDoc?.attempts === "number" ? requestDoc.attempts : 0) + 1;
@@ -97,62 +102,77 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
     result = await run(deps, request, catalog);
   } catch (error) {
     unexpected = error;
-    result = { status: "failed", reason: "AI_UNAVAILABLE", detail: "unexpected", spentMicros: 0, tokensIn: 0, tokensOut: 0, model: deps.settings.generateModel, calls: 0 };
+    result = { status: "failed", reason: "AI_UNAVAILABLE", detail: "unexpected", extra: [], spentMicros: 0, tokensIn: 0, tokensOut: 0, calls: 0, models: [], providers: [] };
   }
 
   const usage = await settle(deps, caller.uid, request, reservation, result, worst);
   deps.log?.("ai.generate", {
-    companyId, requestId, outcome: result.status, detail: result.status === "done" ? null : result.detail, model: result.model,
+    companyId, requestId, outcome: result.status, detail: result.status === "done" ? null : result.detail, models: result.models.join(","),
     calls: result.calls, tokensIn: result.tokensIn, tokensOut: result.tokensOut, costMicros: result.spentMicros,
+    decisionProviders: result.providers.join(","),
   });
   if (unexpected) throw unexpected;
   if (result.status === "done") return { contractVersion: 1, drafts: result.drafts, usage, replay: false };
   throw failure(result.reason);
 }
 
+/** Moderation category names are provider constants; keep plain tokens only so no free text can reach the audit log. */
+const categoryNames = (categories: readonly string[]) => categories.filter(name => /^[A-Za-z0-9/_-]{1,40}$/.test(name)).slice(0, 12);
+
 async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readonly CatalogTag[]): Promise<RunResult> {
-  const meter = { spentMicros: 0, tokensIn: 0, tokensOut: 0, model: deps.settings.generateModel, calls: 0 };
-  const record = (outcome: LlmOutcome) => {
+  const models = new Set<string>();
+  const providers = new Set<string>();
+  const meter = { spentMicros: 0, tokensIn: 0, tokensOut: 0, calls: 0 };
+  const record: Record_ = (model, usage, provider) => {
     meter.calls += 1;
-    meter.spentMicros += costMicros(outcome.model, outcome.usage);
-    meter.tokensIn += outcome.usage.inputTokens + outcome.usage.cacheReadTokens + outcome.usage.cacheWriteTokens;
-    meter.tokensOut += outcome.usage.outputTokens;
+    meter.spentMicros += costMicros(model, usage);
+    meter.tokensIn += usage.inputTokens;
+    meter.tokensOut += usage.outputTokens;
+    models.add(model);
+    if (provider) providers.add(provider);
   };
-  const stop = (status: "flagged" | "failed", reason: AdminErrorReason, detail: string): RunResult => ({ status, reason, detail, ...meter });
+  const snapshot = (): Meter => ({ ...meter, models: [...models], providers: [...providers] });
+  const stop = (status: "flagged" | "failed", reason: AdminErrorReason, detail: string, extra: AuditChange[] = []): RunResult =>
+    ({ status, reason, detail, extra, ...snapshot() });
 
   try {
     if (request.prompt !== "") {
-      const screen = await deps.llm.complete({
-        purpose: "screen", system: SCREEN_SYSTEM_PROMPT, user: buildScreenUserContent(request.prompt), schema: SCREEN_OUTPUT_SCHEMA, maxTokens: SCREEN_MAX_TOKENS,
-      });
-      record(screen);
-      if (screen.kind === "refusal") return stop("flagged", "AI_PROMPT_REJECTED", "screen_refusal");
-      // Fail closed: an unreadable verdict never lets the note through.
-      if (screen.kind !== "ok") return stop("failed", "AI_UNAVAILABLE", `screen_${screen.kind}`);
-      const verdict = (screen.json as { verdict?: unknown } | null)?.verdict;
-      if (verdict !== "ok") return stop("flagged", "AI_PROMPT_REJECTED", `screen_${typeof verdict === "string" ? verdict.slice(0, 20) : "invalid"}`);
+      // Free provider moderation first, then the typed triage questions. A thrown error fails closed (AI_UNAVAILABLE).
+      const [moderation] = await deps.llm.moderate([request.prompt]);
+      if (!moderation) return stop("failed", "AI_UNAVAILABLE", "moderation_missing");
+      if (moderation.flagged) {
+        return stop("flagged", "AI_PROMPT_REJECTED", "moderation", [change("flaggedCategories", null, categoryNames(moderation.categories).join(","))]);
+      }
+      const triage = await deps.decisions.decide({ step: "triage", state: triageState(request.prompt), questions: TRIAGE_QUESTIONS });
+      record(triage.model, triage.usage, triage.provider);
+      const reasons = triageVerdict(triage);
+      if (reasons.length > 0) return stop("flagged", "AI_PROMPT_REJECTED", "triage", [change("triageReasons", null, reasons.join(","))]);
     }
 
     const now = deps.now();
     const [stats, theme] = await Promise.all([deps.interests.countsFor(request.companyId), deps.themes.current(request.companyId, now)]);
     const interests = summarizeInterests(stats, catalog);
     const catalogIds = catalog.map(tag => tag.id);
-    const user = buildGenerateUserContent({
+    const input = buildGenerateUserContent({
       choices: request.choices, count: request.count, note: request.prompt, catalog, topInterests: interests.top,
       thinTagIds: interests.thinTagIds.slice(0, THIN_IN_PROMPT), theme, now,
     });
-    const schema = generateOutputSchema(catalogIds);
+    const schema = modelDraftsSchema(catalogIds);
     const context = { count: request.count, choices: request.choices, catalogIds: new Set(catalogIds) };
+    const focusTags = catalog.filter(tag => request.choices.focusTagIds.includes(tag.id));
     for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const outcome = await deps.llm.complete({ purpose: "generate", system: GENERATE_SYSTEM_PROMPT, user, schema, maxTokens: GENERATE_MAX_TOKENS });
-      record(outcome);
-      meter.model = outcome.model;
+      const outcome = await deps.llm.generate({
+        step: "generate", instructions: GENERATE_SYSTEM_PROMPT, input, schema, schemaName: "event_drafts", maxOutputTokens: GENERATE_MAX_TOKENS,
+      });
+      record(outcome.model, outcome.usage);
       if (outcome.kind === "refusal") {
         return request.prompt !== "" ? stop("flagged", "AI_PROMPT_REJECTED", "generate_refusal") : stop("failed", "AI_OUTPUT_INVALID", "generate_refusal");
       }
       if (outcome.kind !== "ok") continue;
       try {
-        return { status: "done", drafts: parseModelDrafts(outcome.json, context), ...meter };
+        const parsed = parseModelDrafts(outcome.value, context);
+        const reviewed = await review(deps, request, parsed, focusTags, record);
+        if (reviewed.length > 0) return { status: "done", drafts: reviewed, extra: [], ...snapshot() };
       } catch (error) {
         if (!(error instanceof InvalidModelOutput)) throw error;
       }
@@ -162,6 +182,37 @@ async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readon
     if (error instanceof LlmUnavailableError) return stop("failed", "AI_UNAVAILABLE", `provider_${error.status ?? "network"}`);
     throw error;
   }
+}
+
+/**
+ * Output gates after parsing: free moderation of every draft's text, then one typed check per remaining draft (cover
+ * art, fit, safety). A failed check keeps the draft because moderation and the validators already gate it; an unsafe
+ * answer drops it; drafts are ordered by fit, best first. An empty result counts as invalid output.
+ */
+async function review(
+  deps: AiDeps, request: ParsedGenerateRequest, drafts: GeneratedEventDraft[], focusTags: readonly CatalogTag[], record: Record_,
+): Promise<GeneratedEventDraft[]> {
+  const verdicts = await deps.llm.moderate(drafts.map(draft => `${draft.title}\n${draft.description}\n${draft.rationale}`));
+  const clean = drafts.filter((_, i) => verdicts[i] !== undefined && !verdicts[i]!.flagged);
+  if (clean.length === 0) return [];
+  const questions = draftCheckQuestions(request.choices, focusTags);
+  const checked = await Promise.all(clean.map(async draft => {
+    try {
+      const result = await deps.decisions.decide({ step: "draftCheck", state: draftState(draft), questions });
+      record(result.model, result.usage, result.provider);
+      return { draft, check: interpretDraftCheck(result.answers) };
+    } catch {
+      return { draft, check: interpretDraftCheck(null) };
+    }
+  }));
+  return checked
+    .filter(item => !item.check.unsafe)
+    .map(({ draft, check }) => ({
+      draft: check.cover ? { ...draft, coverImageURL: `catalog://default/${check.cover}` } : draft,
+      fit: check.fit ?? -1,
+    }))
+    .sort((a, b) => b.fit - a.fit)
+    .map(item => item.draft);
 }
 
 async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest, reservation: Reservation, result: RunResult, worst: number) {
@@ -176,7 +227,7 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
     const month = readMonth(monthDoc ?? null, now);
     const day = readDay(dayDoc ?? null);
     delete month.pending[key];
-    month.spentMicros += result.spentMicros;
+    addSpend(month, reservation.day.slice(-2), { spentMicros: result.spentMicros, inputTokens: result.tokensIn, outputTokens: result.tokensOut });
     if (result.status === "done") {
       month.generations += 1;
       day.generations += 1;
@@ -196,13 +247,14 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
       summary: result.status === "done" ? `Generated ${result.drafts.length} AI event draft${result.drafts.length === 1 ? "" : "s"}`
         : result.status === "flagged" ? "AI note declined by the safety check" : "AI event drafts failed",
       changes: [
-        change("model", null, result.model),
+        change("models", null, result.models.join(",")),
         change("tokens", null, `${result.tokensIn} in, ${result.tokensOut} out`),
         change("costUsd", null, (result.spentMicros / 1_000_000).toFixed(4)),
+        ...result.extra,
       ],
       requestId,
     });
-    return usageSummary(month, day, uid, reservation.limits, worst);
+    return usageSummary(month, day, uid, reservation.limits, worst, now);
   });
 }
 
