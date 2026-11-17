@@ -275,3 +275,66 @@ describe("sendOutboxEmail", () => {
     assert.deepEqual(w.provider.sent[0]!.attachments.map((a) => a.filename), ["e.ics"]);
   });
 });
+
+describe("sendOutboxEmail hardening", () => {
+  test("a pre-send failure (recipient read) requeues with transient_error and throws retryable", async () => {
+    const w = world();
+    const id = await enqueue(w);
+    w.deps.recipients = { get: async () => { throw new Error("firestore unavailable"); }, uidsByEmail: async () => [] };
+    await assert.rejects(sendOutboxEmail(w.deps, id), RetryableEmailError);
+    const doc = w.outbox.docs.get(id)!;
+    assert.equal(doc.status, "queued");
+    assert.equal(doc.reason, "transient_error");
+    assert.equal(w.provider.sent.length, 0);
+  });
+
+  test("a cap transaction failure retries, and gives up as failed at MAX_ATTEMPTS", async () => {
+    const w = world();
+    const id = await enqueue(w);
+    w.deps.caps = { consume: async () => { throw new Error("ABORTED"); } };
+    for (let i = 1; i < MAX_ATTEMPTS; i++) await assert.rejects(sendOutboxEmail(w.deps, id), RetryableEmailError);
+    assert.equal(w.outbox.docs.get(id)!.status, "queued");
+    const last = await sendOutboxEmail(w.deps, id);
+    assert.deepEqual(last, { status: "failed", reason: "transient_error" });
+    assert.equal(w.outbox.docs.get(id)!.status, "failed");
+    assert.equal(w.provider.sent.length, 0);
+  });
+
+  test("recovers: transient failure then success sends once", async () => {
+    const w = world();
+    const id = await enqueue(w);
+    const original = w.deps.companies;
+    w.deps.companies = { get: async () => { throw new Error("blip"); } };
+    await assert.rejects(sendOutboxEmail(w.deps, id), RetryableEmailError);
+    w.deps.companies = original;
+    assert.deepEqual(await sendOutboxEmail(w.deps, id), { status: "sent" });
+    assert.equal(w.provider.sent.length, 1);
+  });
+
+  test("a throw after the provider call is still unknown (never resent)", async () => {
+    const w = world();
+    const id = await enqueue(w);
+    w.provider.throws = true;
+    assert.deepEqual(await sendOutboxEmail(w.deps, id), { status: "unknown", reason: "unexpected_error" });
+  });
+
+  test("a claim failure is rethrown as retryable", async () => {
+    const w = world();
+    const id = await enqueue(w);
+    w.outbox.claim = async () => { throw new Error("transaction aborted"); };
+    await assert.rejects(sendOutboxEmail(w.deps, id), RetryableEmailError);
+    assert.equal(w.outbox.docs.get(id)!.status, "queued");
+  });
+
+  test("retryable provider failures pass the same outbox id to the cap on every attempt (consumed once)", async () => {
+    const w = world();
+    const id = await enqueue(w);
+    w.provider.outcome = { kind: "retryable", code: "http_429" };
+    const seen = new Set<string>();
+    let units = 0;
+    w.deps.caps = { consume: async (_u, _c, _d, _m, _l, _n, outboxId) => { if (!seen.has(outboxId)) { seen.add(outboxId); units++; } return "ok"; } };
+    for (let i = 0; i < 3; i++) await assert.rejects(sendOutboxEmail(w.deps, id), RetryableEmailError);
+    assert.equal(units, 1);
+    assert.deepEqual([...seen], [id]);
+  });
+});

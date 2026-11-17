@@ -54,7 +54,7 @@ export interface DeliveryEvent {
 }
 
 export type WebhookParseResult =
-  | { ok: true; events: DeliveryEvent[] }
+  | { ok: true; events: DeliveryEvent[]; /** Items skipped because they were not objects. */ malformed?: number }
   | { ok: false; status: 401 | 400; reason: "unauthorized" | "malformed" };
 
 export interface EmailWebhookVerifier {
@@ -101,6 +101,18 @@ export interface OutboxStore {
   recordOpen(id: string, now: Date): Promise<boolean>;
 }
 
+/** Maintenance port for the scheduled reaper. Kept apart from `OutboxStore` so the send path's fakes stay small. */
+export interface OutboxReaper {
+  /** Ids of `sending` documents whose lease ended at or before `now` (oldest first, at most `limit`). */
+  expiredSendingIds(now: Date, limit: number): Promise<string[]>;
+  /** Ids of `queued` documents created before `cutoff` (oldest first, at most `limit`). */
+  staleQueuedIds(cutoff: Date, limit: number): Promise<string[]>;
+  /** Transaction: `sending` with an ended lease -> `unknown`/`abandoned`. False when it moved on meanwhile. Never resends. */
+  markAbandoned(id: string, now: Date): Promise<boolean>;
+  /** Transaction: `queued` and untouched since `cutoff` -> `failed`/`stale_queued`. False when it moved on meanwhile. */
+  markStaleQueued(id: string, cutoff: Date, now: Date): Promise<boolean>;
+}
+
 export interface Recipient {
   uid: string;
   companyId: string | null;
@@ -131,9 +143,11 @@ export interface SuppressionStore {
 export interface CapStore {
   /**
    * Transactionally increments `emailCaps/member_{uid}_{day}` and `emailCaps/company_{companyId}_{day}` when both are
-   * below their limits; returns which limit blocked otherwise (nothing is incremented then).
+   * below their limits; returns which limit blocked otherwise (nothing is incremented then). Idempotent per `outboxId`:
+   * a marker document `emailCaps/cap_{uid}_{day}_{outboxId}` is checked and written in the same transaction, so a retry
+   * of the same outbox email returns `ok` without consuming again.
    */
-  consume(uid: string, companyId: string, day: string, memberLimit: number, companyLimit: number, now: Date): Promise<"ok" | "member_cap" | "company_cap">;
+  consume(uid: string, companyId: string, day: string, memberLimit: number, companyLimit: number, now: Date, outboxId: string): Promise<"ok" | "member_cap" | "company_cap">;
 }
 
 export interface EmailPreferencesStore {

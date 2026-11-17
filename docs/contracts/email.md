@@ -8,6 +8,7 @@ Implementation of [reminder and notification emails](../design/stretch/email.md)
 | --- | --- | --- |
 | `onEmailOutboxCreated` | Firestore `onDocumentCreated` on `emailOutbox/{id}`, `retry: true` | Runs every send-time gate and sends at most once |
 | `emailUnsubscribeV1` | HTTPS, public, Hosting rewrite `/u/**` | Unsubscribe confirmation page and RFC 8058 one-click POST |
+| `emailOutboxReaper` | Scheduled, every 15 minutes, `maxInstances: 1`, `retryCount: 0` | Closes outbox documents the trigger cannot finish: `sending` with an ended lease -> `unknown`/`abandoned` (never resent); `queued` for over 1 hour -> `failed`/`stale_queued`. At most 200 per status per run; logs the warning `email.reaper` with counts |
 | `emailWebhookV1` | HTTPS, public, direct function URL | Provider bounce, complaint and subscription-change webhook |
 | `emailOpenV1` | HTTPS, public, Hosting rewrite `/o/**` | Approximate open counter (1x1 GIF), only when `EMAIL_OPEN_TRACKING` is on |
 
@@ -15,7 +16,7 @@ Router integration (EML-8): `deliverNotification` accepts an optional `request.e
 
 ## `GET|HEAD|POST /u/<token>`
 
-- Token: `base64url("v1:" + uid + ":" + category + ":" + expirySeconds) + "." + base64url(HMAC-SHA256(EMAIL_UNSUBSCRIBE_KEY, "dip-email-unsubscribe." + payloadPart))`, valid 60 days, one category per token. Verified in constant time before parsing.
+- Token: `base64url("v1:" + uid + ":" + category + ":" + expirySeconds) + "." + base64url(HMAC-SHA256(EMAIL_UNSUBSCRIBE_KEY, "dip-email-unsubscribe." + payloadPart))`, valid 365 days (so one-click keeps working for as long as mail is kept), one category per token. Verified in constant time before parsing.
 - GET/HEAD: 200 confirmation page with two buttons (this category, or all DIP emails). It never changes preferences, because link scanners prefetch GETs.
 - POST with body `List-Unsubscribe=One-Click` (RFC 8058, what Gmail and Yahoo send) turns the token's category off; `scope=all` turns every email category off. Writes `users/{uid}/settings/notifications` with a merge `{ contractVersion: 1, email: { <category>: false }, updatedAt: serverTimestamp }`. 200, idempotent, and the same page when the member no longer exists.
 - Invalid, tampered or expired token, or a POST with neither field: 400 with one generic page (no oracle). Other methods: 405.
@@ -25,12 +26,13 @@ Router integration (EML-8): `deliverNotification` accepts an optional `request.e
 
 - Auth: HTTP Basic, username `dip-email-webhook`, password `EMAIL_WEBHOOK_PASSWORD` (at least 24 characters, else every request is 401), compared in constant time. 401 on failure, 400 for oversize (256 KB) or invalid JSON, 405 for other methods.
 - Postmark payloads (single object or array): `HardBounce`, `BadEmailAddress`, `ManuallyDeactivated` -> suppression `hard_bounce`; `SpamComplaint` and `SpamNotification` -> suppression `complaint` plus every email category off for the member (uid from the outbox document named in `Metadata.outboxId`, else up to 5 members with that address); `SubscriptionChange` with `SuppressSending` -> suppression `provider_unsubscribe`; soft bounces and deliveries are ignored.
-- 200 `ok` after processing, 500 on a store error so the provider retries (all writes are idempotent).
+- A batch of more than 500 events is refused with 413 (nothing processed) so the provider retries; an item that is not an object is skipped and counted (`malformed` in the processed log), the rest are processed; a body whose every item is malformed is 400.
+- 200 `ok` after processing, 500 on a store error so the provider retries (all writes are idempotent). Webhook logs carry `outboxId` and `providerMessageId` only, never addresses, tokens or names.
 
 ## `GET|HEAD /o/<token>.gif`
 
 - Token: `base64url("v1:" + outboxId + ":" + expirySeconds) + "." + HMAC-SHA256(EMAIL_UNSUBSCRIBE_KEY, "dip-email-open." + payloadPart)`, valid 90 days. The distinct prefix means an open token can never act as an unsubscribe token or the reverse.
-- Always 200 with the same 43-byte transparent GIF and `Cache-Control: no-store`, for valid and invalid tokens alike; no cookies, no redirects. A valid token on a `sent` email increments `openCount`, sets `firstOpenedAt` once and `lastOpenedAt` (transaction). Nothing else is stored (no IP, no user agent).
+- Always 200 with the same 43-byte transparent GIF and `Cache-Control: no-store`, for valid and invalid tokens alike; no cookies, no redirects. A valid token on a `sent` email increments `openCount`, sets `firstOpenedAt` once and `lastOpenedAt` (transaction), but only while `openCount` is below 20; later replays do not write. Nothing else is stored (no IP, no user agent).
 - Accuracy: Apple Mail Privacy Protection and Gmail's image proxy fetch images without a human opening the email, and blocked images hide real opens. Treat counts as approximate.
 
 ## Server-only collections (deny-all rules)
@@ -39,7 +41,7 @@ Router integration (EML-8): `deliverNotification` accepts an optional `request.e
 | --- | --- | --- |
 | `emailOutbox/{category_objectId_uid_revisionOrWindow}` | `uid`, `companyId`, `category`, `template`, `variables` (allow-listed per template), `status` (`queued`, `sending`, `sent`, `failed`, `skipped`, `expired`, `unknown`), `reason`, `attempts`, `notAfter`, `leaseUntil`, `providerMessageId`, `toHash`, `sentAt`, `openCount`, `firstOpenedAt`, `lastOpenedAt`, `createdAt`, `updatedAt`, `expireAt` (TTL, 30 days) | Created once with `create()`; never stores an address |
 | `emailSuppressions/{sha256(lowercased address)}` | `reason`, `createdAt`, `lastEventAt`, `count` | Checked before every send |
-| `emailCaps/{member_<uid>_<day> or company_<companyId>_<day>}` | `count`, `expireAt` (TTL) | Daily caps: 20 per member, `dailyCap` per company (default 2,000) |
+| `emailCaps/{member_<uid>_<day> or company_<companyId>_<day>}` | `count`, `expireAt` (TTL) | Daily caps: 20 per member, `dailyCap` per company (default 2,000). Consumption is idempotent per outbox email through a marker document `cap_<uid>_<day>_<outboxId>` (`uid`, `day`, `expireAt`) created in the same transaction, so retries of one email consume one unit |
 | `emailSettings/{companyId}` | `enabled` (bool), `dailyCap` (int, at most 50,000), `timeZone` (IANA, optional) | Missing means email is off for the company. Written by an operator in the console |
 | `emulatorEmailOutbox/{auto}` | `toHash`, `subject`, `template`, `outboxId`, headers, attachment names, sizes | Emulator only, replaces the provider |
 
@@ -47,7 +49,7 @@ Router integration (EML-8): `deliverNotification` accepts an optional `request.e
 
 claim (lease) -> `notAfter` -> `EMAIL_ENABLED` -> unsubscribe key configured -> variables pass the template allow-list -> company enabled -> member exists, same company, active, has an email -> email switch for the category -> address not suppressed -> daily caps -> render, sign the unsubscribe link, send.
 
-At most once: a send whose outcome is unknown (timeout, crash, abandoned lease) is never retried. Only a definite retryable rejection (429, 503, connection refused before sending) returns the document to `queued` and lets the runtime redeliver, up to 5 attempts.
+At most once: a send whose outcome is unknown (timeout, crash, abandoned lease) is never retried. Only a definite retryable rejection (429, 503, connection refused before sending) returns the document to `queued` and lets the runtime redeliver, up to 5 attempts. The same applies to any failure before the provider is called (store reads, cap transaction, claim): reason `transient_error`, `failed` once attempts are exhausted. A failure after the provider call is `unknown`. The reaper (above) closes anything left behind.
 
 ## Every email
 

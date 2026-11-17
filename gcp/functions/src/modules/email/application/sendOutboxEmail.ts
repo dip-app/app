@@ -55,7 +55,14 @@ function firstName(displayName: string | null): string | null {
 export async function sendOutboxEmail(deps: SendDeps, outboxId: string): Promise<SendResult> {
   const log = deps.log ?? ((event, fields) => logger.info(event, fields));
   const now = deps.clock.now();
-  const claim = await deps.outbox.claim(outboxId, now, SEND_LEASE_MS);
+  let claim;
+  try {
+    claim = await deps.outbox.claim(outboxId, now, SEND_LEASE_MS);
+  } catch (error) {
+    // Nothing was claimed or sent: surface it so the runtime redelivers instead of acking a `queued` document forever.
+    log("email.claim_failed", { outboxId, error: error instanceof Error ? error.name : "unknown" });
+    throw new RetryableEmailError("claim_failed");
+  }
   if (claim.kind === "missing") return { status: "missing" };
   if (claim.kind === "not_queued") return { status: claim.status, reason: "not_queued" };
   if (claim.kind === "abandoned") {
@@ -65,18 +72,31 @@ export async function sendOutboxEmail(deps: SendDeps, outboxId: string): Promise
   const doc = claim.doc;
   let retry: string | null = null;
   let result: SendResult;
+  const state = { providerCalled: false };
   try {
-    const outcome = await process(deps, doc, now);
+    const outcome = await process(deps, doc, now, state);
     result = outcome.result;
     retry = outcome.retry;
   } catch (error) {
-    // Anything unexpected after the claim: the provider may or may not have the message. Never resend.
-    log("email.unexpected", { outboxId, error: error instanceof Error ? error.name : "unknown" });
-    result = { status: "unknown", reason: "unexpected_error" };
-    try {
-      await deps.outbox.finish(outboxId, "unknown", { reason: "unexpected_error" }, deps.clock.now());
-    } catch {
-      /* the lease will expire and the next claim marks it abandoned */
+    log("email.unexpected", { outboxId, error: error instanceof Error ? error.name : "unknown", providerCalled: state.providerCalled ? 1 : 0 });
+    if (!state.providerCalled) {
+      // Failed before the provider was called (reads, cap transaction): nothing was sent, so retry is safe. Bounded by MAX_ATTEMPTS.
+      const exhausted = doc.attempts >= MAX_ATTEMPTS;
+      result = { status: exhausted ? "failed" : "queued", reason: "transient_error" };
+      if (!exhausted) retry = "transient_error";
+      try {
+        await deps.outbox.finish(outboxId, result.status as "queued" | "failed", { reason: "transient_error" }, deps.clock.now());
+      } catch {
+        /* the lease will expire; the reaper marks it abandoned */
+      }
+    } else {
+      // The provider may or may not have the message. Never resend.
+      result = { status: "unknown", reason: "unexpected_error" };
+      try {
+        await deps.outbox.finish(outboxId, "unknown", { reason: "unexpected_error" }, deps.clock.now());
+      } catch {
+        /* the lease will expire and the next claim marks it abandoned */
+      }
     }
   }
   log("email.result", { outboxId, template: doc.template, status: result.status, ...(result.reason ? { reason: result.reason } : {}) });
@@ -84,7 +104,7 @@ export async function sendOutboxEmail(deps: SendDeps, outboxId: string): Promise
   return result;
 }
 
-async function process(deps: SendDeps, doc: OutboxDocument, now: Date): Promise<{ result: SendResult; retry: string | null }> {
+async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { providerCalled: boolean }): Promise<{ result: SendResult; retry: string | null }> {
   const finish = async (status: Exclude<OutboxStatus, "sending">, fields: { reason?: SkipReason | string; providerMessageId?: string; toHash?: string }) => {
     await deps.outbox.finish(doc.id, status, fields, deps.clock.now());
     return { result: { status, ...(fields.reason ? { reason: fields.reason } : {}) } as SendResult, retry: null as string | null };
@@ -115,7 +135,7 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date): Promise<
   const hash = emailHash(to);
   if (await deps.suppressions.isSuppressed(hash)) return skip("suppressed");
 
-  const cap = await deps.caps.consume(doc.uid, doc.companyId, capDay(now), MEMBER_DAILY_CAP, company.dailyCap, now);
+  const cap = await deps.caps.consume(doc.uid, doc.companyId, capDay(now), MEMBER_DAILY_CAP, company.dailyCap, now, doc.id);
   if (cap !== "ok") return skip(cap);
 
   const nowSeconds = Math.floor(now.getTime() / 1000);
@@ -132,6 +152,7 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date): Promise<
   const attachment = deps.renderer.attachment(doc.template, variables,
     "revision" in variables && typeof variables.revision === "number" ? variables.revision : 0);
 
+  state.providerCalled = true;
   const outcome = await deps.provider.send({
     to,
     subject: rendered.subject,

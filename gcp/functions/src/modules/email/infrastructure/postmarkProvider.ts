@@ -166,11 +166,13 @@ export class PostmarkWebhookVerifier implements EmailWebhookVerifier {
     try { parsed = JSON.parse(rawBody.toString("utf8")); } catch { return { ok: false, status: 400, reason: "malformed" }; }
     const items = Array.isArray(parsed) ? parsed : [parsed];
     const events: DeliveryEvent[] = [];
+    let malformed = 0;
     for (const item of items) {
       const event = normalize(item);
-      if (event === null) return { ok: false, status: 400, reason: "malformed" };
+      if (event === null) { malformed++; continue; } // one bad item must not reject the rest of the batch
       events.push(event);
     }
-    return { ok: true, events };
+    if (events.length === 0 && malformed > 0) return { ok: false, status: 400, reason: "malformed" };
+    return { ok: true, events, ...(malformed > 0 ? { malformed } : {}) };
   }
 }

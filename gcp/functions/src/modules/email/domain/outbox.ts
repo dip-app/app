@@ -21,6 +21,18 @@ export const MAX_ATTEMPTS = 5;
 /** A claim older than this is considered abandoned (the instance died mid-send); it is never resent. */
 export const SEND_LEASE_MS = 2 * 60 * 1000;
 
+/** Reaper (EML audit): a `queued` document untouched this long will never be redelivered, so it is closed as failed. */
+export const STALE_QUEUED_MS = 60 * 60 * 1000;
+/** Documents handled per status per reaper run. */
+export const REAPER_BATCH = 200;
+/** Open-pixel replays stop writing after this many counted opens per email (counts are approximate anyway). */
+export const MAX_OPEN_COUNT = 20;
+
+/** False once an email has reached the open-count bound; the store then skips the write. */
+export function canCountOpen(openCount: unknown): boolean {
+  return !(typeof openCount === "number" && openCount >= MAX_OPEN_COUNT);
+}
+
 export const MEMBER_DAILY_CAP = 20;
 export const COMPANY_DAILY_CAP_DEFAULT = 2000;
 

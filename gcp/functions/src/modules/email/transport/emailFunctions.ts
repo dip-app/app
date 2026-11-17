@@ -2,12 +2,14 @@ import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineBoolean, defineSecret, defineString } from "firebase-functions/params";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
 import { SHARE_ORIGIN } from "../../share/domain/sharePage";
 import { emailChannel, type ChannelDeps } from "../application/enqueueEmail";
 import type { EmailConfig, EmailProviderPort } from "../application/ports";
 import { RetryableEmailError, sendOutboxEmail, type EmailRenderer } from "../application/sendOutboxEmail";
+import { reapOutbox } from "../application/reapOutbox";
 import { handleOpenPixel } from "../application/openPixel";
 import { handleUnsubscribe } from "../application/unsubscribe";
 import { handleWebhook } from "../application/webhook";
@@ -98,7 +100,7 @@ export { emailChannel };
 /** Outbox document created -> run every send-time gate and send at most once. */
 export const onEmailOutboxCreated = onDocumentCreated(
   {
-    document: `${OUTBOX_COLLECTION}/{outboxId}`, region: REGION, retry: true, timeoutSeconds: 60, maxInstances: 10,
+    document: `${OUTBOX_COLLECTION}/{outboxId}`, region: REGION, retry: true, timeoutSeconds: 60, memory: "256MiB", maxInstances: 10,
     secrets: [EMAIL_UNSUBSCRIBE_KEY, POSTMARK_SERVER_TOKEN],
   },
   async (event) => {
@@ -114,6 +116,14 @@ export const onEmailOutboxCreated = onDocumentCreated(
       if (error instanceof RetryableEmailError) throw error; // redelivered by the runtime; the claim prevents duplicates
       logger.error("email send failed", { outboxId: event.params.outboxId, error: error instanceof Error ? error.name : "unknown" });
     }
+  });
+
+/** Every 15 minutes: close outbox documents the trigger can no longer finish (see application/reapOutbox.ts). */
+export const emailOutboxReaper = onSchedule(
+  { schedule: "every 15 minutes", timeZone: "Etc/UTC", region: REGION, timeoutSeconds: 120, memory: "256MiB", maxInstances: 1, retryCount: 0 },
+  async () => {
+    const { store } = stores();
+    await reapOutbox({ reaper: store.reaper, clock: { now: () => new Date() } });
   });
 
 interface HttpResponseLike {

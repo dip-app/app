@@ -1,11 +1,11 @@
 import { FieldValue, Timestamp, type DocumentData, type Firestore } from "firebase-admin/firestore";
 import type {
-  CapStore, ClaimResult, CompanyEmailSettings, CompanySettingsReader, EmailPreferencesStore, NewOutboxEntry, OutboxStore,
+  CapStore, ClaimResult, CompanyEmailSettings, CompanySettingsReader, EmailPreferencesStore, NewOutboxEntry, OutboxReaper, OutboxStore,
   Recipient, RecipientDirectory, SuppressionStore,
 } from "../application/ports";
 import type { EmailCategory } from "../domain/categories";
 import {
-  CAPS_COLLECTION, COMPANY_DAILY_CAP_DEFAULT, COMPANY_SETTINGS_COLLECTION, OUTBOX_COLLECTION, OUTBOX_TTL_DAYS,
+  CAPS_COLLECTION, COMPANY_DAILY_CAP_DEFAULT, canCountOpen, COMPANY_SETTINGS_COLLECTION, OUTBOX_COLLECTION, OUTBOX_TTL_DAYS,
   SUPPRESSIONS_COLLECTION, categoryOf, type OutboxDocument, type OutboxStatus,
 } from "../domain/outbox";
 
@@ -118,6 +118,8 @@ class FirestoreOutboxStore implements OutboxStore {
       if (!snap.exists || snap.get("status") !== "sent") return false;
       const sentAt = toDate(snap.get("sentAt")) ?? toDate(snap.get("updatedAt"));
       if (sentAt !== null && now.getTime() < sentAt.getTime()) return false;
+      const opens: unknown = snap.get("openCount");
+      if (!canCountOpen(opens)) return false; // replays stop writing
       const stamp = Timestamp.fromDate(now);
       const update: Record<string, unknown> = { openCount: FieldValue.increment(1), lastOpenedAt: stamp };
       if (toDate(snap.get("firstOpenedAt")) === null) update["firstOpenedAt"] = stamp;
@@ -129,6 +131,48 @@ class FirestoreOutboxStore implements OutboxStore {
   async get(id: string): Promise<OutboxDocument | null> {
     const snap = await this.db.collection(OUTBOX_COLLECTION).doc(id).get();
     return snap.exists ? toOutbox(id, snap.data()!) : null;
+  }
+}
+
+class FirestoreOutboxReaper implements OutboxReaper {
+  constructor(private readonly db: Firestore) {}
+
+  private get col() { return this.db.collection(OUTBOX_COLLECTION); }
+
+  async expiredSendingIds(now: Date, limit: number): Promise<string[]> {
+    // Single-field range on leaseUntil (auto-indexed). Only `sending` documents carry a lease; every finish() nulls it.
+    const snap = await this.col.where("leaseUntil", "<=", Timestamp.fromDate(now)).orderBy("leaseUntil").limit(limit).get();
+    return snap.docs.map((d) => d.id);
+  }
+
+  async staleQueuedIds(cutoff: Date, limit: number): Promise<string[]> {
+    // Needs the composite index emailOutbox(status ASC, createdAt ASC).
+    const snap = await this.col.where("status", "==", "queued").where("createdAt", "<", Timestamp.fromDate(cutoff)).orderBy("createdAt").limit(limit).get();
+    return snap.docs.map((d) => d.id);
+  }
+
+  async markAbandoned(id: string, now: Date): Promise<boolean> {
+    const ref = this.col.doc(id);
+    return this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || snap.get("status") !== "sending") return false;
+      const lease = toDate(snap.get("leaseUntil"));
+      if (lease !== null && lease.getTime() > now.getTime()) return false;
+      tx.update(ref, { status: "unknown", reason: "abandoned", leaseUntil: null, updatedAt: Timestamp.fromDate(now) });
+      return true;
+    });
+  }
+
+  async markStaleQueued(id: string, cutoff: Date, now: Date): Promise<boolean> {
+    const ref = this.col.doc(id);
+    return this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || snap.get("status") !== "queued") return false;
+      const touched = toDate(snap.get("updatedAt")) ?? toDate(snap.get("createdAt"));
+      if (touched !== null && touched.getTime() >= cutoff.getTime()) return false; // a retry is still in flight
+      tx.update(ref, { status: "failed", reason: "stale_queued", updatedAt: Timestamp.fromDate(now) });
+      return true;
+    });
   }
 }
 
@@ -194,12 +238,14 @@ class FirestoreSuppressions implements SuppressionStore {
 class FirestoreCaps implements CapStore {
   constructor(private readonly db: Firestore) {}
 
-  async consume(uid: string, companyId: string, day: string, memberLimit: number, companyLimit: number, now: Date):
+  async consume(uid: string, companyId: string, day: string, memberLimit: number, companyLimit: number, now: Date, outboxId: string):
     Promise<"ok" | "member_cap" | "company_cap"> {
+    const marker = this.db.collection(CAPS_COLLECTION).doc(`cap_${uid}_${day}_${outboxId}`);
     const member = this.db.collection(CAPS_COLLECTION).doc(`member_${uid}_${day}`);
     const company = this.db.collection(CAPS_COLLECTION).doc(`company_${companyId}_${day}`);
     return this.db.runTransaction(async (tx) => {
-      const [m, c] = await Promise.all([tx.get(member), tx.get(company)]);
+      const [m, c, done] = await Promise.all([tx.get(member), tx.get(company), tx.get(marker)]);
+      if (done.exists) return "ok"; // this outbox email already consumed its unit (retry after a transient failure)
       const memberCount: unknown = m.get("count");
       const companyCount: unknown = c.get("count");
       const mc = typeof memberCount === "number" ? memberCount : 0;
@@ -209,6 +255,7 @@ class FirestoreCaps implements CapStore {
       const expireAt = Timestamp.fromDate(new Date(now.getTime() + 2 * DAY_MS));
       tx.set(member, { count: mc + 1, expireAt }, { merge: true });
       tx.set(company, { count: cc + 1, expireAt }, { merge: true });
+      tx.create(marker, { uid, day, expireAt });
       return "ok";
     });
   }
@@ -243,6 +290,7 @@ class FirestoreEmailPreferences implements EmailPreferencesStore {
  */
 export class FirestoreEmailStore {
   readonly outbox: OutboxStore;
+  readonly reaper: OutboxReaper;
   readonly recipients: RecipientDirectory;
   readonly companies: CompanySettingsReader;
   readonly suppressions: SuppressionStore;
@@ -251,6 +299,7 @@ export class FirestoreEmailStore {
 
   constructor(db: Firestore) {
     this.outbox = new FirestoreOutboxStore(db);
+    this.reaper = new FirestoreOutboxReaper(db);
     this.recipients = new FirestoreRecipientDirectory(db);
     this.companies = new FirestoreCompanySettings(db);
     this.suppressions = new FirestoreSuppressions(db);

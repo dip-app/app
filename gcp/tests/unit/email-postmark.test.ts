@@ -124,7 +124,15 @@ describe("PostmarkWebhookVerifier", () => {
     assert.deepEqual(v.parse(auth, Buffer.alloc(MAX_WEBHOOK_BYTES + 1, 32)), { ok: false, status: 400, reason: "malformed" });
     assert.deepEqual(v.parse(auth, Buffer.from("{nope")), { ok: false, status: 400, reason: "malformed" });
     assert.deepEqual(v.parse(auth, Buffer.from("5")), { ok: false, status: 400, reason: "malformed" });
-    assert.equal(v.parse(auth, body([{}, 3])).ok, false);
+    assert.equal(v.parse(auth, body([3, "x"])).ok, false);
+  });
+
+  test("one malformed item is skipped and the rest of the batch is kept", () => {
+    const r = v.parse(auth, body([{ RecordType: "Bounce", Type: "HardBounce", Email: "a@b.co" }, 3, null, { RecordType: "Delivery", Email: "c@d.co" }]));
+    assert.ok(r.ok);
+    assert.equal(r.events.length, 2);
+    assert.equal(r.malformed, 2);
+    assert.equal(r.events[0]!.type, "hard_bounce");
   });
 
   function one(payload: unknown) {

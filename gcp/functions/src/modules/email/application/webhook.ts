@@ -25,6 +25,26 @@ export async function processDeliveryEvents(deps: WebhookDeps, events: DeliveryE
     const email = event.email?.trim();
     if (!email) { counts.ignored++; continue; }
     const now = deps.clock.now();
+    try {
+      await applyEvent(deps, event, email, now, counts);
+    } catch (error) {
+      // Correlation ids only (no address, token or name); the provider retries the whole batch and every write is idempotent.
+      logger.error("email webhook event failed", { ...correlation(event), type: event.type, error: error instanceof Error ? error.name : "unknown" });
+      throw error;
+    }
+  }
+  return counts;
+}
+
+function correlation(event: DeliveryEvent): Record<string, string> {
+  return {
+    ...(event.outboxId ? { outboxId: event.outboxId.slice(0, 200) } : {}),
+    ...(event.providerMessageId ? { providerMessageId: event.providerMessageId.slice(0, 64) } : {}),
+  };
+}
+
+async function applyEvent(deps: WebhookDeps, event: DeliveryEvent, email: string, now: Date, counts: WebhookCounts): Promise<void> {
+  {
     switch (event.type) {
       case "hard_bounce":
         await deps.suppressions.suppress(emailHash(email), "hard_bounce", now);
@@ -46,8 +66,10 @@ export async function processDeliveryEvents(deps: WebhookDeps, events: DeliveryE
       default:
         counts.ignored++;
     }
+    if (event.type === "hard_bounce" || event.type === "complaint" || event.type === "provider_unsubscribe") {
+      logger.info("email webhook event applied", { type: event.type, ...correlation(event) });
+    }
   }
-  return counts;
 }
 
 async function complaintUids(deps: WebhookDeps, event: DeliveryEvent, email: string): Promise<string[]> {
@@ -66,8 +88,13 @@ export async function handleWebhook(verifier: EmailWebhookVerifier, deps: Webhoo
   const parsed = verifier.parse(req.headers ?? {}, req.rawBody ?? Buffer.alloc(0));
   if (!parsed.ok) return { status: parsed.status, body: parsed.status === 401 ? "unauthorized" : "bad request" };
   try {
+    // More than we process in one request: refuse so the provider retries (smaller batches) instead of silently dropping events.
+    if (parsed.events.length > MAX_WEBHOOK_EVENTS) {
+      logger.warn("email webhook batch too large", { events: parsed.events.length, max: MAX_WEBHOOK_EVENTS });
+      return { status: 413, body: "payload too large" };
+    }
     const counts = await processDeliveryEvents(deps, parsed.events);
-    logger.info("email webhook processed", counts);
+    logger.info("email webhook processed", { ...counts, malformed: parsed.malformed ?? 0 });
     return { status: 200, body: "ok" };
   } catch {
     // Let the provider retry; suppress() and disable() are idempotent. Error details may include addresses, so omit them.
