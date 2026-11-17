@@ -25,7 +25,10 @@ export class JevDecisions implements DecisionPort {
   async decide(request: DecisionRequest): Promise<DecisionResult> {
     const questions: Record<string, unknown> = {};
     for (const [id, q] of Object.entries(request.questions)) {
-      if (q.type === "noul") questions[id] = { type: "noul", instructions: q.instructions, ...(q.criteria ? { criteria: { true: q.criteria } } : {}) };
+      if (q.type === "noul") {
+        const criteria = typeof q.criteria === "string" ? { true: q.criteria } : q.criteria;
+        questions[id] = { type: "noul", instructions: q.instructions, ...(criteria ? { criteria } : {}) };
+      }
       else questions[id] = { type: q.type, instructions: q.instructions, criteria: q.criteria };
     }
     const body = JSON.stringify({ model: this.options.model, state: request.state, questions });

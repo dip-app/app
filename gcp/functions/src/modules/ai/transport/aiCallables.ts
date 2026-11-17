@@ -18,15 +18,17 @@ import { JevDecisions } from "../infrastructure/jevDecisions";
 import { OpenAiDecisions } from "../infrastructure/openAiDecisions";
 import { createOpenAiLlm } from "../infrastructure/openaiLlm";
 import { providerFromEnv, settingsFromEnv } from "../infrastructure/settings";
+import { HeuristicDecisions } from "../infrastructure/heuristicDecisions";
 import { StepDecisions } from "../infrastructure/stepDecisions";
 
 /**
  * Secrets live in Secret Manager and are created by the owner, never by code:
  *   firebase functions:secrets:set OPENAI_API_KEY
- *   firebase functions:secrets:set JEV_API_KEY   (value `none` until a Jev key exists)
+ *   firebase functions:secrets:set JEV_API_KEY   (`none` turns Jev off; then OpenAI answers the decision steps)
  * Values are read inside the handler only, through `.value()`, and are never logged. The emulator and
  * AI_PROVIDER=demo use the offline demo adapters and need neither. OPENAI_API_KEY is bound to both callables so the
- * context callable can report the feature as disabled when the key is absent; JEV_API_KEY only to the generator.
+ * context callable can report the feature as disabled when the key is absent; JEV_API_KEY to both so the reserved
+ * worst case (which includes the OpenAI fallback of a Jev step) is the same in both.
  */
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 const JEV_API_KEY = defineSecret("JEV_API_KEY");
@@ -47,13 +49,14 @@ const unavailableLlm: LlmPort = {
   moderate: async () => { throw new LlmUnavailableError(null); },
 };
 
-function deps(withJev: boolean): AiDeps {
+function deps(): AiDeps {
   const db = getFirestore(defaultAdminApp());
   catalog ??= new FirestoreTagCatalog(db);
   const config = aiConfig(process.env);
   const openaiKey = secret(OPENAI_API_KEY);
   const demo = providerFromEnv(process.env) === "demo";
-  const settings = settingsFromEnv(process.env, { openai: openaiKey });
+  const jevKey = secret(JEV_API_KEY);
+  const settings = settingsFromEnv(process.env, { openai: openaiKey, jev: jevKey });
   let llm: LlmPort;
   let decisions: DecisionPort;
   if (demo) {
@@ -61,10 +64,10 @@ function deps(withJev: boolean): AiDeps {
     decisions = new DemoDecisions();
   } else {
     llm = openaiKey ? createOpenAiLlm(openaiKey, config) : unavailableLlm;
-    const jevKey = withJev ? secret(JEV_API_KEY) : undefined;
-    // Each step may name its own Jev model; the router only picks Jev for steps configured for it.
+    // Jev answers every decision step by default when its key is real; a failed Jev call falls back to the OpenAI
+    // model, then to the deterministic heuristics. The answering provider is logged and stored on the request doc.
     const jev = jevKey ? new JevDecisions({ apiKey: jevKey, model: config.triage.jevModel }) : null;
-    decisions = new StepDecisions(config, jev, new OpenAiDecisions(llm, config));
+    decisions = new StepDecisions(config, jev, openaiKey ? new OpenAiDecisions(llm, config) : null, new HeuristicDecisions());
   }
   return {
     store: new FirestoreAdminStore(db), llm, decisions, interests: new FirestoreInterestSource(db), catalog,
@@ -80,9 +83,9 @@ type Run<T> = (deps: AiDeps, caller: Caller | null, data: unknown) => Promise<T>
 const base = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" } as const;
 
 /** Runs one command and maps failures like the admin commands; payloads and notes are never logged. */
-const command = <T>(name: string, run: Run<T>, withJev: boolean) => async (request: CallableRequest): Promise<T> => {
+const command = <T>(name: string, run: Run<T>) => async (request: CallableRequest): Promise<T> => {
   try {
-    return await run(deps(withJev), callerFromRequest(request), request.data);
+    return await run(deps(), callerFromRequest(request), request.data);
   } catch (error) {
     const httpsError = toHttpsError(error);
     if (httpsError.code === "internal") {
@@ -95,10 +98,10 @@ const command = <T>(name: string, run: Run<T>, withJev: boolean) => async (reque
 };
 
 export const getEventIdeaContextV1 = onCall(
-  { ...base, secrets: [OPENAI_API_KEY] },
-  command("getEventIdeaContextV1", getEventIdeaContext, false),
+  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY] },
+  command("getEventIdeaContextV1", getEventIdeaContext),
 );
 export const generateEventDraftsV1 = onCall(
   { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY], timeoutSeconds: 300, memory: "512MiB" },
-  command("generateEventDraftsV1", generateEventDrafts, true),
+  command("generateEventDraftsV1", generateEventDrafts),
 );

@@ -13,11 +13,20 @@ export function providerFromEnv(env: NodeJS.ProcessEnv): "openai" | "demo" {
   return env.FUNCTIONS_EMULATOR === "true" ? "demo" : "openai";
 }
 
+/**
+ * Budget defaults per company, sized for the cheap default models (about $0.001 typical and under $0.01 reserved per
+ * generation): the generation caps bind long before these do. They mainly stop a costly model override from running away.
+ */
+export const DEFAULT_MONTHLY_BUDGET_CENTS = 200;
+export const DEFAULT_DAILY_BUDGET_CENTS = 50;
+
 /** The demo provider needs no key, so there the flag alone enables the feature. */
-export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: string | undefined }): AiSettings {
+export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: string | undefined; jev?: string | undefined }): AiSettings {
   const config = aiConfig(env);
   const flag = env.AI_EVENTS_ENABLED === "true";
-  const decisionModel = (step: "triage" | "draftCheck") => (config[step].provider === "jev" ? config[step].jevModel : config[step].openaiModel);
+  const jevOn = (step: "triage" | "draftCheck") => config[step].provider === "jev" && secretPresent(secrets.jev);
+  const decisionModel = (step: "triage" | "draftCheck") => (jevOn(step) ? config[step].jevModel : config[step].openaiModel);
+  const fallbackModel = (step: "triage" | "draftCheck") => (jevOn(step) ? config[step].openaiModel : null);
   return {
     enabled: flag && (providerFromEnv(env) === "demo" || secretPresent(secrets.openai)),
     models: {
@@ -25,9 +34,11 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: strin
       triage: decisionModel("triage"),
       draftCheck: decisionModel("draftCheck"),
       moderation: config.moderation.model,
+      triageFallback: fallbackModel("triage"),
+      draftCheckFallback: fallbackModel("draftCheck"),
     },
-    monthlyBudgetMicros: int(env.AI_MONTHLY_BUDGET_CENTS, 3000) * 10_000,
-    dailyBudgetMicros: int(env.AI_DAILY_BUDGET_CENTS, 600) * 10_000,
+    monthlyBudgetMicros: int(env.AI_MONTHLY_BUDGET_CENTS, DEFAULT_MONTHLY_BUDGET_CENTS) * 10_000,
+    dailyBudgetMicros: int(env.AI_DAILY_BUDGET_CENTS, DEFAULT_DAILY_BUDGET_CENTS) * 10_000,
     monthlyGenerationLimit: int(env.AI_MONTHLY_GENERATIONS, 30),
     dailyGenerationLimit: int(env.AI_DAILY_GENERATIONS_PER_ADMIN, 10),
     dailyFlagLimit: int(env.AI_DAILY_FLAG_LIMIT, 3),

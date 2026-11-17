@@ -8,7 +8,7 @@ import {
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { payloadHash } from "../../functions/src/modules/admin/domain/reader";
 import { APPROVED_COVER_URLS } from "../../functions/src/modules/organizer/domain/eventDraft";
-import { costMicros, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
+import { costMicros, outputCeiling, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
 import { GENERATE_SYSTEM_PROMPT } from "../../functions/src/modules/ai/domain/prompt";
 import {
   ScriptedDecisions, ScriptedLlm, type DecisionStepScript, type GenerateStep, type ModerateStep,
@@ -187,6 +187,8 @@ describe("generateEventDraftsV1 happy path", () => {
     const doc = r.store.get(REQ("admin1", 1))!;
     assert.equal(doc.status, "done");
     assert.equal(doc.attempts, 1);
+    assert.deepEqual(doc.decisionProviders, ["openai"], "the answering decision provider is recorded for observability");
+    assert.deepEqual(doc.models, [SETTINGS.models.generate, "fake-decisions"]);
     assert.equal(r.store.children("companies/alpha/events").length, eventsBefore, "no event created");
     assert.equal(r.store.children("companies/alpha/events").some(e => e.id !== "past" && e.id !== "live" && e.id !== "soon" && e.id !== "cancelled"), false);
   });
@@ -205,7 +207,7 @@ describe("generateEventDraftsV1 happy path", () => {
     assert.deepEqual(noted.llm.calls.map(c => c.step), ["generate"]);
     assert.equal(noted.llm.calls[0]!.instructions, GENERATE_SYSTEM_PROMPT);
     assert.equal(noted.llm.calls[0]!.schemaName, "event_drafts");
-    assert.equal(noted.llm.calls[0]!.maxOutputTokens, 12_000);
+    assert.equal(noted.llm.calls[0]!.maxOutputTokens, 2500);
   });
 
   test("every call is metered: generate and decisions by their own model prices, moderation is free", async () => {
@@ -218,13 +220,13 @@ describe("generateEventDraftsV1 happy path", () => {
     assert.equal(month(r).outputTokens, USAGE.outputTokens);
     const changes = audit(r)[0]!.data.changes as Array<{ field: string; after: string }>;
     const field = (name: string) => changes.find(c => c.field === name)!.after;
-    assert.equal(field("models"), "jev-latest,gpt-6.1-sol");
+    assert.equal(field("models"), "jev-latest,gpt-4o-mini");
     assert.equal(field("tokens"), `${USAGE.inputTokens + 4 * JEV_USAGE.inputTokens} in, ${USAGE.outputTokens} out`);
     assert.equal(field("costUsd"), ((costMicros(SETTINGS.models.generate, USAGE) + 4 * jev) / 1_000_000).toFixed(4));
     const log = r.logs.find(l => l.event === "ai.generate")!.fields as Record<string, unknown>;
     assert.equal(log.calls, 5);
     assert.equal(log.decisionProviders, "jev");
-    assert.equal(log.models, "jev-latest,gpt-6.1-sol");
+    assert.equal(log.models, "jev-latest,gpt-4o-mini");
     assert.equal(log.tokensIn, USAGE.inputTokens + 4 * JEV_USAGE.inputTokens);
   });
 
@@ -379,12 +381,24 @@ describe("model output handling", () => {
     assert.equal(r.decisions.calls.length, 1, "dropped drafts are not checked");
   });
 
-  test("a tag outside the catalog fails the output schema: retried, then AI_OUTPUT_INVALID", async () => {
-    const r = rig([ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] }), ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] })]);
-    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_OUTPUT_INVALID");
+  test("a tag outside the catalog is dropped (focus fallback); with no tag left the reply is retried, then AI_OUTPUT_INVALID", async () => {
+    const bogus = () => ok({ drafts: [modelDraft(0, { tagIds: ["tag-bogus"] })] });
+    const repaired = rig([bogus()]);
+    assert.deepEqual((await generateEventDrafts(repaired.deps, caller("admin1"), request(1))).drafts[0]!.tagIds, ["tag-games"]);
+    const r = rig([bogus(), bogus()]);
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { choices: { ...CHOICES, focusTagIds: [] } })), "unavailable", "AI_OUTPUT_INVALID");
     assert.equal(r.llm.calls.length, 2);
-    assert.equal(r.llm.moderationCalls.length, 0, "nothing parsed, nothing moderated");
+    assert.equal(r.llm.moderationCalls.length, 0, "nothing usable, nothing moderated");
     assert.equal(r.decisions.calls.length, 0);
+  });
+
+  test("the drafting call gets the bounded schema and the small-model output ceiling", async () => {
+    const r = rig([drafts(3)]);
+    await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    const call = r.llm.calls[0]!;
+    assert.equal(call.maxOutputTokens, outputCeiling("generate", SETTINGS.models.generate));
+    const tooMany = { drafts: Array.from({ length: 5 }, (_, i) => modelDraft(i % 3)) };
+    assert.ok(!call.schema.safeParse(tooMany).success, "the schema fixes the draft count");
   });
 
   test("a draft with an empty tag list falls back to the focus tag, and without focus is dropped", async () => {
@@ -398,8 +412,9 @@ describe("model output handling", () => {
   });
 
   test("a model cover outside the approved set never reaches the response", async () => {
-    const r = rig([ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] }), ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] })]);
-    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_OUTPUT_INVALID");
+    const r = rig([ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] })]);
+    const [repaired] = (await generateEventDrafts(r.deps, caller("admin1"), request(1))).drafts;
+    assert.ok(APPROVED_COVER_URLS.has(repaired!.coverImageURL), "mapped to an approved cover from the tags");
     const fine = rig([drafts(3)]);
     for (const draft of (await generateEventDrafts(fine.deps, caller("admin1"), request(1))).drafts) assert.ok(APPROVED_COVER_URLS.has(draft.coverImageURL));
   });
@@ -699,7 +714,7 @@ describe("caps", () => {
 
   test("the company dailyBudgetCents override applies", async () => {
     const r = rig([drafts()]);
-    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, dailyBudgetCents: 1 });
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, dailyBudgetCents: 0 });
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
     r.store.seed("companies/alpha/aiSettings/current", { enabled: true, dailyBudgetCents: 100_000 });
     assert.equal((await generateEventDrafts(r.deps, caller("admin1"), request(2))).replay, false);
@@ -727,7 +742,7 @@ describe("caps", () => {
     await fails(generateEventDrafts(daily.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_DAILY_LIMIT");
 
     const budget = rig([]);
-    budget.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyBudgetCents: 1 });
+    budget.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyBudgetCents: 0 });
     await fails(generateEventDrafts(budget.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
 
     const widened = rig([drafts()]);
