@@ -242,6 +242,15 @@
       ]
     },
     {
+      "collectionGroup": "aiSuggestions",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
+      ]
+    },
+    {
       "collectionGroup": "aiUsageDaily",
       "fieldPath": "expireAt",
       "ttl": true,

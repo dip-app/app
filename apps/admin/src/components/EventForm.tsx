@@ -17,6 +17,7 @@ import { EventPreview } from "./EventPreview";
 import { RadioGrid } from "./RadioGrid";
 import { toast } from "./Toast";
 import { Toggle } from "./Toggle";
+import { t } from "@/lib/aiStrings";
 
 interface Props {
   /** Present when editing. */
@@ -55,7 +56,7 @@ export function EventForm({ event, onReload }: Props) {
     api.listTags().then((list) => !cancelled && setTags(list), () => !cancelled && setTags([]));
     return () => { cancelled = true; };
   }, [api]);
-  // Create only, and only when arriving from Event ideas (?from=ai): fill the AI draft once. Venue and times stay empty.
+  // Create only, and only when arriving from Dipbot (?from=ai): fill the AI draft once. Venue and times stay empty.
   const [fromAi, setFromAi] = useState(false);
   const aiChecked = useRef(false);
   useEffect(() => {
@@ -138,7 +139,7 @@ export function EventForm({ event, onReload }: Props) {
   return (
     <div className="form-layout">
     <form className="form" onSubmit={submit} noValidate>
-      {fromAi && <p className="notice form-notice" role="status">Filled from an AI draft. Pick a venue and time, review everything, then save.</p>}
+      {fromAi && <p className="notice form-notice" role="status">{t("editor.fromAi")}</p>}
       {Object.keys(errors).length > 0 && !failure && (
         <div className="banner error" role="alert">
           <span>Fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} to continue.</span>

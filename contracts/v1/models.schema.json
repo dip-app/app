@@ -6163,6 +6163,112 @@
         "usage"
       ]
     },
+    "GetEventIdeaSuggestionsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "getEventIdeaSuggestionsV1: per-step suggestions for the AI idea flow. ai.generate (admin). One decision call at most per session (cached by sessionId for an hour), counted in the AI spend caps but not in the generation limits.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "description": "One UUID per visit to the flow; repeated calls with it return the cached answer."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "sessionId"
+      ]
+    },
+    "AiStepSuggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The option the decision model ranks first for one choice of the flow. A hint only: the portal never selects it without the admin.",
+      "properties": {
+        "question": {
+          "type": "string",
+          "enum": [
+            "interest",
+            "goal",
+            "groupSize",
+            "setting",
+            "budget",
+            "timing"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "A catalog tag id for interest, otherwise the AiEventChoices enum value of that field."
+        },
+        "probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Probability that this option is the best fit. Jev answers are calibrated; the portal caps the label for the other providers."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "One line built by the server from rounded interest buckets and past-event counts (never model text)."
+        }
+      },
+      "required": [
+        "question",
+        "value",
+        "probability",
+        "reason"
+      ]
+    },
+    "GetEventIdeaSuggestionsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "jev",
+            "openai",
+            "heuristic",
+            "none"
+          ],
+          "description": "Who answered: TypeSafe AI Jev, the OpenAI mini fallback, the deterministic heuristic, or none (no interest data and no past events)."
+        },
+        "suggestions": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/AiStepSuggestion"
+          }
+        },
+        "cached": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "provider",
+        "suggestions",
+        "cached"
+      ]
+    },
     "AiEventChoices": {
       "type": "object",
       "additionalProperties": false,

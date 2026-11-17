@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type Capability, ROLE_LABEL, type Role, can } from "@/lib/adminTypes";
+import { t } from "@/lib/aiStrings";
 import { Avatar } from "./Ui";
 import { useLoad } from "./useLoad";
 
@@ -17,7 +18,7 @@ const ASK: Partial<Record<Capability, string>> = {
   "roster.manage": "invite someone, resend an invite or revoke one",
   "audit.view": "look something up in the audit log",
   "bugreports.manage": "look at bug reports from the app",
-  "ai.generate": "get AI event ideas for us",
+  "ai.generate": t("access.capability"),
 };
 
 /** Shown instead of an admin page to an organizer: explains the limit, says what to ask for and who can help. */

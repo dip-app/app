@@ -130,6 +130,7 @@ CI deploy (`.github/workflows/admin.yml`, only on `main`) is inactive until the 
    | `emailOutbox` | `expireAt` | 30 days | email |
    | `emailCaps` | `expireAt` | 2 days | email |
    | `aiRequests` | `expireAt` | 24 hours after the last update | ai |
+   | `aiSuggestions` | `expireAt` | 1 hour (per-visit suggestion cache) | ai |
    | `aiUsageDaily` | `expireAt` | 8 days | ai |
    | `tagStatReceipts` | `expireAt` | 7 days | tags |
    | `notificationReceipts` | `expireAt` | 30 days | notifications |

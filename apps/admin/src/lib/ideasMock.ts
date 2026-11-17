@@ -1,5 +1,5 @@
 import type {
-  AiBucket, AiDaypart, AiEventChoices, AiUsage, AiVenueType, EventIdeaContext, GeneratedEventDraft,
+  AiBucket, AiDaypart, AiEventChoices, AiStepSuggestion, AiUsage, AiVenueType, EventIdeaContext, EventIdeaSuggestions, GeneratedEventDraft,
 } from "./adminTypes";
 import { COVERS, TAGS, tagName } from "./catalog";
 import { bucketText } from "./ideas";
@@ -129,4 +129,39 @@ export function buildMockDrafts(choices: AiEventChoices, _prompt: string, count:
       rationale,
     };
   });
+}
+
+// ---------- Suggestions (getEventIdeaSuggestionsV1). `?jev=` picks a scenario for design review: the default mixes all
+// three label levels across the steps; perfect, great and good put every step at one level; openai and heuristic are
+// the fallbacks (labels capped); low has only weak answers (no labels); none has no data; slow and error test states.
+
+export type SuggestScenario = "default" | "perfect" | "great" | "good" | "openai" | "heuristic" | "low" | "none" | "slow" | "error";
+const SUGGEST_SCENARIOS: readonly SuggestScenario[] = ["perfect", "great", "good", "openai", "heuristic", "low", "none", "slow", "error"];
+
+export function suggestScenarioFromSearch(search: string): SuggestScenario {
+  const value = new URLSearchParams(search).get("jev") as SuggestScenario | null;
+  return value && SUGGEST_SCENARIOS.includes(value) ? value : "default";
+}
+
+const SUGGESTED: AiStepSuggestion[] = [
+  { question: "interest", value: "tag-fitness", probability: 0.88, reason: "20+ members like Fitness, and it fits this week's theme" },
+  { question: "goal", value: "competition", probability: 0.74, reason: "Games and Fitness rank high with your members" },
+  { question: "groupSize", value: "team", probability: 0.81, reason: "7 of your last 10 events had room for 10 to 30 people" },
+  { question: "setting", value: "outdoors", probability: 0.58, reason: "Outdoors is one of your top interests" },
+  { question: "budget", value: "free", probability: 0.91, reason: "8 of your last 10 events were free" },
+  { question: "timing", value: "after_work", probability: 0.63, reason: "5 of your last 10 events were after work" },
+];
+
+export function mockSuggestions(scenario: SuggestScenario): EventIdeaSuggestions {
+  if (scenario === "none") return { provider: "none", suggestions: [] };
+  const at = (p: number) => SUGGESTED.map((s) => ({ ...s, probability: p }));
+  switch (scenario) {
+    case "perfect": return { provider: "jev", suggestions: at(0.9) };
+    case "great": return { provider: "jev", suggestions: at(0.76) };
+    case "good": return { provider: "jev", suggestions: at(0.6) };
+    case "low": return { provider: "jev", suggestions: at(0.41) };
+    case "openai": return { provider: "openai", suggestions: SUGGESTED };
+    case "heuristic": return { provider: "heuristic", suggestions: SUGGESTED.map((s) => ({ ...s, probability: Math.min(s.probability, 0.6) })) };
+    default: return { provider: "jev", suggestions: SUGGESTED };
+  }
 }

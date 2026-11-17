@@ -2693,6 +2693,46 @@ public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
     }
 }
 
+public struct GetEventIdeaSuggestionsRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var sessionId: String
+
+    public init(contractVersion: Int, companyId: String, sessionId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.sessionId = sessionId
+    }
+}
+
+public struct AiStepSuggestion: Codable, Equatable, Sendable {
+    public var question: String
+    public var value: String
+    public var probability: Double
+    public var reason: String
+
+    public init(question: String, value: String, probability: Double, reason: String) {
+        self.question = question
+        self.value = value
+        self.probability = probability
+        self.reason = reason
+    }
+}
+
+public struct GetEventIdeaSuggestionsResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var provider: String
+    public var suggestions: [AiStepSuggestion]
+    public var cached: Bool
+
+    public init(contractVersion: Int, provider: String, suggestions: [AiStepSuggestion], cached: Bool) {
+        self.contractVersion = contractVersion
+        self.provider = provider
+        self.suggestions = suggestions
+        self.cached = cached
+    }
+}
+
 public struct AiEventChoices: Codable, Equatable, Sendable {
     public var focusTagIds: [String]
     public var goal: String

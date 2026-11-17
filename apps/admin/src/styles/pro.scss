@@ -142,6 +142,7 @@ $ctl-h: 36px;
   .empty { background: $white; border: 1px dashed $line-strong; border-radius: $r-box; padding: 40px 20px;
     h2 { font-family: var(--font-figtree), sans-serif; text-transform: none; font-size: 16px; font-weight: 600; margin-bottom: 4px; } p { font-size: 14px; max-width: 52ch; margin: 0 auto; } }
   .empty-action { margin-top: 14px; }
+  .empty-art { display: block; width: 120px; height: 90px; margin: 0 auto 12px; }
   .skeleton-list { gap: 6px; }
   .skeleton { background: $subtle; border: 1px solid $line; border-radius: $r-ctl; min-height: 52px; &.short { min-height: 44px; } }
   .stat { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 10px 14px;

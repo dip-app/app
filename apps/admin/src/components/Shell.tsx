@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
 import { AdminOnly } from "./AdminOnly";
 import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
+import { t } from "@/lib/aiStrings";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 import { Toaster } from "./Toast";
@@ -30,7 +31,7 @@ const NAV: NavGroup[] = [
   ] },
   { heading: "Program", items: [
     { href: "/events/", label: "Events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
-    { href: "/ideas/", label: "Event ideas", d: "M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8zM18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z", requires: "ai.generate" },
+    { href: "/ideas/", label: t("nav.label"), d: "M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8zM18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z", requires: "ai.generate" },
     { href: "/suggestions/", label: "Weekly ideas email", d: "M4 6.5h16V18H4zM4 7l8 6 8-6", requires: "ai.generate" },
   ] },
   { heading: "Challenges", items: [

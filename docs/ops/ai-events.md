@@ -55,7 +55,8 @@ If `AI_EVENTS_ENABLED` is not `true`, or `OPENAI_API_KEY` is missing, blank or `
 - Functions: `getEventIdeaContextV1` and `generateEventDraftsV1` (`us-central1`; the second has a 300 s timeout and 512 MiB). Both bind the `OPENAI_API_KEY` and `JEV_API_KEY` secrets (the context callable reads the Jev key so its reserved worst case matches the generator's). Both secrets must exist (a `none` value for the Jev key is fine) before these functions can deploy; deploy the rest with `--only functions:<names>` if the keys are not ready.
 - Firestore TTL policies (console or `gcloud firestore fields ttls update`): `expireAt` on collection group `aiRequests` (24 hours) and `aiUsageDaily` (8 days). Without them the documents stay; nothing breaks.
 - No rules or index changes: every AI document is server-only and falls through to the deny-all rule (tested in `gcp/tests/rules/ai.test.ts`).
-- Admin portal: rebuild and deploy hosting as usual; the page reads only the two callables.
+- Admin portal: rebuild and deploy hosting as usual; the page reads only the AI callables.
+- Dipbot Suggest: `getEventIdeaSuggestionsV1` (`us-central1`, 60 s) binds both secrets. Provider order: Jev when `JEV_API_KEY` holds a real key, then the OpenAI triage model (`AI_MODEL_TRIAGE`), then a deterministic heuristic, so the portal always gets an answer. At most one decision call per admin visit (cached in `companies/{c}/aiSuggestions/{uid}_{sessionId}` for an hour); its cost is added to the month, day and platform spend (never to the generation counts), and the call is skipped (heuristic) when the budget left cannot cover it. The TTL policy on `expireAt` for collection group `aiSuggestions` (1 hour) is declared in `gcp/firestore.indexes.json`. Logs carry provider, model, tokens and cost only. To check Jev is answering, look for `ai.suggest` log lines with `provider: "jev"` or the "Powered by Jev" credit in the portal banner.
 
 ## Pilot
 
