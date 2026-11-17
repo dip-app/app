@@ -19,12 +19,13 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | code | reasons |
 |---|---|
 | unauthenticated | `UNAUTHENTICATED` |
-| invalid-argument | `VALIDATION_FAILED` (with `fields`), `TEAM_NOT_FOUND` (unknown or archived team in an edit), `EMAIL_DOMAIN_MISMATCH`, `IMPORT_TOO_LARGE` |
+| invalid-argument | `VALIDATION_FAILED` (with `fields`), `TEAM_NOT_FOUND` (unknown or archived team in an edit), `EMAIL_DOMAIN_MISMATCH`, `IMPORT_TOO_LARGE`, `AI_PROMPT_REJECTED` (with `fields: ["prompt"]`) |
 | permission-denied | `EMAIL_NOT_VERIFIED`, `PROVIDER_NOT_ALLOWED`, `INSUFFICIENT_ROLE`, `COMPANY_MISMATCH`, `ACCOUNT_DEACTIVATED`, `MEMBERSHIP_CONFLICT` (caller has no membership) |
 | not-found | `BUG_REPORT_NOT_FOUND` (also for another company's report), `ASSIGNEE_NOT_FOUND`, `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND` (also for a user of another company), `ROSTER_ENTRY_NOT_FOUND`, `IMPORT_JOB_NOT_FOUND`, `TEAM_NOT_FOUND` (upsert of an unknown teamId) |
-| failed-precondition | `ROSTER_ENTRY_CLAIMED` (resend for someone who already signed in), `ROSTER_ENTRY_NOT_INVITED` (resend for a revoked entry), `REQUEST_REUSED`, `EVENT_CLOSED` (cancelled or ended), `EVENT_NOT_STARTED`, `NOT_GOING`, `LAST_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `ATTENDANCE_LOCKED`, `INSUFFICIENT_POINTS`, `EMAIL_ALREADY_MEMBER`, `IMPORT_PLAN_MISMATCH`, `IMPORT_NOT_PLANNED` |
-| resource-exhausted | `EVENT_FULL` (no `capacityOverrideReason`, or capacity already 10000), `RATE_LIMITED`, `RESEND_LIMIT` (an invite was already resent 10 times) |
-| aborted | `REVISION_CONFLICT`, `IMPORT_JOB_BUSY` |
+| failed-precondition | `AI_DISABLED`, `ROSTER_ENTRY_CLAIMED` (resend for someone who already signed in), `ROSTER_ENTRY_NOT_INVITED` (resend for a revoked entry), `REQUEST_REUSED`, `EVENT_CLOSED` (cancelled or ended), `EVENT_NOT_STARTED`, `NOT_GOING`, `LAST_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `ATTENDANCE_LOCKED`, `INSUFFICIENT_POINTS`, `EMAIL_ALREADY_MEMBER`, `IMPORT_PLAN_MISMATCH`, `IMPORT_NOT_PLANNED` |
+| resource-exhausted | `AI_FLAG_LIMIT`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `AI_BUDGET_EXHAUSTED` (see [AI event drafts](#ai-event-drafts-aigenerate-admin-only)), `EVENT_FULL` (no `capacityOverrideReason`, or capacity already 10000), `RATE_LIMITED`, `RESEND_LIMIT` (an invite was already resent 10 times) |
+| aborted | `REVISION_CONFLICT`, `IMPORT_JOB_BUSY`, `REQUEST_IN_PROGRESS` (same `requestId` still generating) |
+| unavailable | `AI_UNAVAILABLE`, `AI_OUTPUT_INVALID` (model provider failed or returned unusable output; safe to retry with the same `requestId`) |
 | internal | `INVALID_STORED_DATA` (generic message) |
 
 ## Roles and permission matrix
@@ -46,6 +47,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `insights.read` | `getCompanyInsightsV1` (points and balances only for admin) | no | yes | yes |
 | `bugreport.manage` | `listBugReportsV1`, `getBugReportV1`, `updateBugReportV1` | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
+| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1` | no | no | yes |
 
 Only an admin can create another admin or organizer (through `updateMemberV1`, a roster entry or an import). The last admin of a company can never be demoted or deactivated. Clients cannot write `role`, `status`, `teamIds`, `workLocation`, counts, balances or ledger entries (rules allow-list, unchanged).
 
@@ -154,6 +156,23 @@ Reports from the app's shake-to-report land in `bugReports/{reportId}` (client c
 Limits: listing reads the global `bugReports` collection (reports carry no company), so cost grows with all tenants' reports; a trigger-maintained per-company index is the follow-up if volume requires it. A report whose reporter's membership is gone is not attributable and is only reachable from the console. Memberships never move between companies (ADR 0007).
 
 Reads are not audited; all three calls consume the per-caller rate limit. Operational note: signed URLs need the Functions service account to hold `roles/iam.serviceAccountTokenCreator` on itself; without it the inline fallback is used.
+
+### AI event drafts (ai.generate, admin only)
+
+Two admin-only callables behind the idea flow in [AI event creation](../design/stretch/ai-event-creation.md). Neither writes an event: the admin reviews a draft and saves it through `createEventV1`.
+
+- `getEventIdeaContextV1` (`GetEventIdeaContextRequest` -> `GetEventIdeaContextResponse`): read-only, no `requestId`. Returns `enabled`, `topInterests` (`AiInterestTag`, bucket `5-9` | `10-19` | `20+`, never exact counts; tags with fewer than 5 members are suppressed), `thinInterestTagIds`, optional `currentTheme` (`AiIdeaTheme`) and `usage` (`AiUsageSummary`). Still answers when AI is off (`enabled: false`) so the portal can explain itself.
+- `generateEventDraftsV1` (`GenerateEventDraftsRequest` -> `GenerateEventDraftsResponse`): `choices` (`AiEventChoices`, enums only, `focusTagIds` <= 3), an optional free-text `prompt` (<= 500, checked by the AI provider's free moderation and typed triage questions first, and treated as untrusted data) and `count` 1 to 3. Drafts are written by OpenAI and each is moderated and checked before it is returned. Returns 1 to 3 `GeneratedEventDraft` (no venue or exact times; cover is always a `catalog://default/` image), `usage` and `replay`.
+
+Authorization: `ai.generate` is checked first in the command's transaction, admins only (organizers and members get `INSUFFICIENT_ROLE`). Both calls consume the per-caller rate limit.
+
+Kill switches: the deployment flag `AI_EVENTS_ENABLED` (which also needs the OpenAI key secret to be present) and the per-company `companies/{c}/aiSettings/current.enabled`. If either is off, generation fails with `AI_DISABLED` and the context call returns `enabled: false`.
+
+Caps, checked before the model runs (the worst-case cost is reserved, so parallel requests cannot pass a cap): per admin per UTC day `AI_DAILY_LIMIT`, company per UTC month `AI_MONTHLY_LIMIT`, company monthly spend and company daily spend (both `AI_BUDGET_EXHAUSTED`), and declined notes per admin per day `AI_FLAG_LIMIT`. A note refused by the safety check is `AI_PROMPT_REJECTED`; unusable model output after one retry is `AI_OUTPUT_INVALID`; a provider failure is `AI_UNAVAILABLE`. Only a successful generation counts toward the generation caps; spend is always metered.
+
+Idempotency: `requestId` is a UUID kept across retries. The same `requestId` with the same payload returns the stored drafts (`replay: true`); with a different payload it is `REQUEST_REUSED`; while the first call is still running it is `REQUEST_IN_PROGRESS`.
+
+Server-only documents (rules deny clients): `companies/{c}/aiSettings/current`, `aiUsage/{yyyy-MM}` (month totals and reservations), `aiUsageDaily/{day_uid}` and `aiRequests/{uid_requestId}` (stored result, `expireAt` 24 h after the last update). Each outcome writes a content-free audit entry (`ai.generateDrafts`, `ai.noteDeclined`, `ai.generateFailed`) with model, tokens and cost, never the prompt or drafts.
 
 ## Firestore rules summary
 

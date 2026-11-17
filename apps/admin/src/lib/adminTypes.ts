@@ -10,12 +10,12 @@ export type Capability =
   | "events.manage" | "themes.manage" | "albums.moderate" | "attendees.manage"
   | "members.view" | "members.edit" | "members.status" | "members.reset" | "points.adjust"
   | "import.run" | "roster.manage" | "audit.view" | "challenges.review" | "bugreports.manage"
-  | "insights.view" | "insights.points";
+  | "insights.view" | "insights.points" | "ai.generate";
 
 const ORGANIZER_CAPS: readonly Capability[] = ["insights.view", "events.manage", "albums.moderate", "attendees.manage", "members.view"];
 const ADMIN_CAPS: readonly Capability[] = [
   ...ORGANIZER_CAPS, "themes.manage", "challenges.review", "members.edit", "members.status", "members.reset", "points.adjust",
-  "import.run", "roster.manage", "audit.view", "bugreports.manage", "insights.points",
+  "import.run", "roster.manage", "audit.view", "bugreports.manage", "insights.points", "ai.generate",
 ];
 
 export function capabilitiesOf(role: Role): readonly Capability[] {
@@ -58,6 +58,8 @@ export const ADMIN_CALLABLES = {
   listBugReports: "listBugReportsV1",
   getBugReport: "getBugReportV1",
   updateBugReport: "updateBugReportV1",
+  eventIdeaContext: "getEventIdeaContextV1",
+  generateEventDrafts: "generateEventDraftsV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -382,3 +384,60 @@ export interface BugReportDetail {
 
 export interface BugReportPatch { status?: BugStatus; note?: string; /** null clears the assignee. */ assigneeId?: string | null }
 export interface BugReportUpdate { status: BugStatus; note: string; assigneeId: string | null; assigneeName: string | null; revision: number; updatedAt: string; changed: boolean }
+
+// ---------- AI event ideas (docs/design/stretch/ai-event-creation.md). Mirrors the server contract types
+// AiInterestTag, AiUsageSummary, GetEventIdeaContextResponse, AiEventChoices and GeneratedEventDraft.
+
+export type AiBucket = "5-9" | "10-19" | "20+";
+export interface AiInterestTag { tagId: string; bucket: AiBucket }
+export interface AiIdeaTheme { title: string; tagIds: string[] }
+export interface AiUsage {
+  monthlyGenerationLimit: number;
+  monthlyGenerationsUsed: number;
+  dailyGenerationLimit: number;
+  dailyGenerationsUsed: number;
+  generationsRemaining: number;
+  budgetExhausted: boolean;
+}
+export interface EventIdeaContext {
+  enabled: boolean;
+  interestDataAvailable: boolean;
+  topInterests: AiInterestTag[];
+  thinInterestTagIds: string[];
+  currentTheme?: AiIdeaTheme;
+  usage: AiUsage;
+}
+
+export type AiGoal = "team_bonding" | "wellness" | "learning" | "give_back" | "celebrate" | "competition";
+export type AiGroupSize = "small" | "team" | "company";
+export type AiSetting = "indoors" | "outdoors" | "offsite";
+export type AiBudget = "free" | "under_15" | "from_15_to_50" | "over_50";
+export type AiTiming = "weekday_lunch" | "after_work" | "weekend";
+export interface AiEventChoices {
+  focusTagIds: string[];
+  goal: AiGoal;
+  groupSize: AiGroupSize;
+  setting: AiSetting;
+  budget: AiBudget;
+  timing: AiTiming;
+}
+
+export type AiDaypart = "weekday_morning" | "weekday_lunch" | "weekday_afternoon" | "after_work" | "weekend_daytime" | "weekend_evening";
+export type AiVenueType = "office" | "park_or_outdoors" | "restaurant_or_cafe" | "activity_venue" | "community_site";
+export interface GeneratedEventDraft {
+  title: string;
+  description: string;
+  tagIds: string[];
+  coverImageURL: string;
+  suggestedDaypart: AiDaypart;
+  durationMinutes: number;
+  venueType: AiVenueType;
+  venueSearchHint: string;
+  costCents: number;
+  costNote: string;
+  capacity: number;
+  isOutdoor: boolean;
+  rationale: string;
+}
+export interface GenerateDraftsInput { requestId: string; choices: AiEventChoices; prompt: string; count: number }
+export interface GenerateDraftsResult { drafts: GeneratedEventDraft[]; usage: AiUsage; replay: boolean }

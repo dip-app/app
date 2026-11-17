@@ -2,13 +2,16 @@ import type { AdminOpsApi } from "./adminApi";
 import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
+  type EventIdeaContext, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
 import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
+import {
+  MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, promptRejected, usageOf,
+} from "./ideasMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
 export interface MockEventView {
@@ -57,6 +60,9 @@ interface StoredBug extends BugReport {
 }
 
 const KEY = "dip-admin-mock-ops-v3";
+const AI_KEY = "dip-admin-mock-ai-v1";
+/** Preview usage: some of the quota is already spent so the meter has something to show. */
+interface AiState { usage: Record<string, { monthly: number; daily: number }>; receipts: Record<string, GenerateDraftsResult> }
 const TEAMS = ["Platform", "Mentors", "Wellness", "Events crew", "Design"];
 const LOCATIONS = ["Pittsburgh", "Philadelphia", "New York", "Remote"];
 const DEPARTMENTS = ["Engineering", "People", "Marketing", "Finance", "Operations"];
@@ -212,6 +218,16 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     return fresh;
   }
   const save = (state: OpsState) => store.setItem(KEY, JSON.stringify(state));
+  function aiLoad(): AiState {
+    const raw = store.getItem(AI_KEY);
+    if (raw) { try { return JSON.parse(raw) as AiState; } catch { /* start fresh */ } }
+    return { usage: {}, receipts: {} };
+  }
+  const aiSave = (state: AiState) => store.setItem(AI_KEY, JSON.stringify(state));
+  const aiUsage = (companyId: string) => aiLoad().usage[companyId] ?? { monthly: 12, daily: 3 };
+  const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
+  /** Latency only in the browser preview; tests run without it. */
+  const aiDelay = (ms: number) => (typeof window === "undefined" ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
   function staff(capability: Capability): Session {
     const session = deps.session();
@@ -811,6 +827,40 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         save(state);
       }
       return { status: found.status, note: found.note, assigneeId: found.assigneeId ?? null, assigneeName: found.assigneeName ?? null, revision: found.revision, updatedAt: found.updatedAt ?? now().toISOString(), changed: changes.length > 0 };
+    },
+
+    // ----- AI event ideas (admin only, like the server)
+    async eventIdeaContext(): Promise<EventIdeaContext> {
+      const session = staff("ai.generate");
+      const { monthly, daily } = aiUsage(session.companyId);
+      return mockIdeaContext(aiScenario(), monthly, daily);
+    },
+    async generateEventDrafts(input): Promise<GenerateDraftsResult> {
+      const session = staff("ai.generate");
+      const scenario = aiScenario();
+      const ai = aiLoad();
+      const receiptKey = `${session.companyId}:${session.uid}:${input.requestId}`;
+      const replayed = ai.receipts[receiptKey];
+      if (replayed) {
+        await aiDelay(300);
+        return { ...replayed, replay: true };
+      }
+      await aiDelay(scenario === "slow" ? 8000 : 900);
+      if (scenario === "off") throw new ApiError("failed-precondition", "AI event ideas are off for your company.", {}, "AI_DISABLED");
+      if (input.prompt.length > 500) throw new ApiError("invalid-argument", "Keep the note under 500 characters.", { prompt: "Keep the note under 500 characters." }, "AI_PROMPT_REJECTED");
+      if (promptRejected(input.prompt)) {
+        throw new ApiError("invalid-argument", "That note can’t be used. Describe the event you want instead.", { prompt: "That note can’t be used. Describe the event you want instead." }, "AI_PROMPT_REJECTED");
+      }
+      if (input.count < 1 || input.count > 3) throw new ApiError("invalid-argument", "Ask for 1 to 3 drafts.", { count: "Ask for 1 to 3 drafts." });
+      if (scenario === "error") throw new ApiError("failed-precondition", "The AI service is busy right now. Try again in a moment.", {}, "AI_UNAVAILABLE");
+      const { monthly, daily } = aiUsage(session.companyId);
+      if (scenario === "quota" || daily >= MOCK_DAILY_LIMIT) throw new ApiError("resource-exhausted", "You have used today’s AI drafts.", {}, "AI_DAILY_LIMIT");
+      if (monthly >= MOCK_MONTHLY_LIMIT) throw new ApiError("resource-exhausted", "You have used this month’s AI drafts.", {}, "AI_MONTHLY_LIMIT");
+      ai.usage[session.companyId] = { monthly: monthly + 1, daily: daily + 1 };
+      const result: GenerateDraftsResult = { drafts: buildMockDrafts(input.choices, input.prompt, input.count), usage: usageOf(monthly + 1, daily + 1), replay: false };
+      ai.receipts[receiptKey] = result;
+      aiSave(ai);
+      return result;
     },
 
     // ----- audit

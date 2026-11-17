@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type BackfillStep, type CompanyInsights, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type AiBucket, type AiUsage, type EventIdeaContext, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -45,6 +45,32 @@ export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
     ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), invitedAt: iso(d.createdAt),
     ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
   };
+}
+
+const BUCKETS: readonly string[] = ["5-9", "10-19", "20+"];
+function usageFromWire(value: unknown): AiUsage {
+  const u = obj(value);
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  return {
+    monthlyGenerationLimit: n(u.monthlyGenerationLimit), monthlyGenerationsUsed: n(u.monthlyGenerationsUsed),
+    dailyGenerationLimit: n(u.dailyGenerationLimit), dailyGenerationsUsed: n(u.dailyGenerationsUsed),
+    generationsRemaining: n(u.generationsRemaining), budgetExhausted: u.budgetExhausted === true,
+  };
+}
+/** GetEventIdeaContextResponse -> EventIdeaContext. */
+export function ideaContextFromWire(d: DocumentData): EventIdeaContext {
+  const theme = d.currentTheme ? obj(d.currentTheme) : null;
+  return {
+    enabled: d.enabled === true, interestDataAvailable: d.interestDataAvailable === true,
+    topInterests: list(d.topInterests).filter((t) => BUCKETS.includes(str(t.bucket))).map((t) => ({ tagId: str(t.tagId), bucket: str(t.bucket) as AiBucket })),
+    thinInterestTagIds: strings(d.thinInterestTagIds),
+    ...(theme && str(theme.title) ? { currentTheme: { title: str(theme.title), tagIds: strings(theme.tagIds) } } : {}),
+    usage: usageFromWire(d.usage),
+  };
+}
+/** GenerateEventDraftsResponse -> GenerateDraftsResult. */
+export function draftsFromWire(d: DocumentData): GenerateDraftsResult {
+  return { drafts: list(d.drafts).map((x) => x as unknown as GeneratedEventDraft), usage: usageFromWire(d.usage), replay: d.replay === true };
 }
 
 export function auditFromDoc(id: string, d: DocumentData): AuditEntry {
@@ -380,6 +406,18 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     companyInsights: (refresh = false) => run(async () => {
       const session = await organizer();
       return insightsFromWire(await call<DocumentData>(ADMIN_CALLABLES.getInsights, session, refresh ? { refresh: true } : {}, false));
+    }),
+
+    eventIdeaContext: () => run(async () => {
+      const session = await organizer();
+      return ideaContextFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaContext, session, {}, false));
+    }),
+    // The caller owns the requestId (one per attempt), so `call` sends it as given.
+    generateEventDrafts: (input) => run(async () => {
+      const session = await organizer();
+      return draftsFromWire(await call<DocumentData>(ADMIN_CALLABLES.generateEventDrafts, session, {
+        requestId: input.requestId, choices: input.choices, prompt: input.prompt, count: input.count,
+      }));
     }),
 
     listAudit: () => run(async () => {

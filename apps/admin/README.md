@@ -35,6 +35,14 @@ Tickets #121 to #126. All of it sits behind `AdminOpsApi` (`src/lib/adminApi.ts`
 - **Destructive actions** use a native `<dialog>` with a required reason that is written to the audit log. Exported CSVs neutralize leading `= + - @`.
 - Pass `?`-style ids in the URL (static export): `/members/detail/?id=<uid>`.
 
+### Event ideas (AI drafts, V2 stretch)
+
+`/ideas/` (nav item "Event ideas", capability `ai.generate`, **admins only**; organizers get the "Admins only" page). A five step flow (interests, goal, group and setting, budget and timing, note) ends in up to three event drafts to review. Nothing is created: "Open in editor" stores the draft in `sessionStorage` (`dip.aiDraft.v1`, valid for one hour, read once) and opens `/events/new/?from=ai`, where `EventForm` pre-fills title, description, tags, cover, price, capacity and indoor/outdoor. Venue and times stay empty and the normal Save creates the event.
+
+- Callables (`ADMIN_CALLABLES`, `adminTypes.ts`): `getEventIdeaContextV1` (`eventIdeaContext()`: rounded interest buckets, running weekly theme, quota) and `generateEventDraftsV1` (`generateEventDrafts()`: one `requestId` per attempt; reused only when the user retries an unchanged request after `AI_UNAVAILABLE` or `AI_OUTPUT_INVALID`, new on Regenerate or any change). Server reasons (`AI_DISABLED`, `AI_PROMPT_REJECTED`, `AI_DAILY_LIMIT`, ...) arrive on `ApiError.reason`. Flow logic is in `src/lib/ideas.ts`, the mock in `src/lib/ideasMock.ts` and `adminMock.ts`.
+- Mock mode: admin only, 30 per month and 10 per day (starts at 12 and 3 used), replay by `requestId`, a note containing "ignore previous instructions" is rejected. Scenarios by query, mock only: `?ai=off`, `nodata`, `quota`, `error` (generate fails with `AI_UNAVAILABLE`), `slow` (8 s).
+- Screenshot states, mock only: `/ideas/?step=1` to `?step=5` (earlier steps answered), `/ideas/?step=results` (presets, generates on load); combine with `&ai=`.
+
 ## Mock mode and live mode
 
 `src/lib/api.ts` defines the `AdminApi` interface the UI depends on, with two implementations chosen at build time:
