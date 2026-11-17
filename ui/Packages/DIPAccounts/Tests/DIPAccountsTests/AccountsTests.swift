@@ -123,6 +123,17 @@ private let verified = AccountIdentity(uid: "one", isEmailVerified: true)
     #expect(session.state == .recoverableError(.unavailable))
     session.stop(); await fake.settle(); #expect(fake.terminated)
 }
+@Test @MainActor func retryMembershipFailureLeavesResolvingInsteadOfSticking() async {
+    let fake = FakeRepository(); fake.resolveFailure = .noCompanyForDomain
+    let session = AccountsSession(repository: fake); session.start()
+    await fake.emit(.identity(verified)); await fake.emit(.profile(uid: "one", nil))
+    #expect(session.state == .noCompany(verified, .noCompanyForDomain))
+    fake.nextFailure = .unavailable
+    await session.retryMembership()
+    #expect(session.state == .recoverableError(.unavailable))
+    #expect(fake.resolves == 1, "No resolution was started after the failed refresh")
+    session.stop()
+}
 @Test func editableFieldValidation() throws {
     var edit = EditableProfile(photoURL: "", avatarId: "", department: "", jobTitle: "", city: "", interestTagIds: ["tag"], travelRadiusMiles: 20, availability: [])
     try edit.validate()

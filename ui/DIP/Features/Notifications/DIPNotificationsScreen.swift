@@ -44,13 +44,24 @@ struct DIPNotificationsScreen: View {
                 .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
-            .refreshable { onRetry() }
+            .refreshable {
+                // The restart is fire-and-forget at the call site; keep the spinner until the listener reports (or gives up).
+                onRetry()
+                await Self.settle { model.phase == .loading }
+            }
         }
         .background(.white)
         .preferredColorScheme(.light)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("notifications.screen")
+    }
+
+    /// Lets a pull-to-refresh last as long as the restarted load, at least half a second so it never flashes, at most 8 s.
+    static func settle(while isLoading: @MainActor () -> Bool) async {
+        try? await Task.sleep(for: .milliseconds(500))
+        var waited = 0
+        while isLoading(), waited < 75, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(100)); waited += 1 }
     }
 
     // MARK: Controls
@@ -74,12 +85,12 @@ struct DIPNotificationsScreen: View {
     @ViewBuilder private func buttons(showInvites: Bool, showMarkAll: Bool) -> some View {
         if showInvites {
             pill(invitesWaiting.map { $0 > 0 ? "Invitations (\($0))" : "Invitations" } ?? "Invitations",
-                 identifier: "notifications.invitations", chevron: true) { DIPHaptics.select(); onOpenInvitations() }
+                 identifier: "notifications.invitations", chevron: true) { DIPHaptics.navigate(); onOpenInvitations() }
                 .accessibilityLabel(invitesWaiting.map { $0 > 0 ? "Invitations, \($0) waiting for an answer" : "Invitations" } ?? "Invitations")
         }
         if showMarkAll {
             pill(model.isMarkingAll ? "Marking…" : "Mark all as read", identifier: "notifications.markall") {
-                DIPHaptics.select()
+                DIPHaptics.commit()
                 Task {
                     let done = await model.markAllRead()
                     if done { DIPHaptics.success(); AccessibilityNotification.Announcement("All notifications marked as read").post() }
@@ -166,7 +177,7 @@ struct DIPNotificationsScreen: View {
         case .loading: loading
         case .failed(let message):
             DIPEmptyState(screen: "notifications-error", title: "Couldn’t load notifications", message: message, faces: 3,
-                          actionTitle: "Try again", action: { DIPHaptics.select(); onRetry() })
+                          actionTitle: "Try again", action: { DIPHaptics.commit(); onRetry() })
         case .ready:
             if model.isEmpty {
                 DIPEmptyState(screen: "notifications", title: "No notifications yet",

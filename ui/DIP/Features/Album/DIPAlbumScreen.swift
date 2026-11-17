@@ -21,6 +21,8 @@ struct DIPAlbumScreen: View {
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var viewedPhotoID: String?
     @State private var stepDirection = 1
+    /// The photo a step is heading to before the viewer has switched to it (see `stepViewer`).
+    @State private var steppingToID: String?
     /// Reads a photo's stored bytes (original resolution) through the signed-in session; nil in previews and fixtures.
     private let loadOriginal: (@MainActor (String) async throws -> Data)?
     @State private var saver = AlbumPhotoSaver()
@@ -147,7 +149,10 @@ struct DIPAlbumScreen: View {
             uploads.reconcile(eventID: album.eventID, publishedPhotoIDs: Set(ids))
         }
         // Not onDisappear: presenting the full-screen viewer itself makes this page disappear.
-        .onChange(of: viewedPhotoID, initial: true) { _, id in onViewPhoto?(id) }
+        .onChange(of: viewedPhotoID, initial: true) { _, id in
+            if id == nil { steppingToID = nil }
+            onViewPhoto?(id)
+        }
         .onAppear { if injectedUploads == nil { ownUploads.onRunFinished = Self.feelRun } }
     }
 
@@ -180,8 +185,11 @@ struct DIPAlbumScreen: View {
         } else {
             mosaic(width: width)
             if album.photos.count > 12 {
-                ForEach(12..<album.photos.count, id: \.self) { index in
-                    photoButton(album.photos[index], index: index, width: width, height: 246)
+                // Beyond the first mosaic the rows are built as they scroll in (same 9 pt rhythm as before).
+                LazyVStack(spacing: 9) {
+                    ForEach(12..<album.photos.count, id: \.self) { index in
+                        photoButton(album.photos[index], index: index, width: width, height: 246)
+                    }
                 }
             }
         }
@@ -199,18 +207,25 @@ struct DIPAlbumScreen: View {
         }
     }
 
+    /// The event's share link (the title travels as the message); the public site when no link can be built.
+    private var shareItem: URL { DIPShareLink.url(forEventID: album.eventID) ?? DIPShareLink.baseURL }
+
     private var viewedPhoto: DIPPhoto? { album.photos.first { $0.id == viewedPhotoID } }
 
     /// Moves the viewer to the previous (-1) or next (+1) photo; stops at either end. Navigation, so no haptic.
     /// The direction is published first so the outgoing photo's transition is built for it, then the photo changes.
     private func stepViewer(_ offset: Int) {
-        guard let current = album.photos.firstIndex(where: { $0.id == viewedPhotoID }) else { return }
+        // The target is tracked synchronously: a second tap before the first change lands steps from the first
+        // target, so rapid taps never skip or repeat a photo.
+        guard let base = steppingToID ?? viewedPhotoID, let current = album.photos.firstIndex(where: { $0.id == base }) else { return }
         let target = current + offset
         guard album.photos.indices.contains(target) else { return }
         let id = album.photos[target].id
         stepDirection = offset
+        steppingToID = id
         DispatchQueue.main.async {
             withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.35, dampingFraction: 0.86)) { viewedPhotoID = id }
+            if steppingToID == id { steppingToID = nil }
         }
     }
 
@@ -225,7 +240,7 @@ struct DIPAlbumScreen: View {
             .accessibilityIdentifier("album.back")
             Spacer(minLength: 0)
             if album.isLoaded, !album.photos.isEmpty { saveAllControl }
-            ShareLink(item: album.title) {
+            ShareLink(item: shareItem, message: Text(album.title)) {
                 DIPReferenceAssets.image("album_HeroiconsMiniLink")
                     .resizable().frame(width: 20, height: 20)
                     .frame(width: 50, height: 50)
@@ -288,7 +303,7 @@ struct DIPAlbumScreen: View {
     private func originalLoader(_ photo: DIPPhoto) -> @MainActor (String) async throws -> Data {
         { photoID in
             // Review builds can slow the fixtures down so the progress state can be inspected (`--slow-photo-save`).
-            if ProcessInfo.processInfo.arguments.contains("--slow-photo-save") { try await Task.sleep(for: .milliseconds(800)) }
+            if MockLaunch.Flags.contains("--slow-photo-save") { try await Task.sleep(for: .milliseconds(800)) }
             if let loadOriginal { return try await loadOriginal(photoID) }
             return try await AlbumPhotoSaver.fallbackData(for: photo)
         }
@@ -332,13 +347,16 @@ struct DIPAlbumScreen: View {
                     .accessibilityIdentifier("album.upload.status")
                 Spacer(minLength: 0)
                 if retryableFailures.count > 1 {
-                    Button("Retry all") { retryableFailures.forEach { uploads.retry($0.id) } }
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
-                        .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
-                        .padding(.horizontal, 14).frame(minHeight: 32)
-                        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                        .contentShape(Capsule())
-                        .buttonStyle(DIPPressFeedbackStyle())
+                    Button { retryableFailures.forEach { uploads.retry($0.id) } } label: {
+                        // The whole pill (plus 6 pt above and below, 44 pt in all) is the tap target.
+                        Text("Retry all")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                            .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                            .padding(.horizontal, 14).frame(minHeight: 32)
+                            .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                            .dipHitSlop(vertical: 6)
+                    }
+                    .buttonStyle(DIPPressFeedbackStyle())
                         .accessibilityIdentifier("album.upload.retry-all")
                 }
             }
@@ -389,13 +407,15 @@ struct DIPAlbumScreen: View {
         .frame(width: side, height: side)
         .overlay(alignment: .bottom) {
             if case .failed(let message) = item.state, item.upload != nil {
-                Button("Retry") { uploads.retry(item.id) }
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
-                    .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
-                    .padding(.horizontal, 14).frame(height: 28)
-                    .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
+                Button { uploads.retry(item.id) } label: {
+                    Text("Retry")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
+                        .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
+                        .padding(.horizontal, 14).frame(height: 28)
+                        .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
                     .buttonStyle(DIPPressFeedbackStyle())
                     .accessibilityHint(message)
                     .accessibilityIdentifier("album.upload.retry.\(index)")

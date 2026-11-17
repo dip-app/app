@@ -362,6 +362,7 @@ struct DIPPhotoCommentsScreen: View {
             text: $draft, placeholder: "Add your thoughts in a comment",
             isSending: isSending, errorMessage: sendError,
             identifierPrefix: "photo.comments", style: .photoOverlay,
+            maximumLength: DIPMessageComposer.maximumLength,
             avatar: { DIPMedia(currentUser.avatar) },
             sendIcon: {
                 Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
@@ -382,6 +383,7 @@ struct DIPPhotoCommentsScreen: View {
         retryIntent = intent
         isSending = true
         sendError = nil
+        DIPHaptics.commit()
         Task { @MainActor in
             defer { isSending = false }
             do {

@@ -21,6 +21,9 @@ final class EventLinkInbox {
         return true
     }
 
+    /// Forgets any queued link: it belonged to the member whose session just ended and must never open for the next one.
+    func clear() { pendingEventID = nil; pendingOpensChat = false }
+
     func consume(_ id: String) {
         if pendingEventID == id { pendingEventID = nil; pendingOpensChat = false }
     }

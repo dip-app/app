@@ -2,6 +2,7 @@ import DIPAccounts
 import DIPCore
 import Foundation
 import SwiftUI
+import UIKit
 
 @main
 struct DIPApp: App {
@@ -10,6 +11,10 @@ struct DIPApp: App {
     @State private var eventLinks = EventLinkInbox()
     /// Push client; nil unless the feature flag is on and Firebase is configured (device-unverified, see PushRegistration.swift).
     @State private var push: PushCoordinator?
+    /// The uid of the last signed-in (or resolving) account, so a transition to signed out / another account is seen once.
+    @State private var signedInUID: String?
+    /// Forwards the APNs token to FCM explicitly (SwiftUI lifecycle); inert unless the push flag is on.
+    @UIApplicationDelegateAdaptor(DIPAppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     private let makeEventReads: ((MembershipContext) -> MemberEventsRepository?)?
     private let makeParticipation: (() -> (any ParticipationSource)?)?
@@ -63,7 +68,12 @@ struct DIPApp: App {
                     .id(EventReadScope(uid: context.uid, companyID: context.companyID))
             }
             .dipDuoLayout()
-            .task { session.start(); push?.onLink = { eventLinks.receive($0) } }
+            .task {
+                session.start(); push?.onLink = { eventLinks.receive($0) }
+                // Launch: finish any push cleanup a previous sign-out could not complete (token deletion needs no sign-in).
+                await push?.refresh()
+            }
+            .onChange(of: session.state) { _, state in sessionStateChanged(state) }
             .onChange(of: scenePhase) { _, phase in
                 // Permission granted later in iOS Settings takes effect when the app returns to the foreground.
                 if phase == .active { Task { await push?.refresh() } }
@@ -85,6 +95,42 @@ struct DIPApp: App {
                 if let url = activity.webpageURL { eventLinks.receive(url) }
             }
         }
+    }
+
+    /// The ONE place that reacts to a session ending, whichever path caused it (Profile or tour button, an expired or
+    /// revoked session, another account signing in). Local wipes happen only here, i.e. once the account is really
+    /// signed out or replaced, never before a remote sign-out that may still fail.
+    private func sessionStateChanged(_ state: AccountsState) {
+        let uid: String? = switch state {
+        case .member(let context): context.uid
+        case .resolvingCompany(let identity), .noCompany(let identity, _): identity.uid
+        default: nil
+        }
+        if let uid {
+            if let previous = signedInUID, previous != uid { sessionEnded(uid: previous) }
+            signedInUID = uid
+        } else if state == .signedOut, let previous = signedInUID {
+            signedInUID = nil
+            sessionEnded(uid: previous)
+        }
+    }
+
+    private func sessionEnded(uid: String) {
+        eventLinks.clear()
+        // Stops the calendar observer and late writes of that account's models, and lets the next home start fresh.
+        HomeScope.evictAll(uid: uid)
+        // Idempotent: the sign-out button already did this while the auth was still valid.
+        Task { await push?.signingOut() }
+        // Calendar preferences and the entries DIP added belong to this account on this device (all builds).
+        DIPCalendarLocalStore(uid: uid).removeAll()
+        // Queued reports belong to this account on this device; they are not kept for the next person.
+        if let submitter = makeBugReportSubmitter() {
+            Task { await BugReportContext.make(uid: uid, submitter: submitter).sender.discardQueue(uid: uid) }
+        }
+        #if DEBUG
+        // Debug builds also forget this account's tour record so the next sign-in plays the whole tour again.
+        UserDefaultsOnboardingRecordStore(defaults: .standard).removeRecord(for: uid)
+        #endif
     }
 
     /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed

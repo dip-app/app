@@ -292,6 +292,30 @@ import UniformTypeIdentifiers
         XCTAssertTrue(condition())
     }
 
+    private final class ConcurrencyProbe: @unchecked Sendable {
+        private let lock = NSLock()
+        private(set) var active = 0, peak = 0
+        func enter() { lock.lock(); active += 1; peak = max(peak, active); lock.unlock() }
+        func leave() { lock.lock(); active -= 1; lock.unlock() }
+    }
+
+    func testPreparationRunsAtMostTwoPhotosAtATimeInPickOrder() async throws {
+        let probe = ConcurrencyProbe()
+        var sent: [String] = []
+        let queue = AlbumUploadQueue(send: { _, photo, _ in sent.append(photo.id); return photo.id },
+            prepare: { data in Thread.sleep(forTimeInterval: 0.03); probe.leave(); return (data, nil) },
+            successDuration: .milliseconds(10), graceDuration: .milliseconds(10))
+        let loaders: [@Sendable () async throws -> Data] = (0..<7).map { n in
+            { probe.enter(); try await Task.sleep(for: .milliseconds(10)); return Data([UInt8(n)]) }
+        }
+        queue.enqueue(eventID: "boat", loaders: loaders)
+        XCTAssertEqual(queue.items.count, 7)
+        try await waitFor { sent.count == 7 }
+        XCTAssertEqual(sent.count, 7)
+        XCTAssertLessThanOrEqual(probe.peak, 2, "no more than two originals are held at once")
+        XCTAssertEqual(probe.active, 0)
+    }
+
     func testDraftsUploadOnceReportProgressAndClearOnceObserved() async throws {
         var sent: [String] = []
         var runs: [(Int, Int)] = []

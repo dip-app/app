@@ -78,4 +78,63 @@ final class DuoLayoutTests: XCTestCase {
         XCTAssertEqual(DIPDuoPaneLayout.defaultSelection(in: ["a", "b"]), "a")
         XCTAssertNil(DIPDuoPaneLayout.defaultSelection(in: []))
     }
+
+    // MARK: Hysteresis, latch, regular iPhones
+
+    func testOpenPostureHasHysteresisAroundTheThreshold() {
+        // Not open yet: needs the full open width.
+        XCTAssertFalse(DIPDuoLayout.isOpen(hingeAvailable: true, width: 759, wasOpen: false))
+        XCTAssertTrue(DIPDuoLayout.isOpen(hingeAvailable: true, width: 760, wasOpen: false))
+        // Already open: stays open down to the close width, closes below it.
+        XCTAssertTrue(DIPDuoLayout.isOpen(hingeAvailable: true, width: 745, wasOpen: true))
+        XCTAssertTrue(DIPDuoLayout.isOpen(hingeAvailable: true, width: 740, wasOpen: true))
+        XCTAssertFalse(DIPDuoLayout.isOpen(hingeAvailable: true, width: 739, wasOpen: true))
+        // Jitter around 750 never flips an open shell.
+        var open = true
+        for width in [752.0, 748, 755, 742, 751] { open = DIPDuoLayout.isOpen(hingeAvailable: true, width: width, wasOpen: open) }
+        XCTAssertTrue(open)
+        XCTAssertLessThan(DIPDuoLayout.closeBelowWidth, DIPDuoLayout.openMinWidth)
+    }
+
+    func testRegularIPhonesAreNeverDuoWhateverTheHistory() {
+        // SE, 17 Pro, Pro Max portrait and landscape (and a tablet width): no hinge, so never open and no insets.
+        let sizes: [(CGFloat, CGFloat)] = [(375, 667), (402, 874), (440, 956), (667, 375), (874, 402), (956, 440), (1024, 768)]
+        for (width, _) in sizes {
+            XCTAssertFalse(DIPDuoLayout.isOpen(hingeAvailable: false, width: width, wasOpen: false), "width \(width)")
+            XCTAssertFalse(DIPDuoLayout.isOpen(hingeAvailable: false, width: width, wasOpen: true), "width \(width)")
+            XCTAssertEqual(DIPDuoLayout.resolve(hingeAvailable: false, safeLeading: 59, safeTrailing: 59, containerWidth: width), .none)
+        }
+        // Without a hinge update ever seen the latch stays false.
+        XCTAssertFalse(DIPDuoLayout.latchedHinge(seen: false, update: false))
+    }
+
+    func testHingeAvailabilityLatchesOnceSeen() {
+        XCTAssertTrue(DIPDuoLayout.latchedHinge(seen: false, update: true))
+        XCTAssertTrue(DIPDuoLayout.latchedHinge(seen: true, update: false), "a transient nil update must not swap the subtree back")
+        XCTAssertTrue(DIPDuoLayout.latchedHinge(seen: true, update: true))
+    }
+
+    // MARK: Selection ordering, route dedupe
+
+    func testDefaultEventUsesTheHomeGridOrdering() {
+        // Home shows calendar-friendly events first; the detail pane opens the first card, not the first id.
+        XCTAssertEqual(DIPDuoPaneLayout.defaultSelection(in: ["a", "b", "c"], conflicted: ["a"]), "b")
+        XCTAssertEqual(DIPDuoPaneLayout.defaultSelection(in: ["a", "b"], conflicted: ["a", "b"]), "a")
+        XCTAssertEqual(DIPDuoPaneLayout.defaultSelection(in: ["a", "b"], conflicted: []), "a")
+        XCTAssertNil(DIPDuoPaneLayout.defaultSelection(in: [], conflicted: ["a"]))
+    }
+
+    func testRapidDoubleTapDoesNotStackTheSameRouteTwice() {
+        XCTAssertEqual(DIPDuoPaneLayout.appending("album", to: ["event"]), ["event", "album"])
+        XCTAssertEqual(DIPDuoPaneLayout.appending("album", to: ["event", "album"]), ["event", "album"])
+        XCTAssertEqual(DIPDuoPaneLayout.appending("album", to: []), ["album"])
+        // The same page may be revisited deeper in the stack.
+        XCTAssertEqual(DIPDuoPaneLayout.appending("event", to: ["event", "album"]), ["event", "album", "event"])
+    }
+
+    func testRemovedSelectionFallsBackToTheDefault() {
+        XCTAssertEqual(DIPDuoPaneLayout.resolvedSelection(selected: "gone", exists: { $0 == "a" }, fallback: "a"), "a")
+        XCTAssertEqual(DIPDuoPaneLayout.resolvedSelection(selected: "a", exists: { $0 == "a" }, fallback: "b"), "a")
+        XCTAssertNil(DIPDuoPaneLayout.resolvedSelection(selected: nil, exists: { _ in true }, fallback: nil))
+    }
 }

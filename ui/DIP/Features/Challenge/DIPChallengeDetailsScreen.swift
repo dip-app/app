@@ -15,6 +15,8 @@ struct DIPChallengeDetailsScreen: View {
     @Environment(\.eventCalendarAdder) private var calendarAdder
     @Environment(\.dipDuoOpen) private var duoOpen
     @State private var calendarResult: DIPCalendarAddResult?
+    /// True while the calendar editor is up, so a second tap cannot present another one.
+    @State private var isAddingToCalendar = false
     @Environment(\.challengeSubmissionContext) private var submissionContext
     @Environment(\.challengeEntryBar) private var entryBar
     @State private var submission: ChallengeSubmissionModel?
@@ -28,11 +30,8 @@ struct DIPChallengeDetailsScreen: View {
                     timing: challenge.timing, widePill: true, identifierPrefix: "challenge", onBack: onBack,
                     // Pressable (solid) only while the window can still be added; otherwise the informational outline pill.
                     calendarLabel: challenge.canAddToCalendar(now: now) ? challenge.timing : nil,
-                    calendarState: calendarResult == .added ? .added : .free(direct: false),
-                    onCalendar: {
-                        guard let fields = challenge.calendarFields() else { return }
-                        Task { calendarResult = await calendarAdder.add(fields) }
-                    },
+                    calendarState: calendarResult == .added ? .added : (isAddingToCalendar ? .adding : .free(direct: false)),
+                    onCalendar: addToCalendar,
                     showsCalendarIcon: challenge.startDate != nil)
                     .accessibilityElement(children: .contain)
                     .alert("Couldn’t add to calendar", isPresented: Binding(
@@ -84,6 +83,17 @@ struct DIPChallengeDetailsScreen: View {
         .onDisappear { entryBar?.clear(owner: challenge.id); submission?.stop(); submission = nil }
         .sheet(isPresented: $showsEntrySheet) {
             if let submission { DIPChallengeSubmissionSheet(model: submission).dipDuoSheetSizing(duoOpen) }
+        }
+    }
+
+    private func addToCalendar() {
+        guard !isAddingToCalendar, calendarResult != .added, let fields = challenge.calendarFields() else { return }
+        isAddingToCalendar = true
+        Task {
+            defer { isAddingToCalendar = false }
+            let result = await calendarAdder.add(fields)
+            calendarResult = result
+            if case .failed = result { DIPHaptics.failure() }
         }
     }
 

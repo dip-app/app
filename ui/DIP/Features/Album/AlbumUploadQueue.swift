@@ -42,6 +42,12 @@ final class AlbumUploadQueue {
     @ObservationIgnored private let prepare: Prepare
     @ObservationIgnored private var worker: Task<Void, Never>?
     @ObservationIgnored private var workerGeneration = 0
+    /// Picked photos waiting to be read and prepared, oldest first. At most `maxConcurrentPreparations` are in
+    /// flight, so a 12-photo pick never holds a dozen full-size originals (and decode buffers) at once.
+    @ObservationIgnored private var preparationQueue: [(id: String, loader: @Sendable () async throws -> Data)] = []
+    @ObservationIgnored private var activePreparations = 0
+    @ObservationIgnored private let maxConcurrentPreparations: Int
+    @ObservationIgnored private var preparationGeneration = 0
     @ObservationIgnored private var runSucceeded = 0
     @ObservationIgnored private var runFailed = 0
     @ObservationIgnored private let successDuration: Duration
@@ -58,8 +64,10 @@ final class AlbumUploadQueue {
     @ObservationIgnored var onRunFinished: ((_ succeeded: Int, _ failed: Int) -> Void)?
 
     init(send: @escaping Send, prepare: @escaping Prepare = AlbumUploadQueue.preparePhoto,
-         successDuration: Duration = .seconds(1), graceDuration: Duration = .seconds(3)) {
+         successDuration: Duration = .seconds(1), graceDuration: Duration = .seconds(3),
+         maxConcurrentPreparations: Int = 2) {
         self.send = send
+        self.maxConcurrentPreparations = max(1, maxConcurrentPreparations)
         self.prepare = prepare
         self.successDuration = successDuration
         self.graceDuration = graceDuration
@@ -76,10 +84,23 @@ final class AlbumUploadQueue {
     }
 
     /// Adds picked photos. Each loader returns the picker's bytes; failures to read become failed drafts.
+    /// Reading and preparing runs at most `maxConcurrentPreparations` photos at a time, in pick order.
     func enqueue(eventID: String, loaders: [@Sendable () async throws -> Data]) {
         for loader in loaders {
             let id = UUID().uuidString
             items.append(Item(id: id, eventID: eventID, thumbnail: nil, upload: nil, state: .preparing))
+            preparationQueue.append((id, loader))
+        }
+        pumpPreparation()
+    }
+
+    private func pumpPreparation() {
+        while activePreparations < maxConcurrentPreparations, !preparationQueue.isEmpty {
+            let (id, loader) = preparationQueue.removeFirst()
+            // A draft removed or cleared before its turn needs no work.
+            guard items.contains(where: { $0.id == id }) else { continue }
+            activePreparations += 1
+            let generation = preparationGeneration
             let prepare = prepare
             Task { [weak self] in
                 var prepared: (upload: Data, thumbnail: Data?)?
@@ -90,7 +111,11 @@ final class AlbumUploadQueue {
                 } catch AlbumImageProcessing.Failure.tooLarge {
                     failure = AlbumFailure.tooLarge.message
                 } catch {}
-                guard let self, let index = self.items.firstIndex(where: { $0.id == id }) else { return }
+                guard let self else { return }
+                // A queue cleared meanwhile (sign-out) already reset its own counters.
+                if generation == self.preparationGeneration { self.activePreparations -= 1 }
+                defer { if generation == self.preparationGeneration { self.pumpPreparation() } }
+                guard let index = self.items.firstIndex(where: { $0.id == id }) else { return }
                 if let prepared {
                     self.items[index].upload = PhotoUpload(id: id, data: prepared.upload)
                     self.items[index].thumbnail = prepared.thumbnail
@@ -148,6 +173,7 @@ final class AlbumUploadQueue {
     /// Sign-out or account switch: drafts belong to that session only.
     func cancelAll() {
         worker?.cancel(); worker = nil; workerGeneration += 1
+        preparationQueue.removeAll(); activePreparations = 0; preparationGeneration += 1
         settlers.values.forEach { $0.cancel() }; settlers.removeAll(); shown.removeAll(); published.removeAll()
         items.removeAll()
     }

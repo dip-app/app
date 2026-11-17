@@ -37,10 +37,17 @@ final class NotificationDocumentMapperTests: XCTestCase {
 
     func testMissingOptionalFieldsDefaultSafely() {
         let item = NotificationDocumentMapper.notification(
-            id: "d", fields: ["type": "mystery", "title": "Hello"], uid: "me")
+            id: "d", fields: ["type": "mystery", "title": "Hello", "createdAt": created], uid: "me")
         XCTAssertEqual(item?.kind, .other)
         XCTAssertEqual(item?.destination, DIPNotificationDestination.none)
         XCTAssertEqual(item?.body, "")
         XCTAssertEqual(item?.isRead, false)
+    }
+
+    func testADocumentWithoutACreationTimeIsDroppedNotDatedNow() {
+        XCTAssertNil(NotificationDocumentMapper.notification(
+            id: "e", fields: ["type": "mystery", "title": "Hello"], uid: "me"))
+        XCTAssertNil(NotificationDocumentMapper.notification(
+            id: "f", fields: fields(["createdAt": NSNull()]), uid: "me"))
     }
 }

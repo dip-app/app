@@ -116,7 +116,7 @@ struct DIPInviteSheet: View {
                           message: "Check the spelling or try part of their first or last name.", faces: 2)
         case .failed(let failure):
             DIPEmptyState(screen: "invite-error", title: "Couldn’t search", message: failure.message, faces: 3,
-                          actionTitle: "Try again", action: failure.isRetryable ? { DIPHaptics.select(); Task { await model.search() } } : nil)
+                          actionTitle: "Try again", action: failure.isRetryable ? { DIPHaptics.commit(); Task { await model.search() } } : nil)
         }
     }
 
@@ -149,6 +149,13 @@ struct DIPInviteSheet: View {
         .padding(.vertical, 8).frame(minHeight: 75)
         .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: model.rowErrors[coworker.id])
         .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: model.alreadyInvitedIDs)
+        // The notice appears silently otherwise: say it.
+        .onChange(of: model.rowErrors[coworker.id]) { _, new in
+            if let new { AccessibilityNotification.Announcement(new.message).post() }
+        }
+        .onChange(of: model.alreadyInvitedIDs.contains(coworker.id)) { _, already in
+            if already { AccessibilityNotification.Announcement("A coworker already invited \(coworker.name).").post() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("invite.row.\(coworker.id)")
     }
@@ -169,13 +176,15 @@ struct DIPInviteSheet: View {
         case .available:
             let sending = model.sending.contains(coworker.id)
             Button {
+                // A second tap while the first is sending is ignored: no haptic, no failure.
+                guard !model.sending.contains(coworker.id) else { return }
                 DIPHaptics.commit()
                 Task {
                     let sent = await model.send(coworker)
                     if sent {
                         DIPHaptics.success()
                         AccessibilityNotification.Announcement("Invitation sent to \(coworker.name)").post()
-                    } else { DIPHaptics.failure() }
+                    } else if model.rowErrors[coworker.id] != nil { DIPHaptics.failure() }
                 }
             } label: {
                 Group {

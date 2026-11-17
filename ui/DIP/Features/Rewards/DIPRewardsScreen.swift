@@ -32,7 +32,7 @@ struct DIPRewardsScreen: View {
         self.onNotifications = onNotifications
         self.onProfile = onProfile
         // `--rewards-state=empty` is for design review only.
-        isEmpty = ProcessInfo.processInfo.arguments.contains("--rewards-state=empty")
+        isEmpty = MockLaunch.Flags.contains("--rewards-state=empty")
     }
 
     /// "Your points" with the balance as an outlined (informational, not pressable) pill on the right. The

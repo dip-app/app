@@ -25,19 +25,89 @@ struct DIPMedia: View {
             // Flexible: sizes to whatever frame the caller gives it (small stacks and the large profile photo).
             DIPCrewFace(style: .assigned(forUserID: userID))
         case .data(let bytes):
-            if let image = UIImage(data: bytes) {
-                Image(uiImage: image).resizable()
-            } else {
-                placeholder
-            }
+            DIPDataImage(bytes: bytes)
         }
     }
 
     // Matches the familiar Image composition API; all images above are resizable.
     func resizable() -> Self { self }
-    private var placeholder: some View {
+    private var placeholder: some View { DIPMediaPlaceholder() }
+}
+
+private struct DIPMediaPlaceholder: View {
+    var body: some View {
         Rectangle().fill(DIPTokens.Color.surfaceMuted.swiftUIColor)
             .overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
+    }
+}
+
+/// Decoded, display-ready images keyed by their bytes, so a body re-evaluation never decodes again.
+final class DIPDecodedImageCache: @unchecked Sendable {
+    static let shared = DIPDecodedImageCache()
+    private let cache = NSCache<NSString, UIImage>()
+
+    init(countLimit: Int = 80, byteLimit: Int = 96 * 1_024 * 1_024) {
+        cache.countLimit = countLimit; cache.totalCostLimit = byteLimit
+    }
+
+    /// Byte count plus three 256-byte samples: constant-time and distinct for different photos, unlike hashing the
+    /// whole buffer on every body pass.
+    static func key(for data: Data) -> String {
+        var hasher = Hasher()
+        let n = data.count, window = 256
+        for start in [0, max(0, n / 2 - window / 2), max(0, n - window)] {
+            let lower = data.startIndex + min(start, n), upper = min(data.endIndex, lower + window)
+            hasher.combine(data[lower..<upper])
+        }
+        return "\(n)-\(hasher.finalize())"
+    }
+
+    func image(forKey key: String) -> UIImage? { cache.object(forKey: key as NSString) }
+
+    func store(_ image: UIImage, forKey key: String) {
+        let cost = Int(image.size.width * image.scale * image.size.height * image.scale * 4)
+        cache.setObject(image, forKey: key as NSString, cost: cost)
+    }
+
+    /// Decodes off the main thread and caches. Nil when the bytes are not an image.
+    func decode(_ data: Data, key: String) async -> UIImage? {
+        if let hit = image(forKey: key) { return hit }
+        let decoded = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            guard let image = UIImage(data: data) else { return nil }
+            return await image.byPreparingForDisplay() ?? image
+        }.value
+        if let decoded { store(decoded, forKey: key) }
+        return decoded
+    }
+}
+
+/// Picker/uploaded bytes shown as an image: decoded once off-main into `DIPDecodedImageCache`.
+private struct DIPDataImage: View {
+    let bytes: Data
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    init(bytes: Data) {
+        self.bytes = bytes
+        _image = State(initialValue: DIPDecodedImageCache.shared.image(forKey: DIPDecodedImageCache.key(for: bytes)))
+    }
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image).resizable()
+            } else if failed {
+                DIPMediaPlaceholder()
+            } else {
+                Rectangle().fill(DIPTokens.Color.surfaceMuted.swiftUIColor)
+            }
+        }
+        .task(id: DIPDecodedImageCache.key(for: bytes)) {
+            let key = DIPDecodedImageCache.key(for: bytes)
+            if let hit = DIPDecodedImageCache.shared.image(forKey: key) { image = hit; failed = false; return }
+            let decoded = await DIPDecodedImageCache.shared.decode(bytes, key: key)
+            image = decoded; failed = decoded == nil
+        }
     }
 }
 

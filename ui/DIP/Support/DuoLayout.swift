@@ -17,8 +17,20 @@ struct DIPDuoLayout: Equatable {
     static let openMinWidth: CGFloat = 760
     static let none = DIPDuoLayout(leading: 0, trailing: 0)
 
+    /// Width below which an already open posture closes. Slightly under `openMinWidth` so a width hovering at the
+    /// threshold during a fold or rotation does not flap between the phone and the open shell.
+    static let closeBelowWidth: CGFloat = 740
+
     /// True when a column `width` wide is the open posture on a hinge device. Regular phones and iPad never are.
-    static func isOpen(hingeAvailable: Bool, width: CGFloat) -> Bool { hingeAvailable && width >= openMinWidth }
+    /// `wasOpen` applies hysteresis: an open posture stays open down to `closeBelowWidth`.
+    static func isOpen(hingeAvailable: Bool, width: CGFloat, wasOpen: Bool = false) -> Bool {
+        guard hingeAvailable else { return false }
+        return wasOpen ? width >= closeBelowWidth : width >= openMinWidth
+    }
+
+    /// Hinge availability never goes back to false once a hinge was seen: a transient `nil` update (fold, rotation,
+    /// scene change) must not swap the hosting subtree and drop all view state.
+    static func latchedHinge(seen: Bool, update: Bool) -> Bool { seen || update }
 
     var leading: CGFloat
     var trailing: CGFloat
@@ -46,7 +58,9 @@ extension EnvironmentValues {
 
 /// Learns whether the window's hierarchy provides hinge updates. Regular iPhones deliver `hinge == nil`.
 @MainActor @Observable final class DIPHingeObserver {
-    private(set) var hingeAvailable = false
+    /// Process-wide latch: once any window reported a hinge, later observers start with it (no identity swap).
+    private static var seenHinge = false
+    private(set) var hingeAvailable = DIPHingeObserver.seenHinge
     @ObservationIgnored private var interaction: AnyObject?
 
     /// Returns true once the interaction is installed, or when the OS has no hinge API (nothing to wait for).
@@ -57,7 +71,11 @@ extension EnvironmentValues {
         guard let window = (scenes.first { $0.activationState == .foregroundActive } ?? scenes.first)?.windows.first else { return false }
         let hinge = UIHingeInteraction { [weak self] _, update in
             let present = update.hinge != nil
-            MainActor.assumeIsolated { if self?.hingeAvailable != present { self?.hingeAvailable = present } }
+            MainActor.assumeIsolated {
+                let latched = DIPDuoLayout.latchedHinge(seen: DIPHingeObserver.seenHinge, update: present)
+                DIPHingeObserver.seenHinge = latched
+                if self?.hingeAvailable != latched { self?.hingeAvailable = latched }
+            }
         }
         window.addInteraction(hinge)
         interaction = hinge
@@ -97,6 +115,9 @@ private final class DIPDuoColumnController<Content: View>: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         host.view.backgroundColor = .clear
+        // The app is light only (screens also set `.preferredColorScheme(.light)`); keep UIKit chrome in step.
+        overrideUserInterfaceStyle = .light
+        host.overrideUserInterfaceStyle = .light
         addChild(host)
         view.addSubview(host.view)
         host.didMove(toParent: self)
@@ -114,7 +135,7 @@ private final class DIPDuoColumnController<Content: View>: UIViewController {
             hingeAvailable: true, safeLeading: insets.left, safeTrailing: insets.right, containerWidth: view.bounds.width)
         let width = max(0, view.bounds.width - layout.leading - layout.trailing)
         host.view.frame = CGRect(x: layout.leading, y: 0, width: width, height: view.bounds.height)
-        let open = DIPDuoLayout.isOpen(hingeAvailable: true, width: width)
+        let open = DIPDuoLayout.isOpen(hingeAvailable: true, width: width, wasOpen: isOpen)
         if open != isOpen { isOpen = open; applyRoot() }
     }
 }

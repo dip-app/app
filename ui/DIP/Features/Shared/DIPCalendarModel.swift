@@ -27,6 +27,12 @@ import SwiftUI
     /// Records for a model without a store (signed out, previews): kept for the session only.
     @ObservationIgnored private var memoryRecords: [String: DIPCalendarEntryRecord] = [:]
     private var recordsRevision = 0
+    /// Set by `invalidate()` (sign-out): in-flight work finishes quietly without reading, remembering or forgetting.
+    private(set) var isInvalidated = false
+    /// Releases what the composition wired to the model (the device observer); run once by `invalidate()`.
+    @ObservationIgnored var teardown: (@MainActor () -> Void)?
+    /// A record younger than this is never reconciled away: the system editor may still be saving the entry.
+    @ObservationIgnored static let reconcileGrace: TimeInterval = 10
 
     init(featureEnabled: Bool, store: DIPCalendarLocalStore?, device: (any DIPDeviceCalendar)?) {
         self.featureEnabled = featureEnabled
@@ -42,7 +48,7 @@ import SwiftUI
     // MARK: State
 
     /// DIP reads the device calendar only when all three hold.
-    var readsCalendar: Bool { featureEnabled && preferences.showsConflicts && access == .fullAccess }
+    var readsCalendar: Bool { !isInvalidated && featureEnabled && preferences.showsConflicts && access == .fullAccess }
 
     /// Direct save (no editor) only for members who opted in; everyone else reviews in the system editor.
     var savesDirectly: Bool { readsCalendar }
@@ -60,7 +66,17 @@ import SwiftUI
     }
 
     /// The device calendar changed (EKEventStoreChanged): conflicts are recomputed.
-    func calendarChanged() { revision += 1 }
+    func calendarChanged() { guard !isInvalidated else { return }; revision += 1 }
+
+    /// The member signed out (or the account changed): stop reading, drop the device observer and make every
+    /// in-flight remember/forget a no-op, so a late result cannot write into the next account's records.
+    func invalidate() {
+        guard !isInvalidated else { return }
+        isInvalidated = true
+        teardown?()
+        teardown = nil
+        revision += 1
+    }
 
     // MARK: Settings
 
@@ -97,11 +113,16 @@ import SwiftUI
         guard let metadata = event.metadata else { return [] }
         let dip = DIPCalendarOverlap.dipConflicts(for: event, among: events, now: now)
         guard readsCalendar, let device else { return dip }
-        let own = DIPCalendarOverlap.ownEntryURLs(eventIDs: [event.id] + events.filter(\.isJoined).map(\.id))
+        let ids = [event.id] + events.filter(\.isJoined).map(\.id)
+        let own = DIPCalendarOverlap.ownEntryURLs(eventIDs: ids)
+        let ownIdentifiers = ownEntryIdentifiers(eventIDs: ids)
         let fields = metadata.calendarFields(title: event.title, description: "", eventID: event.id)
         let deviceConflicts = await device.conflicts(
             start: fields.startDate, end: fields.endDate,
-            rules: DIPCalendarConflictRules(treatsAllDayAsBusy: preferences.treatsAllDayAsBusy), excluding: own)
+            rules: DIPCalendarConflictRules(treatsAllDayAsBusy: preferences.treatsAllDayAsBusy),
+            excluding: own, excludingIdentifiers: ownIdentifiers)
+        // The member may have signed out or turned conflicts off while the calendar was read.
+        guard readsCalendar else { return dip }
         return DIPCalendarOverlap.merged(dip: dip, device: deviceConflicts)
     }
 
@@ -115,9 +136,13 @@ import SwiftUI
         }
         guard let start = windows.map(\.1).min(), let end = windows.map(\.2).max() else { return ids }
         let index = DIPCalendarIndex(await device.items(start: start, end: end))
-        let own = DIPCalendarOverlap.ownEntryURLs(eventIDs: events.filter(\.isJoined).map(\.id) + candidates.map(\.id))
+        guard readsCalendar else { return ids }
+        let allIDs = events.filter(\.isJoined).map(\.id) + candidates.map(\.id)
+        let own = DIPCalendarOverlap.ownEntryURLs(eventIDs: allIDs)
+        let ownIdentifiers = ownEntryIdentifiers(eventIDs: allIDs)
         let rules = DIPCalendarConflictRules(treatsAllDayAsBusy: preferences.treatsAllDayAsBusy)
-        for (id, start, end) in windows where !index.conflicts(start: start, end: end, rules: rules, excluding: own).isEmpty {
+        for (id, start, end) in windows
+        where !index.conflicts(start: start, end: end, rules: rules, excluding: own, excludingIdentifiers: ownIdentifiers).isEmpty {
             ids.insert(id)
         }
         return ids
@@ -128,6 +153,12 @@ import SwiftUI
     func record(for eventID: String) -> DIPCalendarEntryRecord? {
         _ = recordsRevision
         return store?.record(for: eventID) ?? memoryRecords[eventID]
+    }
+
+    /// Calendar identifiers of the entries DIP created for these events, so they never conflict with themselves
+    /// even when the member edited the entry's URL.
+    func ownEntryIdentifiers(eventIDs: [String]) -> Set<String> {
+        Set(eventIDs.compactMap { record(for: $0)?.itemIdentifier })
     }
 
     /// In the calendar at the event's current times.
@@ -141,76 +172,163 @@ import SwiftUI
         return record.isOutdated(for: fields)
     }
 
+    /// Checks DIP's record against the calendar (full access only): an entry the member deleted in Calendar is
+    /// forgotten, so the pill offers Add again instead of a stale "Added". An entry that moved identifiers is
+    /// re-found by its share link. Returns true when the entry exists and DIP can remove it.
+    @discardableResult func reconcileEntry(eventID: String, fields: DIPCalendarEventFields, now: Date = Date()) async -> Bool {
+        guard !isInvalidated, let record = record(for: eventID), let device, access == .fullAccess else { return false }
+        if let identifier = record.itemIdentifier, await device.entryExists(identifier: identifier) { return !isInvalidated }
+        // The identifier is gone (or never known). Looking an entry up by its link scans the calendar, so only with opt-in.
+        var found: String?
+        if readsCalendar, let url = fields.url {
+            found = await device.identifier(forURL: url, start: record.startDate, end: record.endDate)
+        }
+        guard !isInvalidated, self.record(for: eventID) == record else { return false }
+        if let found {
+            if found != record.itemIdentifier {
+                var adopted = record
+                adopted.itemIdentifier = found
+                remember(adopted)
+            }
+            return true
+        }
+        if record.itemIdentifier != nil || readsCalendar {
+            // Only an editor-saved record (no identifier yet) gets the grace: the store may not show that entry yet.
+            let isFresh = record.itemIdentifier == nil && (record.savedAt.map { now.timeIntervalSince($0) < Self.reconcileGrace } ?? false)
+            if !isFresh { forget(eventID) }
+        }
+        return false
+    }
+
     /// Direct save (opted-in members). Callers use the system editor when `savesDirectly` is false and then
-    /// call `markAddedThroughEditor`.
-    func addDirectly(_ fields: DIPCalendarEventFields, eventID: String) async -> DIPCalendarAddResult {
+    /// call `markAddedThroughEditor`. An entry that already carries this event's share link (added before, then the
+    /// app was reinstalled or the member signed out and in) is adopted instead of duplicated.
+    func addDirectly(_ fields: DIPCalendarEventFields, eventID: String, now: Date = Date()) async -> DIPCalendarAddResult {
         guard savesDirectly, let device else { return .failed("Calendar access is off.") }
+        func entry(_ identifier: String) -> DIPCalendarEntryRecord {
+            DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: identifier, startDate: fields.startDate, endDate: fields.endDate, savedAt: now)
+        }
+        if let known = record(for: eventID)?.itemIdentifier, await device.entryExists(identifier: known) {
+            _ = try? await device.update(identifier: known, with: fields)
+            remember(entry(known))
+            return .added
+        }
+        if let url = fields.url, let existing = await device.identifier(forURL: url, start: fields.startDate, end: fields.endDate) {
+            _ = try? await device.update(identifier: existing, with: fields)
+            remember(entry(existing))
+            return .added
+        }
         do {
             let identifier = try await device.save(fields)
-            remember(DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: identifier, startDate: fields.startDate, endDate: fields.endDate))
+            remember(entry(identifier))
             return .added
+        } catch DIPCalendarWriteError.noDefaultCalendar {
+            return .failed("No calendar is set up for new events. Choose a default calendar in Settings > Calendar.")
         } catch {
             return .failed("Couldn’t save to your calendar. Try again, or check calendar access in Settings.")
         }
     }
 
-    /// The system editor saved the entry. DIP cannot see it, but with full access it can re-find it by its URL.
-    func markAddedThroughEditor(_ fields: DIPCalendarEventFields, eventID: String) async {
-        var identifier: String?
-        if readsCalendar, let device, let url = fields.url {
-            identifier = await device.identifier(forURL: url, start: fields.startDate, end: fields.endDate)
+    /// The system editor saved the entry. DIP cannot see it, but with full access it can re-find it by its URL; the
+    /// editor can finish before the store shows the entry, so the lookup is retried once shortly after.
+    func markAddedThroughEditor(_ fields: DIPCalendarEventFields, eventID: String, retryAfter: Duration = .milliseconds(500),
+                                now: Date = Date()) async {
+        let identifier = await findEditorEntry(fields)
+        remember(DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: identifier, startDate: fields.startDate,
+                                        endDate: fields.endDate, savedAt: now))
+        calendarChanged()
+        guard identifier == nil, readsCalendar else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: retryAfter)
+            guard let self, !isInvalidated, let late = await findEditorEntry(fields), var current = record(for: eventID),
+                  current.itemIdentifier == nil else { return }
+            current.itemIdentifier = late
+            remember(current)
         }
-        remember(DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: identifier, startDate: fields.startDate, endDate: fields.endDate))
+    }
+
+    private func findEditorEntry(_ fields: DIPCalendarEventFields) async -> String? {
+        guard readsCalendar, let device, let url = fields.url else { return nil }
+        return await device.identifier(forURL: url, start: fields.startDate, end: fields.endDate)
+    }
+
+    /// What `removeEntry` did.
+    enum Removal: Equatable {
+        /// DIP's entry was deleted.
+        case removed
+        /// Nothing to delete: the member already removed it (or there was no record). The record is cleared.
+        case alreadyGone
+        /// The entry could not be deleted; the record is kept so the member can try again or delete it in Calendar.
+        case failed
     }
 
     /// Undo after a direct save, and "Remove from your calendar" after leaving. Only touches the entry DIP
     /// created (its stored identifier, or the entry carrying this event's share link).
-    @discardableResult func removeEntry(eventID: String, fields: DIPCalendarEventFields) async -> Bool {
-        guard let record = record(for: eventID) else { return false }
-        guard let device, access == .fullAccess || record.itemIdentifier != nil else { forget(eventID); return false }
+    @discardableResult func removeEntry(eventID: String, fields: DIPCalendarEventFields) async -> Removal {
+        guard let record = record(for: eventID) else { return .alreadyGone }
+        guard let device, access == .fullAccess else {
+            // Nothing DIP can delete right now. Without an identifier there is nothing to come back to either.
+            if record.itemIdentifier == nil { forget(eventID) }
+            return .failed
+        }
         var identifier = record.itemIdentifier
         if identifier == nil, let url = fields.url {
             identifier = await device.identifier(forURL: url, start: record.startDate, end: record.endDate)
         }
-        guard let identifier else { forget(eventID); return false }
+        guard let identifier else { forget(eventID); return .alreadyGone }
         do {
-            try await device.remove(identifier: identifier)
+            try await device.remove(identifier: identifier, eventID: eventID)
             forget(eventID)
-            return true
+            return .removed
         } catch DIPCalendarWriteError.notFound {
+            // The identifier may be stale (the calendar re-synced): retry with the entry carrying the share link.
+            if let url = fields.url,
+               let current = await device.identifier(forURL: url, start: record.startDate, end: record.endDate), current != identifier {
+                do {
+                    try await device.remove(identifier: current, eventID: eventID)
+                    forget(eventID)
+                    return .removed
+                } catch { return .failed }
+            }
+            // Still there but not DIP's to delete: keep the record. Gone: nothing left to remove.
+            if await device.entryExists(identifier: identifier) { return .failed }
             forget(eventID)
-            return false
+            return .alreadyGone
         } catch {
-            return false
+            return .failed
         }
     }
 
-    /// True when leaving can offer "Remove from your calendar": DIP made the entry and can delete it.
+    /// Cheap gate for "Remove from your calendar": DIP made an entry and may delete it. The screen confirms with
+    /// `reconcileEntry` before offering it, so the option never promises a removal that cannot happen.
     func canRemoveEntry(eventID: String) -> Bool {
-        guard let record = record(for: eventID) else { return false }
-        return readsCalendar || (record.itemIdentifier != nil && access == .fullAccess)
+        guard !isInvalidated, access == .fullAccess, let record = record(for: eventID) else { return false }
+        return readsCalendar || record.itemIdentifier != nil
     }
 
     /// Moves DIP's entry to the event's new times.
-    @discardableResult func updateEntry(eventID: String, fields: DIPCalendarEventFields) async -> Bool {
+    @discardableResult func updateEntry(eventID: String, fields: DIPCalendarEventFields, now: Date = Date()) async -> Bool {
         guard readsCalendar, let device, let record = record(for: eventID) else { return false }
         var identifier = record.itemIdentifier
         if identifier == nil, let url = fields.url {
             identifier = await device.identifier(forURL: url, start: record.startDate, end: record.endDate)
         }
         guard let identifier, let updated = try? await device.update(identifier: identifier, with: fields) else { return false }
-        remember(DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: updated, startDate: fields.startDate, endDate: fields.endDate))
+        remember(DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: updated, startDate: fields.startDate,
+                                        endDate: fields.endDate, savedAt: now))
         return true
     }
 
     /// Leaving without removing (or without access): forget the record so the pill offers Add again later.
     func forget(_ eventID: String) {
+        guard !isInvalidated else { return }
         store?.removeRecord(for: eventID)
         memoryRecords[eventID] = nil
         recordsRevision += 1
     }
 
     private func remember(_ record: DIPCalendarEntryRecord) {
+        guard !isInvalidated else { return }
         if let store { store.save(record) } else { memoryRecords[record.eventID] = record }
         recordsRevision += 1
     }
@@ -241,6 +359,7 @@ extension DIPCalendarModel {
         let adapter = DIPEventKitDeviceCalendar()
         let model = DIPCalendarModel(featureEnabled: true, store: store, device: adapter)
         adapter.onChange = { [weak model] in model?.calendarChanged() }
+        model.teardown = { [weak adapter] in adapter?.onChange = nil }
         return model
     }
 
@@ -252,7 +371,7 @@ extension DIPCalendarModel {
         guard let state = arguments.first(where: { $0.hasPrefix(prefix) }).map({ String($0.dropFirst(prefix.count)) }) else { return nil }
         // Fixture events start whole days from now; the fake entries straddle each upcoming start.
         let upcoming = DIPMockFixtures.v1Events(now: now).eventDetails.values
-            .compactMap { event in event.metadata.map { (id: event.id, metadata: $0) } }
+            .compactMap { event in event.metadata.map { (id: event.id, title: event.title, metadata: $0) } }
             .filter { $0.metadata.startTime > now }
             .sorted { $0.metadata.startTime < $1.metadata.startTime }
         let store = DIPCalendarLocalStore(uid: uid, defaults: UserDefaults(suiteName: "work.letsdip.calendar-fake") ?? .standard)
@@ -260,6 +379,7 @@ extension DIPCalendarModel {
         var access = DIPCalendarAccess.fullAccess
         var preferences = DIPCalendarPreferences(showsConflicts: true, teaserDismissed: true)
         var items: [DIPCalendarItem] = []
+        var seeded: [(id: String, fields: DIPCalendarEventFields)] = []
         switch state {
         case "conflict":
             for (index, entry) in upcoming.enumerated() {
@@ -272,9 +392,9 @@ extension DIPCalendarModel {
             }
         case "added":
             // Every upcoming fixture event is already in the calendar (dictionary order is not stable).
+            // The fake calendar holds the entries too, so reconciliation keeps them.
             for entry in upcoming {
-                store.save(DIPCalendarEntryRecord(eventID: entry.id, itemIdentifier: nil,
-                                                  startDate: entry.metadata.startTime, endDate: entry.metadata.endTime))
+                seeded.append((entry.id, entry.metadata.calendarFields(title: entry.title, description: "", eventID: entry.id)))
             }
         case "off":
             access = .notDetermined
@@ -286,6 +406,11 @@ extension DIPCalendarModel {
         }
         store.preferences = preferences
         let device = DIPFakeDeviceCalendar(access: access, items: items)
+        for entry in seeded {
+            let identifier = device.insert(entry.fields)
+            store.save(DIPCalendarEntryRecord(eventID: entry.id, itemIdentifier: identifier,
+                                              startDate: entry.fields.startDate, endDate: entry.fields.endDate))
+        }
         return DIPCalendarModel(featureEnabled: true, store: store, device: device)
     }
     #endif

@@ -183,7 +183,12 @@ public enum AccountsState: Equatable, Sendable {
         guard let identity, identity.isEmailVerified, !isSubmitting else { return }
         resolvedUID = nil; state = .resolvingCompany(identity)
         guard await command({ try await repository.refreshIdentity() }) else { return }
-        if commandError == nil, case .resolvingCompany = state { beginResolving(identity) }
+        if let commandError {
+            // The refresh failed: do not sit on "Finding your company" forever. Show the failure (retryable).
+            if case .resolvingCompany = state { state = .recoverableError(commandError) }
+            return
+        }
+        if case .resolvingCompany = state { beginResolving(identity) }
     }
     public func refreshIdentity() async { await command { try await repository.refreshIdentity() } }
     public func updateProfile(_ profile: EditableProfile) async {

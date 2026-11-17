@@ -23,4 +23,19 @@ final class ChatSourceTests: XCTestCase {
         }
         XCTAssertTrue(ChatFailure.closed.message.contains("24 hours"))
     }
+
+    @MainActor func testWriteThatOutlastsTheTimeoutIsPendingNotFailed() async throws {
+        // Firestore keeps the write queued; failing it would show a ghost message and a duplicate after an edit.
+        let outcome = try await FirebaseParticipationSource.write(timeout: .milliseconds(30)) { _ in }
+        XCTAssertEqual(outcome, .pending)
+    }
+
+    @MainActor func testAcknowledgedWriteIsCommittedAndRealErrorsStillThrow() async throws {
+        let committed = try await FirebaseParticipationSource.write(timeout: .seconds(5)) { done in done(nil) }
+        XCTAssertEqual(committed, .committed)
+        do {
+            try await FirebaseParticipationSource.write(timeout: .seconds(5)) { done in done(ChatFailure.notGoing) }
+            XCTFail("a denied write must surface")
+        } catch { XCTAssertEqual(error as? ChatFailure, .notGoing) }
+    }
 }

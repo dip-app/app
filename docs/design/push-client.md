@@ -29,8 +29,9 @@ The whole client switch is one line. In the untracked `ui/Config/Local.xcconfig`
 ## Containment and sign-out
 
 - With the flag off, FirebaseMessaging is linked but inert: Info.plist sets `FirebaseMessagingAutoInitEnabled` to NO, and only `PushComposition.make()` (flag on) enables FCM auto-init. No token is minted and no FCM traffic starts.
-- The registered device is remembered per member (`uid|token`), so another member on the same phone always registers again; sign-out calls `unregisterDeviceV1` and deletes the FCM token, and a failed unregister is retried at the next sign-in. Forced sign-outs (expired or revoked sessions) cannot call the server; the server moves a token to the next registering member and prunes dead ones.
-- Registration is re-run whenever the app becomes active, so a permission granted later in iOS Settings takes effect.
+- The registered device is remembered per member (`uid|token`), so another member on the same phone always registers again; sign-out calls `unregisterDeviceV1` and deletes the FCM token. A failed unregister is remembered as `uid|token` and only retried while that same member signs in again (never as another member); the token deletion needs no sign-in, so it is retried at every activation and launch until it succeeds, which stops a signed-out phone receiving the previous member's pushes. The cleanup runs on the session ending (button, expired or revoked session, another account), not only on the sign-out button; forced sign-outs cannot call the server, and the server moves a token to the next registering member and prunes dead ones.
+- Register, refresh and sign-out run one at a time. A register that finishes after the member signed out is not remembered and is unregistered again.
+- Registration is re-run whenever the app becomes active, so a permission granted later in iOS Settings takes effect. If notifications are turned off in iOS Settings while registered, the next activation unregisters the device.
 
 ## Device verification and enablement checklist
 

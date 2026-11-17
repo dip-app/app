@@ -43,8 +43,8 @@ extension DIPEventMetadata {
         status == .scheduled && calendarEnd > now
     }
 
-    /// An absent or inverted end time defaults to one hour after the start.
-    var calendarEnd: Date {
+    /// The end the calendar entry gets: an absent or inverted end time defaults to one hour after the start.
+    public var calendarEnd: Date {
         endTime > startTime ? endTime : startTime.addingTimeInterval(Self.calendarDefaultDuration)
     }
 
@@ -54,10 +54,11 @@ extension DIPEventMetadata {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let end = calendarEnd
-        // All-day: starts at local midnight and spans whole days.
+        // All-day: starts at local midnight, ends at local midnight and spans at least one calendar day. Calendar day
+        // arithmetic, not 86_400 seconds: a daylight-saving day is 23 or 25 hours long.
         let allDay = calendar.startOfDay(for: startTime) == startTime
             && calendar.startOfDay(for: end) == end
-            && end.timeIntervalSince(startTime) >= 86_400
+            && (calendar.date(byAdding: .day, value: 1, to: startTime).map { end >= $0 } ?? false)
         let location = Self.uniqueJoined([venueName, address, locality])
         return DIPCalendarEventFields(
             title: Self.clip(title, Self.calendarTitleLimit), startDate: startTime, endDate: end,

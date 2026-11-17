@@ -41,7 +41,7 @@ struct DIPInvitationsScreen: View {
                            .init(id: Tab.sent, title: "Sent", identifier: "invitations.segment.sent")],
                 selection: tab, accent: DIPTokens.Color.actionPrimary.swiftUIColor, height: 50, fontSize: 18
             ) { newTab in
-                DIPHaptics.select()
+                // Switching tabs is navigation: silent.
                 withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { tab = newTab }
             }
             .padding(.horizontal, 20)
@@ -50,7 +50,10 @@ struct DIPInvitationsScreen: View {
                 content.padding(.horizontal, 20).padding(.top, 14).padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
-            .refreshable { onRetry() }
+            .refreshable {
+                onRetry()
+                await DIPNotificationsScreen.settle { model.invites == nil && model.phase == .loading }
+            }
         }
         .background(.white)
         .preferredColorScheme(.light)
@@ -97,7 +100,7 @@ struct DIPInvitationsScreen: View {
             switch model.phase {
             case .failed(let message):
                 DIPEmptyState(screen: "invitations-error", title: "Couldn’t load invitations", message: message, faces: 3,
-                              actionTitle: "Try again", action: { DIPHaptics.select(); onRetry() })
+                              actionTitle: "Try again", action: { DIPHaptics.commit(); onRetry() })
             default: loading
             }
         } else {
@@ -165,6 +168,7 @@ struct DIPInvitationsScreen: View {
         let busy = model.answering.contains(invite.id)
         let failure = model.answerErrors[invite.id]
         // A definite refusal (full, started, cancelled, gone) will not succeed on a second tap: Accept stays off.
+        let answered = failure == .alreadyAnswered
         let refused = failure.map { !$0.isRetryable } ?? false
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
@@ -197,22 +201,34 @@ struct DIPInvitationsScreen: View {
             .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
             .accessibilityLabel("View \(invite.eventTitle)")
             .accessibilityIdentifier("invitations.open.\(invite.id)")
-            HStack(spacing: 10) {
-                // Accept is the strong action (solid ink); Decline is the lighter secondary.
-                answerButton("Accept", fill: DIPTokens.Color.navigationBackground.swiftUIColor, text: .white, busy: busy,
-                             id: "invitations.accept.\(invite.id)") { answer(invite, accept: true) }
-                    .disabled(refused).opacity(refused ? 0.4 : 1)
-                answerButton("Decline", fill: DIPTokens.Color.surfaceMuted.swiftUIColor, text: DIPTokens.Color.textPrimary.swiftUIColor,
-                             busy: false, id: "invitations.decline.\(invite.id)") { answer(invite, accept: false) }
-            }
-            .disabled(busy)
-            if let failure {
-                InviteNotice(text: refused ? "\(failure.message) You can decline this invitation." : "\(failure.message) Tap Accept to try again.",
-                             identifier: "invitations.error.\(invite.id)")
+            if answered {
+                // Answered elsewhere (another device, an earlier tap): nothing left to do. No buttons, no "you can decline".
+                Text("Already answered")
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("invitations.answered.\(invite.id)")
+            } else {
+                HStack(spacing: 10) {
+                    // Accept is the strong action (solid ink); Decline is the lighter secondary.
+                    answerButton("Accept", fill: DIPTokens.Color.navigationBackground.swiftUIColor, text: .white, busy: busy,
+                                 id: "invitations.accept.\(invite.id)") { answer(invite, accept: true) }
+                        .disabled(refused).opacity(refused ? 0.4 : 1)
+                    answerButton("Decline", fill: DIPTokens.Color.surfaceMuted.swiftUIColor, text: DIPTokens.Color.textPrimary.swiftUIColor,
+                                 busy: false, id: "invitations.decline.\(invite.id)") { answer(invite, accept: false) }
+                }
+                .disabled(busy)
+                if let failure {
+                    InviteNotice(text: refused ? "\(failure.message) You can decline this invitation." : "\(failure.message) Tap Accept to try again.",
+                                 identifier: "invitations.error.\(invite.id)")
+                }
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.08), in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card))
+        .onChange(of: failure) { _, new in
+            if let new { AccessibilityNotification.Announcement(new == .alreadyAnswered ? "Already answered" : new.message).post() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("invitations.card.\(invite.id)")
     }
@@ -233,10 +249,15 @@ struct DIPInvitationsScreen: View {
     }
 
     private func answer(_ invite: DIPInvite, accept: Bool) {
+        // A second tap while the first is in flight is ignored: no haptic, no failure.
+        guard !model.answering.contains(invite.id) else { return }
         DIPHaptics.commit()
         Task {
             let reply = await model.respond(inviteID: invite.id, accept: accept)
-            if reply == nil { DIPHaptics.failure(); return }
+            if reply == nil {
+                if model.answerErrors[invite.id] != nil { DIPHaptics.failure() }
+                return
+            }
             DIPHaptics.success()
             let message = accept ? "You’re going to \(invite.eventTitle)" : "Declined \(invite.personName)’s invitation"
             AccessibilityNotification.Announcement(message).post()
@@ -343,10 +364,14 @@ struct DIPInvitationsScreen: View {
     }
 
     private func rejoin(_ invite: DIPInvite) {
+        guard !model.rejoining.contains(invite.id) else { return }
         DIPHaptics.commit()
         Task {
             let rejoined = await model.rejoin(invite, perform: onRejoin)
-            guard rejoined else { DIPHaptics.failure(); return }
+            guard rejoined else {
+                if model.rejoinErrors[invite.id] != nil { DIPHaptics.failure() }
+                return
+            }
             DIPHaptics.success()
             let message = "You’re going to \(invite.eventTitle) again"
             AccessibilityNotification.Announcement(message).post()

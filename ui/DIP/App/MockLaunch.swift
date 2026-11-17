@@ -16,6 +16,27 @@ import Foundation
 enum MockLaunch {
     enum Mode: Equatable { case member, onboarding }
 
+    /// The ONE reader of `--flag` launch arguments. Release builds never honor them (they would otherwise let anyone
+    /// who can pass launch arguments switch on test fixtures, delays or failure injection in a shipped app).
+    enum Flags {
+        static func contains(_ flag: String, arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
+            #if DEBUG
+            return arguments.contains(flag)
+            #else
+            return false
+            #endif
+        }
+
+        /// The value of a `--name=value` launch argument (pass `"--name="`); always nil in Release.
+        static func value(of prefix: String, arguments: [String] = ProcessInfo.processInfo.arguments) -> String? {
+            #if DEBUG
+            return arguments.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
+            #else
+            return nil
+            #endif
+        }
+    }
+
     #if DEBUG
     static func mode(
         arguments: [String] = ProcessInfo.processInfo.arguments,
