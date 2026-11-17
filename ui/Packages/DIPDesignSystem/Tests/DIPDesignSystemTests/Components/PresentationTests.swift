@@ -2,6 +2,7 @@ import XCTest
 
 @testable import DIPDesignSystem
 
+@MainActor
 final class PresentationTests: XCTestCase {
     func testMissingEventMetadataDoesNotInventDateOrLocation() {
         let content = DIPEventCardContent(
