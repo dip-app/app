@@ -1,3 +1,4 @@
+import type { NotificationCategory } from "./categories";
 import type { PushKind } from "./subscription";
 
 /** Push kinds: the subscription-driven kinds plus `invite`, which targets one recipient and ignores subscriptions. */
@@ -27,6 +28,12 @@ export interface PushMessage {
   threadId: string;
   /** APNs collapse identifier: a newer push of the same key replaces an undelivered older one. */
   collapseId?: string;
+  /** Preference category (domain/categories.ts); also sent as `data.category` so the app can group or filter. */
+  category: NotificationCategory;
+  /** APNs drops the push if it is still undelivered at this time (`apns-expiration`). */
+  expiresAt?: Date;
+  /** `aps.category` for actionable notifications; only set once the app registers that UNNotificationCategory. */
+  apnsCategory?: string;
 }
 
 export function shorten(text: string, max: number): string {
@@ -45,6 +52,7 @@ export function chatPush(companyId: string, eventId: string, eventTitle: string,
     body: `${author}: ${shorten(text, CHAT_PREVIEW_MAX)}`,
     data: { ...base("chat", companyId, eventId, "/chat"), messageId },
     threadId: `event-${eventId}`,
+    category: "chat",
   };
 }
 
@@ -55,6 +63,7 @@ export function changePush(companyId: string, eventId: string, eventTitle: strin
     data: { ...base("event_changed", companyId, eventId), revision: String(revision) },
     threadId: `event-${eventId}`,
     collapseId: `change-${eventId}`,
+    category: "event_updates",
   };
 }
 
@@ -71,6 +80,7 @@ export function reminderPush(companyId: string, eventId: string, eventTitle: str
     data: { ...base("reminder", companyId, eventId), window },
     threadId: `event-${eventId}`,
     collapseId: `reminder-${eventId}`,
+    category: "reminders",
   };
 }
 
@@ -83,5 +93,6 @@ export function invitePush(companyId: string, eventId: string, eventTitle: strin
     data: { ...base("invite", companyId, eventId), inviteId },
     threadId: "invites",
     collapseId: `invite-${inviteId}`,
+    category: "invites",
   };
 }
