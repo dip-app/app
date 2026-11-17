@@ -41,12 +41,14 @@ export const STYLE = `
     .art-cell { background-color: #23252E !important; }
     .light-img { display: none !important; max-height: 0 !important; overflow: hidden !important; }
     .dark-img { display: block !important; max-height: none !important; overflow: visible !important; }
+    .btn-a, .btn-t { color: #1E212B !important; }
   }
   [data-ogsc] .light-img, [data-ogsb] .light-img { display: none !important; max-height: 0 !important; overflow: hidden !important; }
   [data-ogsc] .dark-img, [data-ogsb] .dark-img { display: block !important; max-height: none !important; overflow: visible !important; }
   [data-ogsb] .art-cell { background-color: #23252E !important; }
   [data-ogsc] .text-main, [data-ogsc] .link { color: #ECEDEF !important; }
   [data-ogsc] .text-muted { color: #A3A7B3 !important; }
+  [data-ogsc] .btn-a, [data-ogsc] .btn-t { color: #1E212B !important; }
   [data-ogsc] del { color: #A3A7B3 !important; }
   [data-ogsc] .pill { color: #ECEDEF !important; border-color: #2C2F38 !important; }
   [data-ogsb] .bg-outer, [data-ogsb] body { background-color: #121318 !important; }
@@ -61,7 +63,12 @@ export const MSO_STYLE = `<!--[if mso]>
 
 const e = escapeHtml;
 
-/** Bulletproof primary button (purple, white bold text, 44px) with a VML roundrect fallback for classic Outlook. */
+/**
+ * Bulletproof primary button (purple fill, 44px) with a VML roundrect fallback for classic Outlook. Label colour rule:
+ * white (#FFFFFF) in light mode (inline base), ink (#1E212B) in dark mode (about 5.2:1 on #7B88FA; white is only about
+ * 3.1:1). The dark override targets the link (`btn-a`) and an inner span (`btn-t`) because clients restyle the `<a>`.
+ * The VML fallback stays white (classic Outlook has no dark CSS).
+ */
 export function primaryButton(href: string, labelText: string): string {
   const cta = e(href);
   const label = e(labelText);
@@ -69,7 +76,7 @@ export function primaryButton(href: string, labelText: string): string {
 <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${cta}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${label}</center></v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td align="center" height="44" bgcolor="${ACCENT}" style="height:44px;background-color:${ACCENT};border-radius:8px;"><a class="btn-a" href="${cta}" style="display:inline-block;padding:0 28px;height:44px;font-family:${FONT};font-size:16px;line-height:44px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">${label}</a></td></tr></table>
+<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td align="center" height="44" bgcolor="${ACCENT}" style="height:44px;background-color:${ACCENT};border-radius:8px;"><a class="btn-a" href="${cta}" style="display:inline-block;padding:0 28px;height:44px;font-family:${FONT};font-size:16px;line-height:44px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;"><span class="btn-t" style="color:#FFFFFF;">${label}</span></a></td></tr></table>
 <!--<![endif]-->`;
 }
 

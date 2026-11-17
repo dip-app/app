@@ -217,6 +217,20 @@ describe("email template invariants", () => {
     }
   });
 
+  test("primary button label is white in light mode and ink in dark mode (link and inner span, Outlook.com parity)", () => {
+    for (const c of PREVIEW_CASES) {
+      const { html } = render(c);
+      // Every purple-filled element that carries text must be the primary button.
+      const filled = (html.match(/bgcolor="#7B88FA"[^>]*>(?:(?!<\/td>).)*/g) ?? []).filter((f) => !f.includes("<img")); // art tiles carry no text
+      for (const f of filled) assert.ok(f.includes('class="btn-a"') && f.includes('class="btn-t"'), c.name);
+      if (filled.length === 0) continue;
+      assert.ok(/class="btn-a" href="[^"]*" style="[^"]*color:#FFFFFF;/.test(html), c.name);
+      assert.ok(/<span class="btn-t" style="color:#FFFFFF;">/.test(html), c.name);
+      assert.ok(/@media \(prefers-color-scheme: dark\) \{[^@]*\.btn-a, \.btn-t \{ color: #1E212B !important; \}/.test(html), c.name);
+      assert.ok(html.includes("[data-ogsc] .btn-a, [data-ogsc] .btn-t { color: #1E212B !important; }"), c.name);
+    }
+  });
+
   test("header and footer bands are full-bleed rows with the band color and a centered 600px inner table", () => {
     for (const c of LEGACY_CASES) {
       const { html } = render(c);
