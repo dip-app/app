@@ -1,4 +1,4 @@
-// Illustrations for Scout's cards: the weekly-theme art for interests that have a theme, matching scenes for
+// Illustrations for Dipbot's cards: the weekly-theme art for interests that have a theme, matching scenes for
 // the rest, and the flat spot illustrations in public/img/ai/ (scripts/make-ai-art.py) for the other choices.
 // Decorative only: every card names its option in text.
 
@@ -36,6 +36,6 @@ export function interestArt(tagId: string): Art {
 
 export type SpotGroup = "goal" | "size" | "setting" | "budget" | "timing";
 export const spotArt = (group: SpotGroup, value: string): Art => ({ src: `${BASE}/img/ai/${group}-${value}.svg`, bg: SPOT_BG, kind: "spot" });
-/** Scout's icon: the purple ghost mascot of the app avatars, on a soft lavender disc. */
-export const SCOUT_ICON = `${BASE}/img/ai/scout.svg`;
+/** Dipbot's avatar: the purple ghost mascot of the app avatars, on a soft lavender disc. */
+export const DIPBOT_ICON = `${BASE}/img/ai/dipbot.svg`;
 export const stateArt = (name: "thinking" | "results" | "empty") => `${BASE}/img/ai/state-${name}.svg`;

@@ -132,8 +132,8 @@ ART.update({
         + f'<path d="M96 64A5 5 0 0 1 96 74" fill="none" stroke="{INK}" stroke-width="2.4"/><path d="M82 54Q85 48 82 42" fill="none" stroke="{WHITE}" stroke-width="2.4" stroke-linecap="round"/>'),
 })
 
-# Scout's icon: the purple ghost mascot (as on the app avatar), on a soft lavender disc instead of the avatar's ink one.
-SCOUT = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><clipPath id="c"><circle cx="32" cy="32" r="32"/></clipPath></defs>'
+# Dipbot avatar: the purple ghost mascot (as on the app avatar), on a soft lavender disc instead of the avatar's ink one.
+DIPBOT = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><clipPath id="c"><circle cx="32" cy="32" r="32"/></clipPath></defs>'
          f'<circle cx="32" cy="32" r="32" fill="#E4E7FE"/><g clip-path="url(#c)"><g transform="translate(32 46) scale(.27)"><path d="{GHOST}" fill="{PURPLE}"/>'
          f'<circle cx="-26" cy="-14" r="9" fill="{INK}"/><circle cx="26" cy="-14" r="9" fill="{INK}"/><path d="M-20 20Q0 38 20 20" fill="none" stroke="{INK}" stroke-width="7" stroke-linecap="round"/></g></g></svg>\n')
 
@@ -141,5 +141,5 @@ out = Path(sys.argv[1])
 out.mkdir(parents=True, exist_ok=True)
 for name, body in ART.items():
     (out / f"{name}.svg").write_text(svg(body))
-(out / "scout.svg").write_text(SCOUT)
+(out / "dipbot.svg").write_text(DIPBOT)
 print(len(ART) + 1, "files")

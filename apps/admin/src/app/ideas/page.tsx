@@ -2,11 +2,11 @@
 
 import { Ideas } from "@/components/Ideas";
 import { Shell } from "@/components/Shell";
-import { SCOUT } from "@/lib/scout";
+import { t } from "@/lib/aiStrings";
 
 export default function IdeasPage() {
   return (
-    <Shell title={SCOUT.pageTitle} subtitle={`${SCOUT.tagline}: answer four quick questions, add a note, and get drafts to review.`} requires="ai.generate">
+    <Shell title={t("page.title")} subtitle={t("page.subtitle")} requires="ai.generate">
       <Ideas />
     </Shell>
   );

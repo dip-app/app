@@ -7,6 +7,7 @@ import {
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
+import { t } from "./aiStrings";
 import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
@@ -839,7 +840,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     // A fake Jev provider: fixed, typed answers (no model call). `?jev=` picks a scenario, `?ai=nodata` has no suggestions.
     async eventIdeaSuggestions() {
       staff("ai.generate");
-      if (aiScenario() === "off") throw new ApiError("failed-precondition", "AI event ideas are off for your company.", {}, "AI_DISABLED");
+      if (aiScenario() === "off") throw new ApiError("failed-precondition", `${t("off.title")}.`, {}, "AI_DISABLED");
       const scenario = typeof window === "undefined" ? "default" as const : suggestScenarioFromSearch(window.location.search);
       await aiDelay(scenario === "slow" ? 6000 : 400);
       if (scenario === "error") throw new ApiError("failed-precondition", "Suggestions are not available right now.", {}, "AI_UNAVAILABLE");
@@ -856,7 +857,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         return { ...replayed, replay: true };
       }
       await aiDelay(scenario === "slow" ? 8000 : 900);
-      if (scenario === "off") throw new ApiError("failed-precondition", "AI event ideas are off for your company.", {}, "AI_DISABLED");
+      if (scenario === "off") throw new ApiError("failed-precondition", `${t("off.title")}.`, {}, "AI_DISABLED");
       if (input.prompt.length > 500) throw new ApiError("invalid-argument", "Keep the note under 500 characters.", { prompt: "Keep the note under 500 characters." }, "AI_PROMPT_REJECTED");
       if (promptRejected(input.prompt)) {
         throw new ApiError("invalid-argument", "That note can’t be used. Describe the event you want instead.", { prompt: "That note can’t be used. Describe the event you want instead." }, "AI_PROMPT_REJECTED");

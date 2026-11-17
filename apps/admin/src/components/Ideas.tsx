@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
-import { type Art, SCOUT_ICON, SPOT_BG, assetUrl, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
+import { type Art, DIPBOT_ICON, SPOT_BG, assetUrl, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
 import {
   type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied,
 } from "@/lib/suggestionLabels";
@@ -12,33 +12,23 @@ import { ApiError } from "@/lib/contract";
 import {
   type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, NOTE_SUGGESTIONS, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
   bucketLevel, bucketText, capacityLabel, chooseSurprise, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
-  presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleInterest, venueLabel,
+  NONE, NOT_SET, presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleInterest, venueLabel,
 } from "@/lib/ideas";
-import { POWERED_BY_JEV, SCOUT } from "@/lib/scout";
+import { t, tMaybe, tn } from "@/lib/aiStrings";
 import { useApp } from "./AppProvider";
 import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
 
 type Phase = "edit" | "generating" | "results" | "error";
 
-const LIMIT_MESSAGES: Record<string, (ctx: EventIdeaContext | null) => string> = {
-  AI_DAILY_LIMIT: (c) => `You have used ${c ? `all ${c.usage.dailyGenerationLimit}` : "all"} of today’s drafts. The limit resets tomorrow.`,
-  AI_MONTHLY_LIMIT: (c) => `Your company has used ${c ? `all ${c.usage.monthlyGenerationLimit}` : "all"} of this month’s generations. The limit resets on the first of next month.`,
-  AI_BUDGET_EXHAUSTED: () => "This month’s AI budget is used up. It resets on the first of next month.",
-  AI_FLAG_LIMIT: () => "Several notes were turned down today, so generating is paused. Try again tomorrow.",
-  AI_OUTPUT_INVALID: () => "The AI returned drafts we couldn’t use. Nothing was counted against your limit. Try again.",
-  AI_UNAVAILABLE: () => "The AI service is busy right now. Nothing was counted against your limit. Try again in a moment.",
-  REQUEST_IN_PROGRESS: () => "This request is still running. Wait a moment, then try again.",
-  REQUEST_REUSED: () => "That request was already used for different choices. Generate again to start a new one.",
-  INSUFFICIENT_ROLE: () => SCOUT.adminsOnly,
-};
-
+/** Server reasons with their own copy (aiStrings `limit.<REASON>`); anything else shows the server message. */
 function failureMessage(error: unknown, ctx: EventIdeaContext | null): string {
   if (error instanceof ApiError) {
-    const known = error.reason ? LIMIT_MESSAGES[error.reason] : undefined;
-    return known ? known(ctx) : error.message;
+    const n = error.reason === "AI_DAILY_LIMIT" ? ctx?.usage.dailyGenerationLimit : ctx?.usage.monthlyGenerationLimit;
+    const known = error.reason ? tMaybe(`limit.${error.reason}`, { n: n ?? "" }) : null;
+    return known ? known.replace("all  of", "all of") : error.message;
   }
-  return "We couldn’t reach the server. Check your connection and try again.";
+  return t("error.offline");
 }
 
 const Check = () => (
@@ -210,9 +200,9 @@ export function Ideas() {
   }, [ctx, api.mode, generate]);
 
   if (ctxState.error) return <LoadError error={ctxState.error} onRetry={ctxState.reload} />;
-  if (!ctx) return <Loading label={`Loading ${SCOUT.name}`} />;
+  if (!ctx) return <Loading label={t("page.loading")} />;
   if (!ctx.enabled) {
-    return <Empty art={stateArt("empty")} title={SCOUT.off} body="An owner can turn it on. Until then, create events the usual way." action={<a className="pill-btn gray" href="/events/new/">New event</a>} />;
+    return <Empty art={stateArt("empty")} title={t("off.title")} body={t("off.body")} action={<a className="pill-btn gray" href="/events/new/">{t("off.action")}</a>} />;
   }
 
   const usage = ctx.usage;
@@ -228,7 +218,7 @@ export function Ideas() {
 
   const stepper = (
     <>
-      <ol className="stepper" aria-label="Steps">
+      <ol className="stepper" aria-label={t("stepper.label")}>
         {STEPS.map((s, i) => {
           const isDone = done(i);
           const isCurrent = phase !== "results" && i === step;
@@ -239,41 +229,41 @@ export function Ideas() {
                 disabled={!ok || isCurrent} onClick={() => goStep(i)}>
                 <span className="stepper-n" aria-hidden>{isDone && !isCurrent ? <Check /> : i + 1}</span>
                 <span className="stepper-label">{s.label}</span>
-                {isDone && !isCurrent && <span className="sr-only">, done</span>}
+                {isDone && !isCurrent && <span className="sr-only">{t("stepper.done")}</span>}
               </button>
             </li>
           );
         })}
       </ol>
       <div className="stepper-compact" aria-hidden={busy ? true : undefined}>
-        <p>{phase === "results" ? "All steps done" : `Step ${step + 1} of ${STEPS.length}: ${current.label}`}</p>
+        <p>{phase === "results" ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.label })}</p>
         <div className="bar-track"><span style={{ width: `${phase === "results" ? 100 : ((step + 1) / STEPS.length) * 100}%` }} /></div>
       </div>
     </>
   );
 
   const rail = (
-    <aside className="ideas-rail" aria-label="Summary">
+    <aside className="ideas-rail" aria-label={t("rail.label")}>
       <section className="rail-card">
-        <h2>Your choices</h2>
+        <h2>{t("rail.choices")}</h2>
         <dl className="choices">
           {lines.map((line) => (
             <div key={line.label}>
               <dt>{line.label}</dt>
-              <dd><button type="button" className="choice-edit" disabled={busy} onClick={() => goStep(line.step)} data-empty={line.value === "Not set" || line.value === "None" ? "true" : undefined}>
-                <span>{line.value}</span><span className="sr-only">. Edit</span>
+              <dd><button type="button" className="choice-edit" disabled={busy} onClick={() => goStep(line.step)} data-empty={line.value === NOT_SET || line.value === NONE ? "true" : undefined}>
+                <span>{line.value}</span><span className="sr-only">{t("rail.edit")}</span>
               </button></dd>
             </div>
           ))}
         </dl>
       </section>
       <section className="rail-card">
-        <h2>Usage</h2>
-        <p className="usage-line"><strong>{dailyLeft} of {usage.dailyGenerationLimit}</strong> left today</p>
-        <p className="usage-sub">Monthly: {usage.monthlyGenerationsUsed} of {usage.monthlyGenerationLimit} used</p>
-        <div className="bar-track" role="img" aria-label={`${usage.monthlyGenerationsUsed} of ${usage.monthlyGenerationLimit} monthly generations used`}><span style={{ width: `${monthlyPct}%` }} /></div>
+        <h2>{t("rail.usage")}</h2>
+        <p className="usage-line"><strong>{dailyLeft} of {usage.dailyGenerationLimit}</strong> {t("rail.left")}</p>
+        <p className="usage-sub">{t("rail.monthly", { used: usage.monthlyGenerationsUsed, limit: usage.monthlyGenerationLimit })}</p>
+        <div className="bar-track" role="img" aria-label={t("rail.monthlyAria", { used: usage.monthlyGenerationsUsed, limit: usage.monthlyGenerationLimit })}><span style={{ width: `${monthlyPct}%` }} /></div>
       </section>
-      <p className="privacy">{SCOUT.privacy}</p>
+      <p className="privacy">{t("privacy")}</p>
     </aside>
   );
 
@@ -299,34 +289,34 @@ export function Ideas() {
   const applied = labeledCount > 0 && suggestionsApplied(answers, labeled);
   const byJev = provider === "jev";
   // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
-  const scoutIcon = <img className="scout-icon" src={SCOUT_ICON} alt="" width={36} height={36} />;
+  const botIcon = <img className="bot-icon" src={DIPBOT_ICON} alt="" width={36} height={36} />;
 
   // Not on the note step: nothing there can be suggested.
   const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
     suggest === "loading"
       ? (
         <div className="sg-bar" data-state="loading" role="status">
-          {scoutIcon}
-          <p>{SCOUT.name} is looking at your members’ interests and past events…</p>
+          {botIcon}
+          <p>{t("suggest.loading")}</p>
         </div>
       )
       : labeledCount === 0
         ? (
           <div className="sg-bar" data-state="none">
-            {scoutIcon}
-            <p className="muted">{provider === "none" ? `No suggestions yet. ${SCOUT.name} suggests choices once members pick interests or your company has past events.` : "No clear favorites this time, so every option is open."}</p>
+            {botIcon}
+            <p className="muted">{t(provider === "none" ? "suggest.noData" : "suggest.noFavorite")}</p>
           </div>
         )
         : (
-          <div className="sg-bar" role="region" aria-label={SCOUT.suggestsFeature}>
-            {scoutIcon}
+          <div className="sg-bar" role="region" aria-label={t("suggest.feature")}>
+            {botIcon}
             <p>
-              <strong>{applied ? `Your choices match ${SCOUT.name}’s suggestions.` : SCOUT.suggestsCount(labeledCount)}</strong>{" "}
-              {!applied && byJev && <><span className="jev-credit">{POWERED_BY_JEV}.</span>{" "}</>}
-              <span className="muted">{applied ? "Change anything before you generate." : "Nothing is selected until you choose."}</span>
+              <strong>{applied ? t("suggest.matched") : tn("suggest.count", labeledCount)}</strong>{" "}
+              {!applied && byJev && <><span className="jev-credit">{t("suggest.poweredBy")}</span>{" "}</>}
+              <span className="muted">{t(applied ? "suggest.matchedHint" : "suggest.nothingSelected")}</span>
             </p>
             <button type="button" className="pill-btn gray small" disabled={applied || busy} onClick={() => set(applySuggestions(answers, labeled))}>
-              {applied ? "Applied" : "Use suggestions"}
+              {t(applied ? "suggest.applied" : "suggest.use")}
             </button>
           </div>
         )
@@ -339,7 +329,7 @@ export function Ideas() {
     const name = (s: LabeledSuggestion) => s.question === "interest" ? tagName(s.value)
       : [...GOALS, ...GROUP_SIZES, ...SETTINGS, ...BUDGETS, ...TIMINGS].find((o) => o.value === s.value)?.label ?? s.value;
     return (
-      <ul className="sg-caption" aria-label={SCOUT.suggestsFeature}>
+      <ul className="sg-caption" aria-label={t("suggest.feature")}>
         {items.map((s) => (
           <li key={s.question}>
             <Sparkle />
@@ -355,18 +345,18 @@ export function Ideas() {
       case "interests":
         return (
           <fieldset className="opt-fieldset">
-            <legend className="sr-only">Interests, pick up to {MAX_FOCUS}</legend>
+            <legend className="sr-only">{t("interests.legend", { n: MAX_FOCUS })}</legend>
             <div className="step-head">
               <h2 ref={heading} tabIndex={-1}>{current.heading}</h2>
-              <span className="muted" aria-live="polite">{atMax ? "Up to 3" : `Pick up to ${MAX_FOCUS}`}</span>
+              <span className="muted" aria-live="polite">{t(atMax ? "interests.atMax" : "interests.pick", { n: MAX_FOCUS })}</span>
             </div>
             {ctx.currentTheme && (
               <p className="callout">
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M2.5 8.2V2.5h5.7l5.3 5.3-5.7 5.7z" /><circle cx="5.5" cy="5.5" r=".8" fill="currentColor" /></svg>
-                <span>This week’s theme: <strong>{ctx.currentTheme.title}</strong>. Drafts can fit it.</span>
+                <span>{t("interests.theme")} <strong>{ctx.currentTheme.title}</strong>. {t("interests.themeFit")}</span>
               </p>
             )}
-            {!ctx.interestDataAvailable && <p className="info-note" role="note">Interest counts are not available yet, so pick any interests or let Scout choose.</p>}
+            {!ctx.interestDataAvailable && <p className="info-note" role="note">{t("interests.noData")}</p>}
             {suggestCaption(["interest"])}
             <div className="opt-grid cols-4">
               {interestCards.map((c) => {
@@ -378,9 +368,9 @@ export function Ideas() {
                   </Option>
                 );
               })}
-              <Option type="checkbox" name="interest" label={SCOUT.surprise} hint={SCOUT.surpriseHint} checked={answers.surprise} onChange={() => set(answers.surprise ? { surprise: false } : chooseSurprise(answers))} art={{ src: SCOUT_ICON, bg: SPOT_BG, kind: "avatar" }} />
+              <Option type="checkbox" name="interest" label={t("interests.surprise")} hint={t("interests.surpriseHint")} checked={answers.surprise} onChange={() => set(answers.surprise ? { surprise: false } : chooseSurprise(answers))} art={{ src: DIPBOT_ICON, bg: SPOT_BG, kind: "avatar" }} />
             </div>
-            {thin.length > 0 && <p className="muted thin-line">Fewer than 5 members: {thin.join(", ")}</p>}
+            {thin.length > 0 && <p className="muted thin-line">{t("interests.thin", { names: thin.join(", ") })}</p>}
           </fieldset>
         );
       case "goal":
@@ -401,11 +391,11 @@ export function Ideas() {
             {suggestCaption(["groupSize", "setting"])}
             <div className="two-col">
               <fieldset className="opt-fieldset">
-                <legend>Group size</legend>
+                <legend>{t("legend.groupSize")}</legend>
                 <div className="opt-grid cols-1">{GROUP_SIZES.map((o) => <Option key={o.value} type="radio" name="size" label={o.label} hint={o.hint} checked={answers.groupSize === o.value} onChange={() => set({ groupSize: o.value })} art={spotArt("size", o.value)} suggestion={shown("groupSize", o.value)} />)}</div>
               </fieldset>
               <fieldset className="opt-fieldset">
-                <legend>Setting</legend>
+                <legend>{t("legend.setting")}</legend>
                 <div className="opt-grid cols-1">{SETTINGS.map((o) => <Option key={o.value} type="radio" name="setting" label={o.label} hint={o.hint} checked={answers.setting === o.value} onChange={() => set({ setting: o.value })} art={spotArt("setting", o.value)} suggestion={shown("setting", o.value)} />)}</div>
               </fieldset>
             </div>
@@ -418,11 +408,11 @@ export function Ideas() {
             {suggestCaption(["budget", "timing"])}
             <div className="two-col">
               <fieldset className="opt-fieldset">
-                <legend>Budget per person</legend>
+                <legend>{t("legend.budget")}</legend>
                 <div className="opt-grid cols-1">{BUDGETS.map((o) => <Option key={o.value} type="radio" name="budget" label={o.label} hint={o.hint} checked={answers.budget === o.value} onChange={() => set({ budget: o.value })} art={spotArt("budget", o.value)} suggestion={shown("budget", o.value)} />)}</div>
               </fieldset>
               <fieldset className="opt-fieldset">
-                <legend>Timing</legend>
+                <legend>{t("legend.timing")}</legend>
                 <div className="opt-grid cols-1">{TIMINGS.map((o) => <Option key={o.value} type="radio" name="timing" label={o.label} hint={o.hint} checked={answers.timing === o.value} onChange={() => set({ timing: o.value })} art={spotArt("timing", o.value)} suggestion={shown("timing", o.value)} />)}</div>
               </fieldset>
             </div>
@@ -433,17 +423,17 @@ export function Ideas() {
           <div className="note-step">
             <div className="step-head"><h2 ref={heading} tabIndex={-1}>{current.heading}</h2></div>
             <div className="field">
-              <label htmlFor={noteId}>{SCOUT.noteLabel}</label>
+              <label htmlFor={noteId}>{t("note.label")}</label>
               <textarea id={noteId} ref={noteField} value={answers.prompt} maxLength={MAX_PROMPT} aria-invalid={noteError ? true : undefined}
                 aria-describedby={`${noteId}-count${noteError ? ` ${noteId}-error` : ""}`}
-                placeholder="For example: something new, vegetarian food, easy for people who use a wheelchair"
+                placeholder={t("note.placeholder")}
                 onChange={(e) => set({ prompt: e.target.value })} />
               <div className="note-meta">
                 <span id={`${noteId}-error`} className="error" role={noteError ? "alert" : undefined}>{noteError}</span>
                 <span id={`${noteId}-count`} className="muted count">{answers.prompt.length} / {MAX_PROMPT}</span>
               </div>
             </div>
-            <div className="suggest" role="group" aria-label="Suggestions">
+            <div className="suggest" role="group" aria-label={t("note.chips")}>
               {NOTE_SUGGESTIONS.map((text) => (
                 <button key={text} type="button" className="suggest-chip" onClick={() => {
                   const base = answers.prompt.trim();
@@ -453,7 +443,7 @@ export function Ideas() {
               ))}
             </div>
             <fieldset className="drafts-count">
-              <legend>Drafts</legend>
+              <legend>{t("note.count")}</legend>
               <div className="seg-radio">
                 {([1, 2, 3] as const).map((n) => (
                   <label key={n}><input type="radio" name="count" checked={answers.count === n} onChange={() => set({ count: n })} /><span>{n}</span></label>
@@ -473,23 +463,23 @@ export function Ideas() {
       <div className="step-actions">
         {lastStep && (
           <p className="muted quota-note" role={exhausted ? "alert" : undefined}>
-            {exhausted ? failureMessage(new ApiError("resource-exhausted", "", {}, usage.budgetExhausted ? "AI_BUDGET_EXHAUSTED" : dailyLeft === 0 ? "AI_DAILY_LIMIT" : "AI_MONTHLY_LIMIT"), ctx) : `Uses 1 of your ${remaining} remaining today.`}
+            {exhausted ? failureMessage(new ApiError("resource-exhausted", "", {}, usage.budgetExhausted ? "AI_BUDGET_EXHAUSTED" : dailyLeft === 0 ? "AI_DAILY_LIMIT" : "AI_MONTHLY_LIMIT"), ctx) : t("note.quota", { n: remaining })}
           </p>
         )}
-        {step > 0 && <button type="button" className="pill-btn gray" onClick={() => goStep(step - 1)}>Back</button>}
+        {step > 0 && <button type="button" className="pill-btn gray" onClick={() => goStep(step - 1)}>{t("action.back")}</button>}
         {lastStep
-          ? <button type="button" className="pill-btn purple" disabled={!readyToGenerate(answers) || exhausted} onClick={() => void generate(answers, false)}>Generate drafts</button>
-          : <button type="button" className="pill-btn purple" disabled={!stepValid(current.id, answers)} onClick={() => goStep(step + 1)}>Next</button>}
+          ? <button type="button" className="pill-btn purple" disabled={!readyToGenerate(answers) || exhausted} onClick={() => void generate(answers, false)}>{t("action.generate")}</button>
+          : <button type="button" className="pill-btn purple" disabled={!stepValid(current.id, answers)} onClick={() => goStep(step + 1)}>{t("action.next")}</button>}
       </div>
     </section>
   );
 
   const generating = (
-    <section className="step-panel" aria-label="Generating drafts" aria-busy="true">
+    <section className="step-panel" aria-label={t("generating.label")} aria-busy="true">
       <div className="status-row">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="state-art" src={stateArt("thinking")} alt="" width={64} height={48} />
-        <p className="status-line" role="status" aria-live="polite">Writing {answers.count} {answers.count === 1 ? "draft" : "drafts"}. This can take up to a minute.</p>
+        <p className="status-line" role="status" aria-live="polite">{tn("generating.status", answers.count)}</p>
       </div>
       <div className="draft-skeletons" aria-hidden>
         {Array.from({ length: answers.count }, (_, i) => (
@@ -500,26 +490,26 @@ export function Ideas() {
   );
 
   const errorPanel = (
-    <section className="step-panel" aria-label="Drafts could not be written">
+    <section className="step-panel" aria-label={t("error.label")}>
       <div className="banner error" role="alert"><span>{failureMessage(failure, ctx)}</span></div>
       <div className="step-actions">
-        <button type="button" className="pill-btn gray" onClick={() => goStep(STEPS.length - 1)}>Back to choices</button>
-        {readyToGenerate(answers) && remaining > 0 && <button type="button" className="pill-btn purple" onClick={() => void generate(answers, false)}>Try again</button>}
+        <button type="button" className="pill-btn gray" onClick={() => goStep(STEPS.length - 1)}>{t("error.backToChoices")}</button>
+        {readyToGenerate(answers) && remaining > 0 && <button type="button" className="pill-btn purple" onClick={() => void generate(answers, false)}>{t("error.retry")}</button>}
       </div>
     </section>
   );
 
   const results = result && (
-    <section className="results" aria-label={SCOUT.drafts}>
+    <section className="results" aria-label={t("results.label")}>
       <div className="results-bar">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} />
-        <p><strong>{SCOUT.drafts}: {result?.drafts.length ?? 0} ready.</strong> Review every detail before publishing.</p>
+        <p><strong>{t("results.ready", { n: result.drafts.length })}</strong> {t("results.review")}</p>
         <div className="results-actions">
           <button type="button" className="pill-btn gray" disabled={remaining <= 0} onClick={() => void generate(answers, true)}>
-            Regenerate{remaining > 0 ? ` (${remaining} left)` : ""}
+            {remaining > 0 ? t("results.regenerateLeft", { n: remaining }) : t("results.regenerate")}
           </button>
-          <button type="button" className="pill-btn gray" onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>Start over</button>
+          <button type="button" className="pill-btn gray" onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>{t("results.startOver")}</button>
         </div>
       </div>
       <ul className="draft-list">
@@ -566,20 +556,20 @@ function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpen: () =
       <div className="draft-main">
         <h3>{draft.title}</h3>
         <p className="rationale">{draft.rationale}</p>
-        <div className="draft-meta-wrap"><ul className="draft-meta" aria-label="Details">
+        <div className="draft-meta-wrap"><ul className="draft-meta" aria-label={t("draft.details")}>
           <li>{daypartLabel(draft.suggestedDaypart)}</li>
           <li>{durationLabel(draft.durationMinutes)}</li>
           <li>{capacityLabel(draft.capacity)}</li>
           <li>{costLabel(draft.costCents)}</li>
-          <li>{draft.isOutdoor ? "Outdoors" : "Indoors"}</li>
+          <li>{t(draft.isOutdoor ? "draft.outdoors" : "draft.indoors")}</li>
         </ul></div>
         <p className="venue-line">{venueLabel(draft)}</p>
-        {draft.tagIds.length > 0 && <ul className="draft-tags" aria-label="Tags">{draft.tagIds.map((id) => <li key={id}>{tagName(id)}</li>)}</ul>}
+        {draft.tagIds.length > 0 && <ul className="draft-tags" aria-label={t("draft.tags")}>{draft.tagIds.map((id) => <li key={id}>{tagName(id)}</li>)}</ul>}
         <p className={`draft-desc${open ? " open" : ""}`}>{draft.description}</p>
-        {long && <button type="button" className="link-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{open ? "Show less" : "Show more"}</button>}
+        {long && <button type="button" className="link-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{t(open ? "draft.showLess" : "draft.showMore")}</button>}
         <div className="draft-actions">
-          <button type="button" className="pill-btn gray" onClick={() => void copy()}>{copied ? "Copied" : "Copy text"}</button>
-          <button type="button" className="pill-btn purple" onClick={onOpen}>Open in editor</button>
+          <button type="button" className="pill-btn gray" onClick={() => void copy()}>{t(copied ? "draft.copied" : "draft.copy")}</button>
+          <button type="button" className="pill-btn purple" onClick={onOpen}>{t("draft.open")}</button>
         </div>
       </div>
     </li>

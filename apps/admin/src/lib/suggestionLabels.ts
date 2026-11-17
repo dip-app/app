@@ -3,15 +3,16 @@
 // caps live here so they can be audited and changed together (unit tested in __tests__/suggestionLabels.test.ts).
 
 import type { AiStepSuggestion, AiSuggestionProvider, AiSuggestionQuestion } from "./adminTypes";
+import { t } from "./aiStrings";
 import { type Answers, MAX_FOCUS, type StepId } from "./ideas";
 
 export type SuggestionLevel = "perfect" | "great" | "good";
 
 /** Highest first. A probability below the last `min` gets no label (and no highlight). */
 export const SUGGESTION_LEVELS: readonly { level: SuggestionLevel; min: number; label: string }[] = [
-  { level: "perfect", min: 0.85, label: "Perfect fit" },
-  { level: "great", min: 0.7, label: "Great choice" },
-  { level: "good", min: 0.55, label: "Good match" },
+  { level: "perfect", min: 0.85, label: t("level.perfect") },
+  { level: "great", min: 0.7, label: t("level.great") },
+  { level: "good", min: 0.55, label: t("level.good") },
 ];
 
 /**
@@ -90,9 +91,9 @@ export function suggestionsApplied(answers: Answers, labeled: Partial<Record<AiS
 }
 
 /** Tooltip title: who suggested it. Only Jev is named; the fallbacks read "Suggested". */
-export const suggestedBy = (provider: AiSuggestionProvider) => (provider === "jev" ? "Suggested by Jev" : "Suggested");
+export const suggestedBy = (provider: AiSuggestionProvider) => t(provider === "jev" ? "suggest.by.jev" : "suggest.by.other");
 
 /** Screen reader text for a labeled option, for example "Jev suggests this: perfect fit". */
 export function spokenSuggestion(level: SuggestionLevel, provider: AiSuggestionProvider): string {
-  return `${provider === "jev" ? "Jev suggests this" : "Suggested"}: ${labelOf(level).toLowerCase()}`;
+  return t(provider === "jev" ? "suggest.spoken.jev" : "suggest.spoken.other", { label: labelOf(level).toLowerCase() });
 }

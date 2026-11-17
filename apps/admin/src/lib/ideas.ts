@@ -1,62 +1,34 @@
-// Pure logic for the "Event ideas" flow (AI drafts): steps, answers, labels, request id reuse, and the hand-off
-// from a generated draft to the event form. No React and no network, so it is unit tested directly.
+// Pure logic for the Dipbot flow (AI drafts): steps, answers, labels, request id reuse, and the hand-off from a
+// generated draft to the event form. No React and no network, so it is unit tested directly. Every user-facing
+// string comes from aiStrings.ts.
 
 import type {
   AiBudget, AiDaypart, AiEventChoices, AiGoal, AiGroupSize, AiSetting, AiTiming, AiVenueType, GeneratedEventDraft,
 } from "./adminTypes";
+import { type AiStringKey, t } from "./aiStrings";
 import { COVERS, TAG_IDS } from "./catalog";
-import { SCOUT } from "./scout";
 import type { EventDraft } from "./contract";
 
 export const MAX_FOCUS = 3;
 export const MAX_PROMPT = 500;
 
 export type StepId = "interests" | "goal" | "group" | "budget" | "note";
-export const STEPS: { id: StepId; label: string; heading: string }[] = [
-  { id: "interests", label: "Interests", heading: "What people like" },
-  { id: "goal", label: "Goal", heading: "What is the goal?" },
-  { id: "group", label: "Group and setting", heading: "Who is it for, and where?" },
-  { id: "budget", label: "Budget and timing", heading: "What budget, and when?" },
-  { id: "note", label: SCOUT.askLabel, heading: SCOUT.askHeading },
-];
+const STEP_IDS: StepId[] = ["interests", "goal", "group", "budget", "note"];
+export const STEPS: { id: StepId; label: string; heading: string }[] = STEP_IDS.map((id) => ({
+  id, label: t(`step.${id}.label` as AiStringKey), heading: t(`step.${id}.heading` as AiStringKey),
+}));
 
 interface Option<T extends string> { value: T; label: string; hint: string }
-export const GOALS: Option<AiGoal>[] = [
-  { value: "team_bonding", label: "Team bonding", hint: "Get to know each other" },
-  { value: "wellness", label: "Wellness", hint: "Move, relax, recharge" },
-  { value: "learning", label: "Learning", hint: "Try or teach something new" },
-  { value: "give_back", label: "Give back", hint: "Help the community" },
-  { value: "celebrate", label: "Celebrate", hint: "Mark a win or a milestone" },
-  { value: "competition", label: "Friendly competition", hint: "Teams, scores, bragging rights" },
-];
-export const GROUP_SIZES: Option<AiGroupSize>[] = [
-  { value: "small", label: "Small", hint: "Under 10 people" },
-  { value: "team", label: "Team", hint: "10 to 30 people" },
-  { value: "company", label: "Company-wide", hint: "Everyone is welcome" },
-];
-export const SETTINGS: Option<AiSetting>[] = [
-  { value: "indoors", label: "Indoors", hint: "At the office or a venue" },
-  { value: "outdoors", label: "Outdoors", hint: "Parks, trails, open air" },
-  { value: "offsite", label: "Nearby offsite", hint: "Somewhere close to the office" },
-];
-export const BUDGETS: Option<AiBudget>[] = [
-  { value: "free", label: "Free", hint: "No cost per person" },
-  { value: "under_15", label: "Under $15", hint: "Per person" },
-  { value: "from_15_to_50", label: "$15 to $50", hint: "Per person" },
-  { value: "over_50", label: "Over $50", hint: "Per person" },
-];
-export const TIMINGS: Option<AiTiming>[] = [
-  { value: "weekday_lunch", label: "Weekday lunch", hint: "Around noon" },
-  { value: "after_work", label: "After work", hint: "Weekday evening" },
-  { value: "weekend", label: "Weekend", hint: "Saturday or Sunday" },
-];
+function options<T extends string>(group: "goal" | "size" | "setting" | "budget" | "timing", values: readonly T[]): Option<T>[] {
+  return values.map((value) => ({ value, label: t(`${group}.${value}` as AiStringKey), hint: t(`${group}.${value}.hint` as AiStringKey) }));
+}
+export const GOALS = options<AiGoal>("goal", ["team_bonding", "wellness", "learning", "give_back", "celebrate", "competition"]);
+export const GROUP_SIZES = options<AiGroupSize>("size", ["small", "team", "company"]);
+export const SETTINGS = options<AiSetting>("setting", ["indoors", "outdoors", "offsite"]);
+export const BUDGETS = options<AiBudget>("budget", ["free", "under_15", "from_15_to_50", "over_50"]);
+export const TIMINGS = options<AiTiming>("timing", ["weekday_lunch", "after_work", "weekend"]);
 
-export const NOTE_SUGGESTIONS = [
-  "Something new for the team",
-  "Vegetarian food options",
-  "Easy for people who use a wheelchair",
-  "Quiet and low pressure",
-];
+export const NOTE_SUGGESTIONS = (["note.chip.new", "note.chip.vegetarian", "note.chip.wheelchair", "note.chip.quiet"] as const).map((key) => t(key));
 
 export interface Answers {
   focusTagIds: string[];
@@ -113,24 +85,26 @@ export function choicesOf(a: Answers): AiEventChoices | null {
 
 const labelOf = <T extends string>(options: Option<T>[], value: T | null) => options.find((o) => o.value === value)?.label ?? "";
 
+export const NOT_SET = t("rail.notSet");
+export const NONE = t("rail.none");
 export interface SummaryLine { step: number; label: string; value: string }
 /** The "Your choices" list. Unanswered lines read "Not set". */
 export function summaryLines(a: Answers, tagName: (id: string) => string): SummaryLine[] {
-  const interests = a.surprise ? SCOUT.surprise : a.focusTagIds.map(tagName).join(", ");
+  const interests = a.surprise ? t("interests.surprise") : a.focusTagIds.map(tagName).join(", ");
   const group = [labelOf(GROUP_SIZES, a.groupSize), labelOf(SETTINGS, a.setting)].filter(Boolean).join(", ");
   const budget = [labelOf(BUDGETS, a.budget), labelOf(TIMINGS, a.timing)].filter(Boolean).join(", ");
   const note = a.prompt.trim();
   return [
-    { step: 0, label: "Interests", value: interests || "Not set" },
-    { step: 1, label: "Goal", value: labelOf(GOALS, a.goal) || "Not set" },
-    { step: 2, label: "Group and setting", value: group || "Not set" },
-    { step: 3, label: "Budget and timing", value: budget || "Not set" },
-    { step: 4, label: SCOUT.askLabel, value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : "None" },
+    { step: 0, label: STEPS[0].label, value: interests || NOT_SET },
+    { step: 1, label: STEPS[1].label, value: labelOf(GOALS, a.goal) || NOT_SET },
+    { step: 2, label: STEPS[2].label, value: group || NOT_SET },
+    { step: 3, label: STEPS[3].label, value: budget || NOT_SET },
+    { step: 4, label: STEPS[4].label, value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : NONE },
   ];
 }
 
 export type Bucket = "5-9" | "10-19" | "20+";
-export const bucketText = (bucket: Bucket) => (bucket === "20+" ? "20+ members" : bucket === "10-19" ? "10 to 19 members" : "5 to 9 members");
+export const bucketText = (bucket: Bucket) => t(`bucket.${bucket}`);
 export const bucketLevel = (bucket: Bucket) => (bucket === "20+" ? 3 : bucket === "10-19" ? 2 : 1);
 
 // ---------- Request ids

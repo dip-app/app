@@ -110,9 +110,9 @@ $r-box: 8px;
   .sg-bar { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; background: $white; border: 1px solid $line; border-radius: $r-box; font-size: 13px;
     p { flex: 1; min-width: 0; text-wrap: pretty; strong { font-weight: 600; } }
     .pill-btn { flex: none; } }
-  .scout-icon { width: 36px; height: 36px; border-radius: 50%; flex: none; display: block; }
+  .bot-icon { width: 36px; height: 36px; border-radius: 50%; flex: none; display: block; }
   .sg-bar[data-state="loading"] p { color: var(--muted); }
-  @media (prefers-reduced-motion: no-preference) { .sg-bar[data-state="loading"] .scout-icon { animation: pulse 1.4s ease-in-out infinite; } }
+  @media (prefers-reduced-motion: no-preference) { .sg-bar[data-state="loading"] .bot-icon { animation: pulse 1.4s ease-in-out infinite; } }
   @media (max-width: 699px) { .sg-bar { flex-wrap: wrap; .pill-btn { flex-basis: 100%; min-height: 40px; } } }
   .jev-credit { color: $sg-ink; font-weight: 500; }
   .sg-caption { list-style: none; margin: -2px 0 10px; padding: 0; display: grid; gap: 2px; font-size: 13px;
