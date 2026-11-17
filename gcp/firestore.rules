@@ -168,6 +168,13 @@ service cloud.firestore {
     match /tags/{tagId} {
       allow read: if verified();
     }
+    // Interest tag counts (docs/design/stretch/tag-interest-counts.md): per company, server-owned (trigger and
+    // nightly reconcile), readable by organizers and admins only. Members never see counts. The trigger's
+    // tagStatReceipts stay server-only through the deny-all fallthrough.
+    match /companies/{companyId}/tagStats/{tagId} {
+      allow get: if organizer(companyId);
+      allow list: if organizer(companyId) && request.query.limit != null && request.query.limit <= 200;
+    }
     // --- Activity chat, notification preferences (notifications module, docs/contracts/callables.md) ---
     // Chat: same-company members with a "going" RSVP read and append; no edit/delete. The message ID is the
     // client-generated clientMessageId, so a retry can never create a duplicate. Author display fields must

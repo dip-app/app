@@ -58,6 +58,13 @@ export interface Tag {
   sortOrder: number;
 }
 
+export interface TagStat {
+  tagId: string;
+  memberCount: number;
+  updatedAt: string;
+  reconciledAt?: string | null;
+}
+
 export interface Partner {
   id?: string;
   name: string;

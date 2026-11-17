@@ -84,6 +84,23 @@
         { "fieldPath": "companyId", "order": "ASCENDING" },
         { "fieldPath": "pointsBalance", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "interestTagIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "interestTagIds", "arrayConfig": "CONTAINS" }
+      ]
     }
   ],
   "fieldOverrides": [
