@@ -198,6 +198,16 @@ describe("getEventIdeaSuggestionsV1", () => {
     assert.equal(r.jev.calls.length + r.openai.calls.length, 0);
   });
 
+  test("platform ceiling: spend counts toward it, and a full ceiling falls back to the heuristic", async () => {
+    const r = rig();
+    await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    assert.ok((r.store.get("aiUsagePlatform/203001")!.spentMicros as number) > 0, "suggestion spend reaches the platform total");
+    const full = rig({ settings: { platformMonthlyBudgetMicros: 0 } });
+    const out = await getEventIdeaSuggestions(full.deps, caller("admin1"), req());
+    assert.equal(out.provider, "heuristic");
+    assert.equal(full.jev.calls.length + full.openai.calls.length, 0);
+  });
+
   test("no interest data and no past events: a clean no-suggestion answer", async () => {
     const r = rig({ data: false });
     const out = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());

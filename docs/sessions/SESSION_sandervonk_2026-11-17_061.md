@@ -13,7 +13,7 @@ Dipbot Suggest for the admin AI flow: a new additive callable returns, per choic
 ## Changes
 
 - Contract: `GetEventIdeaSuggestionsRequest`, `AiStepSuggestion`, `GetEventIdeaSuggestionsResponse` in `contracts/v1/models.schema.json` (additive) and regenerated TS/Swift models.
-- Backend (new files only, plus two export lines): `gcp/functions/src/modules/ai/domain/suggestions.ts` (questions, shared privacy-safe state, argmax interpretation, heuristic, code-written reasons, past-event aggregation), `application/suggestions.ts` (auth `ai.generate`, AI-off check, per-session cache in `companies/{c}/aiSuggestions/{uid}_{sessionId}` for 1 h, budget pre-check, provider chain, spend metered into month/day totals, content-free log), `infrastructure/suggestionSources.ts` (Firestore past events, demo provider), `transport/suggestionCallables.ts` (`getEventIdeaSuggestionsV1`); `modules/ai/index.ts`, `src/index.ts` exports.
+- Backend (new files only, plus two export lines): `gcp/functions/src/modules/ai/domain/suggestions.ts` (questions, shared privacy-safe state, argmax interpretation, heuristic, code-written reasons, past-event aggregation), `application/suggestions.ts` (auth `ai.generate`, AI-off check, per-session cache in `companies/{c}/aiSuggestions/{uid}_{sessionId}` for 1 h, budget pre-check, provider chain, spend metered into month/day totals and the platform ceiling from #252, content-free log), `infrastructure/suggestionSources.ts` (Firestore past events, demo provider), `transport/suggestionCallables.ts` (`getEventIdeaSuggestionsV1`); `modules/ai/index.ts`, `src/index.ts` exports.
 - Tests: `gcp/tests/unit/ai-suggestions.test.ts` (16), `apps/admin/src/lib/__tests__/suggestionLabels.test.ts` (thresholds, boundaries, ties, missing values, provider caps, apply/merge, mock levels).
 - Portal: `src/lib/aiStrings.ts` (Dipbot copy), `src/lib/suggestionLabels.ts` (threshold config), `src/lib/ideaArt.ts`, `Ideas.tsx` (tags, tooltip, captions, banner, pre-scroll, illustrations), `_ideas.scss` (card grid by breakpoints, stable card layout), `Ui.tsx` (optional `art` on Empty), API types/live/mock (`?jev=` scenarios), nav and page title.
 - Art: `apps/admin/public/img/ai/*.svg` (28 files, about 50 KB), generator `scripts/make-ai-art.py`.
@@ -22,7 +22,7 @@ Dipbot Suggest for the admin AI flow: a new additive callable returns, per choic
 ## Validation
 
 - `npx tsc --noEmit` (functions and admin), eslint on changed admin files: clean.
-- `node --import tsx --test tests/unit/ai-suggestions.test.ts tests/unit/ai-application.test.ts tests/unit/ai-infra.test.ts` and the other `ai-*` suites: 207 pass after rebasing on main.
+- `node --import tsx --test tests/unit/ai-suggestions.test.ts tests/unit/ai-application.test.ts tests/unit/ai-infra.test.ts` and the other `ai-*` suites: 221 pass after rebasing on main (17 in ai-suggestions, including the platform ceiling).
 - `npx vitest run src/lib/__tests__/aiStrings.test.ts src/lib/__tests__/suggestionLabels.test.ts src/lib/__tests__/ideas.test.ts`: 23 pass.
 - `npm run check:generated`, `npm run test:docs`, `npm run test:contracts` (49 pass).
 - Targeted only (owner preference): full `npm run check`, rules, Swift and Xcode builds not run. Generated Swift model added but not compiled.

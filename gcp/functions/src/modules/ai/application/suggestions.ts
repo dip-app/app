@@ -6,7 +6,7 @@ import { AdminError, invalid } from "../../admin/domain/errors";
 import { summarizeInterests } from "../domain/interests";
 import { dayKey, monthKey, aiPaths } from "../domain/paths";
 import { costMicros, DECISION_MAX_TOKENS } from "../domain/pricing";
-import { addSpend, dayOfMonth, effectiveLimits, monthDocument, readMonth } from "../domain/quota";
+import { addSpend, checkPlatform, dayOfMonth, effectiveLimits, monthDocument, platformDocument, readMonth, readPlatform } from "../domain/quota";
 import {
   aggregatePastEvents, fromAnswers, hasSignal, heuristicSuggestions, suggestionQuestions, suggestionState, type PastEventInput, type Suggestion, type SuggestionFacts,
 } from "../domain/suggestions";
@@ -79,7 +79,9 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
   const start = await deps.store.runReadOnly(async tx => {
     await authorize(tx, caller, companyId, "ai.generate");
     const now = deps.now();
-    const [settingsDoc, monthDoc, cacheDoc] = await tx.getMany([aiPaths.settings(companyId), aiPaths.month(companyId, monthKey(now)), path]);
+    const [settingsDoc, monthDoc, cacheDoc, platformDoc] = await tx.getMany([
+      aiPaths.settings(companyId), aiPaths.month(companyId, monthKey(now)), path, aiPaths.platform(monthKey(now)),
+    ]);
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
     if (!limits.enabled) throw new AdminError("failed-precondition", "AI_DISABLED", "AI event ideas are turned off for this company.");
     if (cacheDoc && expiry(cacheDoc) > now.getTime()) {
@@ -90,7 +92,13 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
     const pending = Object.values(month.pending).reduce((sum, r) => sum + r.micros, 0);
     const monthLeft = limits.monthlyBudgetMicros - month.spentMicros - pending;
     const dayLeft = limits.dailyBudgetMicros - (month.days[dayOfMonth(now)]?.spentMicros ?? 0) - pending;
-    return { budgetOk: monthLeft >= worst && dayLeft >= worst };
+    let platformOk = true;
+    try {
+      checkPlatform(readPlatform(platformDoc ?? null, now), deps.settings.platformMonthlyBudgetMicros, worst);
+    } catch {
+      platformOk = false;
+    }
+    return { budgetOk: monthLeft >= worst && dayLeft >= worst && platformOk };
   });
   if ("cached" in start) {
     return { contractVersion: 1, provider: start.cached.provider, suggestions: start.cached.suggestions, cached: true };
@@ -144,11 +152,16 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
   await deps.store.runTransaction(async tx => {
     const at = deps.now();
     const monthPath = aiPaths.month(companyId, monthKey(at));
-    const [monthDoc, cacheDoc] = await tx.getMany([monthPath, path]);
+    const platformPath = aiPaths.platform(monthKey(at));
+    const [monthDoc, cacheDoc, platformDoc] = await tx.getMany([monthPath, path, platformPath]);
     if (spent.micros > 0 || spent.tokensIn > 0) {
       const month = readMonth(monthDoc ?? null, at);
       addSpend(month, dayKey(at).slice(-2), { spentMicros: spent.micros, inputTokens: spent.tokensIn, outputTokens: spent.tokensOut });
       put(tx, monthPath, monthDoc ?? null, monthDocument(month));
+      // The platform-wide monthly ceiling counts every metered call, suggestions included.
+      const platform = readPlatform(platformDoc ?? null, at);
+      platform.spentMicros += spent.micros;
+      put(tx, platformPath, platformDoc ?? null, platformDocument(platform));
     }
     put(tx, path, cacheDoc ?? null, { uid: caller.uid, provider, suggestions, createdAt: at, expireAt: new Date(at.getTime() + SUGGESTION_TTL_MS) });
   });
