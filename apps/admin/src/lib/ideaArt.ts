@@ -2,6 +2,7 @@
 // the rest, and the flat spot illustrations in public/img/ai/ (scripts/make-ai-art.py) for the other choices.
 // Decorative only: every card names its option in text.
 
+import { asset } from "./asset";
 import { THEMES } from "./themes";
 
 export interface Art { src: string; /** Tile colour behind the transparent art. */ bg: string; kind: "theme" | "avatar" | "spot" }
@@ -15,10 +16,6 @@ const TAG_SCENE: Record<string, string> = {
   "tag-social": "social", "tag-cooking": "cooking", "tag-energetic": "energetic", "tag-hype": "hype", "tag-chill": "chill",
 };
 
-/** Public files are also served under the basePath, which works in `next dev` and the static export alike. */
-const BASE = "/admin";
-export const assetUrl = (path: string) => (path.startsWith("/img/") ? BASE + path : path);
-
 /** Light tile behind spot art and avatars (the portal's selected-row tint family). */
 export const SPOT_BG = "#F1F2FD";
 
@@ -27,15 +24,15 @@ export function interestArt(tagId: string): Art {
   if (theme?.illustration) {
     const svg = theme.illustration.replace(/\.png$/, ".svg");
     // Fitness ships as PNG only; the others have a lighter SVG next to the PNG.
-    return { src: BASE + (theme.key === "fitness" ? theme.illustration : svg), bg: theme.accent, kind: "theme" };
+    return { src: asset(theme.key === "fitness" ? theme.illustration : svg), bg: theme.accent, kind: "theme" };
   }
   const scene = TAG_SCENE[tagId];
-  if (scene) return { src: `${BASE}/img/ai/interest-${scene}.svg`, bg: SPOT_BG, kind: "theme" };
-  return { src: `${BASE}/img/ai/state-thinking.svg`, bg: SPOT_BG, kind: "spot" };
+  if (scene) return { src: asset(`/img/ai/interest-${scene}.svg`), bg: SPOT_BG, kind: "theme" };
+  return { src: asset("/img/ai/state-thinking.svg"), bg: SPOT_BG, kind: "spot" };
 }
 
 export type SpotGroup = "goal" | "size" | "setting" | "budget" | "timing";
-export const spotArt = (group: SpotGroup, value: string): Art => ({ src: `${BASE}/img/ai/${group}-${value}.svg`, bg: SPOT_BG, kind: "spot" });
+export const spotArt = (group: SpotGroup, value: string): Art => ({ src: asset(`/img/ai/${group}-${value}.svg`), bg: SPOT_BG, kind: "spot" });
 /** Dipbot's avatar: the purple ghost mascot of the app avatars, on a soft lavender disc. */
-export const DIPBOT_ICON = `${BASE}/img/ai/dipbot.svg`;
-export const stateArt = (name: "thinking" | "results" | "empty") => `${BASE}/img/ai/state-${name}.svg`;
+export const DIPBOT_ICON = asset("/img/ai/dipbot.svg");
+export const stateArt = (name: "thinking" | "results" | "empty") => asset(`/img/ai/state-${name}.svg`);

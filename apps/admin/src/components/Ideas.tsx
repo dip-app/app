@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
-import { type Art, DIPBOT_ICON, SPOT_BG, assetUrl, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
+import { type Art, DIPBOT_ICON, SPOT_BG, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
 import {
   type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied,
 } from "@/lib/suggestionLabels";
@@ -552,7 +552,7 @@ function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpen: () =
   return (
     <li className="draft-card">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="draft-thumb" src={assetUrl(cover.image)} alt="" width={120} height={80} />
+      <img className="draft-thumb" src={cover.image} alt="" width={120} height={80} />
       <div className="draft-main">
         <h3>{draft.title}</h3>
         <p className="rationale">{draft.rationale}</p>
