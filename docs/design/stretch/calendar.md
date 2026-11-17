@@ -1,0 +1,158 @@
+# Calendar conflicts and one-tap add (stretch S1)
+
+Status: design only. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Extends the shipped "add to calendar" flow.
+
+## Goal and user stories
+
+Show employees when an event conflicts with their own schedule, prefer events they can attend, and make the top-right date pill on the event page a one-tap add that is colored or disabled by availability, with a modal such as "Overlaps with Team Lunch".
+
+- As a member, the date pill is in the primary brand style when I am free, amber when something overlaps, and a checked, disabled "Added" state once it is in my calendar.
+- As a member with a conflict, tapping the pill opens "Overlaps with OTHER_EVENT_NAME" with "Add anyway" and "Cancel".
+- As a member, Home and My Events can surface events that fit my calendar first ("Fits your calendar" chip or sort), without hiding anything.
+- As a member, I can use all of it without giving DIP access to my calendar (the current editor flow keeps working).
+- As a privacy-minded member, my calendar contents never leave my phone.
+
+## Current state (findings)
+
+- Add to calendar is **write-only and permissionless**: `ui/DIP/Features/Shared/DIPEventCalendar.swift` presents `EKEventEditViewController` (runs out of process on iOS 17, user reviews and saves). The protocol `DIPEventCalendarAdding`, `DIPCalendarEventFields`, `canAddToCalendar` and the all-day "floating days" logic are in `ui/Packages/DIPCore/Sources/DIPCore/DIPCalendarEvent.swift` with tests (`CalendarEventTests`). The event page pill ("Monday, 11/23" with a calendar icon, `--calendar-label=generic` shows "Add to Calendar") and weekly-theme page use it (`DIPEventDetailsScreen.swift`, `DIPChallengeDetailsScreen.swift`).
+- `ui/project.yml` already declares `NSCalendarsWriteOnlyAccessUsageDescription`, although the editor flow does not need it. No full-access string exists.
+- The privacy policy (`apps/landing/privacy/index.html`) says: "Calendar: write-only access, only when you add an event to your calendar. DIP cannot read your calendar." **Reading for conflicts changes this statement.**
+- The pill does not know whether the member already added the event, and the event URL written to the calendar is the maps URL, so DIP cannot find its own calendar entry later.
+- Server side knows only DIP RSVPs. `Event` times are UTC instants; there is no company time zone field (UNVERIFIED, none found in contracts).
+- Google sign-in is used for account entry (ADR 0007), but with identity scopes only. There is no Google Calendar API integration.
+
+## Options considered
+
+Sources for every claim are listed at the end.
+
+| Option | Reads conflicts? | One-tap add? | Permission and review burden | Verdict |
+| --- | --- | --- | --- | --- |
+| 1. EventKitUI editor (today) | no | no (user taps Save) | none | keep as fallback |
+| 2. EventKit write-only (iOS 17) | no (cannot fetch events) | yes, `save` without UI | `NSCalendarsWriteOnlyAccessUsageDescription`, system prompt | useful only for add |
+| 3. EventKit full access (iOS 17) | **yes, on device** | yes | `NSCalendarsFullAccessUsageDescription` (name UNVERIFIED), system prompt, privacy policy change | **recommended** |
+| 4. Google Calendar API `freebusy.query` | yes, Google calendars only | via `events.insert` | Sensitive-scope OAuth verification (brand verification, justification, demo video, up to about 10 days; classification of the freebusy scopes UNVERIFIED), Limited Use policy, token handling | later, only if needed |
+| 5. ICS invite emailed from `events@letsdip.work` | no | no (recipient settings decide) | needs [email](email.md) infrastructure | optional fallback in emails |
+| 6. Service account with domain-wide delegation | yes | yes | A super admin of each customer Workspace must grant it; access to all users' data; not viable for arbitrary companies | reject |
+| 7. Per-user `webcal://` feed of "my DIP events" | no (one-way) | subscription, not per-event | secret URL token to manage | optional extra |
+| 8. Microsoft Graph `getSchedule` (`Calendars.ReadBasic`) | yes, work or school accounts | via events API | Entra app registration; not for personal accounts | only if Microsoft 365 companies ask |
+
+### Why on-device EventKit (option 3)
+
+- One API covers Apple Calendar plus every account the phone syncs (iCloud, Google, Exchange, Microsoft), so it works for companies on either suite without per-company setup.
+- Apple distinguishes write-only from full access: write-only cannot fetch existing events, full access can fetch and modify ([WWDC23 10052](https://developer.apple.com/videos/play/wwdc2023/10052/)). Reading for conflicts therefore needs full access.
+- Data processed only on the device is not "collected" for the App Store privacy label; anything derived and sent to a server is assessed separately ([app privacy details](https://developer.apple.com/app-store/app-privacy-details/)). Keeping the check on device avoids a label change and avoids Google restricted/sensitive-scope review.
+- Cost: the member must grant a broad "full calendar access" prompt. Mitigations: ask only after the member opts in from the conflict teaser, explain exactly what is read (times and titles, on device only), and keep the editor flow for anyone who declines.
+
+### Why not email invites or a service account
+
+- ICS `METHOD:REQUEST` invites are suggestions: Gmail's "add invitations to my calendar" setting defaults can leave a shared sender's invite as an email, and Outlook ignores requests from unknown senders by default ([Google help](https://support.google.com/calendar/answer/13159188), [Microsoft](https://support.microsoft.com/en-us/outlook/calendar-settings)). There is no conflict pre-check and no "was it added" signal.
+- Domain-wide delegation needs each customer's super admin to authorize our client ID and scopes, grants the service account the data of all their users, and may take up to 24 hours to apply ([Google admin](https://knowledge.workspace.google.com/admin/apps/control-api-access-with-domain-wide-delegation)). It cannot scale to arbitrary companies and is a large security liability.
+- Event emails (see [email](email.md)) should still carry an "Add to calendar" ICS attachment or link for people who read mail on a laptop.
+
+## Design (recommended)
+
+### Phases
+
+1. **Phase A, DIP-internal conflicts (no permission).** Using the member's own RSVPs ("going" events from My Events), compute overlaps with the viewed event and show "Overlaps with <your other DIP event>". Pure function in `DIPCore`, works offline, no privacy impact. Ships first.
+2. **Phase B, one-tap add and device calendar conflicts (opt-in).** Full-access read with an on-device conflict engine and the state-colored pill.
+3. **Phase C (optional).** Reminder-email ICS, `webcal://` feed, Google or Microsoft freebusy for web or portal use.
+
+### Conflict engine (on device)
+
+- `DIPCalendarConflictChecking` protocol in `DIPCore` (`func conflicts(for window: DateInterval) async -> [DIPCalendarConflict]`), EventKit adapter in `ui/DIP/Features/Shared`, fake for tests, mirroring `DIPEventCalendarAdding`.
+- One `EKEventStore.predicateForEvents(withStart:end:calendars:)` fetch per loaded window (for example the next 45 days), cached for the session and refreshed on `EKEventStoreChanged`; interval overlap computed in pure code. (`predicateForEvents` was not verified in fetched docs, UNVERIFIED; it is the standard EventKit read API.)
+- Ignore by default: the event's own previously added entry (matched by stored identifier or DIP URL, below), all-day events (a setting: "Treat all-day events as busy", default off), events marked free (`availability == .free`), declined events, and canceled events. Tentative counts as a soft conflict.
+- Output is minimal: `{title, start, end, isSoft}`. Titles are shown only on the member's own screen and are never logged, uploaded or put in analytics.
+- Performance: one fetch per window plus an O(n log n) sweep; the Home list asks the cached index, not the store.
+
+### States of the date pill
+
+| State | Look | Tap |
+| --- | --- | --- |
+| No calendar permission | Current outlined pill | System editor (today) |
+| Free | Primary brand fill, calendar-plus icon | Saves directly to the default calendar, shows "Added" toast with Undo (Undo deletes the entry) |
+| Soft or hard conflict | Amber outline and warning glyph | Modal "Overlaps with <name>" (up to 2 names then "and N more"), actions "Add anyway" and "Cancel" |
+| Already added | Check icon, muted, disabled | VoiceOver reads "Added to your calendar" |
+| Past or canceled | Hidden (unchanged, `canAddToCalendar`) | none |
+
+Colors come from semantic tokens in `ui/DesignSystem/tokens.json` (add `calendar.free`, `calendar.conflict` semantic roles; regenerate; no raw hex in views). White text on purple per the locked decisions. State must not rely on color alone (icon and label change too), and the modal and pill need accessibility labels and Dynamic Type checks ([accessibility notes](../../milestones/v2/ACCESSIBILITY.md)).
+
+### Tracking added events
+
+- Store `eventId -> EKEvent.eventIdentifier` locally (UserDefaults keyed per uid, same pattern as other local prefs) and also write the share link `https://letsdip.work/e/<eventId>` into the entry URL or notes, so entries can be re-found if the identifier changes.
+- When an event changes (time or venue) the existing change push arrives; the app offers "Update your calendar entry" (full access only).
+- When the member leaves an event, offer "Remove from your calendar".
+
+### Prioritizing attendable events
+
+Home gets a "Fits your calendar" chip and an optional sort within the existing filter row (`DIPHomeEventsPresentation` is pure and testable). Events are never hidden; conflicting events get a small warning glyph. A calendar conflict is computed after the feed loads, so first paint is unchanged.
+
+### Server and contract impact
+
+- **None** for phases A and B: no new callable, no Firestore field, no schema change. Conflicts are never written to the server.
+- Optional: an `ics` endpoint for the personal feed (Phase C) would be a new HTTPS function and a per-user token document (server-only); additive.
+
+### Interaction with push
+
+The server cannot know about calendar conflicts, so it never suppresses or changes "starting soon" pushes. On device, the app can show the conflict banner on the event page and My Events. A local notification when a calendar edit creates a new conflict is not reliable in the background and is out of scope. If the owner later wants conflict-aware pushes, the only privacy-preserving route is an on-device local notification scheduled while the app is foregrounded (open question 3).
+
+## Privacy and policy impact
+
+- Info.plist: add `NSCalendarsFullAccessUsageDescription` (exact key name UNVERIFIED, confirm in the Xcode "Privacy - Calendars Full Access Usage Description" entry); keep the write-only string while the app still saves without the editor.
+- Privacy policy (`apps/landing/privacy/index.html`, live at letsdip.work/privacy) must change from "cannot read your calendar" to: read access only if you turn on calendar conflicts; read on your device only, never uploaded, stored or shared; you can revoke it in iOS Settings. Ship the policy edit in the same release as the permission.
+- App Store privacy label: unchanged if nothing leaves the device. If Phase C adds server-side freebusy, add the data type and, for Google scopes, the Limited Use disclosure and a Google OAuth consent screen with brand verification ([verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification), [user data policy](https://developers.google.com/terms/api-services-user-data-policy)).
+- Whether EventKit needs a privacy-manifest entry is UNVERIFIED; check Apple's required-reason API list at build time.
+- Employee consent: opt-in per member, default off, reversible from Profile settings.
+
+## Testing plan
+
+- DIPCore unit tests: overlap math (adjacent, nested, multi-day, all-day float across time zones and DST, tentative vs busy, free, declined, own entry excluded), pill state reducer, Home chip ordering. Use the `CalendarEventTests` style with fixed zones.
+- Fakes for the checker and adder; UI tests with injected fakes for each pill state, the modal and Undo.
+- Device checklist: permission prompt wording, deny path falls back to the editor, revoke in iOS Settings mid-session, work and iCloud accounts, shared calendar, recurring events, timezone change while traveling, Undo, leave event cleanup.
+- No server tests needed for A and B.
+
+## Rollout and flags
+
+`DIP_CALENDAR_CONFLICTS_ENABLED` build flag plus a Profile toggle ("Show calendar conflicts"), default off. Phase A can ship without the flag. Release order: policy text, Info.plist string, then the feature. Rollback: turn the flag off; nothing server-side to undo.
+
+## Risks
+
+Full-access prompt wording discourages opt-in (measure; Phase A still helps); stale calendar cache (refresh on store change and foreground); recurring and time zone edge cases; EventKit write-only bugs reported on iOS 17.5 ([thread](https://forums.developer.apple.com/forums/thread/742809), one report, UNVERIFIED fix); Apple review questions about calendar read (answer with the on-device explanation and the opt-in).
+
+## Open questions for the owner
+
+1. Is the opt-in full-access prompt acceptable, or should V2 stay with Phase A (DIP-only conflicts) plus the editor?
+2. Should "Add anyway" be allowed, or should conflicting adds be blocked entirely? Recommended: allowed, because a conflict can be stale or soft.
+3. Do you want conflict-aware reminders (local notification) even though they are best effort?
+4. Which calendars matter most to your customers (Google Workspace, Microsoft 365, Apple)? Decides whether Phase C Google or Microsoft freebusy is worth the verification work.
+5. Is the `events@letsdip.work` sender wanted for calendar invites (needs the email setup in [email](email.md))?
+
+## Work breakdown
+
+| ID | Title | Scope | Acceptance | Est | Area | Depends |
+| --- | --- | --- | --- | --- | --- | --- |
+| CAL-1 | DIP-only overlap check | Pure overlap function over the member's going events; "Overlaps with" modal on the event page | Unit tests for adjacent, nested, multi-day and all-day cases; modal text correct for 1, 2 and 3+ overlaps; VoiceOver labels | M | ios | none |
+| CAL-2 | Conflict checker protocol and EventKit adapter | `DIPCalendarConflictChecking`, EventKit full-access adapter, fake, change observer, ignore rules | Fake-based tests for ignore rules; adapter reads only the requested window; titles never logged | L | ios | none |
+| CAL-3 | Permission flow and settings | Opt-in teaser, system prompt, Profile toggle, Info.plist string, deny and revoke handling | Deny keeps the editor flow; revoke mid-session degrades cleanly; toggle persists per uid | M | ios | CAL-2 |
+| CAL-4 | Stateful date pill | Free, conflict, added, no-permission states with semantic tokens, icons and labels, direct save with Undo | UI tests per state with fakes; contrast and Dynamic Type checked; Undo removes the entry | L | ios | CAL-2, CAL-3 |
+| CAL-5 | Added-entry tracking | Local identifier store, DIP link in entry URL, "Update" and "Remove" offers after change or leave | Tests: re-find by URL, update after time change, remove after leave; no entry touched that DIP did not create | M | ios | CAL-4 |
+| CAL-6 | Home "Fits your calendar" | Chip and sort over cached conflicts in the pure presentation layer | Presentation tests keep order stable and never hide events; first paint not delayed | M | ios | CAL-2 |
+| CAL-7 | Privacy policy and store disclosures | Update letsdip.work/privacy, App Privacy answers, review notes | Policy text merged and deployed before the feature flag turns on; checklist in the ops doc | S | infra | none |
+| CAL-8 | Email ICS and optional feed | Add-to-calendar ICS in event emails and an optional per-user `webcal://` feed endpoint | ICS validates in Gmail, Outlook and Apple Mail; feed token can be revoked; no calendar data read | M | backend | EML-5 |
+
+## Sources
+
+- WWDC23 Discover Calendar and EventKit UI changes (write-only vs full access): https://developer.apple.com/videos/play/wwdc2023/10052/ and https://developer.apple.com/videos/play/wwdc2023/10053/
+- `NSCalendarsWriteOnlyAccessUsageDescription`: https://developer.apple.com/documentation/bundleresources/information-property-list/nscalendarswriteonlyaccessusagedescription
+- App privacy details ("collect" definition): https://developer.apple.com/app-store/app-privacy-details/
+- Google Calendar freebusy.query scopes and limits: https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query
+- Google Calendar auth scopes: https://developers.google.com/workspace/calendar/api/auth
+- Google sensitive scope verification: https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification
+- Google API user data (Limited Use) policy: https://developers.google.com/terms/api-services-user-data-policy
+- Incremental scopes on iOS: https://developers.google.com/identity/sign-in/ios/additional-scopes
+- Gmail invite settings: https://support.google.com/calendar/answer/13159188
+- Outlook calendar settings: https://support.microsoft.com/en-us/outlook/calendar-settings
+- iTIP invites: https://www.rfc-editor.org/rfc/rfc5546
+- Domain-wide delegation: https://knowledge.workspace.google.com/admin/apps/control-api-access-with-domain-wide-delegation
+- Microsoft Graph getSchedule: https://learn.microsoft.com/en-us/graph/api/calendar-getschedule?view=graph-rest-1.0
+- Not verified: Apple developer pages returned titles only to the fetch tool, so Apple details above come from WWDC session excerpts and search snippets. Confirm key names and API signatures in Xcode before building.

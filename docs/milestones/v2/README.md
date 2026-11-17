@@ -26,3 +26,5 @@ Named human owners remain TBD. These are responsibility areas from the submitted
 Every contributor reads root `AGENTS.md`, root `SESSION.md`, relevant folder instructions, and [component specifications](../../design/components.md). Use one branch/worktree per task. Create one new valid `docs/sessions/` log for each work session using the root instructions. A session may span several commits. CI requires at least one new valid session log per PR; it does not require a log per commit.
 
 Handoffs include exact owned paths, shared-contract versions, fixture examples, permissions to open, tests/results, and unresolved policy decisions. Other owners' feature paths remain out of scope; coordinate dependencies through their owners and the integrator.
+
+Stretch research and sub-item breakdowns for calendar conflicts, AI event ideas, tag interest counts, push triggers and emails: [STRETCH_GOALS](STRETCH_GOALS.md).

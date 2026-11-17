@@ -2,6 +2,8 @@
 
 Drafted November 10, 2026; status rows refreshed November 11, 2026 (ops and launch preparation). Locked owner decisions are in [DECISIONS](DECISIONS.md) for the frontend area. V2 is due **December 4, 2026** (24 days). Scope comes from [V2](../V2.md) and the [V2 planning handoff](README.md); user-testing guidance comes from [project context](../../project-context.md). This is a work list, not a claim that anything below exists. Named owners for V2 features are still TBD in the milestone, so cross-area items say what they need from others.
 
+**Stretch goals.** Calendar conflicts, AI event ideas, tag interest counts, push triggers with category settings and emails are researched and broken into sub-items in [STRETCH_GOALS](STRETCH_GOALS.md) (label `stretch` on GitHub). They are not part of the committed V2 scope.
+
 ## Status board
 
 Updated November 10, 2026 (evening). "Merged" means merged to `main`. Deployed means deployed to the `team05-dip` Firebase project. Open and draft PRs below are unmerged and need review; a draft is not a claim that the feature works.
