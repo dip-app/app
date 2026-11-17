@@ -2,6 +2,7 @@
 import XCTest
 @testable import DIPDesignSystem
 
+@MainActor
 final class MessageComposerStateTests: XCTestCase {
     func testSendIsDisabledUntilThereIsTextWithinTheLimit() {
         XCTAssertEqual(DIPMessageComposer.sendState(text: "", isSending: false), .disabled)
