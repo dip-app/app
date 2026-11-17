@@ -109,7 +109,7 @@ import Testing
     @Test func authorizedMasterRow() async {
         for state in [DIPPushAuthorization.authorized, .provisional, .ephemeral] {
             let (model, _, _) = await loaded(state)
-            #expect(model.masterTitle == "Push notifications: On")
+            #expect(model.masterTitle == "Push notifications are on")
             #expect(model.masterAction == nil)
             #expect(model.areSwitchesEnabled)
         }
@@ -117,8 +117,8 @@ import Testing
 
     @Test func deniedMasterRowOpensIOSSettings() async {
         let (model, _, permission) = await loaded(.denied)
-        #expect(model.masterTitle == "Notifications are off in iOS Settings")
-        #expect(model.masterActionTitle == "Open iOS Settings")
+        #expect(model.masterTitle == "Push is off")
+        #expect(model.masterActionTitle == "Open Settings")
         await model.performMasterAction()
         #expect(permission.openSettingsCalls == 1)
         #expect(permission.turnOnCalls == 0)
@@ -126,11 +126,11 @@ import Testing
 
     @Test func notDeterminedMasterRowTurnsOnThroughThePermissionFlow() async {
         let (model, _, permission) = await loaded(.notDetermined)
-        #expect(model.masterActionTitle == "Turn on")
+        #expect(model.masterActionTitle == "Turn on notifications")
         #expect(!model.areSwitchesEnabled)
         await model.performMasterAction()
         #expect(permission.turnOnCalls == 1)
-        #expect(model.masterTitle == "Push notifications: On")
+        #expect(model.masterTitle == "Push notifications are on")
         #expect(model.areSwitchesEnabled)
     }
 

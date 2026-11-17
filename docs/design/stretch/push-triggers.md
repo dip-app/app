@@ -1,6 +1,30 @@
 # Push notifications: triggers and category settings (stretch S4)
 
-Status: design only. Builds on the existing, device-unverified push pipeline ([push client](../push-client.md)). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). This document owns the **notification category and preference model** that [email](email.md) reuses.
+Status: implemented in code, not deployed, device-unverified (see the [runbook](../../ops/push-apns-runbook.md)). Builds on the existing, device-unverified push pipeline ([push client](../push-client.md)). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). This document owns the **notification category and preference model** that [email](email.md) reuses.
+
+## Implementation status
+
+| Item | State |
+| --- | --- |
+| PUSH-1 Category registry and preferences | Merged (#228) |
+| PUSH-2, PUSH-5, PUSH-6 Router, APNs payload polish, token hygiene | #229 |
+| PUSH-3, PUSH-4, PUSH-7 Trigger migration, new triggers, iOS settings | Follow-up PR |
+| PUSH-8 Invite action buttons | Optional, not started (see Work breakdown) |
+| PUSH-9 Device verification | Blocked on the APNs key (owner); script in the [runbook](../../ops/push-apns-runbook.md) |
+
+## Decisions (assumptions while owner questions are open)
+
+- Defaults follow the recommendation: social and discovery off, the rest on.
+- Reminder emails default off.
+- An answered invite notifies the sender on accept only; declines are silent.
+- Weekly theme push runs Monday 09:00 America/New_York until a company time zone exists.
+- Keep the 15-minute reminder poll (about 1 hour precision).
+- No quiet hours in V2.
+- Caps: 20 pushes per hour and 100 per day per member.
+- In-app notices are not governed by push switches.
+- Reminders now also create an in-app notice in router mode.
+- The `event_interest` trigger is deferred.
+- `PUSH_ROUTER_ENABLED` defaults to true; false rolls back to the legacy path.
 
 ## Goal and user stories
 

@@ -32,8 +32,8 @@ public final class DIPNotificationSettingsModel {
     public enum MasterAction: Equatable, Sendable { case turnOn, openSettings }
 
     public static let perActivityTitle = "Per-activity settings"
-    public static let perActivityMessage = "Each activity has its own bell in its chat. It controls chat, change and reminder alerts for that activity and overrides the switches here."
-    public static let disabledFootnote = "Turn on push notifications above to change these."
+    public static let perActivityMessage = "Each activity has a bell in its chat. It overrides the chat, change and reminder switches above for that activity."
+    public static let disabledFootnote = "Allow notifications to change these."
     public static let saveFailureMessage = "Couldn’t save that change. Check your connection and try again."
     public static let loadFailureMessage = "Couldn’t load your notification settings. Check your connection and try again."
 
@@ -75,9 +75,9 @@ public final class DIPNotificationSettingsModel {
 
     public var masterTitle: String {
         switch authorization {
-        case .authorized, .provisional, .ephemeral: "Push notifications: On"
-        case .denied: "Notifications are off in iOS Settings"
-        case .notDetermined: "Push notifications: Off"
+        case .authorized, .provisional, .ephemeral: "Push notifications are on"
+        case .denied: "Push is off"
+        case .notDetermined: "Push is off"
         }
     }
 
@@ -85,7 +85,7 @@ public final class DIPNotificationSettingsModel {
         switch authorization {
         case .authorized, .provisional, .ephemeral: nil
         case .denied: "Allow notifications for DIP in iOS Settings to get alerts on this phone."
-        case .notDetermined: "Get alerts on this phone for the activities you join."
+        case .notDetermined: nil
         }
     }
 
@@ -99,8 +99,8 @@ public final class DIPNotificationSettingsModel {
 
     public var masterActionTitle: String? {
         switch masterAction {
-        case .turnOn: "Turn on"
-        case .openSettings: "Open iOS Settings"
+        case .turnOn: "Turn on notifications"
+        case .openSettings: "Open Settings"
         case nil: nil
         }
     }

@@ -3,8 +3,9 @@ import Foundation
 @preconcurrency import FirebaseFirestore
 
 /// The member's own `users/{uid}/settings/notifications` document. The path comes from the signed-in scope, never from a
-/// caller-supplied id. The rules allow exactly `contractVersion`, `push`, `email` and `updatedAt` (= request time), so a
-/// save writes `DIPNotificationPreferences.firestoreFields()` plus a server timestamp. A missing document loads as the
+/// caller-supplied id. The rules allow exactly `contractVersion`, `push`, `email` and `updatedAt` (= request time). A save
+/// merge-writes only the `push` map (plus `contractVersion` and a server timestamp), so it never overwrites `email`
+/// switches the server changed (an unsubscribe link) or that the email section owns. A missing document loads as the
 /// registry defaults (the server resolves defaults on every read).
 final class FirebaseNotificationPreferencesRepository: DIPNotificationPreferencesRepository, @unchecked Sendable {
     /// An offline write stays queued; the screen should not wait on it forever.
@@ -26,12 +27,16 @@ final class FirebaseNotificationPreferencesRepository: DIPNotificationPreference
     }
 
     func save(_ preferences: DIPNotificationPreferences) async throws {
-        var fields = preferences.firestoreFields()
-        fields["updatedAt"] = FieldValue.serverTimestamp()
+        let all = preferences.firestoreFields()
+        let fields: [String: Any] = [
+            "contractVersion": all["contractVersion"] ?? 1,
+            "push": all["push"] ?? [:],
+            "updatedAt": FieldValue.serverTimestamp(),
+        ]
         let reference = document
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let gate = Gate()
-            reference.setData(fields) { error in
+            reference.setData(fields, merge: true) { error in
                 gate.once { if let error { continuation.resume(throwing: error) } else { continuation.resume() } }
             }
             Task {

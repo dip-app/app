@@ -48,7 +48,7 @@ final class NotificationSettingsUITests: XCTestCase {
     func testDeniedPermissionShowsTheSettingsShortcutAndDisablesSwitches() {
         let app = launch(permission: "denied")
         openSettings(app)
-        XCTAssertTrue(app.staticTexts["Notifications are off in iOS Settings"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Push is off"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["notificationSettings.master.action"].exists)
         let chat = app.switches["notificationSettings.toggle.chat"]
         XCTAssertTrue(chat.exists)

@@ -34,6 +34,8 @@ The whole client switch is one line. In the untracked `ui/Config/Local.xcconfig`
 
 ## Device verification and enablement checklist
 
+The APNs key steps, the deploy checklist and a numbered two-phone script are in the [push APNs runbook](../ops/push-apns-runbook.md).
+
 Status: nothing below has been run on a device yet. Use two physical iPhones (A and B, both members of the same company, A also the organizer or an admin) on a build with `Push.xcconfig` included.
 
 **Setup and registration**

@@ -1,6 +1,6 @@
 # Notification categories and preferences (shared model)
 
-Status: implemented in code (contract, rules, server helper, iOS mirror); nothing deployed. Owner: the push triggers workstream ([push triggers](push-triggers.md), issue #205). Consumers: push (router), [email](email.md) (outbox, unsubscribe, settings UI) and the in-app center. This page is the contract between those workstreams; change it only together with the code below.
+Status: implemented in code (contract, rules, server helper, iOS mirror); nothing deployed. Owner: the push triggers workstream ([push triggers](push-triggers.md), issue #205). Consumers: push (router), [email](email.md) (outbox, unsubscribe, settings UI) and the in-app center. This page is the contract between those workstreams; change it only together with the code below. This model landed first, as its own small PR (#228), so email could build on it without waiting.
 
 ## Categories
 
