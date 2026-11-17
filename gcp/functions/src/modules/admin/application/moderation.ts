@@ -1,9 +1,10 @@
 import type { RemoveEventPhotoCommentResponse, RemoveEventPhotoResponse } from "../../../generated/models";
+import { logger } from "firebase-functions/v2";
 import { change } from "../domain/audit";
 import { AdminError, stored } from "../domain/errors";
 import { paths } from "../domain/ops";
 import { parseRemoveComment, parseRemovePhoto } from "../domain/requests";
-import { authorize, loadEvent, once, requireCaller, writeAudit } from "./context";
+import { authorize, loadEvent, once, requireCaller, writeAudit, consumeAfterAuth } from "./context";
 import type { AdminDeps, Caller } from "./ports";
 
 const TX_COMMENT_BATCH = 400;
@@ -26,7 +27,7 @@ export function photoObjectPath(companyId: string, eventId: string, photoId: str
 export async function removeEventPhoto(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<RemoveEventPhotoResponse> {
   const authenticated = requireCaller(caller);
   const req = parseRemovePhoto(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "album.moderate");
   const { eventId, photoId } = req;
   const result = await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "album.moderate");
@@ -43,12 +44,14 @@ export async function removeEventPhoto(deps: AdminDeps, caller: Caller | null, d
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "photo.remove", targetType: "photo", targetId: `${eventId}/${photoId}`,
         summary: `Removed photo by ${typeof photo.uploaderName === "string" ? photo.uploaderName : "a member"} from ${typeof photo.eventTitle === "string" ? photo.eventTitle : "an event"}`,
-        changes: [change("uploaderId", photo.uploaderId, null), change("caption", caption || null, null), change("comments", comments.length, 0)],
+        changes: [change("uploaderId", photo.uploaderId, null), change("captionLength", caption ? [...caption].length : null, null), change("comments", comments.length, 0)],
         reason: req.reason, requestId: req.requestId,
       });
       return { contractVersion: 1, photoId, removed: true, commentsRemoved: comments.length, objectRemoved: false } satisfies RemoveEventPhotoResponse;
     }, deps.now());
   });
+  // Nothing existed (or was ever removed): no storage or comment cleanup, so a moderator cannot delete other objects by guessing ids.
+  if (!result.value.removed) return result.value;
   // Idempotent cleanup (also on replays): leftover comments beyond the transaction batch, then the object.
   const collection = paths.comments(req.companyId, eventId, photoId);
   let extra = 0;
@@ -59,6 +62,9 @@ export async function removeEventPhoto(deps: AdminDeps, caller: Caller | null, d
   }
   const objectPath = photoObjectPath(req.companyId, eventId, photoId);
   const objectRemoved = objectPath ? await deps.objects.remove(objectPath) : false;
+  if (objectPath && !objectRemoved) {
+    logger.warn("removeEventPhoto storage cleanup failed", { companyId: req.companyId, eventId, photoId });
+  }
   const final: RemoveEventPhotoResponse = { ...result.value, commentsRemoved: result.value.commentsRemoved + extra, objectRemoved };
   if (final.removed && (extra > 0 || objectRemoved !== result.value.objectRemoved)) {
     // Store the completed outcome on the receipt so a replay returns exactly what the first call returned.
@@ -72,7 +78,7 @@ export async function removeEventPhoto(deps: AdminDeps, caller: Caller | null, d
 export async function removeEventPhotoComment(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<RemoveEventPhotoCommentResponse> {
   const authenticated = requireCaller(caller);
   const req = parseRemoveComment(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "album.moderate");
   const { eventId, photoId, commentId } = req;
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "album.moderate");
@@ -89,11 +95,11 @@ export async function removeEventPhotoComment(deps: AdminDeps, caller: Caller | 
       const commentCount = Math.max(0, total - 1);
       tx.delete(paths.comment(actor.companyId, eventId, photoId, commentId));
       tx.update(paths.photo(actor.companyId, eventId, photoId), { commentCount });
-      const snippet = typeof comment.text === "string" ? [...comment.text].slice(0, 80).join("") : null;
+      const textLength = typeof comment.text === "string" ? [...comment.text].length : null;
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "photo.comment.remove", targetType: "comment", targetId: `${eventId}/${photoId}/${commentId}`,
         summary: `Removed a comment by ${typeof comment.authorName === "string" ? comment.authorName : "a member"}`,
-        changes: [change("authorId", comment.authorId, null), change("text", snippet, null), change("commentCount", total, commentCount)],
+        changes: [change("authorId", comment.authorId, null), change("textLength", textLength, null), change("commentCount", total, commentCount)],
         reason: req.reason, requestId: req.requestId,
       });
       return { contractVersion: 1, commentId, removed: true, commentCount } satisfies RemoveEventPhotoCommentResponse;

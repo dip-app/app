@@ -113,11 +113,31 @@ CI deploy (`.github/workflows/admin.yml`, only on `main`) is inactive until the 
      --role="roles/firebaserules.firestoreServiceAgent"
    ```
    Check the exact service agent address in IAM (tick "Include Google-provided role grants"); it is the Firebase Storage service agent of the project.
-2. **Firestore TTL policy on `inviteRateLimits.expiresAt`.** The invitation rate limiter writes `inviteRateLimits/{key}` documents with an `expiresAt` timestamp; without a TTL policy they accumulate forever:
+2. **Firestore TTL policies.** Every expiring collection group is declared in `gcp/firestore.indexes.json` (`fieldOverrides` with `"ttl": true`), so `firebase deploy --only firestore:indexes` creates them. Deploy the indexes and TTL policies **before** the functions that rely on them. TTL deletes lag by up to about 24 hours, so never treat the expiry field as exact (the limiters compare timestamps themselves). Verify (all rows must show `ACTIVE`):
    ```sh
-   gcloud firestore fields ttls update expiresAt --collection-group=inviteRateLimits --enable-ttl --project team05-dip
+   gcloud firestore fields ttls list --project team05-dip
    ```
-   TTL deletes lag by up to about 24 hours, so never treat `expiresAt` as exact; the limiter compares timestamps itself.
+
+   | Collection group | TTL field | Retention | Owner module |
+   | --- | --- | --- | --- |
+   | `adminRateLimits` | `expiresAt` | 1 minute window | admin |
+   | `accountRateLimits` | `expiresAt` | 1 minute window | accounts |
+   | `inviteRateLimits` | `expiresAt` | rate window | invites |
+   | `commandReceipts` | `expireAt` | 30 days (admin receipts; challenge and organizer receipts carry no `expireAt` yet and are kept) | admin, challenges, organizer |
+   | `importJobs` | `expireAt` | 30 days after planning (holds employee emails) | admin |
+   | `chunks` (`importJobs/*/chunks`) | `expireAt` | 30 days after planning (employee emails) | admin |
+   | `results` (`importJobs/*/results`) | `expireAt` | 30 days after the row is applied (employee emails) | admin |
+   | `emailOutbox` | `expireAt` | 30 days | email |
+   | `emailCaps` | `expireAt` | 2 days | email |
+   | `aiRequests` | `expireAt` | 24 hours after the last update | ai |
+   | `aiUsageDaily` | `expireAt` | 8 days | ai |
+   | `tagStatReceipts` | `expireAt` | 7 days | tags |
+   | `notificationReceipts` | `expireAt` | 30 days | notifications |
+   | `pushRateLimits` | `expireAt` | 2 days | notifications |
+   | `pushReceipts` | `expireAt` | 3 days | notifications |
+   | `aiUsagePlatform` | none | no TTL, tiny (one document per month) | ai |
+
+   Children of a TTL-deleted document are not deleted with it, which is why `chunks` and `results` have their own policies. A project that already enabled `inviteRateLimits.expiresAt` by hand keeps it (the declared policy matches). `emailSuppressions` and `aiUsage` (month totals) have no expiry on purpose.
 3. **APIs and Auth.** Firebase Auth with Google sign-in enabled (the only provider, ADR 0007). Authorized domains (section 4). App Check registered for the iOS app (App Attest) and the web app (reCAPTCHA Enterprise). Cloud Scheduler and Eventarc APIs for `sendEventReminders` and Firestore triggers.
 4. **First admin.** Set `users/{uid}.role = "admin"` with trusted tooling (Admin SDK or the console) after the person's first sign-in. Clients cannot write roles.
 

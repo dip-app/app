@@ -16,6 +16,8 @@ export interface AuditInput {
   changes?: readonly AuditChange[];
   reason?: string | undefined;
   requestId?: string | undefined;
+  /** True when the actor acted on their own member record (points adjustments, attendance). */
+  selfTarget?: true | undefined;
 }
 
 export interface AuditActor { uid: string; name: string; role: Role }
@@ -23,7 +25,7 @@ export interface AuditActor { uid: string; name: string; role: Role }
 export interface AuditDocument {
   companyId: string; actorId: string; actorName: string; actorRole: Role;
   action: string; targetType: AuditTargetType; targetId: string; summary: string; changes: AuditChange[];
-  reason?: string; requestId?: string; createdAt: ServerTime;
+  reason?: string; requestId?: string; selfTarget?: true; createdAt: ServerTime;
 }
 
 const clip = (value: string, max: number) => (length(value) <= max ? value : `${[...value].slice(0, max - 1).join("")}…`);
@@ -58,5 +60,6 @@ export function auditDocument(companyId: string, actor: AuditActor, input: Audit
   };
   if (input.reason) doc.reason = clip(input.reason, 200);
   if (input.requestId) doc.requestId = input.requestId;
+  if (input.selfTarget) doc.selfTarget = true;
   return doc;
 }

@@ -7,7 +7,7 @@ import { assertValid, emailHash, entryChanges, newEntryFields, normalizeEmployee
 import { AdminError, stored } from "../domain/errors";
 import { paths, SERVER_TIME } from "../domain/ops";
 import { parseListRoster, parseResendRoster, parseRevokeRoster, parseUpsertRoster } from "../domain/requests";
-import { authorize, once, requireCaller, writeAudit, type Actor } from "./context";
+import { authorize, once, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminTransaction, Caller, Doc, Entry } from "./ports";
 
 /** The company's email domain and active team catalog: the context every employee record is validated against. */
@@ -32,7 +32,7 @@ export async function findMemberByEmail(tx: AdminTransaction, actor: Actor, emai
 export async function upsertRosterEntry(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<UpsertRosterEntryResponse> {
   const authenticated = requireCaller(caller);
   const req = parseUpsertRoster(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "roster.manage");
   const now = deps.now();
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "roster.manage");
@@ -71,7 +71,7 @@ export async function upsertRosterEntry(deps: AdminDeps, caller: Caller | null, 
 export async function revokeRosterEntry(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<RevokeRosterEntryResponse> {
   const authenticated = requireCaller(caller);
   const req = parseRevokeRoster(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "roster.manage");
   const now = deps.now();
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "roster.manage");
@@ -96,7 +96,7 @@ export async function revokeRosterEntry(deps: AdminDeps, caller: Caller | null, 
 export async function resendRosterInvite(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ResendRosterInviteResponse> {
   const authenticated = requireCaller(caller);
   const req = parseResendRoster(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "roster.manage");
   const now = deps.now();
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "roster.manage");
@@ -122,7 +122,7 @@ export async function resendRosterInvite(deps: AdminDeps, caller: Caller | null,
 }
 
 const SCAN_BATCH = 250;
-const MAX_SCAN = 1000;
+const MAX_SCAN = 500;
 
 /**
  * listRosterV1: a page of the roster. Scans entries in id order (bounded per call), filters by state and search text in memory and
@@ -131,7 +131,7 @@ const MAX_SCAN = 1000;
 export async function listRoster(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ListRosterResponse> {
   const authenticated = requireCaller(caller);
   const req = parseListRoster(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "roster.manage");
   return deps.store.runReadOnly(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "roster.manage");
     const collection = paths.roster(actor.companyId);

@@ -9,7 +9,7 @@ import {
 import { AdminError, stored } from "../domain/errors";
 import { DELETE_FIELD, paths, SERVER_TIME } from "../domain/ops";
 import { parseGetBugReport, parseListBugReports, parseUpdateBugReport } from "../domain/requests";
-import { authorize, once, requireCaller, writeAudit, type Actor } from "./context";
+import { authorize, once, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
 const SCAN_BATCH = 100;
@@ -36,7 +36,7 @@ async function loadReporters(tx: AdminTransaction, uids: readonly string[], cach
 export async function listBugReports(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ListBugReportsResponse> {
   const authenticated = requireCaller(caller);
   const req = parseListBugReports(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "bugreport.manage");
   return deps.store.runReadOnly(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "bugreport.manage");
     const firstPage = !req.pageToken;
@@ -100,7 +100,7 @@ async function loadReport(tx: AdminTransaction, actor: Actor, reportId: string):
 export async function getBugReport(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<GetBugReportResponse> {
   const authenticated = requireCaller(caller);
   const req = parseGetBugReport(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "bugreport.manage");
   const loaded = await deps.store.runReadOnly(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "bugreport.manage");
     return loadReport(tx, actor, req.reportId);
@@ -139,7 +139,7 @@ function response(reportId: string, triage: Triage, changed: boolean): UpdateBug
 export async function updateBugReport(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<UpdateBugReportResponse> {
   const authenticated = requireCaller(caller);
   const req = parseUpdateBugReport(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "bugreport.manage");
   const now = deps.now();
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "bugreport.manage");

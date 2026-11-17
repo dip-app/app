@@ -4,7 +4,7 @@ import { paths } from "../domain/ops";
 import { can, isRole, type Permission, type Role } from "../domain/permissions";
 import { payloadHash } from "../domain/reader";
 import { isDeactivated } from "../domain/member";
-import type { AdminTransaction, Caller, Doc } from "./ports";
+import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
 export interface Actor extends AuditActor { companyId: string }
 
@@ -32,6 +32,17 @@ export async function authorize(tx: AdminTransaction, caller: Caller, companyId:
   if (member.companyId !== companyId) throw new AdminError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company.");
   stored(isRole(member.role) && typeof member.displayName === "string", "membership");
   return { uid: caller.uid, name: member.displayName, role: member.role as Role, companyId };
+}
+
+/**
+ * Rate limiting only counts callers who are already authorized for the command: a cheap read-only authorize runs
+ * first, so a verified non-member never creates an adminRateLimits document. The transactional authorize inside
+ * the command still decides (this check is advisory, not the security boundary).
+ */
+export async function consumeAfterAuth(deps: AdminDeps, caller: Caller, companyId: string, permission: Permission): Promise<void> {
+  if (!deps.limiter) return;
+  await deps.store.runReadOnly(tx => authorize(tx, caller, companyId, permission));
+  await deps.limiter.consume(caller.uid);
 }
 
 export interface Receipt { command: string; hash: string; response: Doc }

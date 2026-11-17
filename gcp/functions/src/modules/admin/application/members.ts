@@ -11,11 +11,11 @@ import {
   parseAdjustPoints, parseGetMember, parseListMembers, parseResetProfile, parseSetStatus, parseUpdateMember, parseUpsertTeam,
 } from "../domain/requests";
 import { cancelAttendance } from "./attendees";
-import { authorize, loadMember, once, requireCaller, writeAudit, type Actor } from "./context";
+import { authorize, loadMember, once, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
 const SCAN_BATCH = 250;
-const MAX_SCAN = 1000;
+const MAX_SCAN = 500;
 const MAX_RSVP_CLEANUP = 200;
 
 /** The member's roster entry path (everyone who joins is on the roster), or null when the member has no email. */
@@ -33,7 +33,7 @@ async function otherActiveAdminExists(tx: AdminTransaction, actor: Actor, except
 export async function listMembers(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ListMembersResponse> {
   const authenticated = requireCaller(caller);
   const req = parseListMembers(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "member.read");
   return deps.store.runReadOnly(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "member.read");
     const includePoints = actor.role === "admin";
@@ -62,7 +62,7 @@ export async function listMembers(deps: AdminDeps, caller: Caller | null, data: 
 export async function getMember(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<GetMemberResponse> {
   const authenticated = requireCaller(caller);
   const req = parseGetMember(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "member.read");
   return deps.store.runReadOnly(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "member.read");
     const member = await loadMember(tx, actor, req.userId);
@@ -77,7 +77,7 @@ export async function getMember(deps: AdminDeps, caller: Caller | null, data: un
 export async function updateMember(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<UpdateMemberResponse> {
   const authenticated = requireCaller(caller);
   const req = parseUpdateMember(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "member.manage");
   const { userId } = req;
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "member.manage");
@@ -125,7 +125,7 @@ export async function updateMember(deps: AdminDeps, caller: Caller | null, data:
 export async function resetMemberProfile(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<ResetMemberProfileResponse> {
   const authenticated = requireCaller(caller);
   const req = parseResetProfile(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "member.manage");
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "member.manage");
     return once(tx, actor, "resetMemberProfileV1", req.requestId, { userId: req.userId, reason: req.reason ?? null }, async () => {
@@ -155,7 +155,7 @@ export async function resetMemberProfile(deps: AdminDeps, caller: Caller | null,
 export async function setMemberStatus(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<SetMemberStatusResponse> {
   const authenticated = requireCaller(caller);
   const req = parseSetStatus(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "member.manage");
   const now = deps.now();
   let actorRef: Actor | undefined;
   const result = (await deps.store.runTransaction(async tx => {
@@ -211,7 +211,7 @@ export async function setMemberStatus(deps: AdminDeps, caller: Caller | null, da
 export async function adjustMemberPoints(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<AdjustMemberPointsResponse> {
   const authenticated = requireCaller(caller);
   const req = parseAdjustPoints(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "member.manage");
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "member.manage");
     return once(tx, actor, "adjustMemberPointsV1", req.requestId, { userId: req.userId, delta: req.delta, reason: req.reason }, async () => {
@@ -227,7 +227,7 @@ export async function adjustMemberPoints(deps: AdminDeps, caller: Caller | null,
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "points.adjust", targetType: "points", targetId: req.userId,
         summary: `Adjusted points by ${req.delta > 0 ? "+" : ""}${req.delta}`, changes: [change("pointsBalance", balance, pointsBalance)],
-        reason: req.reason, requestId: req.requestId,
+        reason: req.reason, requestId: req.requestId, ...(actor.uid === req.userId ? { selfTarget: true as const } : {}),
       });
       return { contractVersion: 1, userId: req.userId, pointsBalance, applied: true } satisfies AdjustMemberPointsResponse;
     }, deps.now());
@@ -238,7 +238,7 @@ export async function adjustMemberPoints(deps: AdminDeps, caller: Caller | null,
 export async function upsertTeam(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<UpsertTeamResponse> {
   const authenticated = requireCaller(caller);
   const req = parseUpsertTeam(data);
-  await deps.limiter?.consume(authenticated.uid);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "team.manage");
   const now = deps.now();
   return (await deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "team.manage");
