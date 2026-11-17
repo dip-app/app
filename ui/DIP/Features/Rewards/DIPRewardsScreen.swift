@@ -111,6 +111,8 @@ struct DIPRewardsScreen: View {
         static let title: CGFloat = 26, subtitle: CGFloat = 18, body: CGFloat = 14, inset: CGFloat = 20
     }
 
+    @Environment(\.dipDuoOpen) private var duoOpen
+
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
 
     var body: some View {
@@ -118,27 +120,37 @@ struct DIPRewardsScreen: View {
             ZStack(alignment: .top) {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
-                    DIPHomeHeader(
+                    DIPTabHeader(
                         title: "Rewards", unreadCount: unreadCount,
                         profileAvatar: { DIPMedia(profileAvatar) },
                         onNotifications: onNotifications, onProfile: onProfile
                     )
-                    .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            balancePill.padding(.bottom, 16)
+                            if !(duoOpen && !isEmpty) { balancePill.padding(.bottom, 16) }
                             if isEmpty {
                                 DIPEmptyState(
                                     screen: "rewards", title: "No rewards yet",
                                     message: "Rewards and discounts will show up here.",
                                     actionTitle: "Find an event") { onSelectTab(.home) }
                                     .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 360), alignment: .center)
+                            } else if duoOpen {
+                                // Open Duo: points and the raffle on the left, the discounts beside them, instead of one
+                                // long column. The negative inset lifts the discounts to the points row (bows stay visible).
+                                HStack(alignment: .top, spacing: 24) {
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        balancePill.padding(.bottom, 16)
+                                        raffleSection
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .top)
+                                    discountSection.padding(.top, -26).frame(maxWidth: .infinity, alignment: .top)
+                                }
                             } else {
                                 raffleSection
                                 discountSection
                             }
                         }
-                        .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, 120)
+                        .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen))
                     }
                     .scrollIndicators(.hidden)
                     .accessibilityIdentifier("rewards.content")

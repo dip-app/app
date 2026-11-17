@@ -73,6 +73,8 @@ struct DIPAlbumScreen: View {
         return max(0, remaining - uploads.reservedCount(for: album.eventID))
     }
 
+    @Environment(\.dipDuoOpen) private var duoOpen
+
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width - 40
@@ -80,7 +82,7 @@ struct DIPAlbumScreen: View {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
                     header
-                        .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
+                        .padding(.horizontal, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)).padding(.bottom, 10)
                     ScrollView {
                         VStack(spacing: 9) {
                             if !drafts.isEmpty { uploadStrip }
@@ -117,7 +119,7 @@ struct DIPAlbumScreen: View {
             selection: $selectedItems, maxSelectionCount: max(1, selectionLimit), matching: .images
         )
         // Presented by a flag (not by item) so stepping to the next photo updates the viewer in place.
-        .fullScreenCover(isPresented: Binding(get: { viewedPhoto != nil }, set: { if !$0 { viewedPhotoID = nil } })) {
+        .dipCover(isPresented: Binding(get: { viewedPhoto != nil }, set: { if !$0 { viewedPhotoID = nil } }), open: duoOpen) {
             if let photo = viewedPhoto { photoViewer(photo) }
         }
         .overlay(alignment: .bottom) {

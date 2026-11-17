@@ -15,15 +15,20 @@ struct DIPDetailHeader: View {
     var onCalendar: () -> Void = {}
     /// Keeps the calendar glyph on the informational (outlined) pill so the header does not jump between states.
     var showsCalendarIcon = false
+    /// Open Duo: the detail pane's root page has no Back, and the 60 pt status-bar allowance shrinks.
+    @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipDuoHidesBack) private var hidesBack
 
     var body: some View {
         HStack {
-            Button(action: onBack) {
-                DIPReferenceAssets.image("event_BackButton").resizable()
-                    .frame(width: 50, height: 50)
+            if !hidesBack {
+                Button(action: onBack) {
+                    DIPReferenceAssets.image("event_BackButton").resizable()
+                        .frame(width: 50, height: 50)
+                }
+                .buttonStyle(.plain).accessibilityLabel("Back")
+                .accessibilityIdentifier("\(identifierPrefix).back")
             }
-            .buttonStyle(.plain).accessibilityLabel("Back")
-            .accessibilityIdentifier("\(identifierPrefix).back")
             Spacer(minLength: 10)
             if let calendarLabel {
                 Button(action: onCalendar) {
@@ -62,7 +67,7 @@ struct DIPDetailHeader: View {
                 .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
             }
         }
-        .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
+        .padding(.horizontal, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)).padding(.bottom, 10)
     }
 }
 

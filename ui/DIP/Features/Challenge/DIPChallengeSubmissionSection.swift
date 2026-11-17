@@ -12,6 +12,7 @@ import UIKit
 struct DIPChallengeSubmissionSection: View {
     let model: ChallengeSubmissionModel
     @State private var showsViewer = false
+    @Environment(\.dipDuoOpen) private var duoOpen
 
     private var accent: Color { DIPTokens.Color.actionPrimary.swiftUIColor }
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
@@ -119,7 +120,7 @@ struct DIPChallengeSubmissionSection: View {
                         .accessibilityHint("Opens it full screen")
                         .accessibilityAddTraits(.isImage)
                         .accessibilityIdentifier("submission.photo.preview")
-                        .fullScreenCover(isPresented: $showsViewer) { DIPChallengePhotoViewer(image: image) }
+                        .dipCover(isPresented: $showsViewer, open: duoOpen) { DIPChallengePhotoViewer(image: image) }
                     }
                     #endif
                 case .failed:

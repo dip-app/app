@@ -20,6 +20,7 @@ struct DIPEventDetailsScreen: View {
     @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.eventCalendarAdder) private var calendarAdder
+    @Environment(\.dipDuoOpen) private var duoOpen
     @Environment(\.openURL) private var openURL
     /// True while the calendar editor is being presented, so a second tap (row or pill) cannot open another one.
     @State private var addingToCalendar = false
@@ -121,7 +122,7 @@ struct DIPEventDetailsScreen: View {
             AccessibilityNotification.Announcement(new ? "You joined \(event.title)" : "You left \(event.title)").post()
         }
         .sheet(isPresented: $showingChanges) {
-            DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? [])
+            DIPEventChangesSheet(eventTitle: event.title, log: event.metadata?.changeLog ?? []).dipDuoSheetSizing(duoOpen)
         }
         .confirmationDialog("Leave this activity?", isPresented: $confirmingLeave, titleVisibility: .visible) {
             Button("Leave activity", role: .destructive, action: onLeave)

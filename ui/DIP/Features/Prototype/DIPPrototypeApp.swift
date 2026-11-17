@@ -267,6 +267,11 @@ struct DIPPrototypeApp: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// True only on the iPhone Duo's open inner display (see DuoLayout.swift): the shell is then a rail plus panes.
+    @Environment(\.dipDuoOpen) private var duoOpen
+    /// The route the shell itself put in the detail pane (the first event listed), not one the member or a link chose.
+    /// Folding the Duo clears it, and only it, so a deliberate selection or deep link survives.
+    @State private var duoAutoRoute: Route?
     /// Live weekly theme (configured member Home). Nil: the snapshot's fixture challenge is shown.
     @Environment(\.weeklyChallengeFeed) private var challengeFeed
     /// The theme page publishes its entry action here; the shared bottom bar below renders it.
@@ -292,31 +297,36 @@ struct DIPPrototypeApp: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
-                NavigationStack(path: $routes) {
-                    loadedPages
-                        .ignoresSafeArea()
-                        .toolbar(.hidden, for: .tabBar)
-                        .toolbar(.hidden, for: .navigationBar)
-                        .navigationDestination(for: Route.self) { route in
-                            destination(route)
-                                .navigationBarBackButtonHidden()
-                                .toolbar(.hidden, for: .navigationBar)
-                        }
+                if duoOpen {
+                    duoShell
+                } else {
+                    NavigationStack(path: $routes) {
+                        loadedPages
+                            .ignoresSafeArea()
+                            .toolbar(.hidden, for: .tabBar)
+                            .toolbar(.hidden, for: .navigationBar)
+                            .navigationDestination(for: Route.self) { route in
+                                destination(route)
+                                    .navigationBarBackButtonHidden()
+                                    .toolbar(.hidden, for: .navigationBar)
+                            }
+                    }
+                    DIPFloatingNavigation(
+                        selected: selectedTab, action: bottomAction,
+                        onSelect: selectTab, onAction: performBottomAction
+                    )
+                    .disabled(isRSVPPending)
+                    .padding(.horizontal, 20)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
                 }
-                DIPFloatingNavigation(
-                    selected: selectedTab, action: bottomAction,
-                    onSelect: selectTab, onAction: performBottomAction
-                )
-                .disabled(isRSVPPending)
-                .padding(.horizontal, 20)
-                .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
                 avatarFlyer
             }
             .environment(\.challengeEntryBar, challengeBar)
             .background(.white)
             .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { shellOrigin = $0 }
             .onAppear { if flightFrame == .zero { flightFrame = idleAvatarFrame(for: selectedTab, in: geometry.size) } }
-            .onChange(of: selectedTab) { old, new in flyAvatar(from: old, to: new, in: geometry.size) }
+            .onChange(of: selectedTab) { old, new in if !duoOpen { flyAvatar(from: old, to: new, in: geometry.size) } }
+            .onChange(of: duoSyncKey, initial: true) { _, _ in syncDuoSelection() }
             .onChange(of: accountProfile?.id ?? model.snapshot?.profile.id, initial: true) { _, uid in
                 if let uid { homeScope = DIPHomeScopeStore().scope(uid: uid) }
             }
@@ -347,11 +357,13 @@ struct DIPPrototypeApp: View {
                     catch { chatNotificationLevel = previous }
                 })
             .task(id: chatEventID) { chatNotificationLevel = await model.notificationLevel(eventID: chatEventID) }
+            .dipDuoSheetSizing(duoOpen)
         }
-        .sheet(isPresented: $showNotifications) { notificationsSheet }
-        .sheet(isPresented: $showInvitations) { invitationsSheet }
+        .sheet(isPresented: $showNotifications) { notificationsSheet.dipDuoSheetSizing(duoOpen) }
+        .sheet(isPresented: $showInvitations) { invitationsSheet.dipDuoSheetSizing(duoOpen) }
         .sheet(item: $inviteSession) { session in
             DIPInviteSheet(model: session.model, eventTitle: session.title, onClose: { inviteSession = nil })
+                .dipDuoSheetSizing(duoOpen)
         }
         .task(id: invitesObservationID) { await invites?.observe() }
         // Live for as long as the member's shell exists (it is keyed by member): the bell badge counts unread, and the
@@ -417,6 +429,17 @@ struct DIPPrototypeApp: View {
     }
 
     private func tabPages(_ snapshot: DIPAppSnapshot) -> some View {
+        let pages = tabBuilder(snapshot)
+        // Home, Rewards and My Events share one header drawn by the shell (fixed while pages slide);
+        // Profile has its own header card that scrolls with its page.
+        return DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
+            AnyView(pages(tab).environment(\.dipHeaderHosted, tab != .profile)
+                .environment(\.profileBadgeLink, ProfileBadgeLink(isHidden: isAvatarFlying, report: reportBadgeFrame)))
+        }
+    }
+
+    /// The four tab pages, built once per snapshot. The phone slides them; the open Duo shows one beside its detail pane.
+    private func tabBuilder(_ snapshot: DIPAppSnapshot) -> (DIPHomeTab) -> AnyView {
         let lists = DIPEventLists(snapshot: snapshot, now: Date())
         var home = snapshot.home
         // Interest filter over the loaded events (no extra reads). Only members with interests the catalog
@@ -437,8 +460,8 @@ struct DIPPrototypeApp: View {
             case .home:
                 AnyView(DIPHomeScreen(
                     home: home, showsBottomBar: false,
-                    onEvent: { routes.append(.event($0)) },
-                    onChallenge: { routes.append(.challenge($0)) }, onSelect: homeSelection,
+                    onEvent: { openRoute(.event($0)) },
+                    onChallenge: { openRoute(.challenge($0)) }, onSelect: homeSelection,
                     onLoadMore: onLoadMoreEvents, loadingMore: loadingMoreEvents,
                     paginationError: eventPaginationError,
                     eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
@@ -456,7 +479,7 @@ struct DIPPrototypeApp: View {
                     unreadCount: bellCount(snapshot), profileAvatar: snapshot.home.profileAvatar,
                     initialMemories: initialMemories, showsBottomBar: false,
                     onSelectTab: selectTab,
-                    onEvent: { routes.append(.event($0)) }, onAlbum: { routes.append(.event($0)) },
+                    onEvent: { openRoute(.event($0)) }, onAlbum: { openRoute(.event($0)) },
                     onNotifications: openNotifications, onProfile: { selectTab(.profile) })) }
             case .profile:
                 AnyView(DIPProfileScreen(
@@ -476,12 +499,7 @@ struct DIPPrototypeApp: View {
                     pointsDisplay: pointsDisplay(accountProfile == nil ? nil : (accountProfile ?? snapshot.profile).pointsBalance)))
             }
         }
-        // Home, Rewards and My Events share one header drawn by the shell (fixed while pages slide);
-        // Profile has its own header card that scrolls with its page.
-        return DIPSlidingPages(selection: selectedTab, reduceMotion: reduceMotion) { tab in
-            AnyView(pages(tab).environment(\.dipHeaderHosted, tab != .profile)
-                .environment(\.profileBadgeLink, ProfileBadgeLink(isHidden: isAvatarFlying, report: reportBadgeFrame)))
-        }
+        return pages
     }
 
     /// Freshness of Home's events. The snapshot only exists after a successful read, so a load error with a
@@ -929,6 +947,139 @@ struct DIPPrototypeApp: View {
         } actions: { Button("Back", action: pop) }
     }
 
+    // MARK: Open Duo (inner display): rail, list pane and detail pane
+
+    /// What the selection sync reacts to; one `onChange` keeps the body's modifier chain short.
+    private struct DuoSyncKey: Equatable {
+        var open: Bool; var tab: DIPHomeTab; var routesEmpty: Bool; var firstEvent: String?
+    }
+    private var duoSyncKey: DuoSyncKey {
+        DuoSyncKey(open: duoOpen, tab: selectedTab, routesEmpty: routes.isEmpty, firstEvent: duoDefaultEventID())
+    }
+
+    private var isMasterDetailTab: Bool { selectedTab == .home || selectedTab == .events }
+
+    /// Opens a page from a list. On the open Duo's Home and My Events it replaces the detail pane; elsewhere it pushes.
+    private func openRoute(_ route: Route) {
+        if duoOpen && isMasterDetailTab { routes = [route]; duoAutoRoute = nil } else { routes.append(route) }
+    }
+
+    /// The detail pane is never blank while events exist: Home and My Events open their first event. Folding the Duo
+    /// drops a selection the shell made itself, so the phone layout starts on its list.
+    private func syncDuoSelection() {
+        guard duoOpen else {
+            if let auto = duoAutoRoute, routes == [auto] { routes = [] }
+            duoAutoRoute = nil
+            return
+        }
+        guard routes.isEmpty, let id = duoDefaultEventID() else { return }
+        routes = [.event(id)]
+        duoAutoRoute = .event(id)
+    }
+
+    /// The event the detail pane opens when nothing is selected: the first one the current list shows. Nil off the
+    /// list tabs, when the Duo is not open, or when there are no events yet.
+    private func duoDefaultEventID() -> String? {
+        guard duoOpen, isMasterDetailTab, let snapshot = model.snapshot else { return nil }
+        let lists = DIPEventLists(snapshot: snapshot, now: Date())
+        let ids = selectedTab == .home ? visibleHomeEvents(snapshot, lists: lists).map(\.id) : lists.upcoming.map(\.id)
+        return DIPDuoPaneLayout.defaultSelection(in: ids)
+    }
+
+    /// The events Home lists, after the member's interest scope (the same rule `tabBuilder` applies).
+    private func visibleHomeEvents(_ snapshot: DIPAppSnapshot, lists: DIPEventLists) -> [DIPEventSummary] {
+        let member = accountProfile ?? snapshot.profile
+        let interests = accountProfile == nil ? [] : DIPInterestFilter.activeInterests(
+            storedIDs: member.interestTagIDs, catalog: member.interestCatalog.isEmpty ? nil : member.interestCatalog)
+        return DIPInterestFilter.visibleEvents(lists.discovery, scope: homeScope, activeInterests: interests).events
+    }
+
+    private var duoSelectedEventID: String? {
+        if case .event(let id)? = routes.first { return id }
+        return nil
+    }
+
+    private var duoShell: some View {
+        HStack(spacing: 0) {
+            DIPDuoRail(
+                selected: selectedTab, unreadCount: model.snapshot.map(bellCount) ?? 0,
+                onSelect: selectTab, onNotifications: openNotifications)
+                .disabled(isRSVPPending)
+            if let snapshot = model.snapshot {
+                duoPages(snapshot)
+            } else {
+                loadedPages
+            }
+        }
+        .background(Color.white)
+    }
+
+    private func duoPage(_ tab: DIPHomeTab, _ pages: (DIPHomeTab) -> AnyView) -> some View {
+        pages(tab)
+            .environment(\.dipHeaderHosted, false)
+            .environment(\.profileBadgeLink, ProfileBadgeLink(isHidden: false, report: reportBadgeFrame))
+    }
+
+    @ViewBuilder private func duoPages(_ snapshot: DIPAppSnapshot) -> some View {
+        let pages = tabBuilder(snapshot)
+        if isMasterDetailTab {
+            HStack(spacing: 0) {
+                duoPage(selectedTab, pages)
+                    .environment(\.dipDuoSelectedEvent, duoSelectedEventID)
+                    .frame(width: DIPDuoPaneLayout.listWidth).frame(maxHeight: .infinity)
+                Rectangle().fill(DIPTokens.Color.surfaceMuted.swiftUIColor)
+                    .frame(width: DIPDuoPaneLayout.dividerWidth).frame(maxHeight: .infinity)
+                duoDetail
+            }
+        } else {
+            NavigationStack(path: $routes) {
+                duoPage(selectedTab, pages)
+                    .toolbar(.hidden, for: .navigationBar)
+                    .navigationDestination(for: Route.self) { route in
+                        destination(route).navigationBarBackButtonHidden().toolbar(.hidden, for: .navigationBar)
+                    }
+            }
+            .ignoresSafeArea()
+            .overlay(alignment: .bottom) { duoActionBar }
+        }
+    }
+
+    /// The detail pane: the first route is its root page (no Back), later routes push inside it.
+    private var duoDetail: some View {
+        let pushed = Binding<[Route]>(
+            get: { Array(routes.dropFirst()) },
+            set: { routes = (routes.first.map { [$0] } ?? []) + $0 })
+        return NavigationStack(path: pushed) {
+            Group {
+                if let root = routes.first {
+                    destination(root).environment(\.dipDuoHidesBack, true)
+                } else { DIPDuoDetailPlaceholder() }
+            }
+            .id(routes.first)
+            .ignoresSafeArea()
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Route.self) { route in
+                destination(route).navigationBarBackButtonHidden().toolbar(.hidden, for: .navigationBar)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .overlay(alignment: .bottom) { duoActionBar }
+    }
+
+    /// Join / Activity Chat / Add Photos action, contained in the pane it belongs to instead of spanning the window.
+    @ViewBuilder private var duoActionBar: some View {
+        if let action = bottomAction {
+            DIPFloatingNavigation(
+                selected: selectedTab, action: action, showsTabs: false,
+                onSelect: { _ in }, onAction: performBottomAction)
+                .frame(height: DIPFloatingNavigation.height)
+                .disabled(isRSVPPending)
+                .padding(.horizontal, 20)
+                .padding(.bottom, DIPFloatingNavigation.barCenterInset - DIPFloatingNavigation.height / 2)
+        }
+    }
+
     private func selectTab(_ tab: DIPHomeTab) {
         withAnimation(DIPMotion.navigation(reduceMotion: reduceMotion)) {
             selectedTab = tab
@@ -944,7 +1095,7 @@ struct DIPPrototypeApp: View {
         case "Profile": selectTab(.profile)
         case "My Events": selectTab(.events)
         case "Home": selectTab(.home)
-        case "Recent attendees": if eventReadsOnly { notice = "Attendee lists" } else { routes.append(.participants("puppy-yoga")) }
+        case "Recent attendees": if eventReadsOnly { notice = "Attendee lists" } else { openRoute(.participants("puppy-yoga")) }
         default: notice = selection
         }
     }

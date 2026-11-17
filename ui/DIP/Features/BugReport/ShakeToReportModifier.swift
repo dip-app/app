@@ -9,6 +9,7 @@ private struct ShakeToReportModifier: ViewModifier {
     @Environment(\.bugReporting) private var context
     @Environment(\.bugReportSuppressed) private var suppressed
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dipDuoOpen) private var duoOpen
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(ShakeGate.enabledKey) private var shakeEnabled = true
     @AppStorage(ShakeGate.promptKey) private var askFirst = true
@@ -36,6 +37,7 @@ private struct ShakeToReportModifier: ViewModifier {
                     BugReportSheet(model: BugReportFormModel(
                         session: session, context: context, diagnostics: ReportCapture.diagnostics(screen: session.screen)))
                     .environment(\.dynamicTypeSize, dynamicTypeSize)
+                    .dipDuoSheetSizing(duoOpen)
                 }
             }
             #if DEBUG

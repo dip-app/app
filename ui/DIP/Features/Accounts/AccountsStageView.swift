@@ -31,6 +31,7 @@ struct AccountsStageView: View {
     @State private var warnings = 0
     @State private var lastNotice: AccountsNotice?
     @AccessibilityFocusState private var titleFocused: Bool
+    @Environment(\.dipDuoOpen) private var duoOpen
 
     /// Set by `AccountsRootView` while it holds "Finding your company" for its minimum display time; nil shows
     /// the session's own route.
@@ -46,19 +47,34 @@ struct AccountsStageView: View {
 
     var body: some View {
         let scene = scene
-        GeometryReader { _ in
+        GeometryReader { geometry in
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if showsStage { stage(scene) }
-                    copy(scene)
+                if duoOpen {
+                    // Open Duo: the Stage on the left, the copy and the Bar beside it (one screen, no stacked column).
+                    HStack(alignment: .center, spacing: 48) {
+                        if showsStage { stage(scene).frame(width: 380) }
+                        VStack(alignment: .leading, spacing: 8) {
+                            copy(scene)
+                            // The footer insets itself for the phone; pull it back so the Bar lines up with the copy.
+                            footer(scene).padding(.horizontal, -DIPFloatingNavigation.standardInsets.leading)
+                        }
+                        .frame(maxWidth: 400)
+                    }
+                    .padding(.horizontal, 48)
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .center)
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if showsStage { stage(scene) }
+                        copy(scene)
+                    }
+                    .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
+                    .padding(.top, 60).padding(.bottom, 20)
+                    .frame(maxWidth: OnboardingMetrics.readingWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
-                .padding(.top, 60).padding(.bottom, 20)
-                .frame(maxWidth: OnboardingMetrics.readingWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
-            .safeAreaInset(edge: .bottom, spacing: 0) { footer(scene) }
+            .safeAreaInset(edge: .bottom, spacing: 0) { if !duoOpen { footer(scene) } }
         }
         .ignoresSafeArea(.container)
         .background(OnboardingTheme.surface.ignoresSafeArea())
