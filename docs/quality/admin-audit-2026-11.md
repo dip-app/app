@@ -85,7 +85,7 @@ Status: **Fixed** (in this pass), **Partial**, or **Open** (handed off below).
 | S1 | Organizers could open the New theme and Edit theme forms and only failed on save (the backend allows admins only) | Medium | `themes/new`, `themes/edit`, `ThemeCard` | Fixed: `requires="themes.manage"`; Edit and New are hidden for organizers. Events pages pass `events.manage` |
 | S2 | No error boundary or 404 page (a render error showed a blank page) | Medium | `src/app` | Fixed: `error.tsx`, `global-error.tsx`, `not-found.tsx` |
 | S3 | A rejected `session()` left a blank page forever | Medium | `AppProvider.tsx` | Fixed: error state with Reload |
-| S4 | No CSP or Permissions-Policy for the portal | Medium | `firebase.json` | Partial: `/admin/**` sends `Content-Security-Policy-Report-Only` and `Permissions-Policy`. Enforce after checking sign-in, App Check and Storage on a preview channel. `'unsafe-inline'` scripts are required by the Next static export |
+| S4 | No CSP or Permissions-Policy for the portal | Medium | `firebase.json` | Partial: `/admin{,/**}` sends `Content-Security-Policy-Report-Only` and `Permissions-Policy`. Enforce after checking sign-in, App Check and Storage on a preview channel. `'unsafe-inline'` scripts are required by the Next static export |
 | S5 | A production build without the `NEXT_PUBLIC_FIREBASE_*` variables silently becomes the mock with persona sign-in | Medium | `AppProvider` | Open: fail the deploy build unless mock is explicit |
 | S6 | A deactivated admin keeps the portal UI until calls fail | Low | `firebaseAdapter.ts` session | Open |
 | S7 | Reopening or cancelling a completed event with photos needs an admin `statusReason` that the form cannot send | Low | `organizerCommands.ts` | Open |
