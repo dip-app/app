@@ -63,7 +63,8 @@ export function emailConfig(): EmailConfig {
     enabled: EMAIL_ENABLED.value() || emulator(),
     unsubscribeKey: unsubscribeKey(),
     postalAddress: EMAIL_POSTAL_ADDRESS.value() || (emulator() ? "Emulator, 1 Test Street, Testville" : ""),
-    defaultTimeZone: EMAIL_DEFAULT_TIME_ZONE.value(),
+    // Unset params read as "" at runtime outside a CLI deploy; fall back to the documented defaults.
+    defaultTimeZone: EMAIL_DEFAULT_TIME_ZONE.value() || "America/New_York",
     publicOrigin: SHARE_ORIGIN,
     openTracking: EMAIL_OPEN_TRACKING.value() || emulator(),
   };
@@ -73,7 +74,7 @@ function provider(store: FirebaseFirestore.Firestore): EmailProviderPort {
   // The emulator never reaches a provider: it records messages in `emulatorEmailOutbox`.
   if (emulator()) return new EmulatorOutboxEmailProvider(store);
   if (EMAIL_PROVIDER.value() === "postmark") {
-    return new PostmarkProvider({ serverToken: POSTMARK_SERVER_TOKEN.value(), streams: { notifications: POSTMARK_MESSAGE_STREAM.value() } });
+    return new PostmarkProvider({ serverToken: POSTMARK_SERVER_TOKEN.value(), streams: { notifications: POSTMARK_MESSAGE_STREAM.value() || "notifications" } });
   }
   return new LogOnlyEmailProvider();
 }
