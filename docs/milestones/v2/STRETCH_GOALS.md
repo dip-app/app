@@ -80,3 +80,8 @@ The project board already has draft cards "Push notifications: enable and verify
 
 - Issues: `label:stretch` (all), plus `label:calendar`, `label:ai`, `label:tags`, `label:push`, `label:email`.
 - Project board "DIP V2": add the filter `label:stretch` in the view's filter bar, or group by Parent issue. The project API cannot always create saved views, so see the session log for what was done.
+
+## Additional stretch items (added November 17)
+
+- **Internationalization** ([#259](https://github.com/dip-app/app/issues/259)): move all app, admin, email and push strings to a proper i18n setup (String Catalogs on iOS, a message-catalog library in the portal, per-recipient locale for email and push). For now AI copy lives in one strings module with a single brand-name constant (Dipbot) so it is migration-ready; no i18n library yet.
+- **AI model migration** ([#260](https://github.com/dip-app/app/issues/260)): OpenAI shuts down `gpt-4o-mini` and `gpt-4.1-mini` on January 14, 2027. Pick a similar-cost, similar-quality replacement (OpenAI suggests `gpt-6-luna`), re-run the eval once and update the budget estimates before that date.
