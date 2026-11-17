@@ -46,8 +46,8 @@ export interface RouterDependencies {
 export interface DeliveryStats extends PushStats {
   duplicate: boolean;
   inApp: number;
-  /** Outbox entries newly enqueued by the email channel (0 when email is not wired or not requested). */
-  emailsEnqueued: number;
+  /** Outbox entries newly enqueued by the email channel. Optional so other stats builders need not set it. */
+  emailsEnqueued?: number;
   blocked: { category_off: number; event_level: number; no_destination: number; rate_limited: number };
 }
 
@@ -108,7 +108,7 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
   if (deps.email && request.email) {
     for (const recipient of recipients) {
       try {
-        if (await deps.email.deliver(request, recipient, admitted.has(recipient.uid))) stats.emailsEnqueued++;
+        if (await deps.email.deliver(request, recipient, admitted.has(recipient.uid))) stats.emailsEnqueued = (stats.emailsEnqueued ?? 0) + 1;
       } catch {
         // The email channel logs ids and reasons only.
       }
