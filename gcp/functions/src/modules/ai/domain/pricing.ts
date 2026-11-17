@@ -1,7 +1,26 @@
 import type { AiSettings, LlmUsage } from "../application/ports";
 
+/** Output ceilings for reasoning models (gpt-5 and later, o-series), whose hidden reasoning counts as output. */
 export const GENERATE_MAX_TOKENS = 12_000;
 export const DECISION_MAX_TOKENS = 2000;
+/** Output ceilings for small non-reasoning models (the defaults): three drafts fit in about 1,200 tokens. */
+export const GENERATE_MAX_TOKENS_SMALL = 2500;
+export const DECISION_MAX_TOKENS_SMALL = 400;
+/** Input bounds used for the reservation: system prompt with examples plus the request, and a decision call. */
+export const GENERATE_MAX_INPUT_TOKENS = 6000;
+export const DECISION_MAX_INPUT_TOKENS = 2500;
+
+/** Reasoning models reject `temperature` and need a larger output ceiling; older chat models reject `reasoning`. */
+export function isReasoningModel(model: string): boolean {
+  return /^(?:o\d|gpt-5|gpt-6|gpt-7)/.test(model.trim().toLowerCase());
+}
+
+/** Output token ceiling for a step on a given model. */
+export function outputCeiling(step: "generate" | "decision", model: string): number {
+  const reasoning = isReasoningModel(model);
+  if (step === "generate") return reasoning ? GENERATE_MAX_TOKENS : GENERATE_MAX_TOKENS_SMALL;
+  return reasoning ? DECISION_MAX_TOKENS : DECISION_MAX_TOKENS_SMALL;
+}
 
 interface Price { input: number; cachedInput: number; output: number }
 
@@ -9,10 +28,16 @@ const price = (input: number, cachedInput: number, output: number): Price => ({ 
 
 /**
  * Micro-USD per token, which equals USD per million tokens. OpenAI standard tier as listed on its pricing page on
- * November 17, 2026. Cached-input prices marked "assumed" are 10% of the input price (not listed by the provider).
+ * November 17, 2026 (developers.openai.com/api/docs/pricing). gpt-4o-mini and gpt-4.1-mini are deprecated with a
+ * shutdown on January 14, 2027; gpt-5-nano and gpt-5-mini on December 11, 2026; gpt-4.1-nano was shut down on
+ * October 23, 2026 and is not listed.
  * Moderation is free. Jev (TypeSafe AI) bills input tokens only, so its output price is zero.
  */
 export const MODEL_PRICES: Readonly<Record<string, Price>> = {
+  "gpt-4o-mini": price(0.15, 0.075, 0.6),
+  "gpt-4.1-mini": price(0.4, 0.1, 1.6),
+  "gpt-5-nano": price(0.05, 0.005, 0.4),
+  "gpt-5-mini": price(0.25, 0.025, 2),
   "gpt-6-astra": price(10, 1, 50),
   "gpt-6.1-sol": price(2, 0.2, 10),
   "gpt-6.1-terra": price(1, 0.1, 5),
@@ -54,11 +79,15 @@ const callCost = (model: string, inputTokens: number, outputTokens: number) =>
 
 /**
  * Upper bound of one generation at the token ceilings: one triage call, two generate calls (a retry) and three draft
- * checks (one per draft). Moderation is free.
+ * checks (one per draft). A decision step whose primary provider is Jev also reserves its OpenAI fallback call, since a
+ * failed Jev call is retried there. Moderation is free; the deterministic heuristic fallback costs nothing.
  */
 export function worstCaseMicros(settings: Pick<AiSettings, "models">): number {
   const { models } = settings;
-  return callCost(models.triage, 2000, DECISION_MAX_TOKENS)
-    + 2 * callCost(models.generate, 6000, GENERATE_MAX_TOKENS)
-    + 3 * callCost(models.draftCheck, 1500, DECISION_MAX_TOKENS);
+  const decision = (model: string, fallback: string | null | undefined) =>
+    callCost(model, DECISION_MAX_INPUT_TOKENS, outputCeiling("decision", model))
+    + (fallback ? callCost(fallback, DECISION_MAX_INPUT_TOKENS, outputCeiling("decision", fallback)) : 0);
+  return decision(models.triage, models.triageFallback)
+    + 2 * callCost(models.generate, GENERATE_MAX_INPUT_TOKENS, outputCeiling("generate", models.generate))
+    + 3 * decision(models.draftCheck, models.draftCheckFallback);
 }

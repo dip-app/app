@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AiEventChoices, EventDraft, GeneratedEventDraft } from "../../../generated/models";
 import { APPROVED_COVER_URLS, LIMITS as ORGANIZER_LIMITS } from "../../organizer/domain/eventDraft";
 import { coverURLFor } from "./covers";
-import { modelDraftsSchema } from "./prompt";
+import { DAYPARTS_FOR_TIMING, DURATION_FOR_TIMING, modelDraftsSchema, VENUES_FOR_SETTING } from "./prompt";
 import { containsContactInfo } from "./request";
 import { BUDGET_CENTS, DAYPARTS, GROUP_CAPACITY, LIMITS, VENUE_TYPES } from "./vocabulary";
 
@@ -58,7 +58,33 @@ export function toEventDraftPrefill(draft: GeneratedEventDraft): EventDraftPrefi
 /** The model returned nothing usable; the caller reports AI_OUTPUT_INVALID. */
 export class InvalidModelOutput extends Error {}
 
-export interface DraftContext { count: number; choices: AiEventChoices; catalogIds: ReadonlySet<string> }
+export interface DraftContext {
+  count: number;
+  choices: AiEventChoices;
+  catalogIds: ReadonlySet<string>;
+  /** Catalog display names by id, so a model that writes "Cooking" instead of "tag-cooking" is repaired. */
+  catalogNames?: ReadonlyMap<string, string>;
+}
+
+const slug = (value: string) => value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "");
+
+/**
+ * Maps a model's tag reference to a catalog id: the id itself, the id without its "tag-" prefix, or the display name
+ * (case, spacing and punctuation ignored). Unknown values return null and are dropped.
+ */
+export function normalizeTagId(raw: unknown, ctx: Pick<DraftContext, "catalogIds" | "catalogNames">): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  if (ctx.catalogIds.has(value)) return value;
+  const key = slug(value.replace(/^tag[-_ ]/i, ""));
+  if (key === "") return null;
+  for (const id of ctx.catalogIds) {
+    if (slug(id.replace(/^tag-/, "")) === key) return id;
+    const name = ctx.catalogNames?.get(id);
+    if (name && slug(name) === key) return id;
+  }
+  return null;
+}
 
 type Rec = Record<string, unknown>;
 const isRecord = (value: unknown): value is Rec => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -128,7 +154,7 @@ function parseOne(raw: unknown, ctx: DraftContext): GeneratedEventDraft | null {
   if (typeof raw.capacity !== "number" || !Number.isFinite(raw.capacity)) return null;
   if (typeof raw.isOutdoor !== "boolean") return null;
 
-  let tagIds = [...new Set(raw.tagIds.filter((id): id is string => typeof id === "string" && ctx.catalogIds.has(id)))].slice(0, LIMITS.tagsPerDraftMax);
+  let tagIds = [...new Set(raw.tagIds.map(id => normalizeTagId(id, ctx)).filter((id): id is string => id !== null))].slice(0, LIMITS.tagsPerDraftMax);
   if (tagIds.length === 0) {
     const fallback = ctx.choices.focusTagIds[0];
     if (fallback === undefined) return null;
@@ -137,13 +163,16 @@ function parseOne(raw: unknown, ctx: DraftContext): GeneratedEventDraft | null {
 
   const budget = BUDGET_CENTS[ctx.choices.budget];
   const group = GROUP_CAPACITY[ctx.choices.groupSize];
-  const daypart = (DAYPARTS as readonly unknown[]).includes(raw.suggestedDaypart)
+  // Daypart, venue type and duration must agree with the admin's timing and setting choices; anything else is mapped
+  // to the default for that choice, and the duration is clamped to the timing's range on 15-minute steps.
+  const daypart = (DAYPARTS_FOR_TIMING[ctx.choices.timing] as readonly unknown[]).includes(raw.suggestedDaypart)
     ? (raw.suggestedDaypart as GeneratedEventDraft["suggestedDaypart"])
     : DAYPART_FOR_TIMING[ctx.choices.timing];
-  const venueType = (VENUE_TYPES as readonly unknown[]).includes(raw.venueType)
+  const venueType = (VENUES_FOR_SETTING[ctx.choices.setting] as readonly unknown[]).includes(raw.venueType)
     ? (raw.venueType as GeneratedEventDraft["venueType"])
     : VENUE_FOR_SETTING[ctx.choices.setting];
-  const durationMinutes = clamp(Math.round(raw.durationMinutes / 15) * 15, LIMITS.durationMin, LIMITS.durationMax);
+  const range = DURATION_FOR_TIMING[ctx.choices.timing];
+  const durationMinutes = clamp(Math.round(raw.durationMinutes / 15) * 15, Math.max(LIMITS.durationMin, range.min), Math.min(LIMITS.durationMax, range.max));
   const costCents = ctx.choices.budget === "free"
     ? 0
     : clamp(clamp(Math.round(raw.costCents), budget.min, budget.max), 0, LIMITS.costCentsMax);

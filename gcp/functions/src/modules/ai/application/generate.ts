@@ -8,7 +8,7 @@ import { draftCheckQuestions, draftState, interpretDraftCheck, TRIAGE_QUESTIONS,
 import { InvalidModelOutput, parseModelDrafts } from "../domain/drafts";
 import { summarizeInterests } from "../domain/interests";
 import { aiPaths, dayKey, monthKey } from "../domain/paths";
-import { costMicros, GENERATE_MAX_TOKENS, worstCaseMicros } from "../domain/pricing";
+import { costMicros, outputCeiling, worstCaseMicros } from "../domain/pricing";
 import { buildGenerateUserContent, GENERATE_SYSTEM_PROMPT, modelDraftsSchema } from "../domain/prompt";
 import {
   addSpend, checkReservation, effectiveLimits, monthDocument, readDay, readMonth, RESERVATION_TTL_MS, usageSummary, type Limits,
@@ -157,12 +157,13 @@ async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readon
       choices: request.choices, count: request.count, note: request.prompt, catalog, topInterests: interests.top,
       thinTagIds: interests.thinTagIds.slice(0, THIN_IN_PROMPT), theme, now,
     });
-    const schema = modelDraftsSchema(catalogIds);
-    const context = { count: request.count, choices: request.choices, catalogIds: new Set(catalogIds) };
+    const schema = modelDraftsSchema(catalogIds, { count: request.count, choices: request.choices });
+    const context = { count: request.count, choices: request.choices, catalogIds: new Set(catalogIds), catalogNames: new Map(catalog.map(tag => [tag.id, tag.name])) };
     const focusTags = catalog.filter(tag => request.choices.focusTagIds.includes(tag.id));
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       const outcome = await deps.llm.generate({
-        step: "generate", instructions: GENERATE_SYSTEM_PROMPT, input, schema, schemaName: "event_drafts", maxOutputTokens: GENERATE_MAX_TOKENS,
+        step: "generate", instructions: GENERATE_SYSTEM_PROMPT, input, schema, schemaName: "event_drafts",
+        maxOutputTokens: outputCeiling("generate", deps.settings.models.generate),
       });
       record(outcome.model, outcome.usage);
       if (outcome.kind === "refusal") {
@@ -236,9 +237,11 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
     }
     put(tx, monthPath, monthDoc ?? null, monthDocument(month));
     put(tx, dayPath, dayDoc ?? null, { generations: day.generations, flags: day.flags, expireAt: new Date(now.getTime() + DAY_RETENTION_MS) });
+    // Which models and decision providers (jev, openai or heuristic) answered, for observability; never content.
+    const observed = { models: result.models, decisionProviders: result.providers };
     put(tx, requestPath, requestDoc ?? null, result.status === "done"
-      ? { status: "done", response: { drafts: result.drafts }, updatedAt: now }
-      : { status: "failed", reason: result.reason, updatedAt: now });
+      ? { status: "done", response: { drafts: result.drafts }, ...observed, updatedAt: now }
+      : { status: "failed", reason: result.reason, ...observed, updatedAt: now });
     writeAudit(tx, reservation.actor, {
       id: `ai_${uid}_${requestId}_${reservation.attempt}`,
       action: result.status === "done" ? "ai.generateDrafts" : result.status === "flagged" ? "ai.noteDeclined" : "ai.generateFailed",
@@ -249,8 +252,7 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
       changes: [
         change("models", null, result.models.join(",")),
         change("tokens", null, `${result.tokensIn} in, ${result.tokensOut} out`),
-        change("costUsd", null, (result.spentMicros / 1_000_000).toFixed(4)),
-        ...result.extra,
+        change("costUsd", null, (result.spentMicros / 1_000_000).toFixed(4)),        ...result.extra,
       ],
       requestId,
     });

@@ -65,7 +65,8 @@ export interface LlmPort {
 export type DecisionQuestion =
   | { type: "choice"; instructions: string; criteria: Readonly<Record<string, string>> }
   | { type: "score"; instructions: string; criteria: readonly string[] }
-  | { type: "noul"; instructions: string; criteria?: string };
+  /** Noul criteria: one sentence for yes, or concrete yes and no situations (TypeSafe's recommended form). */
+  | { type: "noul"; instructions: string; criteria?: string | { true: string; false: string } };
 
 export type DecisionAnswer =
   | { type: "choice"; choice: string; probabilities: Record<string, number>; confidence: number }
@@ -86,12 +87,13 @@ export interface DecisionResult {
   answers: Record<string, DecisionAnswer>;
   usage: LlmUsage;
   model: string;
-  provider: "jev" | "openai";
+  /** Who answered: Jev, the OpenAI fallback, or the deterministic last-resort heuristics. */
+  provider: "jev" | "openai" | "heuristic";
 }
 
 /**
- * Decision provider: Jev (TypeSafe AI) when configured with a key, otherwise an OpenAI mini-tier model answering the
- * same questions. Answers are hints for server logic (thresholds and fallbacks), never the only safety gate.
+ * Decision provider: Jev (TypeSafe AI) by default whenever a Jev key exists, falling back to a cheap OpenAI model and
+ * then to deterministic heuristics. Answers are hints for server logic (thresholds and fallbacks), never the only safety gate.
  */
 export interface DecisionPort {
   decide(request: DecisionRequest): Promise<DecisionResult>;
@@ -124,7 +126,11 @@ export interface AiSettings {
   /** AI_EVENTS_ENABLED and the OpenAI key present. False makes the whole feature a clean no-op (AI_DISABLED). */
   enabled: boolean;
   /** Model id per step, used for pricing; the adapters read the same config module. */
-  models: { generate: string; triage: string; draftCheck: string; moderation: string };
+  models: {
+    generate: string; triage: string; draftCheck: string; moderation: string;
+    /** OpenAI model that answers when the primary decision provider (Jev) fails; null or absent when OpenAI is primary. */
+    triageFallback?: string | null; draftCheckFallback?: string | null;
+  };
   /** Monthly spending cap per company in micro-USD (1 USD = 1,000,000). */
   monthlyBudgetMicros: number;
   /** Daily (UTC) spending cap per company in micro-USD. */

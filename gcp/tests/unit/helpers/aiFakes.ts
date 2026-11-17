@@ -9,7 +9,10 @@ import { benignDecision } from "../../../functions/src/modules/ai/infrastructure
 
 export const SETTINGS: AiSettings = {
   enabled: true,
-  models: { generate: "gpt-6.1-sol", triage: "jev-latest", draftCheck: "jev-latest", moderation: "omni-moderation-latest" },
+  models: {
+    generate: "gpt-4o-mini", triage: "jev-latest", draftCheck: "jev-latest", moderation: "omni-moderation-latest",
+    triageFallback: "gpt-4o-mini", draftCheckFallback: "gpt-4o-mini",
+  },
   monthlyBudgetMicros: 10_000_000,
   dailyBudgetMicros: 5_000_000,
   monthlyGenerationLimit: 5,

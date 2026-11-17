@@ -27,21 +27,46 @@ function focusTagIds(input: string): string[] {
   }
 }
 
-function drafts(count: number, tagIds: readonly string[]) {
+/** The request's limits block (prompt.ts choiceLimits), so the canned drafts fit the bounded output schema. */
+interface DemoLimits { cost: [number, number]; capacity: [number, number]; duration: [number, number]; dayparts: string[]; venues: string[] }
+
+function limitsOf(input: string): DemoLimits | null {
+  const body = /<request>\n([\s\S]*?)\n<\/request>/.exec(input)?.[1];
+  if (!body) return null;
+  try {
+    const limits = (JSON.parse(body) as { limits?: Record<string, unknown> }).limits;
+    if (!limits) return null;
+    const range = (value: unknown): [number, number] => {
+      const numbers = String(value).match(/\d+/g)?.map(Number) ?? [];
+      return [numbers[0] ?? 0, numbers.length > 1 && !String(value).startsWith("0 (") ? numbers[1]! : numbers[0] ?? 0];
+    };
+    return {
+      cost: range(limits.costCentsRange), capacity: range(limits.capacityRange), duration: range(limits.durationMinutesRange),
+      dayparts: String(limits.dayparts ?? "").split(" or ").filter(Boolean), venues: String(limits.venueTypes ?? "").split(", ").filter(Boolean),
+    };
+  } catch {
+    return null;
+  }
+}
+
+const within = (value: number, [min, max]: [number, number]) => Math.min(max, Math.max(min, value));
+
+function drafts(count: number, tagIds: readonly string[], limits: DemoLimits | null) {
   return Array.from({ length: count }, (_, i) => {
     const t = TEMPLATES[i % TEMPLATES.length]!;
+    const cost = limits ? within(t.cost, limits.cost) : t.cost;
     return {
       title: t.title,
       description: t.description,
       tagIds: [...new Set([tagIds[i % tagIds.length]!, tagIds[(i + 1) % tagIds.length]!])],
       coverCategory: t.cover,
-      suggestedDaypart: "weekday_afternoon",
-      durationMinutes: 60,
-      venueType: t.venue,
+      suggestedDaypart: limits?.dayparts[0] ?? "weekday_afternoon",
+      durationMinutes: limits ? Math.ceil(within(60, limits.duration) / 15) * 15 : 60,
+      venueType: !limits || limits.venues.includes(t.venue) ? t.venue : limits.venues[0]!,
       venueSearchHint: t.hint,
-      costCents: t.cost,
-      costNote: t.cost > 0 ? "Covers snacks and drinks" : "",
-      capacity: 20,
+      costCents: cost,
+      costNote: cost > 0 ? "Covers snacks and drinks" : "",
+      capacity: limits ? within(20, limits.capacity) : 20,
       isOutdoor: t.outdoor,
       rationale: "A low-effort way for coworkers to meet across teams.",
     };
@@ -54,12 +79,13 @@ export class DemoLlm implements LlmPort {
     if (request.step !== "generate") throw new Error("DemoLlm only drafts events; decisions use DemoDecisions.");
     const count = Math.min(Math.max(Number(/Write exactly (\d+) event draft/.exec(request.input)?.[1] ?? 3) || 3, 1), 10);
     const focus = focusTagIds(request.input);
-    let parsed = request.schema.safeParse({ drafts: drafts(count, focus.length > 0 ? focus : ["tag-social"]) });
+    const limits = limitsOf(request.input);
+    let parsed = request.schema.safeParse({ drafts: drafts(count, focus.length > 0 ? focus : ["tag-social"], limits) });
     if (!parsed.success) {
       // Focus ids missing from the catalog: recover the allowed ids from the schema's enum error.
       const issue = parsed.error.issues.find(i => i.code === "invalid_value") as { values?: unknown[] } | undefined;
       const ids = (issue?.values ?? []).filter((v): v is string => typeof v === "string");
-      if (ids.length > 0) parsed = request.schema.safeParse({ drafts: drafts(count, ids) });
+      if (ids.length > 0) parsed = request.schema.safeParse({ drafts: drafts(count, ids, limits) });
     }
     if (!parsed.success) return { kind: "malformed", usage: DEMO_USAGE, model: DEMO_MODEL };
     return { kind: "ok", value: parsed.data, usage: DEMO_USAGE, model: DEMO_MODEL };

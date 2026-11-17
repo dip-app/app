@@ -1,10 +1,10 @@
 # AI event drafts: prompt evaluation (AI-7)
 
-Status: no live run has been done yet. Everything below the offline section is a procedure for the owner to follow. The only results that exist come from the offline demo providers, which say nothing about model quality.
+Status: one live run was done on November 17, 2026 with the cheap defaults (`gpt-4o-mini` drafting; Jev and `gpt-4o-mini` on the decision questions). Aggregate results are in `docs/design/stretch/ai-event-creation.md`, section Evaluation. Only one live run is allowed: the runner writes `results/.live-run-lock` and refuses another live run without `--allow-rerun`.
 
 ## Purpose
 
-Compare candidate models for the LLM steps of AI event drafts on 20 fixed cases, using the exact production prompts, schemas, questions and validators: the draft generation (OpenAI) and the note triage plus draft checks (an OpenAI mini model against TypeSafe AI's Jev). The outcome decides the defaults for `AI_MODEL_GENERATE` (currently `gpt-6-astra`) and the decision providers `AI_DECISION_PROVIDER_TRIAGE` / `AI_DECISION_PROVIDER_DRAFT_CHECK` (currently `openai-mini` with `gpt-6-luna`). Design reference: `docs/design/stretch/ai-event-creation.md`, Testing plan.
+Measure the LLM steps of AI event drafts on 20 fixed cases, using the exact production prompts, bounded output schema, questions and validators: the draft generation (OpenAI, default `gpt-4o-mini`) and the note triage plus draft checks (TypeSafe AI's Jev, the production default, compared with `gpt-4o-mini` on the same questions). Design reference: `docs/design/stretch/ai-event-creation.md`, Testing plan and Evaluation.
 
 Files:
 
@@ -22,23 +22,24 @@ node --import tsx gcp/tests/ai-eval/run.ts
 
 This uses `DemoLlm` and `DemoDecisions`, so it only proves the harness, prompt building and validators work. The demo triage flags only the literal injection phrase, so it misses the other adversarial cases, and its canned drafts trip the automatic cost and capacity checks. Both are expected. Demo token counts are priced at the most expensive known rate because `demo` has no price entry, so the offline cost column is not meaningful.
 
-Useful flags: `--cases ord-01,adv-01` to run a subset, `--label name`, `--out dir`, `--generate-flagged` (also generate for cases triage flagged, to test the generate prompt against injection).
+Useful flags: `--cases ord-01,adv-01` to run a subset, `--label name`, `--out dir`, `--generate-flagged` (also generate for cases triage flagged, to test the generate prompt against injection), `--max-usd n` (hard cap, at most 1).
 
-## Run the live comparison (owner only)
+## Run live (owner-approved only, once)
 
-Needs an OpenAI API key in your own shell, and optionally a TypeSafe AI key to compare Jev. Never commit keys or paste them into a session log.
+Keys come only from the environment. Load them from the gitignored, mode-600 file that `scripts/secrets/pull.sh --only backend` writes, with Node's own `--env-file`, so no key appears in argv, the shell history or a log. Never commit keys or paste them into a session log; delete `.secrets-cache/` afterward.
 
 ```
-export OPENAI_API_KEY=...
-export JEV_API_KEY=...          # only with --jev
-node --import tsx gcp/tests/ai-eval/run.ts --live [--jev]
+scripts/secrets/pull.sh --only backend
+node --env-file=.secrets-cache/out/functions.env --import tsx gcp/tests/ai-eval/run.ts --live --jev          # prints the maximum, spends nothing
+node --env-file=.secrets-cache/out/functions.env --import tsx gcp/tests/ai-eval/run.ts --live --jev --yes    # the one live run
+rm -rf .secrets-cache
 ```
 
-Without `--yes` the runner prints the estimated maximum spend (cases x models x the worst case from `worstCaseMicros`, plus one extra triage call per case for Jev) and exits without calling any API. Re-run with `--yes` to spend. The runner also stops if actual spend passes the confirmed maximum.
+Without `--yes` the runner prints the estimated maximum spend (cases x the production worst case from `worstCaseMicros`, which already covers a Jev call plus its OpenAI fallback per decision and two drafting attempts) and exits. With `--yes` it stops before any case whose worst case would pass the cap (`--max-usd`, default and maximum $1) and after any case whose actual spend passed it. Errors print only a kind and an HTTP status, never a provider message.
 
-Defaults: generate with `gpt-6-astra` and `gpt-6.1-sol`; triage and draft checks with `openai-mini` (`gpt-6-luna`), plus `jev` (`jev-latest`) when `--jev` is given. Override with repeated `--model <id>` and `--triage-model <id>`. The first triage provider (`openai-mini`) gates generation and runs the draft checks; Jev is compared on triage only.
+Defaults: generate with `gpt-4o-mini` (one retry on invalid output, as in production); Jev (`jev-latest`) answers triage and draft checks and gates generation; `gpt-4o-mini` answers the same questions for comparison. Override with repeated `--model <id>` and `--triage-model <id>`.
 
-Cost expectation: the printed maximum for the defaults with `--jev` is about $31.87 (20 cases, both models, worst case of 2 full-length drafting calls per case; a deliberately pessimistic ceiling). Typical spend is far lower: about $0.19 per `gpt-6-astra` generation and about $0.04 per `gpt-6.1-sol` generation, over roughly 16 generated cases (4 adversarial notes are expected to be flagged), so about $4 in total. Moderation is free and Jev decision calls cost fractions of a cent.
+Cost expectation at the defaults: the printed maximum for 20 cases is $0.15; actual spend was $0.0196 (see the design doc).
 
 ## What is measured
 
@@ -51,7 +52,7 @@ Per case and generate model:
 
 Per case and triage provider: free moderation, then the four triage questions; the verdict against the expectation (`ok` or `flag`). Empty notes skip triage, as in production. A moderation flag, a question at or above 0.7, a missing answer or a provider error counts as flagged.
 
-The summary tables print, per generate model: valid %, automatic check failures, venue reviews, average cost per generation (drafting plus draft checks, USD) and average latency; and per triage provider: accuracy, errors, average cost per note and latency.
+The summary tables print, per generate model: valid %, valid on the first attempt, retries, refusals, validation failures, automatic check failures, venue reviews, output moderation flags, average drafting cost, tokens and latency; per triage provider: accuracy, false flags, missed flags, errors, calibration (mean highest Noul for notes that should be declined and for notes that should pass, and how many answers fall in the unsettled 0.3 to 0.7 band), cost and latency; per draft-check provider: checks, errors, unsafe drops, cover overrides, average fit, cost and latency, plus the agreement between Jev and the OpenAI model on cover and unsafe.
 
 ## Human rubric
 
@@ -70,5 +71,5 @@ Valid and no invented venue are largely covered by the automatic columns; a pers
 ## Recording results
 
 1. Run `npm run session:new` (if no log exists for this session) and record in `docs/sessions/SESSION_<username>_<date>_<NNN>.md`: date, models, the summary tables, rubric averages per model, your decision and the result file name. Do not include keys.
-2. If the winner differs from the current defaults, change `AI_MODEL_GENERATE` / `AI_DECISION_PROVIDER_*` (defaults in `gcp/functions/src/modules/ai/infrastructure/aiConfig.ts`, deployed values in the function environment) and add a price entry in `domain/pricing.ts` if the model is new.
-3. Re-run after any change to the prompts in `domain/prompt.ts` or the questions in `domain/decisions.ts`.
+2. If the results call for different defaults, change `AI_MODEL_*` / `AI_DECISION_PROVIDER_*` (defaults in `gcp/functions/src/modules/ai/infrastructure/aiConfig.ts`, deployed values in the function environment) and add a price entry in `domain/pricing.ts` if the model is new.
+3. A re-run after a prompt or question change needs the owner's approval (`--allow-rerun`); spend stays capped at $1.

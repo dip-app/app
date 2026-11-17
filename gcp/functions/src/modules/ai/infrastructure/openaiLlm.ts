@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { LlmUnavailableError } from "../application/ports";
 import type { LlmOutcome, LlmPort, LlmRequest, LlmUsage, ModerationResult } from "../application/ports";
+import { isReasoningModel } from "../domain/pricing";
 import type { AiConfig, Effort } from "./aiConfig";
 
 /** The slice of a Responses API result this adapter reads. */
@@ -31,20 +32,22 @@ export interface OpenAiLike {
 
 export interface OpenAiLlmOptions { client: OpenAiLike; config: AiConfig }
 
-interface StepModel { model: string; effort: Effort }
+interface StepModel { model: string; effort: Effort; temperature: number }
 
 export class OpenAiLlm implements LlmPort {
   constructor(private readonly options: OpenAiLlmOptions) {}
 
   private stepModel(step: LlmRequest<unknown>["step"]): StepModel {
     const { config } = this.options;
-    if (step === "generate") return { model: config.generate.model, effort: config.generate.effort };
+    if (step === "generate") return { model: config.generate.model, effort: config.generate.effort, temperature: config.generate.temperature };
     const decision = config[step];
-    return { model: decision.openaiModel, effort: decision.effort };
+    return { model: decision.openaiModel, effort: decision.effort, temperature: decision.temperature };
   }
 
   async generate<T>(request: LlmRequest<T>): Promise<LlmOutcome<T>> {
-    const { model, effort } = this.stepModel(request.step);
+    const { model, effort, temperature } = this.stepModel(request.step);
+    // Reasoning models take an effort and reject temperature; older chat models (the defaults) are the reverse.
+    const tuning = isReasoningModel(model) ? { reasoning: { effort } } : { temperature };
     let response: ParsedResponseLike;
     try {
       response = await this.options.client.responses.parse({
@@ -53,7 +56,7 @@ export class OpenAiLlm implements LlmPort {
         input: request.input,
         text: { format: zodTextFormat(request.schema as never, request.schemaName) },
         max_output_tokens: request.maxOutputTokens,
-        reasoning: { effort },
+        ...tuning,
         // Do not keep prompts at OpenAI longer than needed.
         store: false,
       });
