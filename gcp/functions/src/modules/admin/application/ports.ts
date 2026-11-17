@@ -107,6 +107,13 @@ export interface AdminDeps {
   now: () => Date;
   /** Random opaque id (teams, import jobs, leases). */
   newId: () => string;
+  /** Best-effort pushes sent after a command commits; a failure never fails the command. Absent in unit tests that ignore pushes. */
+  pushes?: AdminPushNotifier;
+}
+
+export interface AttendeeAddedPush { companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string }
+export interface AdminPushNotifier {
+  attendeeAdded(input: AttendeeAddedPush): Promise<void>;
 }
 
 /** Trusted caller identity, derived only from the verified Auth token. */

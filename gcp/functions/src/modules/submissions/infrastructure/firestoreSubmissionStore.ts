@@ -58,7 +58,7 @@ export class FirestoreSubmissionStore implements SubmissionStore {
           const startDate = toDate(data.startDate);
           const endDate = toDate(data.endDate);
           if (data.companyId !== companyId || !startDate || !endDate || typeof data.goal !== "number" || !Number.isInteger(data.pointsReward)) invalid();
-          return { companyId, startDate, endDate, goal: data.goal, pointsReward: data.pointsReward };
+          return { companyId, startDate, endDate, goal: data.goal, pointsReward: data.pointsReward, title: typeof data.title === "string" ? data.title : "" };
         },
         getSubmission: async (companyId, challengeId, id) =>
           readSubmission((await transaction.get(this.submissions(companyId, challengeId).doc(id))).data()),

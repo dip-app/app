@@ -2,10 +2,11 @@ import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
+import { routedPushNotifier } from "../../notifications/transport/routedPush";
 import { callerFromRequest } from "../../organizer/transport/organizerCallables";
 import { ParticipationError } from "../../participation/domain/errors";
 import { listCoworkers } from "../application/listCoworkers";
-import type { InviteNotifier, InviteStore } from "../application/ports";
+import type { InviteAnswerNotifier, InviteNotifier, InviteStore } from "../application/ports";
 import { respondToInvite } from "../application/respondToInvite";
 import { sendInvite } from "../application/sendInvite";
 import { InviteError } from "../domain/errors";
@@ -45,8 +46,8 @@ type Request = Pick<CallableRequest, "auth" | "data">;
 
 export const handleSendInvite = (store: InviteStore, notifier: InviteNotifier | null, request: Request, now?: () => Date) =>
   guarded("sendInviteV1", () => sendInvite(store, notifier, callerFromRequest(request), request.data, now));
-export const handleRespondToInvite = (store: InviteStore, request: Request, now?: () => Date) =>
-  guarded("respondToInviteV1", () => respondToInvite(store, callerFromRequest(request), request.data, now));
+export const handleRespondToInvite = (store: InviteStore, request: Request, now?: () => Date, notifier: InviteAnswerNotifier | null = null) =>
+  guarded("respondToInviteV1", () => respondToInvite(store, callerFromRequest(request), request.data, now, notifier));
 export const handleListCoworkers = (store: InviteStore, request: Request, now?: () => Date) =>
   guarded("listCoworkersV1", () => listCoworkers(store, callerFromRequest(request), request.data, now));
 
@@ -57,5 +58,6 @@ const store = () => new FirestoreInviteStore(getFirestore(defaultAdminApp()));
 // Production requires App Check; only the official Functions emulator bypasses it.
 export const sendInviteV1 = onCall(options, (request) =>
   handleSendInvite(store(), new PushInviteNotifier(defaultAdminApp(), emulator()), request));
-export const respondToInviteV1 = onCall(options, (request) => handleRespondToInvite(store(), request));
+export const respondToInviteV1 = onCall(options, (request) =>
+  handleRespondToInvite(store(), request, undefined, routedPushNotifier(defaultAdminApp())));
 export const listCoworkersV1 = onCall(options, (request) => handleListCoworkers(store(), request));

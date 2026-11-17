@@ -2,7 +2,7 @@ import type { RespondToInviteResponse } from "../../../generated/models";
 import { applyRsvp } from "../../participation/application/setRsvp";
 import { InviteError } from "../domain/errors";
 import { isActiveMember, parseRespond } from "../domain/invitePolicy";
-import type { InviteCaller, InviteStore } from "./ports";
+import type { InviteAcceptedPush, InviteAnswerNotifier, InviteCaller, InviteStore } from "./ports";
 import { requireCaller } from "./sendInvite";
 
 /**
@@ -15,11 +15,13 @@ import { requireCaller } from "./sendInvite";
  * recipient (including the sender) gets `INVITE_NOT_FOUND`, never a hint that the invite exists.
  */
 export async function respondToInvite(store: InviteStore, callerIn: InviteCaller | null, data: unknown,
-  now: () => Date = () => new Date()): Promise<RespondToInviteResponse> {
+  now: () => Date = () => new Date(), notifier: InviteAnswerNotifier | null = null): Promise<RespondToInviteResponse> {
   const caller = requireCaller(callerIn);
   const { companyId, inviteId, response } = parseRespond(data);
   const uid = caller.uid;
-  return store.runTransaction(async (tx) => {
+  let push = null as InviteAcceptedPush | null;
+  const result = await store.runTransaction(async (tx) => {
+    push = null;
     const member = await tx.getMember(uid);
     if (!isActiveMember(member, companyId)) {
       throw new InviteError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
@@ -53,6 +55,17 @@ export async function respondToInvite(store: InviteStore, callerIn: InviteCaller
     // ParticipationError (EVENT_FULL, EVENT_CLOSED, EVENT_NOT_FOUND) aborts everything, leaving the invite pending.
     const joined = await applyRsvp(tx, member, companyId, eventId, uid, "going", now);
     tx.markResponded(companyId, inviteId, "accepted");
+    if (typeof invite.fromUserId === "string" && invite.fromUserId !== uid) {
+      push = {
+        companyId, eventId, eventTitle: typeof invite.eventTitle === "string" ? invite.eventTitle : "", inviteId, senderId: invite.fromUserId,
+        responderName: typeof member?.displayName === "string" ? member.displayName : (typeof invite.toUserName === "string" ? invite.toUserName : ""),
+      };
+    }
     return { contractVersion: 1, inviteId, status: "accepted", rsvpStatus: "going", attendeeCount: joined.attendeeCount } satisfies RespondToInviteResponse;
   });
+  // Only a fresh acceptance notifies (replays and declines never set `push`). A failed push never fails the response.
+  if (push && notifier) {
+    try { await notifier.accepted(push); } catch { /* best-effort */ }
+  }
+  return result;
 }

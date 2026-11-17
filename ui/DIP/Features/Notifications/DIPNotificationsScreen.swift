@@ -20,6 +20,8 @@ struct DIPNotificationsScreen: View {
     let onOpen: (DIPNotification) -> Void
     let onOpenInvitations: () -> Void
     var onPermission: () -> Void = {}
+    /// "Notification settings" link under the banner action; nil hides it.
+    var onOpenSettings: (() -> Void)?
     let onRetry: () -> Void
     let onClose: () -> Void
     /// Reference date for grouping and relative times; injectable for tests.
@@ -129,6 +131,17 @@ struct DIPNotificationsScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
             pill(prompt == .turnOn ? "Turn on" : "Open Settings", identifier: "notifications.permission.action") {
                 DIPHaptics.select(); onPermission()
+            }
+            if let onOpenSettings {
+                Button { DIPHaptics.select(); onOpenSettings() } label: {
+                    Text("Notification settings")
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
+                        .underline()
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityIdentifier("notifications.permission.settings")
             }
         }
         .padding(16)
@@ -267,6 +280,7 @@ struct DIPNotificationsScreen: View {
     static func symbol(_ kind: DIPNotificationKind) -> String {
         switch kind {
         case .invite: "envelope"
+        case .inviteAnswered: "envelope.open"
         case .eventUpdated: "calendar.badge.clock"
         case .eventCancelled: "calendar.badge.minus"
         case .reminder: "alarm"
@@ -281,7 +295,7 @@ struct DIPNotificationsScreen: View {
 
     static func accent(_ kind: DIPNotificationKind) -> Color {
         switch kind {
-        case .invite: DIPTokens.Color.actionPrimary.swiftUIColor
+        case .invite, .inviteAnswered: DIPTokens.Color.actionPrimary.swiftUIColor
         case .eventUpdated, .reminder: DIPTokens.Color.notificationAccent.swiftUIColor
         case .eventCancelled: DIPTokens.Color.textPrimary.swiftUIColor
         case .challengeApproved, .challengeChanges: DIPTokens.Color.challengeAccent.swiftUIColor

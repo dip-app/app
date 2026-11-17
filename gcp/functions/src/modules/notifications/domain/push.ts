@@ -2,7 +2,8 @@ import type { NotificationCategory } from "./categories";
 import type { PushKind } from "./subscription";
 
 /** Push kinds: the subscription-driven kinds plus `invite`, which targets one recipient and ignores subscriptions. */
-export type PushType = PushKind | "invite";
+export type PushType =
+  | PushKind | "invite" | "attendee_added" | "invite_answered" | "challenge_approved" | "challenge_changes_requested" | "weekly_theme";
 
 /** Chat pushes carry at most this many characters of the message; other kinds carry no user text. */
 export const CHAT_PREVIEW_MAX = 80;
@@ -16,7 +17,8 @@ export interface PushData {
   [key: string]: string;
   type: PushType;
   companyId: string;
-  eventId: string;
+  /** Absent on challenge pushes (they link to `dip://challenges/{challengeId}`). */
+  eventId?: string;
   deepLink: string;
   /** Same value as `PushMessage.category`. */
   category?: NotificationCategory;
@@ -100,5 +102,59 @@ export function invitePush(companyId: string, eventId: string, eventTitle: strin
     threadId: "invites",
     collapseId: `invite-${inviteId}`,
     category: "invites",
+  };
+}
+
+/** An organizer added the recipient to an activity. Gated by the `event_updates` switch only, never by the per-event level. */
+export function attendeeAddedPush(companyId: string, eventId: string, eventTitle: string): PushMessage {
+  return {
+    title: "You were added to an activity",
+    body: `An organizer added you to ${shorten(eventTitle, TITLE_MAX)}.`,
+    data: { ...base("attendee_added", companyId, eventId), category: "event_updates" },
+    threadId: `event-${eventId}`,
+    collapseId: `attendee-added-${eventId}`,
+    category: "event_updates",
+  };
+}
+
+/** The sender's invitation was accepted (declines are silent). Opens the event page. */
+export function inviteAnsweredPush(companyId: string, eventId: string, eventTitle: string, inviteId: string, responderName: string): PushMessage {
+  const who = shorten(responderName, 40) || "A coworker";
+  return {
+    title: "Invitation accepted",
+    body: `${who} accepted your invite to ${shorten(eventTitle, TITLE_MAX)}.`,
+    data: { ...base("invite_answered", companyId, eventId), inviteId, category: "invites" },
+    threadId: "invites",
+    collapseId: `invite-answered-${inviteId}`,
+    category: "invites",
+  };
+}
+
+function challengeBase(kind: PushType, companyId: string, challengeId: string): PushData {
+  return { type: kind, companyId, challengeId, deepLink: `dip://challenges/${challengeId}`, category: "challenges" };
+}
+
+/** A reviewer decided on the recipient's submission. The body names the weekly theme, never the reviewer's note. */
+export function challengeReviewedPush(companyId: string, challengeId: string, submissionId: string, approved: boolean, challengeTitle: string): PushMessage {
+  return {
+    title: approved ? "Your submission was approved" : "Changes requested on your submission",
+    body: shorten(challengeTitle, TITLE_MAX) || "Weekly challenge",
+    data: { ...challengeBase(approved ? "challenge_approved" : "challenge_changes_requested", companyId, challengeId), submissionId },
+    threadId: `challenge-${challengeId}`,
+    collapseId: `challenge-review-${submissionId}`,
+    category: "challenges",
+  };
+}
+
+/** A new weekly theme started. `windowEnd` (when known) makes APNs drop the push once the theme is over. */
+export function weeklyThemePush(companyId: string, challengeId: string, themeTitle: string, windowEnd?: Date): PushMessage {
+  return {
+    title: "New weekly challenge",
+    body: shorten(themeTitle, TITLE_MAX) || "A new theme just started.",
+    data: challengeBase("weekly_theme", companyId, challengeId),
+    threadId: `challenge-${challengeId}`,
+    collapseId: `weekly-theme-${challengeId}`,
+    category: "challenges",
+    ...(windowEnd ? { expiresAt: windowEnd } : {}),
   };
 }

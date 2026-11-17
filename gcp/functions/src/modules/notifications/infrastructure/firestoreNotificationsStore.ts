@@ -4,7 +4,7 @@ import type {
   EventSummary, InboxItem, InboxWriter, RecipientDirectory, StaleDeviceStore, SubscriptionStore, UpcomingEvents,
 } from "../application/ports";
 import { mergeChangeLog } from "../domain/changeLog";
-import { isSubscriptionLevel, DEFAULT_LEVEL_ON_JOIN } from "../domain/subscription";
+import { isSubscriptionLevel, DEFAULT_LEVEL_ON_JOIN, type SubscriptionLevel } from "../domain/subscription";
 import { MAX_DEVICES_PER_USER } from "../domain/device";
 
 const PAGE = 500;
@@ -101,6 +101,18 @@ export class FirestoreNotificationsStore implements
       const snap = await query.get();
       uids.push(...snap.docs.map((doc) => doc.id));
       if (snap.size < PAGE) return uids;
+      query = query.startAfter(snap.docs[snap.docs.length - 1]!);
+    }
+  }
+
+  async subscribersWithLevels(companyId: string, eventId: string, levels: readonly SubscriptionLevel[]): Promise<Array<{ uid: string; level: SubscriptionLevel }>> {
+    const result: Array<{ uid: string; level: SubscriptionLevel }> = [];
+    let query = this.event(companyId, eventId).collection("subscriptions")
+      .where("level", "in", [...levels]).orderBy(FieldPath.documentId()).select("level").limit(PAGE);
+    for (;;) {
+      const snap = await query.get();
+      for (const doc of snap.docs) result.push({ uid: doc.id, level: doc.get("level") as SubscriptionLevel });
+      if (snap.size < PAGE) return result;
       query = query.startAfter(snap.docs[snap.docs.length - 1]!);
     }
   }

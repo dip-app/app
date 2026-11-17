@@ -3,8 +3,9 @@ import { changePush, chatPush, reminderPush, shorten } from "../domain/push";
 import { dueWindow, reminderKey, REMINDER_WINDOWS } from "../domain/reminders";
 import { LEVELS_FOR } from "../domain/subscription";
 import type {
-  ChangeLogStore, ClaimStore, Clock, EventReader, InboxWriter, PushDependencies, SubscriptionStore, UpcomingEvents,
+  ChangeLogStore, ClaimStore, Clock, EventReader, InboxWriter, PushDependencies, RecipientDirectory, SubscriptionStore, UpcomingEvents,
 } from "./ports";
+import { deliverNotification, type DeliveryStats, type RouterDependencies } from "./router";
 import { sendPush, type PushStats } from "./sendPush";
 
 type Doc = Record<string, unknown>;
@@ -116,6 +117,95 @@ export async function onRsvpWritten(
     const changedLater = subscriptionUpdatedAt !== null && subscriptionUpdatedAt.getTime() > rsvpWriteTime.getTime();
     return changedLater ? "keep" : "delete";
   });
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Router mode (PUSH_ROUTER_ENABLED): the same triggers, delivered through `deliverNotification`. The router
+// owns the in-app write, the exactly-once receipt (`notificationReceipts/{companyId}/{id}`), the preference
+// precedence and the rate cap, so these variants make no claim and no inbox call of their own. The legacy
+// functions above stay untouched so the flag can fall back.
+// ---------------------------------------------------------------------------------------------------------
+
+const emptyDelivery = (): DeliveryStats => ({
+  ...emptyStats(), duplicate: false, inApp: 0, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 },
+});
+
+/** Chat through the router: `going` subscribers with a chat-capable level, except the author. */
+export async function onChatMessageCreatedViaRouter(
+  deps: RouterDependencies & { events: EventReader; recipients: RecipientDirectory },
+  companyId: string, eventId: string, messageId: string, message: Doc,
+): Promise<DeliveryStats> {
+  const authorId = message.authorId;
+  const text = message.text;
+  if (typeof authorId !== "string" || typeof text !== "string") return emptyDelivery();
+  const event = await deps.events.get(companyId, eventId);
+  if (!event || event.status !== "scheduled") return emptyDelivery();
+  const subscribers = (await deps.recipients.subscribersWithLevels(companyId, eventId, LEVELS_FOR.chat)).filter((s) => s.uid !== authorId);
+  if (subscribers.length === 0) return emptyDelivery();
+  const going = await deps.recipients.going(companyId, eventId, subscribers.map((s) => s.uid));
+  const recipients = subscribers.filter((s) => going.has(s.uid)).map((s) => ({ uid: s.uid, eventLevel: s.level }));
+  if (recipients.length === 0) return emptyDelivery();
+  const author = typeof message.authorName === "string" ? message.authorName : "";
+  return deliverNotification(deps, {
+    id: `chat_${messageId}`, kind: "chat", companyId, recipients,
+    push: chatPush(companyId, eventId, event.title, messageId, author, text),
+  });
+}
+
+/** Event change through the router. The changeLog append (and its loop-ending idempotency) is identical to legacy. */
+export async function onEventDocumentUpdatedViaRouter(
+  deps: RouterDependencies & { recipients: RecipientDirectory; changeLog: ChangeLogStore },
+  companyId: string, eventId: string, before: Doc, after: Doc, updateTime: Date,
+): Promise<{ appended: boolean; push: DeliveryStats }> {
+  const entry = buildEntry(before, after, updateTime);
+  if (!entry) return { appended: false, push: emptyDelivery() };
+  const appended = await deps.changeLog.append(companyId, eventId, entry);
+  if (!appended) return { appended, push: emptyDelivery() };
+  const endTime = after.endTime instanceof Date ? after.endTime : null;
+  const ended = endTime !== null && endTime.getTime() <= deps.clock.now().getTime();
+  const wasAndIsCancelled = before.status === "cancelled" && after.status === "cancelled";
+  if (ended || wasAndIsCancelled) return { appended, push: emptyDelivery() };
+  const recipients = (await deps.recipients.subscribersWithLevels(companyId, eventId, LEVELS_FOR.event_changed))
+    .filter((s) => s.uid !== entry.by).map((s) => ({ uid: s.uid, eventLevel: s.level }));
+  if (recipients.length === 0) return { appended, push: emptyDelivery() };
+  const title = typeof after.title === "string" ? after.title : "Activity update";
+  const summary = summarizeChanges(entry.changes);
+  const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
+  const push = await deliverNotification(deps, {
+    id: `event_${eventId}_${entry.revision}`, kind: cancelled ? "event_cancelled" : "event_changed", companyId, recipients,
+    push: changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined),
+    inApp: { title: shorten(title, 60), body: summary, targetType: "event", targetId: eventId },
+  });
+  return { appended, push };
+}
+
+/** Reminders through the router; the receipt id carries event, window and start time, so a moved event re-reminds. */
+export async function sendDueRemindersViaRouter(
+  deps: RouterDependencies & { recipients: RecipientDirectory; upcoming: UpcomingEvents },
+): Promise<{ events: number; sent: number; skipped: number }> {
+  const now = deps.clock.now();
+  const at = (offset: number) => new Date(now.getTime() + offset);
+  const candidates = [
+    ...await deps.upcoming.scheduledStartingIn(at(REMINDER_WINDOWS["1h"].fromMs), at(REMINDER_WINDOWS["1h"].toMs)),
+    ...await deps.upcoming.scheduledStartingIn(at(REMINDER_WINDOWS["24h"].fromMs), at(REMINDER_WINDOWS["24h"].toMs)),
+  ];
+  let sent = 0;
+  let skipped = 0;
+  for (const event of candidates) {
+    const window = dueWindow(event.startTime, now);
+    if (!window || event.status !== "scheduled") { skipped++; continue; }
+    const recipients = (await deps.recipients.subscribersWithLevels(event.companyId, event.eventId, LEVELS_FOR.reminder))
+      .map((s) => ({ uid: s.uid, eventLevel: s.level }));
+    if (recipients.length === 0) { skipped++; continue; }
+    const push = reminderPush(event.companyId, event.eventId, event.title, window, event.startTime.getTime() - now.getTime(), event.startTime);
+    const stats = await deliverNotification(deps, {
+      id: `reminder_${event.eventId}_${window}_${event.startTime.getTime()}`, kind: "reminder", companyId: event.companyId, recipients, push,
+      inApp: { title: shorten(event.title, 60), body: push.body, targetType: "event", targetId: event.eventId },
+    });
+    if (stats.duplicate) skipped++;
+    sent += stats.sent;
+  }
+  return { events: candidates.length, sent, skipped };
 }
 
 

@@ -3,11 +3,12 @@ import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
+import { routedPushNotifier } from "../../notifications/transport/routedPush";
 import { callerFromRequest } from "../../organizer/transport/organizerCallables";
 import type { PhotoObjects } from "../../photos/application/ports";
 import { StoragePhotoObjects } from "../../photos/infrastructure/firebasePhotoAdapters";
 import { approveChallenge, listChallengeSubmissions, rejectChallenge, submitChallenge } from "../application/submissionCommands";
-import type { SubmissionStore } from "../application/ports";
+import type { SubmissionReviewNotifier, SubmissionStore } from "../application/ports";
 import { SubmissionError } from "../domain/errors";
 import { FirestoreSubmissionStore } from "../infrastructure/firestoreSubmissionStore";
 
@@ -44,10 +45,10 @@ type Request = Pick<CallableRequest, "auth" | "data">;
 
 export const handleSubmitChallenge = (store: SubmissionStore, objects: PhotoObjects, request: Request, now?: () => Date) =>
   run("submitChallengeV1", request, () => submitChallenge(store, objects, callerFromRequest(request), request.data, now));
-export const handleApproveChallenge = (store: SubmissionStore, request: Request) =>
-  run("approveChallengeV1", request, () => approveChallenge(store, callerFromRequest(request), request.data));
-export const handleRejectChallenge = (store: SubmissionStore, request: Request) =>
-  run("rejectChallengeV1", request, () => rejectChallenge(store, callerFromRequest(request), request.data));
+export const handleApproveChallenge = (store: SubmissionStore, request: Request, notifier: SubmissionReviewNotifier | null = null) =>
+  run("approveChallengeV1", request, () => approveChallenge(store, callerFromRequest(request), request.data, notifier));
+export const handleRejectChallenge = (store: SubmissionStore, request: Request, notifier: SubmissionReviewNotifier | null = null) =>
+  run("rejectChallengeV1", request, () => rejectChallenge(store, callerFromRequest(request), request.data, notifier));
 export const handleListChallengeSubmissions = (store: SubmissionStore, request: Request) =>
   run("listChallengeSubmissionsV1", request, () => listChallengeSubmissions(store, callerFromRequest(request), request.data));
 
@@ -58,6 +59,6 @@ const options = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_
 
 export const submitChallengeV1 = onCall(options, request =>
   handleSubmitChallenge(store(), new StoragePhotoObjects(getStorage(app())), request));
-export const approveChallengeV1 = onCall(options, request => handleApproveChallenge(store(), request));
-export const rejectChallengeV1 = onCall(options, request => handleRejectChallenge(store(), request));
+export const approveChallengeV1 = onCall(options, request => handleApproveChallenge(store(), request, routedPushNotifier(app())));
+export const rejectChallengeV1 = onCall(options, request => handleRejectChallenge(store(), request, routedPushNotifier(app())));
 export const listChallengeSubmissionsV1 = onCall(options, request => handleListChallengeSubmissions(store(), request));

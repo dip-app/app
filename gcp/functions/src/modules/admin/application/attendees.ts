@@ -7,7 +7,7 @@ import { isDeactivated } from "../domain/member";
 import { paths, SERVER_TIME, increment } from "../domain/ops";
 import { parseAddAttendee, parseRecordAttendance, parseRemoveAttendee } from "../domain/requests";
 import { authorize, loadEvent, loadMember, once, requireCaller, writeAudit, type Actor } from "./context";
-import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
+import type { AdminDeps, AdminTransaction, AttendeeAddedPush, Caller, Doc } from "./ports";
 
 const MAX_CAPACITY = 10000;
 
@@ -65,7 +65,9 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
   const req = parseAddAttendee(data);
   await deps.limiter?.consume(authenticated.uid);
   const now = deps.now();
-  return (await deps.store.runTransaction(async tx => {
+  let push = null as AttendeeAddedPush | null;
+  const result = (await deps.store.runTransaction(async tx => {
+    push = null;
     const actor = await authorize(tx, authenticated, req.companyId, "attendee.manage");
     const payload = { eventId: req.eventId, userId: req.userId, notify: req.notify, override: req.capacityOverrideReason ?? null };
     return once(tx, actor, "addEventAttendeeV1", req.requestId, payload, async () => {
@@ -106,6 +108,8 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
       if (req.notify) {
         tx.create(paths.notification(req.userId, `admin_${req.requestId}`),
           notification(actor, req.userId, "attendee_added", "You're going!", `An organizer added you to ${event.title}.`, req.eventId));
+        // The in-app notice stays in this transaction; the push follows the commit and reuses its id (receipt key).
+        push = { companyId: actor.companyId, eventId: req.eventId, eventTitle: event.title, userId: req.userId, notificationId: `admin_${req.requestId}` };
       }
       const changes = [change("status", rsvp?.status ?? null, "going"), change("attendeeCount", event.attendeeCount, attendeeCount)];
       if (overridden) changes.push(change("capacity", event.capacity, capacity));
@@ -119,6 +123,11 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
       } satisfies AddEventAttendeeResponse;
     }, now);
   })).value;
+  // Best-effort and only for a request that actually ran (an idempotent replay never reaches the callback above).
+  if (push && deps.pushes) {
+    try { await deps.pushes.attendeeAdded(push); } catch { /* best-effort */ }
+  }
+  return result;
 }
 
 /** removeEventAttendeeV1: cancels a member's going RSVP (before the event ends), decrementing the count. */

@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { addEventAttendee, recordAttendance, removeEventAttendee } from "../../functions/src/modules/admin/application/attendees";
 import { photoObjectPath, removeEventPhoto, removeEventPhotoComment } from "../../functions/src/modules/admin/application/moderation";
+import type { AdminPushNotifier, AttendeeAddedPush } from "../../functions/src/modules/admin/application/ports";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { caller, makeDeps, NOW, rid, seedCompany, type FakeAdminStore } from "./helpers/adminFakes";
 
@@ -280,5 +281,43 @@ describe("recordAttendanceV1", () => {
     going(store);
     await recordAttendance(deps, admin, record());
     await fails(recordAttendance(deps, admin, record({ checkedIn: false })), "failed-precondition", "ATTENDANCE_LOCKED");
+  });
+});
+
+describe("addEventAttendeeV1 push", () => {
+  const add = (extra: Record<string, unknown> = {}) => ({ ...base, requestId: rid(), eventId: "soon", userId: "m1", ...extra });
+  const pushes = (fail = false) => {
+    const calls: AttendeeAddedPush[] = [];
+    const notifier: AdminPushNotifier = { attendeeAdded: async input => { if (fail) throw new Error("down"); calls.push(input); } };
+    return { calls, notifier };
+  };
+
+  test("pushes to the added member with the in-app notice id, only when notify is set and the add really happened", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    const { calls, notifier } = pushes();
+    deps.pushes = notifier;
+    await addEventAttendee(deps, admin, add({ notify: false }));
+    assert.equal(calls.length, 0);
+    const body = add({ userId: "m2", notify: true, requestId: "push-req-0001" });
+    await addEventAttendee(deps, admin, body);
+    await addEventAttendee(deps, admin, body);
+    await addEventAttendee(deps, admin, add({ userId: "m2", notify: true }));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]!.userId, "m2");
+    assert.equal(calls[0]!.notificationId, "admin_push-req-0001");
+    assert.equal(calls[0]!.eventId, "soon");
+    assert.equal(calls[0]!.companyId, "alpha");
+    assert.ok(store.get("users/m2/notifications/admin_push-req-0001"));
+  });
+
+  test("a failing push never fails the command or removes the in-app notice", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    deps.pushes = pushes(true).notifier;
+    const result = await addEventAttendee(deps, admin, add({ notify: true, requestId: "push-req-0002" }));
+    assert.equal(result.added, true);
+    assert.equal(store.get("companies/alpha/events/soon/rsvps/m1")!.status, "going");
+    assert.ok(store.get("users/m1/notifications/admin_push-req-0002"));
   });
 });

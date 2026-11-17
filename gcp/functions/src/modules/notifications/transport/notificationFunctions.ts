@@ -5,13 +5,17 @@ import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
 import { registerDevice, unregisterDevice } from "../application/devices";
-import { onChatMessageCreated, onEventDocumentUpdated, onRsvpWritten, sendDueReminders } from "../application/handlers";
+import {
+  onChatMessageCreated, onChatMessageCreatedViaRouter, onEventDocumentUpdated, onEventDocumentUpdatedViaRouter, onRsvpWritten,
+  sendDueReminders, sendDueRemindersViaRouter,
+} from "../application/handlers";
 import { pruneStaleDevices } from "../application/pruneDevices";
 import type { Caller, DeviceRegistry, MessagingPort } from "../application/ports";
 import { NotificationsError } from "../domain/errors";
 import { REMINDER_SCHEDULE } from "../domain/reminders";
 import { FirestoreNotificationsStore, plainEvent } from "../infrastructure/firestoreNotificationsStore";
 import { EmulatorOutboxMessaging, FcmMessaging } from "../infrastructure/messaging";
+import { pushRouterEnabled, routerDependencies } from "./routerDeps";
 
 const REGION = "us-central1";
 const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
@@ -23,6 +27,11 @@ function dependencies() {
   // The emulator never reaches FCM; it records pushes in an outbox collection instead.
   const messaging: MessagingPort = emulator() ? new EmulatorOutboxMessaging(db) : new FcmMessaging(app);
   return { store, messaging, clock: { now: () => new Date() } };
+}
+
+/** Which delivery path the migrated triggers use (PUSH_ROUTER_ENABLED, default router). */
+export function deliveryMode(): "router" | "legacy" {
+  return pushRouterEnabled() ? "router" : "legacy";
 }
 
 export function callerFromRequest(request: Pick<CallableRequest, "auth">): Caller | null {
@@ -63,8 +72,15 @@ export const onEventMessageCreated = onDocumentCreated(
   { document: "companies/{companyId}/events/{eventId}/messages/{messageId}", region: REGION },
   async (event) => {
     if (!event.data) return;
-    const { store, messaging } = dependencies();
     const { companyId, eventId, messageId } = event.params;
+    if (deliveryMode() === "router") {
+      const router = routerDependencies(defaultAdminApp());
+      const stats = await onChatMessageCreatedViaRouter({ ...router, events: router.store, recipients: router.store },
+        companyId, eventId, messageId, event.data.data());
+      logger.info("chat push", { companyId, eventId, ...stats });
+      return;
+    }
+    const { store, messaging } = dependencies();
     const stats = await onChatMessageCreated({ messaging, devices: store, recipients: store, events: store, claims: store },
       companyId, eventId, messageId, event.data.data());
     logger.info("chat push", { companyId, eventId, ...stats });
@@ -75,9 +91,16 @@ export const onEventChanged = onDocumentUpdated(
   { document: "companies/{companyId}/events/{eventId}", region: REGION },
   async (event) => {
     if (!event.data) return;
-    const { store, messaging, clock } = dependencies();
     const { companyId, eventId } = event.params;
     const updateTime = event.data.after.updateTime?.toDate() ?? new Date(event.time);
+    if (deliveryMode() === "router") {
+      const router = routerDependencies(defaultAdminApp());
+      const routed = await onEventDocumentUpdatedViaRouter({ ...router, recipients: router.store, changeLog: router.store },
+        companyId, eventId, plainEvent(event.data.before.data()), plainEvent(event.data.after.data()), updateTime);
+      if (routed.appended) logger.info("event change logged", { companyId, eventId, ...routed.push });
+      return;
+    }
+    const { store, messaging, clock } = dependencies();
     const result = await onEventDocumentUpdated({ messaging, devices: store, recipients: store, changeLog: store, clock, inbox: store },
       companyId, eventId, plainEvent(event.data.before.data()), plainEvent(event.data.after.data()), updateTime);
     if (result.appended) logger.info("event change logged", { companyId, eventId, ...result.push });
@@ -97,6 +120,11 @@ export const onRsvpChanged = onDocumentWritten(
 export const sendEventReminders = onSchedule(
   { schedule: REMINDER_SCHEDULE, timeZone: "Etc/UTC", region: REGION, retryCount: 1 },
   async () => {
+    if (deliveryMode() === "router") {
+      const router = routerDependencies(defaultAdminApp());
+      logger.info("reminders", await sendDueRemindersViaRouter({ ...router, recipients: router.store, upcoming: router.store }));
+      return;
+    }
     const { store, messaging, clock } = dependencies();
     const result = await sendDueReminders({ messaging, devices: store, recipients: store, upcoming: store, claims: store, clock });
     logger.info("reminders", result);

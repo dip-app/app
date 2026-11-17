@@ -25,9 +25,11 @@ struct DIPMemberHome: View {
     private let albumFactory: (() -> (any PhotoAlbumSource)?)?
     private let invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)?
     private let notificationsFactory: ((MembershipContext) -> (any DIPNotificationsRepository)?)?
+    private let notificationPreferencesFactory: ((MembershipContext) -> (any DIPNotificationPreferencesRepository)?)?
     /// Present only when the push client is enabled by flag (drives the notifications center's permission banner).
     private let pushPermission: PushPermissionControl?
     @State private var liveNotifications: (any DIPNotificationsRepository)?
+    @State private var liveNotificationPreferences: (any DIPNotificationPreferencesRepository)?
     /// Created with the home (like the other live sources), so the shell never starts without it.
     @State private var liveInvites: (any DIPInvitesRepository)?
     @State private var liveEvents: MemberEventAppRepository?
@@ -56,6 +58,7 @@ struct DIPMemberHome: View {
         albumFactory: (() -> (any PhotoAlbumSource)?)? = nil,
         invitesFactory: ((MembershipContext) -> (any DIPInvitesRepository)?)? = nil,
         notificationsFactory: ((MembershipContext) -> (any DIPNotificationsRepository)?)? = nil,
+        notificationPreferencesFactory: ((MembershipContext) -> (any DIPNotificationPreferencesRepository)?)? = nil,
         pushPermission: PushPermissionControl? = nil,
         mockSnapshot: DIPAppSnapshot? = nil,
         onboarding: OnboardingTourSettings? = nil,
@@ -77,8 +80,10 @@ struct DIPMemberHome: View {
         self.albumFactory = albumFactory
         self.invitesFactory = invitesFactory
         self.notificationsFactory = notificationsFactory
+        self.notificationPreferencesFactory = notificationPreferencesFactory
         self.pushPermission = pushPermission
         _liveNotifications = State(initialValue: eventReadFactory == nil ? nil : notificationsFactory?(context))
+        _liveNotificationPreferences = State(initialValue: eventReadFactory == nil ? nil : notificationPreferencesFactory?(context))
         _liveInvites = State(initialValue: eventReadFactory == nil ? nil : invitesFactory?(context))
         self.context = context
         self.oauthPhotoURL = oauthPhotoURL
@@ -255,6 +260,7 @@ struct DIPMemberHome: View {
             // Live members use the Firebase adapter; fixture members (unconfigured Debug) get fixture invitations.
             invitesRepository: live ? liveInvites : DIPPrototypeApp.fixtureInvites(),
             notificationsRepository: live ? liveNotifications : DIPPrototypeApp.fixtureNotifications(),
+            notificationPreferencesRepository: live ? liveNotificationPreferences : DIPPrototypeApp.fixtureNotificationPreferences(),
             pushPermission: pushPermission)
     }
 

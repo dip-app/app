@@ -3,6 +3,7 @@ import Foundation
 /// What a notification is about. Unknown server types fall back to `.other` (generic icon, still readable).
 public enum DIPNotificationKind: String, Equatable, Sendable, CaseIterable {
     case invite
+    case inviteAnswered = "invite_answered"
     case eventUpdated = "event_updated"
     case eventCancelled = "event_cancelled"
     case reminder

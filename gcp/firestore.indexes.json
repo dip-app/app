@@ -101,6 +101,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "interestTagIds", "arrayConfig": "CONTAINS" }
       ]
+    },
+    {
+      "collectionGroup": "challenges",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "startDate", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
