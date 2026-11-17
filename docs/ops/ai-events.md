@@ -22,12 +22,14 @@ Runbook for the AI event drafts feature (stretch S2, [design](../design/stretch/
    | Name | Default | Meaning |
    | --- | --- | --- |
    | `AI_EVENTS_ENABLED` | unset (off) | Deployment switch; must be `true` |
-   | `AI_PROVIDER` | `openai` (`demo` in the emulator) | `demo` uses offline fakes and needs no key |
+   | `AI_PROVIDER` | `openai` (`demo` in the emulator) | `demo` uses offline fakes and needs no key; it is honored only in the Functions emulator, elsewhere the feature stays off and `ai.demo_refused` is logged |
    | `AI_MONTHLY_BUDGET_CENTS` | 200 | Company spend cap per UTC month ($2) |
    | `AI_DAILY_BUDGET_CENTS` | 50 | Company spend cap per UTC day ($0.50) |
    | `AI_MONTHLY_GENERATIONS` | 30 | Generations per company per month |
    | `AI_DAILY_GENERATIONS_PER_ADMIN` | 10 | Generations per admin per UTC day |
    | `AI_DAILY_FLAG_LIMIT` | 3 | Declined notes per admin per UTC day |
+   | `AI_DAILY_ATTEMPTS_PER_ADMIN` | 20 | Every reservation per admin per UTC day, failed runs included (error `AI_DAILY_LIMIT`) |
+   | `AI_PLATFORM_MONTHLY_BUDGET_CENTS` | 20000 | Spend ceiling per UTC month across all companies (`aiUsagePlatform/{yyyymm}`); refused as `AI_BUDGET_EXHAUSTED` |
    | `AI_MODEL_GENERATE` | `gpt-4o-mini` | Drafting model (deprecated by OpenAI, shuts down January 14, 2027; see below) |
    | `AI_EFFORT_GENERATE` | `low` | Only sent to reasoning models (gpt-5 and later): `minimal`, `low`, `medium`, `high` or `xhigh` |
    | `AI_MODEL_TRIAGE` | `gpt-4o-mini` | OpenAI model for note triage (the Jev fallback) |

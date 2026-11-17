@@ -8,7 +8,7 @@ import {
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { payloadHash } from "../../functions/src/modules/admin/domain/reader";
 import { APPROVED_COVER_URLS } from "../../functions/src/modules/organizer/domain/eventDraft";
-import { costMicros, outputCeiling, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
+import { callWorstCaseMicros, costMicros, outputCeiling, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
 import { GENERATE_SYSTEM_PROMPT } from "../../functions/src/modules/ai/domain/prompt";
 import {
   ScriptedDecisions, ScriptedLlm, type DecisionStepScript, type GenerateStep, type ModerateStep,
@@ -55,7 +55,7 @@ function rig(steps: GenerateStep[] = [], settings: Partial<AiSettings> = {}, ena
   const logs: Rig["logs"] = [];
   const llm = new ScriptedLlm(steps, scripts.moderation ?? []);
   const decisions = new ScriptedDecisions(scripts.decisions ?? []);
-  const deps: AiDeps = { store, llm, decisions, interests, catalog, themes, settings: { ...SETTINGS, ...settings }, now: () => NOW, log: (event, fields) => logs.push({ event, fields }) };
+  const deps: AiDeps = { store, llm, decisions, interests, catalog, themes, settings: { ...SETTINGS, ...settings }, now: () => NOW, log: (event, fields, level) => logs.push({ event, fields: { ...fields, level } }), sleep: async () => undefined };
   return { store, interests, catalog, themes, logs, llm, decisions, deps };
 }
 
@@ -350,7 +350,7 @@ describe("model output handling", () => {
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
     assert.deepEqual(month(r).pending, {});
     assert.equal(month(r).generations, 0);
-    assert.equal(month(r).spentMicros, 0);
+    assert.equal(month(r).spentMicros, callWorstCaseMicros(SETTINGS, "generate"), "unknown usage is charged conservatively");
     assert.equal(r.store.get(DAY("admin1"))!.generations, 0);
     assert.equal(r.store.get(REQ("admin1", 1))!.status, "failed");
   });
@@ -903,5 +903,127 @@ describe("getEventIdeaContextV1", () => {
     const writes = r.store.writes;
     await ask(r);
     assert.equal(r.store.writes, writes);
+  });
+});
+
+describe("audit hardening", () => {
+  const thrower = (label: string) => async (): Promise<never> => { throw new Error(label); };
+
+  test("theme and interest reads failing still complete the run and log a warning per source", async () => {
+    const r = rig([drafts()]);
+    r.themes.current = thrower("missing index");
+    r.interests.countsFor = thrower("transient");
+    const res = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(res.drafts.length, 3);
+    const warns = r.logs.filter(l => l.event === "ai.context_unavailable").map(l => l.fields as Record<string, unknown>);
+    assert.deepEqual(warns.map(w => w.source).sort(), ["interests", "theme"]);
+    assert.ok(warns.every(w => w.level === "warn"));
+  });
+
+  test("the context callable also survives failing context reads", async () => {
+    const r = rig();
+    r.themes.current = thrower("missing index");
+    r.interests.countsFor = thrower("transient");
+    const res = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
+    assert.equal(res.interestDataAvailable, false);
+    assert.equal(res.currentTheme, undefined);
+  });
+
+  test("failed runs count toward the per-admin attempt cap", async () => {
+    const r = rig([new LlmUnavailableError(401), new LlmUnavailableError(401)], { dailyAttemptLimit: 2, dailyGenerationLimit: 10 });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(2)), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(r.store.get(DAY("admin1"))!.attempts, 2);
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(3)), "resource-exhausted", "AI_DAILY_LIMIT");
+    assert.equal(r.llm.calls.length, 2, "the third request never reaches the provider");
+    // Another admin is unaffected.
+    const other = rig([drafts()], { dailyAttemptLimit: 2 });
+    assert.equal((await generateEventDrafts(other.deps, caller("admin1"), request(1))).drafts.length, 3);
+  });
+
+  test("a non-LLM exception mid-run settles with the spend so far", async () => {
+    const r = rig([drafts()], {}, true, { moderation: [new Error("boom")] });
+    await assert.rejects(generateEventDrafts(r.deps, caller("admin1"), request(1)), /boom/);
+    assert.equal(month(r).spentMicros, costMicros(SETTINGS.models.generate, USAGE));
+    assert.deepEqual(month(r).pending, {});
+  });
+
+  test("a timed-out call charges the per-call worst case; an auth or rate-limit error charges nothing", async () => {
+    const timeout = rig([new LlmUnavailableError(null)]);
+    await fails(generateEventDrafts(timeout.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(month(timeout).spentMicros, callWorstCaseMicros(SETTINGS, "generate"));
+    const server = rig([new LlmUnavailableError(503)]);
+    await fails(generateEventDrafts(server.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(month(server).spentMicros, callWorstCaseMicros(SETTINGS, "generate"));
+    const limited = rig([new LlmUnavailableError(429)]);
+    await fails(generateEventDrafts(limited.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(month(limited).spentMicros, 0);
+  });
+
+  test("a failed review decision is charged an estimate", async () => {
+    const r = rig([drafts(1)], {}, true, { decisions: [new LlmUnavailableError(null)] });
+    const res = await generateEventDrafts(r.deps, caller("admin1"), request(1, { count: 1 }));
+    assert.equal(res.drafts.length, 1);
+    assert.equal(month(r).spentMicros, costMicros(SETTINGS.models.generate, USAGE) + callWorstCaseMicros(SETTINGS, "draftCheck"));
+  });
+
+  test("provider calls receive the run deadline signal", async () => {
+    const r = rig([drafts()]);
+    await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.ok(r.llm.calls[0]!.signal instanceof AbortSignal);
+    assert.ok(r.decisions.calls.every(call => call.signal instanceof AbortSignal));
+    assert.equal(r.llm.calls[0]!.signal!.aborted, false);
+  });
+
+  /** Fails the n-th transaction (1 = reserve, 2 = first settle try, ...) the given number of times from then on. */
+  function failSettle(r: Rig, failures: number) {
+    const original = r.store.runTransaction.bind(r.store);
+    let calls = 0;
+    (r.store as unknown as { runTransaction: unknown }).runTransaction = (work: never) => {
+      calls += 1;
+      if (calls >= 2 && calls < 2 + failures) return Promise.reject(new Error("contention"));
+      return original(work);
+    };
+  }
+
+  test("settle retries and succeeds on the second attempt", async () => {
+    const r = rig([drafts()]);
+    failSettle(r, 1);
+    const res = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(res.drafts.length, 3);
+    assert.deepEqual(month(r).pending, {});
+    assert.equal(month(r).generations, 1);
+    assert.equal(r.logs.filter(l => l.event === "ai.settle_failed").length, 0);
+  });
+
+  test("settle that keeps failing logs ai.settle_failed with ids only and rethrows", async () => {
+    const r = rig([drafts()]);
+    failSettle(r, 99);
+    await assert.rejects(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "a private note about the team" })), /contention/);
+    const failed = r.logs.filter(l => l.event === "ai.settle_failed");
+    assert.equal(failed.length, 1);
+    const fields = failed[0]!.fields as Record<string, unknown>;
+    assert.equal(fields.requestId, uuid(1));
+    assert.equal(fields.level, "error");
+    assert.ok(!JSON.stringify(r.logs).includes("private note"));
+  });
+
+  test("the platform monthly ceiling refuses before any model call", async () => {
+    const worst = worstCaseMicros(SETTINGS);
+    const r = rig([drafts()], { platformMonthlyBudgetMicros: worst - 1 });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    assert.equal(r.llm.calls.length, 0);
+    const seeded = rig([drafts()], { platformMonthlyBudgetMicros: worst * 2 });
+    seeded.store.seed("aiUsagePlatform/203001", { spentMicros: worst + 1, pending: {} });
+    await fails(generateEventDrafts(seeded.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
+    assert.equal(seeded.llm.calls.length, 0);
+  });
+
+  test("a run adds its spend to the platform month and releases its platform reservation", async () => {
+    const r = rig([drafts()]);
+    await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    const platform = r.store.get("aiUsagePlatform/203001")!;
+    assert.equal(platform.spentMicros, month(r).spentMicros);
+    assert.deepEqual(platform.pending, {});
   });
 });

@@ -8,10 +8,11 @@ import { draftCheckQuestions, draftState, interpretDraftCheck, TRIAGE_QUESTIONS,
 import { InvalidModelOutput, parseModelDrafts } from "../domain/drafts";
 import { summarizeInterests } from "../domain/interests";
 import { aiPaths, dayKey, monthKey } from "../domain/paths";
-import { costMicros, outputCeiling, worstCaseMicros } from "../domain/pricing";
+import { callWorstCaseMicros, costMicros, outputCeiling, worstCaseMicros } from "../domain/pricing";
 import { buildGenerateUserContent, GENERATE_SYSTEM_PROMPT, modelDraftsSchema } from "../domain/prompt";
 import {
-  addSpend, checkReservation, effectiveLimits, monthDocument, readDay, readMonth, RESERVATION_TTL_MS, usageSummary, type Limits,
+  addSpend, checkPlatform, checkReservation, effectiveLimits, monthDocument, platformDocument, readDay, readMonth, readPlatform, RESERVATION_TTL_MS,
+  RUN_DEADLINE_MS, usageSummary, type Limits,
 } from "../domain/quota";
 import { parseGenerateRequest, type ParsedGenerateRequest } from "../domain/request";
 import { LlmUnavailableError, type AiDeps, type Caller, type CatalogTag, type LlmUsage } from "./ports";
@@ -29,11 +30,52 @@ type RunResult =
   | ({ status: "done"; drafts: GeneratedEventDraft[]; extra: AuditChange[] } & Meter)
   | ({ status: "flagged" | "failed"; reason: AdminErrorReason; detail: string; extra: AuditChange[] } & Meter);
 
-type Record_ = (model: string, usage: LlmUsage, provider?: string) => void;
+/** Accumulates spend as calls finish, so the catch path settles with what was really spent. */
+interface Metering {
+  record: (model: string, usage: LlmUsage, provider?: string) => void;
+  /** Wraps a billable call: refuses after the deadline, and charges a conservative estimate when the call fails with unknown usage. */
+  guard: <T>(step: "triage" | "generate" | "draftCheck", call: () => Promise<T>) => Promise<T>;
+  snapshot: () => Meter;
+}
+
+function createMeter(deps: AiDeps, signal: AbortSignal): Metering {
+  const models = new Set<string>();
+  const providers = new Set<string>();
+  const meter = { spentMicros: 0, tokensIn: 0, tokensOut: 0, calls: 0 };
+  return {
+    record: (model, usage, provider) => {
+      meter.calls += 1;
+      meter.spentMicros += costMicros(model, usage);
+      meter.tokensIn += usage.inputTokens;
+      meter.tokensOut += usage.outputTokens;
+      models.add(model);
+      if (provider) providers.add(provider);
+    },
+    guard: async (step, call) => {
+      if (signal.aborted) throw new LlmUnavailableError(null, "run deadline reached");
+      try {
+        return await call();
+      } catch (error) {
+        // A timeout, network drop or 5xx may still have been billed; a 4xx (auth, rate limit) is not.
+        if (error instanceof LlmUnavailableError && (error.status === null || error.status >= 500)) {
+          meter.calls += 1;
+          meter.spentMicros += callWorstCaseMicros(deps.settings, step);
+        }
+        throw error;
+      }
+    },
+    snapshot: () => ({ ...meter, models: [...models], providers: [...providers] }),
+  };
+}
+
+const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 interface Reservation {
   actor: Actor; limits: Limits; attempt: number; month: string; day: string;
 }
+
+const SETTLE_ATTEMPTS = 3;
+const SETTLE_BACKOFF_MS = 250;
 
 /**
  * generateEventDraftsV1 (docs/design/stretch/ai-event-creation.md). Three steps so the slow model calls never hold a
@@ -63,8 +105,9 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
     const now = deps.now();
     const month = monthKey(now);
     const day = dayKey(now);
-    const [settingsDoc, monthDoc, dayDoc, requestDoc] = await tx.getMany([
+    const [settingsDoc, monthDoc, dayDoc, requestDoc, platformDoc] = await tx.getMany([
       aiPaths.settings(companyId), aiPaths.month(companyId, month), aiPaths.day(companyId, day, caller.uid), aiPaths.request(companyId, caller.uid, requestId),
+      aiPaths.platform(month),
     ]);
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
     const monthState = readMonth(monthDoc ?? null, now);
@@ -82,8 +125,17 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
     }
     if (!limits.enabled) throw new AdminError("failed-precondition", "AI_DISABLED", "AI event ideas are turned off for this company.");
     checkReservation(monthState, dayState, caller.uid, limits, worst, now);
-    monthState.pending[key] = { uid: caller.uid, micros: worst, expiresAt: new Date(now.getTime() + RESERVATION_TTL_MS) };
+    const platformState = readPlatform(platformDoc ?? null, now);
+    checkPlatform(platformState, deps.settings.platformMonthlyBudgetMicros, worst);
+    const expiresAt = new Date(now.getTime() + RESERVATION_TTL_MS);
+    monthState.pending[key] = { uid: caller.uid, micros: worst, expiresAt };
+    platformState.pending[`${companyId}_${key}`] = { uid: caller.uid, micros: worst, expiresAt };
     put(tx, aiPaths.month(companyId, month), monthDoc ?? null, monthDocument(monthState));
+    put(tx, aiPaths.platform(month), platformDoc ?? null, platformDocument(platformState));
+    // Every reservation counts toward the per-admin attempt cap, whatever the run's outcome.
+    put(tx, aiPaths.day(companyId, day, caller.uid), dayDoc ?? null, {
+      generations: dayState.generations, flags: dayState.flags, attempts: dayState.attempts + 1, expireAt: new Date(now.getTime() + DAY_RETENTION_MS),
+    });
     const attempt = (typeof requestDoc?.attempts === "number" ? requestDoc.attempts : 0) + 1;
     put(tx, aiPaths.request(companyId, caller.uid, requestId), requestDoc ?? null, {
       uid: caller.uid, hash, status: "pending", attempts: attempt, month, day, updatedAt: now, expireAt: new Date(now.getTime() + REQUEST_RETENTION_MS),
@@ -98,14 +150,20 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
   const { reservation } = reserved;
   let result: RunResult;
   let unexpected: unknown = null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), deps.deadlineMs ?? RUN_DEADLINE_MS);
+  const meter = createMeter(deps, controller.signal);
   try {
-    result = await run(deps, request, catalog);
+    result = await run(deps, request, catalog, meter, controller.signal);
   } catch (error) {
     unexpected = error;
-    result = { status: "failed", reason: "AI_UNAVAILABLE", detail: "unexpected", extra: [], spentMicros: 0, tokensIn: 0, tokensOut: 0, calls: 0, models: [], providers: [] };
+    // Settle with whatever was really spent before the failure.
+    result = { status: "failed", reason: "AI_UNAVAILABLE", detail: "unexpected", extra: [], ...meter.snapshot() };
+  } finally {
+    clearTimeout(timer);
   }
 
-  const usage = await settle(deps, caller.uid, request, reservation, result, worst);
+  const usage = await settleWithRetry(deps, caller.uid, request, reservation, result, worst);
   deps.log?.("ai.generate", {
     companyId, requestId, outcome: result.status, detail: result.status === "done" ? null : result.detail, models: result.models.join(","),
     calls: result.calls, tokensIn: result.tokensIn, tokensOut: result.tokensOut, costMicros: result.spentMicros,
@@ -119,38 +177,32 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
 /** Moderation category names are provider constants; keep plain tokens only so no free text can reach the audit log. */
 const categoryNames = (categories: readonly string[]) => categories.filter(name => /^[A-Za-z0-9/_-]{1,40}$/.test(name)).slice(0, 12);
 
-async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readonly CatalogTag[]): Promise<RunResult> {
-  const models = new Set<string>();
-  const providers = new Set<string>();
-  const meter = { spentMicros: 0, tokensIn: 0, tokensOut: 0, calls: 0 };
-  const record: Record_ = (model, usage, provider) => {
-    meter.calls += 1;
-    meter.spentMicros += costMicros(model, usage);
-    meter.tokensIn += usage.inputTokens;
-    meter.tokensOut += usage.outputTokens;
-    models.add(model);
-    if (provider) providers.add(provider);
-  };
-  const snapshot = (): Meter => ({ ...meter, models: [...models], providers: [...providers] });
+async function run(
+  deps: AiDeps, request: ParsedGenerateRequest, catalog: readonly CatalogTag[], meter: Metering, signal: AbortSignal,
+): Promise<RunResult> {
+  const { record, snapshot } = meter;
   const stop = (status: "flagged" | "failed", reason: AdminErrorReason, detail: string, extra: AuditChange[] = []): RunResult =>
     ({ status, reason, detail, extra, ...snapshot() });
 
   try {
     if (request.prompt !== "") {
       // Free provider moderation first, then the typed triage questions. A thrown error fails closed (AI_UNAVAILABLE).
-      const [moderation] = await deps.llm.moderate([request.prompt]);
+      const [moderation] = await deps.llm.moderate([request.prompt], signal);
       if (!moderation) return stop("failed", "AI_UNAVAILABLE", "moderation_missing");
       if (moderation.flagged) {
         return stop("flagged", "AI_PROMPT_REJECTED", "moderation", [change("flaggedCategories", null, categoryNames(moderation.categories).join(","))]);
       }
-      const triage = await deps.decisions.decide({ step: "triage", state: triageState(request.prompt), questions: TRIAGE_QUESTIONS });
+      const triage = await meter.guard("triage", () => deps.decisions.decide({ step: "triage", state: triageState(request.prompt), questions: TRIAGE_QUESTIONS, signal }));
       record(triage.model, triage.usage, triage.provider);
       const reasons = triageVerdict(triage);
       if (reasons.length > 0) return stop("flagged", "AI_PROMPT_REJECTED", "triage", [change("triageReasons", null, reasons.join(","))]);
     }
 
     const now = deps.now();
-    const [stats, theme] = await Promise.all([deps.interests.countsFor(request.companyId), deps.themes.current(request.companyId, now)]);
+    const [stats, theme] = await Promise.all([
+      bestEffort(deps, "interests", () => deps.interests.countsFor(request.companyId), null),
+      bestEffort(deps, "theme", () => deps.themes.current(request.companyId, now), null),
+    ]);
     const interests = summarizeInterests(stats, catalog);
     const catalogIds = catalog.map(tag => tag.id);
     const input = buildGenerateUserContent({
@@ -161,10 +213,10 @@ async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readon
     const context = { count: request.count, choices: request.choices, catalogIds: new Set(catalogIds), catalogNames: new Map(catalog.map(tag => [tag.id, tag.name])) };
     const focusTags = catalog.filter(tag => request.choices.focusTagIds.includes(tag.id));
     for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const outcome = await deps.llm.generate({
+      const outcome = await meter.guard("generate", () => deps.llm.generate({
         step: "generate", instructions: GENERATE_SYSTEM_PROMPT, input, schema, schemaName: "event_drafts",
-        maxOutputTokens: outputCeiling("generate", deps.settings.models.generate),
-      });
+        maxOutputTokens: outputCeiling("generate", deps.settings.models.generate), signal,
+      }));
       record(outcome.model, outcome.usage);
       if (outcome.kind === "refusal") {
         return request.prompt !== "" ? stop("flagged", "AI_PROMPT_REJECTED", "generate_refusal") : stop("failed", "AI_OUTPUT_INVALID", "generate_refusal");
@@ -172,7 +224,7 @@ async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readon
       if (outcome.kind !== "ok") continue;
       try {
         const parsed = parseModelDrafts(outcome.value, context);
-        const reviewed = await review(deps, request, parsed, focusTags, record);
+        const reviewed = await review(deps, request, parsed, focusTags, meter, signal);
         if (reviewed.length > 0) return { status: "done", drafts: reviewed, extra: [], ...snapshot() };
       } catch (error) {
         if (!(error instanceof InvalidModelOutput)) throw error;
@@ -191,16 +243,16 @@ async function run(deps: AiDeps, request: ParsedGenerateRequest, catalog: readon
  * answer drops it; drafts are ordered by fit, best first. An empty result counts as invalid output.
  */
 async function review(
-  deps: AiDeps, request: ParsedGenerateRequest, drafts: GeneratedEventDraft[], focusTags: readonly CatalogTag[], record: Record_,
+  deps: AiDeps, request: ParsedGenerateRequest, drafts: GeneratedEventDraft[], focusTags: readonly CatalogTag[], meter: Metering, signal: AbortSignal,
 ): Promise<GeneratedEventDraft[]> {
-  const verdicts = await deps.llm.moderate(drafts.map(draft => `${draft.title}\n${draft.description}\n${draft.rationale}`));
+  const verdicts = await deps.llm.moderate(drafts.map(draft => `${draft.title}\n${draft.description}\n${draft.rationale}`), signal);
   const clean = drafts.filter((_, i) => verdicts[i] !== undefined && !verdicts[i]!.flagged);
   if (clean.length === 0) return [];
   const questions = draftCheckQuestions(request.choices, focusTags);
   const checked = await Promise.all(clean.map(async draft => {
     try {
-      const result = await deps.decisions.decide({ step: "draftCheck", state: draftState(draft), questions });
-      record(result.model, result.usage, result.provider);
+      const result = await meter.guard("draftCheck", () => deps.decisions.decide({ step: "draftCheck", state: draftState(draft), questions, signal }));
+      meter.record(result.model, result.usage, result.provider);
       return { draft, check: interpretDraftCheck(result.answers) };
     } catch {
       return { draft, check: interpretDraftCheck(null) };
@@ -216,6 +268,38 @@ async function review(
     .map(item => item.draft);
 }
 
+/** Context reads (interest counts, theme) only enrich the prompt: a missing index or a transient failure must not kill a paid run. */
+export async function bestEffort<T>(deps: Pick<AiDeps, "log">, source: string, read: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    deps.log?.("ai.context_unavailable", { source, error: error instanceof Error ? error.name : "unknown" }, "warn");
+    return fallback;
+  }
+}
+
+/** Settling is what releases the reservation and records the spend, so a transient failure is retried before it is reported. */
+async function settleWithRetry(
+  deps: AiDeps, uid: string, request: ParsedGenerateRequest, reservation: Reservation, result: RunResult, worst: number,
+) {
+  const sleep = deps.sleep ?? wait;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await settle(deps, uid, request, reservation, result, worst);
+    } catch (error) {
+      if (attempt >= SETTLE_ATTEMPTS) {
+        // Alertable; ids only, never prompt text. The reservation expires on its own, but this run's spend is unrecorded.
+        deps.log?.("ai.settle_failed", {
+          companyId: request.companyId, requestId: request.requestId, outcome: result.status, costMicros: result.spentMicros,
+          error: error instanceof Error ? error.name : "unknown",
+        }, "error");
+        throw error;
+      }
+      await sleep(SETTLE_BACKOFF_MS * 4 ** (attempt - 1));
+    }
+  }
+}
+
 async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest, reservation: Reservation, result: RunResult, worst: number) {
   const { companyId, requestId } = request;
   const key = `${uid}_${requestId}`;
@@ -227,6 +311,15 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
     const [monthDoc, dayDoc, requestDoc] = await tx.getMany([monthPath, dayPath, requestPath]);
     const month = readMonth(monthDoc ?? null, now);
     const day = readDay(dayDoc ?? null);
+    // A retry after a commit whose acknowledgement was lost must not count the run twice.
+    if (requestDoc && requestDoc.status !== "pending" && requestDoc.attempts === reservation.attempt) {
+      return usageSummary(month, day, uid, reservation.limits, worst, now);
+    }
+    const platformPath = aiPaths.platform(reservation.month);
+    const platformDoc = await tx.get(platformPath);
+    const platform = readPlatform(platformDoc ?? null, now);
+    delete platform.pending[`${companyId}_${key}`];
+    platform.spentMicros += result.spentMicros;
     delete month.pending[key];
     addSpend(month, reservation.day.slice(-2), { spentMicros: result.spentMicros, inputTokens: result.tokensIn, outputTokens: result.tokensOut });
     if (result.status === "done") {
@@ -236,7 +329,8 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
       day.flags += 1;
     }
     put(tx, monthPath, monthDoc ?? null, monthDocument(month));
-    put(tx, dayPath, dayDoc ?? null, { generations: day.generations, flags: day.flags, expireAt: new Date(now.getTime() + DAY_RETENTION_MS) });
+    put(tx, platformPath, platformDoc ?? null, platformDocument(platform));
+    put(tx, dayPath, dayDoc ?? null, { generations: day.generations, flags: day.flags, attempts: day.attempts, expireAt: new Date(now.getTime() + DAY_RETENTION_MS) });
     // Which models and decision providers (jev, openai or heuristic) answered, for observability; never content.
     const observed = { models: result.models, decisionProviders: result.providers };
     put(tx, requestPath, requestDoc ?? null, result.status === "done"

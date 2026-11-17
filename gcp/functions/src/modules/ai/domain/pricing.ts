@@ -77,17 +77,32 @@ export function costMicros(model: string, usage: LlmUsage): number {
 const callCost = (model: string, inputTokens: number, outputTokens: number) =>
   costMicros(model, { inputTokens, cachedInputTokens: 0, outputTokens, reasoningTokens: 0 });
 
+/** Generate attempts per run (one retry) and the draft cap per attempt; review runs inside every attempt. */
+export const GENERATE_ATTEMPTS = 2;
+export const MAX_DRAFTS = 3;
+
+type PricedStep = "triage" | "generate" | "draftCheck";
+
 /**
- * Upper bound of one generation at the token ceilings: one triage call, two generate calls (a retry) and three draft
- * checks (one per draft). A decision step whose primary provider is Jev also reserves its OpenAI fallback call, since a
- * failed Jev call is retried there. Moderation is free; the deterministic heuristic fallback costs nothing.
+ * Conservative cost of one call of a step at the token ceilings, including the OpenAI fallback of a decision step whose
+ * primary provider is Jev (a failed Jev call is retried there). Charged when a call failed and its real usage is unknown.
  */
-export function worstCaseMicros(settings: Pick<AiSettings, "models">): number {
+export function callWorstCaseMicros(settings: Pick<AiSettings, "models">, step: PricedStep): number {
   const { models } = settings;
   const decision = (model: string, fallback: string | null | undefined) =>
     callCost(model, DECISION_MAX_INPUT_TOKENS, outputCeiling("decision", model))
     + (fallback ? callCost(fallback, DECISION_MAX_INPUT_TOKENS, outputCeiling("decision", fallback)) : 0);
-  return decision(models.triage, models.triageFallback)
-    + 2 * callCost(models.generate, GENERATE_MAX_INPUT_TOKENS, outputCeiling("generate", models.generate))
-    + 3 * decision(models.draftCheck, models.draftCheckFallback);
+  if (step === "triage") return decision(models.triage, models.triageFallback);
+  if (step === "generate") return callCost(models.generate, GENERATE_MAX_INPUT_TOKENS, outputCeiling("generate", models.generate));
+  return decision(models.draftCheck, models.draftCheckFallback);
+}
+
+/**
+ * Upper bound of one generation at the token ceilings: one triage, then per generate attempt (GENERATE_ATTEMPTS) one
+ * generate call plus one draft check per draft (each with its decision fallback). Moderation is free; the heuristic
+ * fallback costs nothing.
+ */
+export function worstCaseMicros(settings: Pick<AiSettings, "models">, drafts: number = MAX_DRAFTS): number {
+  return callWorstCaseMicros(settings, "triage")
+    + GENERATE_ATTEMPTS * (callWorstCaseMicros(settings, "generate") + drafts * callWorstCaseMicros(settings, "draftCheck"));
 }

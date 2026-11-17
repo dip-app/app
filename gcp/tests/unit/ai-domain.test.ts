@@ -13,7 +13,7 @@ import { SUPPRESSION_THRESHOLD, bucketFor, summarizeInterests } from "../../func
 import { aiPaths, dayKey, monthKey } from "../../functions/src/modules/ai/domain/paths";
 import {
   DECISION_MAX_INPUT_TOKENS, DECISION_MAX_TOKENS, DECISION_MAX_TOKENS_SMALL, GENERATE_MAX_INPUT_TOKENS, GENERATE_MAX_TOKENS, GENERATE_MAX_TOKENS_SMALL,
-  MODEL_PRICES, costMicros, isReasoningModel, outputCeiling, worstCaseMicros,
+  MODEL_PRICES, costMicros, isReasoningModel, outputCeiling, worstCaseMicros, callWorstCaseMicros,
 } from "../../functions/src/modules/ai/domain/pricing";
 import {
   DAYPARTS_FOR_TIMING, GENERATE_SYSTEM_PROMPT, VENUES_FOR_SETTING, buildGenerateUserContent, choiceLimits, modelDraftsSchema,
@@ -598,12 +598,14 @@ describe("pricing", () => {
     const jev = Math.ceil(DECISION_MAX_INPUT_TOKENS * 0.042);
     const fallback = Math.ceil(DECISION_MAX_INPUT_TOKENS * 0.15 + DECISION_MAX_TOKENS_SMALL * 0.6);
     const generate = Math.ceil(GENERATE_MAX_INPUT_TOKENS * 0.15 + GENERATE_MAX_TOKENS_SMALL * 0.6);
-    assert.equal(worstCaseMicros({ models }), (jev + fallback) + 2 * generate + 3 * (jev + fallback));
-    assert.equal(worstCaseMicros({ models }), 7680);
+    assert.equal(worstCaseMicros({ models }), (jev + fallback) + 2 * (generate + 3 * (jev + fallback)));
+    assert.equal(worstCaseMicros({ models }, 1), (jev + fallback) + 2 * (generate + (jev + fallback)));
+    assert.equal(callWorstCaseMicros({ models }, "generate"), generate);
+    assert.equal(callWorstCaseMicros({ models }, "triage"), jev + fallback, "a decision call includes its fallback");
     const openaiOnly = { generate: "gpt-4o-mini", triage: "gpt-4o-mini", draftCheck: "gpt-4o-mini", moderation: "omni-moderation-latest" };
-    assert.equal(worstCaseMicros({ models: openaiOnly }), 4 * fallback + 2 * generate);
+    assert.equal(worstCaseMicros({ models: openaiOnly }), fallback + 2 * (generate + 3 * fallback));
   });
-  test("worst case is triage + 2 generates + 3 draft checks at the token ceilings", () => {
+  test("worst case is triage + 2 attempts x (generate + 3 draft checks) at the token ceilings", () => {
     assert.equal(GENERATE_MAX_TOKENS, 12_000);
     assert.equal(DECISION_MAX_TOKENS, 2000);
     const models = { generate: "gpt-6.1-sol", triage: "jev-latest", draftCheck: "gpt-5.4-mini", moderation: "omni-moderation-latest" };
@@ -611,7 +613,7 @@ describe("pricing", () => {
     const triage = Math.ceil(DECISION_MAX_INPUT_TOKENS * 0.042);
     const generate = GENERATE_MAX_INPUT_TOKENS * 2 + GENERATE_MAX_TOKENS * 10;
     const check = Math.ceil(DECISION_MAX_INPUT_TOKENS * 0.75 + DECISION_MAX_TOKENS * 4.5);
-    assert.equal(worst, triage + 2 * generate + 3 * check);
+    assert.equal(worst, triage + 2 * (generate + 3 * check));
     const typical = costMicros("jev-latest", { inputTokens: 800, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0 })
       + costMicros("gpt-6.1-sol", { inputTokens: 3000, cachedInputTokens: 0, outputTokens: 3000, reasoningTokens: 0 });
     assert.ok(worst > typical);
@@ -624,7 +626,7 @@ describe("pricing", () => {
 describe("quota", () => {
   const settings: AiSettings = {
     enabled: true, models: { generate: "gpt-6.1-sol", triage: "jev-latest", draftCheck: "jev-latest", moderation: "omni-moderation-latest" },
-    monthlyBudgetMicros: 5_000_000, dailyBudgetMicros: 2_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3,
+    monthlyBudgetMicros: 5_000_000, dailyBudgetMicros: 2_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3, dailyAttemptLimit: 20,
   };
   const limits = (over: Partial<Limits> = {}): Limits => ({ ...effectiveLimits(settings, { enabled: true }), ...over });
   const month = (over: Partial<MonthState> = {}): MonthState => ({ generations: 0, spentMicros: 0, inputTokens: 0, outputTokens: 0, days: {}, pending: {}, ...over });
@@ -637,7 +639,7 @@ describe("quota", () => {
 
   test("readMonth and readDay", () => {
     assert.deepEqual(readMonth(null, NOW), { generations: 0, spentMicros: 0, inputTokens: 0, outputTokens: 0, days: {}, pending: {} });
-    assert.deepEqual(readDay(null), { generations: 0, flags: 0 });
+    assert.deepEqual(readDay(null), { generations: 0, flags: 0, attempts: 0 });
     const state = readMonth({
       generations: 2, spentMicros: 300, inputTokens: 40, outputTokens: 5, days: { "02": { spentMicros: 300, inputTokens: 40, outputTokens: 5 } },
       pending: {
@@ -654,8 +656,8 @@ describe("quota", () => {
     assert.equal(state.generations, 2);
     assert.equal(state.inputTokens, 40);
     assert.deepEqual(state.days, { "02": { spentMicros: 300, inputTokens: 40, outputTokens: 5 } });
-    assert.deepEqual(readDay({ generations: 4, flags: 1 }), { generations: 4, flags: 1 });
-    assert.deepEqual(readDay({}), { generations: 0, flags: 0 });
+    assert.deepEqual(readDay({ generations: 4, flags: 1 }), { generations: 4, flags: 1, attempts: 0 });
+    assert.deepEqual(readDay({}), { generations: 0, flags: 0, attempts: 0 });
     for (const doc of [{ generations: -1 }, { spentMicros: 1.5 }, { generations: "2" }, { pending: [] }]) {
       assert.throws(() => readMonth(doc, NOW), (e: unknown) => e instanceof AdminError && e.reason === "INVALID_STORED_DATA");
     }
@@ -700,11 +702,11 @@ describe("quota", () => {
     assert.equal(effectiveLimits({ ...settings, enabled: false }, { enabled: true }).enabled, false);
     const base = effectiveLimits(settings, { enabled: true });
     assert.deepEqual(base, {
-      enabled: true, monthlyBudgetMicros: 5_000_000, dailyBudgetMicros: 2_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3,
+      enabled: true, monthlyBudgetMicros: 5_000_000, dailyBudgetMicros: 2_000_000, monthlyGenerationLimit: 100, dailyGenerationLimit: 10, dailyFlagLimit: 3, dailyAttemptLimit: 20,
     });
     const over = effectiveLimits(settings, { enabled: true, monthlyBudgetCents: 250, dailyBudgetCents: 40, monthlyGenerationLimit: 7, dailyGenerationLimit: 2 });
     assert.deepEqual(over, {
-      enabled: true, monthlyBudgetMicros: 2_500_000, dailyBudgetMicros: 400_000, monthlyGenerationLimit: 7, dailyGenerationLimit: 2, dailyFlagLimit: 3,
+      enabled: true, monthlyBudgetMicros: 2_500_000, dailyBudgetMicros: 400_000, monthlyGenerationLimit: 7, dailyGenerationLimit: 2, dailyFlagLimit: 3, dailyAttemptLimit: 20,
     });
     const junk = effectiveLimits(settings, { enabled: true, monthlyBudgetCents: -1, dailyBudgetCents: "5", monthlyGenerationLimit: "9", dailyGenerationLimit: 1.5 });
     assert.deepEqual(junk, base);

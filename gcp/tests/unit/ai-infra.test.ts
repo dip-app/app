@@ -420,7 +420,7 @@ describe("settings", () => {
   });
 
   test("demo mode needs only the flag", () => {
-    assert.equal(settingsFromEnv({ AI_EVENTS_ENABLED: "true", AI_PROVIDER: "demo" }, { openai: undefined }).enabled, true);
+    assert.equal(settingsFromEnv({ AI_EVENTS_ENABLED: "true", AI_PROVIDER: "demo", FUNCTIONS_EMULATOR: "true" }, { openai: undefined }).enabled, true);
     assert.equal(settingsFromEnv({ AI_EVENTS_ENABLED: "true", FUNCTIONS_EMULATOR: "true" }, { openai: undefined }).enabled, true);
     assert.equal(settingsFromEnv({ AI_PROVIDER: "demo" }, { openai: undefined }).enabled, false);
   });
@@ -456,10 +456,27 @@ describe("settings", () => {
   });
 
   test("providerFromEnv", () => {
-    assert.equal(providerFromEnv({ AI_PROVIDER: "demo" }), "demo");
+    assert.equal(providerFromEnv({ AI_PROVIDER: "demo", FUNCTIONS_EMULATOR: "true" }), "demo");
     assert.equal(providerFromEnv({ AI_PROVIDER: "openai", FUNCTIONS_EMULATOR: "true" }), "openai");
     assert.equal(providerFromEnv({ FUNCTIONS_EMULATOR: "true" }), "demo");
     assert.equal(providerFromEnv({}), "openai");
+  });
+
+  test("demo is refused outside the emulator: disabled and a warning, even with a key and the flag", () => {
+    const warnings: string[] = [];
+    assert.equal(providerFromEnv({ AI_PROVIDER: "demo" }, message => warnings.push(message)), "disabled");
+    assert.equal(warnings.length, 1);
+    const env = { AI_EVENTS_ENABLED: "true", AI_PROVIDER: "demo" };
+    assert.equal(settingsFromEnv(env, { openai: "sk-test-key-1234567890" }).enabled, false);
+  });
+
+  test("attempt cap and platform ceiling defaults, and env overrides", () => {
+    const d = settingsFromEnv({}, { openai: undefined });
+    assert.equal(d.dailyAttemptLimit, 20);
+    assert.equal(d.platformMonthlyBudgetMicros, 200_000_000);
+    const o = settingsFromEnv({ AI_DAILY_ATTEMPTS_PER_ADMIN: "5", AI_PLATFORM_MONTHLY_BUDGET_CENTS: "100" }, { openai: undefined });
+    assert.equal(o.dailyAttemptLimit, 5);
+    assert.equal(o.platformMonthlyBudgetMicros, 1_000_000);
   });
 });
 

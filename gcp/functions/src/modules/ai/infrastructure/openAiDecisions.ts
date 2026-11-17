@@ -58,6 +58,7 @@ export class OpenAiDecisions implements DecisionPort {
       schema,
       schemaName: "decision_answers",
       maxOutputTokens: this.config[request.step].maxOutputTokens,
+      ...(request.signal ? { signal: request.signal } : {}),
     });
     if (outcome.kind !== "ok") throw new LlmUnavailableError(null);
     const raw = outcome.value as Record<string, Record<string, number | string>>;

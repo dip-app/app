@@ -2,7 +2,9 @@ import type { AiUsageSummary } from "../../../generated/models";
 import { AdminError, stored } from "../../admin/domain/errors";
 import type { AiSettings } from "../application/ports";
 
-export const RESERVATION_TTL_MS = 5 * 60_000;
+/** The callable times out at 300 s and the run deadline is 240 s; a reservation outlives both so caps never heal mid-run. */
+export const RUN_DEADLINE_MS = 240_000;
+export const RESERVATION_TTL_MS = 7 * 60_000;
 
 export interface PendingReservation { uid: string; micros: number; expiresAt: Date }
 /** Spend and tokens of one UTC day of the month, keyed by "DD" in `MonthState.days`. */
@@ -15,7 +17,7 @@ export interface MonthState {
   days: Record<string, DaySpend>;
   pending: Record<string, PendingReservation>;
 }
-export interface DayState { generations: number; flags: number }
+export interface DayState { generations: number; flags: number; /** Reservations made today, failed runs included. */ attempts: number }
 export interface Limits {
   enabled: boolean;
   monthlyBudgetMicros: number;
@@ -24,6 +26,7 @@ export interface Limits {
   monthlyGenerationLimit: number;
   dailyGenerationLimit: number;
   dailyFlagLimit: number;
+  dailyAttemptLimit: number;
 }
 
 const isCount = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -61,10 +64,9 @@ function readDays(raw: unknown): Record<string, DaySpend> {
   return days;
 }
 
-/** Tolerates documents written before the token and per-day fields existed. */
-export function readMonth(doc: Record<string, unknown> | null, now: Date): MonthState {
-  if (doc === null) return emptyMonth();
-  const rawPending = doc.pending ?? {};
+/** Live (unexpired, well-formed) reservations of a stored `pending` map. */
+function readPending(raw: unknown, now: Date): Record<string, PendingReservation> {
+  const rawPending = raw ?? {};
   stored(typeof rawPending === "object" && rawPending !== null && !Array.isArray(rawPending), "AI usage");
   const pending: Record<string, PendingReservation> = {};
   for (const [key, entry] of Object.entries(rawPending as Record<string, unknown>)) {
@@ -75,6 +77,13 @@ export function readMonth(doc: Record<string, unknown> | null, now: Date): Month
     if (expiresAt.getTime() <= now.getTime()) continue;
     pending[key] = { uid, micros, expiresAt };
   }
+  return pending;
+}
+
+/** Tolerates documents written before the token and per-day fields existed. */
+export function readMonth(doc: Record<string, unknown> | null, now: Date): MonthState {
+  if (doc === null) return emptyMonth();
+  const pending = readPending(doc.pending, now);
   return {
     generations: counter(doc, "generations"),
     spentMicros: counter(doc, "spentMicros"),
@@ -99,8 +108,8 @@ export function addSpend(month: MonthState, dd: string, spend: DaySpend): void {
 }
 
 export function readDay(doc: Record<string, unknown> | null): DayState {
-  if (doc === null) return { generations: 0, flags: 0 };
-  return { generations: counter(doc, "generations"), flags: counter(doc, "flags") };
+  if (doc === null) return { generations: 0, flags: 0, attempts: 0 };
+  return { generations: counter(doc, "generations"), flags: counter(doc, "flags"), attempts: counter(doc, "attempts") };
 }
 
 /** Deployment limits, narrowed or widened by the company document, which must also opt in (`enabled: true`). */
@@ -118,6 +127,7 @@ export function effectiveLimits(settings: AiSettings, companySettings: Record<st
     monthlyGenerationLimit: override("monthlyGenerationLimit") ?? settings.monthlyGenerationLimit,
     dailyGenerationLimit: override("dailyGenerationLimit") ?? settings.dailyGenerationLimit,
     dailyFlagLimit: settings.dailyFlagLimit,
+    dailyAttemptLimit: settings.dailyAttemptLimit,
   };
 }
 
@@ -155,6 +165,9 @@ export function checkReservation(month: MonthState, day: DayState, uid: string, 
   if (day.flags >= limits.dailyFlagLimit) {
     throw new AdminError("resource-exhausted", "AI_FLAG_LIMIT", "Too many notes were declined today. Try again tomorrow.");
   }
+  if (day.attempts >= limits.dailyAttemptLimit) {
+    throw new AdminError("resource-exhausted", "AI_DAILY_LIMIT", "You have used today's idea requests. Try again tomorrow.");
+  }
   const f = figures(month, day, uid, limits, worstMicros, now);
   if (f.dailyRemaining <= 0) {
     throw new AdminError("resource-exhausted", "AI_DAILY_LIMIT", "You have used today's idea requests. Try again tomorrow.");
@@ -183,4 +196,26 @@ export function monthDocument(month: MonthState): Record<string, unknown> {
     days,
     pending,
   };
+}
+
+/** Platform-wide spend of one UTC month (all companies). Reservations expire like the company ones. */
+export interface PlatformState { spentMicros: number; pending: Record<string, PendingReservation> }
+
+export function readPlatform(doc: Record<string, unknown> | null, now: Date): PlatformState {
+  if (doc === null) return { spentMicros: 0, pending: {} };
+  return { spentMicros: counter(doc, "spentMicros"), pending: readPending(doc.pending, now) };
+}
+
+export function platformDocument(state: PlatformState): Record<string, unknown> {
+  const pending: Record<string, { uid: string; micros: number; expiresAt: Date }> = {};
+  for (const [key, r] of Object.entries(state.pending)) pending[key] = { uid: r.uid, micros: r.micros, expiresAt: r.expiresAt };
+  return { spentMicros: state.spentMicros, pending };
+}
+
+/** Refuses a reservation that would push the platform past its monthly ceiling (same error as an exhausted company budget). */
+export function checkPlatform(state: PlatformState, ceilingMicros: number, worstMicros: number): void {
+  const pendingMicros = Object.values(state.pending).reduce((sum, r) => sum + r.micros, 0);
+  if (state.spentMicros + pendingMicros + worstMicros > ceilingMicros) {
+    throw new AdminError("resource-exhausted", "AI_BUDGET_EXHAUSTED", "This month's idea budget is used up.");
+  }
 }

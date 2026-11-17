@@ -18,6 +18,8 @@ export const SETTINGS: AiSettings = {
   monthlyGenerationLimit: 5,
   dailyGenerationLimit: 3,
   dailyFlagLimit: 2,
+  dailyAttemptLimit: 6,
+  platformMonthlyBudgetMicros: 100_000_000,
 };
 
 export const USAGE: LlmUsage = { inputTokens: 1000, cachedInputTokens: 0, outputTokens: 500, reasoningTokens: 0 };
