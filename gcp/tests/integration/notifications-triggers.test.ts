@@ -85,7 +85,7 @@ test("chat push, change history, default subscriptions and device registry again
       assert.deepEqual((await register(a, tokens.a)).data, result);
       await register(b, tokens.b); await register(b, tokens.bStale);
       const stored = (await db.doc(`users/${uidA}/devices/${sha(tokens.a)}`).get()).data()!;
-      assert.deepEqual(Object.keys(stored).sort(), ["appVersion", "platform", "token", "tokenHash", "updatedAt"]);
+      assert.deepEqual(Object.keys(stored).sort(), ["appVersion", "lastSeenAt", "platform", "token", "tokenHash", "updatedAt"]);
       await assert.rejects(register(a, "bad"), (error: any) => error.code === "functions/invalid-argument");
       await denied(getDoc(doc(a.firestore, `users/${uidA}/devices/${sha(tokens.a)}`)));
       await denied(setDoc(doc(a.firestore, `users/${uidA}/devices/forged`), { token: "t", platform: "ios", appVersion: "1", updatedAt: serverTimestamp() }));

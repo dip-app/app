@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { strict as assert } from "node:assert";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, test } from "node:test";
@@ -36,7 +37,7 @@ describe("FirestoreDeliveryReceipts", () => {
     const receipts = new FirestoreDeliveryReceipts(db, () => now);
     const results = await Promise.all(Array.from({ length: 10 }, () => receipts.claim("event-e1-rev3")));
     assert.equal(results.filter(Boolean).length, 1);
-    const doc = await db.doc("notificationReceipts/event-e1-rev3").get();
+    const doc = await db.doc(`notificationReceipts/${createHash("sha256").update("event-e1-rev3", "utf8").digest("hex")}`).get();
     assert.ok(doc.exists);
     assert.equal(doc.get("expireAt").toMillis(), now.getTime() + 30 * 24 * 3600 * 1000);
     assert.equal(await receipts.claim("event-e1-rev3"), false);
