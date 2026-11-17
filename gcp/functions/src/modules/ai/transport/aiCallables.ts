@@ -54,7 +54,8 @@ function deps(): AiDeps {
   catalog ??= new FirestoreTagCatalog(db);
   const config = aiConfig(process.env);
   const openaiKey = secret(OPENAI_API_KEY);
-  const demo = providerFromEnv(process.env) === "demo";
+  const provider = providerFromEnv(process.env, message => logger.warn("ai.demo_refused", { message }));
+  const demo = provider === "demo";
   const jevKey = secret(JEV_API_KEY);
   const settings = settingsFromEnv(process.env, { openai: openaiKey, jev: jevKey });
   let llm: LlmPort;
@@ -63,7 +64,7 @@ function deps(): AiDeps {
     llm = new DemoLlm();
     decisions = new DemoDecisions();
   } else {
-    llm = openaiKey ? createOpenAiLlm(openaiKey, config) : unavailableLlm;
+    llm = openaiKey && provider === "openai" ? createOpenAiLlm(openaiKey, config) : unavailableLlm;
     // Jev answers every decision step by default when its key is real; a failed Jev call falls back to the OpenAI
     // model, then to the deterministic heuristics. The answering provider is logged and stored on the request doc.
     const jev = jevKey ? new JevDecisions({ apiKey: jevKey, model: config.triage.jevModel }) : null;
@@ -73,7 +74,7 @@ function deps(): AiDeps {
     store: new FirestoreAdminStore(db), llm, decisions, interests: new FirestoreInterestSource(db), catalog,
     themes: new FirestoreThemeSource(db), settings, limiter: new FirestoreAdminRateLimiter(db), now: () => new Date(),
     // Ids, counts, model and outcome only: never the note, the prompt or the drafts.
-    log: (event, fields) => logger.info(event, fields),
+    log: (event, fields, level = "info") => logger[level](event, fields),
   };
 }
 
@@ -98,10 +99,10 @@ const command = <T>(name: string, run: Run<T>) => async (request: CallableReques
 };
 
 export const getEventIdeaContextV1 = onCall(
-  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY] },
+  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY], timeoutSeconds: 60, memory: "256MiB", maxInstances: 5 },
   command("getEventIdeaContextV1", getEventIdeaContext),
 );
 export const generateEventDraftsV1 = onCall(
-  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY], timeoutSeconds: 300, memory: "512MiB" },
+  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY], timeoutSeconds: 300, memory: "512MiB", maxInstances: 5 },
   command("generateEventDraftsV1", generateEventDrafts),
 );

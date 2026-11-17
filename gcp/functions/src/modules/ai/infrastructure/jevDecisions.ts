@@ -39,7 +39,9 @@ export class JevDecisions implements DecisionPort {
         method: "POST",
         headers: { Authorization: `Bearer ${this.options.apiKey}`, "Content-Type": "application/json" },
         body,
-        signal: AbortSignal.timeout(this.options.timeoutMs ?? 15_000),
+        signal: request.signal
+          ? AbortSignal.any([AbortSignal.timeout(this.options.timeoutMs ?? 15_000), request.signal])
+          : AbortSignal.timeout(this.options.timeoutMs ?? 15_000),
       });
     } catch {
       throw new LlmUnavailableError(null);

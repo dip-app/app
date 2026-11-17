@@ -28,6 +28,8 @@ export interface LlmRequest<T> {
   schema: z.ZodType<T>;
   schemaName: string;
   maxOutputTokens: number;
+  /** Aborts the call when the run deadline passes. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -55,7 +57,7 @@ export interface ModerationResult {
 export interface LlmPort {
   generate<T>(request: LlmRequest<T>): Promise<LlmOutcome<T>>;
   /** Free provider moderation (OpenAI omni-moderation). One result per input, in order. */
-  moderate(inputs: readonly string[]): Promise<ModerationResult[]>;
+  moderate(inputs: readonly string[], signal?: AbortSignal): Promise<ModerationResult[]>;
 }
 
 /**
@@ -80,6 +82,8 @@ export interface DecisionRequest {
   /** The data the questions are about (plain text or JSON-encoded text). Treated as data, never as instructions. */
   state: string;
   questions: Readonly<Record<string, DecisionQuestion>>;
+  /** Aborts the call when the run deadline passes. */
+  signal?: AbortSignal;
 }
 
 export interface DecisionResult {
@@ -138,12 +142,16 @@ export interface AiSettings {
   monthlyGenerationLimit: number;
   /** Per admin, per UTC day. */
   dailyGenerationLimit: number;
+  /** Every reservation (failed runs included) per admin per UTC day; stops failing runs from draining the budget. */
+  dailyAttemptLimit: number;
+  /** Platform-wide spending ceiling per UTC month across all companies, in micro-USD. */
+  platformMonthlyBudgetMicros: number;
   /** Declined notes per admin per UTC day before generation is blocked for the day. */
   dailyFlagLimit: number;
 }
 
 /** Content-free operational log line (ids, counts, model, outcome); never prompts, notes or drafts. */
-export type AiLog = (event: string, fields: Readonly<Record<string, string | number | boolean | null>>) => void;
+export type AiLog = (event: string, fields: Readonly<Record<string, string | number | boolean | null>>, level?: "info" | "warn" | "error") => void;
 
 export interface AiDeps {
   store: AdminStore;
@@ -157,4 +165,8 @@ export interface AiDeps {
   limiter?: RateLimiter;
   log?: AiLog;
   now: () => Date;
+  /** Overall run deadline in ms (default RUN_DEADLINE_MS). */
+  deadlineMs?: number;
+  /** Backoff sleep for the settle retry (tests inject a no-op). */
+  sleep?: (ms: number) => Promise<void>;
 }

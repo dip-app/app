@@ -23,7 +23,8 @@ export class FirestoreTagReconcileStore implements TagReconcileStore {
       members.where("interestTagIds", "array-contains", tagId).count().get(),
       members.where("status", "==", "deactivated").where("interestTagIds", "array-contains", tagId).count().get(),
     ]);
-    return all.data().count - deactivated.data().count;
+    // Two non-atomic reads can disagree by a concurrent write; never report a negative member count.
+    return Math.max(0, all.data().count - deactivated.data().count);
   }
 
   async listStatDocs(companyId: string): Promise<StatDoc[]> {

@@ -23,7 +23,7 @@ export async function handleUserInterestsWritten(
 let catalog: FirestoreTagCatalog | null = null;
 
 /** users/{uid} written: keep companies/{c}/tagStats in sync. retry:true is safe because applyDeltas is receipt-guarded. */
-export const onUserInterestsWritten = onDocumentWritten({ document: "users/{uid}", region: REGION, retry: true }, async (event) => {
+export const onUserInterestsWritten = onDocumentWritten({ document: "users/{uid}", region: REGION, retry: true, maxInstances: 10, timeoutSeconds: 60, memory: "256MiB" }, async (event) => {
   const db = getFirestore(defaultAdminApp());
   catalog ??= new FirestoreTagCatalog(db);
   await handleUserInterestsWritten({ catalog, store: new FirestoreTagStatsStore(db) }, event);

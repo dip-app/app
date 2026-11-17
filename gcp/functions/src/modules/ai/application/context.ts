@@ -5,6 +5,7 @@ import { aiPaths, dayKey, monthKey } from "../domain/paths";
 import { worstCaseMicros } from "../domain/pricing";
 import { effectiveLimits, readDay, readMonth, usageSummary } from "../domain/quota";
 import { parseContextRequest } from "../domain/request";
+import { bestEffort } from "./generate";
 import type { AiDeps, Caller } from "./ports";
 
 /**
@@ -25,7 +26,8 @@ export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null
     return { enabled: limits.enabled, summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst, now) };
   });
   const [stats, catalog, theme] = await Promise.all([
-    deps.interests.countsFor(companyId), deps.catalog.list(), deps.themes.current(companyId, now),
+    bestEffort(deps, "interests", () => deps.interests.countsFor(companyId), null), deps.catalog.list(),
+    bestEffort(deps, "theme", () => deps.themes.current(companyId, now), null),
   ]);
   const interests = summarizeInterests(stats, catalog);
   const known = new Set(catalog.map(tag => tag.id));

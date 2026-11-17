@@ -26,9 +26,12 @@ export interface ModerationLike {
 
 /** Minimal structural client: only what we call, so tests can stub it without the network. */
 export interface OpenAiLike {
-  responses: { parse(params: Record<string, unknown>): Promise<ParsedResponseLike> };
-  moderations: { create(params: { model: string; input: string[] }): Promise<ModerationLike> };
+  responses: { parse(params: Record<string, unknown>, options?: RequestOptionsLike): Promise<ParsedResponseLike> };
+  moderations: { create(params: { model: string; input: string[] }, options?: RequestOptionsLike): Promise<ModerationLike> };
 }
+
+/** Per-request options of the SDK: the run deadline reaches the HTTP call through `signal`. */
+export interface RequestOptionsLike { signal?: AbortSignal }
 
 export interface OpenAiLlmOptions { client: OpenAiLike; config: AiConfig }
 
@@ -59,7 +62,7 @@ export class OpenAiLlm implements LlmPort {
         ...tuning,
         // Do not keep prompts at OpenAI longer than needed.
         store: false,
-      });
+      }, request.signal ? { signal: request.signal } : undefined);
     } catch (error) {
       // Deliberately drops the SDK message: it can echo request details.
       throw new LlmUnavailableError(statusOf(error));
@@ -75,11 +78,11 @@ export class OpenAiLlm implements LlmPort {
     return { kind: "ok", value: checked.data, usage, model: used };
   }
 
-  async moderate(inputs: readonly string[]): Promise<ModerationResult[]> {
+  async moderate(inputs: readonly string[], signal?: AbortSignal): Promise<ModerationResult[]> {
     if (inputs.length === 0) return [];
     let response: ModerationLike;
     try {
-      response = await this.options.client.moderations.create({ model: this.options.config.moderation.model, input: [...inputs] });
+      response = await this.options.client.moderations.create({ model: this.options.config.moderation.model, input: [...inputs] }, signal ? { signal } : undefined);
     } catch (error) {
       throw new LlmUnavailableError(statusOf(error));
     }
@@ -106,11 +109,14 @@ function usageOf(response: ParsedResponseLike): LlmUsage {
   };
 }
 
+/** No SDK retries (the app loop is the only retry, so spend stays bounded) and a per-request timeout well under the run deadline. */
+const SDK_TIMEOUT_MS = 50_000;
+
 export function createOpenAiLlm(apiKey: string, config: AiConfig): OpenAiLlm {
-  const client = new OpenAI({ apiKey, maxRetries: 1, timeout: 90_000 });
+  const client = new OpenAI({ apiKey, maxRetries: 0, timeout: SDK_TIMEOUT_MS });
   const like: OpenAiLike = {
-    responses: { parse: params => client.responses.parse(params as never) as unknown as Promise<ParsedResponseLike> },
-    moderations: { create: params => client.moderations.create(params as never) as unknown as Promise<ModerationLike> },
+    responses: { parse: (params, options) => client.responses.parse(params as never, options) as unknown as Promise<ParsedResponseLike> },
+    moderations: { create: (params, options) => client.moderations.create(params as never, options) as unknown as Promise<ModerationLike> },
   };
   return new OpenAiLlm({ client: like, config });
 }

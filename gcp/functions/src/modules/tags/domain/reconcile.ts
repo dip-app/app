@@ -12,7 +12,12 @@ export interface ReconcilePlan {
   unchanged: number;
   /** Tags whose stat doc was written recently enough that a trigger may still be in flight. */
   skippedRecent: string[];
+  /** True when orphan deletions were withheld because they would remove more than half of the existing stat docs (or the catalog is empty). */
+  deletionsRefused: boolean;
 }
+
+/** More than this share of existing stat docs planned for deletion is treated as a bad catalog read, not an orphan cleanup. */
+export const MAX_DELETION_SHARE = 0.5;
 
 export function planReconcile(input: {
   catalogTagIds: readonly string[];
@@ -21,14 +26,17 @@ export function planReconcile(input: {
   nowMs: number;
   recentWindowMs?: number;
   force: boolean;
+  /** Permits deleting more than half of the existing stat docs (never with an empty catalog). Separate from `force`, which only skips the recent-write window. */
+  allowMassDelete?: boolean;
 }): ReconcilePlan {
   const recentWindowMs = input.recentWindowMs ?? DEFAULT_RECENT_WINDOW_MS;
   const existing = new Map(input.existing.map((stat) => [stat.tagId, stat]));
   const catalog = new Set(input.catalogTagIds);
-  const plan: ReconcilePlan = { corrections: [], deletions: [], unchanged: 0, skippedRecent: [] };
+  const plan: ReconcilePlan = { corrections: [], deletions: [], unchanged: 0, skippedRecent: [], deletionsRefused: false };
 
   for (const tagId of [...catalog].sort()) {
-    const computed = input.computed.get(tagId) ?? 0;
+    // Two non-atomic counts (all minus deactivated) can momentarily go negative; a count is never below zero.
+    const computed = Math.max(0, input.computed.get(tagId) ?? 0);
     const stat = existing.get(tagId);
     if (!stat) {
       // Never create zero docs.
@@ -41,6 +49,12 @@ export function planReconcile(input: {
     if (recent && !input.force) { plan.skippedRecent.push(tagId); continue; }
     plan.corrections.push({ tagId, from: stat.memberCount, to: computed });
   }
-  for (const tagId of [...existing.keys()].sort()) if (!catalog.has(tagId)) plan.deletions.push(tagId);
+  const orphans = [...existing.keys()].filter((tagId) => !catalog.has(tagId)).sort();
+  // An empty catalog (failed or partial read) would orphan every doc; so would a catalog that lost most tags.
+  if (orphans.length > 0 && (catalog.size === 0 || (!input.allowMassDelete && orphans.length > existing.size * MAX_DELETION_SHARE))) {
+    plan.deletionsRefused = true;
+  } else {
+    plan.deletions.push(...orphans);
+  }
   return plan;
 }

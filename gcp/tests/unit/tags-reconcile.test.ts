@@ -11,7 +11,7 @@ const plan = (over: Partial<Parameters<typeof planReconcile>[0]>) =>
 
 test("planner: equal counts produce nothing", () => {
   const result = plan({ existing: [{ tagId: "a", memberCount: 3, updatedAtMs: OLD }], computed: new Map([["a", 3]]) });
-  assert.deepEqual(result, { corrections: [], deletions: [], unchanged: 2, skippedRecent: [] });
+  assert.deepEqual(result, { corrections: [], deletions: [], unchanged: 2, skippedRecent: [], deletionsRefused: false });
 });
 
 test("planner: drift up and down, negative existing count", () => {
@@ -30,8 +30,37 @@ test("planner: missing doc with 0 creates nothing; with >0 is a create", () => {
 });
 
 test("planner: orphans are deleted regardless of recency", () => {
-  const result = plan({ existing: [{ tagId: "gone", memberCount: 5, updatedAtMs: NOW - 1000 }] });
+  const result = plan({ existing: [
+    { tagId: "a", memberCount: 1, updatedAtMs: OLD }, { tagId: "b", memberCount: 1, updatedAtMs: OLD }, { tagId: "gone", memberCount: 5, updatedAtMs: NOW - 1000 },
+  ], computed: new Map([["a", 1], ["b", 1]]) });
   assert.deepEqual(result.deletions, ["gone"]);
+});
+
+test("planner: an empty catalog never plans deletions, even with force and allowMassDelete", () => {
+  const existing = [{ tagId: "a", memberCount: 1, updatedAtMs: OLD }, { tagId: "b", memberCount: 1, updatedAtMs: OLD }];
+  for (const extra of [{}, { force: true }, { force: true, allowMassDelete: true }]) {
+    const result = plan({ catalogTagIds: [], existing, ...extra });
+    assert.deepEqual(result.deletions, []);
+    assert.equal(result.deletionsRefused, true);
+  }
+});
+
+test("planner: deleting more than half of the stat docs is refused unless allowMassDelete (force alone does not allow it)", () => {
+  const existing = [
+    { tagId: "a", memberCount: 1, updatedAtMs: OLD }, { tagId: "x", memberCount: 1, updatedAtMs: OLD }, { tagId: "y", memberCount: 1, updatedAtMs: OLD },
+  ];
+  const input = { catalogTagIds: ["a"], existing, computed: new Map([["a", 1]]) };
+  assert.deepEqual(plan(input).deletions, []);
+  assert.equal(plan(input).deletionsRefused, true);
+  assert.equal(plan({ ...input, force: true }).deletionsRefused, true);
+  assert.deepEqual(plan({ ...input, allowMassDelete: true }).deletions, ["x", "y"]);
+  // Exactly half is allowed.
+  assert.deepEqual(plan({ ...input, existing: existing.slice(0, 2) }).deletions, ["x"]);
+});
+
+test("planner: a negative computed count is clamped to zero", () => {
+  const result = plan({ existing: [{ tagId: "a", memberCount: 4, updatedAtMs: OLD }], computed: new Map([["a", -2]]) });
+  assert.deepEqual(result.corrections, [{ tagId: "a", from: 4, to: 0 }]);
 });
 
 test("planner: recent docs are skipped unless forced", () => {
@@ -110,4 +139,62 @@ test("reconcileAllCompanies: pages through companies and isolates failures", asy
   const bad = await reconcileAllCompanies({ catalog, store: failing }, { companyIds: ["x"], onFailure: (id) => failures.push(id) });
   assert.deepEqual(bad.failedCompanies, ["x"]);
   assert.deepEqual(failures, ["x"]);
+});
+
+test("application: an empty catalog aborts the company with a warning and touches nothing, even with force", async () => {
+  const store = new FakeStore(docs, { a: 4 });
+  const warnings: string[] = [];
+  const empty: TagCatalog = { tagIds: async () => new Set(), tags: async () => [] };
+  const report = await reconcileCompanyTagStats({ catalog: empty, store }, "c1", { now: () => NOW, force: true, allowMassDelete: true, onWarn: (event) => warnings.push(event) });
+  assert.equal(report.aborted, "empty_catalog");
+  assert.equal(report.deleted, 0);
+  assert.deepEqual(store.writes, []);
+  assert.equal(warnings.length, 1);
+});
+
+test("application: deleting more than half of the stat docs is refused with a warning unless allowMassDelete", async () => {
+  const many: StatDoc[] = [
+    { tagId: "a", memberCount: 1, updatedAtMs: OLD, version: "va" },
+    { tagId: "z1", memberCount: 1, updatedAtMs: OLD, version: "v1" },
+    { tagId: "z2", memberCount: 1, updatedAtMs: OLD, version: "v2" },
+  ];
+  const warnings: string[] = [];
+  const store = new FakeStore(many, { a: 1 });
+  const report = await reconcileCompanyTagStats({ catalog, store }, "c1", { now: () => NOW, force: true, onWarn: (event) => warnings.push(event) });
+  assert.equal(report.deletionsRefused, true);
+  assert.equal(report.deleted, 0);
+  assert.deepEqual(store.writes, []);
+  assert.equal(warnings.length, 1);
+  const allowed = new FakeStore(many, { a: 1 });
+  const done = await reconcileCompanyTagStats({ catalog, store: allowed }, "c1", { now: () => NOW, allowMassDelete: true });
+  assert.equal(done.deleted, 2);
+});
+
+test("application: a negative count from the store is clamped to zero in the written correction", async () => {
+  const store = new FakeStore([{ tagId: "a", memberCount: 4, updatedAtMs: OLD, version: "va" }], { a: -3 });
+  const report = await reconcileCompanyTagStats({ catalog: { tagIds: async () => new Set(["a"]), tags: async () => [] }, store }, "c1", { now: () => NOW });
+  assert.deepEqual(store.writes, ["set c1/a=0 v=va"]);
+  assert.equal(report.drift, 4);
+});
+
+test("reconcileAllCompanies: one failing company does not stop the others, under bounded concurrency", async () => {
+  const ids = ["c1", "c2", "c3", "c4", "c5", "c6"];
+  const base = new FakeStore([], {}, ids);
+  let inFlight = 0;
+  let peak = 0;
+  const flaky: TagReconcileStore = Object.assign(Object.create(base), {
+    listStatDocs: async (companyId: string) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      if (companyId === "c3") throw new Error("boom");
+      return [];
+    },
+  }) as TagReconcileStore;
+  const failures: string[] = [];
+  const result = await reconcileAllCompanies({ catalog, store: flaky }, { onFailure: (id) => failures.push(id), concurrency: 2 });
+  assert.deepEqual(result.failedCompanies, ["c3"]);
+  assert.deepEqual(result.reports.map((r) => r.companyId), ["c1", "c2", "c4", "c5", "c6"]);
+  assert.ok(peak <= 2 && peak >= 1);
 });

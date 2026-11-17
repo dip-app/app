@@ -7,6 +7,7 @@
 //
 // --apply uses force (recent stat docs are corrected too) but every write still carries a last-update-time precondition, so a
 // trigger write that lands in between is skipped, not overwritten. Triggers on users are not fired (only tagStats is written).
+// An empty tag catalog aborts a company; deleting more than half of its stat docs is refused unless --allow-mass-delete is passed.
 // Not undoable by manifest; it is idempotent and a rerun is the recovery path. Export Firestore first for a production apply.
 import { createRequire } from "node:module";
 import { reconcileAllCompanies, type ReconcileReport } from "../functions/src/modules/tags/application/reconcileTagStats";
@@ -24,6 +25,8 @@ const companies = valuesOf("--company");
 const project = valuesOf("--project")[0];
 const apply = args.includes("--apply");
 const ownerApproved = args.includes("--yes-owner-approved");
+// Needed only to delete more than half of a company's stat docs (otherwise treated as a bad catalog read and refused).
+const allowMassDelete = args.includes("--allow-mass-delete");
 
 const host = process.env.FIRESTORE_EMULATOR_HOST ?? "";
 const localEmulator = /^(127\.0\.0\.1|localhost):[0-9]+$/.test(host);
@@ -62,7 +65,7 @@ const printReport = (report: ReconcileReport) => {
 
 async function main(): Promise<void> {
   const { reports, failedCompanies } = await reconcileAllCompanies(deps, {
-    force: apply, dryRun: !apply, companyIds: companies.length ? companies : undefined, onReport: printReport,
+    force: apply, allowMassDelete, dryRun: !apply, onWarn: (event, fields) => console.warn(event, JSON.stringify(fields)), companyIds: companies.length ? companies : undefined, onReport: printReport,
     onFailure: (companyId, error) => console.error(`company ${companyId} FAILED: ${error instanceof Error ? error.message : "unknown error"}`),
   });
   const sum = (pick: (r: ReconcileReport) => number) => reports.reduce((total, r) => total + pick(r), 0);

@@ -3,6 +3,8 @@ export const aiPaths = {
   settings: (companyId: string) => `companies/${companyId}/aiSettings/current`,
   month: (companyId: string, monthKey: string) => `companies/${companyId}/aiUsage/${monthKey}`,
   day: (companyId: string, dayKey: string, uid: string) => `companies/${companyId}/aiUsageDaily/${dayKey}_${uid}`,
+  /** Platform-wide spend of one UTC month, shared by every company (top level, server-owned). */
+  platform: (monthKey: string) => `aiUsagePlatform/${monthKey}`,
   request: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiRequests/${uid}_${requestId}`,
 };
 

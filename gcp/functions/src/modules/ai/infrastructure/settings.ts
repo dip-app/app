@@ -7,8 +7,13 @@ function int(raw: string | undefined, fallback: number): number {
   return Number.isSafeInteger(value) ? value : fallback;
 }
 
-export function providerFromEnv(env: NodeJS.ProcessEnv): "openai" | "demo" {
-  if (env.AI_PROVIDER === "demo") return "demo";
+/** The demo provider returns fake drafts, so it is honored only inside the Functions emulator. */
+export function providerFromEnv(env: NodeJS.ProcessEnv, warn?: (message: string) => void): "openai" | "demo" | "disabled" {
+  if (env.AI_PROVIDER === "demo") {
+    if (env.FUNCTIONS_EMULATOR === "true") return "demo";
+    warn?.("AI_PROVIDER=demo is ignored outside the emulator; the AI feature is disabled.");
+    return "disabled";
+  }
   if (env.AI_PROVIDER === "openai") return "openai";
   return env.FUNCTIONS_EMULATOR === "true" ? "demo" : "openai";
 }
@@ -23,12 +28,13 @@ export const DEFAULT_DAILY_BUDGET_CENTS = 50;
 /** The demo provider needs no key, so there the flag alone enables the feature. */
 export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: string | undefined; jev?: string | undefined }): AiSettings {
   const config = aiConfig(env);
+  const provider = providerFromEnv(env);
   const flag = env.AI_EVENTS_ENABLED === "true";
   const jevOn = (step: "triage" | "draftCheck") => config[step].provider === "jev" && secretPresent(secrets.jev);
   const decisionModel = (step: "triage" | "draftCheck") => (jevOn(step) ? config[step].jevModel : config[step].openaiModel);
   const fallbackModel = (step: "triage" | "draftCheck") => (jevOn(step) ? config[step].openaiModel : null);
   return {
-    enabled: flag && (providerFromEnv(env) === "demo" || secretPresent(secrets.openai)),
+    enabled: flag && (provider === "demo" || (provider === "openai" && secretPresent(secrets.openai))),
     models: {
       generate: config.generate.model,
       triage: decisionModel("triage"),
@@ -42,5 +48,7 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: strin
     monthlyGenerationLimit: int(env.AI_MONTHLY_GENERATIONS, 30),
     dailyGenerationLimit: int(env.AI_DAILY_GENERATIONS_PER_ADMIN, 10),
     dailyFlagLimit: int(env.AI_DAILY_FLAG_LIMIT, 3),
+    dailyAttemptLimit: int(env.AI_DAILY_ATTEMPTS_PER_ADMIN, 20),
+    platformMonthlyBudgetMicros: int(env.AI_PLATFORM_MONTHLY_BUDGET_CENTS, 20000) * 10_000,
   };
 }
