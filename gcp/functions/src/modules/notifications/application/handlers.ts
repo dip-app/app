@@ -127,7 +127,7 @@ export async function onRsvpWritten(
 // ---------------------------------------------------------------------------------------------------------
 
 const emptyDelivery = (): DeliveryStats => ({
-  ...emptyStats(), duplicate: false, inApp: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 },
+  ...emptyStats(), duplicate: false, inApp: 0, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 },
 });
 
 /** Chat through the router: `going` subscribers with a chat-capable level, except the author. */
