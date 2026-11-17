@@ -7,13 +7,14 @@ import { rowsFromTable } from "../importMapping";
 import { applyAll, planAll } from "../importRun";
 import { columnIndex } from "../xlsx";
 
-const NOW = new Date("2026-11-03T12:00:00Z");
+// The mock seeds its events relative to the real clock, so the injected clock must follow it.
+const now = () => new Date();
 const store = (): KeyValueStore => {
   const map = new Map<string, string>();
   return { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v), removeItem: (k) => void map.delete(k) };
 };
 async function as(persona: "admin" | "organizer" | "member" | "otherAdmin") {
-  const api = createMockApi(store(), () => NOW);
+  const api = createMockApi(store(), now);
   await api.signIn(persona);
   return api;
 }
