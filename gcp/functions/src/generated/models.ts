@@ -1343,6 +1343,26 @@ export interface GetEventIdeaContextResponse {
   usage: AiUsageSummary;
 }
 
+export interface GetEventIdeaSuggestionsRequest {
+  contractVersion: number;
+  companyId: string;
+  sessionId: string;
+}
+
+export interface AiStepSuggestion {
+  question: "interest" | "goal" | "groupSize" | "setting" | "budget" | "timing";
+  value: string;
+  probability: number;
+  reason: string;
+}
+
+export interface GetEventIdeaSuggestionsResponse {
+  contractVersion: number;
+  provider: "jev" | "openai" | "heuristic" | "none";
+  suggestions: Array<AiStepSuggestion>;
+  cached: boolean;
+}
+
 export interface AiEventChoices {
   focusTagIds: Array<string>;
   goal: "team_bonding" | "wellness" | "learning" | "give_back" | "celebrate" | "competition";
