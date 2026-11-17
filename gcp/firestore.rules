@@ -307,6 +307,30 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
         && request.resource.data.isRead is bool;
     }
+    // Notification preferences (PUSH-1): one member-owned document, read and written only by its owner.
+    // Boolean switches per category; no list, no delete, no other settings documents.
+    match /users/{uid}/settings/{settingId} {
+      function boolOrAbsent(m, k) { return !(k in m) || m[k] is bool; }
+      function validPush(m) {
+        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'chat', 'challenges', 'social', 'discovery'])
+          && boolOrAbsent(m, 'invites') && boolOrAbsent(m, 'event_updates') && boolOrAbsent(m, 'reminders')
+          && boolOrAbsent(m, 'chat') && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'social') && boolOrAbsent(m, 'discovery');
+      }
+      function validEmail(m) {
+        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery'])
+          && boolOrAbsent(m, 'invites') && boolOrAbsent(m, 'event_updates') && boolOrAbsent(m, 'reminders')
+          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery');
+      }
+      function validPreferences(data) {
+        return data.keys().hasOnly(['contractVersion', 'push', 'email', 'updatedAt'])
+          && data.keys().hasAll(['contractVersion', 'updatedAt'])
+          && data.contractVersion == 1 && data.updatedAt == request.time
+          && (!('push' in data) || validPush(data.push))
+          && (!('email' in data) || validEmail(data.email));
+      }
+      allow get: if own(uid) && settingId == 'notifications';
+      allow create, update: if own(uid) && settingId == 'notifications' && validPreferences(request.resource.data);
+    }
     // inviteRateLimits is server-only and falls through to the deny-all rule below.
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.

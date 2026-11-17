@@ -31,6 +31,11 @@ def generate(check=False):
         return result + (('?' if language == 'swift' else ' | null') if nullable else '')
 
     for name, definition in schema['$defs'].items():
+        if 'properties' not in definition:
+            # String enum definition: a TypeScript union and a Swift String enum.
+            typescript.append(f'export type {name} = ' + ' | '.join(json.dumps(x) for x in definition['enum']) + ';\n')
+            swift += [f'public enum {name}: String, Codable, Equatable, Sendable {{', *[f'    case {x} = {json.dumps(x)}' for x in definition['enum']], '}\n']
+            continue
         typescript.append(f'export interface {name} {{')
         swift.append(f'public struct {name}: Codable, Equatable, Sendable {{')
         arguments = []

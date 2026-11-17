@@ -153,6 +153,33 @@ export interface UnregisterDeviceResponse {
   removed: boolean;
 }
 
+export type NotificationCategory = "invites" | "event_updates" | "reminders" | "chat" | "challenges" | "social" | "discovery";
+
+export interface PushCategoryPreferences {
+  invites?: boolean;
+  event_updates?: boolean;
+  reminders?: boolean;
+  chat?: boolean;
+  challenges?: boolean;
+  social?: boolean;
+  discovery?: boolean;
+}
+
+export interface EmailCategoryPreferences {
+  invites?: boolean;
+  event_updates?: boolean;
+  reminders?: boolean;
+  challenges?: boolean;
+  discovery?: boolean;
+}
+
+export interface NotificationPreferences {
+  contractVersion: number;
+  push?: PushCategoryPreferences;
+  email?: EmailCategoryPreferences;
+  updatedAt: string;
+}
+
 export interface PushNotificationData {
   type: "chat" | "event_changed" | "reminder";
   companyId: string;
