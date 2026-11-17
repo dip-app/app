@@ -42,7 +42,7 @@ export class FirestoreMembershipStore implements MembershipStore {
             const value: unknown = snap.get(name);
             return typeof value === "string" ? value : "";
           };
-          const membership: StoredMembership = { companyId: field("companyId"), role: field("role"), displayName: field("displayName") };
+          const membership: StoredMembership = { companyId: field("companyId"), role: field("role"), displayName: field("displayName"), photoURL: field("photoURL") };
           const status: unknown = snap.get("status");
           if (typeof status === "string") membership.status = status;
           return membership;
@@ -97,6 +97,10 @@ export class FirestoreMembershipStore implements MembershipStore {
         },
         updateDisplayName(uid, displayName) {
           transaction.update(db.collection("users").doc(uid), { displayName });
+        },
+        fillPhotoURL(uid, photoURL) {
+          // The profile was read in this transaction (getMembership), so a concurrent change retries instead of being overwritten.
+          transaction.update(db.collection("users").doc(uid), { photoURL });
         },
       };
       return work(tx);

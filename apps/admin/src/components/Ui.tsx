@@ -70,13 +70,7 @@ export function Notice({ children, tone = "info" }: { children: React.ReactNode;
   return <p className={`notice${tone === "success" ? " success" : ""}`} role="status">{children}</p>;
 }
 
-export function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join("");
-}
-
-export function Avatar({ name }: { name: string }) {
-  return <span className="avatar" aria-hidden>{initials(name)}</span>;
-}
+export { Avatar, initials } from "./Avatar";
 
 export function formatDate(iso: string): string {
   const d = new Date(iso);

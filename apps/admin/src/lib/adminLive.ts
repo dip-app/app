@@ -31,7 +31,7 @@ export function memberFromSummary(d: DocumentData): Member {
     workLocation: str(d.workLocation), department: str(d.department), jobTitle: str(d.jobTitle),
     status: d.status === "deactivated" ? "deactivated" : d.status === "invited" ? "invited" : "active",
     pointsBalance: typeof d.pointsBalance === "number" ? d.pointsBalance : null, createdAt: iso(d.createdAt),
-    avatarId: str(d.avatarId), city: str(d.city), revision: Number(d.revision ?? 0),
+    avatarId: str(d.avatarId), photoURL: str(d.photoURL), city: str(d.city), revision: Number(d.revision ?? 0),
   };
 }
 

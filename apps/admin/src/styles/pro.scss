@@ -151,7 +151,7 @@ $ctl-h: 36px;
   .big-number { font-size: 36px; }
   .facts { gap: 4px; div { grid-template-columns: 110px 1fr; } dt { font-size: 13px; } }
   .detail-layout { gap: 14px; }
-  .avatar { width: 28px; height: 28px; font-size: 11px; font-weight: 600; background: var(--primary); color: $white; }
+  .avatar { width: 32px; height: 32px; font-size: 12px; font-weight: 600; background: #e8eaf1; color: $ink; outline: 1px solid rgba(20, 22, 40, 0.1); outline-offset: -1px; object-fit: cover; }
   .person { gap: 10px; }
   .person.big { .avatar { width: 40px; height: 40px; font-size: 14px; } h2 { font-size: 18px; font-weight: 600; } }
   .dropzone { border: 1px dashed $line-strong; border-radius: $r-box; padding: 28px 16px; gap: 10px; &.over { border-color: var(--primary); background: $tint; } }
@@ -206,7 +206,7 @@ $ctl-h: 36px;
   .queue li + li .queue-item { border-top: 1px solid $line; }
   .queue-item { background: $white; border-radius: 0; min-height: 48px; padding: 8px 12px; gap: 10px; font-size: 14px; position: relative; &:hover { background: $subtle; }
     .queue-text .muted { font-size: 12px; }
-    &[aria-current="true"] { background: $tint; color: $ink; box-shadow: inset 0 0 0 1px var(--primary); .muted { color: var(--muted); } .info-pill { color: $ink; border-color: $line-strong; background: $white; } .avatar { background: var(--primary); } } }
+    &[aria-current="true"] { background: $tint; color: $ink; box-shadow: inset 0 0 0 1px var(--primary); .muted { color: var(--muted); } .info-pill { color: $ink; border-color: $line-strong; background: $white; } .avatar { background: var(--primary); color: $white; outline: 0; } } }
   .bug-item[aria-current="true"] { .muted { color: var(--muted); } .info-pill.warn { color: $ink; border-color: $line-strong; } }
   .queue-chips, .bug-meta { gap: 4px; }
   .review-layout { grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px; }

@@ -113,7 +113,7 @@ function Attendees() {
               <ul className="pick-list">
                 {candidates.map((m) => (
                   <li key={m.id}>
-                    <Avatar name={m.displayName} />
+                    <Avatar name={m.displayName} photoURL={m.photoURL} avatarId={m.avatarId} />
                     <span className="grow"><strong>{m.displayName}</strong><span className="muted"> {m.email}</span></span>
                     <button className="pill-btn dark small" onClick={() => { setCandidate(m); setNotify(true); }}>Add</button>
                   </li>

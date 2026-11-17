@@ -64,6 +64,10 @@ Findings and remaining work: [`docs/quality/admin-audit-2026-11.md`](../../docs/
 - **Images:** bundled images go through `asset()` (`src/lib/asset.ts`) so they resolve under the `/admin` base path.
 - **Page titles:** each page's title is set by `Shell` ("Page | DIP Admin").
 
+## Member photos
+
+`Avatar` (`src/components/Avatar.tsx`) shows a member's Google profile photo (`photoURL`, stored size-less by `resolveMembershipV1`; the portal requests `=s96-c`, or `=s192-c` for the 64 px detail header), then falls back to the member's mascot art from `public/img/avatars/` (from `avatarId`: a colour name or `avatar-NN`), then to initials on a neutral background. It renders a decorative `<img alt="">` with `referrerPolicy="no-referrer"` and `loading="lazy"`, and drops to the next fallback on load error. Used on Members (list and detail) and the attendee picker. Mock members carry local photos from `public/img/mock-photos/`. The CSP `img-src` allows `https://*.googleusercontent.com` and `https://*.ggpht.com` (`firebase.json`).
+
 ## Mock mode and live mode
 
 `src/lib/api.ts` defines the `AdminApi` interface the UI depends on, with two implementations chosen at build time:

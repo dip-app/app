@@ -21,6 +21,7 @@ export function identityFromRequest(request: Pick<CallableRequest, "auth">): Aut
     emailVerified: token.email_verified === true,
     signInProvider: typeof provider === "string" ? provider : null,
     name: typeof token.name === "string" ? token.name : null,
+    picture: typeof token.picture === "string" ? token.picture : null,
   };
 }
 

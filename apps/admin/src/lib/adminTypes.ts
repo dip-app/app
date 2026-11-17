@@ -89,6 +89,8 @@ export interface Member {
   /** Self-set profile data that "Reset participant profile" clears (with interests, travel radius, availability and favorites). */
   avatarId: string;
   city: string;
+  /** Google profile photo (size-less base URL, set by the server at sign-in); empty when none. Rendered with a size suffix by Avatar. */
+  photoURL: string;
   revision: number;
 }
 
