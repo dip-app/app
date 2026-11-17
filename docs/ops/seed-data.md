@@ -9,6 +9,7 @@ Scripts that write data (seeds, backfills, migrations) are operator tools. They 
 | `gcp/scripts/seed.mjs` (`npm run test:seed`) | Demo fixture `gcp/sample-data/v1.json` | **Emulators only**: refuses anything except project `demo-dip` and the local Auth and Firestore emulator hosts. |
 | `scripts/seed-weekly-theme.mjs` | The "Fitness" weekly theme (a `Challenge`) per company | Real project through Application Default Credentials, or an emulator through `FIRESTORE_EMULATOR_HOST`. |
 | `gcp/scripts/backfill-event-shares.mjs`, `backfill-roster.ts`, `backfill-rsvp-profile.mjs` | Backfills of server-owned data after a schema addition | Same as above. |
+| `gcp/scripts/backfill-tag-stats.ts` | Tag stats backfill and repair (see below) | Emulator, or `--project` with owner approval. |
 | `scripts/migrate-company-domains.mjs` | One-off company domain migration | Same as above. |
 
 New operator scripts go in `gcp/scripts/` (backend data) or `scripts/` (cross-cutting), as ES modules (`.mjs`) that load `firebase-admin` through `createRequire(new URL("../functions/package.json", import.meta.url))` so they use the Functions workspace's dependency.
@@ -33,6 +34,18 @@ New operator scripts go in `gcp/scripts/` (backend data) or `scripts/` (cross-cu
 3. Run with `--apply`; keep the manifest.
 4. Smoke test the result in the app or portal; record the command, commit, manifest path and result in the session log.
 5. To undo: `--undo <manifest> ` dry run, then `--undo <manifest> --apply`.
+
+## Tag stats backfill
+
+`gcp/scripts/backfill-tag-stats.ts` populates and repairs `companies/{c}/tagStats` from the `users` collection. It runs the same application code as the nightly `reconcileTagStats` function, so a backfill and a reconcile always agree. It writes only `tagStats` documents (no `users` writes, so no triggers fire) and every write has a last-update-time precondition.
+
+- [ ] Dry run (default, writes nothing; prints tag, current and computed per company, then a summary):
+  `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node --import tsx gcp/scripts/backfill-tag-stats.ts [--company <ID> ...]`
+- [ ] Apply on an emulator (uses force, so recently written docs are corrected too):
+  `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node --import tsx gcp/scripts/backfill-tag-stats.ts --apply`
+- [ ] Production needs owner approval. It refuses to run without `FIRESTORE_EMULATOR_HOST` on localhost or an explicit `--project <ID>`, prints a banner naming the project, and with `--apply` exits 2 unless `--yes-owner-approved` is also given:
+  `node --import tsx gcp/scripts/backfill-tag-stats.ts --project <ID>` (dry run), then add `--apply --yes-owner-approved` after the dry run is reviewed.
+- [ ] Idempotent; a rerun is the recovery path. A write that loses a race with the trigger is reported as `skippedConcurrent`; the nightly reconcile (03:30 UTC) corrects it.
 
 ## Known gaps against these rules
 
