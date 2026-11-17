@@ -1,12 +1,14 @@
-Hi Sam, this event is tomorrow.
+STARTS TOMORROW
+
+Hi Sam, اجتماع الفريق الأسبوعي starts tomorrow.
 
 اجتماع الفريق الأسبوعي
-Fri, Nov 20, 9:00 AM to 10:00 AM EST
+When: Fri, Nov 20, 9:00 AM to 10:00 AM EST
 
 Open in DIP: https://letsdip.work/e/evt_ar
 
 --
 You are getting this because reminder emails are on.
 Unsubscribe: https://letsdip.work/u/sample-token
-Manage in the DIP app (Profile > Notifications)
+Manage in DIP: Profile > Notifications
 DIP · 123 Example Street, Pittsburgh, PA 15213 (placeholder)

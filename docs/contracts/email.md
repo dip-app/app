@@ -9,8 +9,9 @@ Implementation of [reminder and notification emails](../design/stretch/email.md)
 | `onEmailOutboxCreated` | Firestore `onDocumentCreated` on `emailOutbox/{id}`, `retry: true` | Runs every send-time gate and sends at most once |
 | `emailUnsubscribeV1` | HTTPS, public, Hosting rewrite `/u/**` | Unsubscribe confirmation page and RFC 8058 one-click POST |
 | `emailWebhookV1` | HTTPS, public, direct function URL | Provider bounce, complaint and subscription-change webhook |
+| `emailOpenV1` | HTTPS, public, Hosting rewrite `/o/**` | Approximate open counter (1x1 GIF), only when `EMAIL_OPEN_TRACKING` is on |
 
-The router entry point for other modules is `emailChannel(emailChannelDependencies(), candidate)` from `modules/email` (not exported as a function).
+Router integration (EML-8): `deliverNotification` accepts an optional `request.email` payload `{ template, variables, objectId, revisionOrWindow, notAfter? }` and an optional `deps.email` port. Wire it as `email: routerEmailChannel(emailChannelDependencies())` (both exported from `modules/email`). Per recipient, after the push decision, the channel applies the shared `evaluateDelivery` (channel `email`), the company switch and the push-or-email policy, rejects a template whose category differs from the notification kind's, validates the variables and creates the outbox entry once. Failures never block the push. Triggers start sending emails when they are migrated onto the router with an `email` payload (PUSH-3).
 
 ## `GET|HEAD|POST /u/<token>`
 
@@ -26,11 +27,17 @@ The router entry point for other modules is `emailChannel(emailChannelDependenci
 - Postmark payloads (single object or array): `HardBounce`, `BadEmailAddress`, `ManuallyDeactivated` -> suppression `hard_bounce`; `SpamComplaint` and `SpamNotification` -> suppression `complaint` plus every email category off for the member (uid from the outbox document named in `Metadata.outboxId`, else up to 5 members with that address); `SubscriptionChange` with `SuppressSending` -> suppression `provider_unsubscribe`; soft bounces and deliveries are ignored.
 - 200 `ok` after processing, 500 on a store error so the provider retries (all writes are idempotent).
 
+## `GET|HEAD /o/<token>.gif`
+
+- Token: `base64url("v1:" + outboxId + ":" + expirySeconds) + "." + HMAC-SHA256(EMAIL_UNSUBSCRIBE_KEY, "dip-email-open." + payloadPart)`, valid 90 days. The distinct prefix means an open token can never act as an unsubscribe token or the reverse.
+- Always 200 with the same 43-byte transparent GIF and `Cache-Control: no-store`, for valid and invalid tokens alike; no cookies, no redirects. A valid token on a `sent` email increments `openCount`, sets `firstOpenedAt` once and `lastOpenedAt` (transaction). Nothing else is stored (no IP, no user agent).
+- Accuracy: Apple Mail Privacy Protection and Gmail's image proxy fetch images without a human opening the email, and blocked images hide real opens. Treat counts as approximate.
+
 ## Server-only collections (deny-all rules)
 
 | Path | Fields | Notes |
 | --- | --- | --- |
-| `emailOutbox/{category_objectId_uid_revisionOrWindow}` | `uid`, `companyId`, `category`, `template`, `variables` (allow-listed per template), `status` (`queued`, `sending`, `sent`, `failed`, `skipped`, `expired`, `unknown`), `reason`, `attempts`, `notAfter`, `leaseUntil`, `providerMessageId`, `toHash`, `createdAt`, `updatedAt`, `expireAt` (TTL, 30 days) | Created once with `create()`; never stores an address |
+| `emailOutbox/{category_objectId_uid_revisionOrWindow}` | `uid`, `companyId`, `category`, `template`, `variables` (allow-listed per template), `status` (`queued`, `sending`, `sent`, `failed`, `skipped`, `expired`, `unknown`), `reason`, `attempts`, `notAfter`, `leaseUntil`, `providerMessageId`, `toHash`, `sentAt`, `openCount`, `firstOpenedAt`, `lastOpenedAt`, `createdAt`, `updatedAt`, `expireAt` (TTL, 30 days) | Created once with `create()`; never stores an address |
 | `emailSuppressions/{sha256(lowercased address)}` | `reason`, `createdAt`, `lastEventAt`, `count` | Checked before every send |
 | `emailCaps/{member_<uid>_<day> or company_<companyId>_<day>}` | `count`, `expireAt` (TTL) | Daily caps: 20 per member, `dailyCap` per company (default 2,000) |
 | `emailSettings/{companyId}` | `enabled` (bool), `dailyCap` (int, at most 50,000), `timeZone` (IANA, optional) | Missing means email is off for the company. Written by an operator in the console |
@@ -44,7 +51,7 @@ At most once: a send whose outcome is unknown (timeout, crash, abandoned lease) 
 
 ## Every email
 
-- From `DIP <notify@letsdip.work>`, Reply-To `support@letsdip.work`, Postmark stream `notifications`, open and link tracking off.
+- From `DIP <notify@letsdip.work>`, Reply-To `support@letsdip.work`, Postmark stream `notifications`, Postmark's own open and link tracking off (our optional pixel is the only open signal).
 - Headers `List-Unsubscribe: <https://letsdip.work/u/<token>>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
 - Footer: reason, unsubscribe link, "Manage in the DIP app (Profile > Notifications)", postal address.
 - Links: `https://letsdip.work/e/<eventId>` for events (universal link, preview page for non-members), `https://letsdip.work/` otherwise.

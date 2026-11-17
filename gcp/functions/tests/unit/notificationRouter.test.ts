@@ -3,7 +3,7 @@ import { describe, test } from "node:test";
 import type {
   DeviceDirectory, DeviceToken, InboxItem, InboxWriter, MessagingPort, PreferencesReader, SendResult,
 } from "../../src/modules/notifications/application/ports";
-import { deliverNotification, type NotificationRequest, type RouterDependencies } from "../../src/modules/notifications/application/router";
+import { deliverNotification, type EmailChannelPort, type NotificationRequest, type RouterDependencies } from "../../src/modules/notifications/application/router";
 import type { DeliveryReceipts, PushRateLimiter } from "../../src/modules/notifications/application/routerPorts";
 import { sendPush, sendToDevices } from "../../src/modules/notifications/application/sendPush";
 import { DEFAULT_RESOLVED_PREFERENCES, resolvePreferences, type ResolvedPreferences } from "../../src/modules/notifications/domain/preferences";
@@ -83,7 +83,7 @@ describe("deliverNotification precedence", () => {
     const h = new Harness();
     h.tokens.set("u1", ["tok1", "tok2"]);
     const stats = await deliverNotification(h.deps(), request());
-    assert.deepEqual(stats, { recipients: 1, tokens: 2, sent: 2, failed: 0, removed: 0, duplicate: false, inApp: 1, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 } });
+    assert.deepEqual(stats, { recipients: 1, tokens: 2, sent: 2, failed: 0, removed: 0, duplicate: false, inApp: 1, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 } });
     assert.deepEqual(h.sent[0]!.tokens, ["tok1", "tok2"]);
   });
 
@@ -261,6 +261,91 @@ describe("deliverNotification rate caps", () => {
     for (let i = 0; i < 30; i++) await deliverNotification(h.deps(), request({ id: `n${i}`, recipients: [{ uid: "u1", eventLevel: "all" }, { uid: "u2", eventLevel: "all" }] }));
     assert.equal(h.counts.get("u1"), undefined);
     assert.equal(h.counts.get("u2")!.hourCount, 20);
+  });
+});
+
+describe("deliverNotification email hook", () => {
+  const emailPayload = { template: "event_changed", variables: {}, objectId: "e1", revisionOrWindow: "r1" };
+  type Call = { uid: string; pushWillDeliver: boolean };
+  function channel(calls: Call[], result: (uid: string) => boolean | Error = () => true): EmailChannelPort {
+    return {
+      deliver: async (_request, recipient, pushWillDeliver) => {
+        calls.push({ uid: recipient.uid, pushWillDeliver });
+        const r = result(recipient.uid);
+        if (r instanceof Error) throw r;
+        return r;
+      },
+    };
+  }
+
+  test("without an email dependency or request.email the channel is never called", async () => {
+    const h = new Harness();
+    h.tokens.set("u1", ["tok1"]);
+    const calls: Call[] = [];
+    const noPayload = await deliverNotification({ ...h.deps(), email: channel(calls) }, request({ id: "a" }));
+    assert.equal(noPayload.emailsEnqueued, 0);
+    const noDep = await deliverNotification(h.deps(), request({ id: "b", email: emailPayload }));
+    assert.equal(noDep.emailsEnqueued, 0);
+    assert.equal(calls.length, 0);
+    assert.equal(noPayload.sent, 1);
+  });
+
+  test("called once per unique recipient; pushWillDeliver is true only for admitted uids", async () => {
+    const h = new Harness();
+    h.tokens.set("ok", ["t-ok"]); h.tokens.set("limited", ["t-lim"]);
+    h.rateLimiter = { admit: async (uids) => new Set(uids.filter((uid) => uid !== "limited")) };
+    const calls: Call[] = [];
+    const stats = await deliverNotification({ ...h.deps(), email: channel(calls) }, request({
+      email: emailPayload,
+      recipients: [
+        { uid: "ok", eventLevel: "all" }, { uid: "ok", eventLevel: "all" },
+        { uid: "limited", eventLevel: "all" }, { uid: "tokenless", eventLevel: "all" },
+      ],
+    }));
+    assert.deepEqual(calls.sort((a, b) => a.uid.localeCompare(b.uid)), [
+      { uid: "limited", pushWillDeliver: false }, { uid: "ok", pushWillDeliver: true }, { uid: "tokenless", pushWillDeliver: false },
+    ]);
+    assert.equal(stats.emailsEnqueued, 3);
+    assert.equal(stats.blocked.rate_limited, 1);
+    assert.equal(stats.blocked.no_destination, 1);
+  });
+
+  test("only enqueued deliveries are counted", async () => {
+    const h = new Harness();
+    const calls: Call[] = [];
+    const stats = await deliverNotification({ ...h.deps(), email: channel(calls, (uid) => uid === "a") }, request({
+      email: emailPayload, recipients: [{ uid: "a", eventLevel: "all" }, { uid: "b", eventLevel: "all" }],
+    }));
+    assert.equal(calls.length, 2);
+    assert.equal(stats.emailsEnqueued, 1);
+  });
+
+  test("a throwing email channel does not block the push or change push stats", async () => {
+    const baseline = new Harness();
+    baseline.tokens.set("u1", ["tok1", "tok2"]);
+    const expected = await deliverNotification(baseline.deps(), request());
+    const h = new Harness();
+    h.tokens.set("u1", ["tok1", "tok2"]);
+    const calls: Call[] = [];
+    const stats = await deliverNotification({ ...h.deps(), email: channel(calls, () => new Error("smtp down")) }, request({ email: emailPayload }));
+    assert.equal(calls.length, 1);
+    assert.deepEqual(stats, expected);
+    assert.equal(stats.sent, 2);
+    assert.equal(stats.emailsEnqueued, 0);
+    assert.equal(h.inbox.length, 1);
+  });
+
+  test("a duplicate notification id does not call the email channel again", async () => {
+    const h = new Harness();
+    h.tokens.set("u1", ["tok1"]);
+    const calls: Call[] = [];
+    const deps = { ...h.deps(), email: channel(calls) };
+    const first = await deliverNotification(deps, request({ email: emailPayload }));
+    assert.equal(first.emailsEnqueued, 1);
+    const second = await deliverNotification(deps, request({ email: emailPayload }));
+    assert.equal(second.duplicate, true);
+    assert.equal(second.emailsEnqueued, 0);
+    assert.equal(calls.length, 1);
   });
 });
 

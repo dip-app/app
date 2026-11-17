@@ -46,6 +46,7 @@ class FakeOutbox implements OutboxStore {
     this.finishes.push({ id, status, fields });
   }
   async get(id: string) { return this.docs.get(id) ?? null; }
+  async recordOpen() { return false; }
 }
 
 class FakeProvider implements EmailProviderPort {
@@ -91,7 +92,7 @@ function world(overrides: Partial<SendDeps["config"]> = {}): World {
     suppressions: { isSuppressed: async (h) => w.suppressed.has(h), suppress: async (h) => { w.suppressWrites.push(h); } },
     caps, preferences, provider: w.provider, renderer,
     clock: { now: () => w.clockNow },
-    config: { enabled: true, unsubscribeKey: KEY, postalAddress: "1 Main St", defaultTimeZone: "UTC", publicOrigin: "https://letsdip.work", ...overrides },
+    config: { enabled: true, unsubscribeKey: KEY, postalAddress: "1 Main St", defaultTimeZone: "UTC", publicOrigin: "https://letsdip.work", openTracking: false, ...overrides },
     log: (event, fields) => { w.logs.push(`${event} ${JSON.stringify(fields)}`); },
   };
   return w;

@@ -8,6 +8,7 @@ import { SHARE_ORIGIN } from "../../share/domain/sharePage";
 import { emailChannel, type ChannelDeps } from "../application/enqueueEmail";
 import type { EmailConfig, EmailProviderPort } from "../application/ports";
 import { RetryableEmailError, sendOutboxEmail, type EmailRenderer } from "../application/sendOutboxEmail";
+import { handleOpenPixel } from "../application/openPixel";
 import { handleUnsubscribe } from "../application/unsubscribe";
 import { handleWebhook } from "../application/webhook";
 import { icsAttachmentFor } from "../domain/ics";
@@ -24,6 +25,7 @@ import { PostmarkProvider, PostmarkWebhookVerifier } from "../infrastructure/pos
  */
 export const EMAIL_ENABLED = defineBoolean("EMAIL_ENABLED", { default: false, description: "Master switch for all email sending." });
 export const EMAIL_PROVIDER = defineString("EMAIL_PROVIDER", { default: "log", description: "postmark | log (log-only fake)." });
+export const EMAIL_OPEN_TRACKING = defineBoolean("EMAIL_OPEN_TRACKING", { default: false, description: "Add an approximate open-tracking pixel to emails." });
 export const EMAIL_POSTAL_ADDRESS = defineString("EMAIL_POSTAL_ADDRESS", { default: "", description: "Postal address for the email footer (CAN-SPAM). Sending is skipped while empty." });
 export const EMAIL_DEFAULT_TIME_ZONE = defineString("EMAIL_DEFAULT_TIME_ZONE", { default: "America/New_York", description: "IANA zone for times when the company has none." });
 export const POSTMARK_MESSAGE_STREAM = defineString("POSTMARK_MESSAGE_STREAM", { default: "notifications", description: "Postmark message stream id for optional notifications." });
@@ -61,8 +63,10 @@ export function emailConfig(): EmailConfig {
     enabled: EMAIL_ENABLED.value() || emulator(),
     unsubscribeKey: unsubscribeKey(),
     postalAddress: EMAIL_POSTAL_ADDRESS.value() || (emulator() ? "Emulator, 1 Test Street, Testville" : ""),
-    defaultTimeZone: EMAIL_DEFAULT_TIME_ZONE.value(),
+    // Unset params read as "" at runtime outside a CLI deploy; fall back to the documented defaults.
+    defaultTimeZone: EMAIL_DEFAULT_TIME_ZONE.value() || "America/New_York",
     publicOrigin: SHARE_ORIGIN,
+    openTracking: EMAIL_OPEN_TRACKING.value() || emulator(),
   };
 }
 
@@ -70,7 +74,7 @@ function provider(store: FirebaseFirestore.Firestore): EmailProviderPort {
   // The emulator never reaches a provider: it records messages in `emulatorEmailOutbox`.
   if (emulator()) return new EmulatorOutboxEmailProvider(store);
   if (EMAIL_PROVIDER.value() === "postmark") {
-    return new PostmarkProvider({ serverToken: POSTMARK_SERVER_TOKEN.value(), streams: { notifications: POSTMARK_MESSAGE_STREAM.value() } });
+    return new PostmarkProvider({ serverToken: POSTMARK_SERVER_TOKEN.value(), streams: { notifications: POSTMARK_MESSAGE_STREAM.value() || "notifications" } });
   }
   return new LogOnlyEmailProvider();
 }
@@ -135,6 +139,18 @@ export const emailUnsubscribeV1 = onRequest(
       logger.error("emailUnsubscribeV1 failed", { error: error instanceof Error ? error.name : "unknown" });
       response.status(500).set({ "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }).send("Something went wrong. Try again later.");
     }
+  });
+
+/** `https://letsdip.work/o/<token>.gif` (Hosting rewrite). Public, no cookies, no redirects; always the same GIF. */
+export const emailOpenV1 = onRequest(
+  { region: REGION, invoker: "public", cors: false, timeoutSeconds: 10, memory: "256MiB", maxInstances: 10, secrets: [EMAIL_UNSUBSCRIBE_KEY] },
+  async (req, res) => {
+    const response = res as unknown as HttpResponseLike;
+    const result = await handleOpenPixel(
+      { outbox: stores().store.outbox, clock: { now: () => new Date() }, key: unsubscribeKey() },
+      { method: req.method, path: req.path },
+    );
+    response.status(result.status).set(result.headers).send(result.body as unknown as string);
   });
 
 /** Provider bounce and complaint webhook (direct function URL with Basic credentials; see docs/ops/email-setup.md). */

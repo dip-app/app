@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { createRequire } from "node:module";
 import { enqueueEmail } from "../../functions/src/modules/email/application/enqueueEmail";
+import { signOpenToken } from "../../functions/src/modules/email/domain/openToken";
 import { signUnsubscribeToken } from "../../functions/src/modules/email/domain/unsubscribeToken";
 import { validateVariables } from "../../functions/src/modules/email/domain/templates/render";
 import { FirestoreEmailStore } from "../../functions/src/modules/email/infrastructure/firestoreEmailStore";
@@ -92,6 +93,33 @@ test("email outbox trigger, unsubscribe and webhook against the emulators", { ti
       await sleep(2000);
       assert.equal((await sends(result.id)).size, 1);
       assert.equal((await outboxDoc(result.id)).get("status"), "sent");
+    });
+
+    await t.test("open pixel: counts opens on a sent email; an invalid token writes nothing", async () => {
+      const user = await addUser("opens", `opens.${stamp}@synthetic.test`);
+      const { id } = await invite(user.uid, companyId, "r1");
+      assert.equal((await settled(id)).get("status"), "sent");
+      const token = signOpenToken(EMULATOR_UNSUBSCRIBE_KEY, id, Math.floor(Date.now() / 1000));
+      const url = `${base}/emailOpenV1/o/${token}.gif`;
+
+      const first = await fetch(url);
+      assert.equal(first.status, 200);
+      assert.equal(first.headers.get("content-type"), "image/gif");
+      assert.equal((await first.arrayBuffer()).byteLength, 43);
+      const afterFirst = await outboxDoc(id);
+      assert.equal(afterFirst.get("openCount"), 1);
+      const firstOpened = afterFirst.get("firstOpenedAt");
+      assert.ok(firstOpened);
+
+      assert.equal((await fetch(url)).status, 200);
+      const afterSecond = await outboxDoc(id);
+      assert.equal(afterSecond.get("openCount"), 2);
+      assert.ok(afterSecond.get("firstOpenedAt").isEqual(firstOpened));
+      assert.ok(afterSecond.get("lastOpenedAt"));
+
+      const invalid = await fetch(`${base}/emailOpenV1/o/${token.slice(0, -2)}xx.gif`);
+      assert.equal(invalid.status, 200);
+      assert.equal((await outboxDoc(id)).get("openCount"), 2);
     });
 
     await t.test("preference off skips without sending", async () => {

@@ -81,4 +81,5 @@ export const PREVIEW_CASES: PreviewCase[] = [
     endTime: "2026-11-20T18:00:00Z",
     changedFields: ["time"],
   }),
+  make("invite_received_with_pixel", "invite_received", { ...EVENT, inviterFirstName: "Priya" }, { ...SAMPLE_CTX, openPixelURL: "https://letsdip.work/o/sample-token.gif" }),
 ];

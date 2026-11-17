@@ -3,6 +3,7 @@ import { resolveEmailPreferences } from "../domain/categories";
 import {
   MAX_ATTEMPTS, MEMBER_DAILY_CAP, SEND_LEASE_MS, capDay, emailHash, type OutboxDocument, type OutboxStatus, type SkipReason,
 } from "../domain/outbox";
+import { signOpenToken } from "../domain/openToken";
 import type { RenderContext, RenderedEmail, TemplateId, TemplateVariables } from "../domain/templates/types";
 import { MIN_KEY_BYTES, signUnsubscribeToken } from "../domain/unsubscribeToken";
 import type {
@@ -125,6 +126,9 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date): Promise<
     timeZone: company.timeZone ?? deps.config.defaultTimeZone,
     unsubscribeURL,
     postalAddress: deps.config.postalAddress,
+    openPixelURL: deps.config.openTracking
+      ? `${deps.config.publicOrigin}/o/${signOpenToken(deps.config.unsubscribeKey, doc.id, nowSeconds)}.gif`
+      : null,
   });
   const attachment = deps.renderer.attachment(doc.template, variables,
     "revision" in variables && typeof variables.revision === "number" ? variables.revision : 0);
