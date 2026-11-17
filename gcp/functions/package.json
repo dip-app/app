@@ -21,6 +21,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "caniemail": "^2.0.2",
+    "html-validate": "^11.21.1",
+    "htmlparser2": "^10.1.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

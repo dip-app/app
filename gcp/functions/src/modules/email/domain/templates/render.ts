@@ -320,7 +320,7 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
   const nb = (t: string): string => e(t).replace(/(\d) (AM|PM)\b/g, "$1&nbsp;$2").replace(/(AM|PM) ([A-Z]{2,5}(?:[+-]\d+)?)$/, "$1&nbsp;$2");
   const old = (value: string | null, nbsp = false): string =>
     value
-      ? `<div dir="auto" style="margin:0 0 2px 0;"><del style="text-decoration:line-through;color:${STRIKE};"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">was </span><bdi>${nbsp ? nb(value) : e(value)}</bdi></del></div>`
+      ? `<div dir="auto" style="margin:0 0 2px 0;"><del style="text-decoration:line-through;color:${STRIKE};"><span style="position:absolute;display:inline-block;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;font-size:1px;line-height:1px;color:transparent;text-decoration:none;">was </span><span dir="auto">${nbsp ? nb(value) : e(value)}</span></del></div>`
       : "";
   const row = (label: string, value: string, first: boolean): string =>
     `<tr><td class="lbl text-muted${first ? "" : " border"}" valign="top" width="64" style="width:64px;padding:10px 12px 10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${label}</td><td dir="auto" class="text-main${first ? "" : " border"}" valign="top" style="padding:10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:15px;line-height:20px;color:${INK};">${value}</td></tr>`;
@@ -328,16 +328,16 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
   const pill = copy.badge
     ? `<div style="margin:0 0 10px 0;"><span class="pill border" style="display:inline-block;padding:2px 10px;border:1px solid ${HAIRLINE};border-radius:999px;font-family:${FONT};font-size:12px;line-height:16px;font-weight:600;color:${INK};">${e(copy.badge)}</span></div>`
     : "";
-  const whenHtml = `${old(oldTime, true)}<bdi>${nb(when)}</bdi>`;
-  const nameHtml = venue ? `<div><bdi>${e(venue)}</bdi></div>` : "";
+  const whenHtml = `${old(oldTime, true)}<span dir="auto">${nb(when)}</span>`;
+  const nameHtml = venue ? `<div><span dir="auto">${e(venue)}</span></div>` : "";
   const whereHtml = [
     oldVenue && oldAddress ? `${old(oldVenue)}${old(oldAddress)}${nameHtml}` : `${old(oldVenue)}${nameHtml}${old(oldAddress)}`,
-    address ? `<div class="text-muted" style="font-size:14px;line-height:20px;color:${MUTED};"><bdi>${e(address)}</bdi></div>` : "",
+    address ? `<div class="text-muted" style="font-size:14px;line-height:20px;color:${MUTED};"><span dir="auto">${e(address)}</span></div>` : "",
   ].join("");
   const detailRows = [when ? row("When", whenHtml, true) : "", venue || address ? row("Where", whereHtml, !when) : ""].join("");
   const card =
     facts && title
-      ? `${pill}${old(oldTitle)}<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-family:${FONT};font-size:18px;line-height:26px;font-weight:700;color:${INK};"><bdi>${e(title)}</bdi></p>
+      ? `${pill}${old(oldTitle)}<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-family:${FONT};font-size:18px;line-height:26px;font-weight:700;color:${INK};"><span dir="auto">${e(title)}</span></p>
 ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="border" style="margin:0 0 20px 0;border-top:1px solid ${HAIRLINE};border-bottom:1px solid ${HAIRLINE};">${detailRows}</table>` : `<div style="height:12px;line-height:12px;font-size:12px;">&nbsp;</div>`}`
       : "";
 
