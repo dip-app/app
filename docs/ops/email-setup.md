@@ -1,138 +1,45 @@
-# Email setup runbook (owner and infra)
+# Email setup: your steps
 
-Status: nothing below has been done. The code ([email design](../design/stretch/email.md), [email contract](../contracts/email.md)) ships switched off: `EMAIL_ENABLED=false`, `EMAIL_PROVIDER=log`, no company enabled. Agents prepared this page; a human runs every step. Nothing here is free of judgment: provider choice, money and DNS are owner decisions.
+Postmark sends, Squarespace Domains holds DNS and forwarding. About 20 minutes plus DNS wait. The long engineering reference is [email-runbook.md](email-runbook.md); you do not need it.
 
-Facts on November 17, 2026: `letsdip.work` has **no MX, SPF, DKIM or DMARC records**, and **`support@letsdip.work` does not exist**, although the landing support and privacy pages tell people to write to it. DNS is managed at the registrar ([deploy runbook](deploy-runbook.md), custom domain section).
+Squarespace already created the **Email Security** preset (SPF `v=spf1 -all`, DMARC `p=reject`, an empty `_domainkey` TXT). Leave SPF and the empty `_domainkey` record alone: Postmark's bounce domain handles SPF, and its DKIM key lives at a different name (`<selector>._domainkey`). Only the DMARC policy needs one edit (step 4).
 
-Order: mailboxes first (the support address is already published), then the provider and DNS, then secrets and params, then a pilot. Allow a few days for DNS, verification and warm-up.
+## 1. Forwards in Squarespace (domain panel, email forwarding)
+Forward to your own inbox:
+- `support@letsdip.work`
+- `notify@letsdip.work` (the From address; replies go to support@ anyway)
+- `dmarc@letsdip.work`
 
-## 1. Inbound mailboxes (support@, notify@, dmarc@)
+Test: send a message from a personal account to `support@letsdip.work`.
 
-Pick one (prices are the design doc's; verify at purchase):
+## 2. Postmark
+1. Create the account. Create a server named `DIP`, with a **Transactional** message stream named `notifications`.
+2. Sender Signatures, then Domains, then add `letsdip.work`. Postmark shows two records to copy: a DKIM TXT (`<selector>._domainkey`) and a Return-Path CNAME (`pm-bounces`, value `pm.mtasv.net`). Keep the page open.
+3. In the server, copy the **Server API token** (Settings, API Tokens).
 
-| Option | Cost | Notes |
+## 3. DNS records in Squarespace (DNS Settings, custom records)
+Add exactly what Postmark shows:
+
+| Type | Host | Data |
 | --- | --- | --- |
-| Google Workspace Business Starter | about $7 per user per month | Real mailbox for `support@`; `notify@` and `dmarc@` as aliases or groups |
-| Cloudflare Email Routing | free | Forwarding only; requires moving DNS to Cloudflare |
-| ImprovMX | free (1 domain, 25 aliases) | Forwarding only, no sending |
-| Zoho Mail free | free (5 users) | Real mailboxes |
+| TXT | `<selector>._domainkey` (from Postmark) | the `k=rsa; p=...` value |
+| CNAME | `pm-bounces` | `pm.mtasv.net` |
 
-Create:
+Squarespace may append `.letsdip.work` to the host automatically: enter only the part before it.
 
-- `support@letsdip.work`: human inbox (the Reply-To of every email and the address on the landing pages).
-- `notify@letsdip.work`: the From address. Replies land here; forward to `support@` or auto-reply "this address is not monitored, write to support@".
-- `dmarc@letsdip.work`: receives DMARC aggregate reports (forward to whoever reads them, or a DMARC report service).
+## 4. Edit the existing `_dmarc` TXT
+Change its value to (reports go to the forward from step 1):
 
-Publish the mailbox provider's `MX` records exactly as it shows them. Only one set of `MX` records may exist on the apex; the sending provider below does not need apex MX (Postmark's bounce domain uses its own subdomain).
-
-Check: send a message from a personal account to `support@letsdip.work` and confirm it arrives.
-
-## 2. Sending provider (recommended: Postmark)
-
-1. Create the Postmark account (owner; billing starts at about $15 per month for 10k emails; the free developer tier allows 100 emails per month for testing).
-2. Create a server named `DIP` and inside it a **message stream** named `notifications` (type: Transactional). Keep account-critical mail, if it ever exists, in a separate stream (the code addresses streams by `POSTMARK_MESSAGE_STREAM`, default `notifications`).
-3. Add the sender signature domain `letsdip.work` (Sender Signatures > Domains).
-4. Postmark shows the DNS records to publish. They look like this (copy the exact values from Postmark, not from here):
-
-| Type | Host | Value (shape) | Purpose |
-| --- | --- | --- | --- |
-| TXT | `<selector>._domainkey` (for example `20261117pm._domainkey`) | `k=rsa; p=MIGf...` | DKIM signing for `letsdip.work` |
-| CNAME | `pm-bounces` | `pm.mtasv.net` | Custom Return-Path (bounce domain), gives SPF alignment |
-
-5. SPF: with the custom Return-Path above, SPF is checked on `pm-bounces.letsdip.work` and Postmark covers it; no apex SPF change is required for Postmark. If the mailbox provider also sends as `@letsdip.work` (Google Workspace), publish one apex SPF record that includes only that provider, for example `letsdip.work TXT "v=spf1 include:_spf.google.com ~all"`. Never publish two `v=spf1` records.
-6. Wait for Postmark to show DKIM and Return-Path as verified.
-7. Request account approval in Postmark (new accounts are in test mode until approved).
-
-Alternatives (only if the owner prefers): Resend (free 3,000 per month, 100 per day) or Amazon SES. Each needs a new adapter implementing `EmailProviderPort` and `EmailWebhookVerifier` (about 150 lines plus tests); the rest of the pipeline does not change.
-
-## 3. DMARC
-
-Publish after DKIM verifies:
-
-```text
-_dmarc.letsdip.work  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@letsdip.work; fo=1"
+```
+v=DMARC1; p=none; rua=mailto:dmarc@letsdip.work; fo=1
 ```
 
-After two to four weeks of clean aggregate reports (SPF or DKIM pass and aligned for all legitimate mail), move to `p=quarantine; pct=100`, later `p=reject` if nothing else sends as the domain.
+After two to four weeks of clean reports, set `p=quarantine`, later `p=reject` again.
 
-## 4. Secrets (Secret Manager, project `team05-dip`)
+## 5. Verify and activate
+1. In Postmark, click Verify on DKIM and Return-Path. Wait until both are green (minutes to a few hours).
+2. Request account approval in Postmark (new accounts are in test mode until approved; say: transactional event notifications to employees who opted in).
+3. Store the token: in a clone of `dip-app/secrets` run `scripts/add-secret.sh POSTMARK_SERVER_TOKEN` and paste the Server API token.
+4. In Postmark, Webhooks for the `notifications` stream: I will give you the URL and password at deploy time.
 
-Names only; values are generated by the owner and never committed, pasted into chat, or logged.
-
-| Secret | Value | Used by |
-| --- | --- | --- |
-| `EMAIL_UNSUBSCRIBE_KEY` | 48 random bytes, base64 (`openssl rand -base64 48`) | `onEmailOutboxCreated` (signs links), `emailUnsubscribeV1` (verifies). Rotating it invalidates outstanding unsubscribe links: rotate only on compromise. |
-| `POSTMARK_SERVER_TOKEN` | Postmark server API token (Server > API Tokens) | `onEmailOutboxCreated` |
-| `EMAIL_WEBHOOK_PASSWORD` | 32 random bytes, base64url (`openssl rand -base64 32 \| tr '+/' '-_' \| tr -d '='`), at least 24 characters | `emailWebhookV1` (Basic auth password; username is `dip-email-webhook`) |
-
-```sh
-firebase functions:secrets:set EMAIL_UNSUBSCRIBE_KEY --project team05-dip
-firebase functions:secrets:set POSTMARK_SERVER_TOKEN --project team05-dip
-firebase functions:secrets:set EMAIL_WEBHOOK_PASSWORD --project team05-dip
-```
-
-**Deploy prerequisite:** the three email functions bind these secrets, so a functions deploy fails (or prompts) while they do not exist. Before the first functions deploy that includes the email module, create all three. While no provider is chosen, `POSTMARK_SERVER_TOKEN` may hold a placeholder such as `unset`; with `EMAIL_PROVIDER=log` it is never used.
-
-## 5. Params (`gcp/functions/.env.team05-dip`, not committed)
-
-```text
-EMAIL_ENABLED=false
-EMAIL_PROVIDER=postmark
-EMAIL_DEFAULT_TIME_ZONE=America/New_York
-POSTMARK_MESSAGE_STREAM=notifications
-EMAIL_OPEN_TRACKING=false
-```
-
-- No postal address param: the emails are transactional (invitations, updates, reminders and reviews the member opted into), and the footer gives `support@letsdip.work` as the contact. If a promotional email is ever added, a postal address or PO box becomes required (CAN-SPAM) before it ships.
-- `EMAIL_OPEN_TRACKING=true` adds the approximate open pixel (`/o/<token>.gif`, function `emailOpenV1`). The privacy page already describes it; leave it off if you do not want it.
-- `EMAIL_DEFAULT_TIME_ZONE` is used when `emailSettings/{companyId}.timeZone` is unset; every time in an email shows the zone abbreviation.
-
-## 6. Webhook
-
-In Postmark (Server > Message stream `notifications` > Webhooks) add a webhook to the function URL with Basic credentials embedded:
-
-```text
-https://dip-email-webhook:<EMAIL_WEBHOOK_PASSWORD>@us-central1-team05-dip.cloudfunctions.net/emailWebhookV1
-```
-
-Enable: Bounce (with "include message content" off), Spam Complaint, Subscription Change. Delivery is optional (logged as ignored). Use "Send test" for each type; the function answers 200 for a valid payload and 401 for wrong credentials.
-
-## 7. Enable a pilot company
-
-1. Firestore console, collection `emailSettings` (server-only), document id = the company id:
-
-```json
-{ "enabled": true, "dailyCap": 200, "timeZone": "America/New_York" }
-```
-
-2. Set `EMAIL_ENABLED=true` and redeploy the email functions only:
-
-```sh
-firebase deploy --only functions:dip:onEmailOutboxCreated,functions:dip:emailUnsubscribeV1,functions:dip:emailWebhookV1,functions:dip:emailOpenV1 --project team05-dip
-```
-
-3. Deploy Hosting so `/u/**` reaches `emailUnsubscribeV1` and `/o/**` reaches `emailOpenV1` (rewrites in `firebase.json`), and so `https://letsdip.work/img/email/{logo,header,footer}.png` are live before the first email (they are part of the site build).
-4. Firestore TTL policies (one-time, like `inviteRateLimits.expiresAt`): `emailOutbox.expireAt` and `emailCaps.expireAt`.
-
-```sh
-gcloud firestore fields ttls update expireAt --collection-group=emailOutbox --enable-ttl --project team05-dip
-gcloud firestore fields ttls update expireAt --collection-group=emailCaps --enable-ttl --project team05-dip
-```
-
-Rollback: set `EMAIL_ENABLED=false` (or `enabled: false` for the company) and redeploy the sender. Queued outbox documents are skipped and expire.
-
-Reaper alert and index: `emailOutboxReaper` runs every 15 minutes and logs a warning `email.reaper` (fields `abandoned`, `staleQueued`, `errors`) only when it changed something or failed; alert on that log entry. Its stale-queued query needs the composite index `emailOutbox` (`status` ascending, `createdAt` ascending); deploy it with the Firestore indexes before relying on it (the sending pass uses a single-field range and needs none).
-
-## 8. Verify
-
-- Internal accounts first: trigger an invite between two internal accounts of the pilot company. `emailOutbox/{id}` should reach `status: "sent"` with a `providerMessageId`.
-- Gmail "Show original": SPF pass, DKIM pass (`d=letsdip.work`), DMARC pass.
-- Gmail shows the "Unsubscribe" link next to the sender (List-Unsubscribe one-click); clicking it turns the category off in `users/{uid}/settings/notifications`.
-- Seed list: Gmail web and app, Outlook web and Windows, Apple Mail on macOS and iOS, light and dark. Check the button, the footer and the `.ics` attachment import.
-- Register `letsdip.work` in Google Postmaster Tools and keep the spam rate under 0.1 percent; warm up gradually (pilot, then more companies).
-
-## 9. Legal before the first real email
-
-- Sign the provider's DPA (Postmark offers one in the account).
-- Update the privacy page "Service providers" paragraph to name the provider (`apps/landing/privacy/index.html`, the sentence that says "we name that provider here before the first email is sent").
-- Make sure `support@letsdip.work` delivers to the owner's inbox (it is the footer contact and the Reply-To).
+Then tell me. I deploy, switch the provider on for a pilot company and send a test to you.
