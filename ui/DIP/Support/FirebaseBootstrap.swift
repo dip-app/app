@@ -120,6 +120,12 @@ enum FirebaseBootstrap {
         return FirebaseNotificationsRepository(firestore: Firestore.firestore(), uid: context.uid)
     }
 
+    /// The member's own notification preferences (users/{uid}/settings/notifications): direct, rules-validated reads and writes.
+    @MainActor static func makeNotificationPreferencesRepository(context: MembershipContext) -> (any DIPNotificationPreferencesRepository)? {
+        guard case .configured = status else { return nil }
+        return FirebaseNotificationPreferencesRepository(firestore: Firestore.firestore(), uid: context.uid)
+    }
+
     /// Bug reports (shake to report) go to Firestore `bugReports` and Storage `bugReports/{uid}/…`.
     @MainActor static func makeBugReportSubmitter() -> (any BugReportSubmitting)? {
         guard case .configured = status else { return nil }

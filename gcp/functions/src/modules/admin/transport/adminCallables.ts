@@ -3,6 +3,7 @@ import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
+import { routedPushNotifier } from "../../notifications/transport/routedPush";
 import { callerFromRequest } from "../../organizer/transport/organizerCallables";
 import { addEventAttendee, recordAttendance, removeEventAttendee } from "../application/attendees";
 import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../application/importEmployees";
@@ -53,7 +54,7 @@ function defaultDeps(): AdminDeps {
   const db = getFirestore(app);
   return {
     store: new FirestoreAdminStore(db), objects: new StorageObjects(getStorage(app)), sessions: new AuthSessions(app),
-    limiter: new FirestoreAdminRateLimiter(db), now: () => new Date(), newId: randomId,
+    limiter: new FirestoreAdminRateLimiter(db), now: () => new Date(), newId: randomId, pushes: routedPushNotifier(app),
   };
 }
 

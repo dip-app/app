@@ -18,6 +18,7 @@ struct DIPApp: App {
     private let makeChallengeReads: ((MembershipContext) -> MemberChallengesRepository?)?
     private let makeInvites: ((MembershipContext) -> (any DIPInvitesRepository)?)?
     private let makeNotifications: ((MembershipContext) -> (any DIPNotificationsRepository)?)?
+    private let makeNotificationPreferences: ((MembershipContext) -> (any DIPNotificationPreferencesRepository)?)?
     /// Challenge submissions: SDK-backed when configured, the in-memory source in unconfigured Debug builds, nil otherwise.
     private let makeSubmissionSource: (() -> (any SubmissionSource)?)
     private let repository: any AccountsRepository & InterestCatalogRepository
@@ -40,6 +41,7 @@ struct DIPApp: App {
         makeChallengeReads = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeMemberChallengesRepository(context: $0) }
         makeInvites = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeInvitesRepository(context: $0) }
         makeNotifications = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeNotificationsRepository(context: $0) }
+        makeNotificationPreferences = FirebaseBootstrap.status == .notConfigured ? nil : { FirebaseBootstrap.makeNotificationPreferencesRepository(context: $0) }
         makeSubmissionSource = {
             if let firebase = FirebaseBootstrap.makeSubmissionSource() { return firebase }
             #if DEBUG
@@ -88,7 +90,7 @@ struct DIPApp: App {
     /// Configured builds wrap Home with the live weekly theme (one feed per membership, keyed
     /// by the same scope ID); unconfigured builds keep the fixture challenge card.
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
-        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, invitesFactory: makeInvites, notificationsFactory: makeNotifications, pushPermission: push?.permissionControl, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, deepLinkOpensChat: eventLinks.pendingOpensChat, onJoined: { Task { await push?.didJoin() } }, onSignOut: { await push?.signingOut(); await session.signOut() })
+        let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, invitesFactory: makeInvites, notificationsFactory: makeNotifications, notificationPreferencesFactory: makeNotificationPreferences, pushPermission: push?.permissionControl, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, deepLinkOpensChat: eventLinks.pendingOpensChat, onJoined: { Task { await push?.didJoin() } }, onSignOut: { await push?.signingOut(); await session.signOut() })
         .task(id: context.uid) { await push?.memberSignedIn(uid: context.uid) }
         let submissions = ChallengeSubmissionContext(
             scope: ChallengeReadScope(uid: context.uid, companyID: context.companyID),

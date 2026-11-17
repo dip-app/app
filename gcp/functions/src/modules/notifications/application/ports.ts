@@ -28,6 +28,8 @@ export interface DeviceDirectory {
 export interface RecipientDirectory {
   /** UIDs whose subscription document for the event has one of these levels. */
   subscribers(companyId: string, eventId: string, levels: readonly SubscriptionLevel[]): Promise<string[]>;
+  /** Same query as `subscribers`, also returning each member's level (the router needs it for the per-event gate). */
+  subscribersWithLevels(companyId: string, eventId: string, levels: readonly SubscriptionLevel[]): Promise<Array<{ uid: string; level: SubscriptionLevel }>>;
   /** The subset of `uids` that currently have a `going` RSVP for the event. */
   going(companyId: string, eventId: string, uids: readonly string[]): Promise<Set<string>>;
 }

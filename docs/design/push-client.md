@@ -54,6 +54,18 @@ Status: nothing below has been run on a device yet. Use two physical iPhones (A 
 | Chat | B posts in the activity chat (`onEventMessageCreated`) | A (going, level All) gets a push with the sender and a message snippet; tap opens the event with the chat; B (the sender) gets none | Level Changes, Reminders or None: none; a member who is not going: none; after the chat closes (24 h after the end): no new messages |
 | RSVP trigger | A joins | Per-event level document is created with the default (Changes) | Leaving keeps the level but stops pushes |
 
+**Notification settings (Profile > Notifications) and categories** (default push switches: invites, activity updates, reminders, chat, challenges on; comments and photos, suggestions off)
+
+- [ ] Settings screen: permission row matches iOS (On; "Notifications are off in iOS Settings" with a working "Open iOS Settings" button; "Turn on" while never asked). Switches are visible but disabled without permission. Reopening shows saved switches, also after relaunch.
+- [ ] Invites: switch off, B invites A: no push, notice still in the center. On: push arrives.
+- [ ] Activity updates: switch off, an admin changes or cancels an event, or adds A: no push. On (and activity level All or Changes): push arrives.
+- [ ] Reminders: switch off: no 24 h or 1 h push. On (and activity level All or Reminders): both arrive.
+- [ ] Chat: switch off, B posts: no push even at activity level All. On: push arrives.
+- [ ] Challenges: switch off: no review or weekly theme push. On: both arrive.
+- [ ] Comments and photos: default off, no push; turn on and confirm the behavior the server offers (no kind yet).
+- [ ] Suggestions: default off, no push; turn on and confirm the behavior the server offers (no kind yet).
+- [ ] The per-activity bell still overrides: category on with activity level None gives no push.
+
 **Negative and containment checks**
 
 - [ ] With `DIP_PUSH_ENABLED = NO` (include line removed): no prompt, no registration, no FCM token, no `devices` document.

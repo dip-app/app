@@ -56,6 +56,9 @@ class World implements DeviceDirectory, RecipientDirectory, ClaimStore, EventRea
   async subscribers(c: string, e: string, levels: readonly SubscriptionLevel[]) {
     return [...this.subscriptions].filter(([key, sub]) => key.startsWith(`${c}/${e}/`) && levels.includes(sub.level)).map(([key]) => key.split("/")[2]!);
   }
+  async subscribersWithLevels(c: string, e: string, levels: readonly SubscriptionLevel[]) {
+    return [...this.subscriptions].filter(([key, sub]) => key.startsWith(`${c}/${e}/`) && levels.includes(sub.level)).map(([key, sub]) => ({ uid: key.split("/")[2]!, level: sub.level }));
+  }
   async going(c: string, e: string, uids: readonly string[]) { return new Set(uids.filter((uid) => this.rsvps.get(`${c}/${e}/${uid}`) === "going")); }
   async claim(c: string, e: string, key: string) {
     const full = `${c}/${e}/${key}`;

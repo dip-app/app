@@ -4,6 +4,10 @@ import { createRequire } from "node:module";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
+import { onChatMessageCreated, onChatMessageCreatedViaRouter } from "../../functions/src/modules/notifications/application/handlers";
+import { FirestoreDeliveryReceipts, FirestorePushRateLimiter } from "../../functions/src/modules/notifications/infrastructure/firestoreDelivery";
+import { FirestoreNotificationsStore } from "../../functions/src/modules/notifications/infrastructure/firestoreNotificationsStore";
+import { FirestorePreferences } from "../../functions/src/modules/notifications/infrastructure/firestorePreferences";
 import { getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
 // Run with: npm run test:notifications:integration. The emulator never contacts FCM: pushes are recorded in
@@ -32,6 +36,9 @@ async function eventually<T>(read: () => Promise<T>, accept: (value: T) => boole
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 }
+// The same suite runs against both delivery paths: start the functions emulator with PUSH_ROUTER_ENABLED=false
+// (and this process with the same value) to exercise the legacy path; the default is the router.
+const routerMode = process.env.PUSH_ROUTER_ENABLED !== "false";
 const denied = (promise: Promise<unknown>) => assert.rejects(promise, (error: any) => error.code === "permission-denied");
 
 test("chat push, change history, default subscriptions and device registry against the emulators", { timeout: 300_000 }, async (t) => {
@@ -137,12 +144,51 @@ test("chat push, change history, default subscriptions and device registry again
       const pushes = await eventually(() => outbox("event_changed"), (s) => s.size >= 1, "change push");
       assert.deepEqual([...pushes.docs[0]!.get("tokenHashes")].sort(), [sha(tokens.a), sha(tokens.b)].sort());
       assert.equal(pushes.docs[0]!.get("body"), "Updated: name, location.");
+      // Same in-app document id and shape on both paths (the router writes it in router mode).
+      const notice = await eventually(() => db.doc(`users/${uidB}/notifications/event_run_2`).get(), (s) => s.exists, "in-app change notice");
+      assert.equal(notice.get("type"), "event_updated");
+      assert.equal(notice.get("targetId"), "run");
       // Counter/bookkeeping writes do not log; give the trigger time to (not) act, then recheck.
       await eventRef.update({ attendeeCount: adminFirestore.FieldValue.increment(0) });
       await new Promise((resolve) => setTimeout(resolve, 3000));
       assert.equal((await eventRef.get()).get("changeLog").length, 1);
       assert.equal((await outbox("event_changed")).size, 1);
       await denied(updateDoc(doc(organizer.firestore, eventRef.path), { changeLog: [] }));
+    });
+
+    await t.test(`chat push honors the member's push.chat switch and a replayed message sends once (${routerMode ? "router" : "legacy"} path)`, async () => {
+      const organizerToken = `integration-token-org-${stamp}`;
+      await organizer.call("registerDeviceV1")({ contractVersion: 1, token: organizerToken, platform: "ios", appVersion: "1.0 (1)" });
+      await organizer.call("setRsvpV1")({ contractVersion: 1, companyId, eventId: "run", status: "going" });
+      await eventually(() => db.doc(`${eventRef.path}/subscriptions/${uidOrganizer}`).get(), (s) => s.exists, "organizer subscription");
+      await setDoc(doc(organizer.firestore, `${eventRef.path}/subscriptions/${uidOrganizer}`), { level: "all", updatedAt: serverTimestamp() });
+      // Member B (level `all`) switches chat pushes off; only the router reads preferences.
+      await setDoc(doc(b.firestore, `users/${uidB}/settings/notifications`), { contractVersion: 1, push: { chat: false }, updatedAt: serverTimestamp() });
+      const messageId = `msg-prefs-${stamp}`;
+      const message = { companyId, eventId: "run", authorId: uidA, authorName: "Member 0", authorAvatarId: "avatar-0", text: "Switched off for one", createdAt: serverTimestamp() };
+      await setDoc(doc(a.firestore, `${eventRef.path}/messages/${messageId}`), message);
+      const byMessage = () => db.collection("emulatorPushOutbox").where("data.companyId", "==", companyId).where("data.messageId", "==", messageId).get();
+      const pushes = await eventually(byMessage, (s) => s.size >= 1, "chat push with preferences");
+      assert.equal(pushes.size, 1);
+      const hashes = [...pushes.docs[0]!.get("tokenHashes")].sort();
+      if (routerMode) assert.deepEqual(hashes, [sha(organizerToken)]);
+      else assert.deepEqual(hashes, [sha(tokens.b), sha(organizerToken)].sort());
+
+      // Replay the same message through the handler (a duplicate trigger delivery): nothing more is sent.
+      const store = new FirestoreNotificationsStore(db);
+      const attempts: string[][] = [];
+      const messaging = { sendMulticast: async (list: readonly string[]) => { attempts.push([...list]); return list.map(() => ({ success: true })); } };
+      const data = { authorId: uidA, authorName: "Member 0", text: "Switched off for one" };
+      if (routerMode) {
+        const stats = await onChatMessageCreatedViaRouter({ messaging, devices: store, preferences: new FirestorePreferences(db),
+          receipts: new FirestoreDeliveryReceipts(db), rateLimiter: new FirestorePushRateLimiter(db), clock: { now: () => new Date() },
+          events: store, recipients: store }, companyId, "run", messageId, data);
+        assert.equal(stats.duplicate, true);
+      } else {
+        await onChatMessageCreated({ messaging, devices: store, recipients: store, events: store, claims: store }, companyId, "run", messageId, data);
+      }
+      assert.deepEqual(attempts, []);
+      assert.equal((await byMessage()).size, 1);
     });
 
     await t.test("leaving removes the subscription; unregister removes the device", async () => {

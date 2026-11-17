@@ -18,6 +18,8 @@ struct DIPProfileScreen: View {
     let onRetryInterestCatalog: (() -> Void)?
     /// "How DIP works": replays the onboarding tour. Nil hides the row.
     let onReplayTour: (() -> Void)?
+    /// "Notifications": opens the notification settings. Nil (push off, no preferences adapter) hides the row.
+    let onOpenNotificationSettings: (() -> Void)?
     @State private var isSigningOut = false
     @Environment(\.presentBugReport) private var presentBugReport
     @Environment(\.dipCalendar) private var calendar
@@ -47,8 +49,10 @@ struct DIPProfileScreen: View {
         onSignOut: (() async -> Void)? = nil,
         interestCatalogLoading: Bool = false, interestCatalogError: String? = nil,
         onRetryInterestCatalog: (() -> Void)? = nil,
-        onReplayTour: (() -> Void)? = nil
+        onReplayTour: (() -> Void)? = nil,
+        onOpenNotificationSettings: (() -> Void)? = nil
     ) {
+        self.onOpenNotificationSettings = onOpenNotificationSettings
         self.onReplayTour = onReplayTour
         self.interestCatalogLoading = interestCatalogLoading
         self.interestCatalogError = interestCatalogError
@@ -139,24 +143,11 @@ struct DIPProfileScreen: View {
     }
 
     @ViewBuilder private var profileActions: some View {
+        if let onOpenNotificationSettings {
+            actionRow("Notifications", symbol: "bell", identifier: "profile.notifications", action: onOpenNotificationSettings)
+        }
         if let onReplayTour {
-            Button(action: onReplayTour) {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles").accessibilityHidden(true)
-                    Text("How DIP works")
-                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-                        .accessibilityHidden(true)
-                }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 18)
-                .frame(minHeight: 56)
-                .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(DIPPressFeedbackStyle())
-            .accessibilityIdentifier("profile.howDIPWorks")
+            actionRow("How DIP works", symbol: "sparkles", identifier: "profile.howDIPWorks", action: onReplayTour)
         }
         if calendar.featureEnabled, calendar.device != nil {
             calendarSection
@@ -229,6 +220,27 @@ struct DIPProfileScreen: View {
                 .accessibilityIdentifier("profile.calendarSettings")
             }
         }
+    }
+
+    /// A pill row that opens something (How DIP works, Notifications).
+    private func actionRow(_ title: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).accessibilityHidden(true)
+                Text(title)
+                    .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .body))
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(.black)
+            .padding(.horizontal, 18)
+            .frame(minHeight: 56)
+            .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .accessibilityIdentifier(identifier)
     }
 
     /// "Report a problem" is the accessible, non-shake path to the same sheet; the toggle turns the shake off.

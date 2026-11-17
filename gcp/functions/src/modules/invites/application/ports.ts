@@ -52,6 +52,17 @@ export interface InviteNotifier {
   invited(input: InvitePushInput): Promise<void>;
 }
 
+export interface InviteAcceptedPush {
+  companyId: string; eventId: string; eventTitle: string; inviteId: string;
+  /** The original sender: the only recipient. */
+  senderId: string; responderName: string;
+}
+
+/** Best-effort push to the sender when an invite is ACCEPTED (declines are silent). Never fails the command. */
+export interface InviteAnswerNotifier {
+  accepted(input: InviteAcceptedPush): Promise<void>;
+}
+
 export interface InviteCaller {
   uid: string;
   emailVerified: boolean;

@@ -57,6 +57,7 @@ import Testing
 
     @Test func serverTypesMapToKindsAndUnknownFallsBack() {
         #expect(DIPNotificationKind(serverType: "invite") == .invite)
+        #expect(DIPNotificationKind(serverType: "invite_answered") == .inviteAnswered)
         #expect(DIPNotificationKind(serverType: "event_changed") == .eventUpdated)
         #expect(DIPNotificationKind(serverType: "event_cancelled") == .eventCancelled)
         #expect(DIPNotificationKind(serverType: "challenge_approved") == .challengeApproved)

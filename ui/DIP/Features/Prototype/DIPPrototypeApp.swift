@@ -35,6 +35,9 @@ struct DIPPrototypeApp: View {
     @State private var showNotifications = false
     @State private var notificationsObservationID = UUID()
     @State private var pushAuthorization: DIPPushAuthorization?
+    /// Profile > Notifications: nil unless the push client is enabled and there is a preferences adapter (the row is then hidden).
+    @State private var notificationSettings: DIPNotificationSettingsModel?
+    @State private var showNotificationSettings = false
     private let pushPermission: PushPermissionControl?
     private let startsWithInvitePicker: Bool
     private let initialMemories: Bool
@@ -80,12 +83,21 @@ struct DIPPrototypeApp: View {
          deepLinkOpensChat: Bool = false, onJoined: (() -> Void)? = nil,
          invitesRepository: (any DIPInvitesRepository)? = nil,
          notificationsRepository: (any DIPNotificationsRepository)? = nil,
+         notificationPreferencesRepository: (any DIPNotificationPreferencesRepository)? = nil,
          pushPermission: PushPermissionControl? = nil) {
         #if DEBUG
-        self.pushPermission = pushPermission ?? (repository == nil ? PushPermissionControl.fixture() : nil)
+        // The fixture needs `--notifications-push=` (also in `--mock-member` mode, where a repository is passed).
+        let resolvedPermission = pushPermission ?? PushPermissionControl.fixture()
         #else
-        self.pushPermission = pushPermission
+        let resolvedPermission = pushPermission
         #endif
+        self.pushPermission = resolvedPermission
+        // Settings need the push client (flag), the system permission seam and a preferences adapter.
+        if PushFeature.isEnabled, let resolvedPermission,
+           let source = notificationPreferencesRepository ?? (repository == nil ? Self.fixtureNotificationPreferences() : nil) {
+            _notificationSettings = State(initialValue: DIPNotificationSettingsModel(
+                repository: source, permission: PushPermissionProvider(control: resolvedPermission)))
+        }
         self.deepLinkOpensChat = deepLinkOpensChat
         self.onJoined = onJoined
         self.deepLinkEventID = deepLinkEventID
@@ -159,6 +171,22 @@ struct DIPPrototypeApp: View {
         let notificationSource = notificationsRepository ?? (repository == nil ? Self.fixtureNotifications() : nil)
         _notifications = State(initialValue: notificationSource.map { DIPNotificationsModel(repository: $0) })
         _showNotifications = State(initialValue: notificationSource != nil && screen == "notifications")
+        #if DEBUG
+        _showNotificationSettings = State(initialValue: screen == "notification-settings" && PushFeature.isEnabled && resolvedPermission != nil)
+        #endif
+    }
+
+    /// Fixture preferences; `--notification-settings=load-failed|save-failed` (Debug) for review and UI tests.
+    static func fixtureNotificationPreferences() -> any DIPNotificationPreferencesRepository {
+        #if DEBUG
+        let state = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--notification-settings=") }.map { String($0.dropFirst("--notification-settings=".count)) }
+        switch state {
+        case "load-failed": return DIPMockNotificationPreferencesRepository(behavior: .init(loadFailure: true))
+        case "save-failed": return DIPMockNotificationPreferencesRepository(behavior: .init(failingSaves: 1))
+        default: break
+        }
+        #endif
+        return DIPMockNotificationPreferencesRepository()
     }
 
     /// Fixture notifications; `--notifications-state=empty|loading|failed|many|mark-failed|more-failed` (Debug) for review and UI tests.
@@ -364,6 +392,7 @@ struct DIPPrototypeApp: View {
         }
         .sheet(isPresented: $showNotifications) { notificationsSheet.dipDuoSheetSizing(duoOpen) }
         .sheet(isPresented: $showInvitations) { invitationsSheet.dipDuoSheetSizing(duoOpen) }
+        .sheet(isPresented: $showNotificationSettings) { notificationSettingsSheet.dipDuoSheetSizing(duoOpen) }
         .sheet(item: $inviteSession) { session in
             DIPInviteSheet(model: session.model, eventTitle: session.title, onClose: { inviteSession = nil })
                 .dipDuoSheetSizing(duoOpen)
@@ -495,7 +524,8 @@ struct DIPPrototypeApp: View {
                         else { try await model.updateProfile(edit) }
                     }, onSignOut: onSignOut, interestCatalogLoading: interestCatalogLoading,
                     interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog,
-                    onReplayTour: onReplayTour))
+                    onReplayTour: onReplayTour,
+                    onOpenNotificationSettings: notificationSettings == nil ? nil : { showNotificationSettings = true }))
             case .rewards:
                 AnyView(DIPRewardsScreen(
                     unreadCount: bellCount(snapshot), profileAvatar: snapshot.home.profileAvatar,
@@ -727,9 +757,23 @@ struct DIPPrototypeApp: View {
                 onOpen: { openNotification($0) },
                 onOpenInvitations: { showNotifications = false; presentInvitationsAfterSheet() },
                 onPermission: { Task { await turnOnPush() } },
+                onOpenSettings: notificationSettings == nil ? nil : { showNotifications = false; presentNotificationSettingsAfterSheet() },
                 onRetry: { notificationsObservationID = UUID() },
                 onClose: { showNotifications = false })
         }
+    }
+
+    /// Profile > Notifications (kept out of `body` like the other sheets).
+    @ViewBuilder private var notificationSettingsSheet: some View {
+        if let notificationSettings {
+            DIPNotificationSettingsScreen(model: notificationSettings, onClose: { showNotificationSettings = false })
+        }
+    }
+
+    /// One sheet at a time: the notifications sheet finishes dismissing before the settings present.
+    private func presentNotificationSettingsAfterSheet() {
+        guard notificationSettings != nil else { return }
+        Task { try? await Task.sleep(for: .milliseconds(450)); showNotificationSettings = true }
     }
 
     /// The bell opens the notifications center when there is an adapter (otherwise the invitations, otherwise a notice).

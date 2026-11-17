@@ -3,7 +3,7 @@ import { test } from "node:test";
 import type { PhotoObjects } from "../../functions/src/modules/photos/application/ports";
 import type { StoredObject } from "../../functions/src/modules/photos/domain/photoPolicy";
 import type {
-  Document, LedgerEntry, ReviewWrite, SubmissionCaller, SubmissionChallenge, SubmissionPage, SubmissionStore, SubmissionTransaction, SubmissionWrite,
+  ChallengeReviewPush, Document, LedgerEntry, ReviewWrite, SubmissionReviewNotifier, SubmissionCaller, SubmissionChallenge, SubmissionPage, SubmissionStore, SubmissionTransaction, SubmissionWrite,
 } from "../../functions/src/modules/submissions/application/ports";
 import { approveChallenge, listChallengeSubmissions, rejectChallenge, submitChallenge } from "../../functions/src/modules/submissions/application/submissionCommands";
 import { SubmissionError } from "../../functions/src/modules/submissions/domain/errors";
@@ -106,7 +106,7 @@ function world() {
   store.put("users/otherboss", { companyId: "beta", role: "admin", displayName: "Other", avatarId: "a4", pointsBalance: 0 });
   store.put("users/stranger", { companyId: "beta", role: "member", displayName: "Stranger", avatarId: "a5", pointsBalance: 0 });
   store.put("companies/alpha/challenges/week1", {
-    companyId: "alpha", goal: 5, pointsReward: 50, participantCount: 0, completedCount: 0,
+    companyId: "alpha", title: "Walk Week", goal: 5, pointsReward: 50, participantCount: 0, completedCount: 0,
     startDate: new Date("2030-01-01T00:00:00Z"), endDate: new Date("2030-01-07T23:59:59Z"),
   });
   return { store, objects };
@@ -369,4 +369,51 @@ test("deactivated members and reviewers are refused; the organizer role may subm
   store.put("users/alice", { ...store.get("users/alice")!, status: "deactivated" });
   assert.equal(await reason(approveChallenge(store, caller("boss"), review())), "SUBMITTER_NOT_FOUND");
   assert.equal(store.get("users/alice")!.pointsBalance, 10);
+});
+
+function reviewPushes() {
+  const calls: Array<[string, ChallengeReviewPush]> = [];
+  const notifier: SubmissionReviewNotifier = {
+    approved: async input => { calls.push(["approved", input]); },
+    changesRequested: async input => { calls.push(["changes", input]); },
+  };
+  return { calls, notifier };
+}
+
+test("approval pushes once to the submitter with the in-app notice id; replays and failed reviews push nothing", async () => {
+  const { store, objects } = world();
+  const { calls, notifier } = reviewPushes();
+  await submitChallenge(store, objects, caller(), request(), now);
+  await assert.rejects(approveChallenge(store, caller("alice"), review({ userId: "alice" }), notifier));
+  await approveChallenge(store, caller("boss"), review(), notifier);
+  await approveChallenge(store, caller("boss"), review(), notifier);
+  assert.deepEqual(calls, [["approved", {
+    companyId: "alpha", challengeId: "week1", submissionId: "week1_alice", userId: "alice", challengeTitle: "Walk Week", notificationId: "challenge_approved_week1",
+  }]]);
+});
+
+test("rejection pushes changes-requested with the per-attempt notice id and no reviewer text", async () => {
+  const { store, objects } = world();
+  const { calls, notifier } = reviewPushes();
+  await submitChallenge(store, objects, caller(), request(), now);
+  await rejectChallenge(store, caller("boss"), review({ reason: "Please add a clearer photo" }), notifier);
+  await rejectChallenge(store, caller("boss"), review({ reason: "Please add a clearer photo" }), notifier);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]![0], "changes");
+  assert.equal(calls[0]![1].notificationId, "challenge_changes_week1_1");
+  assert.equal(calls[0]![1].userId, "alice");
+  assert.doesNotMatch(JSON.stringify(calls), /clearer photo/);
+});
+
+test("a throwing review notifier never fails or undoes the review", async () => {
+  const { store, objects } = world();
+  const broken: SubmissionReviewNotifier = { approved: async () => { throw new Error("down"); }, changesRequested: () => { throw new Error("sync down"); } };
+  await submitChallenge(store, objects, caller(), request(), now);
+  const rejected = await rejectChallenge(store, caller("boss"), review({ reason: "Try again" }), broken);
+  assert.equal(rejected.status, "rejected");
+  await submitChallenge(store, objects, caller(), request({ caption: "Again" }), now);
+  const approved = await approveChallenge(store, caller("boss"), review(), broken);
+  assert.equal(approved.pointsAwarded, 50);
+  assert.equal(subDoc(store)!.status, "approved");
+  assert.ok(store.get("users/alice/notifications/challenge_approved_week1"));
 });

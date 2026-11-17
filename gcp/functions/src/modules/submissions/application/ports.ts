@@ -9,6 +9,18 @@ export interface SubmissionChallenge {
   endDate: Date;
   goal: number;
   pointsReward: number;
+  /** Theme title, used only as push copy. */
+  title: string;
+}
+
+export interface ChallengeReviewPush {
+  companyId: string; challengeId: string; submissionId: string; userId: string; challengeTitle: string; notificationId: string;
+}
+
+/** Best-effort push to the submitter after a review commits. Never fails the command. */
+export interface SubmissionReviewNotifier {
+  approved(input: ChallengeReviewPush): Promise<void>;
+  changesRequested(input: ChallengeReviewPush): Promise<void>;
 }
 
 export interface SubmissionCaller {

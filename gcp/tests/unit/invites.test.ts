@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { listCoworkers } from "../../functions/src/modules/invites/application/listCoworkers";
-import type { DirectoryMember, Document, InviteNotifier, InvitePushInput, InviteStore, InviteTransaction } from "../../functions/src/modules/invites/application/ports";
+import type { DirectoryMember, Document, InviteAcceptedPush, InviteAnswerNotifier, InviteNotifier, InvitePushInput, InviteStore, InviteTransaction } from "../../functions/src/modules/invites/application/ports";
 import { respondToInvite } from "../../functions/src/modules/invites/application/respondToInvite";
 import { sendInvite } from "../../functions/src/modules/invites/application/sendInvite";
 import { InviteError } from "../../functions/src/modules/invites/domain/errors";
@@ -310,4 +310,40 @@ test("deactivated accounts are refused everywhere and organizers take part", asy
   await sendInvite(store, null, caller(), { ...send, toUserId: "friend", requestId: "request-0012" }, now).catch(() => undefined);
   store.get("users/friend")!.status = "deactivated";
   assert.equal(await reason(respondToInvite(store, caller("friend"), respond("accepted"), now)), "MEMBERSHIP_CONFLICT");
+});
+
+function answerNotifier(fail = false) {
+  const calls: InviteAcceptedPush[] = [];
+  const notifier: InviteAnswerNotifier = { accepted: async (input) => { if (fail) throw new Error("down"); calls.push(input); } };
+  return { calls, notifier };
+}
+
+test("accepting notifies only the original sender, once; declines and replays are silent", async () => {
+  const store = world(); const { calls, notifier } = answerNotifier();
+  await sendInvite(store, null, caller(), send, now);
+  await respondToInvite(store, caller("friend"), respond("accepted"), now, notifier);
+  await respondToInvite(store, caller("friend"), respond("accepted"), now, notifier);
+  assert.deepEqual(calls, [{ companyId: "alpha", eventId: "event", eventTitle: "Pasta Night", inviteId: "event_friend", senderId: "sender", responderName: "Fran Friend" }]);
+
+  const declined = world(); const quiet = answerNotifier();
+  await sendInvite(declined, null, caller(), send, now);
+  await respondToInvite(declined, caller("friend"), respond("declined"), now, quiet.notifier);
+  assert.equal(quiet.calls.length, 0);
+});
+
+test("a refused acceptance (event full) and a non-recipient push nothing", async () => {
+  const store = world(); const { calls, notifier } = answerNotifier();
+  await sendInvite(store, null, caller(), send, now);
+  store.get("companies/alpha/events/event")!.attendeeCount = 10;
+  await assert.rejects(respondToInvite(store, caller("friend"), respond("accepted"), now, notifier));
+  await assert.rejects(respondToInvite(store, caller("sender"), respond("accepted"), now, notifier));
+  assert.equal(calls.length, 0);
+});
+
+test("a failing answer notifier never fails the acceptance", async () => {
+  const store = world(); const { notifier } = answerNotifier(true);
+  await sendInvite(store, null, caller(), send, now);
+  const result = await respondToInvite(store, caller("friend"), respond("accepted"), now, notifier);
+  assert.equal(result.status, "accepted");
+  assert.equal(store.get("companies/alpha/invites/event_friend")!.status, "accepted");
 });

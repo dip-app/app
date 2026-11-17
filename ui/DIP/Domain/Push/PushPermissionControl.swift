@@ -15,18 +15,20 @@ struct PushPermissionControl {
     @MainActor static func settingsOpener() -> @MainActor @Sendable () -> Void {
         { @MainActor @Sendable in
             #if canImport(UIKit)
-            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            // The app's notification page when iOS has one, the app's general Settings page otherwise.
+            let target = URL(string: UIApplication.openNotificationSettingsURLString) ?? URL(string: UIApplication.openSettingsURLString)
+            if let target { UIApplication.shared.open(target) }
             #endif
         }
     }
 
     #if DEBUG
-    /// `--notifications-push=undetermined|denied` (Debug, mock mode only): a banner for design review and UI tests; nothing is requested.
+    /// `--notifications-push=undetermined|denied|authorized` (Debug, mock mode only): a banner or settings state for design review and UI tests; nothing is requested.
     @MainActor static func fixture() -> PushPermissionControl? {
         let value = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--notifications-push=") }
             .map { String($0.dropFirst("--notifications-push=".count)) }
         guard let value else { return nil }
-        let state = StateBox(value == "denied" ? .denied : .notDetermined)
+        let state = StateBox(value == "denied" ? .denied : value == "authorized" ? .authorized : .notDetermined)
         return PushPermissionControl(
             status: { state.value },
             turnOn: { state.value = .authorized; return state.value },
@@ -38,4 +40,12 @@ struct PushPermissionControl {
         init(_ value: DIPPushAuthorization) { self.value = value }
     }
     #endif
+}
+
+/// Lets the notification settings screen (DIPPresentation) use the same permission seam as the notifications center.
+struct PushPermissionProvider: DIPNotificationPermissionProviding {
+    let control: PushPermissionControl
+    func status() async -> DIPPushAuthorization { await control.status() }
+    func turnOn() async -> DIPPushAuthorization { await control.turnOn() }
+    func openSettings() { control.openSettings() }
 }

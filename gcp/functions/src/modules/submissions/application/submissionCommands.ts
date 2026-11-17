@@ -7,7 +7,7 @@ import { SubmissionError } from "../domain/errors";
 import {
   awardId, iso, parseApproveRequest, parseListRequest, parseRejectRequest, parseSubmitRequest, submissionId, toSubmissionDto,
 } from "../domain/submissionPolicy";
-import type { SubmissionCaller, SubmissionStore, SubmissionTransaction, SubmissionWrite } from "./ports";
+import type { ChallengeReviewPush, SubmissionCaller, SubmissionReviewNotifier, SubmissionStore, SubmissionTransaction, SubmissionWrite } from "./ports";
 
 type Clock = () => Date;
 
@@ -127,10 +127,13 @@ function requireUnchanged(submission: { updatedAt: Date }, expectedUpdatedAt: st
  * deterministic (`challenge_{challengeId}_{uid}`), and the entry, the balance, the submission and the
  * completed count change in one transaction; a repeat approval awards 0 and reports `replayed`.
  */
-export async function approveChallenge(store: SubmissionStore, caller: SubmissionCaller | null, data: unknown): Promise<ApproveChallengeResponse> {
+export async function approveChallenge(store: SubmissionStore, caller: SubmissionCaller | null, data: unknown,
+  notifier: SubmissionReviewNotifier | null = null): Promise<ApproveChallengeResponse> {
   const reviewer = requireCaller(caller);
   const { companyId, challengeId, userId, expectedUpdatedAt } = parseApproveRequest(data);
-  return store.runTransaction(async tx => {
+  let push = null as ChallengeReviewPush | null;
+  const result = await store.runTransaction(async tx => {
+    push = null;
     const { challenge, id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
     if (submission.status === "approved") return { contractVersion: 1, submissionId: id, pointsAwarded: 0, replayed: true } satisfies ApproveChallengeResponse;
     if (submission.status !== "submitted") throw new SubmissionError("failed-precondition", "SUBMISSION_NOT_PENDING", "Only pending submissions can be approved.");
@@ -150,16 +153,25 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
       tx.createAward(companyId, awardId(challengeId, userId), { companyId, userId, amount: points, reason: "challenge_approved", sourceId: challengeId });
       tx.incrementBalance(userId, points);
     }
+    push = { companyId, challengeId, submissionId: id, userId, challengeTitle: challenge.title, notificationId: `challenge_approved_${challengeId}` };
     return { contractVersion: 1, submissionId: id, pointsAwarded: points, replayed: false } satisfies ApproveChallengeResponse;
   });
+  // The in-app notice is written in the transaction above; this push reuses its id. Replays send nothing.
+  if (push && notifier) {
+    try { await notifier.approved(push); } catch { /* best-effort */ }
+  }
+  return result;
 }
 
 /** rejectChallengeV1: pending -> rejected with a reason. Approved entries are final; a repeat is a replay. */
-export async function rejectChallenge(store: SubmissionStore, caller: SubmissionCaller | null, data: unknown): Promise<RejectChallengeResponse> {
+export async function rejectChallenge(store: SubmissionStore, caller: SubmissionCaller | null, data: unknown,
+  notifier: SubmissionReviewNotifier | null = null): Promise<RejectChallengeResponse> {
   const reviewer = requireCaller(caller);
   const { companyId, challengeId, userId, reason, expectedUpdatedAt } = parseRejectRequest(data);
-  return store.runTransaction(async tx => {
-    const { id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
+  let push = null as ChallengeReviewPush | null;
+  const result = await store.runTransaction(async tx => {
+    push = null;
+    const { challenge, id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
     if (submission.status === "rejected") return { contractVersion: 1, submissionId: id, status: "rejected", replayed: true } satisfies RejectChallengeResponse;
     if (submission.status === "approved") throw new SubmissionError("failed-precondition", "SUBMISSION_LOCKED", "This entry was already approved.");
     requireUnchanged(submission, expectedUpdatedAt);
@@ -169,8 +181,13 @@ export async function rejectChallenge(store: SubmissionStore, caller: Submission
       companyId, type: "challenge_changes_requested", title: "Changes needed",
       body: [...reason].slice(0, 200).join("") || "Your reviewer asked for changes.", targetType: "challenge", targetId: challengeId,
     });
+    push = { companyId, challengeId, submissionId: id, userId, challengeTitle: challenge.title, notificationId: `challenge_changes_${challengeId}_${submission.attempt}` };
     return { contractVersion: 1, submissionId: id, status: "rejected", replayed: false } satisfies RejectChallengeResponse;
   });
+  if (push && notifier) {
+    try { await notifier.changesRequested(push); } catch { /* best-effort */ }
+  }
+  return result;
 }
 
 /** listChallengeSubmissionsV1: the organizer's review queue (own company only), paged by submission ID. */

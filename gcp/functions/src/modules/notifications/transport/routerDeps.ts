@@ -18,6 +18,9 @@ import { EmulatorOutboxMessaging, FcmMessaging } from "../infrastructure/messagi
 export const PUSH_ROUTER_ENABLED = defineBoolean("PUSH_ROUTER_ENABLED", { default: true });
 
 export function pushRouterEnabled(): boolean {
+  // BooleanParam.value() is false when the variable is unset (the default is only applied by the CLI at deploy
+  // time), so an absent variable must be read as the default here: the router is on unless explicitly disabled.
+  if (process.env.PUSH_ROUTER_ENABLED === undefined) return true;
   try {
     return PUSH_ROUTER_ENABLED.value();
   } catch {
