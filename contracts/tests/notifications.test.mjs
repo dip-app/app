@@ -54,3 +54,37 @@ test('push data payload keys and deep links', () => {
   assert.equal(check({type: 'chat', companyId: 'c', eventId: 'e1', deepLink: 'https://evil.example'}), false);
   assert.equal(check({type: 'chat', companyId: 'c', eventId: 'e1', deepLink: 'dip://events/e1', text: 'full message'}), false);
 });
+
+test('NotificationPreferences accepts full, minimal and partial documents', () => {
+  const check = validate('NotificationPreferences');
+  const at = '2026-11-10T12:00:00Z';
+  assert.equal(check({contractVersion: 1, updatedAt: at,
+    push: {invites: true, event_updates: true, reminders: true, chat: false, challenges: true, social: false, discovery: false},
+    email: {invites: true, event_updates: true, reminders: false, challenges: true, discovery: false}}), true, JSON.stringify(check.errors));
+  assert.equal(check({contractVersion: 1, updatedAt: at}), true, JSON.stringify(check.errors));
+  assert.equal(check({contractVersion: 1, updatedAt: at, push: {}, email: {}}), true);
+  assert.equal(check({contractVersion: 1, updatedAt: at, push: {chat: false}}), true);
+  assert.equal(check({contractVersion: 1, updatedAt: at, email: {discovery: true}}), true);
+});
+
+test('NotificationPreferences rejects extra keys, wrong version, non-booleans and unoffered email categories', () => {
+  const check = validate('NotificationPreferences');
+  const base = {contractVersion: 1, updatedAt: '2026-11-10T12:00:00Z'};
+  assert.equal(check({...base, uid: 'u1'}), false);
+  assert.equal(check({...base, companyId: 'c1'}), false);
+  assert.equal(check({contractVersion: 2, updatedAt: base.updatedAt}), false);
+  assert.equal(check({updatedAt: base.updatedAt}), false);
+  assert.equal(check({contractVersion: 1}), false);
+  assert.equal(check({...base, push: {chat: 'yes'}}), false);
+  assert.equal(check({...base, email: {invites: 1}}), false);
+  assert.equal(check({...base, push: {unknown: true}}), false);
+  assert.equal(check({...base, email: {chat: false}}), false);
+  assert.equal(check({...base, email: {social: false}}), false);
+});
+
+test('NotificationCategory is the closed set of seven ids', () => {
+  const check = validate('NotificationCategory');
+  for (const id of ['invites', 'event_updates', 'reminders', 'chat', 'challenges', 'social', 'discovery']) assert.equal(check(id), true);
+  assert.equal(check('marketing'), false);
+  assert.equal(check('Invites'), false);
+});

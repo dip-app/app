@@ -9,7 +9,7 @@ Written November 16, 2026 from the owner's five stretch requests. These are **st
 | S1 | Google and device calendar conflicts, one-tap add | `calendar` | [calendar](../../design/stretch/calendar.md) | Researched, awaiting owner decisions | CAL-1 to CAL-8 |
 | S2 | AI event ideas and prompt-to-event drafts | `ai` | [ai-event-creation](../../design/stretch/ai-event-creation.md) | Researched, awaiting owner decisions | AI-1 to AI-10 |
 | S3 | Tag interest counts | `tags` | [tag-interest-counts](../../design/stretch/tag-interest-counts.md) | Researched, ready to build after one owner answer | TAG-1 to TAG-6 |
-| S4 | Push triggers and category settings | `push` | [push-triggers](../../design/stretch/push-triggers.md) | Researched; pipeline exists but is device-unverified | PUSH-1 to PUSH-9 |
+| S4 | Push triggers and category settings | `push` | [push-triggers](../../design/stretch/push-triggers.md) | In progress: PUSH-1 shared preference model landed ([notification preferences](../../design/stretch/notification-preferences.md)); pipeline still device-unverified | PUSH-1 to PUSH-9 |
 | S5 | Reminder and notification emails | `email` | [email](../../design/stretch/email.md) | Researched; needs domain and mailbox setup first | EML-1 to EML-10 |
 
 Each doc contains a table with `ID | Title | Scope | Acceptance | Est | Area | Depends`; the GitHub sub-issues are generated from those rows. Estimates: S (about half a day or less), M (one to two days), L (three days or more). Area: ios, backend, admin, infra.

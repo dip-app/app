@@ -1,5 +1,7 @@
+import type { NotificationCategory, NotificationChannel } from "../domain/categories";
 import type { ChangeLogEntry } from "../domain/changeLog";
 import type { DevicePlatform } from "../domain/device";
+import type { ResolvedPreferences } from "../domain/preferences";
 import type { PushMessage } from "../domain/push";
 import type { SubscriptionLevel } from "../domain/subscription";
 
@@ -108,4 +110,14 @@ export interface PushDependencies {
   messaging: MessagingPort;
   devices: DeviceDirectory;
   recipients: RecipientDirectory;
+}
+
+/** Reads `users/{uid}/settings/notifications`; a missing document resolves to the registry defaults. */
+export interface PreferencesReader {
+  preferencesFor(uids: readonly string[]): Promise<Map<string, ResolvedPreferences>>;
+}
+
+/** Server-side opt-out (email unsubscribe link, spam complaint): sets one switch with a merge write. */
+export interface PreferencesWriter {
+  setCategory(uid: string, channel: NotificationChannel, category: NotificationCategory, enabled: boolean): Promise<void>;
 }

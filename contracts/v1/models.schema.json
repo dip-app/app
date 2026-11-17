@@ -663,6 +663,96 @@
         "removed"
       ]
     },
+    "NotificationCategory": {
+      "type": "string",
+      "description": "Notification category ids shared by push, email and the in-app center; registry in gcp/functions/src/modules/notifications/domain/categories.ts.",
+      "enum": [
+        "invites",
+        "event_updates",
+        "reminders",
+        "chat",
+        "challenges",
+        "social",
+        "discovery"
+      ]
+    },
+    "PushCategoryPreferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-category push switches; a missing key means the server-side default.",
+      "properties": {
+        "invites": {
+          "type": "boolean"
+        },
+        "event_updates": {
+          "type": "boolean"
+        },
+        "reminders": {
+          "type": "boolean"
+        },
+        "chat": {
+          "type": "boolean"
+        },
+        "challenges": {
+          "type": "boolean"
+        },
+        "social": {
+          "type": "boolean"
+        },
+        "discovery": {
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "EmailCategoryPreferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-category email switches for the categories email offers (never chat or social); a missing key means the server-side default.",
+      "properties": {
+        "invites": {
+          "type": "boolean"
+        },
+        "event_updates": {
+          "type": "boolean"
+        },
+        "reminders": {
+          "type": "boolean"
+        },
+        "challenges": {
+          "type": "boolean"
+        },
+        "discovery": {
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "NotificationPreferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Stored at users/{uid}/settings/notifications. Owner writes the allow-listed keys directly; a missing document, map or key resolves to registry defaults server-side.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "push": {
+          "$ref": "#/$defs/PushCategoryPreferences"
+        },
+        "email": {
+          "$ref": "#/$defs/EmailCategoryPreferences"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "updatedAt"
+      ]
+    },
     "PushNotificationData": {
       "type": "object",
       "additionalProperties": false,

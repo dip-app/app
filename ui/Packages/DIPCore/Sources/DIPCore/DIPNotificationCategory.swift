@@ -1,0 +1,125 @@
+import Foundation
+
+/// Delivery channel for account-level notification preferences.
+public enum DIPNotificationChannel: String, CaseIterable, Sendable, Codable {
+    case push, email
+}
+
+/// Account-level notification category. Raw values and case order mirror the server registry
+/// (`gcp/functions/src/modules/notifications/domain/categories.ts`) verbatim.
+public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, Codable {
+    case invites
+    case eventUpdates = "event_updates"
+    case reminders, chat, challenges, social, discovery
+
+    public var title: String {
+        switch self {
+        case .invites: "Invites"
+        case .eventUpdates: "Activity updates"
+        case .reminders: "Reminders"
+        case .chat: "Chat"
+        case .challenges: "Challenges"
+        case .social: "Comments and photos"
+        case .discovery: "Suggestions"
+        }
+    }
+
+    public var summary: String {
+        switch self {
+        case .invites: "When a coworker invites you to an activity"
+        case .eventUpdates: "Time or place changes, cancellations, and when an organizer adds you"
+        case .reminders: "About a day and an hour before activities you joined"
+        case .chat: "New messages in activity chats"
+        case .challenges: "Submission reviews and new weekly themes"
+        case .social: "Comments and photos on your posts"
+        case .discovery: "New activities that match your interests"
+        }
+    }
+
+    /// Also subject to the per-activity level (`DIPNotificationLevel`).
+    public var isGatedByActivityLevel: Bool {
+        switch self {
+        case .eventUpdates, .reminders, .chat: true
+        default: false
+        }
+    }
+
+    /// Categories a channel offers, in registry order. Chat and social are never emailed.
+    public static func offered(on channel: DIPNotificationChannel) -> [DIPNotificationCategory] {
+        switch channel {
+        case .push: allCases
+        case .email: [.invites, .eventUpdates, .reminders, .challenges, .discovery]
+        }
+    }
+
+    /// Default switch when the member has no stored value. Categories a channel does not offer are false.
+    public static func defaultEnabled(_ category: DIPNotificationCategory, channel: DIPNotificationChannel) -> Bool {
+        guard offered(on: channel).contains(category) else { return false }
+        switch channel {
+        case .push: return category != .social && category != .discovery
+        case .email: return category == .invites || category == .eventUpdates || category == .challenges
+        }
+    }
+}
+
+/// Member overrides for `users/{uid}/settings/notifications`; anything not overridden resolves to the default.
+public struct DIPNotificationPreferences: Equatable, Sendable {
+    public static let contractVersion = 1
+    public static let defaults = DIPNotificationPreferences()
+
+    private var push: [DIPNotificationCategory: Bool] = [:]
+    private var email: [DIPNotificationCategory: Bool] = [:]
+
+    public init() {}
+
+    /// Tolerant parse: unknown keys, non-Bool values and categories the channel does not offer are ignored.
+    public init(firestore data: [String: Any]?) {
+        for channel in DIPNotificationChannel.allCases {
+            guard let map = data?[channel.rawValue] as? [String: Any] else { continue }
+            var overrides: [DIPNotificationCategory: Bool] = [:]
+            for category in DIPNotificationCategory.offered(on: channel) {
+                // Bool-only: a bridged NSNumber 0/1 must not count, so check for the CFBoolean type.
+                if let number = map[category.rawValue] as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() {
+                    overrides[category] = number.boolValue
+                }
+            }
+            set(overrides, on: channel)
+        }
+    }
+
+    public func isEnabled(_ category: DIPNotificationCategory, on channel: DIPNotificationChannel) -> Bool {
+        guard DIPNotificationCategory.offered(on: channel).contains(category) else { return false }
+        return overrides(on: channel)[category] ?? DIPNotificationCategory.defaultEnabled(category, channel: channel)
+    }
+
+    /// Returns a copy with the switch set; categories the channel does not offer are ignored.
+    public func setting(_ category: DIPNotificationCategory, on channel: DIPNotificationChannel, to value: Bool) -> Self {
+        guard DIPNotificationCategory.offered(on: channel).contains(category) else { return self }
+        var copy = self
+        var map = overrides(on: channel)
+        map[category] = value
+        copy.set(map, on: channel)
+        return copy
+    }
+
+    /// Document body with every offered switch resolved. The caller adds `updatedAt` as a server timestamp.
+    public func firestoreFields() -> [String: Any] {
+        var fields: [String: Any] = ["contractVersion": Self.contractVersion]
+        for channel in DIPNotificationChannel.allCases {
+            var map: [String: Bool] = [:]
+            for category in DIPNotificationCategory.offered(on: channel) {
+                map[category.rawValue] = isEnabled(category, on: channel)
+            }
+            fields[channel.rawValue] = map
+        }
+        return fields
+    }
+
+    private func overrides(on channel: DIPNotificationChannel) -> [DIPNotificationCategory: Bool] {
+        channel == .push ? push : email
+    }
+
+    private mutating func set(_ map: [DIPNotificationCategory: Bool], on channel: DIPNotificationChannel) {
+        if channel == .push { push = map } else { email = map }
+    }
+}

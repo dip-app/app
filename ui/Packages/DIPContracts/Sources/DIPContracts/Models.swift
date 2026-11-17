@@ -307,6 +307,66 @@ public struct UnregisterDeviceResponse: Codable, Equatable, Sendable {
     }
 }
 
+public enum NotificationCategory: String, Codable, Equatable, Sendable {
+    case invites = "invites"
+    case event_updates = "event_updates"
+    case reminders = "reminders"
+    case chat = "chat"
+    case challenges = "challenges"
+    case social = "social"
+    case discovery = "discovery"
+}
+
+public struct PushCategoryPreferences: Codable, Equatable, Sendable {
+    public var invites: Bool?
+    public var event_updates: Bool?
+    public var reminders: Bool?
+    public var chat: Bool?
+    public var challenges: Bool?
+    public var social: Bool?
+    public var discovery: Bool?
+
+    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, chat: Bool? = nil, challenges: Bool? = nil, social: Bool? = nil, discovery: Bool? = nil) {
+        self.invites = invites
+        self.event_updates = event_updates
+        self.reminders = reminders
+        self.chat = chat
+        self.challenges = challenges
+        self.social = social
+        self.discovery = discovery
+    }
+}
+
+public struct EmailCategoryPreferences: Codable, Equatable, Sendable {
+    public var invites: Bool?
+    public var event_updates: Bool?
+    public var reminders: Bool?
+    public var challenges: Bool?
+    public var discovery: Bool?
+
+    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil) {
+        self.invites = invites
+        self.event_updates = event_updates
+        self.reminders = reminders
+        self.challenges = challenges
+        self.discovery = discovery
+    }
+}
+
+public struct NotificationPreferences: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var push: PushCategoryPreferences?
+    public var email: EmailCategoryPreferences?
+    public var updatedAt: Date
+
+    public init(contractVersion: Int, push: PushCategoryPreferences? = nil, email: EmailCategoryPreferences? = nil, updatedAt: Date) {
+        self.contractVersion = contractVersion
+        self.push = push
+        self.email = email
+        self.updatedAt = updatedAt
+    }
+}
+
 public struct PushNotificationData: Codable, Equatable, Sendable {
     public var type: String
     public var companyId: String
