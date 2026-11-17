@@ -1,6 +1,4 @@
-Hi Sam,
-
-This event is tomorrow.
+Hi Sam, this event is tomorrow.
 
 اجتماع الفريق الأسبوعي
 Fri, Nov 20, 9:00 AM to 10:00 AM EST
@@ -8,8 +6,7 @@ Fri, Nov 20, 9:00 AM to 10:00 AM EST
 Open in DIP: https://letsdip.work/e/evt_ar
 
 --
-You are receiving this because you turned on event reminder emails in DIP.
-Unsubscribe from these emails: https://letsdip.work/u/sample-token
-Notification settings are in the DIP app under Profile > Notifications.
-DIP, 123 Example Street, Pittsburgh, PA 15213 (placeholder)
-DIP · letsdip.work
+You are getting this because reminder emails are on.
+Unsubscribe: https://letsdip.work/u/sample-token
+Manage in the DIP app (Profile > Notifications)
+DIP · 123 Example Street, Pittsburgh, PA 15213 (placeholder)

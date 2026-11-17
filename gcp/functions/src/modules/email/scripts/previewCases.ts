@@ -12,7 +12,7 @@ export const SAMPLE_CTX: RenderContext = {
   recipientFirstName: "Sam",
   timeZone: "America/New_York",
   unsubscribeURL: "https://letsdip.work/u/sample-token",
-  postalAddress: "DIP, 123 Example Street, Pittsburgh, PA 15213 (placeholder)",
+  postalAddress: "123 Example Street, Pittsburgh, PA 15213 (placeholder)",
 };
 
 const EVENT = {

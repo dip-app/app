@@ -45,6 +45,13 @@
             "functionId": "eventSharePageV1",
             "region": "us-central1"
           }
+        },
+        {
+          "source": "/u/**",
+          "function": {
+            "functionId": "emailUnsubscribeV1",
+            "region": "us-central1"
+          }
         }
       ],
       "headers": [

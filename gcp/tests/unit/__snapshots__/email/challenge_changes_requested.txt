@@ -1,14 +1,11 @@
-Hi Sam,
+Hi Sam, a reviewer asked for changes to your submission for "10,000 steps for a week".
 
-A reviewer asked for changes to your submission for "10,000 steps for a week".
+See the feedback and resubmit.
 
-Open DIP to see the feedback and resubmit.
-
-Open DIP: https://letsdip.work/
+Open in DIP: https://letsdip.work/
 
 --
-You are receiving this because you have challenge emails turned on in DIP.
-Unsubscribe from these emails: https://letsdip.work/u/sample-token
-Notification settings are in the DIP app under Profile > Notifications.
-DIP, 123 Example Street, Pittsburgh, PA 15213 (placeholder)
-DIP · letsdip.work
+You are getting this because challenge emails are on.
+Unsubscribe: https://letsdip.work/u/sample-token
+Manage in the DIP app (Profile > Notifications)
+DIP · 123 Example Street, Pittsburgh, PA 15213 (placeholder)

@@ -1,6 +1,4 @@
-Hi Sam,
-
-You were added to this event.
+Hi Sam, you were added to this event.
 
 Pizza and board games 🍕🎲
 Fri, Nov 20, 7:00 PM to 9:00 PM EST
@@ -9,8 +7,7 @@ Break room
 Open in DIP: https://letsdip.work/e/evt_emoji
 
 --
-You are receiving this because you have event update emails turned on in DIP.
-Unsubscribe from these emails: https://letsdip.work/u/sample-token
-Notification settings are in the DIP app under Profile > Notifications.
-DIP, 123 Example Street, Pittsburgh, PA 15213 (placeholder)
-DIP · letsdip.work
+You are getting this because event update emails are on.
+Unsubscribe: https://letsdip.work/u/sample-token
+Manage in the DIP app (Profile > Notifications)
+DIP · 123 Example Street, Pittsburgh, PA 15213 (placeholder)

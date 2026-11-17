@@ -45,15 +45,23 @@ describe("email template invariants", () => {
       for (const body of [out.html, out.text]) {
         assert.ok(body.includes(SAMPLE_CTX.unsubscribeURL), `${c.name} unsubscribe`);
         assert.ok(body.includes(SAMPLE_CTX.postalAddress), `${c.name} address`);
-        assert.ok(body.includes("Unsubscribe from these emails"), c.name);
-        assert.ok(body.includes("You are receiving this because"), c.name);
-        assert.ok(body.includes("Profile"), c.name);
-        assert.ok(body.includes("Hi Sam,"), c.name);
+        assert.ok(body.includes("Unsubscribe"), c.name);
+        assert.ok(body.includes("You are getting this because"), c.name);
+        assert.ok(body.includes("emails are on."), c.name);
+        assert.ok(body.includes("Manage in the DIP app (Profile"), c.name);
+        assert.ok(body.includes("Hi Sam, "), c.name);
       }
+      assert.ok(out.html.includes('href="https://letsdip.work/u/sample-token"'), c.name);
+      assert.ok(out.html.includes("max-width:560px") && out.html.includes("#4F5BD5"), c.name);
+      assert.ok(out.html.includes("v:roundrect"), c.name);
+      assert.ok(out.html.includes("border-color: #343841"), c.name);
+      assert.ok(!out.html.includes("<img"), c.name);
+      assert.ok(out.preheader.length >= 20 && out.preheader.length <= 90 && !out.preheader.startsWith("Hi "), c.name);
+      assert.ok(out.html.includes(`mso-hide:all;">`) && out.html.includes(out.preheader.replace(/&/g, "&amp;")), c.name);
       assert.ok(out.html.includes('name="color-scheme" content="light dark"'));
       assert.ok(out.html.includes("prefers-color-scheme: dark"));
       assert.ok(out.html.includes("letsdip.work"));
-      assert.ok(out.text.includes("DIP · letsdip.work"));
+      assert.ok(out.text.includes(`DIP · ${SAMPLE_CTX.postalAddress}`));
     }
   });
 
@@ -71,16 +79,17 @@ describe("email template invariants", () => {
   test("greeting falls back to Hi there", () => {
     const c = PREVIEW_CASES[0]!;
     const out = renderEmail(c.template, c.variables as never, { ...c.ctx, recipientFirstName: null });
-    assert.ok(out.html.includes("Hi there,") && out.text.startsWith("Hi there,"));
+    assert.ok(out.html.includes("Hi there, ") && out.text.startsWith("Hi there, "));
   });
 
   test("deep links are exactly the event URL", () => {
     assert.equal(eventURL("evt_1"), "https://letsdip.work/e/evt_1");
     for (const c of PREVIEW_CASES) {
       const out = render(c);
+      assert.ok(out.html.includes(">Open in DIP<"), c.name);
       if (c.template === "challenge_reviewed") {
         assert.ok(out.html.includes('href="https://letsdip.work/"'));
-        assert.ok(out.html.includes("Open DIP"));
+        assert.ok(out.text.includes("Open in DIP: https://letsdip.work/"));
         continue;
       }
       const id = (c.variables as { eventId: string }).eventId;
@@ -128,21 +137,17 @@ describe("email template invariants", () => {
     }
   });
 
-  test("cover image only for approved images, with the title as alt text", () => {
+  test("cover images are never rendered, but the variable still validates", () => {
     const c = PREVIEW_CASES[0]!;
-    const withImg = render(c);
-    assert.ok(withImg.html.includes('src="https://letsdip.work/share/og/hiking.jpg"'));
-    assert.ok(withImg.html.includes('alt="Sunset hike at Frick Park"'));
-    assert.ok(withImg.html.includes('width="600"'));
-    const vars = c.variables as Record<string, unknown>;
-    for (const bad of ["https://evil.example/x.jpg", "javascript:alert(1)", "catalog://default/unknown"]) {
-      const out = renderEmail(c.template, { ...vars, coverImageURL: bad } as never, c.ctx);
-      assert.ok(!out.html.includes("<img"), bad);
-    }
-    const { coverImageURL: _drop, ...noCover } = vars;
-    assert.ok(!renderEmail(c.template, noCover as never, c.ctx).html.includes("<img"));
-    const challenge = PREVIEW_CASES.find((x) => x.template === "challenge_reviewed")!;
-    assert.ok(!render(challenge).html.includes("<img"));
+    assert.ok(!render(c).html.includes("<img"));
+    assert.ok(validateVariables(c.template, c.variables));
+    assert.equal(validateVariables(c.template, { ...(c.variables as object), coverImageURL: 5 }), null);
+  });
+
+  test("event_changed shows an Updated pill and names what changed", () => {
+    const out = render(PREVIEW_CASES.find((c) => c.name === "event_changed")!);
+    assert.ok(out.html.includes(">Updated<") && out.html.includes("#EEF0FF"));
+    assert.ok(!out.text.includes("latest details are below"));
   });
 
   test("RTL and emoji titles are wrapped for bidi and kept intact", () => {
@@ -159,8 +164,11 @@ describe("email template invariants", () => {
     assert.equal(byName("event_reminder_24h").subject, "Tomorrow: Sunset hike at Frick Park");
     assert.equal(byName("event_reminder_1h").subject, "Starting in about an hour: Sunset hike at Frick Park");
     assert.equal(byName("event_canceled").subject, "Canceled: Sunset hike at Frick Park");
-    assert.ok(byName("event_changed").text.includes("The time and location of this event changed."));
-    assert.ok(byName("challenge_approved").text.includes("You earned 50 points."));
+    assert.ok(byName("event_changed").text.includes("Hi Sam, the time and location changed for this event."));
+    assert.ok(byName("invite_received").text.includes("See who is going and respond."));
+    assert.ok(byName("event_canceled").text.includes("Browse other events."));
+    assert.ok(byName("challenge_approved").text.includes("+50 points"));
+    assert.ok(byName("challenge_approved").html.includes("font-weight:700;color:#1F2937;\">+50 points"));
     assert.ok(byName("invite_answered_declined").subject.includes("declined"));
   });
 });

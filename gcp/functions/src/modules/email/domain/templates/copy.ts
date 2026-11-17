@@ -9,20 +9,24 @@ export function eventURL(eventId: string): string {
 
 export const SUBJECT_MAX = 78;
 
-/** Why the footer says the member receives this email, per category. */
+/** Category noun for the footer sentence "You are getting this because <noun> emails are on." */
 export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
-  invites: "you have invite emails turned on in DIP",
-  event_updates: "you have event update emails turned on in DIP",
-  reminders: "you turned on event reminder emails in DIP",
-  challenges: "you have challenge emails turned on in DIP",
+  invites: "invite",
+  event_updates: "event update",
+  reminders: "reminder",
+  challenges: "challenge",
 };
 
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */
 export interface EmailCopy {
   subject: string;
   preheader: string;
-  /** Short lead sentence shown under the greeting. */
+  /** First sentence; the renderer prefixes the greeting ("Hi Sam, "), so it starts with a name or in lower case. */
   lead: string;
+  /** Small pill above the event title, or null. */
+  badge: string | null;
+  /** Bold highlight line after the card (for example "+50 points"), or null. */
+  highlight: string | null;
   /** Event facts to show as a compact card, or null. */
   event: EventFacts | null;
   /** Extra sentence after the card. */
@@ -65,8 +69,8 @@ export function fitSubject(prefix: string, title: string, suffix = ""): string {
 
 const clean = (value: string): string => collapseWhitespace(value);
 
-function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "preheader" | "lead" | "note">): EmailCopy {
-  return { ...rest, event: facts, ctaLabel: "Open in DIP", ctaURL: eventURL(facts.eventId) };
+function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "preheader" | "lead" | "note"> & { badge?: string }): EmailCopy {
+  return { badge: null, highlight: null, ...rest, event: facts, ctaLabel: "Open in DIP", ctaURL: eventURL(facts.eventId) };
 }
 
 export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T]): EmailCopy {
@@ -77,9 +81,9 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const who = clean(e.inviterFirstName);
       return withEvent(e, {
         subject: fitSubject(`${who} invited you to `, clean(e.eventTitle)),
-        preheader: `${who} invited you. Open DIP to respond.`,
+        preheader: `${who} invited you to ${clean(e.eventTitle)}.`,
         lead: `${who} invited you to join an event on DIP.`,
-        note: "Open the event to see who else is going and to respond.",
+        note: "See who is going and respond.",
       });
     }
     case "invite_answered": {
@@ -88,7 +92,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const verb = e.answer === "accepted" ? "accepted" : "declined";
       return withEvent(e, {
         subject: fitSubject(`${who} ${verb} your invite to `, clean(e.eventTitle)),
-        preheader: `${who} ${verb} your invite.`,
+        preheader: `${who} ${verb} your invite to ${clean(e.eventTitle)}.`,
         lead: `${who} ${verb} your invite to this event.`,
         note: null,
       });
@@ -99,26 +103,27 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const what = joinWords(words.length ? words : ["details"]);
       return withEvent(e, {
         subject: fitSubject("Updated: ", clean(e.eventTitle)),
-        preheader: `The ${what} changed. Review the latest details.`,
-        lead: `The ${what} of this event changed.`,
-        note: "The latest details are below.",
+        preheader: `The ${what} changed for ${clean(e.eventTitle)}.`,
+        lead: `the ${what} changed for this event.`,
+        note: null,
+        badge: "Updated",
       });
     }
     case "event_canceled": {
       const e = variables as TemplateVariables["event_canceled"];
       return withEvent(e, {
         subject: fitSubject("Canceled: ", clean(e.eventTitle)),
-        preheader: "This event was canceled.",
-        lead: "This event was canceled.",
-        note: "Open DIP to find something else to join.",
+        preheader: `${clean(e.eventTitle)} was canceled.`,
+        lead: "this event was canceled.",
+        note: "Browse other events.",
       });
     }
     case "attendee_added": {
       const e = variables as TemplateVariables["attendee_added"];
       return withEvent(e, {
         subject: fitSubject("You were added to ", clean(e.eventTitle)),
-        preheader: "You are on the guest list. See the details.",
-        lead: "You were added to this event.",
+        preheader: `You are on the guest list for ${clean(e.eventTitle)}.`,
+        lead: "you were added to this event.",
         note: null,
       });
     }
@@ -127,8 +132,8 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const day = e.window === "24h";
       return withEvent(e, {
         subject: fitSubject(day ? "Tomorrow: " : "Starting in about an hour: ", clean(e.eventTitle)),
-        preheader: day ? "Your event is tomorrow." : "Your event starts in about an hour.",
-        lead: day ? "This event is tomorrow." : "This event starts in about an hour.",
+        preheader: day ? `${clean(e.eventTitle)} is tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
+        lead: day ? "this event is tomorrow." : "this event starts in about an hour.",
         note: null,
       });
     }
@@ -139,18 +144,13 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const points = approved && typeof e.points === "number" && e.points > 0 ? e.points : null;
       return {
         subject: fitSubject(approved ? "Approved: " : "Changes requested: ", title),
-        preheader: approved ? "Your challenge submission was approved." : "A reviewer asked for changes to your submission.",
-        lead: approved
-          ? `Your submission for "${title}" was approved.`
-          : `A reviewer asked for changes to your submission for "${title}".`,
+        preheader: approved ? `Your submission for ${title} was approved.` : `A reviewer asked for changes to ${title}.`,
+        lead: approved ? `your submission for "${title}" was approved.` : `a reviewer asked for changes to your submission for "${title}".`,
+        badge: null,
         event: null,
-        note:
-          points !== null
-            ? `You earned ${points} ${points === 1 ? "point" : "points"}.`
-            : approved
-              ? null
-              : "Open DIP to see the feedback and resubmit.",
-        ctaLabel: "Open DIP",
+        highlight: points !== null ? `+${points} ${points === 1 ? "point" : "points"}` : null,
+        note: approved ? null : "See the feedback and resubmit.",
+        ctaLabel: "Open in DIP",
         ctaURL: `${SHARE_ORIGIN}/`,
       };
     }

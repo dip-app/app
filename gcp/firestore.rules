@@ -341,6 +341,7 @@ service cloud.firestore {
     // inviteRateLimits is server-only and falls through to the deny-all rule below.
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
+    // emailOutbox, emailSuppressions, emailCaps, emailSettings and emulatorEmailOutbox (email module) are server-only too.
     match /{document=**} {
       allow read, write: if false;
     }

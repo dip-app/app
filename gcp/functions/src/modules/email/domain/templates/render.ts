@@ -1,5 +1,5 @@
-import { collapseWhitespace, escapeHtml, resolveImage, SHARE_ORIGIN } from "../../../share/domain/sharePage";
-import { buildCopy, CATEGORY_REASON, eventURL } from "./copy";
+import { collapseWhitespace, escapeHtml } from "../../../share/domain/sharePage";
+import { buildCopy, CATEGORY_REASON, eventURL, truncate } from "./copy";
 import { TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
 
 export { eventURL };
@@ -10,7 +10,6 @@ const NAME_MAX = 80;
 const VENUE_MAX = 120;
 const ID_MAX = 128;
 const URL_MAX = 1024;
-const DEFAULT_IMAGE = `${SHARE_ORIGIN}/share/og/default.jpg`;
 
 // ---------------------------------------------------------------------------------------------
 // Time formatting
@@ -177,15 +176,21 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, 
 
 const STYLE = `
   body, table, td { margin: 0; padding: 0; }
-  img { border: 0; max-width: 100%; height: auto; }
-  @media (max-width: 620px) { .container { width: 100% !important; } .px { padding-left: 20px !important; padding-right: 20px !important; } }
+  @media (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+    .btn-table { width: 100% !important; }
+    .btn-a { display: block !important; text-align: center !important; }
+  }
   @media (prefers-color-scheme: dark) {
     body, .bg-outer { background-color: #16181D !important; }
-    .bg-card { background-color: #1F2229 !important; }
-    .bg-soft { background-color: #272B33 !important; }
+    .bg-card { background-color: #1F2229 !important; border-color: #343841 !important; }
+    .bg-soft { background-color: #272B33 !important; border-color: #343841 !important; }
     .text-main { color: #E5E7EB !important; }
     .text-muted { color: #9CA3AF !important; }
     .border { border-color: #343841 !important; }
+    .brand { color: #AEB7FF !important; }
+    .pill { background-color: #2B3052 !important; color: #C7CCFF !important; }
     .link { color: #AEB7FF !important; }
     .btn-link { color: #FFFFFF !important; }
   }`;
@@ -201,51 +206,56 @@ function greeting(ctx: RenderContext): string {
   return name ? `Hi ${name},` : "Hi there,";
 }
 
-function approvedCover(facts: EventFacts): string | null {
-  if (!facts.coverImageURL) return null;
-  const { url } = resolveImage(facts.coverImageURL);
-  return url === DEFAULT_IMAGE && facts.coverImageURL !== "catalog://default/default" ? null : url;
-}
 
-/** Renders one transactional email to subject, preheader, table-based HTML and a plain-text alternative. */
+/**
+ * Renders one transactional email to subject, preheader, table-based HTML and a plain-text alternative.
+ * Cover images are intentionally not rendered (too dominant, and Outlook cannot crop); `coverImageURL` stays in the
+ * allow-list, and a pre-cropped 1200x280 banner can return later.
+ */
 export function renderEmail<T extends TemplateId>(template: T, variables: TemplateVariables[T], ctx: RenderContext): RenderedEmail {
   const copy = buildCopy(template, variables);
   const zone = safeZone(ctx.timeZone);
   const hello = greeting(ctx);
-  const footer: Footer = {
-    reason: CATEGORY_REASON[TEMPLATE_CATEGORY[template]],
-    unsubscribeURL: ctx.unsubscribeURL,
-    postalAddress: ctx.postalAddress,
-  };
+  const reason = CATEGORY_REASON[TEMPLATE_CATEGORY[template]];
 
   const facts = copy.event;
   const title = facts ? collapseWhitespace(facts.eventTitle) : null;
   const when = facts ? formatEventTime(facts.startTime, facts.endTime, zone) : "";
   const venue = facts?.venueName ? collapseWhitespace(facts.venueName) : null;
-  const cover = facts ? approvedCover(facts) : null;
+  const lead = `${hello} ${copy.lead}`;
+  const preheader = truncate(when ? `${copy.preheader} ${when}` : copy.preheader, 90);
 
-  // ---- HTML
   const e = escapeHtml;
-  const para = (text: string, extra = ""): string =>
-    `<p class="text-main" style="margin:0 0 16px 0;font-family:${FONT};font-size:16px;line-height:24px;color:#1F2937;${extra}">${e(text)}</p>`;
+  const para = (text: string, margin = "16px"): string =>
+    `<p class="text-main" style="margin:0 0 ${margin} 0;font-family:${FONT};font-size:16px;line-height:24px;color:#1F2937;">${e(text)}</p>`;
 
+  const pill = copy.badge
+    ? `<div style="margin:0 0 8px 0;"><span class="pill" style="display:inline-block;padding:2px 8px;border-radius:10px;background-color:#EEF0FF;color:#4F5BD5;font-size:12px;line-height:16px;font-weight:600;">${e(copy.badge)}</span></div>`
+    : "";
   const card =
     facts && title
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-soft border" style="margin:4px 0 24px 0;background-color:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;border-left:3px solid ${ACCENT};">
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-soft border" style="margin:4px 0 16px 0;background-color:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;border-left:3px solid ${ACCENT};">
 <tr><td style="padding:16px 18px;font-family:${FONT};">
-<div dir="auto" class="text-main" style="font-size:18px;line-height:26px;font-weight:600;color:#1F2937;"><bdi>${e(title)}</bdi></div>
+${pill}<div dir="auto" class="text-main" style="font-size:18px;line-height:26px;font-weight:600;color:#1F2937;"><bdi>${e(title)}</bdi></div>
 ${when ? `<div class="text-muted" style="margin-top:6px;font-size:14px;line-height:20px;color:#6B7280;">${e(when)}</div>` : ""}
 ${venue ? `<div dir="auto" class="text-muted" style="margin-top:2px;font-size:14px;line-height:20px;color:#6B7280;"><bdi>${e(venue)}</bdi></div>` : ""}
 </td></tr></table>`
       : "";
 
-  const coverHtml = cover
-    ? `<tr><td style="padding:0;line-height:0;font-size:0;"><img src="${e(cover)}" width="600" alt="${e(title ?? "")}" style="display:block;width:100%;max-width:600px;height:auto;border-radius:12px 12px 0 0;"></td></tr>`
+  const highlight = copy.highlight
+    ? `<p class="text-main" style="margin:0 0 16px 0;font-family:${FONT};font-size:20px;line-height:28px;font-weight:700;color:#1F2937;">${e(copy.highlight)}</p>`
     : "";
 
-  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px 0;"><tr><td align="center" bgcolor="${ACCENT}" style="background-color:${ACCENT};border-radius:8px;"><a class="btn-link" href="${e(copy.ctaURL)}" style="display:inline-block;padding:12px 24px;font-family:${FONT};font-size:16px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:8px;">${e(copy.ctaLabel)}</a></td></tr></table>`;
+  const cta = e(copy.ctaURL);
+  const label = e(copy.ctaLabel);
+  const button = `<!--[if mso]>
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${cta}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${label}</center></v:roundrect>
+<![endif]-->
+<!--[if !mso]><!-->
+<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td align="center" bgcolor="${ACCENT}" style="background-color:${ACCENT};border-radius:8px;"><a class="btn-a btn-link" href="${cta}" style="display:inline-block;padding:12px 28px;font-family:${FONT};font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">${label}</a></td></tr></table>
+<!--<![endif]-->`;
 
-  const fineStyle = `font-family:${FONT};font-size:12px;line-height:18px;color:#6B7280;`;
+  const fine = `font-family:${FONT};font-size:12px;line-height:18px;color:#6B7280;`;
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -258,25 +268,22 @@ ${venue ? `<div dir="auto" class="text-muted" style="margin-top:2px;font-size:14
 </style>
 </head>
 <body class="bg-outer" style="margin:0;padding:0;background-color:#F3F4F6;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${e(copy.preheader)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${e(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#F3F4F6;">
 <tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container bg-card border" style="width:600px;max-width:600px;background-color:#FFFFFF;border:1px solid #E5E7EB;border-radius:12px;">
-${coverHtml}
-<tr><td class="px" style="padding:28px 32px 8px 32px;font-family:${FONT};font-size:13px;line-height:18px;font-weight:600;letter-spacing:0.04em;color:#6B7280;border-top:3px solid ${ACCENT};border-radius:12px 12px 0 0;"><span class="text-muted" style="color:#6B7280;">DIP</span></td></tr>
-<tr><td class="px" style="padding:8px 32px 8px 32px;">
-${para(hello)}
-${para(copy.lead)}
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" class="container bg-card border" style="width:560px;max-width:560px;background-color:#FFFFFF;border:1px solid #E5E7EB;border-top:3px solid ${ACCENT};border-radius:12px;">
+<tr><td class="px" style="padding:20px 28px 0 28px;font-family:${FONT};font-size:20px;line-height:28px;font-weight:700;color:#4F5BD5;" align="left"><span class="brand" style="color:#4F5BD5;">DIP</span></td></tr>
+<tr><td class="px" style="padding:16px 28px 28px 28px;">
+${para(lead)}
 ${card}
 ${copy.note ? para(copy.note) : ""}
+${highlight}
 ${button}
 </td></tr>
-<tr><td class="px" style="padding:16px 32px 28px 32px;">
+<tr><td class="px" style="padding:0 28px 24px 28px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="border" style="border-top:1px solid #E5E7EB;padding-top:16px;font-family:${FONT};">
-<p class="text-muted" style="margin:0 0 8px 0;${fineStyle}">You are receiving this because ${e(footer.reason)}. <a class="link" href="${e(footer.unsubscribeURL)}" style="color:#4B5563;text-decoration:underline;">Unsubscribe from these emails</a></p>
-<p class="text-muted" style="margin:0 0 8px 0;${fineStyle}">Notification settings are in the DIP app under Profile &gt; Notifications.</p>
-<p class="text-muted" style="margin:0 0 8px 0;${fineStyle}">${e(footer.postalAddress)}</p>
-<p class="text-muted" style="margin:0;${fineStyle}">DIP &middot; letsdip.work</p>
+<p class="text-muted" style="margin:0 0 4px 0;${fine}">You are getting this because ${e(reason)} emails are on. <a class="link" href="${e(ctx.unsubscribeURL)}" style="color:#4B5563;text-decoration:underline;">Unsubscribe</a> &middot; Manage in the DIP app (Profile &gt; Notifications)</p>
+<p class="text-muted" style="margin:0;${fine}">DIP &middot; ${e(ctx.postalAddress)}</p>
 </td></tr></table>
 </td></tr>
 </table>
@@ -285,21 +292,21 @@ ${button}
 </html>
 `;
 
-  // ---- Plain text
-  const lines: string[] = [hello, "", copy.lead, ""];
+  const lines: string[] = [lead, ""];
   if (facts && title) {
+    if (copy.badge) lines.push(`[${copy.badge}]`);
     lines.push(title);
     if (when) lines.push(when);
     if (venue) lines.push(venue);
     lines.push("");
   }
   if (copy.note) lines.push(copy.note, "");
+  if (copy.highlight) lines.push(copy.highlight, "");
   lines.push(`${copy.ctaLabel}: ${copy.ctaURL}`, "", "--");
-  lines.push(`You are receiving this because ${footer.reason}.`);
-  lines.push(`Unsubscribe from these emails: ${footer.unsubscribeURL}`);
-  lines.push("Notification settings are in the DIP app under Profile > Notifications.");
-  lines.push(footer.postalAddress);
-  lines.push("DIP · letsdip.work");
+  lines.push(`You are getting this because ${reason} emails are on.`);
+  lines.push(`Unsubscribe: ${ctx.unsubscribeURL}`);
+  lines.push("Manage in the DIP app (Profile > Notifications)");
+  lines.push(`DIP · ${ctx.postalAddress}`);
 
-  return { subject: copy.subject, preheader: copy.preheader, html, text: `${lines.join("\n")}\n` };
+  return { subject: copy.subject, preheader, html, text: `${lines.join("\n")}\n` };
 }

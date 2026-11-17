@@ -1,17 +1,13 @@
-Hi Sam,
+Hi Sam, the time changed for this event.
 
-The time of this event changed.
-
+[Updated]
 ארוחת צהריים של הצוות
 Fri, Nov 20, 12:00 PM to 1:00 PM EST
-
-The latest details are below.
 
 Open in DIP: https://letsdip.work/e/evt_he
 
 --
-You are receiving this because you have event update emails turned on in DIP.
-Unsubscribe from these emails: https://letsdip.work/u/sample-token
-Notification settings are in the DIP app under Profile > Notifications.
-DIP, 123 Example Street, Pittsburgh, PA 15213 (placeholder)
-DIP · letsdip.work
+You are getting this because event update emails are on.
+Unsubscribe: https://letsdip.work/u/sample-token
+Manage in the DIP app (Profile > Notifications)
+DIP · 123 Example Street, Pittsburgh, PA 15213 (placeholder)
