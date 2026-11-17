@@ -59,7 +59,7 @@ export async function onEventDocumentUpdated(
   const recipients = (await deps.recipients.subscribers(companyId, eventId, LEVELS_FOR.event_changed)).filter((uid) => uid !== entry.by);
   const title = typeof after.title === "string" ? after.title : "Activity update";
   const summary = summarizeChanges(entry.changes);
-  const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summary));
+  const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined));
   // The in-app center mirrors the push for the same recipients, whether or not they have a device token. Best-effort:
   // a failure here never fails the trigger (the changeLog entry is already stored and a retry would be a duplicate).
   if (deps.inbox && recipients.length > 0) {
@@ -96,7 +96,7 @@ export async function sendDueReminders(
     if (!(await deps.claims.claim(event.companyId, event.eventId, reminderKey(window, event.startTime)))) { skipped++; continue; }
     const recipients = await deps.recipients.subscribers(event.companyId, event.eventId, LEVELS_FOR.reminder);
     const stats = await sendPush(deps, recipients,
-      reminderPush(event.companyId, event.eventId, event.title, window, event.startTime.getTime() - now.getTime()));
+      reminderPush(event.companyId, event.eventId, event.title, window, event.startTime.getTime() - now.getTime(), event.startTime));
     sent += stats.sent;
   }
   return { events: candidates.length, sent, skipped };

@@ -66,4 +66,8 @@ Record results (build number, devices, pass or fail per row) in the session log,
 
 ## Not covered
 
+Payload: every push is an alert (`apns-push-type: alert`, priority 10, `interruption-level: active`), never time-sensitive or content-available. Reminders expire at the activity start and change pushes at its end (`apns-expiration`); `data.category` carries the preference category and `aps.category` is only set once the app registers a matching UNNotificationCategory.
+
+Token hygiene: `registerDeviceV1` refreshes `lastSeenAt` on every launch, and a daily server job deletes registry rows unseen for 60 days. Invalid tokens are still pruned on send.
+
 Background/silent pushes, badge counts, notification categories/actions, and any server change. A rich notification service extension is out of scope.

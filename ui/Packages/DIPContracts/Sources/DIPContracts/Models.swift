@@ -252,14 +252,16 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
     public var platform: String
     public var appVersion: String
     public var updatedAt: Date
+    public var lastSeenAt: Date?
 
-    public init(id: String? = nil, token: String, tokenHash: String, platform: String, appVersion: String, updatedAt: Date) {
+    public init(id: String? = nil, token: String, tokenHash: String, platform: String, appVersion: String, updatedAt: Date, lastSeenAt: Date? = nil) {
         self.id = id
         self.token = token
         self.tokenHash = tokenHash
         self.platform = platform
         self.appVersion = appVersion
         self.updatedAt = updatedAt
+        self.lastSeenAt = lastSeenAt
     }
 }
 
@@ -370,13 +372,17 @@ public struct NotificationPreferences: Codable, Equatable, Sendable {
 public struct PushNotificationData: Codable, Equatable, Sendable {
     public var type: String
     public var companyId: String
-    public var eventId: String
+    public var eventId: String?
     public var deepLink: String
     public var messageId: String?
     public var revision: String?
     public var window: String?
+    public var category: NotificationCategory?
+    public var inviteId: String?
+    public var submissionId: String?
+    public var challengeId: String?
 
-    public init(type: String, companyId: String, eventId: String, deepLink: String, messageId: String? = nil, revision: String? = nil, window: String? = nil) {
+    public init(type: String, companyId: String, eventId: String? = nil, deepLink: String, messageId: String? = nil, revision: String? = nil, window: String? = nil, category: NotificationCategory? = nil, inviteId: String? = nil, submissionId: String? = nil, challengeId: String? = nil) {
         self.type = type
         self.companyId = companyId
         self.eventId = eventId
@@ -384,6 +390,10 @@ public struct PushNotificationData: Codable, Equatable, Sendable {
         self.messageId = messageId
         self.revision = revision
         self.window = window
+        self.category = category
+        self.inviteId = inviteId
+        self.submissionId = submissionId
+        self.challengeId = challengeId
     }
 }
 

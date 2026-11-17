@@ -10,10 +10,11 @@ import { MULTICAST_LIMIT, sendPush } from "../../functions/src/modules/notificat
 import { buildEntry, CHANGE_LOG_LIMIT, diffEvent, mergeChangeLog, summarizeChanges, type ChangeLogEntry } from "../../functions/src/modules/notifications/domain/changeLog";
 import { MAX_DEVICES_PER_USER, parseRegisterDevice, tokenHash } from "../../functions/src/modules/notifications/domain/device";
 import { NotificationsError } from "../../functions/src/modules/notifications/domain/errors";
-import { chatPush, CHAT_PREVIEW_MAX, type PushMessage } from "../../functions/src/modules/notifications/domain/push";
+import { changePush, chatPush, CHAT_PREVIEW_MAX, reminderPush, type PushMessage } from "../../functions/src/modules/notifications/domain/push";
 import { dueWindow, reminderKey } from "../../functions/src/modules/notifications/domain/reminders";
 import type { SubscriptionLevel } from "../../functions/src/modules/notifications/domain/subscription";
 import { handleRegisterDevice } from "../../functions/src/modules/notifications/transport/notificationFunctions";
+import { pruneStaleDevices } from "../../functions/src/modules/notifications/application/pruneDevices";
 import { toMulticast } from "../../functions/src/modules/notifications/infrastructure/messaging";
 
 const HOUR = 3_600_000;
@@ -132,10 +133,79 @@ describe("push payloads", () => {
     const message = chatPush("alpha", "event", "Run", "m1", "Avery", `${"word ".repeat(100)}`);
     assert.ok(message.body.startsWith("Avery: "));
     assert.ok(message.body.length <= "Avery: ".length + CHAT_PREVIEW_MAX);
-    assert.deepEqual(message.data, { type: "chat", companyId: "alpha", eventId: "event", deepLink: "dip://events/event/chat", messageId: "m1" });
+    assert.deepEqual(message.data, { type: "chat", companyId: "alpha", eventId: "event", deepLink: "dip://events/event/chat", messageId: "m1", category: "chat" });
     const fcm = toMulticast(["t"], message);
     assert.equal(fcm.apns?.payload?.aps.threadId, "event-event");
     assert.deepEqual(fcm.data, message.data);
+  });
+});
+
+describe("APNs payload polish", () => {
+  const start = new Date("2026-11-20T10:00:00.000Z");
+
+  test("reminder is an alert at priority 10 that expires at the activity start", () => {
+    const message = reminderPush("alpha", "event", "Run", "1h", 3_600_000, start);
+    assert.equal(message.data.category, "reminders");
+    const fcm = toMulticast(["t"], message);
+    assert.deepEqual(fcm.apns?.headers, {
+      "apns-priority": "10", "apns-push-type": "alert", "apns-collapse-id": "reminder-event",
+      "apns-expiration": String(Math.floor(start.getTime() / 1000)),
+    });
+    const aps = fcm.apns?.payload?.aps as Record<string, unknown>;
+    assert.equal(aps["interruption-level"], "active");
+    assert.equal(aps.sound, "default");
+    assert.equal("category" in aps, false);
+    assert.equal("contentAvailable" in aps || "content-available" in aps, false);
+  });
+
+  test("expiration only when set, aps.category only when set", () => {
+    const plain = changePush("alpha", "event", "Run", 2, "Moved");
+    assert.equal(plain.expiresAt, undefined);
+    assert.equal(plain.data.category, "event_updates");
+    assert.equal("apns-expiration" in (toMulticast(["t"], plain).apns?.headers ?? {}), false);
+    const end = new Date("2026-11-20T11:00:00.000Z");
+    assert.equal(changePush("alpha", "event", "Run", 2, "Moved", end).expiresAt, end);
+    const actionable = toMulticast(["t"], { ...plain, apnsCategory: "EVENT_REMINDER" });
+    assert.equal((actionable.apns?.payload?.aps as Record<string, unknown>).category, "EVENT_REMINDER");
+  });
+
+  test("chat has no collapse id and carries data.category", () => {
+    const message = chatPush("alpha", "event", "Run", "m1", "Avery", "hi");
+    assert.equal(message.data.category, "chat");
+    assert.deepEqual(toMulticast(["t"], message).apns?.headers, { "apns-priority": "10", "apns-push-type": "alert" });
+  });
+});
+
+describe("pruneStaleDevices", () => {
+  const NOW_ = new Date("2026-11-17T12:00:00.000Z");
+  function fake(total: number) {
+    let remaining = Array.from({ length: total }, (_, i) => ({ uid: `u${i}`, tokenHash: `h${i}`, token: "" }));
+    const removed: string[] = [];
+    const cutoffs: Date[] = [];
+    return {
+      removed, cutoffs,
+      stale: { staleBefore: async (cutoff: Date, limit: number) => { cutoffs.push(cutoff); return remaining.slice(0, limit); } },
+      devices: { remove: async (devices: readonly { tokenHash: string }[]) => {
+        removed.push(...devices.map((d) => d.tokenHash));
+        remaining = remaining.filter((d) => !devices.some((x) => x.tokenHash === d.tokenHash));
+      } },
+      clock: { now: () => NOW_ },
+    };
+  }
+
+  test("pages until a short page and removes only what the store returned", async () => {
+    const world = fake(7);
+    const result = await pruneStaleDevices(world, { maxAgeDays: 60, pageSize: 3, maxPages: 10 });
+    assert.deepEqual(result, { removed: 7, pages: 3 });
+    assert.equal(world.removed.length, 7);
+    assert.equal(world.cutoffs[0]!.getTime(), NOW_.getTime() - 60 * 86_400_000);
+  });
+
+  test("stops at maxPages and does nothing when nothing is stale", async () => {
+    assert.deepEqual(await pruneStaleDevices(fake(100), { maxAgeDays: 60, pageSize: 3, maxPages: 2 }), { removed: 6, pages: 2 });
+    const empty = fake(0);
+    assert.deepEqual(await pruneStaleDevices(empty), { removed: 0, pages: 1 });
+    assert.deepEqual(empty.removed, []);
   });
 });
 
@@ -243,7 +313,7 @@ describe("event change trigger", () => {
     assert.equal(first.appended, true);
     assert.deepEqual(messaging.recipients(), [token("default"), token("fan")].sort());
     assert.equal(messaging.calls[0]!.message.body, "Updated: location.");
-    assert.deepEqual(messaging.calls[0]!.message.data, { type: "event_changed", companyId: "alpha", eventId: "event", deepLink: "dip://events/event", revision: "5" });
+    assert.deepEqual(messaging.calls[0]!.message.data, { type: "event_changed", companyId: "alpha", eventId: "event", deepLink: "dip://events/event", revision: "5", category: "event_updates" });
     // Retry / duplicate delivery of the same update: no second entry, no second push.
     const retry = await onEventDocumentUpdated(deps, "alpha", "event", baseEvent, after, NOW);
     assert.equal(retry.appended, false);

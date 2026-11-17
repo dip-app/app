@@ -6,6 +6,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
 import { registerDevice, unregisterDevice } from "../application/devices";
 import { onChatMessageCreated, onEventDocumentUpdated, onRsvpWritten, sendDueReminders } from "../application/handlers";
+import { pruneStaleDevices } from "../application/pruneDevices";
 import type { Caller, DeviceRegistry, MessagingPort } from "../application/ports";
 import { NotificationsError } from "../domain/errors";
 import { REMINDER_SCHEDULE } from "../domain/reminders";
@@ -101,3 +102,12 @@ export const sendEventReminders = onSchedule(
     logger.info("reminders", result);
   });
 
+
+/** Daily: delete registry rows not refreshed for 60 days (the app re-registers on every launch). Counts only in logs. */
+export const pruneStaleDeviceTokens = onSchedule(
+  { schedule: "every day 03:30", timeZone: "Etc/UTC", region: REGION, retryCount: 1 },
+  async () => {
+    const { store, clock } = dependencies();
+    const result = await pruneStaleDevices({ stale: store, devices: store, clock });
+    logger.info("device prune", result);
+  });

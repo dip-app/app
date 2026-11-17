@@ -121,3 +121,8 @@ export interface PreferencesReader {
 export interface PreferencesWriter {
   setCategory(uid: string, channel: NotificationChannel, category: NotificationCategory, enabled: boolean): Promise<void>;
 }
+
+/** Finds registry rows whose `lastSeenAt` is older than the cutoff (rows without `lastSeenAt` are never matched). */
+export interface StaleDeviceStore {
+  staleBefore(cutoff: Date, limit: number): Promise<DeviceToken[]>;
+}

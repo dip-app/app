@@ -18,6 +18,8 @@ export interface PushData {
   companyId: string;
   eventId: string;
   deepLink: string;
+  /** Same value as `PushMessage.category`. */
+  category?: NotificationCategory;
 }
 
 export interface PushMessage {
@@ -50,26 +52,28 @@ export function chatPush(companyId: string, eventId: string, eventTitle: string,
   return {
     title: shorten(eventTitle, TITLE_MAX),
     body: `${author}: ${shorten(text, CHAT_PREVIEW_MAX)}`,
-    data: { ...base("chat", companyId, eventId, "/chat"), messageId },
+    data: { ...base("chat", companyId, eventId, "/chat"), messageId, category: "chat" },
     threadId: `event-${eventId}`,
     category: "chat",
   };
 }
 
-export function changePush(companyId: string, eventId: string, eventTitle: string, revision: number, summary: string): PushMessage {
+/** `endTime` (when known) makes APNs drop the change push once the activity is over. */
+export function changePush(companyId: string, eventId: string, eventTitle: string, revision: number, summary: string, endTime?: Date): PushMessage {
   return {
     title: shorten(eventTitle, TITLE_MAX),
     body: summary,
-    data: { ...base("event_changed", companyId, eventId), revision: String(revision) },
+    data: { ...base("event_changed", companyId, eventId), revision: String(revision), category: "event_updates" },
     threadId: `event-${eventId}`,
     collapseId: `change-${eventId}`,
     category: "event_updates",
+    ...(endTime ? { expiresAt: endTime } : {}),
   };
 }
 
 export type ReminderWindow = "24h" | "1h";
 
-export function reminderPush(companyId: string, eventId: string, eventTitle: string, window: ReminderWindow, leadMs: number): PushMessage {
+export function reminderPush(companyId: string, eventId: string, eventTitle: string, window: ReminderWindow, leadMs: number, startTime: Date): PushMessage {
   const minutes = Math.max(1, Math.round(leadMs / 60_000));
   const when = window === "1h"
     ? (minutes >= 55 ? "in about an hour" : `in ${minutes} minutes`)
@@ -77,10 +81,12 @@ export function reminderPush(companyId: string, eventId: string, eventTitle: str
   return {
     title: shorten(eventTitle, TITLE_MAX),
     body: `Starts ${when}.`,
-    data: { ...base("reminder", companyId, eventId), window },
+    data: { ...base("reminder", companyId, eventId), window, category: "reminders" },
     threadId: `event-${eventId}`,
     collapseId: `reminder-${eventId}`,
     category: "reminders",
+    // A reminder still undelivered when the activity starts is useless: APNs drops it.
+    expiresAt: startTime,
   };
 }
 
@@ -90,7 +96,7 @@ export function invitePush(companyId: string, eventId: string, eventTitle: strin
   return {
     title: "New invitation",
     body: `${from} invited you to ${shorten(eventTitle, TITLE_MAX)}.`,
-    data: { ...base("invite", companyId, eventId), inviteId },
+    data: { ...base("invite", companyId, eventId), inviteId, category: "invites" },
     threadId: "invites",
     collapseId: `invite-${inviteId}`,
     category: "invites",

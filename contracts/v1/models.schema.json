@@ -564,6 +564,10 @@
         "updatedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [
@@ -756,14 +760,22 @@
     "PushNotificationData": {
       "type": "object",
       "additionalProperties": false,
-      "description": "FCM data payload (all values strings).",
+      "description": "FCM data payload (all values strings). eventId is optional because challenge pushes (approved, changes requested, weekly theme) have no event; push delivery is flag-off and unshipped, so relaxing it is safe.",
       "properties": {
         "type": {
           "type": "string",
           "enum": [
             "chat",
             "event_changed",
-            "reminder"
+            "reminder",
+            "invite",
+            "invite_answered",
+            "attendee_added",
+            "event_cancelled",
+            "challenge_approved",
+            "challenge_changes_requested",
+            "weekly_theme",
+            "event_interest"
           ]
         },
         "companyId": {
@@ -774,7 +786,7 @@
         },
         "deepLink": {
           "type": "string",
-          "pattern": "^dip://events/[A-Za-z0-9_-]+(/chat)?$"
+          "pattern": "^dip://(events/[A-Za-z0-9_-]+(/chat)?|challenges(/[A-Za-z0-9_-]+)?)$"
         },
         "messageId": {
           "type": "string"
@@ -789,12 +801,23 @@
             "24h",
             "1h"
           ]
+        },
+        "category": {
+          "$ref": "#/$defs/NotificationCategory"
+        },
+        "inviteId": {
+          "type": "string"
+        },
+        "submissionId": {
+          "type": "string"
+        },
+        "challengeId": {
+          "type": "string"
         }
       },
       "required": [
         "type",
         "companyId",
-        "eventId",
         "deepLink"
       ]
     },

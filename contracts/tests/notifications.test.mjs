@@ -31,7 +31,7 @@ test('EventMessage, EventSubscription and DeviceRegistration document shapes', (
   assert.equal(subscription({level: 'everything', updatedAt: '2026-11-10T12:00:00Z'}), false);
   assert.equal(subscription({level: 'all', updatedAt: '2026-11-10T12:00:00Z', unread: 3}), false);
   assert.equal(validate('DeviceRegistration')({token, tokenHash: 'f'.repeat(64), platform: 'ios', appVersion: '1.0 (1)',
-    updatedAt: '2026-11-10T12:00:00Z'}), true);
+    updatedAt: '2026-11-10T12:00:00Z', lastSeenAt: '2026-11-10T12:00:00Z'}), true);
 });
 
 test('device callables reject spoofed identity, unknown platforms and bad tokens', () => {
@@ -53,6 +53,13 @@ test('push data payload keys and deep links', () => {
   assert.equal(check({type: 'reminder', companyId: 'c', eventId: 'e1', deepLink: 'dip://events/e1', window: '1h'}), true);
   assert.equal(check({type: 'chat', companyId: 'c', eventId: 'e1', deepLink: 'https://evil.example'}), false);
   assert.equal(check({type: 'chat', companyId: 'c', eventId: 'e1', deepLink: 'dip://events/e1', text: 'full message'}), false);
+  assert.equal(check({type: 'reminder', companyId: 'c', eventId: 'e1', deepLink: 'dip://events/e1', window: '1h', category: 'reminders'}), true);
+  assert.equal(check({type: 'reminder', companyId: 'c', eventId: 'e1', deepLink: 'dip://events/e1', category: 'marketing'}), false);
+  assert.equal(check({type: 'challenge_approved', companyId: 'c', deepLink: 'dip://challenges/ch1', challengeId: 'ch1', submissionId: 's1'}), true);
+  assert.equal(check({type: 'weekly_theme', companyId: 'c', deepLink: 'dip://challenges'}), true);
+  assert.equal(check({type: 'weekly_theme', companyId: 'c', deepLink: 'dip://challenges/../x'}), false);
+  assert.equal(check({type: 'weekly_theme', companyId: 'c', deepLink: 'dip://challenges.evil.example'}), false);
+  assert.equal(check({type: 'invite', companyId: 'c', eventId: 'e1', deepLink: 'dip://events/e1', inviteId: 'i1'}), true);
 });
 
 test('NotificationPreferences accepts full, minimal and partial documents', () => {
