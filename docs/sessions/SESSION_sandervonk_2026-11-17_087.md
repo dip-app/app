@@ -13,6 +13,8 @@ Lead of the backend quality audit and hardening pass over the recently merged pu
 ## Changes
 
 - docs/quality/backend-audit-2026-11.md: findings with severity, evidence and fix status; deploy checklist; open owner decisions.
+- gcp/tests/integration/notifications-delivery-store.test.ts (pushed to #256): the rate-limiter contention test runs three waves of 10 concurrent admits instead of 30 at once, which hit the emulator lock timeout twice in CI.
+- #252 conflicted with #255 (cheap models) after merge; the fixer rebased it semantically (kept #255's per-model ceilings, fallbacks and Jev wiring) and the lead checked the provider gate.
 - Fix PRs (separate sessions 081 to 086): #250 date-independent admin tests, #251 email, #252 AI and tags, #253 push router, #254 admin, rules, indexes and TTL, #256 deactivation in callables.
 
 ## Validation

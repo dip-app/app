@@ -113,6 +113,10 @@ The fix PRs add targeted unit tests for the items below.
 - **Callables:** deactivation in four modules.
 - **Rules:** emulator tests for deactivation.
 
+**Test debt fixed:**
+- `adminTools.test.ts` depended on the wall clock (#250).
+- The push rate-limiter emulator test ran 30 transactions on one document at once and intermittently hit the emulator's lock timeout. It now contends in waves of 10 (#256).
+
 **Not run:** the email, notifications, AI and tags emulator integration suites, because the local Firestore emulator port was busy. CI runs the suites it has jobs for. The receipt lease adapter test (`notifications-delivery-store.test.ts`) has not run locally.
 
 ## Deploy checklist for the coordinator
