@@ -448,7 +448,7 @@ describe("default subscription on RSVP", () => {
 
 /** Optimistic fake of the device registry transaction (serialized commit). */
 class Registry implements DeviceRegistry {
-  members = new Map<string, { companyId: string; role: string }>();
+  members = new Map<string, { companyId: string; role: string; status?: string }>();
   devices = new Map<string, { uid: string; tokenHash: string; token: string; updatedAt: Date }>(); // `${uid}/${hash}`
   tick = 0;
   async runTransaction<T>(work: (tx: DeviceRegistryTransaction) => Promise<T>): Promise<T> {
@@ -487,6 +487,16 @@ describe("device registry callables", () => {
     await rejects(registerDevice(registry, caller("stranger"), request("p")), "MEMBERSHIP_REQUIRED");
     await rejects(unregisterDevice(registry, null, { contractVersion: 1, token: token("p") }), "UNAUTHENTICATED");
     assert.equal(registry.devices.size, 0);
+  });
+
+  test("a deactivated member cannot register a device", async () => {
+    const registry = fixture();
+    registry.members.set("off", { companyId: "alpha", role: "member", status: "deactivated" });
+    await rejects(registerDevice(registry, caller("off"), request("p")), "ACCOUNT_DEACTIVATED");
+    assert.equal(registry.devices.size, 0);
+    registry.members.set("on", { companyId: "alpha", role: "member", status: "active" });
+    await registerDevice(registry, caller("on"), request("p"));
+    assert.equal(registry.devices.size, 1);
   });
 
   test("validation rejects unknown fields (including a forged userId), bad platform, version and token", async () => {

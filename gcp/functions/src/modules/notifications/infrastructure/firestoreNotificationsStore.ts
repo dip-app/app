@@ -213,7 +213,8 @@ export class FirestoreNotificationsStore implements
           if (!snap.exists) return null;
           const companyId: unknown = snap.get("companyId");
           const role: unknown = snap.get("role");
-          return { companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "" };
+          const status: unknown = snap.get("status");
+          return { companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "", ...(typeof status === "string" ? { status } : {}) };
         },
         listDevices: async (uid) => {
           const snap = await transaction.get(this.db.collection("users").doc(uid).collection("devices").limit(MAX_DEVICES_PER_USER * 2));

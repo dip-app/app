@@ -9,6 +9,7 @@ Status: implemented in code, not deployed, device-unverified (see the [runbook](
 | PUSH-1 Category registry and preferences | Merged (#228) |
 | PUSH-2, PUSH-5, PUSH-6 Router, APNs payload polish, token hygiene | #229 |
 | PUSH-3, PUSH-4, PUSH-7 Trigger migration, new triggers, iOS settings | Follow-up PR |
+| Router hardening (audit) | Rate classes (chat, event_changed own buckets; cancel and reminder exempt), two-phase receipts with a 5-minute lease, send-time membership check (`blocked.inactive`), structured send and failure logs, per-event reminder isolation with a receipt pre-check, bounded-parallel email, explicit function limits, `retry: true` on the chat, change and RSVP triggers (idempotent through receipts and revision-keyed changeLog) |
 | Email channel in the router | Wired (`routerDependencies` adds `routerEmailChannel(emailChannelDependencies())`; triggers pass `request.email` for event change and cancel, reminder, invite, invite answered, attendee added and challenge reviewed; chat and weekly theme send none). No email goes out until `EMAIL_ENABLED` is set and a company is enabled |
 | PUSH-8 Invite action buttons | Optional, not started (see Work breakdown) |
 | PUSH-9 Device verification | Blocked on the APNs key (owner); script in the [runbook](../../ops/push-apns-runbook.md) |
@@ -138,7 +139,7 @@ Tokens, not topics: FCM topics suit public broadcast, have no per-user control, 
 
 ## Rollout and flags
 
-Keep `DIP_PUSH_ENABLED`. Server: `PUSH_ROUTER_ENABLED` param so migrated triggers can fall back to the old path. Ship categories behind the existing flag; no data migration (missing doc equals defaults). Rollback: flip the param.
+Keep `DIP_PUSH_ENABLED`. Server: `PUSH_ROUTER_ENABLED` param so migrated triggers can fall back to the old path. Ship categories behind the existing flag; no data migration (missing doc equals defaults). Rollback: flip the param. The legacy path bypasses preferences and caps (a compliance regression), so it logs a warning on every cold start and must not stay on. The weekly theme job still runs at a fixed Monday 09:00 America/New_York until a company time zone exists.
 
 ## Risks
 

@@ -66,3 +66,7 @@ The email outbox should call `evaluateDelivery` with `channel: "email"` and its 
 4. `attendee_added` is in `event_updates` but is not gated by the per-event level, because the subscription document may not exist yet when an admin adds someone.
 5. `event_cancelled` keeps today's gate (`all` or `changes`), so a member who chose "Reminders only" for an activity is not pushed about its cancellation (recipients are the same as today).
 6. No delete rule for the document: a member resets by writing the defaults. There is no account deletion flow yet; when one lands it must remove this document with the Admin SDK.
+
+## Delivery limits (audit hardening)
+
+The router caps pushes per user in classes: `shared` 20 per hour and 100 per day (invites, attendee added, challenge, weekly theme, discovery), `chat` 30 per hour and 200 per day, `event_changed` 60 per hour and 300 per day, and `event_cancelled` and `reminder` are exempt so a busy conversation can never suppress them. `pushRateLimits/{uid}` keeps the shared counters in the top-level fields and the others under an optional `buckets` map; documents without it read as zero (additive, no migration). Recipients who are deactivated or belong to another company are dropped at send time.

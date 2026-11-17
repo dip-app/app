@@ -25,6 +25,9 @@ export async function registerDevice(registry: DeviceRegistry, caller: Caller | 
     if (!member || !member.companyId || (member.role !== "member" && member.role !== "admin")) {
       throw new NotificationsError("permission-denied", "MEMBERSHIP_REQUIRED", "Company membership required.");
     }
+    if (member.status === "deactivated") {
+      throw new NotificationsError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
+    }
     const owners = (await tx.ownersOf(hash)).filter((uid) => uid !== authenticated.uid);
     const devices = await tx.listDevices(authenticated.uid);
     const others = devices.filter((device) => device.tokenHash !== hash)

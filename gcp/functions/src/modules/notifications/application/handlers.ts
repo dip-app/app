@@ -128,7 +128,7 @@ export async function onRsvpWritten(
 // ---------------------------------------------------------------------------------------------------------
 
 const emptyDelivery = (): DeliveryStats => ({
-  ...emptyStats(), duplicate: false, inApp: 0, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 },
+  ...emptyStats(), duplicate: false, inApp: 0, emailsEnqueued: 0, blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0, inactive: 0 },
 });
 
 /** Chat through the router: `going` subscribers with a chat-capable level, except the author. */
@@ -160,8 +160,9 @@ export async function onEventDocumentUpdatedViaRouter(
 ): Promise<{ appended: boolean; push: DeliveryStats }> {
   const entry = buildEntry(before, after, updateTime);
   if (!entry) return { appended: false, push: emptyDelivery() };
+  // A redelivered trigger finds the entry already appended (append returns false) but must still reach the router: the
+  // first attempt may have crashed after the append. The `event_{id}_{revision}` receipt dedupes a completed delivery.
   const appended = await deps.changeLog.append(companyId, eventId, entry);
-  if (!appended) return { appended, push: emptyDelivery() };
   const endTime = after.endTime instanceof Date ? after.endTime : null;
   const ended = endTime !== null && endTime.getTime() <= deps.clock.now().getTime();
   const wasAndIsCancelled = before.status === "cancelled" && after.status === "cancelled";
@@ -185,7 +186,7 @@ export async function onEventDocumentUpdatedViaRouter(
 /** Reminders through the router; the receipt id carries event, window and start time, so a moved event re-reminds. */
 export async function sendDueRemindersViaRouter(
   deps: RouterDependencies & { recipients: RecipientDirectory; upcoming: UpcomingEvents },
-): Promise<{ events: number; sent: number; skipped: number }> {
+): Promise<{ events: number; sent: number; skipped: number; failed: number }> {
   const now = deps.clock.now();
   const at = (offset: number) => new Date(now.getTime() + offset);
   const candidates = [
@@ -194,23 +195,35 @@ export async function sendDueRemindersViaRouter(
   ];
   let sent = 0;
   let skipped = 0;
+  let failed = 0;
   for (const event of candidates) {
-    const window = dueWindow(event.startTime, now);
-    if (!window || event.status !== "scheduled") { skipped++; continue; }
-    const recipients = (await deps.recipients.subscribersWithLevels(event.companyId, event.eventId, LEVELS_FOR.reminder))
-      .map((s) => ({ uid: s.uid, eventLevel: s.level }));
-    if (recipients.length === 0) { skipped++; continue; }
-    const push = reminderPush(event.companyId, event.eventId, event.title, window, event.startTime.getTime() - now.getTime(), event.startTime);
-    const stats = await deliverNotification(deps, {
-      id: `reminder_${event.eventId}_${window}_${event.startTime.getTime()}`, kind: "reminder", companyId: event.companyId, recipients, push,
-      inApp: { title: shorten(event.title, 60), body: push.body, targetType: "event", targetId: event.eventId },
-      email: reminderEmail(event.eventId, window, event.startTime,
-        eventFacts({ eventId: event.eventId, title: event.title, startTime: event.startTime, endTime: event.endTime })),
-    });
-    if (stats.duplicate) skipped++;
-    sent += stats.sent;
+    try {
+      const window = dueWindow(event.startTime, now);
+      if (!window || event.status !== "scheduled") { skipped++; continue; }
+      const id = `reminder_${event.eventId}_${window}_${event.startTime.getTime()}`;
+      // Cheap pre-check: a window already delivered on an earlier 15-minute run needs no subscriber read.
+      if (await deps.receipts.isDone(`${event.companyId}/${id}`)) { skipped++; continue; }
+      const recipients = (await deps.recipients.subscribersWithLevels(event.companyId, event.eventId, LEVELS_FOR.reminder))
+        .map((s) => ({ uid: s.uid, eventLevel: s.level }));
+      if (recipients.length === 0) { skipped++; continue; }
+      const push = reminderPush(event.companyId, event.eventId, event.title, window, event.startTime.getTime() - now.getTime(), event.startTime);
+      const stats = await deliverNotification(deps, {
+        id, kind: "reminder", companyId: event.companyId, recipients, push,
+        inApp: { title: shorten(event.title, 60), body: push.body, targetType: "event", targetId: event.eventId },
+        email: reminderEmail(event.eventId, window, event.startTime,
+          eventFacts({ eventId: event.eventId, title: event.title, startTime: event.startTime, endTime: event.endTime })),
+      });
+      if (stats.duplicate) skipped++;
+      sent += stats.sent;
+    } catch (error) {
+      // One bad event must not abort the run; the lease or missing receipt lets the next run retry it.
+      failed++;
+      try {
+        deps.logger?.error("reminder delivery failed", { eventId: event.eventId, companyId: event.companyId, error: error instanceof Error ? error.name : "UnknownError" });
+      } catch { /* logging must not throw */ }
+    }
   }
-  return { events: candidates.length, sent, skipped };
+  return { events: candidates.length, sent, skipped, failed };
 }
 
 

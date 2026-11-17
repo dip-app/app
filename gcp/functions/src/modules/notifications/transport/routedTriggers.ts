@@ -14,7 +14,10 @@ import { routerDependencies } from "./routerDeps";
  * router; receipts make a retry or a second run idempotent.
  */
 export const sendWeeklyThemePushes = onSchedule(
-  { schedule: "every monday 09:00", timeZone: "America/New_York", region: "us-central1", retryCount: 1 },
+  {
+    schedule: "every monday 09:00", timeZone: "America/New_York", region: "us-central1", retryCount: 1,
+    timeoutSeconds: 540, memory: "512MiB", maxInstances: 1,
+  },
   async () => {
     const app = defaultAdminApp();
     const themes = new FirestoreThemes(getFirestore(app));
