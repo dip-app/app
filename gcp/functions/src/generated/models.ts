@@ -179,6 +179,7 @@ export interface EmailCategoryPreferences {
   reminders?: boolean;
   challenges?: boolean;
   discovery?: boolean;
+  admin_suggestions?: boolean;
 }
 
 export interface NotificationPreferences {
@@ -1381,4 +1382,53 @@ export interface GenerateEventDraftsResponse {
   drafts: Array<GeneratedEventDraft>;
   usage: AiUsageSummary;
   replay: boolean;
+}
+
+export type SuggestionsEmailAction = "status" | "preview" | "sendTest" | "subscribe" | "unsubscribe" | "setSchedule";
+
+export interface SuggestionsEmailSchedule {
+  weekday: number;
+  hour: number;
+}
+
+export interface ManageSuggestionsEmailRequest {
+  contractVersion: number;
+  companyId: string;
+  action: SuggestionsEmailAction;
+  schedule?: SuggestionsEmailSchedule;
+}
+
+export interface SuggestionsEmailPreview {
+  subject: string;
+  preheader: string;
+  html: string;
+  text: string;
+  engine: "jev" | "openai" | "heuristic";
+  ideaCount: number;
+  dataLevel: "none" | "some" | "rich";
+}
+
+export interface ManageSuggestionsEmailResponse {
+  contractVersion: number;
+  subscribed: boolean;
+  emailEnabled: boolean;
+  aiEnabled: boolean;
+  schedule: SuggestionsEmailSchedule;
+  timeZone: string;
+  nextSendAt: string | null;
+  preview?: SuggestionsEmailPreview;
+  testQueued?: boolean;
+  testReason?: "EMAIL_DISABLED" | "NOT_SUBSCRIBED" | "TEST_LIMIT" | "COMPANY_EMAIL_DISABLED";
+}
+
+export interface ResolveSuggestedIdeaRequest {
+  contractVersion: number;
+  companyId: string;
+  token: string;
+}
+
+export interface ResolveSuggestedIdeaResponse {
+  contractVersion: number;
+  ideaId: string;
+  draft: GeneratedEventDraft;
 }

@@ -118,3 +118,64 @@ export const PREVIEW_CASES: PreviewCase[] = [
   }),
   make("invite_received_with_pixel", "invite_received", { ...EVENT, inviterFirstName: "Priya" }, { ...SAMPLE_CTX, openPixelURL: "https://letsdip.work/o/sample-token.gif" }),
 ];
+
+const TOKEN = "eyJ2IjoxLCJjIjoiYWNtZSIsInciOiIyMDI2LVc0OSIsImkiOiJzdW5zZXQtaGlrZSIsImUiOjE3OTY4NDAwMDB9.c2lnbmF0dXJl";
+const link = (n: number): string => `https://letsdip.work/admin/ideas/suggested/?t=${TOKEN}${n}`;
+const LONG = (len: number, seed: string): string => {
+  let out = "";
+  while (out.length < len) out += `${seed} `;
+  return out.slice(0, len).trimEnd();
+};
+
+const SUGGESTIONS_RICH = {
+  weekKey: "2026-W49",
+  weekLabel: "Week of Nov 30",
+  dataNote: null,
+  ideas: [
+    {
+      ideaId: "winter-trail-walk", title: "Winter trail walk and cocoa", theme: "outdoors" as const, fitLabel: "perfect" as const,
+      pitch: "A relaxed loop through the park with a hot drink at the halfway point.",
+      reasons: ["Your last outdoor event, \u201CSunset hike\u201D, filled 24 of 30 spots", "Outdoors is one of your top interests, 20+ members"],
+      facts: "90 min \u00B7 8 to 30 people \u00B7 Under $10 per person", whenHint: "Works well on a Thursday afternoon", linkURL: link(1),
+    },
+    {
+      ideaId: "lunch-and-learn-music", title: "Lunch and listen: team playlist", theme: "music" as const, fitLabel: "great" as const,
+      pitch: "Everyone adds a song and shares the story behind it over lunch.",
+      reasons: ["3 more teammates picked Music this month"],
+      facts: "60 min \u00B7 6 to 40 people \u00B7 Free", whenHint: null, linkURL: link(2),
+    },
+    {
+      ideaId: "board-game-tournament", title: "Board game tournament", theme: "games" as const, fitLabel: null,
+      pitch: "Small tables, short rounds, and a friendly trophy for the winners.",
+      reasons: ["No games events in the last 8 weeks"],
+      facts: "2 hours \u00B7 8 to 24 people \u00B7 Under $15 per person", whenHint: "The week of Nov 30 is quiet on your calendar", linkURL: link(3),
+    },
+    {
+      ideaId: "cookie-swap", title: "Holiday cookie swap", theme: "food" as const, fitLabel: "good" as const,
+      pitch: "Bring a dozen, leave with a mixed box and a few new recipes.",
+      reasons: [],
+      facts: "60 min \u00B7 10 to 50 people \u00B7 Under $15 per person", whenHint: null, linkURL: link(4),
+    },
+  ],
+};
+
+PREVIEW_CASES.push(
+  make("admin_suggestions", "admin_suggestions", SUGGESTIONS_RICH),
+  make("admin_suggestions_no_data", "admin_suggestions", {
+    weekKey: "2026-W49",
+    weekLabel: "Week of Nov 30",
+    dataNote: "We don't have much activity from your team yet, so these come from our catalog of crowd favorites.",
+    ideas: SUGGESTIONS_RICH.ideas.slice(0, 3).map((i) => ({ ...i, fitLabel: null, reasons: [], whenHint: null })),
+  }),
+  make("admin_suggestions_long", "admin_suggestions", {
+    weekKey: "2026-W50",
+    weekLabel: "Week of Dec 7, 2026 (holiday)",
+    dataNote: LONG(200, "Your calendar is busy this fortnight"),
+    ideas: (["fitness", "arts", "learning", "volunteering", "wellness"] as const).map((theme, n) => ({
+      ideaId: `long-idea-${n}`, theme, fitLabel: (["perfect", "great", "good", null, "good"] as const)[n]!,
+      title: LONG(80, `Extra long idea title ${n}`), pitch: LONG(160, "A pitch that runs all the way to the limit"),
+      reasons: [LONG(120, "A reason that fills the whole line"), LONG(120, "Another reason that fills the line")],
+      facts: LONG(120, "90 min \u00B7 8 to 20 people"), whenHint: LONG(80, "Best on a quiet afternoon"), linkURL: link(n),
+    })),
+  }, { ...SAMPLE_CTX, recipientFirstName: null }),
+);

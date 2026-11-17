@@ -75,6 +75,15 @@ test("push and email maps accept only their own categories and boolean values", 
   await assertFails(setDoc(doc(client, path), prefs({ push: true })));
 });
 
+test("email.admin_suggestions accepts a boolean only and is never a push category", async () => {
+  const client = db("alice");
+  await assertSucceeds(setDoc(doc(client, path), prefs({ email: { admin_suggestions: true } })));
+  await assertSucceeds(updateDoc(doc(client, path), { "email.admin_suggestions": false, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(client, path), prefs({ email: { admin_suggestions: "yes" } })));
+  await assertFails(setDoc(doc(client, path), prefs({ email: { admin_suggestions: 1 } })));
+  await assertFails(setDoc(doc(client, path), prefs({ push: { admin_suggestions: true } })));
+});
+
 test("other settings documents, delete and list are denied", async () => {
   const client = db("alice");
   await assertFails(getDoc(doc(client, "users/alice/settings/other")));

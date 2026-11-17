@@ -79,3 +79,14 @@ If `AI_EVENTS_ENABLED` is not `true`, or `OPENAI_API_KEY` is missing, blank or `
 - [ ] Privacy page deployed.
 - [ ] TTL policies created.
 - [ ] Pilot on our own company; kill switch tested (enabled false returns `AI_DISABLED`).
+
+## Weekly ideas email (S6)
+
+The admin weekly suggested-events email ([design](../design/stretch/admin-suggestions-email.md)) reuses these switches and the email setup ([email setup](email-setup.md)).
+
+- Functions: `sendAdminSuggestionsEmails` (scheduler, every hour at minute 0 UTC, 540 s, 512 MiB), `manageSuggestionsEmailV1` and `resolveSuggestedIdeaV1` (callables, App Check). The scheduler and `manageSuggestionsEmailV1` bind `EMAIL_UNSUBSCRIBE_KEY`, `JEV_API_KEY` and `OPENAI_API_KEY`; `resolveSuggestedIdeaV1` binds only `EMAIL_UNSUBSCRIBE_KEY` (it also signs the deep links, purpose label `suggest-link:v1`). Deploying the scheduler creates a Cloud Scheduler job; it does nothing until the switches below are on.
+- Needs: `EMAIL_ENABLED=true` and `emailSettings/{companyId}.enabled`, `AI_EVENTS_ENABLED=true` with `aiSettings/current.enabled`, and at least one admin who turned the email on in the portal (`/admin/suggestions/`). Engine: Jev when `JEV_API_KEY` is real and `SUGGESTIONS_DECISION_PROVIDER` is `jev` (default), else the OpenAI mini model, else the built-in heuristic.
+- Optional env: `SUGGESTIONS_DECISION_PROVIDER` (`jev` or `openai-mini`). Schedule per company in `companies/{c}/suggestionsEmail/settings` (`weekday` 1 to 7, `hour` 0 to 23; default Monday 9, company time zone from `emailSettings/{c}.timeZone`), set by admins in the portal.
+- Firestore TTL policy (optional): `expireAt` on collection group `suggestionDigests` (120 days).
+- Cost: shares the company AI budget (`aiUsage/{yyyymm}`, pending key `suggest_<week>`), not counted as a generation; about $0.0005 a week with Jev.
+- Kill switch: any of the switches above off; one admin: their portal switch or the email's unsubscribe link.

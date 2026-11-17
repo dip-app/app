@@ -16,6 +16,7 @@ export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
   reminders: "reminder",
   challenges: "challenge",
   discovery: "event suggestion",
+  admin_suggestions: "weekly event idea",
 };
 
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */
@@ -125,6 +126,8 @@ function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "heading
 export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T], zone = "America/New_York"): EmailCopy {
   const id: TemplateId = template;
   switch (id) {
+    case "admin_suggestions":
+      throw new Error("admin_suggestions has its own renderer (adminSuggestions.ts)");
     case "invite_received": {
       const e = variables as TemplateVariables["invite_received"];
       const who = clean(e.inviterFirstName);

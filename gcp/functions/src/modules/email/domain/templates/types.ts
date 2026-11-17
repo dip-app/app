@@ -13,6 +13,7 @@ export const TEMPLATE_CATEGORY = {
   attendee_added: "event_updates",
   event_reminder: "reminders",
   challenge_reviewed: "challenges",
+  admin_suggestions: "admin_suggestions",
 } as const satisfies Record<string, EmailCategory>;
 
 export type TemplateId = keyof typeof TEMPLATE_CATEGORY;
@@ -27,6 +28,7 @@ export function templateKind(template: TemplateId, variables?: { outcome?: strin
     case "attendee_added": return "attendee_added";
     case "event_reminder": return "reminder";
     case "challenge_reviewed": return variables?.outcome === "changes_requested" ? "challenge_changes_requested" : "challenge_approved";
+    case "admin_suggestions": return "admin_suggestions";
   }
 }
 export const TEMPLATE_IDS = Object.keys(TEMPLATE_CATEGORY) as TemplateId[];
@@ -71,6 +73,42 @@ export interface TemplateVariables {
   attendee_added: EventFacts;
   event_reminder: EventFacts & { window: "24h" | "1h" };
   challenge_reviewed: { challengeId: string; challengeTitle: string; outcome: "approved" | "changes_requested"; points?: number };
+  /** Weekly ideas for company admins (docs/design/stretch/admin-suggestions-email.md). Company aggregates only; no names or emails. */
+  admin_suggestions: {
+    /** ISO week in the company zone, `^\d{4}-W\d{2}$`. */
+    weekKey: string;
+    /** For example "Week of Dec 1", at most 40 characters. */
+    weekLabel: string;
+    /** One calm line shown above the ideas (for example when there is little data yet), at most 200 characters. */
+    dataNote: string | null;
+    /** One to five ideas, best first. */
+    ideas: SuggestionIdeaVariables[];
+  };
+}
+
+/** Weekly theme ids of the admin ideas email (tile art `ideas/<theme>.png`). */
+export const SUGGESTION_THEMES = ["fitness", "outdoors", "food", "arts", "games", "music", "learning", "volunteering", "wellness"] as const;
+export type SuggestionTheme = (typeof SUGGESTION_THEMES)[number];
+export type SuggestionFitLabel = "perfect" | "great" | "good";
+
+export interface SuggestionIdeaVariables {
+  /** Catalog idea id, `^[a-z0-9-]{1,64}$`. */
+  ideaId: string;
+  /** At most 80 characters. */
+  title: string;
+  /** At most 160 characters. */
+  pitch: string;
+  theme: SuggestionTheme;
+  /** Friendly label for strong matches only; never a percentage. */
+  fitLabel: SuggestionFitLabel | null;
+  /** Zero to two grounded "why" lines, each at most 120 characters. */
+  reasons: string[];
+  /** One line, at most 120 characters, for example "90 min · 8 to 20 people · Under $15 per person". */
+  facts: string;
+  /** At most 80 characters. */
+  whenHint: string | null;
+  /** Signed deep link, `https://letsdip.work/admin/ideas/suggested/?t=<token>`, at most 1024 characters. */
+  linkURL: string;
 }
 
 /** Values the sender adds at send time (never stored in the outbox). */
