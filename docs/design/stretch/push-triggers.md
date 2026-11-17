@@ -9,6 +9,7 @@ Status: implemented in code, not deployed, device-unverified (see the [runbook](
 | PUSH-1 Category registry and preferences | Merged (#228) |
 | PUSH-2, PUSH-5, PUSH-6 Router, APNs payload polish, token hygiene | #229 |
 | PUSH-3, PUSH-4, PUSH-7 Trigger migration, new triggers, iOS settings | Follow-up PR |
+| Email channel in the router | Wired (`routerDependencies` adds `routerEmailChannel(emailChannelDependencies())`; triggers pass `request.email` for event change and cancel, reminder, invite, invite answered, attendee added and challenge reviewed; chat and weekly theme send none). No email goes out until `EMAIL_ENABLED` is set and a company is enabled |
 | PUSH-8 Invite action buttons | Optional, not started (see Work breakdown) |
 | PUSH-9 Device verification | Blocked on the APNs key (owner); script in the [runbook](../../ops/push-apns-runbook.md) |
 

@@ -21,7 +21,7 @@ export interface NotificationRequest {
    * Optional email payload (email workstream, docs/contracts/email.md). Opaque to the router: the email channel
    * validates it against its template allow-list. Without it no email is considered.
    */
-  email?: { template: string; variables: unknown; objectId: string; revisionOrWindow: string; notAfter?: Date | null };
+  email?: { template: string; variables: unknown; objectId: string; revisionOrWindow: string; notAfter?: Date | null } | undefined;
 }
 
 /** Email channel as the router sees it; implemented by `modules/email` (`routerEmailChannel`). Idempotent per recipient. */

@@ -45,6 +45,9 @@ export interface InvitePushInput {
   inviteId: string;
   toUserId: string;
   fromName: string;
+  /** Event times, used only for the optional email. */
+  eventStartTime?: Date;
+  eventEndTime?: Date;
 }
 
 /** Best-effort push for a newly created invitation (the existing push pipeline). Never fails the command. */
@@ -56,6 +59,8 @@ export interface InviteAcceptedPush {
   companyId: string; eventId: string; eventTitle: string; inviteId: string;
   /** The original sender: the only recipient. */
   senderId: string; responderName: string;
+  /** Event times, used only for the optional email. */
+  eventStartTime?: Date; eventEndTime?: Date;
 }
 
 /** Best-effort push to the sender when an invite is ACCEPTED (declines are silent). Never fails the command. */

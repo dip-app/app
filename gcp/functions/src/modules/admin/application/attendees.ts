@@ -109,7 +109,8 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
         tx.create(paths.notification(req.userId, `admin_${req.requestId}`),
           notification(actor, req.userId, "attendee_added", "You're going!", `An organizer added you to ${event.title}.`, req.eventId));
         // The in-app notice stays in this transaction; the push follows the commit and reuses its id (receipt key).
-        push = { companyId: actor.companyId, eventId: req.eventId, eventTitle: event.title, userId: req.userId, notificationId: `admin_${req.requestId}` };
+        push = { companyId: actor.companyId, eventId: req.eventId, eventTitle: event.title, userId: req.userId, notificationId: `admin_${req.requestId}`,
+          eventStartTime: event.startTime, eventEndTime: event.endTime };
       }
       const changes = [change("status", rsvp?.status ?? null, "going"), change("attendeeCount", event.attendeeCount, attendeeCount)];
       if (overridden) changes.push(change("capacity", event.capacity, capacity));
