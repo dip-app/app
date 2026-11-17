@@ -52,6 +52,13 @@
             "functionId": "emailUnsubscribeV1",
             "region": "us-central1"
           }
+        },
+        {
+          "source": "/o/**",
+          "function": {
+            "functionId": "emailOpenV1",
+            "region": "us-central1"
+          }
         }
       ],
       "headers": [

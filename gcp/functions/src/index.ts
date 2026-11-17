@@ -4,7 +4,7 @@ export { setRsvpV1, onUserProfileUpdated } from "./modules/participation";
 export { registerDeviceV1, unregisterDeviceV1, onEventMessageCreated, onEventChanged, onRsvpChanged, sendEventReminders, pruneStaleDeviceTokens } from "./modules/notifications";
 export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
-export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1 } from "./modules/email";
+export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1, emailOpenV1 } from "./modules/email";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";
 export { onUserInterestsWritten } from "./modules/tags";
 export { sendInviteV1, respondToInviteV1, listCoworkersV1 } from "./modules/invites";

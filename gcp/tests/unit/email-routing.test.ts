@@ -78,6 +78,7 @@ class MemOutbox implements OutboxStore {
   async claim(): Promise<never> { throw new Error("unused"); }
   async finish(): Promise<void> { throw new Error("unused"); }
   async get(): Promise<null> { return null; }
+  async recordOpen(): Promise<boolean> { return false; }
 }
 
 const facts = { eventId: "e1", eventTitle: "Padel", startTime: "2030-01-02T18:00:00Z", endTime: "2030-01-02T19:00:00Z" };

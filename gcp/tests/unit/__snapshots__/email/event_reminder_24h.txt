@@ -1,13 +1,15 @@
+STARTS TOMORROW
+
 Hi Sam, this event is tomorrow.
 
 Sunset hike at Frick Park
-Fri, Nov 20, 6:30 PM to 8:00 PM EST
-Frick Park, Hot Metal Street entrance
+When: Fri, Nov 20, 6:30 PM to 8:00 PM EST
+Where: Frick Park, Hot Metal Street entrance
 
 Open in DIP: https://letsdip.work/e/evt_sunset_hike
 
 --
 You are getting this because reminder emails are on.
 Unsubscribe: https://letsdip.work/u/sample-token
-Manage in the DIP app (Profile > Notifications)
+Manage in DIP: Profile > Notifications
 DIP · 123 Example Street, Pittsburgh, PA 15213 (placeholder)

@@ -21,10 +21,12 @@ export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */
 export interface EmailCopy {
   subject: string;
+  /** Short heading shown in the heading font (22 to 24px), for example "New invitation". */
+  heading: string;
   preheader: string;
   /** First sentence; the renderer prefixes the greeting ("Hi Sam, "), so it starts with a name or in lower case. */
   lead: string;
-  /** Small pill above the event title, or null. */
+  /** Small neutral pill above the event title, or null. */
   badge: string | null;
   /** Bold highlight line after the card (for example "+50 points"), or null. */
   highlight: string | null;
@@ -70,7 +72,7 @@ export function fitSubject(prefix: string, title: string, suffix = ""): string {
 
 const clean = (value: string): string => collapseWhitespace(value);
 
-function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "preheader" | "lead" | "note"> & { badge?: string }): EmailCopy {
+function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "heading" | "preheader" | "lead" | "note"> & { badge?: string }): EmailCopy {
   return { badge: null, highlight: null, ...rest, event: facts, ctaLabel: "Open in DIP", ctaURL: eventURL(facts.eventId) };
 }
 
@@ -81,6 +83,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const e = variables as TemplateVariables["invite_received"];
       const who = clean(e.inviterFirstName);
       return withEvent(e, {
+        heading: "New invitation",
         subject: fitSubject(`${who} invited you to `, clean(e.eventTitle)),
         preheader: `${who} invited you to ${clean(e.eventTitle)}.`,
         lead: `${who} invited you to join an event on DIP.`,
@@ -92,6 +95,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const who = clean(e.inviteeFirstName);
       const verb = e.answer === "accepted" ? "accepted" : "declined";
       return withEvent(e, {
+        heading: e.answer === "accepted" ? "Invitation accepted" : "Invitation declined",
         subject: fitSubject(`${who} ${verb} your invite to `, clean(e.eventTitle)),
         preheader: `${who} ${verb} your invite to ${clean(e.eventTitle)}.`,
         lead: `${who} ${verb} your invite to this event.`,
@@ -103,6 +107,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const words = e.changedFields.map((f) => CHANGED_WORDS[f]);
       const what = joinWords(words.length ? words : ["details"]);
       return withEvent(e, {
+        heading: "Event updated",
         subject: fitSubject("Updated: ", clean(e.eventTitle)),
         preheader: `The ${what} changed for ${clean(e.eventTitle)}.`,
         lead: `the ${what} changed for this event.`,
@@ -113,6 +118,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
     case "event_canceled": {
       const e = variables as TemplateVariables["event_canceled"];
       return withEvent(e, {
+        heading: "Event canceled",
         subject: fitSubject("Canceled: ", clean(e.eventTitle)),
         preheader: `${clean(e.eventTitle)} was canceled.`,
         lead: "this event was canceled.",
@@ -122,6 +128,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
     case "attendee_added": {
       const e = variables as TemplateVariables["attendee_added"];
       return withEvent(e, {
+        heading: "You were added",
         subject: fitSubject("You were added to ", clean(e.eventTitle)),
         preheader: `You are on the guest list for ${clean(e.eventTitle)}.`,
         lead: "you were added to this event.",
@@ -132,6 +139,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const e = variables as TemplateVariables["event_reminder"];
       const day = e.window === "24h";
       return withEvent(e, {
+        heading: day ? "Starts tomorrow" : "Starts in about an hour",
         subject: fitSubject(day ? "Tomorrow: " : "Starting in about an hour: ", clean(e.eventTitle)),
         preheader: day ? `${clean(e.eventTitle)} is tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
         lead: day ? "this event is tomorrow." : "this event starts in about an hour.",
@@ -144,9 +152,10 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       const approved = e.outcome === "approved";
       const points = approved && typeof e.points === "number" && e.points > 0 ? e.points : null;
       return {
+        heading: approved ? "Submission approved" : "Changes requested",
         subject: fitSubject(approved ? "Approved: " : "Changes requested: ", title),
         preheader: approved ? `Your submission for ${title} was approved.` : `A reviewer asked for changes to ${title}.`,
-        lead: approved ? `your submission for "${title}" was approved.` : `a reviewer asked for changes to your submission for "${title}".`,
+        lead: approved ? `your submission for \u201C${title}\u201D was approved.` : `a reviewer asked for changes to your submission for \u201C${title}\u201D.`,
         badge: null,
         event: null,
         highlight: points !== null ? `+${points} ${points === 1 ? "point" : "points"}` : null,

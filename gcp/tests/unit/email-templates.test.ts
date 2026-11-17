@@ -48,15 +48,14 @@ describe("email template invariants", () => {
         assert.ok(body.includes("Unsubscribe"), c.name);
         assert.ok(body.includes("You are getting this because"), c.name);
         assert.ok(body.includes("emails are on."), c.name);
-        assert.ok(body.includes("Manage in the DIP app (Profile"), c.name);
+        assert.ok(body.includes("Manage in DIP: Profile"), c.name);
         assert.ok(body.includes("Hi Sam, "), c.name);
       }
       assert.ok(out.html.includes('href="https://letsdip.work/u/sample-token"'), c.name);
-      assert.ok(out.html.includes("max-width:560px") && out.html.includes("#4F5BD5"), c.name);
+      assert.ok(out.html.includes("max-width:600px") && out.html.includes("#1E212B"), c.name);
       assert.ok(out.html.includes("v:roundrect"), c.name);
-      assert.ok(out.html.includes("border-color: #343841"), c.name);
-      assert.ok(!out.html.includes("<img"), c.name);
-      assert.ok(out.preheader.length >= 20 && out.preheader.length <= 90 && !out.preheader.startsWith("Hi "), c.name);
+      assert.ok(out.html.includes("border-color: #2C2F38") && out.html.includes("[data-ogsc]"), c.name);
+      assert.ok(out.preheader.length >= 20 && out.preheader.length <= 110 && !out.preheader.startsWith("Hi ") && out.preheader.endsWith(".") && !out.preheader.includes("..."), c.name);
       assert.ok(out.html.includes(`mso-hide:all;">`) && out.html.includes(out.preheader.replace(/&/g, "&amp;")), c.name);
       assert.ok(out.html.includes('name="color-scheme" content="light dark"'));
       assert.ok(out.html.includes("prefers-color-scheme: dark"));
@@ -79,7 +78,7 @@ describe("email template invariants", () => {
   test("greeting falls back to Hi there", () => {
     const c = PREVIEW_CASES[0]!;
     const out = renderEmail(c.template, c.variables as never, { ...c.ctx, recipientFirstName: null });
-    assert.ok(out.html.includes("Hi there, ") && out.text.startsWith("Hi there, "));
+    assert.ok(out.html.includes("Hi there, ") && out.text.includes("\nHi there, "));
   });
 
   test("deep links are exactly the event URL", () => {
@@ -137,16 +136,119 @@ describe("email template invariants", () => {
     }
   });
 
+  test("brand fonts are linked with fallback stacks and an Outlook override", () => {
+    for (const c of PREVIEW_CASES) {
+      const { html } = render(c);
+      const url = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fjalla+One&display=swap";
+      assert.ok(html.includes(`<link rel="stylesheet" href="${url}">`), c.name);
+      assert.ok(html.includes(`@import url('${url}')`), c.name);
+      assert.ok(html.includes("font-family:'Fjalla One', 'Arial Narrow', Arial, sans-serif"), c.name);
+      assert.ok(html.includes("font-family:Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"), c.name);
+      assert.ok(/<!--\[if mso\]>\s*<style[^>]*>[^<]*Arial/.test(html), c.name);
+    }
+  });
+
+  test("tables only: no flexbox or grid", () => {
+    for (const c of PREVIEW_CASES) {
+      assert.ok(!/display\s*:\s*(inline-)?(flex|grid)/i.test(render(c).html), c.name);
+    }
+  });
+
+  test("brand images are absolute https, sized, and every img has alt", () => {
+    for (const c of PREVIEW_CASES) {
+      const { html } = render(c);
+      const imgs = html.match(/<img\b[^>]*>/g) ?? [];
+      assert.ok(imgs.length >= 2, c.name);
+      assert.ok(!html.includes("logo.png"), c.name);
+      for (const img of imgs) assert.ok(/\salt="[^"]*"/.test(img), `${c.name}: ${img}`);
+      assert.ok(html.includes('<a href="https://letsdip.work/" style="text-decoration:none;"><img class="art" src="https://letsdip.work/img/email/header.png" width="600" height="100" alt="DIP"'), c.name);
+      assert.ok(html.indexOf("header.png") < html.indexOf("<h1"), c.name);
+      assert.ok(html.includes('src="https://letsdip.work/img/email/footer.png" width="600" height="100" alt=""'), c.name);
+      assert.ok(html.includes('bgcolor="#F2F3FC"'), c.name);
+      for (const m of html.matchAll(/<img\b[^>]*\ssrc="([^"]*)"/g)) assert.ok(m[1]!.startsWith("https://"), `${c.name}: ${m[1]}`);
+    }
+  });
+
+  test("open pixel renders only when openPixelURL is set, last in the body, never in text", () => {
+    for (const c of PREVIEW_CASES) {
+      const out = render(c);
+      const pixel = /<img src="[^"]*\/o\/[^"]*" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0" \/>/;
+      if (c.ctx.openPixelURL) {
+        assert.ok(pixel.test(out.html), c.name);
+        assert.ok(out.html.includes(`src="${c.ctx.openPixelURL}"`), c.name);
+        const imgs = out.html.match(/<img\b[^>]*>/g)!;
+        assert.ok(imgs[imgs.length - 2]!.includes("footer.png") && imgs[imgs.length - 1]!.includes(c.ctx.openPixelURL), c.name);
+      } else {
+        assert.ok(!pixel.test(out.html), c.name);
+      }
+      assert.ok(!out.text.includes("/o/") && !out.text.includes(".gif"), c.name);
+    }
+    const base = PREVIEW_CASES[0]!;
+    for (const empty of [null, "", undefined]) {
+      const out = renderEmail(base.template, base.variables as never, { ...base.ctx, openPixelURL: empty });
+      assert.ok(!out.html.includes('width="1" height="1"'));
+    }
+    const evil = renderEmail(base.template, base.variables as never, { ...base.ctx, openPixelURL: 'https://letsdip.work/o/a"b.gif' });
+    assert.ok(!evil.html.includes('a"b'));
+  });
+
+  test("primary button has a VML fallback and a tap height of at least 44px; purple only on the button", () => {
+    for (const c of PREVIEW_CASES) {
+      const { html } = render(c);
+      assert.ok(html.includes("<v:roundrect") && html.includes("height:44px"), c.name);
+      assert.ok(/padding:0 28px;height:44px;[^"]*line-height:44px/.test(html) && !html.includes("min-height") && html.includes('height="44"'), c.name);
+      assert.ok(html.includes("@media (max-width: 620px)") && html.includes(".btn-table { width: 100% !important; }"), c.name);
+      assert.ok(!/#4F5BD5|#AEB7FF/i.test(html), c.name);
+      const purple = html.split("\n").filter((l) => l.includes("#7B88FA"));
+      assert.ok(purple.every((l) => /v:roundrect|btn-table/.test(l)), c.name);
+      assert.ok(/padding:12px 0;color:#1E212B;text-decoration:underline;">Unsubscribe/.test(html), c.name);
+    }
+  });
+
+  test("footer banner is the last image (before only the pixel), after the unsubscribe link", () => {
+    for (const c of PREVIEW_CASES) {
+      const { html } = render(c);
+      const imgs = html.match(/<img\b[^>]*>/g)!;
+      const footerIdx = imgs.findIndex((i) => i.includes("footer.png"));
+      assert.ok(footerIdx === imgs.length - 1 || (footerIdx === imgs.length - 2 && imgs[imgs.length - 1]!.includes('width="1"')), c.name);
+      assert.ok(html.indexOf("footer.png") > html.indexOf(">Unsubscribe<"), c.name);
+      assert.ok(html.indexOf(">Unsubscribe<") > html.indexOf("Open in DIP"), c.name);
+    }
+  });
+
+  test("never a one-sided border on a rounded element", () => {
+    for (const c of PREVIEW_CASES) {
+      for (const m of render(c).html.matchAll(/<[a-z0-9]+\b[^>]*\sstyle="([^"]*)"/g)) {
+        const style = m[1]!;
+        if (/border-radius/.test(style)) assert.ok(!/border-(left|right|top|bottom)\s*:/.test(style), `${c.name}: ${style}`);
+      }
+    }
+  });
+
+  test("challenge titles use curly quotes in html and text", () => {
+    for (const n of ["challenge_approved", "challenge_changes_requested"]) {
+      const out = render(PREVIEW_CASES.find((c) => c.name === n)!);
+      for (const body of [out.html, out.text]) assert.ok(body.includes("\u201C10,000 steps for a week\u201D"), n);
+    }
+  });
+
+  test("details block lists When and Where as a key/value table", () => {
+    const out = render(PREVIEW_CASES[0]!);
+    assert.ok(out.html.includes(">When</td>") && out.html.includes(">Where</td>"));
+    assert.ok(out.text.includes("When: Fri, Nov 20, 6:30 PM to 8:00 PM EST") && out.text.includes("Where: Frick Park"));
+    assert.ok(out.text.startsWith("NEW INVITATION\n"));
+  });
+
   test("cover images are never rendered, but the variable still validates", () => {
     const c = PREVIEW_CASES[0]!;
-    assert.ok(!render(c).html.includes("<img"));
+    assert.ok(!render(c).html.includes("catalog://") && !/hiking/.test(render(c).html));
     assert.ok(validateVariables(c.template, c.variables));
     assert.equal(validateVariables(c.template, { ...(c.variables as object), coverImageURL: 5 }), null);
   });
 
   test("event_changed shows an Updated pill and names what changed", () => {
     const out = render(PREVIEW_CASES.find((c) => c.name === "event_changed")!);
-    assert.ok(out.html.includes(">Updated<") && out.html.includes("#EEF0FF"));
+    assert.ok(out.html.includes(">Updated<") && out.html.includes('class="pill border"') && !out.html.includes("#EEF0FF"));
     assert.ok(!out.text.includes("latest details are below"));
   });
 
@@ -168,7 +270,10 @@ describe("email template invariants", () => {
     assert.ok(byName("invite_received").text.includes("See who is going and respond."));
     assert.ok(byName("event_canceled").text.includes("Browse other events."));
     assert.ok(byName("challenge_approved").text.includes("+50 points"));
-    assert.ok(byName("challenge_approved").html.includes("font-weight:700;color:#1F2937;\">+50 points"));
+    assert.ok(byName("challenge_approved").html.includes("font-weight:700;color:#1E212B;\">+50 points"));
+    assert.ok(byName("invite_received").html.includes(">New invitation<"));
+    assert.ok(byName("event_reminder_1h").html.includes(">Starts in about an hour<"));
+    assert.ok(byName("challenge_changes_requested").html.includes(">Changes requested<"));
     assert.ok(byName("invite_answered_declined").subject.includes("declined"));
   });
 });

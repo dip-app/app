@@ -93,6 +93,12 @@ export interface OutboxStore {
   finish(id: string, status: Exclude<OutboxStatus, "sending">, fields: { reason?: SkipReason | string; providerMessageId?: string; toHash?: string }, now: Date): Promise<void>;
   /** Lookup used by the webhook to map a complaint back to the member. */
   get(id: string): Promise<OutboxDocument | null>;
+  /**
+   * Approximate open tracking. Transaction: only when the document exists and is `sent` (and `now` is not before its
+   * sent time) increments `openCount`, sets `firstOpenedAt` once and sets `lastOpenedAt`. Returns whether it counted.
+   * Counters only; no per-open event log (no IP, user agent or timestamps list is stored).
+   */
+  recordOpen(id: string, now: Date): Promise<boolean>;
 }
 
 export interface Recipient {
@@ -151,4 +157,6 @@ export interface EmailConfig {
   defaultTimeZone: string;
   /** `https://letsdip.work`; links are built from it. */
   publicOrigin: string;
+  /** Adds the signed open pixel to rendered emails (`EMAIL_OPEN_TRACKING`). */
+  openTracking: boolean;
 }

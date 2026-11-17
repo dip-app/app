@@ -106,7 +106,23 @@ class FirestoreOutboxStore implements OutboxStore {
       if (fields.reason !== undefined) update["reason"] = fields.reason;
       if (fields.providerMessageId !== undefined) update["providerMessageId"] = fields.providerMessageId;
       if (fields.toHash !== undefined) update["toHash"] = fields.toHash;
+      if (status === "sent") update["sentAt"] = Timestamp.fromDate(now);
       tx.update(ref, update);
+    });
+  }
+
+  async recordOpen(id: string, now: Date): Promise<boolean> {
+    const ref = this.db.collection(OUTBOX_COLLECTION).doc(id);
+    return this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || snap.get("status") !== "sent") return false;
+      const sentAt = toDate(snap.get("sentAt")) ?? toDate(snap.get("updatedAt"));
+      if (sentAt !== null && now.getTime() < sentAt.getTime()) return false;
+      const stamp = Timestamp.fromDate(now);
+      const update: Record<string, unknown> = { openCount: FieldValue.increment(1), lastOpenedAt: stamp };
+      if (toDate(snap.get("firstOpenedAt")) === null) update["firstOpenedAt"] = stamp;
+      tx.update(ref, update);
+      return true;
     });
   }
 

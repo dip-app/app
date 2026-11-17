@@ -1,5 +1,5 @@
-import { collapseWhitespace, escapeHtml } from "../../../share/domain/sharePage";
-import { buildCopy, CATEGORY_REASON, eventURL, truncate } from "./copy";
+import { SHARE_ORIGIN, collapseWhitespace, escapeHtml } from "../../../share/domain/sharePage";
+import { buildCopy, CATEGORY_REASON, eventURL } from "./copy";
 import { TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
 
 export { eventURL };
@@ -168,14 +168,23 @@ export function validateVariables<T extends TemplateId>(template: T, value: unkn
 }
 
 // ---------------------------------------------------------------------------------------------
-// Layout
+// Layout (admin-site look: ink on white, hairlines, small radii, purple only on the primary button)
 // ---------------------------------------------------------------------------------------------
 
 const ACCENT = "#7B88FA";
-const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const INK = "#1E212B";
+const MUTED = "#5B6070";
+const HAIRLINE = "#E6E7EE";
+const ART_BG = "#F2F3FC";
+const FONT_URL = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fjalla+One&display=swap";
+const FONT = "Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+const HEAD_FONT = "'Fjalla One', 'Arial Narrow', Arial, sans-serif";
+export const EMAIL_ASSET_BASE = `${SHARE_ORIGIN}/img/email/`;
 
 const STYLE = `
+  @import url('${FONT_URL}');
   body, table, td { margin: 0; padding: 0; }
+  img { -ms-interpolation-mode: bicubic; }
   @media (max-width: 620px) {
     .container { width: 100% !important; }
     .px { padding-left: 20px !important; padding-right: 20px !important; }
@@ -183,22 +192,43 @@ const STYLE = `
     .btn-a { display: block !important; text-align: center !important; }
   }
   @media (prefers-color-scheme: dark) {
-    body, .bg-outer { background-color: #16181D !important; }
-    .bg-card { background-color: #1F2229 !important; border-color: #343841 !important; }
-    .bg-soft { background-color: #272B33 !important; border-color: #343841 !important; }
-    .text-main { color: #E5E7EB !important; }
-    .text-muted { color: #9CA3AF !important; }
-    .border { border-color: #343841 !important; }
-    .brand { color: #AEB7FF !important; }
-    .pill { background-color: #2B3052 !important; color: #C7CCFF !important; }
-    .link { color: #AEB7FF !important; }
-    .btn-link { color: #FFFFFF !important; }
-  }`;
+    body, .bg-outer { background-color: #121318 !important; }
+    .bg-card { background-color: #1B1D24 !important; border-color: #2C2F38 !important; }
+    .text-main { color: #ECEDEF !important; }
+    .text-muted { color: #A3A7B3 !important; }
+    .border { border-color: #2C2F38 !important; }
+    .pill { border-color: #2C2F38 !important; color: #ECEDEF !important; }
+    .link { color: #ECEDEF !important; }
+    .art-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    .art { border-radius: 8px !important; }
+  }
+  [data-ogsc] .art, [data-ogsb] .art { border-radius: 8px !important; }
+  [data-ogsb] .art-cell { background-color: #1B1D24 !important; }
+  [data-ogsc] .text-main, [data-ogsc] .link { color: #ECEDEF !important; }
+  [data-ogsc] .text-muted { color: #A3A7B3 !important; }
+  [data-ogsc] .pill { color: #ECEDEF !important; border-color: #2C2F38 !important; }
+  [data-ogsb] .bg-outer, [data-ogsb] body { background-color: #121318 !important; }
+  [data-ogsb] .bg-card { background-color: #1B1D24 !important; border-color: #2C2F38 !important; }
+  [data-ogsb] .border { border-color: #2C2F38 !important; }
+  [data-ogsb] .art-cell, [data-ogsc] .art-cell { padding-left: 16px !important; padding-right: 16px !important; }`;
 
-interface Footer {
-  reason: string;
-  unsubscribeURL: string;
-  postalAddress: string;
+const MSO_STYLE = `<!--[if mso]>
+<style type="text/css">body, table, td, a, p, div, span, h1 { font-family: Arial, sans-serif !important; }</style>
+<![endif]-->`;
+
+const PREHEADER_MAX = 110;
+
+/** One complete sentence: the copy sentence plus the event day when it fits; cut only at a word boundary, no ellipsis. */
+function buildPreheader(template: TemplateId, sentence: string, when: string): string {
+  const day = when.split(/, \d/)[0] ?? "";
+  if (template !== "event_reminder" && day) {
+    const withDay = `${sentence.replace(/\.$/, "")} on ${day}.`;
+    if (withDay.length <= PREHEADER_MAX) return withDay;
+  }
+  if (sentence.length <= PREHEADER_MAX) return sentence;
+  const cut = sentence.slice(0, PREHEADER_MAX - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[\s.,;:!?-]+$/u, "")}.`;
 }
 
 function greeting(ctx: RenderContext): string {
@@ -206,11 +236,10 @@ function greeting(ctx: RenderContext): string {
   return name ? `Hi ${name},` : "Hi there,";
 }
 
-
 /**
  * Renders one transactional email to subject, preheader, table-based HTML and a plain-text alternative.
  * Cover images are intentionally not rendered (too dominant, and Outlook cannot crop); `coverImageURL` stays in the
- * allow-list, and a pre-cropped 1200x280 banner can return later.
+ * allow-list. The header and footer art are fixed brand assets, not event content.
  */
 export function renderEmail<T extends TemplateId>(template: T, variables: TemplateVariables[T], ctx: RenderContext): RenderedEmail {
   const copy = buildCopy(template, variables);
@@ -223,27 +252,27 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
   const when = facts ? formatEventTime(facts.startTime, facts.endTime, zone) : "";
   const venue = facts?.venueName ? collapseWhitespace(facts.venueName) : null;
   const lead = `${hello} ${copy.lead}`;
-  const preheader = truncate(when ? `${copy.preheader} ${when}` : copy.preheader, 90);
+  const preheader = buildPreheader(template, copy.preheader, when);
 
   const e = escapeHtml;
   const para = (text: string, margin = "16px"): string =>
-    `<p class="text-main" style="margin:0 0 ${margin} 0;font-family:${FONT};font-size:16px;line-height:24px;color:#1F2937;">${e(text)}</p>`;
+    `<p class="text-main" style="margin:0 0 ${margin} 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(text)}</p>`;
+
+  const row = (label: string, value: string, first: boolean): string =>
+    `<tr><td class="text-muted${first ? "" : " border"}" valign="top" width="64" style="width:64px;padding:10px 12px 10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${label}</td><td dir="auto" class="text-main${first ? "" : " border"}" valign="top" style="padding:10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:15px;line-height:20px;color:${INK};"><bdi>${e(value)}</bdi></td></tr>`;
 
   const pill = copy.badge
-    ? `<div style="margin:0 0 8px 0;"><span class="pill" style="display:inline-block;padding:2px 8px;border-radius:10px;background-color:#EEF0FF;color:#4F5BD5;font-size:12px;line-height:16px;font-weight:600;">${e(copy.badge)}</span></div>`
+    ? `<div style="margin:0 0 10px 0;"><span class="pill border" style="display:inline-block;padding:2px 10px;border:1px solid ${HAIRLINE};border-radius:999px;font-family:${FONT};font-size:12px;line-height:16px;font-weight:600;color:${INK};">${e(copy.badge)}</span></div>`
     : "";
+  const detailRows = [when ? row("When", when, true) : "", venue ? row("Where", venue, !when) : ""].join("");
   const card =
     facts && title
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-soft border" style="margin:4px 0 16px 0;background-color:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;border-left:3px solid ${ACCENT};">
-<tr><td style="padding:16px 18px;font-family:${FONT};">
-${pill}<div dir="auto" class="text-main" style="font-size:18px;line-height:26px;font-weight:600;color:#1F2937;"><bdi>${e(title)}</bdi></div>
-${when ? `<div class="text-muted" style="margin-top:6px;font-size:14px;line-height:20px;color:#6B7280;">${e(when)}</div>` : ""}
-${venue ? `<div dir="auto" class="text-muted" style="margin-top:2px;font-size:14px;line-height:20px;color:#6B7280;"><bdi>${e(venue)}</bdi></div>` : ""}
-</td></tr></table>`
+      ? `${pill}<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-family:${FONT};font-size:18px;line-height:26px;font-weight:700;color:${INK};"><bdi>${e(title)}</bdi></p>
+${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="border" style="margin:0 0 20px 0;border-top:1px solid ${HAIRLINE};border-bottom:1px solid ${HAIRLINE};">${detailRows}</table>` : `<div style="height:12px;line-height:12px;font-size:12px;">&nbsp;</div>`}`
       : "";
 
   const highlight = copy.highlight
-    ? `<p class="text-main" style="margin:0 0 16px 0;font-family:${FONT};font-size:20px;line-height:28px;font-weight:700;color:#1F2937;">${e(copy.highlight)}</p>`
+    ? `<p class="text-main" style="margin:0 0 16px 0;font-family:${FONT};font-size:20px;line-height:28px;font-weight:700;color:${INK};">${e(copy.highlight)}</p>`
     : "";
 
   const cta = e(copy.ctaURL);
@@ -252,52 +281,62 @@ ${venue ? `<div dir="auto" class="text-muted" style="margin-top:2px;font-size:14
 <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${cta}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${label}</center></v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td align="center" bgcolor="${ACCENT}" style="background-color:${ACCENT};border-radius:8px;"><a class="btn-a btn-link" href="${cta}" style="display:inline-block;padding:12px 28px;font-family:${FONT};font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">${label}</a></td></tr></table>
+<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td align="center" height="44" bgcolor="${ACCENT}" style="height:44px;background-color:${ACCENT};border-radius:8px;"><a class="btn-a" href="${cta}" style="display:inline-block;padding:0 28px;height:44px;font-family:${FONT};font-size:16px;line-height:44px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">${label}</a></td></tr></table>
 <!--<![endif]-->`;
 
-  const fine = `font-family:${FONT};font-size:12px;line-height:18px;color:#6B7280;`;
+  const pixel = ctx.openPixelURL
+    ? `<img src="${e(ctx.openPixelURL)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0" />`
+    : "";
+
+  const IMG_BASE = "display:block;width:100%;max-width:100%;height:auto;border:0;";
+  const header = `<tr><td class="art-cell" bgcolor="${ART_BG}" style="padding:0;background-color:${ART_BG};font-size:0;line-height:0;"><a href="${SHARE_ORIGIN}/" style="text-decoration:none;"><img class="art" src="${EMAIL_ASSET_BASE}header.png" width="600" height="100" alt="DIP" style="${IMG_BASE}font-family:${HEAD_FONT};font-size:20px;line-height:100px;color:${INK};" /></a></td></tr>`;
+  const footerArt = `<tr><td class="art-cell" bgcolor="${ART_BG}" style="padding:0;background-color:${ART_BG};font-size:0;line-height:0;"><img class="art" src="${EMAIL_ASSET_BASE}footer.png" width="600" height="100" alt="" style="${IMG_BASE}" />${pixel}</td></tr>`;
+
+  const fine = `font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};`;
   const html = `<!doctype html>
-<html lang="en">
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
 <title>${e(copy.subject)}</title>
+<link rel="stylesheet" href="${FONT_URL}">
+${MSO_STYLE}
 <style>${STYLE}
 </style>
 </head>
-<body class="bg-outer" style="margin:0;padding:0;background-color:#F3F4F6;">
+<body class="bg-outer" style="margin:0;padding:0;background-color:#F6F7F9;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${e(preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#F3F4F6;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#F6F7F9;">
 <tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" class="container bg-card border" style="width:560px;max-width:560px;background-color:#FFFFFF;border:1px solid #E5E7EB;border-top:3px solid ${ACCENT};border-radius:12px;">
-<tr><td class="px" style="padding:20px 28px 0 28px;font-family:${FONT};font-size:20px;line-height:28px;font-weight:700;color:#4F5BD5;" align="left"><span class="brand" style="color:#4F5BD5;">DIP</span></td></tr>
-<tr><td class="px" style="padding:16px 28px 28px 28px;">
-${para(lead)}
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container bg-card border" style="width:600px;max-width:600px;background-color:#FFFFFF;border:1px solid ${HAIRLINE};border-radius:8px;border-collapse:separate;overflow:hidden;">
+${header}
+<tr><td class="px" style="padding:28px 28px 32px 28px;">
+<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>
+${para(lead, "20px")}
 ${card}
-${copy.note ? para(copy.note) : ""}
+${copy.note ? para(copy.note, "20px") : ""}
 ${highlight}
 ${button}
 </td></tr>
-<tr><td class="px" style="padding:0 28px 24px 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="border" style="border-top:1px solid #E5E7EB;padding-top:16px;font-family:${FONT};">
-<p class="text-muted" style="margin:0 0 4px 0;${fine}">You are getting this because ${e(reason)} emails are on. <a class="link" href="${e(ctx.unsubscribeURL)}" style="color:#4B5563;text-decoration:underline;">Unsubscribe</a> &middot; Manage in the DIP app (Profile &gt; Notifications)</p>
+<tr><td class="px" style="padding:8px 28px 16px 28px;font-family:${FONT};">
+<p class="text-muted" style="margin:0;${fine}">You are getting this because ${e(reason)} emails are on. <a class="link" href="${e(ctx.unsubscribeURL)}" style="display:inline-block;padding:12px 0;color:${INK};text-decoration:underline;">Unsubscribe</a> &middot; Manage in DIP: Profile &gt; Notifications</p>
 <p class="text-muted" style="margin:0;${fine}">DIP &middot; ${e(ctx.postalAddress)}</p>
-</td></tr></table>
 </td></tr>
+${footerArt}
 </table>
 </td></tr></table>
 </body>
 </html>
 `;
 
-  const lines: string[] = [lead, ""];
+  const lines: string[] = [copy.heading.toUpperCase(), "", lead, ""];
   if (facts && title) {
     if (copy.badge) lines.push(`[${copy.badge}]`);
     lines.push(title);
-    if (when) lines.push(when);
-    if (venue) lines.push(venue);
+    if (when) lines.push(`When: ${when}`);
+    if (venue) lines.push(`Where: ${venue}`);
     lines.push("");
   }
   if (copy.note) lines.push(copy.note, "");
@@ -305,7 +344,7 @@ ${button}
   lines.push(`${copy.ctaLabel}: ${copy.ctaURL}`, "", "--");
   lines.push(`You are getting this because ${reason} emails are on.`);
   lines.push(`Unsubscribe: ${ctx.unsubscribeURL}`);
-  lines.push("Manage in the DIP app (Profile > Notifications)");
+  lines.push("Manage in DIP: Profile > Notifications");
   lines.push(`DIP · ${ctx.postalAddress}`);
 
   return { subject: copy.subject, preheader, html, text: `${lines.join("\n")}\n` };

@@ -134,8 +134,8 @@ Deliverability on a brand-new domain (warm-up, DMARC discipline); cost surprises
 Recorded November 17, 2026 by the email workstream. Each can be revisited; none needs a data migration.
 
 1. **Provider (question 1):** code is provider-agnostic (`EmailProviderPort`, `EmailWebhookVerifier`); the only real adapter is Postmark, as recommended. Default `EMAIL_PROVIDER=log` sends nothing. No account was created and nothing was bought.
-2. **Templates (question 7):** no React in the Functions bundle. A small typed, dependency-free renderer (table layout, inline styles, dark-mode media query, Outlook VML button, plain-text alternative) replaced react-email; no new npm dependencies at all. Snapshot files live in `gcp/tests/unit/__snapshots__/email/`; `npm run email:preview -- <dir>` writes a gallery. Design crit passed in two rounds (desktop-first, compact, no purple blocks).
-3. **No cover image** in emails for now: a full-width hero dominated a notification and Outlook cannot crop. A pre-cropped 1200x280 banner can return later; the variable is still allow-listed.
+2. **Templates (question 7):** no React in the Functions bundle. A small typed, dependency-free renderer (table layout, inline styles, dark-mode media query, Outlook VML button, plain-text alternative) replaced react-email; no new npm dependencies at all. Snapshot files live in `gcp/tests/unit/__snapshots__/email/`; `npm run email:preview -- <dir> [--asset-base <url>]` writes a gallery. The look follows the admin site (see the style guide below).
+3. **No per-event cover image:** a full-width event photo dominated a notification and Outlook cannot crop. Instead every email carries the same on-brand header and footer art (hosted, 1200 wide shown at 600). The cover variable is still allow-listed for later.
 4. **Reminder emails default off (question 2)**, as in the shared registry; members opt in. `discovery` is offered (default off) but no template exists yet.
 5. **Time zone (question 3):** `emailSettings/{companyId}.timeZone` when set, else the `EMAIL_DEFAULT_TIME_ZONE` param (default `America/New_York`, the same assumption as the share page). Every time shows the zone abbreviation.
 6. **Postal address (question 4):** `EMAIL_POSTAL_ADDRESS` param; while empty, every email is skipped (`config_incomplete`).
@@ -146,9 +146,23 @@ Recorded November 17, 2026 by the email workstream. Each can be revisited; none 
 11. **Unsubscribe GET does not unsubscribe** (scanners prefetch links); it shows a page whose button POSTs. The RFC 8058 POST from mail clients acts directly. Tokens are per category, valid 60 days, and the page also offers "all DIP emails".
 12. **Webhook auth:** Postmark does not sign webhooks, so the endpoint requires Basic credentials (secret password, at least 24 characters, constant-time compare). A complaint suppresses the address and turns every email category off for the member.
 13. **ICS:** `METHOD:PUBLISH` (not `REQUEST`, which would invite iTIP replies DIP cannot receive), UID `<eventId>@letsdip.work`, `SEQUENCE` = event revision, attached to invite, reminder, change, cancel and attendee-added emails.
-14. **No open or click tracking**, links unchanged (privacy, and keeps universal links working).
+14. **Opens only, approximate, off by default** (`EMAIL_OPEN_TRACKING`): a signed 1x1 pixel `https://letsdip.work/o/<token>.gif` served by `emailOpenV1` increments `openCount` and sets `firstOpenedAt`/`lastOpenedAt` on that email's own `emailOutbox` document (counters only, no IP, user agent or per-open log). Apple Mail Privacy Protection and Gmail's image proxy prefetch images, so counts overstate real opens and are a rough signal only. **No click tracking**: redirect links would break universal links into the app.
 15. **Caps:** 20 emails per member per day and 2,000 per company per day (overridable up to 50,000 in `emailSettings`).
 16. **Push-or-email policy:** invites and event updates go to both channels; reminders and discovery follow the email switch only; challenge emails are sent only when push will not be delivered.
+
+## Email style guide
+
+The emails follow the admin site (`apps/admin`, `styles/pro.scss`), not the playful app style.
+
+- **Type:** Figtree for body (fallback `-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif`), Fjalla One for headings (fallback `Impact, 'Arial Narrow', sans-serif`; Outlook is forced to Arial). Loaded with a Google Fonts `<link>` plus `@import`; Gmail and Outlook ignore web fonts, so the fallback must look right on its own.
+- **Color:** ink `#1E212B`, neutral grays with AA contrast, hairline borders, white card on a light neutral page. Purple `#7B88FA` only on the primary button (white text, bold, at least 44px tall). White on `#7B88FA` is about 3.1:1, a locked brand decision; the label is bold 16px to compensate.
+- **Borders:** never a one-sided colored border on an element with `border-radius` (the colored edge curves into a crescent). Use a full uniform hairline border, a solid background tint, or a square-cornered accent bar as its own element. A unit test enforces this.
+- **Layout:** tables only (`role="presentation"`), inline styles, 600px max width, no `display:flex` or `grid`, no background images for content, bulletproof button with a VML `v:roundrect` fallback, full-width button under 620px.
+- **Images:** hosted on the site (`apps/admin/public/img/email/`, served at `https://letsdip.work/img/email/`), absolute https URLs, retina (1200 wide shown at 600), `width`/`height` attributes, `alt` on every image (decorative art `alt=""`), `bgcolor` fallback on the image cell so blocked images leave a calm tinted band. See `apps/admin/public/img/email/README.md`.
+- **Dark mode:** `color-scheme` and `supported-color-schemes` meta, `prefers-color-scheme` overrides and `[data-ogsc]` for Outlook.com. Gmail apps may invert colors themselves; banners are opaque and self-contained so inversion cannot break them.
+- **Content:** hidden preheader, one heading, one sentence with the greeting, a When/Where table, one button, a two-part footer (reason, Unsubscribe, settings path; then DIP and the postal address). Plain-text alternative carries the same content. US spelling, no em dashes.
+
+Client support notes (from caniemail.com, general guidance, not re-verified per client): `<style>` in `<head>` and media queries work in Apple Mail, iOS Mail, Gmail web and apps (Gmail supports embedded styles but not `@import` web fonts) and Outlook.com; classic Outlook for Windows (Word engine) ignores `border-radius`, `max-width` and web fonts, hence VML buttons, fixed-width tables and the mso Arial override; `prefers-color-scheme` works in Apple Mail and Outlook for macOS, not in Gmail.
 
 ## Work breakdown
 

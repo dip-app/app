@@ -81,9 +81,11 @@ EMAIL_PROVIDER=postmark
 EMAIL_POSTAL_ADDRESS=<street, city, state ZIP of the business>
 EMAIL_DEFAULT_TIME_ZONE=America/New_York
 POSTMARK_MESSAGE_STREAM=notifications
+EMAIL_OPEN_TRACKING=false
 ```
 
 - `EMAIL_POSTAL_ADDRESS` is required by CAN-SPAM for commercial mail and shown in every footer; while it is empty the sender skips every email (`config_incomplete`). Do not start it with "DIP" (the footer adds "DIP ·").
+- `EMAIL_OPEN_TRACKING=true` adds the approximate open pixel (`/o/<token>.gif`, function `emailOpenV1`). The privacy page already describes it; leave it off if you do not want it.
 - `EMAIL_DEFAULT_TIME_ZONE` is used when `emailSettings/{companyId}.timeZone` is unset; every time in an email shows the zone abbreviation.
 
 ## 6. Webhook
@@ -107,10 +109,10 @@ Enable: Bounce (with "include message content" off), Spam Complaint, Subscriptio
 2. Set `EMAIL_ENABLED=true` and redeploy the email functions only:
 
 ```sh
-firebase deploy --only functions:dip:onEmailOutboxCreated,functions:dip:emailUnsubscribeV1,functions:dip:emailWebhookV1 --project team05-dip
+firebase deploy --only functions:dip:onEmailOutboxCreated,functions:dip:emailUnsubscribeV1,functions:dip:emailWebhookV1,functions:dip:emailOpenV1 --project team05-dip
 ```
 
-3. Deploy Hosting so `/u/**` reaches `emailUnsubscribeV1` (the rewrite is in `firebase.json`).
+3. Deploy Hosting so `/u/**` reaches `emailUnsubscribeV1` and `/o/**` reaches `emailOpenV1` (rewrites in `firebase.json`), and so `https://letsdip.work/img/email/{logo,header,footer}.png` are live before the first email (they are part of the site build).
 4. Firestore TTL policies (one-time, like `inviteRateLimits.expiresAt`): `emailOutbox.expireAt` and `emailCaps.expireAt`.
 
 ```sh
