@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Shell } from "@/components/Shell";
-import { Avatar, Empty, Info, LoadError, Loading, Notice, formatDateTime } from "@/components/Ui";
+import { Tabs, tabPanelProps } from "@/components/Tabs";
+import { toast } from "@/components/Toast";
+import { Avatar, Empty, Info, LoadError, LoadMore, Loading, Notice, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import { useDebounced, usePaged } from "@/components/usePaged";
 import { ApiError } from "@/lib/contract";
@@ -11,11 +13,14 @@ import {
   LIST_PAGE_SIZE, type BugCategory, type BugReport, type BugReportCounts, type BugReportDetail, type BugReportQuery, type BugStatus,
 } from "@/lib/adminTypes";
 import { setBugBadge } from "@/lib/bugBadge";
+import { oneOf, useQueryState } from "@/lib/useQueryState";
+import { useSlashFocus } from "@/lib/useSlashFocus";
 import { BUG_CATEGORIES, BUG_CATEGORY_LABEL, BUG_STATUSES, BUG_STATUS_LABEL, diagnosticRows, issueText, screenLabel } from "@/lib/bugReports";
 
 type StatusFilter = BugStatus | "all";
 const number = (n: number) => n.toLocaleString("en-US");
 const NOTE_MAX = 2000;
+const DEFAULTS = { status: "all", category: "all", from: "", to: "", q: "", report: "" };
 const STATUS_TONE: Record<BugStatus, "warn" | "ok" | undefined> = { new: "warn", triaged: undefined, resolved: "ok" };
 const EMPTY_COPY: Record<StatusFilter, { title: string; body: string }> = {
   all: { title: "No reports yet", body: "When someone shakes their phone and sends feedback, it shows up here." },
@@ -45,7 +50,7 @@ function Screenshot({ url, who, onExpired }: { url: string; who: string; onExpir
   }
   return (
     <>
-      <button className="evidence shot" onClick={() => setOpen(true)} aria-label={`Open ${who}’s screenshot full size`}>
+      <button className="evidence shot" onClick={() => setOpen(true)} aria-label={`View full size: screenshot from ${who}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={`Screenshot from ${who}`} onError={() => setBroken(true)} />
         <span className="view-full">View full size</span>
@@ -112,7 +117,8 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
       setDetail(next);
       setNote(result.note);
       onSaved({ id: report.id, status: result.status, hasNote: result.note !== "", ...(result.assigneeId ? { assigneeId: result.assigneeId, assigneeName: result.assigneeName ?? "" } : {}) });
-      setMessage({ tone: "ok", text: result.changed ? "Saved." : "Nothing to change." });
+      setMessage(null);
+      toast(result.changed ? "Saved." : "Nothing to change.");
     } catch (failure) {
       const stale = failure instanceof ApiError && failure.reason === "REVISION_CONFLICT";
       setMessage({ tone: "error", text: stale ? "Someone else updated this report. Reload it to see their changes, then save again." : describe(failure) });
@@ -136,7 +142,7 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
   const rows = diagnosticRows(detail?.diagnostics ?? null);
   return (
     <article className="review-detail panel bug-detail" aria-label={`Bug report from ${report.reporterName}`}>
-      <button className="pill-btn gray small to-list" onClick={onBackToList}>‹ All reports</button>
+      <button type="button" className="pill-btn gray small to-list" onClick={onBackToList}><span aria-hidden>‹ </span>All reports</button>
       <div className="review-head">
         <div className="person big"><Avatar name={report.reporterName} /><div><h2>{report.reporterName}</h2><p className="muted">{detail?.reporterEmail || " "}</p></div></div>
         <div className="review-pills">
@@ -188,7 +194,7 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
               <div className="actions">
                 <button type="submit" className="pill-btn dark" disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</button>
 
-                <button type="button" className="pill-btn gray" onClick={() => void copy()}>{copied ? "✓ Copied" : "Copy as issue text"}</button>
+                <button type="button" className="pill-btn gray" onClick={() => void copy()}>{copied ? <><span aria-hidden>✓ </span>Copied</> : "Copy as issue text"}</button>
                 <span className="sr-only" role="status">{copied ? "Issue text copied to the clipboard" : ""}</span>
               </div>
               {!dirty && !saving && <p className="no-changes">No changes to save</p>}
@@ -199,14 +205,17 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
   );
 }
 
-export default function BugReportsPage() {
+function BugReports() {
   const { api } = useApp();
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [category, setCategory] = useState<BugCategory | "all">("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [qs, setQs] = useQueryState(DEFAULTS);
+  const status = oneOf(qs.status, ["all", ...BUG_STATUSES] as const, "all") as StatusFilter;
+  const category = oneOf(qs.category, ["all", ...BUG_CATEGORIES] as const, "all") as BugCategory | "all";
+  const from = qs.from;
+  const to = qs.to;
+  const search = qs.q;
+  const selectedId = qs.report || null;
+  const [autoId, setAutoId] = useState<string | null>(null);
+  useSlashFocus("bug-search");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [counts, setCounts] = useState<BugReportCounts | null>(null);
   const query = useDebounced(search.trim());
@@ -236,9 +245,10 @@ export default function BugReportsPage() {
     if (!filtered) setBugBadge({ count: list.extra.new, capped: list.extra.capped });
   }, [list.extra, filtered]);
 
-  const selected = list.items.find((r) => r.id === selectedId) ?? null;
+  // The report in the URL wins; on wide screens the first one opens by default (not written to the URL).
+  const selected = list.items.find((r) => r.id === selectedId) ?? list.items.find((r) => r.id === autoId) ?? null;
   useEffect(() => {
-    if (!selected && list.items.length > 0 && typeof window !== "undefined" && window.matchMedia("(min-width: 1001px)").matches) setSelectedId(list.items[0].id);
+    if (!selected && list.items.length > 0 && typeof window !== "undefined" && window.matchMedia("(min-width: 1001px)").matches) setAutoId(list.items[0].id);
   }, [selected, list.items]);
 
   const refreshCounts = useCallback(async () => {
@@ -263,54 +273,52 @@ export default function BugReportsPage() {
 
   const total = counts ? counts[status] : null;
   const empty = list.items.length === 0;
-  const tabCount = (id: StatusFilter) => (counts ? ` (${number(counts[id])}${counts.capped ? "+" : ""})` : "");
+  const tabCount = (id: StatusFilter) => `${number(counts?.[id] ?? 0)}${counts?.capped ? "+" : ""}`;
 
   return (
     <Shell title="Bug reports" subtitle="What people send with shake-to-report or from Profile. Only admins can see these, including who sent them." requires="bugreports.manage">
-      <div className="tabs-fade"><div className="tabs" role="group" aria-label="Filter by status">
-        {(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => (
-          <button key={id} className="tab" aria-pressed={status === id} onClick={(e) => { setStatus(id); e.currentTarget.scrollIntoView?.({ inline: "center", block: "nearest" }); }}>{id === "all" ? "All" : BUG_STATUS_LABEL[id]}{tabCount(id)}</button>
-        ))}
-      </div></div>
+      <div className="tabs-fade">
+        <Tabs idBase="bugs" label="Filter by status" value={status} onChange={(id) => setQs({ status: id, report: "" })}
+          items={(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => ({ id, label: id === "all" ? "All" : BUG_STATUS_LABEL[id], ...(counts ? { count: tabCount(id) } : {}) }))} />
+      </div>
       <div className="filters bug-filters" data-open={filtersOpen ? "true" : undefined}>
-        <div className="field search"><label htmlFor="search">Search</label>
-          <input id="search" type="search" value={search} placeholder="Text, person or screen" onChange={(e) => setSearch(e.target.value)} autoComplete="off" /></div>
+        <SearchBox id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label="Search reports" placeholder="Text, person or screen (press / to focus)" />
         <button type="button" className="pill-btn gray small filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
           {filtersOpen ? "Hide filters" : "Filters"}
           {activeFilters > 0 && <span className="filter-count" aria-label={`${activeFilters} active`}>{activeFilters}</span>}</button>
         <div className="field wide extra"><label htmlFor="bug-category">Category</label>
-          <select id="bug-category" value={category} onChange={(e) => setCategory(e.target.value as BugCategory | "all")}>
+          <select id="bug-category" value={category} onChange={(e) => setQs({ category: e.target.value })}>
             <option value="all">All categories</option>
             {BUG_CATEGORIES.map((c) => <option key={c} value={c}>{BUG_CATEGORY_LABEL[c]}</option>)}
           </select></div>
-        <div className="field extra"><label htmlFor="bug-from">From</label><input id="bug-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></div>
-        <div className="field extra"><label htmlFor="bug-to">To</label><input id="bug-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-invalid={rangeBad || undefined} /></div>
+        <div className="field extra"><label htmlFor="bug-from">From</label><input id="bug-from" type="date" value={from} max={to || undefined} onChange={(e) => setQs({ from: e.target.value })} /></div>
+        <div className="field extra"><label htmlFor="bug-to">To</label><input id="bug-to" type="date" value={to} min={from || undefined} onChange={(e) => setQs({ to: e.target.value })} aria-invalid={rangeBad || undefined} /></div>
       </div>
-      {filtered && !empty && <p className="clear-filters"><button className="link-btn" onClick={() => { setSearch(""); setCategory("all"); setFrom(""); setTo(""); }}>Clear filters</button></p>}
+      {filtered && !empty && <p className="clear-filters"><button type="button" className="link-btn" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>Clear filters</button></p>}
       {rangeBad && <p className="error" role="alert">The end date is before the start date.</p>}
       {counts?.capped && <Notice>Counts cover the newest 1,000 reports. Older ones are still listed as you load more.</Notice>}
 
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
-        : list.loading ? <Loading label="Loading bug reports" />
+        : list.loading && empty ? <Loading label="Loading bug reports" />
         : empty ? (
           filtered
-            ? <Empty title="No matches" body="Try a different search, category or date range." action={<button className="pill-btn dark" onClick={() => { setSearch(""); setCategory("all"); setFrom(""); setTo(""); }}>Clear filters</button>} />
+            ? <Empty title="No matches" body="Try a different search, category or date range." action={<button type="button" className="pill-btn dark" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>Clear filters</button>} />
             : <Empty title={EMPTY_COPY[status].title} body={EMPTY_COPY[status].body} />
         ) : (
           <>
-            <p className="muted result-count" role="status">
+            <ResultCount>
               {!filtered && total !== null && !counts?.capped
                 ? `Showing ${number(list.items.length)} of ${number(total)} ${total === 1 ? "report" : "reports"}`
                 : `${number(list.items.length)}${list.hasMore ? " reports so far" : list.items.length === 1 ? " report matches" : " reports match"}`}
-            </p>
-            <div className="review-layout">
-              <section aria-label="Reports" className="queue-wrap bug-list" ref={listTop}>
+            </ResultCount>
+            <div className="review-layout" {...tabPanelProps("bugs", status)}>
+              <section aria-label="Reports" className="queue-wrap bug-list" ref={listTop} aria-busy={list.loading || undefined}>
                 <ul className="queue">
                   {list.items.map((item) => (
                     <li key={item.id}>
-                      <button className="queue-item bug-item" aria-current={item.id === selectedId ? "true" : undefined}
-                        onClick={() => { setSelectedId(item.id); detailTop.current?.scrollIntoView?.({ block: "nearest" }); }}>
+                      <button className="queue-item bug-item" aria-current={item.id === selected?.id ? "true" : undefined}
+                        onClick={() => { setQs({ report: item.id }); detailTop.current?.scrollIntoView?.({ block: "nearest" }); }}>
                         <span className="queue-text">
                           <span className="bug-meta"><Info>{BUG_CATEGORY_LABEL[item.category]}</Info><Info tone={STATUS_TONE[item.status]}>{BUG_STATUS_LABEL[item.status]}</Info></span>
                           <span className="bug-snippet">{item.description.trim() || "No description"}</span>
@@ -325,8 +333,8 @@ export default function BugReportsPage() {
                     </li>
                   ))}
                 </ul>
-                {list.error && <div className="banner error" role="alert"><span>{list.error.message}</span><button className="pill-btn" onClick={list.loadMore}>Try again</button></div>}
-                {list.hasMore && <div className="actions"><button className="pill-btn gray" disabled={list.loadingMore} onClick={list.loadMore}>{list.loadingMore ? "Loading…" : "Load more"}</button></div>}
+                {list.error && <div className="banner error" role="alert"><span>{list.error.message}</span><button type="button" className="pill-btn" onClick={list.loadMore}>Try again</button></div>}
+                {list.hasMore && <LoadMore shown={list.items.length} total={!filtered && counts && !counts.capped ? counts[status] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
               </section>
               <div ref={detailTop} className="bug-detail-wrap">
                 {selected
@@ -338,4 +346,8 @@ export default function BugReportsPage() {
         )}
     </Shell>
   );
+}
+
+export default function BugReportsPage() {
+  return <Suspense fallback={<Loading label="Loading bug reports" />}><BugReports /></Suspense>;
 }

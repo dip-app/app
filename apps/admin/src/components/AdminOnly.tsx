@@ -27,7 +27,7 @@ export function AdminOnly({ page, capability, role }: { page: string; capability
   const list = admins.data?.members ?? [];
   const ask = ASK[capability];
   return (
-    <div className="empty admin-only" role="alert">
+    <div className="empty admin-only">
       <h2>Admins only</h2>
       <p>{page} is for company admins. As {role === "organizer" ? "an" : "a"} {ROLE_LABEL[role].toLowerCase()} you can manage events, albums and attendees, and look people up in Members.</p>
       {ask && <p><strong>What to ask:</strong> “Can you {ask}?”</p>}

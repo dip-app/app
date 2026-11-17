@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { type AdminEvent, classify, formatDuration, formatPrice, formatWhen } from "@/lib/contract";
 import { Cover } from "./Cover";
+import { TableRegion } from "./TableRegion";
 
 /** One compact table row per event: small thumbnail, title, when, where, price, going and row actions. Rendered inside `EventTable`. */
 export function EventCard({ event }: { event: AdminEvent }) {
@@ -8,7 +9,7 @@ export function EventCard({ event }: { event: AdminEvent }) {
   const full = kind === "upcoming" && event.attendeeCount >= event.capacity;
   const when = formatWhen(event.startTime, event.endTime);
   const duration = formatDuration(event.startTime, event.endTime);
-  const label = kind === "cancelled" ? "Cancelled" : kind === "past" ? "Past" : full ? "Full" : "Upcoming";
+  const label = kind === "cancelled" ? "Canceled" : kind === "past" ? "Past" : full ? "Full" : "Upcoming";
   const tone = kind === "cancelled" ? "warn" : kind === "upcoming" && !full ? "ok" : "";
   const pct = event.capacity > 0 ? Math.min(100, Math.round((event.attendeeCount / event.capacity) * 100)) : 0;
   return (
@@ -40,12 +41,12 @@ export function EventCard({ event }: { event: AdminEvent }) {
 
 export function EventTable({ children }: { children: React.ReactNode }) {
   return (
-    <div className="table-wrap">
+    <TableRegion label="Events">
       <table className="table responsive events-table">
         <caption className="sr-only">Events</caption>
         <thead><tr><th scope="col">Event</th><th scope="col">When</th><th scope="col">Where</th><th scope="col" className="num">Price</th><th scope="col" className="num">Going</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>{children}</tbody>
       </table>
-    </div>
+    </TableRegion>
   );
 }

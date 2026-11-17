@@ -8,6 +8,7 @@ import {
   type Target, TARGET_LABEL, applyMapping, dataRowsOf, forgetMapping, guessHeaderRow, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues,
   columnLetter, saveMapping, suggestMapping,
 } from "@/lib/importMapping";
+import { TableRegion } from "./TableRegion";
 import { Info } from "./Ui";
 import { Toggle } from "./Toggle";
 
@@ -99,7 +100,7 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
         </p>
       )}
 
-      <div className="table-wrap">
+      <TableRegion label="Match spreadsheet columns">
         <table className="table mapping-table">
           <caption className="sr-only">Map each spreadsheet column to a field</caption>
           <thead><tr><th scope="col">Column in your file</th><th scope="col">Sample values</th><th scope="col">Goes into</th></tr></thead>
@@ -124,7 +125,7 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
             })}
           </tbody>
         </table>
-      </div>
+      </TableRegion>
 
       {issues.errors.map((message) => <p key={message} className="error" role="alert">{message}</p>)}
       {issues.warnings.map((message) => <p key={message} className="notice" role="status">{message}</p>)}

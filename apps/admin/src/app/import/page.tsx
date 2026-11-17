@@ -6,7 +6,8 @@ import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { ImportMapping } from "@/components/ImportMapping";
 import { Shell } from "@/components/Shell";
-import { Empty, Info, Loading, Notice } from "@/components/Ui";
+import { TableRegion } from "@/components/TableRegion";
+import { Empty, Info, LoadMore, Loading, Notice } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanRow } from "@/lib/adminTypes";
 import { browserStore } from "@/lib/api";
@@ -14,6 +15,7 @@ import { ApiError } from "@/lib/contract";
 import { downloadText } from "@/lib/csv";
 import { FIELD_LABEL, type ParsedImport, type RawFile, errorCsv, planCounts, readRawFile, templateCsv, validRows } from "@/lib/importFile";
 import { applyAll, planAll } from "@/lib/importRun";
+import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 
 type Phase = "choose" | "map" | "checking" | "preview" | "applying" | "done";
 const STEPS: { id: string; label: string; phases: Phase[] }[] = [
@@ -53,8 +55,13 @@ export default function ImportPage() {
   const [filter, setFilter] = useState<PlanAction | "all">("all");
   const [shown, setShown] = useState(PREVIEW_PAGE);
   const [confirming, setConfirming] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
   const [results, setResults] = useState<ResultRow[]>([]);
   const [dragging, setDragging] = useState(false);
+
+  // Leaving mid-import is safe (it can be continued), but the reviewer should know the tab is busy.
+  useUnsavedGuard(phase === "applying");
 
   const domain = company.data?.emailDomain ?? "";
   const companyId = session?.companyId ?? "";
@@ -149,7 +156,7 @@ export default function ImportPage() {
       setPhase("done");
     } catch (failure) {
       // Finished chunks are kept; "Continue" asks the server for the next one and is safe to repeat.
-      setError(describe(failure, "The import stopped part-way. Finished rows are saved. Continue to retry the rest."));
+      setError(describe(failure, "The import stopped partway. Finished rows are saved. Continue to retry the rest."));
     }
   }
 
@@ -187,9 +194,9 @@ export default function ImportPage() {
               <p className="muted">
                 {unfinished.fileName || "An import"} was being applied when this page closed.
                 {unfinished.info && <> {unfinished.info.progress.processed.toLocaleString("en-US")} of {unfinished.info.progress.total.toLocaleString("en-US")} rows are done ({unfinished.info.nextChunk} of {unfinished.info.chunkCount} batches).</>}
-                {" "}The server remembers how far it got, so continuing won’t repeat finished rows or change the counts.
+                {" "}DIP remembers how far it got, so continuing won’t repeat finished rows or change the counts.
               </p>
-              <div className="actions"><button className="pill-btn dark" onClick={() => resumeSaved(unfinished)}>Continue import</button><button className="pill-btn gray" onClick={discardSaved}>Dismiss</button></div>
+              <div className="actions"><button type="button" className="pill-btn dark" onClick={() => resumeSaved(unfinished)}>Continue import</button><button type="button" className="pill-btn gray" onClick={() => setDismissing(true)}>Dismiss</button></div>
             </section>
           )}
           {error && <div className="banner error" role="alert"><span>{error}</span></div>}
@@ -241,7 +248,7 @@ export default function ImportPage() {
         <section className="panel" aria-live="polite">
           <h2>3. Checking {fileName}</h2>
           <progress className="progress" aria-label="Checking rows" />
-          <p className="muted">{progress.total ? `Checking ${progress.total} rows with the server…` : "Reading the file…"}</p>
+          <p className="muted">{progress.total ? `Checking ${progress.total} ${progress.total === 1 ? "row" : "rows"}. Nothing is saved yet.` : "Reading the file…"}</p>
           <Loading label="Checking rows" />
         </section>
       )}
@@ -266,17 +273,17 @@ export default function ImportPage() {
           </div>
           {visible.length === 0 ? <Empty title="Nothing in this group" body="Pick another group above or show all rows." action={<button className="pill-btn dark" onClick={() => setFilter("all")}>Show all</button>} /> : (
             <>
-              <div className="table-wrap">
-                <table className="table">
+              <TableRegion label="Import preview">
+                <table className="table responsive">
                   <caption className="sr-only">Import preview</caption>
                   <thead><tr><th scope="col">Line</th><th scope="col">Email</th><th scope="col">Result</th><th scope="col">Changes</th></tr></thead>
                   <tbody>
                     {visible.slice(0, shown).map((r) => (
                       <tr key={r.line}>
-                        <td>{r.line}</td>
-                        <td>{r.email || <span className="muted">(blank)</span>}</td>
-                        <td><Info tone={r.action === "invalid" ? "warn" : r.action === "unchanged" ? undefined : "ok"}>{ACTION_LABEL[r.action]}</Info></td>
-                        <td>
+                        <td data-label="Line">{r.line}</td>
+                        <td data-label="Email">{r.email || <span className="muted">(blank)</span>}</td>
+                        <td data-label="Result"><Info tone={r.action === "invalid" ? "warn" : r.action === "unchanged" ? undefined : "ok"}>{ACTION_LABEL[r.action]}</Info></td>
+                        <td data-label="Changes">
                           {r.errors.map((e) => <p key={e} className="error">{e}</p>)}
                           {r.changes.length > 0 && (
                             <ul className="diff">
@@ -291,8 +298,8 @@ export default function ImportPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-              {visible.length > shown && <div className="actions"><button className="pill-btn gray" onClick={() => setShown((n) => n + PREVIEW_PAGE)}>Show more ({visible.length - shown} left)</button></div>}
+              </TableRegion>
+              {visible.length > shown && <LoadMore shown={shown} total={visible.length} loading={false} label="Show more rows" onClick={() => setShown((n) => n + PREVIEW_PAGE)} />}
             </>
           )}
         </>
@@ -308,7 +315,7 @@ export default function ImportPage() {
               <div className="banner error" role="alert"><span>{error}</span></div>
               <div className="actions">
                 <button className="pill-btn dark" onClick={() => void apply(true)}>Continue</button>
-                <button className="pill-btn gray" onClick={() => setPhase("done")}>Stop here</button>
+                <button type="button" className="pill-btn gray" onClick={() => setStopping(true)}>Stop here</button>
               </div>
             </>
           )}
@@ -337,8 +344,20 @@ export default function ImportPage() {
         </section>
       )}
 
+      {stopping && (
+        <Dialog danger title="Stop the import here?" confirmLabel="Stop import" busyLabel="Stopping…" onClose={() => setStopping(false)}
+          onConfirm={async () => { setStopping(false); setPhase("done"); }}>
+          <p>Rows that were already imported stay. The rest are not imported. To finish later, choose the same file again: finished rows won’t change.</p>
+        </Dialog>
+      )}
+      {dismissing && (
+        <Dialog danger title="Dismiss the unfinished import?" confirmLabel="Dismiss import" busyLabel="Dismissing…" onClose={() => setDismissing(false)}
+          onConfirm={async () => { discardSaved(); setDismissing(false); }}>
+          <p>Rows that were already imported stay. You won’t be able to continue this import from here. To finish it, choose the same file again: finished rows won’t change.</p>
+        </Dialog>
+      )}
       {confirming && (
-        <Dialog title="Apply this import?" confirmLabel={`Apply ${changes} ${changes === 1 ? "change" : "changes"}`} onClose={() => setConfirming(false)} onConfirm={async () => { void apply(false); }}>
+        <Dialog title="Apply this import?" confirmLabel={`Apply ${changes} ${changes === 1 ? "change" : "changes"}`} busyLabel="Starting import…" onClose={() => setConfirming(false)} onConfirm={async () => { void apply(false); }}>
           <p>{counts.create} new {counts.create === 1 ? "person is" : "people are"} added to the roster and {counts.update} existing {counts.update === 1 ? "record is" : "records are"} updated.
             {counts.invalid > 0 && <> {counts.invalid} invalid {counts.invalid === 1 ? "row is" : "rows are"} skipped.</>} The import is recorded in the audit log.</p>
         </Dialog>

@@ -19,11 +19,15 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "axe-core": "^4.10.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
+    "jsdom": "^25.0.1",
     "sass": "^1.87.0",
     "typescript": "^5",
     "vitest": "^3.2.4"

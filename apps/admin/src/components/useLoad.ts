@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/contract";
 import type { AdminApi } from "@/lib/api";
 import { useApp } from "./AppProvider";
@@ -17,7 +17,10 @@ export function useLoad<T>(load: (api: AdminApi) => Promise<T>, key: string = ""
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const loader = useCallback(load, [key]);
 
+  // A different key is a different request: drop the previous answer so it is never shown for the new one (a reload keeps it).
+  const loadedKey = useRef(key);
   useEffect(() => {
+    if (loadedKey.current !== key) { loadedKey.current = key; setData(null); setError(null); }
     if (!session) return;
     let cancelled = false;
     loader(api).then(
@@ -25,7 +28,7 @@ export function useLoad<T>(load: (api: AdminApi) => Promise<T>, key: string = ""
       (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load this. Check your connection and try again.")),
     );
     return () => { cancelled = true; };
-  }, [api, session, loader, attempt]);
+  }, [api, session, loader, attempt, key]);
 
   return { data, error, reload: useCallback(() => setAttempt((n) => n + 1), []), setData };
 }

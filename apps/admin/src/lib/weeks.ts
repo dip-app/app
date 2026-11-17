@@ -113,7 +113,7 @@ export function formatDay(date: CivilDate, withYear = false): string {
   });
 }
 
-/** "Nov 9 – Nov 15, 2026": the window's first and last day in Eastern Time. */
+/** "Nov 9 to Nov 15, 2026": the window's first and last day in Eastern Time. */
 export function formatWindow(startIso: string, endIso: string): string {
   const start = Date.parse(startIso);
   const end = Date.parse(endIso);
@@ -121,7 +121,7 @@ export function formatWindow(startIso: string, endIso: string): string {
   const first = civilDateIn(start);
   const last = civilDateIn(end);
   const sameYear = first.slice(0, 4) === last.slice(0, 4);
-  return `${formatDay(first, !sameYear)} – ${formatDay(last, true)}`;
+  return `${formatDay(first, !sameYear)} to ${formatDay(last, true)}`;
 }
 
 /** True when the window is exactly whole Eastern weeks (Monday 00:00 to Sunday 23:59:59). */

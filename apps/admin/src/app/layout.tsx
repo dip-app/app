@@ -13,7 +13,8 @@ const TITLE = "DIP Admin: organizer portal";
 
 export const metadata: Metadata = {
   metadataBase: new URL(ORIGIN),
-  title: { default: TITLE, template: "%s | DIP Admin" },
+  // No document title here: Shell renders "<page> | DIP Admin" (React hoists it), the boot screen "DIP Admin", and the
+  // login layout its own. A title here would come first in <head> and win over the page title.
   description: DESCRIPTION,
   applicationName: "DIP Admin",
   alternates: { canonical: ADMIN_URL },

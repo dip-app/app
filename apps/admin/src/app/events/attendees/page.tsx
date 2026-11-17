@@ -6,13 +6,19 @@ import { Suspense, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
+import { TableRegion } from "@/components/TableRegion";
+import { toast } from "@/components/Toast";
 import { Toggle } from "@/components/Toggle";
-import { Avatar, Empty, Info, LoadError, Loading, Notice, SearchBox, formatDate } from "@/components/Ui";
+import { Avatar, Empty, Info, LoadError, Loading, ResultCount, SearchBox, formatDate } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import type { Attendee, Member } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
 import { attendanceLabel, attendeesCsv } from "@/lib/exports";
 import { classify } from "@/lib/contract";
+import { useQueryState } from "@/lib/useQueryState";
+import { useSlashFocus } from "@/lib/useSlashFocus";
+
+const DEFAULTS = { q: "" };
 
 function Attendees() {
   const eventId = useSearchParams().get("id") ?? "";
@@ -20,13 +26,14 @@ function Attendees() {
   const event = useLoad((a) => a.getEvent(eventId), `e-${eventId}`);
   const attendees = useLoad((a) => a.listAttendees(eventId), `a-${eventId}`);
   const members = useLoad((a) => a.listMembers(), "members");
-  const [search, setSearch] = useState("");
+  const [qs, setQs] = useQueryState(DEFAULTS);
+  const search = qs.q;
+  useSlashFocus("attendee-search");
   const [pickerSearch, setPickerSearch] = useState("");
   const [adding, setAdding] = useState(false);
   const [candidate, setCandidate] = useState<Member | null>(null);
   const [removing, setRemoving] = useState<Attendee | null>(null);
   const [notify, setNotify] = useState(true);
-    const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   // One requestId per add attempt: a retry after a lost response never adds twice.
@@ -55,12 +62,33 @@ function Attendees() {
     setError("");
     try {
       const { pointsAwarded } = await api.recordAttendance(eventId, attendee.memberId, next);
-      setMessage(`${attendee.name}: ${next ? "checked in" : "marked as not checked in"}.${pointsAwarded ? ` ${pointsAwarded} points awarded.` : ""}`);
+      const text = `${attendee.name}: ${next ? "checked in" : "marked as not checked in"}.${pointsAwarded ? ` ${pointsAwarded} points awarded.` : ""}`;
+      // Undo is offered only while it can work: once points were awarded the check-in is final.
+      toast(text, next && pointsAwarded === 0 ? { action: { label: "Undo", onClick: () => undoCheckIn(attendee) } } : {});
       attendees.reload();
     } catch (failure) {
       setError(describe(failure));
     } finally {
       setBusyId("");
+    }
+  }
+
+  async function undoCheckIn(attendee: Attendee) {
+    try {
+      await api.recordAttendance(eventId, attendee.memberId, false);
+      toast(`Check-in undone for ${attendee.name}.`);
+      attendees.reload();
+    } catch (failure) {
+      toast(describe(failure), { tone: "error" });
+    }
+  }
+
+  function exportCsv() {
+    try {
+      downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, attendees.data!, ended));
+      toast(`Exported ${attendees.data!.length} ${attendees.data!.length === 1 ? "attendee" : "attendees"}.`);
+    } catch {
+      toast("The export didn’t finish. Try again.", { tone: "error" });
     }
   }
 
@@ -71,10 +99,9 @@ function Attendees() {
         <Info>{attendees.data.length} of {event.data.capacity} going</Info>
         <Info>{checkedIn} checked in</Info>
         <span className="spacer" />
-        <button className="pill-btn gray" onClick={() => downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, attendees.data!, ended))} disabled={attendees.data.length === 0}>Export CSV</button>
+        <button className="pill-btn gray" onClick={exportCsv} disabled={attendees.data.length === 0}>Export CSV</button>
         {kind === "upcoming" && <button className="pill-btn purple" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>Add attendee</button>}
       </div>
-      {message && <Notice>{message}</Notice>}
       {error && <div className="banner error" role="alert"><span>{error}</span></div>}
 
       {adding && (
@@ -98,23 +125,25 @@ function Attendees() {
         </section>
       )}
 
-      <SearchBox value={search} onChange={setSearch} label="Search attendees" />
+      <SearchBox id="attendee-search" value={search} onChange={(v) => setQs({ q: v })} label="Search attendees" placeholder="Search attendees (press / to focus)" />
       {attendees.data.length === 0 ? (
         <Empty title="Nobody is going yet" body="Add members yourself, or they can join from the app." />
       ) : shown.length === 0 ? (
         <Empty title="No matches" body="Try a different name, email or department." />
       ) : (
-        <div className="table-wrap">
+        <>
+        <ResultCount>{search.trim() ? `${shown.length} of ${attendees.data.length} attendees match` : `${attendees.data.length} ${attendees.data.length === 1 ? "attendee" : "attendees"}`}</ResultCount>
+        <TableRegion label={`Attendees for ${event.data.title}`}>
           <table className="table responsive">
             <caption className="sr-only">Attendees for {event.data.title}</caption>
             <thead><tr><th scope="col">Name</th><th scope="col">Department</th><th scope="col">RSVP</th><th scope="col">Attendance</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {shown.map((a) => (
                 <tr key={a.memberId}>
-                  <td><span className="person"><Avatar name={a.name} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></td>
-                  <td>{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
-                  <td>{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>Added by staff</Info></>}</td>
-                  <td>
+                  <th scope="row"><span className="person"><Avatar name={a.name} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></th>
+                  <td data-label="Department">{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
+                  <td data-label="RSVP">{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>Added by staff</Info></>}</td>
+                  <td data-label="Attendance">
                     <span className="attendance">
                       <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{attendanceLabel(a.checkedIn, ended)}</Info>
                       <button className={`pill-btn small ${a.checkedIn ? "gray" : "dark"}`} disabled={busyId === a.memberId || (!started && !a.checkedIn)}
@@ -127,46 +156,47 @@ function Attendees() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableRegion>
+        </>
       )}
 
       {candidate && (
         <Dialog
           title={`Add ${candidate.displayName}?`}
-          confirmLabel="Add as going"
+          confirmLabel="Add as going" busyLabel="Adding…"
           reasonLabel={full ? "Why is the event going over capacity?" : undefined}
           onClose={() => setCandidate(null)}
           onConfirm={async (reason) => {
             await api.addAttendee({ eventId, memberId: candidate.id, requestId: requestId.current, ...(full ? { capacityOverrideReason: reason } : {}), notify });
             requestId.current = crypto.randomUUID();
             setCandidate(null);
-            setMessage(`${candidate.displayName} is now going.`);
+            toast(`${candidate.displayName} is now going.`);
             attendees.reload();
             event.reload();
           }}
         >
           <p>They are marked as going and get the event’s default notifications.</p>
           {full && <p className="notice">The event is full ({event.data.capacity} places). Adding them raises the capacity by one and needs a reason.</p>}
-          <Toggle checked={notify} onChange={setNotify} label="Tell them" hint="Sends a notification that they were added." />
+          <Toggle checked={notify} onChange={setNotify} label="Notify them" hint="Sends a notification that they were added." />
         </Dialog>
       )}
       {removing && (
         <Dialog
           danger
           title={`Remove ${removing.name}?`}
-          confirmLabel="Remove from event"
+          confirmLabel="Remove from event" busyLabel="Removing…"
           reasonLabel="Why is this person being removed?"
           onClose={() => setRemoving(null)}
           onConfirm={async (reason) => {
             await api.removeAttendee(eventId, removing.memberId, notify, reason);
             setRemoving(null);
-            setMessage(`${removing.name} was removed.`);
+            toast(`${removing.name} was removed from the event.`);
             attendees.reload();
             event.reload();
           }}
         >
-          <p>Their RSVP is cancelled and the going count drops by one. Attendance already recorded is kept.</p>
-          <Toggle checked={notify} onChange={setNotify} label="Tell them" hint="Sends a notification that they were removed." />
+          <p>Their RSVP is canceled and the going count drops by one. Attendance already recorded is kept.</p>
+          <Toggle checked={notify} onChange={setNotify} label="Notify them" hint="Sends a notification that they were removed." />
         </Dialog>
       )}
     </>

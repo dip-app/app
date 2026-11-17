@@ -9,10 +9,14 @@ import {
 } from "@/lib/contract";
 import { centsToDollars, dollarsToCents, isoToLocalInput, localInputToIso } from "@/lib/datetime";
 import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
+import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
 import { Cover } from "./Cover";
-import { Toggle } from "./Toggle";
+import { Dialog } from "./Dialog";
 import { EventPreview } from "./EventPreview";
+import { RadioGrid } from "./RadioGrid";
+import { toast } from "./Toast";
+import { Toggle } from "./Toggle";
 
 interface Props {
   /** Present when editing. */
@@ -68,6 +72,12 @@ export function EventForm({ event, onReload }: Props) {
   }, [editing]);
   // One key per create attempt, kept across retries so a lost response can never create two events.
   const requestId = useRef(crypto.randomUUID());
+  const [confirmCancel, setConfirmCancel] = useState<EventDraft | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const initial = useRef(JSON.stringify([draft, status, price]));
+  const dirty = !saved && JSON.stringify([draft, status, price]) !== initial.current;
+  useUnsavedGuard(dirty);
 
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const setVenue = <K extends keyof EventDraft["venue"]>(key: K, value: EventDraft["venue"][K]) =>
@@ -90,10 +100,21 @@ export function EventForm({ event, onReload }: Props) {
       focusFirstInvalid(found);
       return;
     }
+    // Canceling an existing event tells every attendee, so it is confirmed first.
+    if (event && status === "cancelled" && event.status !== "cancelled") {
+      setConfirmCancel(candidate);
+      return;
+    }
+    await persist(candidate);
+  }
+
+  async function persist(candidate: EventDraft) {
     setSaving(true);
     try {
       if (event) await api.updateEvent(event.id, event.revision, candidate, status);
       else await api.createEvent(requestId.current, candidate);
+      setSaved(true);
+      toast(editing ? `Saved changes to “${candidate.title}”.` : `Created “${candidate.title}”.`);
       router.push("/events/");
     } catch (error) {
       // A lost response is ambiguous: the server may have applied the edit. Creates are safe to retry (same
@@ -117,7 +138,7 @@ export function EventForm({ event, onReload }: Props) {
   return (
     <div className="form-layout">
     <form className="form" onSubmit={submit} noValidate>
-      {fromAi && <p className="notice" role="status" style={{ gridColumn: "1 / -1", marginBottom: -12 }}>Filled from an AI draft. Pick a venue and time, review everything, then save.</p>}
+      {fromAi && <p className="notice form-notice" role="status">Filled from an AI draft. Pick a venue and time, review everything, then save.</p>}
       {Object.keys(errors).length > 0 && !failure && (
         <div className="banner error" role="alert">
           <span>Fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} to continue.</span>
@@ -157,15 +178,13 @@ export function EventForm({ event, onReload }: Props) {
         </fieldset>
         <fieldset className="field">
           <legend>Cover image</legend>
-          <span className="hint">Pick from the default catalog. Photo uploads aren’t part of V1.</span>
-          <div className="covers">
-            {COVERS.map((cover) => (
-              <button key={cover.id} id={cover.id === COVERS[0].id ? "cover-first" : undefined} type="button" className="cover-option" aria-pressed={draft.coverImageURL === cover.url} onClick={() => set("coverImageURL", cover.url)}>
-                <Cover url={cover.url} className="swatch" eager />
-                <span>{cover.label}</span>
-              </button>
-            ))}
-          </div>
+          <span className="hint">Pick one of the ready-made covers. Photo uploads aren’t available yet.</span>
+          <RadioGrid label="Cover image" value={draft.coverImageURL} onChange={(url) => set("coverImageURL", url)}
+            describedBy={err("coverImageURL") ? "cover-error" : undefined} invalid={!!err("coverImageURL")}
+            options={COVERS.map((cover) => ({
+              value: cover.url, label: cover.label, id: cover.id === COVERS[0].id ? "cover-first" : undefined,
+              content: <><Cover url={cover.url} className="swatch" eager /><span>{cover.label}</span></>,
+            }))} />
           {err("coverImageURL") && <span className="error" id="cover-error">{err("coverImageURL")}</span>}
         </fieldset>
       </div>
@@ -187,7 +206,7 @@ export function EventForm({ event, onReload }: Props) {
         <span className="hint">
           {timesLocked
             ? "Times are locked because people have responded. Cancel and recreate the event to change them."
-            : "Times are entered in your local time zone and stored in UTC."}
+            : "Times use your local time zone, and members see them in theirs."}
         </span>
       </div>
 
@@ -236,19 +255,31 @@ export function EventForm({ event, onReload }: Props) {
             <label htmlFor="status">Event status</label>
             <select id="status" value={status} onChange={(e) => setStatus(e.target.value as EventStatus)}>
               <option value="scheduled">Scheduled</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="cancelled">Canceled</option>
             </select>
-            <span className="hint">Events can’t be deleted in V1. Cancelling keeps the record and tells attendees.</span>
+            <span className="hint">Events can’t be deleted. Canceling keeps the record and tells attendees.</span>
           </div>
         </div>
       )}
 
       <div className="actions">
         <button className="big-pill dark" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create event"}</button>
-        <button className="big-pill gray" type="button" disabled={saving} onClick={() => router.push("/events/")}>Cancel</button>
+        <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/events/"))}>Cancel</button>
       </div>
     </form>
     <EventPreview draft={draft} price={price} />
+    {confirmCancel && (
+      <Dialog danger title="Cancel this event?" confirmLabel="Cancel event" busyLabel="Canceling event…" onClose={() => setConfirmCancel(null)}
+        onConfirm={async () => { await persist(confirmCancel); setConfirmCancel(null); }}>
+        <p>Everyone who is going will see “{event?.title}” as canceled in the app. The event stays in your list under Canceled, and you can schedule it again later.</p>
+      </Dialog>
+    )}
+    {discarding && (
+      <Dialog danger title="Discard your changes?" confirmLabel="Discard changes" onClose={() => setDiscarding(false)}
+        onConfirm={async () => { setSaved(true); router.push("/events/"); }}>
+        <p>{editing ? "The changes you made to this event" : "The event you started"} won’t be saved.</p>
+      </Dialog>
+    )}
     </div>
   );
 }

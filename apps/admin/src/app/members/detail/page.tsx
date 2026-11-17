@@ -6,20 +6,29 @@ import { Suspense, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
-import { Avatar, Info, LoadError, Loading, Notice, formatDate } from "@/components/Ui";
+import { Tabs } from "@/components/Tabs";
+import { toast } from "@/components/Toast";
+import { Avatar, Info, LoadError, Loading, formatDate } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import type { Session } from "@/lib/api";
 import { type Member, type MemberPatch, ROLE_LABEL, type Role, can } from "@/lib/adminTypes";
 import { ApiError } from "@/lib/contract";
+import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 
-type Action = "deactivate" | "reactivate" | "reset" | "points" | null;
+const ROLE_DESCRIPTION: Record<Role, string> = {
+  member: "Members join events and challenges in the app but can’t use the admin portal.",
+  organizer: "Organizers manage events, albums and attendees, and can read the member list.",
+  admin: "",
+};
+
+type Action = "deactivate" | "reactivate" | "reset" | "points" | "role" | null;
 
 function MemberDetail() {
   const id = useSearchParams().get("id") ?? "";
   const { api, session } = useApp();
   const member = useLoad((a) => a.getMember(id), id);
   const company = useLoad((a) => a.companyInfo(), "company");
-  if (member.error) return <LoadError error={member.error} onRetry={member.reload} />;
+  if (member.error) return <LoadError error={member.error} onRetry={member.reload} backHref="/members/" backLabel="Back to members" />;
   if (!member.data || !company.data) return <Loading label="Loading member" />;
   return <Editor key={`${member.data.id}-${member.data.revision}`} member={member.data} teams={company.data.teams} self={session?.uid === member.data.id} session={session}
     api={api} onSaved={(next) => member.setData(next)} onReload={member.reload} />;
@@ -34,7 +43,6 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
-  const [message, setMessage] = useState("");
   const [action, setAction] = useState<Action>(null);
   const [delta, setDelta] = useState("");
   const [resetPoints, setResetPoints] = useState(false);
@@ -48,19 +56,27 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
   const set = <K extends keyof MemberPatch>(key: K, value: Required<MemberPatch>[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const toggleTeam = (teamId: string) => set("teamIds", draft.teamIds.includes(teamId) ? draft.teamIds.filter((t) => t !== teamId) : [...draft.teamIds, teamId]);
 
+  useUnsavedGuard(dirty);
+
+  /** A role change is confirmed first (it changes what the person can do); other edits save straight away. */
+  function requestSave() {
+    if (draft.role !== member.role) setAction("role");
+    else void save();
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
     try {
       onSaved(await api.updateMember(member.id, member.revision, draft));
-      setMessage("Saved.");
+      toast("Saved.");
     } catch (failure) {
       setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", describe(failure)));
     } finally {
       setSaving(false);
     }
   }
-  const done = (next: Member, text: string) => { setAction(null); setMessage(text); onSaved(next); };
+  const done = (next: Member, text: string) => { setAction(null); toast(text); onSaved(next); };
   const fieldError = (name: string) => error?.fields[name];
 
   return (
@@ -70,7 +86,6 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
         <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? "Active" : member.status === "invited" ? "Invited" : "Deactivated"}</Info>
         <span className="muted">Joined {formatDate(member.createdAt)}</span>
       </div>
-      {message && <Notice>{message}</Notice>}
       {error && (
         <div className="banner error" role="alert">
           <span>{error.message}</span>
@@ -102,7 +117,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
           </fieldset>
           {!editable && <p className="notice">Read-only. Only admins can change people.</p>}
           {editable && <div className="actions">
-            <button className="pill-btn purple" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save changes"}</button>
+            <button className="pill-btn purple" disabled={!dirty || saving} onClick={requestSave}>{saving ? "Saving…" : "Save changes"}</button>
             <button className="pill-btn gray" disabled={!dirty || saving} onClick={() => setDraft({ role: member.role, teamIds: member.teamIds, workLocation: member.workLocation, department: member.department, jobTitle: member.jobTitle })}>Discard</button>
           </div>}
         </section>
@@ -131,6 +146,17 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
         </aside>}
       </div>
 
+      {action === "role" && (
+        <Dialog danger={draft.role === "admin"} title={`Change ${member.displayName}’s role?`} confirmLabel={`Make ${ROLE_LABEL[draft.role]}`} busyLabel="Changing role…" onClose={() => setAction(null)}
+          onConfirm={async () => { await save(); setAction(null); }}>
+          <p>{member.displayName} goes from <strong>{ROLE_LABEL[member.role]}</strong> to <strong>{ROLE_LABEL[draft.role]}</strong>.</p>
+          {draft.role === "admin"
+            ? <p>Admins can edit and deactivate people, change points, import and manage the roster, and read the audit log. Only give this to someone you trust with all of that.</p>
+            : <p>{ROLE_DESCRIPTION[draft.role]}</p>}
+          {draft.teamIds.join() !== member.teamIds.join() || draft.workLocation !== member.workLocation || draft.department !== member.department || draft.jobTitle !== member.jobTitle
+            ? <p className="muted">Your other edits on this page are saved at the same time.</p> : null}
+        </Dialog>
+      )}
       {action === "deactivate" && (
         <Dialog danger title={`Deactivate ${member.displayName}?`} confirmLabel="Deactivate" reasonLabel="Why are you deactivating them?" onClose={() => setAction(null)}
           onConfirm={async (reason) => done(await api.setMemberStatus(member.id, "deactivated", reason), "Deactivated. They can no longer sign in.")}>
@@ -157,10 +183,8 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
             setRequestId(crypto.randomUUID()); // a later adjustment is a new request, never a replay
             done(next, resetPoints ? "Points reset to 0." : `Points changed by ${deltaValue > 0 ? "+" : ""}${deltaValue}.`);
           }}>
-          <div className="tabs" role="group" aria-label="Kind of change">
-            <button className="tab" aria-pressed={!resetPoints} onClick={() => setResetPoints(false)}>Adjust</button>
-            <button className="tab" aria-pressed={resetPoints} onClick={() => setResetPoints(true)}>Reset to 0</button>
-          </div>
+          <Tabs label="Kind of change" value={resetPoints ? "reset" : "adjust"} onChange={(id) => setResetPoints(id === "reset")}
+            items={[{ id: "adjust", label: "Adjust" }, { id: "reset", label: "Reset to 0" }]} />
           {resetPoints ? <p>The balance of {member.pointsBalance} is reduced to 0 by one adjustment.</p> : (
             <div className="field"><label htmlFor="delta">Points to add or take away</label>
               <input id="delta" inputMode="numeric" value={delta} placeholder="e.g. 50 or -25" onChange={(e) => setDelta(e.target.value)} aria-invalid={delta !== "" && !deltaValid} />

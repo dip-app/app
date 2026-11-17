@@ -14,16 +14,18 @@ interface Props {
   reasonHint?: string;
   /** Destructive actions use the error color so they read differently from a normal save. */
   danger?: boolean;
-  /** Start with focus on Cancel, for actions that are final (a stray Enter must not confirm). */
+  /** Start with focus on Cancel (default: on for danger dialogs, so a stray Enter must not confirm a final action). */
   focusCancel?: boolean;
   /** Extra condition (e.g. a valid number inside the dialog body) before confirm is enabled. */
   confirmDisabled?: boolean;
+  /** Confirm button text while the request runs (default "Saving…"). */
+  busyLabel?: string;
   onConfirm: (reason: string) => Promise<void>;
   onClose: () => void;
 }
 
 /** Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. */
-export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, focusCancel, confirmDisabled, onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, focusCancel = !!danger, confirmDisabled, busyLabel = "Saving…", onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,7 +40,9 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
     if (focusCancel) cancel.current?.focus();
     return () => {
       dialog?.close();
-      opener?.focus?.(); // return focus to the control that opened the dialog
+      // Return focus to the control that opened the dialog; if it is gone (the row was removed), land on the page.
+      if (opener && opener !== document.body && document.contains(opener)) opener.focus?.();
+      else document.getElementById("main")?.focus();
     };
   // Runs once on open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -50,7 +54,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
     try {
       await onConfirm(reason.trim());
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "That didn’t go through. Try again.");
+      setError(failure instanceof Error ? failure.message : "Something went wrong. Check your connection and try again.");
       setBusy(false);
     }
   }
@@ -69,10 +73,10 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
       )}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="actions">
-        <button className={`pill-btn ${danger ? "danger" : "dark"}`} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
-          {busy ? "Working…" : confirmLabel}
+        <button type="button" className={`pill-btn ${danger ? "danger" : "dark"}`} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
+          {busy ? busyLabel : confirmLabel}
         </button>
-        <button ref={cancel} className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
+        <button type="button" ref={cancel} className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
       </div>
     </dialog>
   );

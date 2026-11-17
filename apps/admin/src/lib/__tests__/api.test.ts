@@ -149,7 +149,7 @@ describe("date, time and duration display", () => {
     expect(formatDuration("2026-11-10T22:00:00.000Z", "2026-11-10T22:45:00.000Z")).toBe("45 min");
     expect(formatDuration("2026-11-10T22:00:00.000Z", "2026-11-11T00:00:00.000Z")).toBe("2 hr");
     expect(formatDuration("bad", "worse")).toBe("");
-    expect(formatWhen("2026-11-10T22:00:00.000Z", "2026-11-10T23:30:00.000Z")).toContain(" – ");
+    expect(formatWhen("2026-11-10T22:00:00.000Z", "2026-11-10T23:30:00.000Z")).toContain(" to ");
   });
 });
 

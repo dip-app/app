@@ -4,9 +4,9 @@ import { type CompanyInsights, type InsightsDay, type Role, can } from "./adminT
 
 export const formatCount = (value: number): string => value.toLocaleString("en-US");
 
-/** 0.744 -> "74%"; null (no completed events yet) -> an en dash. */
+/** 0.744 -> "74%"; null (no completed events yet) -> "None". */
 export function formatPercent(rate: number | null): string {
-  return rate === null ? "–" : `${Math.round(rate * 100)}%`;
+  return rate === null ? "None" : `${Math.round(rate * 100)}%`;
 }
 
 /** "Updated just now", "Updated 4 min ago", "Updated 2 hr ago", then the date. */

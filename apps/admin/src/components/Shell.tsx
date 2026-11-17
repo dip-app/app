@@ -8,6 +8,7 @@ import { AdminOnly } from "./AdminOnly";
 import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
+import { Toaster } from "./Toast";
 
 interface Props {
   title: string;
@@ -127,22 +128,26 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
     };
   }, [open, close]);
 
+
   if (!session) return null;
   const visible = NAV.map((group) => ({ ...group, items: group.items.filter((item) => !item.requires || can(session.role, item.requires)) })).filter((group) => group.items.length > 0);
 
   return (
     <div className="app">
+      {/* Each page names itself in the tab and history (React hoists <title> into the head). */}
+      <title>{`${title} | DIP Admin`}</title>
+      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById("main"); main?.focus(); main?.scrollIntoView(); }}>Skip to content</a>
       <header className="topbar" inert={open}>
-        <button ref={menuButton} className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
+        <button type="button" ref={menuButton} className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
         <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={28} /><span>DIP Admin</span></Link>
       </header>
       <div className="scrim" data-open={open ? "true" : undefined} onClick={() => close()} aria-hidden />
-      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label="Sidebar" role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
+      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label={open ? "Menu" : "App navigation"} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
         <div className="sidebar-top">
           <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={30} /><span>DIP Admin</span></Link>
-          <button ref={closeButton} className="menu-btn close-btn" aria-label="Close menu" onClick={() => close()}>
+          <button type="button" ref={closeButton} className="menu-btn close-btn" aria-label="Close menu" onClick={() => close()}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
@@ -151,11 +156,11 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
             <div className="nav-group" key={group.heading} role="group" aria-label={group.heading}>
               {!group.headless && <p className="nav-heading" aria-hidden>{group.heading}</p>}
               {group.items.map((item) => (
-                <Link key={item.href} href={item.href} className="nav-item" title={item.label} aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
+                <Link key={item.href} href={item.href} className="nav-item" aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
                   <span className="label">{item.label}</span>
                   {item.badge === "bugReports" && bugBadge && bugBadge.count > 0 && (
-                    <span className="nav-badge" aria-label={`${bugBadge.count}${bugBadge.capped ? " or more" : ""} new`}>{badgeLabel(bugBadge)}</span>
+                    <span className="nav-badge">{badgeLabel(bugBadge)}<span className="sr-only"> new</span></span>
                   )}
                 </Link>
               ))}
@@ -167,15 +172,15 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
             <strong>{session.name}</strong>
             <span>{ROLE_LABEL[session.role]}</span>
           </div>
-          <button className="nav-item signout" onClick={() => void signOut()}>
+          <button type="button" className="nav-item signout" onClick={() => void signOut()}>
             <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10" /></svg>
             <span className="label">Sign out</span>
           </button>
         </div>
       </aside>
-      <main className="content" inert={open}>
+      <main id="main" tabIndex={-1} className="content" inert={open}>
         {!isStaff(session.role) ? (
-          <div className="empty" role="alert">
+          <div className="empty">
             <h2>No organizer access</h2>
             <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
           </div>
@@ -192,6 +197,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         {children}
         </>)}
       </main>
+      <Toaster />
     </div>
   );
 }

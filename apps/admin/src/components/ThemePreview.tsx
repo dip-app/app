@@ -18,8 +18,8 @@ export function ThemePreview({ draft, participantCount = 0 }: { draft: ThemeDraf
       </div>
       <dl className="preview-facts">
         <div><dt>Week</dt><dd>{window || "Pick the weeks"}</dd></div>
-        <div><dt>Goal</dt><dd>{draft.goalUnit.trim() && Number.isFinite(draft.goal) ? formatGoal(draft.goal, draft.goalUnit) : "—"}</dd></div>
-        <div><dt>Reward</dt><dd>{formatReward(draft.pointsReward) || "—"}</dd></div>
+        <div><dt>Goal</dt><dd>{draft.goalUnit.trim() && Number.isFinite(draft.goal) ? formatGoal(draft.goal, draft.goalUnit) : "Not set"}</dd></div>
+        <div><dt>Reward</dt><dd>{formatReward(draft.pointsReward) || "Not set"}</dd></div>
       </dl>
     </aside>
   );
