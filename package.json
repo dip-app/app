@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "email:preview": "node --import tsx gcp/functions/src/modules/email/scripts/preview.ts",
+    "check:email": "node --import tsx gcp/functions/tools/emailCompat/cli.ts",
     "generate": "python3 scripts/generate-contracts.py && python3 scripts/generate-tokens.py",
     "check:generated": "python3 scripts/generate-contracts.py --check && python3 scripts/generate-tokens.py --check",
     "build": "npm run build --workspace @dip/functions",
