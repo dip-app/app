@@ -48,3 +48,7 @@ Everything here needs the paid Apple Developer Program team. None of it is done 
 ## F. Done criteria
 
 A device with a TestFlight build opens a shared event link straight into the app, receives each push type in the push test plan, uploads an album photo, and the landing and share pages show the right store link. Record the outcome, build number and tester devices in the session log and update [CURRENT_STATE.md](../../CURRENT_STATE.md).
+
+## Publishing a build
+
+`scripts/testflight.sh` archives Release and uploads to App Store Connect (`--dry-run` archives only, `--version X.Y.Z` overrides the marketing version). It needs a release Xcode (a beta is rejected by App Store Connect), the paid team signed in under Xcode Settings, and the gitignored `GoogleService-Info.plist` and `Local.xcconfig`. App Store Connect assigns the build number. After about 10 to 30 minutes of processing the build appears in TestFlight. App Store Connect URLs: privacy policy `https://letsdip.work/privacy/`, support `https://letsdip.work/support/` (pages in `apps/landing/`; the contact address `support@letsdip.work` must exist).

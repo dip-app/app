@@ -17,6 +17,8 @@ cp apps/landing/robots.txt site-dist/robots.txt
 cp apps/landing/sitemap.xml site-dist/sitemap.xml
 mkdir -p site-dist/img/landing && cp apps/landing/img/* site-dist/img/landing/
 cp apps/landing/img/favicon.ico site-dist/favicon.ico   # crawlers and old clients ask for /favicon.ico
+cp -R apps/landing/privacy site-dist/privacy   # App Store Connect privacy policy URL
+cp -R apps/landing/support site-dist/support   # App Store Connect support URL
 cp -R apps/admin/out/. site-dist/admin/
 # Root-level public assets the share page, Universal Links and admin <img src="/img/..."> rely on.
 for d in aasa share img; do
