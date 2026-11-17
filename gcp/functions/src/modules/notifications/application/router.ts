@@ -17,6 +17,17 @@ export interface NotificationRequest {
   recipients: readonly NotificationRecipient[];
   push: PushMessage;
   inApp?: { title: string; body: string; targetType: string; targetId: string };
+  /**
+   * Optional email payload (email workstream, docs/contracts/email.md). Opaque to the router: the email channel
+   * validates it against its template allow-list. Without it no email is considered.
+   */
+  email?: { template: string; variables: unknown; objectId: string; revisionOrWindow: string; notAfter?: Date | null };
+}
+
+/** Email channel as the router sees it; implemented by `modules/email` (`routerEmailChannel`). Idempotent per recipient. */
+export interface EmailChannelPort {
+  /** Applies the shared precedence and the push-or-email policy, then enqueues at most one outbox entry. */
+  deliver(request: NotificationRequest, recipient: NotificationRecipient, pushWillDeliver: boolean): Promise<boolean>;
 }
 
 export interface RouterDependencies {
@@ -27,12 +38,16 @@ export interface RouterDependencies {
   receipts: DeliveryReceipts;
   rateLimiter: PushRateLimiter;
   inbox?: InboxWriter;
+  /** Optional; absent means push and in-app only (the behavior before email). */
+  email?: EmailChannelPort;
   clock: Clock;
 }
 
 export interface DeliveryStats extends PushStats {
   duplicate: boolean;
   inApp: number;
+  /** Outbox entries newly enqueued by the email channel (0 when email is not wired or not requested). */
+  emailsEnqueued: number;
   blocked: { category_off: number; event_level: number; no_destination: number; rate_limited: number };
 }
 
@@ -45,7 +60,7 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{1,200}$/;
 export async function deliverNotification(deps: RouterDependencies, request: NotificationRequest): Promise<DeliveryStats> {
   if (!ID_PATTERN.test(request.id)) throw new Error("INVALID_NOTIFICATION_ID");
   const stats: DeliveryStats = {
-    recipients: 0, tokens: 0, sent: 0, failed: 0, removed: 0, duplicate: false, inApp: 0,
+    recipients: 0, tokens: 0, sent: 0, failed: 0, removed: 0, duplicate: false, inApp: 0, emailsEnqueued: 0,
     blocked: { category_off: 0, event_level: 0, no_destination: 0, rate_limited: 0 },
   };
   const byUid = new Map<string, NotificationRecipient>();
@@ -86,9 +101,19 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
     });
     if (decision.deliver) passing.push(recipient.uid); else stats.blocked[decision.reason]++;
   }
-  // Email channel (EML-8, email workstream) plugs in here: evaluateDelivery with channel "email" per recipient.
-
   const admitted = passing.length ? await deps.rateLimiter.admit(passing, deps.clock.now()) : new Set<string>();
+
+  // Email channel (EML-8): after the push decision, so the push-or-email policy knows whether a push goes out.
+  // Best-effort and idempotent (create-once outbox ids): an email failure never blocks the push.
+  if (deps.email && request.email) {
+    for (const recipient of recipients) {
+      try {
+        if (await deps.email.deliver(request, recipient, admitted.has(recipient.uid))) stats.emailsEnqueued++;
+      } catch {
+        // The email channel logs ids and reasons only.
+      }
+    }
+  }
   const toSend: DeviceToken[] = [];
   for (const uid of passing) {
     if (!admitted.has(uid)) { stats.blocked.rate_limited++; continue; }
