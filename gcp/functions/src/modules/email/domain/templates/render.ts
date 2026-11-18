@@ -186,6 +186,16 @@ export function validateVariables<T extends TemplateId>(template: T, value: unkn
       result = facts && window ? { ...facts, window } : null;
       break;
     }
+    case "calendar_invite":
+    case "calendar_cancel": {
+      if (!onlyKeys(rec, [...EVENT_KEYS, "sequence", "reason"])) return null;
+      const facts = eventFacts(rec);
+      const sequence = typeof rec.sequence === "number" && Number.isInteger(rec.sequence) && rec.sequence >= 0 && rec.sequence <= 1_000_000 ? rec.sequence : null;
+      const allowed = id === "calendar_invite" ? ["joined", "updated"] : ["left", "canceled"];
+      const reason = typeof rec.reason === "string" && allowed.includes(rec.reason) ? rec.reason : null;
+      result = facts && sequence !== null && reason ? ({ ...facts, sequence, reason } as TemplateVariables["calendar_invite"] | TemplateVariables["calendar_cancel"]) : null;
+      break;
+    }
     case "challenge_reviewed": {
       if (!onlyKeys(rec, ["challengeId", "challengeTitle", "outcome", "points"])) return null;
       const challengeId = typeof rec.challengeId === "string" && ID.test(rec.challengeId) ? rec.challengeId : null;

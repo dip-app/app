@@ -758,6 +758,9 @@
         "discovery": {
           "type": "boolean"
         },
+        "calendar_invites": {
+          "type": "boolean"
+        },
         "admin_suggestions": {
           "type": "boolean"
         }

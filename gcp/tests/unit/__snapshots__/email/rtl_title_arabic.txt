@@ -5,6 +5,8 @@ Hi Sam, اجتماع الفريق الأسبوعي starts tomorrow.
 اجتماع الفريق الأسبوعي
 When: Fri, Nov 20, 9:00 AM to 10:00 AM EST
 
+To add it to your calendar, open the event in DIP.
+
 Open in DIP: https://letsdip.work/e/evt_ar
 
 --

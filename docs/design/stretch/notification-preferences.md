@@ -13,6 +13,7 @@ Status: implemented in code (contract, rules, server helper, iOS mirror); nothin
 | `challenges` | `challenge_approved`, `challenge_changes_requested`, `weekly_theme` | none | on | yes | on |
 | `social` | comments and photos (no kind yet) | none | off | no | n/a |
 | `discovery` | `event_interest` | none | off | yes | off |
+| `calendar_invites` | `calendar_invite` (METHOD:REQUEST and METHOD:CANCEL .ics emails, [design](calendar.md)) | none | n/a (not offered) | yes | on |
 | `admin_suggestions` | `admin_suggestions` (weekly ideas for admins, [design](admin-suggestions-email.md)) | none | n/a (not offered) | yes | off |
 
 Source of truth: `gcp/functions/src/modules/notifications/domain/categories.ts` (`NOTIFICATION_CATEGORIES`, `CHANNEL_CATEGORIES`, `DEFAULT_PREFERENCES`, `NOTIFICATION_KINDS`). iOS mirror: `DIPNotificationCategory` in `ui/Packages/DIPCore`. A unit test on each side pins the ids and defaults, so a drift fails CI.

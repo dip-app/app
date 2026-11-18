@@ -30,6 +30,7 @@ const KIND_CLASS: Readonly<Record<NotificationKind, RateClass>> = {
   weekly_theme: "shared",
   event_interest: "shared",
   // Email only (push never offers the category); listed so the map stays total.
+  calendar_invite: "shared",
   admin_suggestions: "shared",
 };
 

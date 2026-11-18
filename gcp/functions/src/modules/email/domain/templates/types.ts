@@ -12,6 +12,8 @@ export const TEMPLATE_CATEGORY = {
   event_canceled: "event_updates",
   attendee_added: "event_updates",
   event_reminder: "reminders",
+  calendar_invite: "calendar_invites",
+  calendar_cancel: "calendar_invites",
   challenge_reviewed: "challenges",
   admin_suggestions: "admin_suggestions",
 } as const satisfies Record<string, EmailCategory>;
@@ -27,6 +29,8 @@ export function templateKind(template: TemplateId, variables?: { outcome?: strin
     case "event_canceled": return "event_cancelled";
     case "attendee_added": return "attendee_added";
     case "event_reminder": return "reminder";
+    case "calendar_invite":
+    case "calendar_cancel": return "calendar_invite";
     case "challenge_reviewed": return variables?.outcome === "changes_requested" ? "challenge_changes_requested" : "challenge_approved";
     case "admin_suggestions": return "admin_suggestions";
   }
@@ -75,6 +79,13 @@ export interface TemplateVariables {
   event_canceled: EventFacts;
   attendee_added: EventFacts;
   event_reminder: EventFacts & { window: "24h" | "1h" };
+  /**
+   * Calendar invite (iCalendar METHOD:REQUEST). `sequence` is the per (event, member) SEQUENCE so a later invite or
+   * update replaces the earlier calendar entry; `reason` only changes the copy.
+   */
+  calendar_invite: EventFacts & { sequence: number; reason: "joined" | "updated" };
+  /** Calendar removal (iCalendar METHOD:CANCEL) with the SEQUENCE after the last invite. */
+  calendar_cancel: EventFacts & { sequence: number; reason: "left" | "canceled" };
   challenge_reviewed: { challengeId: string; challengeTitle: string; outcome: "approved" | "changes_requested"; points?: number };
   /** Weekly ideas for company admins (docs/design/stretch/admin-suggestions-email.md). Company aggregates only; no names or emails. */
   admin_suggestions: {

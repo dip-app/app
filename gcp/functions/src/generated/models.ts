@@ -179,6 +179,7 @@ export interface EmailCategoryPreferences {
   reminders?: boolean;
   challenges?: boolean;
   discovery?: boolean;
+  calendar_invites?: boolean;
   admin_suggestions?: boolean;
 }
 

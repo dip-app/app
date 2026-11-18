@@ -16,6 +16,7 @@ export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
   reminders: "reminder",
   challenges: "challenge",
   discovery: "event suggestion",
+  calendar_invites: "calendar invite",
   admin_suggestions: "weekly event idea",
 };
 
@@ -160,7 +161,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         subject: fitSubject("Updated: ", clean(e.eventTitle), ` (${subjectWhat} changed)`),
         preheader: `The ${what} changed for ${clean(e.eventTitle)}.`,
         lead: `the ${what} changed for this event.`,
-        note: null,
+        note: "To add it to your calendar, open the event in DIP.",
         badge: "Updated",
       });
     }
@@ -192,7 +193,33 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         subject: fitSubject(day ? "Tomorrow: " : "Starting in about an hour: ", clean(e.eventTitle)),
         preheader: day ? `${clean(e.eventTitle)} is tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
         lead: day ? `${clean(e.eventTitle)} starts tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
-        note: null,
+        note: "To add it to your calendar, open the event in DIP.",
+      });
+    }
+    case "calendar_invite": {
+      const e = variables as TemplateVariables["calendar_invite"];
+      const updated = e.reason === "updated";
+      return withEvent(e, {
+        heading: updated ? "Calendar updated" : "Add it to your calendar",
+        subject: fitSubject(updated ? "Updated invite: " : "Calendar invite: ", clean(e.eventTitle)),
+        preheader: updated ? `The details changed for ${clean(e.eventTitle)}.` : `Add ${clean(e.eventTitle)} to your calendar.`,
+        lead: updated ? "the time or place changed for this event." : "you joined this event.",
+        note: updated
+          ? "Open the attached calendar invite to update your calendar."
+          : "Open the attached invite (invite.ics) and choose Add to calendar. If the time or place changes, we will send an updated invite.",
+        ...(updated ? { badge: "Updated" } : {}),
+      });
+    }
+    case "calendar_cancel": {
+      const e = variables as TemplateVariables["calendar_cancel"];
+      const left = e.reason === "left";
+      return withEvent(e, {
+        heading: left ? "Removed from your calendar" : "Event canceled",
+        subject: fitSubject(left ? "Removed from your calendar: " : "Canceled: ", clean(e.eventTitle)),
+        preheader: left ? `${clean(e.eventTitle)} was removed from your calendar.` : `${clean(e.eventTitle)} was canceled.`,
+        lead: left ? "you are no longer going to this event." :"this event was canceled.",
+        note: "The attached calendar message removes it from your calendar.",
+        ...(left ? {} : { badge: "Canceled" }),
       });
     }
     case "challenge_reviewed": {

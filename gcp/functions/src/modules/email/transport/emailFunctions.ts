@@ -1,6 +1,6 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentUpdated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineBoolean, defineSecret, defineString } from "firebase-functions/params";
@@ -13,10 +13,12 @@ import { reapOutbox } from "../application/reapOutbox";
 import { handleOpenPixel } from "../application/openPixel";
 import { handleUnsubscribe } from "../application/unsubscribe";
 import { handleWebhook } from "../application/webhook";
+import { onEventUpdatedForInvites, onRsvpForInvite, type CalendarInviteDeps } from "../application/calendarInvites";
 import { icsAttachmentFor } from "../domain/ics";
 import { OUTBOX_COLLECTION } from "../domain/outbox";
 import { renderEmail, validateVariables } from "../domain/templates/render";
 import { EmulatorOutboxEmailProvider, LogOnlyEmailProvider } from "../infrastructure/fakeProviders";
+import { FirestoreCalendarStore, plainDoc } from "../infrastructure/firestoreCalendarStore";
 import { FirestoreEmailStore } from "../infrastructure/firestoreEmailStore";
 import { PostmarkProvider, PostmarkWebhookVerifier } from "../infrastructure/postmarkProvider";
 import { ResendProvider, ResendWebhookVerifier } from "../infrastructure/resendProvider";
@@ -54,7 +56,7 @@ function webhookPassword(): string {
 export const renderer: EmailRenderer = {
   render: (template, variables, ctx) => renderEmail(template, variables, ctx),
   validate: (template, value) => validateVariables(template, value),
-  attachment: (template, variables, revision) => icsAttachmentFor(template, variables, revision),
+  attachment: (template, variables, revision, invite) => icsAttachmentFor(template, variables, revision, invite?.now ?? new Date(), invite),
 };
 
 function unsubscribeKey(): string {
@@ -93,7 +95,7 @@ function webhookVerifier(): EmailWebhookVerifier {
 
 function stores() {
   const db = getFirestore(defaultAdminApp());
-  return { db, store: new FirestoreEmailStore(db) };
+  return { db, store: new FirestoreEmailStore(db), calendar: new FirestoreCalendarStore(db) };
 }
 
 /**
@@ -109,6 +111,46 @@ export function emailChannelDependencies(): ChannelDeps {
 }
 export { emailChannel };
 
+function calendarInviteDependencies(): CalendarInviteDeps {
+  const { calendar } = stores();
+  return { ...emailChannelDependencies(), sequences: calendar.sequences, events: calendar.events };
+}
+
+const INVITE_TRIGGER = { region: REGION, retry: true, timeoutSeconds: 120, memory: "256MiB", maxInstances: 10 } as const;
+
+/**
+ * RSVP written -> calendar invite on join, calendar cancellation on leave (email only; docs/design/stretch/calendar.md).
+ * Independent of the push router: it never touches push or in-app notices, and is a no-op while EMAIL_ENABLED is off.
+ */
+export const calendarInviteOnRsvp = onDocumentWritten(
+  { ...INVITE_TRIGGER, document: "companies/{companyId}/events/{eventId}/rsvps/{userId}" },
+  async (event) => {
+    const { companyId, eventId, userId } = event.params;
+    const status = (snap: { exists: boolean; get(field: string): unknown } | undefined): string | null => {
+      const value = snap?.exists ? snap.get("status") : null;
+      return typeof value === "string" ? value : null;
+    };
+    const before = status(event.data?.before);
+    const after = status(event.data?.after);
+    if (before === after) return;
+    const writeTime = event.data?.after.updateTime?.toDate() ?? event.data?.before.updateTime?.toDate() ?? new Date(event.time);
+    const outcome = await onRsvpForInvite(calendarInviteDependencies(), { companyId, eventId, uid: userId, before, after, writeTime });
+    logger.info("calendar invite rsvp", { companyId, eventId, outcome });
+  });
+
+/** Event updated -> re-send the invite (same UID, higher SEQUENCE) on time, place or title changes; cancel on cancellation. */
+export const calendarInviteOnEventUpdated = onDocumentUpdated(
+  { ...INVITE_TRIGGER, document: "companies/{companyId}/events/{eventId}", memory: "512MiB" },
+  async (event) => {
+    if (!event.data) return;
+    const { companyId, eventId } = event.params;
+    const updateTime = event.data.after.updateTime?.toDate() ?? new Date(event.time);
+    const stats = await onEventUpdatedForInvites(calendarInviteDependencies(), {
+      companyId, eventId, before: plainDoc(event.data.before.data()), after: plainDoc(event.data.after.data()), updateTime,
+    });
+    if (stats.recipients > 0) logger.info("calendar invite event update", { companyId, eventId, ...stats });
+  });
+
 /** Outbox document created -> run every send-time gate and send at most once. */
 export const onEmailOutboxCreated = onDocumentCreated(
   {
@@ -117,9 +159,10 @@ export const onEmailOutboxCreated = onDocumentCreated(
   },
   async (event) => {
     if (!event.data) return;
-    const { db, store } = stores();
+    const { db, store, calendar } = stores();
     try {
       await sendOutboxEmail({
+        inviteSequences: calendar.sequences, inviteEligibility: calendar.eligibility,
         outbox: store.outbox, recipients: store.recipients, companies: store.companies, suppressions: store.suppressions,
         caps: store.caps, preferences: store.preferences, provider: provider(db), renderer, clock: { now: () => new Date() },
         config: emailConfig(),

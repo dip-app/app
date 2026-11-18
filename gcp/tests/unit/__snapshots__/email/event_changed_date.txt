@@ -8,6 +8,8 @@ When: Fri, Nov 20, 6:30 PM to 8:00 PM EST  (was: Thu, Nov 19, 6:30 PM to 8:00 PM
 Where: Frick Park, Hot Metal Street entrance
        Hot Metal St, Pittsburgh, PA
 
+To add it to your calendar, open the event in DIP.
+
 Open in DIP: https://letsdip.work/e/evt_sunset_hike
 
 --

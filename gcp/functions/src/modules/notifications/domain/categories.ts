@@ -8,17 +8,17 @@ import { LEVELS_FOR, type PushKind } from "./subscription";
  * wire change: stored preference documents and the iOS mirror use these ids verbatim.
  */
 export const NOTIFICATION_CATEGORIES = [
-  "invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "admin_suggestions",
+  "invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "calendar_invites", "admin_suggestions",
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
 export const NOTIFICATION_CHANNELS = ["push", "email"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
-/** Categories each channel offers. `chat` and `social` are never emailed; `admin_suggestions` is email only. */
+/** Categories each channel offers. `chat` and `social` are never emailed; `calendar_invites` and `admin_suggestions` are email only. */
 export const CHANNEL_CATEGORIES: Readonly<Record<NotificationChannel, readonly NotificationCategory[]>> = {
   push: ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery"],
-  email: ["invites", "event_updates", "reminders", "challenges", "discovery", "admin_suggestions"],
+  email: ["invites", "event_updates", "reminders", "challenges", "discovery", "calendar_invites", "admin_suggestions"],
 };
 
 /**
@@ -27,7 +27,7 @@ export const CHANNEL_CATEGORIES: Readonly<Record<NotificationChannel, readonly N
  */
 export const DEFAULT_PREFERENCES: Readonly<Record<NotificationChannel, Readonly<Partial<Record<NotificationCategory, boolean>>>>> = {
   push: { invites: true, event_updates: true, reminders: true, chat: true, challenges: true, social: false, discovery: false },
-  email: { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, admin_suggestions: false },
+  email: { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, calendar_invites: true, admin_suggestions: false },
 };
 
 /**
@@ -54,6 +54,8 @@ export const NOTIFICATION_KINDS = {
   challenge_changes_requested: { category: "challenges", eventLevel: null, inAppType: "challenge_changes_requested" },
   weekly_theme: { category: "challenges", eventLevel: null, inAppType: null },
   event_interest: { category: "discovery", eventLevel: null, inAppType: null },
+  /** Calendar invite emails (METHOD:REQUEST and METHOD:CANCEL .ics); email only, no push or in-app twin. */
+  calendar_invite: { category: "calendar_invites", eventLevel: null, inAppType: null },
   admin_suggestions: { category: "admin_suggestions", eventLevel: null, inAppType: null },
 } as const satisfies Record<string, NotificationKindSpec>;
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

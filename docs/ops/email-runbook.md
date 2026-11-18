@@ -167,3 +167,22 @@ Selected with `EMAIL_PROVIDER=resend` (params file, then redeploy the email func
 - **DNS:** Resend uses a `send` subdomain for SPF and bounces (`MX` and `TXT` on `send`) and a DKIM `TXT` at `resend._domainkey`. DKIM aligns with `letsdip.work`, so DMARC passes while the root SPF stays `-all`.
 - **Webhook:** `POST https://us-central1-team05-dip.cloudfunctions.net/emailWebhookV1`. Resend signs with Svix: headers `svix-id`, `svix-timestamp`, `svix-signature` (space-separated `v1,<base64>`), HMAC-SHA256 over `<id>.<timestamp>.<raw body>` keyed with the base64-decoded part of the `whsec_` secret. The verifier compares in constant time, rejects timestamps more than 5 minutes from now (past or future, which also bounds replays), and answers 401 for a missing header, bad signature or malformed secret. Events handled: `email.bounced` (type `Permanent` -> suppression `hard_bounce`; other types ignored like soft bounces), `email.complained` (suppression plus all categories off), `email.delivery_delayed` and `email.delivered` (ignored). Resend retries failed deliveries, and every write is idempotent.
 - **Switching:** set `EMAIL_PROVIDER=resend` and redeploy `onEmailOutboxCreated` and `emailWebhookV1` (`firebase deploy --only functions:dip:onEmailOutboxCreated,functions:dip:emailWebhookV1`). Roll back by setting `EMAIL_PROVIDER=postmark` or `log`. Update the privacy page "Service providers" sentence to name the provider that is actually live.
+
+
+## 11. Calendar invites: manual test checklist
+
+Calendar invites (docs/design/stretch/calendar.md, "Emailed invites") send `invite.ics` with `METHOD:REQUEST` or `METHOD:CANCEL` from `DIP Events <events@letsdip.work>`. Prerequisites: the sending domain `letsdip.work` is verified with the active provider (no new DNS; the `events@` mailbox need not exist), `EMAIL_ENABLED=true`, a pilot company in `emailSettings`, and `calendarInviteOnRsvp` and `calendarInviteOnEventUpdated` deployed. Do this once with your own mailboxes before announcing the feature.
+
+Setup: create an event starting at least 2 hours from now with a venue name and street address. Use three test members whose profile emails are one Gmail, one Outlook.com or Microsoft 365, and one iCloud address (read them on Gmail web and Android, Outlook desktop and web, Apple Mail on macOS, Mail on iOS).
+
+For each client:
+
+1. **Join.** Join the event in DIP. Within about a minute an email "Calendar invite: title" arrives from DIP Events. Check: sender name and address, Reply-To `support@letsdip.work`, not in spam, the invite card or `invite.ics` attachment is offered ("Add to calendar", "Yes" or an "Add" button), the card shows title, time in your zone, location and no RSVP request. Add it; the entry has the link `https://letsdip.work/e/<id>`, a 30 minute alert and the DIP Events organizer.
+2. **Update.** Change the start time (and then the location) as an organizer. An "Updated invite" email arrives; accepting it must move the existing entry, not create a second one.
+3. **Leave.** Leave the event in DIP. A "Removed from your calendar" email arrives; applying it removes the entry (Gmail and Outlook show "Event canceled"; Apple Mail offers Remove).
+4. **Rejoin** and confirm a fresh invite again lands on the same entry (higher SEQUENCE).
+5. **Cancel the event** with two members going: both get "Canceled" and their entries are removed or marked canceled.
+6. **Unsubscribe.** Use the one-click link in an invite email, then join another event: no invite arrives; the Profile > Notifications > Email "Calendar invites" switch shows off. Turn it on again from the app.
+7. **No-send cases.** Join and leave within a few seconds (no email; the queued invite is skipped with reason `not_going` in `emailOutbox`); join a past event (nothing); set `emailSettings.enabled=false` (nothing).
+
+Record in the PR or session log, per client: card shown or only an attachment, add works, update replaces, cancel removes. If a client shows only an attachment and cannot import it, the fallback is the provider's SMTP relay with a hand-built `multipart/alternative` message (not built). Also check the headers of one received message: SPF, DKIM and DMARC pass for `letsdip.work`, and `Content-Type: text/calendar; charset=UTF-8; method=REQUEST` is on the attachment part.
