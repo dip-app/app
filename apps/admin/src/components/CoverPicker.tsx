@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useMemo, useRef, useState } from "react";
-import { COVER_LIBRARY, THEMES, type CoverEntry, type CoverThemeKey, coverByURL, coverImage, coverThumb, searchCovers, themeLabel } from "@/lib/covers";
+import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverThemeKey, coverByURL, coverImage, coverThumb, searchCovers, themeLabel } from "@/lib/covers";
 import type { AiCredits } from "@/lib/adminTypes";
 import { tMaybe } from "@/lib/aiStrings";
 import { ApiError } from "@/lib/contract";
@@ -85,17 +85,12 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
 
   async function dipbotPick() {
     if (busy) return;
-    if (!event.title.trim()) { setNote({ kind: "error", text: "Add a title first so Dipbot knows what the event is." }); return; }
+    const request = buildPickRequest(event, excludeURLs ?? []);
+    if (!request) { setNote({ kind: "error", text: "Add a title first so Dipbot knows what the event is." }); return; }
     setBusy(true);
     setNote(null);
     try {
-      const result = await api.pickEventCover({
-        title: event.title.trim().slice(0, 120),
-        ...(event.description?.trim() ? { description: event.description.trim().slice(0, 5000) } : {}),
-        ...(event.tagIds?.length ? { tagIds: [...event.tagIds].slice(0, 10) } : {}),
-        ...(event.theme ? { theme: event.theme } : {}),
-        ...(excludeURLs?.length ? { excludeCoverImageURLs: [...excludeURLs].slice(0, 10) } : {}),
-      });
+      const result = await api.pickEventCover(request);
       const entry = coverByURL(result.coverImageURL);
       if (!entry) { setNote({ kind: "error", text: "Dipbot suggested a cover this portal doesn’t have yet. Pick one below." }); return; }
       onChange(entry.url);
@@ -108,7 +103,9 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
       if (!searchCovers({ query, theme }).some((c) => c.url === entry.url)) { setQuery(""); setTheme(""); }
     } catch (error) {
       const known = error instanceof ApiError && error.reason ? tMaybe(`limit.${error.reason}`, { n: "", date: resetDate(credits?.resetsAt ?? "") }) : null;
-      setNote({ kind: "error", text: known ?? (error instanceof Error && error.message ? error.message : "Dipbot couldn’t choose a cover. Try again, or pick one below.") });
+      // The reason class goes to the console only; the admin sees a plain message and keeps every other form edit.
+      if (!known) console.warn("pickEventCover failed", error instanceof ApiError ? { code: error.code, reason: error.reason ?? null, fields: Object.keys(error.fields) } : { name: error instanceof Error ? error.name : typeof error });
+      setNote({ kind: "error", text: known ?? "Dipbot couldn’t pick a cover this time. Try again or choose one yourself." });
     } finally {
       setBusy(false);
     }
