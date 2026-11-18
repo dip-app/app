@@ -77,8 +77,8 @@ function Option({ type, name, label, hint, checked, disabled, onChange, children
       <span className="opt-body">
         {art && <OptArt art={art} />}
         <span className="opt-text">
-          <span className="opt-name">{label}</span>
-          {hint && <span className="opt-meta">{hint}</span>}
+          <span className="opt-name" title={label}>{label}</span>
+          {hint && <span className="opt-meta" title={hint}>{hint}</span>}
           {children}
           {suggestion && <span className="opt-sg"><SuggestTag s={suggestion} /></span>}
         </span>

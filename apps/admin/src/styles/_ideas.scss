@@ -13,11 +13,11 @@ $r-box: 8px;
   font-variant-numeric: tabular-nums;
   .muted { color: var(--muted); font-size: 13px; }
 
-  .ideas-layout { max-width: 900px; }
+  .ideas-layout { max-width: 1040px; }
   .ideas-main { display: grid; gap: 12px; min-width: 0; }
 
   // ---------- Credits: a quiet outline meter under the page header, and a calm note when low or out
-  .ideas-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: -4px 0 8px; max-width: 900px; .credits-meter { margin-left: auto; } }
+  .ideas-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: -4px 0 8px; max-width: 1040px; .credits-meter { margin-left: auto; } }
   .privacy-info { position: relative; .link-btn { font-size: 12px; color: var(--muted); white-space: nowrap; }
     .privacy-pop { position: absolute; z-index: 6; left: 0; top: calc(100% + 6px); width: max-content; max-width: 300px; margin: 0; padding: 8px 10px; border-radius: 4px; background: $ink; color: $white; font-size: 12px; line-height: 1.4; } }
   .theme-line { margin: -4px 0 10px; strong { font-weight: 600; color: $ink; } }
@@ -65,22 +65,22 @@ $r-box: 8px;
   .bar-track { height: 4px; border-radius: 2px; background: $line; overflow: hidden; span { display: block; height: 100%; background: $purple; border-radius: 2px; } }
 
   // ---------- Panels
-  .step-panel, .rail-card { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 14px 16px; }
-  .step-panel { display: grid; gap: 14px; }
-  .step-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px;
+  .step-panel, .rail-card { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 12px 14px; }
+  .step-panel { display: grid; gap: 10px; }
+  .step-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px;
     h2 { font-size: 16px; font-weight: 600; outline-offset: 4px; } }
   .opt-fieldset { border: 0; padding: 0; margin: 0; min-width: 0;
-    legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 8px; } }
+    legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 6px; } }
   .callout { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border: 1px solid $line; border-radius: $r-ctl; margin-bottom: 10px; strong { font-weight: 600; } svg { flex: none; } }
   .info-note { font-size: 13px; padding: 8px 12px; border: 1px solid $line; border-left: 3px solid $purple; border-radius: $r-ctl; margin-bottom: 10px; }
-  .thin-line { margin-top: 10px; }
+  .thin-line { margin-top: 8px; }
   .two-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   @media (min-width: 700px) { .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 
   // ---------- Option cards: a real input inside a label, styled as a compact card. Columns follow the width of the
   // step panel (a container query), not the window: 4 across when there is room, then 3, 2 and 1, never overflowing.
   .step-panel { container: step / inline-size; }
-  .opt-grid { display: grid; align-items: stretch; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+  .opt-grid { display: grid; align-items: stretch; gap: 10px; grid-template-columns: minmax(0, 1fr); }
   // Interests: 4 across when the step panel is wide (>= 760 px), 3 from 660, 2 from 400, 1 below; goals: 3, 2, 1.
   // Image-led cards need about 200 px each, so the columns follow the panel's own width, not the window.
   .opt-grid.cols-3 { --cols: 3; }
@@ -100,19 +100,33 @@ $r-box: 8px;
   .opt-input:focus-visible + .opt-body { outline: 2px solid $purple; outline-offset: 2px; }
   .opt[data-disabled="true"] { cursor: not-allowed; .opt-body { border-style: dashed; .opt-name, .opt-meta { color: #646a80; } } }
 
-  // Image-led cards: the art fills the LEFT 40% flush (full height, top/left/bottom edges, corners follow the card's own
-  // radius), the accent tile behind transparent art. Text sits on the right with generous padding: name, a short
-  // blurb, then the suggestion chip. The check is pinned in a reserved top-right corner so nothing collides with it.
+  // Compact image-led cards (about 68 px tall on desktop, 72 px in one column on phones): the art is a fixed 64 px
+  // tile flush left, full card height, clipped by the card's own radius (the accent tile shows behind transparent art).
+  // Text sits on the right: name (one line), short blurb (one line, full text in title), and the suggestion chip, which
+  // joins the name row on cards wide enough (container query on the card) and takes its own row on narrow ones.
+  // The check sits top-right; a selected card's name leaves room for it.
+  .opt[data-art] { container: opt / inline-size; }
   .opt[data-art] .opt-body {
-    display: grid; grid-template-columns: minmax(64px, 40%) minmax(0, 1fr); align-items: stretch; padding: 0; min-height: 96px; gap: 0;
+    display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: stretch; padding: 0; min-height: 68px; gap: 0;
   }
-  .opt-art { position: relative; display: block; min-height: 96px; border-radius: ($r-ctl - 1px) 0 0 ($r-ctl - 1px); overflow: hidden; box-shadow: none;
+  .opt-art { position: relative; display: block; min-height: 0; border-radius: ($r-ctl - 1px) 0 0 ($r-ctl - 1px); overflow: hidden; box-shadow: none;
     img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; padding: 8%; box-sizing: border-box; }
     &[data-kind="theme"] img { object-fit: cover; padding: 0; object-position: 60% 50%; }
-    &[data-kind="mascot"] img { padding: 12%; } }
-  .opt-text { display: grid; gap: 3px; min-width: 0; align-content: center; justify-items: start; padding: 12px 10px 12px 12px; .opt-name { padding-right: 16px; } }
+    &[data-kind="mascot"] img { padding: 10%; } }
+  .opt-text { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 1px; min-width: 0; align-content: center; align-items: center; padding: 8px 10px 8px 12px;
+    .opt-name { grid-column: 1; grid-row: 1; padding-right: 0; font-size: 14px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+    .opt-meta { grid-column: 1 / -1; grid-row: 2; line-height: 1.3; padding-right: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+    .level { grid-column: 2; grid-row: 1; margin: 0 18px 0 0; justify-self: end; }
+    .opt-sg { grid-column: 1 / -1; grid-row: 3; margin-top: 3px; justify-self: start; } }
+    @container opt (min-width: 280px) {
+    .opt-text .opt-sg { grid-column: 2; grid-row: 1; margin: 0 18px 0 0; justify-self: end; }
+    .opt-text .level { grid-row: 2; grid-column: 2; margin: 0; }
+    .opt-text .opt-meta { grid-column: 1; }
+  }
+  .opt[data-art] .opt-check { top: 7px; right: 8px; width: 15px; height: 15px; stroke-width: 2.5; }
+  .opt[data-art] .opt-input:checked + .opt-body .opt-name { padding-right: 18px; }
   .opt:not([data-art]) .opt-text { padding: 0; }
-  .opt-sg { display: flex; min-width: 0; max-width: 100%; margin-top: 5px; }
+  @container step (max-width: 399px) { .opt[data-art] .opt-body { min-height: 72px; grid-template-columns: 72px minmax(0, 1fr); } }
 
   // ---------- Suggestions: informational only. The suggested card gets a lighter purple hairline and an outline tag;
   // selection (tint + 2px purple) stays the only filled state, and nothing is selected for the admin.
