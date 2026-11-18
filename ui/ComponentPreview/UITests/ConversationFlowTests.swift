@@ -61,9 +61,8 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertEqual(bubble.frame.height, 44, accuracy: 0.5)
         let image = app.descendants(matching: .any)["photo.comments.image"]
         XCTAssertTrue(image.exists)
-        let overlap = bubble.frame.intersection(image.frame)
-        XCTAssertGreaterThan(overlap.height, 0)
-        XCTAssertLessThan(overlap.height, bubble.frame.height)
+        // Bubbles are inset from the photo's edges (DIPPhotoCommentPlacement), so the whole 44 pt target floats over the photo.
+        XCTAssertTrue(image.frame.contains(bubble.frame), "the bubble \(bubble.frame) floats inside the photo \(image.frame)")
         app.buttons["album.photo.close"].tap()
         photo.tap()
         XCTAssertTrue(bubble.waitForExistence(timeout: 5))
@@ -72,15 +71,18 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         XCTAssertFalse(bubble.exists)
     }
-    @MainActor func testFiveCompactBubblesFloatOverThePhotoAndExpandAtItsCenter() {
+    /// Placement keeps the photo's central area free and bubbles inset (DIPPhotoCommentPlacement), so a 262 pt photo holds
+    /// three of its 134 pt bubbles; three comments (the third is the long one) all float and none collapses into "+N".
+    @MainActor func testCompactBubblesFloatOverThePhotoAndExpandAtItsCenter() {
         let app = XCUIApplication()
-        app.launchArguments = ["--screen=album", "--comment-bubble-fixtures"]
+        app.launchArguments = ["--screen=album", "--comment-bubble-fixtures", "--comment-count=3"]
         app.launch()
         XCTAssertTrue(app.buttons["album.photo.0"].waitForExistence(timeout: 10))
         app.buttons["album.photo.0"].tap()
         let compact = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "photo.comments.comment."))
         XCTAssertTrue(app.buttons["photo.comments.comment.review-2"].waitForExistence(timeout: 5))
-        XCTAssertEqual(compact.count, 5, "up to five bubbles float over the photo")
+        XCTAssertEqual(compact.count, 3, "every comment floats over the photo")
+        XCTAssertFalse(app.buttons["photo.comments.more"].exists)
         XCTAssertTrue(app.buttons["photo.comments.comment.review-0"].exists)
         let image = app.descendants(matching: .any)["photo.comments.image"]
         for index in 0..<compact.count {
@@ -112,7 +114,7 @@ final class ConversationFlowTests: XCTestCase {
         add(expandedCapture)
         image.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap()
         XCTAssertFalse(expanded.exists)
-        XCTAssertEqual(compact.count, 5)
+        XCTAssertEqual(compact.count, 3)
     }
 
     @MainActor func testParticipantsRequireJoinBeforeChat() {
@@ -184,11 +186,16 @@ final class ConversationFlowTests: XCTestCase {
         app.buttons["album.photo.0"].tap()
         let compact = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "photo.comments.comment."))
         XCTAssertTrue(app.buttons["photo.comments.more"].waitForExistence(timeout: 5))
-        XCTAssertEqual(compact.count, 5)
-        XCTAssertEqual(app.buttons["photo.comments.more"].label, "3 more comments")
+        // At most five float (fewer when the photo has no room); every other comment is counted in the pill.
+        XCTAssertTrue((1...5).contains(compact.count), "\(compact.count) bubbles float")
+        XCTAssertEqual(app.buttons["photo.comments.more"].label, "\(8 - compact.count) more comments")
         app.buttons["photo.comments.more"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["photo.comments.all"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Comment number 8 on this photo"].exists)
+        // Rows are one element labelled "<author>: <text>"; the list is lazy, so scroll if the last row is below the sheet.
+        let last = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label == %@", "Coworker 7: Comment number 8 on this photo")).firstMatch
+        if !last.waitForExistence(timeout: 2) { app.descendants(matching: .any)["photo.comments.all"].swipeUp() }
+        XCTAssertTrue(last.waitForExistence(timeout: 5))
     }
 
     @MainActor func testSteppingBetweenPhotosShowsTheSlashCount() {

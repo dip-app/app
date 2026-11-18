@@ -62,12 +62,14 @@ final class OnboardingDemoTests: XCTestCase {
     }
 
     @MainActor func testReduceMotionShowsStillsThenRests() {
-        let app = launch(["-onboarding.reduceMotion", "-onboarding.timeScale", "2"])
+        // Quarter speed (each still lasts about 7.6 s): launch() can take longer than the whole sequence at 1x or 2x, because
+        // the app starts playing before the test is attached, so the early phases would be over before the first query.
+        let app = launch(["-onboarding.reduceMotion", "-onboarding.timeScale", "0.25"])
         _ = stage(app)
-        waitForPhase(app, "still 0", timeout: 5)
-        waitForPhase(app, "still 1", timeout: 5)
-        waitForPhase(app, "still 2", timeout: 5)
-        waitForPhase(app, "resting", timeout: 5)
+        waitForPhase(app, "still 0", timeout: 10)
+        waitForPhase(app, "still 1", timeout: 20)
+        waitForPhase(app, "still 2", timeout: 20)
+        waitForPhase(app, "resting", timeout: 20)
         stage(app).tap()
         waitForPhase(app, "still 0", timeout: 3)
     }

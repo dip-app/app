@@ -54,6 +54,9 @@ struct DIPNotificationsScreen: View {
         .preferredColorScheme(.light)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        // A container, so the identifier names the sheet only: on a plain stack it replaced the identifiers of the title and
+        // the Close button (notifications.close) with its own.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("notifications.screen")
     }
 
