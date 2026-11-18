@@ -5,12 +5,13 @@ import { useEffect, useRef, useState } from "react"; // tags load from the share
 import { type TagStat, countsByTag, hasStats, interestLabel } from "@/lib/tagStats";
 import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
-  emptyDraft, normalizeDraft, validateDraft,
+  emptyDraft, normalizeDraft, reviveStashedDraft, validateDraft,
 } from "@/lib/contract";
 import { centsToDollars, dollarsToCents } from "@/lib/datetime";
 import { defaultWhen } from "@/lib/when";
 import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
 import { type TimeHint, readTimeHint, registerEditorStash, stashEditor, takeEditorStash, timePresets } from "@/lib/dipbotTouches";
+import { type ResolvedFor, applyOutcome, planLocation, resolveTyped } from "@/lib/location/saveLocation";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
 import { CoverPicker } from "./CoverPicker";
@@ -18,7 +19,7 @@ import { Dialog } from "./Dialog";
 import { EventPreview } from "./EventPreview";
 import { toast } from "./Toast";
 import { useTags } from "./TagCatalog";
-import { Toggle } from "./Toggle";
+import { WhereSection } from "./WhereSection";
 import { WhenPicker } from "./WhenPicker";
 import { t } from "@/lib/aiStrings";
 import { Button, ChipToggle } from "@/components/kit";
@@ -35,8 +36,7 @@ interface Stash { draft: EventDraft; price: string; coverBy: string | null }
 
 const FIELD_IDS: Record<string, string> = {
   title: "title", description: "description", coverImageURL: "cover-first", startTime: "start", endTime: "end",
-  "venue.name": "vname", "venue.locality": "vloc", "venue.address": "vaddr", "venue.latitude": "lat",
-  "venue.longitude": "lng", costCents: "price", capacity: "capacity",
+  "venue.address": "vaddr", "venue.coordinates": "vaddr", "venue.latitude": "vaddr", "venue.longitude": "vaddr", "venue.name": "vname", "venue.locality": "vloc", costCents: "price", capacity: "capacity",
 };
 
 /** Moves focus to the first invalid control, in page order, so keyboard and screen reader users land on it. */
@@ -72,6 +72,8 @@ export function EventForm({ event, onReload }: Props) {
   const [fromAi, setFromAi] = useState(false);
   // The cover URL Dipbot picked (Let Dipbot choose, or a Dipbot draft). Any other cover choice clears it.
   const [coverBy, setCoverBy] = useState<string | null>(null);
+  // The address text the venue's hidden coordinates were resolved for: a pick, or the saved event's own address (a legacy 0/0 one is looked up once on save and never blocks it).
+  const resolvedFor = useRef<ResolvedFor | null>(event ? { address: event.venue.address, locality: event.venue.locality } : null);
   const aiChecked = useRef(false);
   const aiTaken = useRef<ReturnType<typeof takeAiDraft>>(null);
   useEffect(() => {
@@ -82,7 +84,7 @@ export function EventForm({ event, onReload }: Props) {
     let kept: Stash | null = null;
     try { kept = takeEditorStash<Stash>(window.sessionStorage); } catch { /* storage blocked */ }
     if (kept && !fromAiLink) {
-      setDraft(kept.draft);
+      setDraft(reviveStashedDraft(kept.draft)); // JSON turned an unset (NaN) coordinate into null
       setPrice(kept.price);
       setCoverBy(kept.coverBy);
     }
@@ -127,8 +129,6 @@ export function EventForm({ event, onReload }: Props) {
   }, [editing]);
 
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
-  const setVenue = <K extends keyof EventDraft["venue"]>(key: K, value: EventDraft["venue"][K]) =>
-    setDraft((current) => ({ ...current, venue: { ...current.venue, [key]: value } }));
 
   async function submit(submitEvent: React.FormEvent) {
     submitEvent.preventDefault();
@@ -147,6 +147,19 @@ export function EventForm({ event, onReload }: Props) {
       focusFirstInvalid(found);
       return;
     }
+    // Map position: kept, or resolved from the typed address now (never typed by the admin).
+    const plan = planLocation(candidate.venue, resolvedFor.current, editing);
+    if (plan.action === "resolve") {
+      setSaving(true);
+      const applied = applyOutcome(plan, await resolveTyped((request) => api.resolvePlace(request), candidate.venue), candidate.venue);
+      setSaving(false);
+      if (applied.error) {
+        setErrors({ "venue.address": applied.error });
+        focusFirstInvalid({ "venue.address": applied.error });
+        return;
+      }
+      candidate.venue = applied.venue;
+    } else candidate.venue = applyOutcome(plan, null, candidate.venue).venue;
     // Canceling an existing event tells every attendee, so it is confirmed first.
     if (event && status === "cancelled" && event.status !== "cancelled") {
       setConfirmCancel(candidate);
@@ -248,29 +261,9 @@ export function EventForm({ event, onReload }: Props) {
         </span>
       </div>
 
-      <div className="section">
-        <h2>Where</h2>
-        <div className="row">
-          <div className="field"><label htmlFor="vname">Venue name</label>
-            <input id="vname" aria-describedby={err("venue.name") ? "vname-error" : undefined} value={draft.venue.name} aria-invalid={invalid("venue.name")} onChange={(e) => setVenue("name", e.target.value)} />
-            {err("venue.name") && <span className="error" id="vname-error">{err("venue.name")}</span>}</div>
-          <div className="field"><label htmlFor="vloc">City / area</label>
-            <input id="vloc" aria-describedby={err("venue.locality") ? "vloc-error" : undefined} value={draft.venue.locality} aria-invalid={invalid("venue.locality")} onChange={(e) => setVenue("locality", e.target.value)} />
-            {err("venue.locality") && <span className="error" id="vloc-error">{err("venue.locality")}</span>}</div>
-        </div>
-        <div className="field"><label htmlFor="vaddr">Street address</label>
-          <input id="vaddr" aria-describedby={err("venue.address") ? "vaddr-error" : undefined} value={draft.venue.address} aria-invalid={invalid("venue.address")} onChange={(e) => setVenue("address", e.target.value)} />
-          {err("venue.address") && <span className="error" id="vaddr-error">{err("venue.address")}</span>}</div>
-        <div className="row">
-          <div className="field"><label htmlFor="lat">Latitude</label>
-            <input id="lat" aria-describedby={err("venue.latitude") ? "lat-error" : undefined} type="number" step="any" value={draft.venue.latitude} aria-invalid={invalid("venue.latitude")} onChange={(e) => setVenue("latitude", e.target.valueAsNumber)} />
-            {err("venue.latitude") && <span className="error" id="lat-error">{err("venue.latitude")}</span>}</div>
-          <div className="field"><label htmlFor="lng">Longitude</label>
-            <input id="lng" aria-describedby={err("venue.longitude") ? "lng-error" : undefined} type="number" step="any" value={draft.venue.longitude} aria-invalid={invalid("venue.longitude")} onChange={(e) => setVenue("longitude", e.target.valueAsNumber)} />
-            {err("venue.longitude") && <span className="error" id="lng-error">{err("venue.longitude")}</span>}</div>
-        </div>
-        <Toggle checked={draft.isOutdoor} onChange={(next) => set("isOutdoor", next)} label="Outdoor event" hint="Shown to members so they can plan for the weather." />
-      </div>
+      <WhereSection venue={draft.venue} isOutdoor={draft.isOutdoor} errors={errors} onResolvedFor={(r) => { resolvedFor.current = r; }} onVenue={(patch) => setDraft((current) => ({ ...current, venue: { ...current.venue, ...patch } }))}
+        onOutdoor={(next) => set("isOutdoor", next)}
+        event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds, capacity: draft.capacity, costCents: dollarsToCents(price) }} />
 
       <div className="section">
         <h2>Cost &amp; spots</h2>

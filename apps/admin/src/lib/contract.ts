@@ -1,6 +1,7 @@
 // Mirrors contracts/v1/models.schema.json (Event, EventDraft, Venue) and docs/contracts/callables.md.
 // Replace with the generated types once the organizer callables exist.
 
+import { t } from "./aiStrings";
 import { TAG_IDS } from "./catalog";
 
 export type EventStatus = "scheduled" | "cancelled";
@@ -9,8 +10,11 @@ export interface Venue {
   name: string;
   address: string;
   locality: string;
+  /** Hidden in the editor: resolved from the address on pick or at save. Never typed. */
   latitude: number;
   longitude: number;
+  /** The Google place the position was resolved for; absent for free-typed or legacy venues. */
+  placeId?: string | null;
 }
 
 export interface EventDraft {
@@ -85,12 +89,19 @@ export function emptyDraft(): EventDraft {
     coverImageURL: "",
     startTime: "",
     endTime: "",
-    venue: { name: "", address: "", locality: "", latitude: 0, longitude: 0 },
+    // Coordinates start unset (NaN, like capacity can be): the address search or Advanced fills them.
+    venue: { name: "", address: "", locality: "", latitude: Number.NaN, longitude: Number.NaN },
     costCents: 0,
     costNote: "",
     capacity: 20,
     isOutdoor: false,
   };
+}
+
+/** A draft read back from JSON (the editor stash): an unset coordinate was written as null (JSON has no NaN), so restore it. */
+export function reviveStashedDraft(draft: EventDraft): EventDraft {
+  const { latitude, longitude } = draft.venue as { latitude: number | null; longitude: number | null };
+  return { ...draft, venue: { ...draft.venue, latitude: latitude ?? Number.NaN, longitude: longitude ?? Number.NaN } };
 }
 
 /**
@@ -121,8 +132,11 @@ export function validateDraft(
   if (!draft.venue.name.trim()) errors["venue.name"] = "Add the venue name.";
   if (!draft.venue.address.trim()) errors["venue.address"] = "Add the street address.";
   if (!draft.venue.locality.trim()) errors["venue.locality"] = "Add the city or area.";
-  if (!(draft.venue.latitude >= -90 && draft.venue.latitude <= 90)) errors["venue.latitude"] = "Latitude is −90 to 90.";
-  if (!(draft.venue.longitude >= -180 && draft.venue.longitude <= 180)) errors["venue.longitude"] = "Longitude is −180 to 180.";
+  // Coordinates are resolved at pick or save time, so unset (NaN) is fine here. Out-of-range ones are a safety net on the address.
+  const { latitude, longitude } = draft.venue;
+  if ((!Number.isNaN(latitude) && !(latitude >= -90 && latitude <= 90)) || (!Number.isNaN(longitude) && !(longitude >= -180 && longitude <= 180))) {
+    errors["venue.address"] ??= t("where.notFound");
+  }
   if (!Number.isInteger(draft.costCents) || draft.costCents < 0) errors.costCents = "Price must be zero or more.";
   const minCapacity = Math.max(LIMITS.capacityMin, options.minCapacity ?? 0);
   if (!Number.isInteger(draft.capacity) || draft.capacity < minCapacity || draft.capacity > LIMITS.capacityMax) {
@@ -157,6 +171,7 @@ export function normalizeDraft(draft: EventDraft): EventDraft {
       locality: draft.venue.locality.trim(),
       latitude: draft.venue.latitude,
       longitude: draft.venue.longitude,
+      ...(draft.venue.placeId ? { placeId: draft.venue.placeId } : {}),
     },
     costCents: draft.costCents,
     costNote: draft.costNote.trim(),

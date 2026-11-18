@@ -64,6 +64,10 @@ export const ADMIN_CALLABLES = {
   pickEventCover: "pickEventCoverV1",
   searchCoverPhotos: "searchCoverPhotosV1",
   importCoverPhoto: "importCoverPhotoV1",
+  findVenues: "findVenuesV1",
+  autocompletePlaces: "autocompletePlacesV1",
+  resolvePlace: "resolvePlaceV1",
+  setCompanyOffice: "setCompanyOfficeV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -409,7 +413,7 @@ export interface AiCredits {
   creditsRemaining: number;
   /** ISO instant the allowance resets (start of next month in the company's time zone). */
   resetsAt: string;
-  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number };
+  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number; venueSearch?: number };
 }
 export interface EventIdeaContext {
   enabled: boolean;

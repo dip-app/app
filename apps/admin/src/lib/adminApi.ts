@@ -6,6 +6,8 @@ import type {
 } from "./adminTypes";
 import type { ImportCoverPhotoResult, PickEventCoverInput, PickEventCoverResult, SearchCoverPhotosResult } from "./covers";
 import type { TagStat } from "./tagStats";
+import type { PlaceSuggestion, ResolveRequest, ResolvedPlace } from "./location/types";
+import type { CompanyOffice, FindVenuesInput, FindVenuesResult } from "./venues";
 
 /**
  * Admin tools beyond events and themes (docs/contracts/admin.md). Implemented by the mock (adminMock.ts,
@@ -98,6 +100,18 @@ export interface AdminOpsApi {
   searchCoverPhotos(query: string): Promise<SearchCoverPhotosResult>;
   /** importCoverPhotoV1: stores a photo from a recent search (by key only) as a dynamic cover and returns its catalog URL. Free. */
   importCoverPhoto(key: string): Promise<ImportCoverPhotoResult>;
+
+  // ----- Smart location (admins only; findVenuesV1, setCompanyOfficeV1)
+  /** The company office (`companies/{companyId}`); null when it is not set (missing, or 0/0). */
+  companyOffice(): Promise<CompanyOffice | null>;
+  /** setCompanyOfficeV1: saves the office the venue search starts from; the server resolves the place. */
+  setCompanyOffice(request: { placeId: string; sessionToken?: string }): Promise<CompanyOffice>;
+  /** autocompletePlacesV1: up to 5 typeahead rows for the input (shown only, never stored). */
+  autocompletePlaces(input: string, sessionToken: string): Promise<PlaceSuggestion[]>;
+  /** resolvePlaceV1: a pick (placeId + session token) or a free-typed address (query). Null when not found. */
+  resolvePlace(request: ResolveRequest): Promise<ResolvedPlace | null>;
+  /** findVenuesV1: Dipbot finds venues near the office for the event. 1 credit unless saved results are reused. Nothing is stored on the event. */
+  findVenues(input: FindVenuesInput): Promise<FindVenuesResult>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

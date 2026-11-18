@@ -130,6 +130,7 @@ export function eventFromDoc(id: string, data: DocumentData): AdminEvent {
     venue: {
       name: String(venue.name ?? ""), address: String(venue.address ?? ""), locality: String(venue.locality ?? ""),
       latitude: Number(venue.latitude ?? 0), longitude: Number(venue.longitude ?? 0),
+      ...(typeof venue.placeId === "string" && venue.placeId ? { placeId: venue.placeId } : {}),
     },
     costCents: Number(data.costCents ?? 0),
     costNote: String(data.costNote ?? ""),
