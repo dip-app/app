@@ -171,6 +171,7 @@ struct ProfileHeaderCard: View {
                         .foregroundStyle(ink)
                         .padding(.horizontal, 14).dipFixedFrame(height: 32)
                         .background(.white, in: Capsule())
+                        .accessibilityIdentifier("profile.interests.chip.\(interest.id)")
                 }
                 Button(action: onAddInterests) {
                     Label(profile.interestTagIDs.isEmpty ? String(localized: "profile.interests.addFirst", defaultValue: "Add interests", comment: "Profile header: button to add interests when none are chosen") : String(localized: "profile.interests.add", defaultValue: "Add", comment: "Profile header: button to add more interests"), systemImage: "plus")

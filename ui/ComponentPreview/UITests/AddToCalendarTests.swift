@@ -51,7 +51,7 @@ final class AddToCalendarTests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "event-add-to-calendar"; shot.lifetime = .keepAlways; add(shot)
         button.tap()
-        XCTAssertTrue(app.buttons["Added to calendar"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added to your calendar")).firstMatch.waitForExistence(timeout: 3))
         let recorded = app.staticTexts["calendar.fake.last"].label
         XCTAssertTrue(recorded.lowercased().hasPrefix("puppy yoga|"), recorded)
         XCTAssertTrue(recorded.split(separator: "|").dropFirst().first.map { $0.contains(",") } ?? false, recorded)
@@ -71,7 +71,7 @@ final class AddToCalendarTests: XCTestCase {
         let before = XCTAttachment(screenshot: app.screenshot())
         before.name = "event-info-rows"; before.lifetime = .keepAlways; add(before)
         row.tap()
-        XCTAssertTrue(app.buttons["Added to calendar"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added to your calendar")).firstMatch.waitForExistence(timeout: 3))
         let recorded = app.staticTexts["calendar.fake.last"].label
         XCTAssertTrue(recorded.lowercased().hasPrefix("puppy yoga|"), recorded)
         XCTAssertTrue(recorded.hasSuffix("|5400|false"), recorded)

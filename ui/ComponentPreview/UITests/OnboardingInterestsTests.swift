@@ -56,7 +56,9 @@ final class OnboardingInterestsTests: XCTestCase {
         field.tap()
         field.typeText("Out")
         XCTAssertTrue(app.buttons["profile.interests.option.tag-outdoors"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["profile.interests.option.tag-food"].exists)
+        let food = app.buttons["profile.interests.option.tag-food"]
+        let filtered = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: food)
+        XCTAssertEqual(XCTWaiter.wait(for: [filtered], timeout: 5), .completed, "non-matching options leave the list once the query applies")
         app.buttons["profile.interests.option.tag-outdoors"].tap()
         app.buttons["onboarding.interests.skip"].tap()
         XCTAssertTrue(waitForLabel(app.staticTexts["onboarding.interests.done"], "Skipped"))
