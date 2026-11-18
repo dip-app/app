@@ -6,6 +6,7 @@ import { saveAiDraft } from "@/lib/ideas";
 import { LINK_MESSAGES, type LinkProblem, linkProblem, readToken } from "@/lib/suggestions";
 import { suggestionsApiFor } from "@/lib/suggestionsApi";
 import { useApp } from "./AppProvider";
+import { Button, EmptyState } from "@/components/kit";
 
 /** Resolves the email deep link (`?t=<token>`), hands the draft to the event editor and replaces the URL. */
 export function SuggestedIdeaOpen() {
@@ -30,15 +31,8 @@ export function SuggestedIdeaOpen() {
 
   if (problem) {
     return (
-      <div className="empty" role="alert">
-        <h2>{problem === "forbidden" ? "This idea isn’t available to you" : problem === "expired" ? "This link doesn’t work anymore" : "Couldn’t open this idea"}</h2>
-        <p>{LINK_MESSAGES[problem]}</p>
-        <div className="empty-action">
-          {problem === "unavailable"
-            ? <button className="pill-btn gray" onClick={() => window.location.reload()}>Try again</button>
-            : <a className="pill-btn gray" href="/ideas/">Open Event ideas</a>}
-        </div>
-      </div>
+      <EmptyState role="alert" title={problem === "forbidden" ? "This idea isn’t available to you" : problem === "expired" ? "This link doesn’t work anymore" : "Couldn’t open this idea"} body={LINK_MESSAGES[problem]}
+        action={problem === "unavailable" ? <Button onClick={() => window.location.reload()}>Try again</Button> : <Button href="/ideas/">Open Event ideas</Button>} />
     );
   }
   return (

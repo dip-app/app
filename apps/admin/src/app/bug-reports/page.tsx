@@ -5,7 +5,7 @@ import { useApp } from "@/components/AppProvider";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { toast } from "@/components/Toast";
-import { Avatar, Empty, Info, LoadError, LoadMore, Loading, Notice, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
+import { Avatar, Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import { useDebounced, usePaged } from "@/components/usePaged";
 import { ApiError } from "@/lib/contract";
@@ -17,6 +17,7 @@ import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { BUG_CATEGORIES, BUG_CATEGORY_LABEL, BUG_STATUSES, BUG_STATUS_LABEL, diagnosticRows, issueText, screenLabel } from "@/lib/bugReports";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button, EmptyState, InlineNotice } from "@/components/kit";
 
 type StatusFilter = BugStatus | "all";
 const number = (n: number) => n.toLocaleString("en-US");
@@ -45,7 +46,7 @@ function Screenshot({ url, who, onExpired }: { url: string; who: string; onExpir
     return (
       <div className="evidence none" role="alert">
         <p>The screenshot link expired or couldn’t be loaded.</p>
-        <button className="pill-btn gray small" onClick={onExpired}>Reload report</button>
+        <Button type="submit" size="sm" onClick={onExpired}>Reload report</Button>
       </div>
     );
   }
@@ -59,7 +60,7 @@ function Screenshot({ url, who, onExpired }: { url: string; who: string; onExpir
       <dialog ref={dialog} className="dialog viewer" aria-label={`${who}’s screenshot`} onClose={() => setOpen(false)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="photo-frame large" src={url} alt={`Screenshot from ${who}`} draggable={false} onError={() => setBroken(true)} />
-        <div className="actions"><button className="pill-btn gray" onClick={() => setOpen(false)}>Close</button></div>
+        <div className="actions"><Button type="submit" onClick={() => setOpen(false)}>Close</Button></div>
       </dialog>
     </>
   );
@@ -143,7 +144,7 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
   const rows = diagnosticRows(detail?.diagnostics ?? null);
   return (
     <article className="review-detail panel bug-detail" aria-label={`Bug report from ${report.reporterName}`}>
-      <button type="button" className="pill-btn gray small to-list" onClick={onBackToList}><span aria-hidden>‹ </span>All reports</button>
+      <Button size="sm" className="to-list" onClick={onBackToList}><span aria-hidden>‹ </span>All reports</Button>
       <div className="review-head">
         <div className="person big"><Avatar name={report.reporterName} userId={report.reporterId} photoURL={report.reporterPhotoURL} avatarId={report.reporterAvatarId} /><div><h2>{report.reporterName}</h2><p className="muted">{detail?.reporterEmail || " "}</p></div></div>
         <div className="review-pills">
@@ -193,9 +194,9 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
                 <span className="hint" id="bug-note-hint">Only admins see this. {note.length}/{number(NOTE_MAX)}{detail.updatedAt ? ` · Last saved ${formatDateTime(detail.updatedAt)}${detail.updatedByName ? ` by ${detail.updatedByName}` : ""}` : ""}</span></div>
               {message && <p className={message.tone === "error" ? "error" : "muted"} role={message.tone === "error" ? "alert" : "status"}>{message.text}{message.tone === "error" && message.text.startsWith("Someone") && <> <button type="button" className="link-btn" onClick={() => setAttempt((n) => n + 1)}>Reload report</button></>}</p>}
               <div className="actions">
-                <button type="submit" className="pill-btn dark" disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</button>
+                <Button type="submit" variant="primary" disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</Button>
 
-                <button type="button" className="pill-btn gray" onClick={() => void copy()}>{copied ? <><span aria-hidden>✓ </span>Copied</> : "Copy as issue text"}</button>
+                <Button onClick={() => void copy()}>{copied ? <><span aria-hidden>✓ </span>Copied</> : "Copy as issue text"}</Button>
                 <span className="sr-only" role="status">{copied ? "Issue text copied to the clipboard" : ""}</span>
               </div>
               {!dirty && !saving && <p className="no-changes">No changes to save</p>}
@@ -285,10 +286,10 @@ function BugReports() {
       </div>
       <div className="filters bug-filters" data-open={filtersOpen ? "true" : undefined}>
         <SearchBox id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label="Search reports" placeholder="Text, person or screen (press / to focus)" />
-        <button type="button" className="pill-btn gray small filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
+        <Button size="sm" className="filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
           {filtersOpen ? "Hide filters" : "Filters"}
-          {activeFilters > 0 && <span className="filter-count" aria-label={`${activeFilters} active`}>{activeFilters}</span>}</button>
+          {activeFilters > 0 && <span className="filter-count" aria-label={`${activeFilters} active`}>{activeFilters}</span>}</Button>
         <div className="field wide extra"><label htmlFor="bug-category">Category</label>
           <select id="bug-category" value={category} onChange={(e) => setQs({ category: e.target.value })}>
             <option value="all">All categories</option>
@@ -299,13 +300,13 @@ function BugReports() {
       </div>
       {filtered && !empty && <p className="clear-filters"><button type="button" className="link-btn" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>Clear filters</button></p>}
       {rangeBad && <p className="error" role="alert">The end date is before the start date.</p>}
-      {counts?.capped && <Notice>Counts cover the newest 1,000 reports. Older ones are still listed as you load more.</Notice>}
+      {counts?.capped && <InlineNotice>Counts cover the newest 1,000 reports. Older ones are still listed as you load more.</InlineNotice>}
 
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
         : (list.loading && empty) || holdList ? <Loading label="Loading bug reports" layout="bugs" />
         : empty ? (
           filtered
-            ? <Empty title="No matches" body="Try a different search, category or date range." action={<button type="button" className="pill-btn dark" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>Clear filters</button>} />
+            ? <Empty title="No matches" body="Try a different search, category or date range." action={<Button variant="primary" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>Clear filters</Button>} />
             : <Empty title={EMPTY_COPY[status].title} body={EMPTY_COPY[status].body} />
         ) : (
           <>
@@ -336,13 +337,13 @@ function BugReports() {
                     </li>
                   ))}
                 </ul>
-                {list.error && <div className="banner error" role="alert"><span>{list.error.message}</span><button type="button" className="pill-btn" onClick={list.loadMore}>Try again</button></div>}
+                {list.error && <InlineNotice tone="error" action={<Button variant="plain" onClick={list.loadMore}>Try again</Button>}>{list.error.message}</InlineNotice>}
                 {list.hasMore && <LoadMore shown={list.items.length} total={!filtered && counts && !counts.capped ? counts[status] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
               </section>
               <div ref={detailTop} className="bug-detail-wrap">
                 {selected
                   ? <ReportDetail key={selected.id} report={selected} admins={adminOptions} onSaved={saved} onBackToList={() => listTop.current?.scrollIntoView?.({ block: "start" })} />
-                  : <div className="empty"><h2>Pick a report</h2><p>Choose one from the list to read it and triage it.</p></div>}
+                  : <EmptyState title="Pick a report" body="Choose one from the list to read it and triage it." />}
               </div>
             </div>
           </>

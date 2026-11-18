@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { ChallengeRow, ChallengeTable, sortChallenges } from "@/components/ChallengeRows";
@@ -9,6 +8,7 @@ import { Empty, LoadError, Loading } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import { themePhase } from "@/lib/challenge";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button } from "@/components/kit";
 
 export default function ChallengesPage() {
   const { api } = useApp();
@@ -39,7 +39,7 @@ export default function ChallengesPage() {
       {themes.error ? <LoadError error={themes.error} onRetry={themes.reload} />
         : !themes.data || hold ? <Loading label="Loading weekly themes" layout="challenges" />
         : sorted.length === 0 ? (
-          <Empty title="Nothing to review yet" body="Submissions appear here once a weekly theme has started." action={<Link className="pill-btn dark" href="/themes/">Weekly themes</Link>} />
+          <Empty title="Nothing to review yet" body="Submissions appear here once a weekly theme has started." action={<Button variant="primary" href="/themes/">Weekly themes</Button>} />
         ) : (
           <ChallengeTable>
             {sorted.map((theme) => <ChallengeRow key={theme.id} theme={theme} phase={themePhase(theme, now)} pending={pending[theme.id]} />)}

@@ -11,10 +11,11 @@ import { creditsText } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter } from "./CreditsMeter";
 import { DipbotAction } from "./DipbotAction";
-import { Loading, Notice } from "./Ui";
+import { Loading } from "./Ui";
 import { Toggle } from "./Toggle";
 import { useLoad } from "./useLoad";
 import { useSkeletonGate } from "./useDelayedShow";
+import { Button, InlineNotice, Panel, SegmentedControl } from "@/components/kit";
 
 type Busy = null | "switch" | "schedule" | "preview" | "test";
 type Message = { tone: "ok" | "info"; text: string } | null;
@@ -52,10 +53,7 @@ export function SuggestionsEmail() {
   const hold = useSkeletonGate((!status || !sug) && !state.error);
   if (state.error) {
     return (
-      <div className="banner error" role="alert">
-        <span>{manageFailureMessage(state.error)}</span>
-        <button className="pill-btn" onClick={state.reload}>Try again</button>
-      </div>
+      <InlineNotice tone="error" action={<Button variant="plain" onClick={state.reload}>Try again</Button>}>{manageFailureMessage(state.error)}</InlineNotice>
     );
   }
   if (!status || !sug || hold) return <Loading label="Loading weekly ideas email" layout="suggestions" />;
@@ -105,19 +103,17 @@ export function SuggestionsEmail() {
           <div className="ideas-head"><CreditsMeter credits={credits} /></div>
         </div>
       )}
-      {failure && <div className="banner error" role="alert"><span>{failure}</span></div>}
+      {failure && <InlineNotice tone="error">{failure}</InlineNotice>}
 
-      <section className="panel" aria-labelledby="sug-status">
-        <h2 id="sug-status">Weekly email</h2>
+      <Panel id="sug-status" title="Weekly email">
         <Toggle checked={current.subscribed} onChange={(on) => { if (!disabled) void toggle(on); }} label="Send me weekly event ideas"
           hint={current.subscribed ? (next ? `Next email: ${next}` : "You are on the list.") : "Turn on to get a short email with event ideas each week."} />
-        {notices.map((text) => <Notice key={text}>{text}</Notice>)}
+        {notices.map((text) => <InlineNotice key={text}>{text}</InlineNotice>)}
         <p className="muted">This setting is only for you. Other admins choose for themselves.</p>
         {credits && <p className="muted">{t("credits.email", { cost: creditsText(credits.creditCost.weeklyEmail) })}</p>}
-      </section>
+      </Panel>
 
-      <section className="panel" aria-labelledby="sug-schedule">
-        <h2 id="sug-schedule">Schedule</h2>
+      <Panel id="sug-schedule" title="Schedule">
         <div className="row">
           <div className="field">
             <label htmlFor={dayId}>Day</label>
@@ -134,15 +130,14 @@ export function SuggestionsEmail() {
         </div>
         <p className="muted">Times are in {current.timeZone}. This schedule applies to every admin in your company.</p>
         <div className="actions inline">
-          <button type="button" className="pill-btn purple" disabled={disabled || !dirty} onClick={() => void saveSchedule()}>
+          <Button variant="primary" disabled={disabled || !dirty} onClick={() => void saveSchedule()}>
             {busy === "schedule" ? "Saving..." : "Save schedule"}
-          </button>
+          </Button>
         </div>
-        {message && <Notice>{message.text}</Notice>}
-      </section>
+        {message && <InlineNotice>{message.text}</InlineNotice>}
+      </Panel>
 
-      <section className="panel" aria-labelledby="sug-preview">
-        <h2 id="sug-preview">Preview</h2>
+      <Panel id="sug-preview" title="Preview">
         <p className="muted">See this week’s email before it goes out. Dry run: nothing is sent.</p>
         <div className="actions inline">
           <DipbotAction label="Preview this week’s email" loadingLabel="Building the preview..." loading={busy === "preview"} disabled={disabled} onClick={() => void showPreview()} />
@@ -151,15 +146,10 @@ export function SuggestionsEmail() {
           <div className="sug-preview">
             <p className="sug-subject"><span className="muted">Subject</span> <strong>{preview.subject}</strong></p>
             <div className="sug-controls">
-              <div className="tabs" role="group" aria-label="Preview format">
-                <button type="button" className="tab" aria-pressed={view === "html"} onClick={() => setView("html")}>Email</button>
-                <button type="button" className="tab" aria-pressed={view === "text"} onClick={() => setView("text")}>Plain text</button>
-              </div>
+              <SegmentedControl label="Preview format" value={view} onChange={setView} options={[{ value: "html", label: "Email" }, { value: "text", label: "Plain text" }]} />
               {view === "html" && (
-                <div className="tabs" role="group" aria-label="Preview width">
-                  <button type="button" className="tab" aria-pressed={width === "desktop"} onClick={() => setWidth("desktop")}>Desktop {PREVIEW_WIDTHS.desktop}</button>
-                  <button type="button" className="tab" aria-pressed={width === "mobile"} onClick={() => setWidth("mobile")}>Mobile {PREVIEW_WIDTHS.mobile}</button>
-                </div>
+                <SegmentedControl label="Preview width" value={width} onChange={setWidth}
+                  options={[{ value: "desktop", label: `Desktop ${PREVIEW_WIDTHS.desktop}` }, { value: "mobile", label: `Mobile ${PREVIEW_WIDTHS.mobile}` }]} />
               )}
             </div>
             {view === "html" ? (
@@ -172,16 +162,15 @@ export function SuggestionsEmail() {
             <p className="muted">{engineLabel(preview.engine)}</p>
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section className="panel" aria-labelledby="sug-test">
-        <h2 id="sug-test">Test</h2>
+      <Panel id="sug-test" title="Test">
         <p className="muted">Get this week’s email in your own inbox. You can send one test per hour.</p>
         <div className="actions inline">
           <DipbotAction label="Send me a test" loadingLabel="Sending..." loading={busy === "test"} disabled={disabled} onClick={() => void sendTest()} />
         </div>
-        {testResult && <Notice>{testResult.text}</Notice>}
-      </section>
+        {testResult && <InlineNotice>{testResult.text}</InlineNotice>}
+      </Panel>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -15,6 +14,7 @@ import { type Member, type MemberPatch, ROLE_LABEL, type Role, can } from "@/lib
 import { ApiError } from "@/lib/contract";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button, ChipToggle, InlineNotice, Panel } from "@/components/kit";
 
 const ROLE_DESCRIPTION: Record<Role, string> = {
   member: "Members join events and challenges in the app but can’t use the admin portal.",
@@ -84,14 +84,14 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
   return (
     <>
       <div className="toolbar">
-        <Link className="pill-btn gray" href="/members/">All members</Link>
+        <Button href="/members/">All members</Button>
         <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? "Active" : member.status === "invited" ? "Invited" : "Deactivated"}</Info>
         <span className="muted">Joined {formatDate(member.createdAt)}</span>
       </div>
       {error && (
         <div className="banner error" role="alert">
           <span>{error.message}</span>
-          {error.code === "aborted" && <button className="pill-btn" onClick={onReload}>Reload latest</button>}
+          {error.code === "aborted" && <Button variant="plain" onClick={onReload}>Reload latest</Button>}
         </div>
       )}
 
@@ -108,7 +108,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
               {fieldError("role") && <span className="error">{fieldError("role")}</span>}
             </div>
             <fieldset className="field"><legend>Teams</legend>
-              <div className="chips">{teams.map((t) => <button type="button" key={t.id} className="chip" aria-pressed={draft.teamIds.includes(t.id)} onClick={() => toggleTeam(t.id)}>{t.name}</button>)}</div>
+              <div className="chips">{teams.map((t) => <ChipToggle key={t.id} pressed={draft.teamIds.includes(t.id)} onClick={() => toggleTeam(t.id)}>{t.name}</ChipToggle>)}</div>
             </fieldset>
             <div className="row">
               <div className="field"><label htmlFor="m-loc">Work location</label><input id="m-loc" value={draft.workLocation} maxLength={80} onChange={(e) => set("workLocation", e.target.value)} /></div>
@@ -117,34 +117,31 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
             <div className="field"><label htmlFor="m-job">Job title</label><input id="m-job" value={draft.jobTitle} maxLength={80} onChange={(e) => set("jobTitle", e.target.value)} /></div>
           </div>
           </fieldset>
-          {!editable && <p className="notice">Read-only. Only admins can change people.</p>}
+          {!editable && <InlineNotice>Read-only. Only admins can change people.</InlineNotice>}
           {editable && <div className="actions">
-            <button className="pill-btn purple" disabled={!dirty || saving} onClick={requestSave}>{saving ? "Saving…" : "Save changes"}</button>
-            <button className="pill-btn gray" disabled={!dirty || saving} onClick={() => setDraft({ role: member.role, teamIds: member.teamIds, workLocation: member.workLocation, department: member.department, jobTitle: member.jobTitle })}>Discard</button>
+            <Button variant="primary" disabled={!dirty || saving} onClick={requestSave}>{saving ? "Saving…" : "Save changes"}</Button>
+            <Button disabled={!dirty || saving} onClick={() => setDraft({ role: member.role, teamIds: member.teamIds, workLocation: member.workLocation, department: member.department, jobTitle: member.jobTitle })}>Discard</Button>
           </div>}
         </section>
 
         {editable && <aside className="stack">
-          <section className="panel" aria-labelledby="access">
-            <h2 id="access">Access</h2>
+          <Panel id="access" title="Access">
             {member.status === "deactivated"
-              ? <><p className="muted">Deactivated. They can’t sign in and are hidden from events and feeds.</p><button className="pill-btn dark" onClick={() => setAction("reactivate")}>Reactivate</button></>
-              : <><p className="muted">Deactivating blocks sign-in and removes them from upcoming events. Their history and points stay.</p><button className="pill-btn danger" disabled={self} onClick={() => setAction("deactivate")}>Deactivate</button>{self && <p className="hint">You can’t deactivate yourself.</p>}</>}
-          </section>
-          <section className="panel" aria-labelledby="pts">
-            <h2 id="pts">Points</h2>
+              ? <><p className="muted">Deactivated. They can’t sign in and are hidden from events and feeds.</p><Button variant="primary" onClick={() => setAction("reactivate")}>Reactivate</Button></>
+              : <><p className="muted">Deactivating blocks sign-in and removes them from upcoming events. Their history and points stay.</p><Button variant="danger" disabled={self} onClick={() => setAction("deactivate")}>Deactivate</Button>{self && <p className="hint">You can’t deactivate yourself.</p>}</>}
+          </Panel>
+          <Panel id="pts" title="Points">
             <p className="big-number">{member.pointsBalance ?? 0}</p>
-            <button className="pill-btn dark" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>Adjust or reset</button>
-          </section>
-          <section className="panel" aria-labelledby="prof">
-            <h2 id="prof">Participant profile</h2>
+            <Button variant="primary" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>Adjust or reset</Button>
+          </Panel>
+          <Panel id="prof" title="Participant profile">
             <dl className="facts">
               <div><dt>Avatar</dt><dd>{member.avatarId ? "Chosen" : "Default"}</dd></div>
               <div><dt>City</dt><dd>{member.city || "Not set"}</dd></div>
             </dl>
             <p className="muted">Clears what they set themselves: photo, avatar, city, interests, travel radius, availability and favorites. Identity, role, teams and points stay.</p>
-            <button className="pill-btn danger" onClick={() => setAction("reset")}>Reset profile</button>
-          </section>
+            <Button variant="danger" onClick={() => setAction("reset")}>Reset profile</Button>
+          </Panel>
         </aside>}
       </div>
 

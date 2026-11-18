@@ -11,6 +11,7 @@ import { t } from "@/lib/aiStrings";
 import { DEFAULT_PRESETS, type TimePreset, nextWeekday } from "@/lib/dipbotTouches";
 import { Chevron } from "./Chevron";
 import { DipbotMark } from "./DipbotMark";
+import { ChipToggle, SegmentedControl } from "@/components/kit";
 
 interface Props {
   /** RFC 3339 UTC, the same values the editor stores. */
@@ -379,9 +380,9 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
           <span className="when-suggest-label" id={`${uid}-presets`}>{t("editor.timesLabel")}</span>
           <div className="chips when-presets" role="group" aria-labelledby={`${uid}-presets`}>
             {presets.map((p) => (
-              <button key={p.id} type="button" className="chip dipbot-chip" disabled={disabled} aria-pressed={presetActive(p)} onClick={() => applyPreset(p)}>
-                <DipbotMark size={14} />{p.label}
-              </button>
+              <ChipToggle key={p.id} className="dipbot-chip" disabled={disabled} pressed={presetActive(p)} onClick={() => applyPreset(p)} icon={<DipbotMark size={14} />}>
+                {p.label}
+              </ChipToggle>
             ))}
           </div>
         </div>
@@ -422,10 +423,8 @@ function TimeField({ id, label, minutes, disabled, invalid, describedBy, onCommi
         <input id={id} inputMode="text" autoComplete="off" spellCheck={false} value={text} disabled={disabled} aria-invalid={invalid || bad || undefined} aria-describedby={describedBy}
           onFocus={() => { editing.current = true; }} onChange={(e) => setText(e.target.value)} onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }} />
-        <div className="segmented" role="group" aria-label={`${label} AM or PM`}>
-          <button type="button" className="seg" disabled={disabled} aria-pressed={!isPm(minutes)} onClick={() => onCommit(withPeriod(minutes, false))}>AM</button>
-          <button type="button" className="seg" disabled={disabled} aria-pressed={isPm(minutes)} onClick={() => onCommit(withPeriod(minutes, true))}>PM</button>
-        </div>
+        <SegmentedControl variant="pill" label={`${label} AM or PM`} value={isPm(minutes) ? "pm" : "am"} disabled={disabled} onChange={(next) => onCommit(withPeriod(minutes, next === "pm"))}
+          options={[{ value: "am", label: "AM" }, { value: "pm", label: "PM" }]} />
       </div>
       {bad && <span className="error" role="alert">Type a time like 6:30 PM.</span>}
     </div>

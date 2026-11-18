@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
-import { Empty, Info, LoadError, Loading, Notice, formatDateTime } from "@/components/Ui";
+import { Empty, Info, LoadError, Loading, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import type { AlbumComment, AlbumPhoto } from "@/lib/adminTypes";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button, InlineNotice } from "@/components/kit";
 
 function PhotoImage({ photo, large }: { photo: AlbumPhoto; large?: boolean }) {
   const { api } = useApp();
@@ -57,7 +57,7 @@ function Viewer({ eventId, photo, onClose, onChanged }: { eventId: string; photo
                 <h2>{photo.uploaderName}</h2>
                 <p className="subtitle">{formatDateTime(photo.createdAt)}</p>
               </div>
-              <button className="pill-btn gray" onClick={onClose}>Close</button>
+              <Button onClick={onClose}>Close</Button>
             </div>
             {photo.caption && <p>{photo.caption}</p>}
             <h3>Comments ({photo.commentCount})</h3>
@@ -72,13 +72,13 @@ function Viewer({ eventId, photo, onClose, onChanged }: { eventId: string; photo
                         <strong>{comment.authorName}</strong> <span className="muted">{formatDateTime(comment.createdAt)}</span>
                         <p>{comment.text}</p>
                       </div>
-                      <button className="pill-btn gray small" onClick={() => setPending({ kind: "comment", photo, comment })} aria-label={`Remove comment by ${comment.authorName}`}>Remove</button>
+                      <Button size="sm" onClick={() => setPending({ kind: "comment", photo, comment })} aria-label={`Remove comment by ${comment.authorName}`}>Remove</Button>
                     </li>
                   ))}
                 </ul>
               )}
             <div className="actions">
-              <button className="pill-btn danger" onClick={() => setPending({ kind: "photo", photo })}>Remove photo</button>
+              <Button variant="danger" onClick={() => setPending({ kind: "photo", photo })}>Remove photo</Button>
             </div>
           </div>
         </div>
@@ -125,11 +125,11 @@ function Album() {
   return (
     <>
       <div className="toolbar">
-        <Link className="pill-btn gray" href="/events/">All events</Link>
+        <Button href="/events/">All events</Button>
         <Info>{photos.data.length} {photos.data.length === 1 ? "photo" : "photos"}</Info>
         {event.data && <span className="muted">{event.data.title}</span>}
       </div>
-      {message && <Notice>{message}</Notice>}
+      {message && <InlineNotice>{message}</InlineNotice>}
       {photos.data.length === 0 ? (
         <Empty title="No photos yet" body="Members who went can add photos after the event ends. They show up here." />
       ) : (

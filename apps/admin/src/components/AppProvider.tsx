@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { TagCatalogProvider } from "./TagCatalog";
 import { holdReadsFromQuery } from "@/lib/loadingHold";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
+import { Button, EmptyState } from "@/components/kit";
 
 interface AppState {
   api: AdminApi;
@@ -65,11 +66,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   if (failed) {
     return (
       <div className="boot-state">
-        <div className="empty" role="alert">
-          <h2>Can’t load DIP Admin</h2>
-          <p>Something went wrong while signing you in. Check your connection and try again.</p>
-          <div className="empty-action"><button type="button" className="pill-btn purple" onClick={() => window.location.reload()}>Reload</button></div>
-        </div>
+        <EmptyState role="alert" title="Can’t load DIP Admin" body="Something went wrong while signing you in. Check your connection and try again."
+          action={<Button variant="primary" onClick={() => window.location.reload()}>Reload</Button>} />
       </div>
     );
   }

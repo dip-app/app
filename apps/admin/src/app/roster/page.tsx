@@ -15,6 +15,7 @@ import { LIST_PAGE_SIZE, ROLE_LABEL, type ResendResult, type RosterCounts, type 
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button, InlineNotice } from "@/components/kit";
 
 type Filter = RosterState | "all";
 const FILTERS: { id: Filter; label: string }[] = [
@@ -119,17 +120,17 @@ function Roster() {
   const hold = useSkeletonGate(list.loading && empty);
   return (
     <Shell title="Roster" subtitle="Everyone at your company. Invited people were added in advance and get their role and teams when they sign in; anyone with a company email can join." requires="roster.manage"
-      action={<Link className="pill-btn purple" href="/import/">Import people</Link>}>
+      action={<Button variant="primary" href="/import/">Import people</Button>}>
       {unlisted > 0 && (
         <div className="review-banner ok" role="status">
           <span><strong>{number(unlisted)} {unlisted === 1 ? "person has" : "people have"} signed in but {unlisted === 1 ? "isn’t" : "aren’t"} on the roster.</strong> They joined before the roster listed everyone. Adding them keeps them Active with the same role and teams.</span>
-          <button className="pill-btn dark small" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? `Checking ${number(backfill.scanned)}…` : "Add existing members to the roster"}</button>
+          <Button variant="primary" size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? `Checking ${number(backfill.scanned)}…` : "Add existing members to the roster"}</Button>
         </div>
       )}
       <Tabs idBase="roster" label="Filter roster" value={filter} onChange={(id) => setQs({ filter: id })}
         items={FILTERS.map((item) => ({ id: item.id, label: item.label, ...(counts ? { count: number(counts[item.id]) } : {}) }))} />
       <SearchBox id="roster-search" value={search} onChange={(v) => setQs({ q: v })} label="Search by name or email" placeholder="Search by name or email (press / to focus)" />
-      {error && <div className="banner error" role="alert"><span>{error}</span></div>}
+      {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div {...tabPanelProps("roster", filter)}>
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
         : (list.loading && empty) || hold ? <Loading label="Loading roster" layout="roster" />
@@ -137,7 +138,7 @@ function Roster() {
           <Empty
             title={counts?.all === 0 ? "The roster is empty" : searching ? "No matches" : filter === "invited" ? "No pending invites" : `No ${FILTERS.find((item) => item.id === filter)!.label.toLowerCase()} people`}
             body={counts?.all === 0 ? "Import a spreadsheet to add people before they sign in." : filter === "invited" && !searching ? "People you import who haven’t signed in yet show up here as Invited." : searching ? "Try a different name or email, or clear the search." : "Nobody is in this group right now."}
-            action={counts?.all === 0 ? <Link className="pill-btn dark" href="/import/">Import people</Link> : undefined}
+            action={counts?.all === 0 ? <Button variant="primary" href="/import/">Import people</Button> : undefined}
           />
         ) : (
           <>
@@ -167,9 +168,9 @@ function Roster() {
                       <td data-label="Added">{formatDate(r.invitedAt)}</td>
                       <td className="right">
                         <div className="row-actions">
-                          {r.state === "invited" && <button className="pill-btn dark small" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={`Resend invite to ${r.displayName}`}>{busy === r.entryId ? "Resending…" : "Resend invite"}</button>}
-                          {r.state === "invited" && <button className="pill-btn gray small quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</button>}
-                          {r.state === "revoked" && <button className="pill-btn dark small" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={`Invite again: ${r.displayName}`}>Invite again</button>}
+                          {r.state === "invited" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={`Resend invite to ${r.displayName}`}>{busy === r.entryId ? "Resending…" : "Resend invite"}</Button>}
+                          {r.state === "invited" && <Button size="sm" className="quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</Button>}
+                          {r.state === "revoked" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={`Invite again: ${r.displayName}`}>Invite again</Button>}
                         </div>
                       </td>
                     </tr>
@@ -177,7 +178,7 @@ function Roster() {
                 </tbody>
               </table>
             </TableRegion>
-            {list.error && <div className="banner error" role="alert"><span>{list.error.message}</span></div>}
+            {list.error && <InlineNotice tone="error">{list.error.message}</InlineNotice>}
             {list.hasMore && <LoadMore shown={list.items.length} total={!searching && counts ? counts[filter] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
           </>
         )}

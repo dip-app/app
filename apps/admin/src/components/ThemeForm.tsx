@@ -19,6 +19,7 @@ import { RadioGrid } from "./RadioGrid";
 import { ThemeArt } from "./ThemeArt";
 import { ThemePreview } from "./ThemePreview";
 import { toast } from "./Toast";
+import { Button, ChipToggle } from "@/components/kit";
 
 interface Props {
   /** Present when editing. */
@@ -222,7 +223,7 @@ export function ThemeForm({ theme, onReload }: Props) {
           <div className="banner error" role="alert">
             <span>{failure.message}</span>
             {failure.code === "aborted" && onReload && (
-              <button type="button" className="pill-btn gray" onClick={onReload}>Reload latest</button>
+              <Button onClick={onReload}>Reload latest</Button>
             )}
           </div>
         )}
@@ -259,13 +260,13 @@ export function ThemeForm({ theme, onReload }: Props) {
               {catalog.status === "loading" && <span className="hint">Loading tags…</span>}
               {catalog.status === "error" && <span className="hint">Couldn’t load tags. <button type="button" className="link-btn" onClick={catalog.reload}>Try again</button></span>}
               {tags.map((tag) => (
-                <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
+                <ChipToggle key={tag.id} pressed={draft.tagIds.includes(tag.id)}
                   onClick={() => {
                     touched.current.tags = true;
                     set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((t) => t !== tag.id) : [...draft.tagIds, tag.id]);
                   }}>
                   {tag.name}
-                </button>
+                </ChipToggle>
               ))}
             </div>
             {err("tagIds") && <span className="error" id="tags-error">{err("tagIds")}</span>}

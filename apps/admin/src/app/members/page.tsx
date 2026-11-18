@@ -15,6 +15,7 @@ import { membersCsv } from "@/lib/exports";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button, InlineNotice } from "@/components/kit";
 
 const STATUSES: { id: MemberStatus | "all"; label: string }[] = [
   { id: "all", label: "All" }, { id: "active", label: "Active" }, { id: "invited", label: "Invited" }, { id: "deactivated", label: "Deactivated" },
@@ -80,7 +81,7 @@ function Members() {
 
   return (
     <Shell title="Members" subtitle="Everyone at your company. Admins can open a person to edit their details." requires="members.view"
-      action={<button type="button" className="pill-btn gray" disabled={!list.items.length || exporting} onClick={() => void exportCsv()}>{exporting ? "Exporting…" : "Export CSV"}</button>}>
+      action={<Button disabled={!list.items.length || exporting} onClick={() => void exportCsv()}>{exporting ? "Exporting…" : "Export CSV"}</Button>}>
       <Tabs idBase="members" label="Filter by status" value={status} onChange={(id) => setQs({ status: id })} items={STATUSES} />
       <div className="filters">
         <SearchBox id="members-search" value={search} onChange={(v) => setQs({ q: v })} label="Search by name, email or title" placeholder="Search by name, email or title (press / to focus)" />
@@ -98,7 +99,7 @@ function Members() {
           </select></div>
       </div>
       {clearable && (
-        <div className="actions"><button type="button" className="pill-btn gray small" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>Clear filters</button></div>
+        <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>Clear filters</Button></div>
       )}
       <div {...tabPanelProps("members", status)}>
         {list.error && list.items.length === 0 ? <LoadError error={list.error} onRetry={list.reload} />
@@ -126,7 +127,7 @@ function Members() {
                   </tbody>
                 </table>
               </TableRegion>
-              {list.error && <div className="banner error" role="alert"><span>{list.error.message}</span></div>}
+              {list.error && <InlineNotice tone="error">{list.error.message}</InlineNotice>}
               {list.hasMore && <LoadMore shown={list.items.length} total={total ?? undefined} loading={list.loadingMore} onClick={list.loadMore} />}
             </>
           )}

@@ -214,7 +214,6 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .triage .actions { padding: 4px 0 0; }
 .triage textarea { min-height: 112px; }
 
-.triage .pill-btn.dark[disabled] { opacity: .4; }
 .no-changes { font-size: 13px; color: rgba(30, 33, 43, .7); margin: -4px 0 0; }
 .filters-toggle svg { margin-right: 8px; flex: none; }
 .filter-count { margin-left: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }

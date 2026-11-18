@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -18,6 +17,7 @@ import { classify } from "@/lib/contract";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button, InlineNotice } from "@/components/kit";
 
 const DEFAULTS = { q: "" };
 
@@ -97,14 +97,14 @@ function Attendees() {
   return (
     <>
       <div className="toolbar">
-        <Link className="pill-btn gray" href="/events/">All events</Link>
+        <Button href="/events/">All events</Button>
         <Info>{attendees.data.length} of {event.data.capacity} going</Info>
         <Info>{checkedIn} checked in</Info>
         <span className="spacer" />
-        <button className="pill-btn gray" onClick={exportCsv} disabled={attendees.data.length === 0}>Export CSV</button>
-        {kind === "upcoming" && <button className="pill-btn purple" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>Add attendee</button>}
+        <Button onClick={exportCsv} disabled={attendees.data.length === 0}>Export CSV</Button>
+        {kind === "upcoming" && <Button variant="primary" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>Add attendee</Button>}
       </div>
-      {error && <div className="banner error" role="alert"><span>{error}</span></div>}
+      {error && <InlineNotice tone="error">{error}</InlineNotice>}
 
       {adding && (
         <section className="panel" aria-label="Add attendee">
@@ -117,7 +117,7 @@ function Attendees() {
                   <li key={m.id}>
                     <Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} />
                     <span className="grow"><strong>{m.displayName}</strong><span className="muted"> {m.email}</span></span>
-                    <button className="pill-btn dark small" onClick={() => { setCandidate(m); setNotify(true); }}>Add</button>
+                    <Button variant="primary" size="sm" onClick={() => { setCandidate(m); setNotify(true); }}>Add</Button>
                   </li>
                 ))}
                 {candidates.length === 0 && <li className="muted">{members.data ? "No active members match." : "Loading members…"}</li>}
@@ -148,12 +148,12 @@ function Attendees() {
                   <td data-label="Attendance">
                     <span className="attendance">
                       <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{attendanceLabel(a.checkedIn, ended)}</Info>
-                      <button className={`pill-btn small ${a.checkedIn ? "gray" : "dark"}`} disabled={busyId === a.memberId || (!started && !a.checkedIn)}
+                      <Button size="sm" variant={a.checkedIn ? "outline" : "primary"} disabled={busyId === a.memberId || (!started && !a.checkedIn)}
                         title={!started ? "Attendance opens when the event starts" : undefined} onClick={() => void mark(a, !a.checkedIn)}
-                        aria-label={`${a.checkedIn ? "Undo check-in for" : "Check in"} ${a.name}`}>{a.checkedIn ? "Undo" : "Check in"}</button>
+                        aria-label={`${a.checkedIn ? "Undo check-in for" : "Check in"} ${a.name}`}>{a.checkedIn ? "Undo" : "Check in"}</Button>
                     </span>
                   </td>
-                  <td className="right"><button className="pill-btn gray small quiet-danger" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={`Remove ${a.name}`}>Remove</button></td>
+                  <td className="right"><Button size="sm" className="quiet-danger" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={`Remove ${a.name}`}>Remove</Button></td>
                 </tr>
               ))}
             </tbody>
@@ -178,7 +178,7 @@ function Attendees() {
           }}
         >
           <p>They are marked as going and get the event’s default notifications.</p>
-          {full && <p className="notice">The event is full ({event.data.capacity} places). Adding them raises the capacity by one and needs a reason.</p>}
+          {full && <InlineNotice>The event is full ({event.data.capacity} places). Adding them raises the capacity by one and needs a reason.</InlineNotice>}
           <Toggle checked={notify} onChange={setNotify} label="Notify them" hint="Sends a notification that they were added." />
         </Dialog>
       )}

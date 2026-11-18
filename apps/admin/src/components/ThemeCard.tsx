@@ -3,6 +3,7 @@ import { type ThemePhase, type WeeklyTheme, formatGoal, formatReward } from "@/l
 import { formatWindow } from "@/lib/weeks";
 import { TableRegion } from "./TableRegion";
 import { ThemeArt } from "./ThemeArt";
+import { Button, Chip } from "@/components/kit";
 
 const PHASE_LABEL: Record<ThemePhase, string> = { current: "This week", upcoming: "Upcoming", past: "Past" };
 
@@ -25,8 +26,8 @@ export function ThemeCard({ theme, phase, canEdit = true }: { theme: WeeklyTheme
       <td data-label="Goal">{formatGoal(theme.goal, theme.goalUnit)}</td>
       <td data-label="Reward">{formatReward(theme.pointsReward)}</td>
       <td className="num" data-label="Participation">{theme.participantCount} joined{theme.completedCount > 0 ? ` · ${theme.completedCount} completed` : ""}</td>
-      <td data-label="Status"><span className={`info-pill${phase === "current" ? " ok" : ""}`}>{PHASE_LABEL[phase]}</span></td>
-      <td className="right">{canEdit && <span className="row-actions"><Link className="pill-btn gray small" href={`/themes/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={`Edit ${theme.title}`}>Edit</Link></span>}</td>
+      <td data-label="Status"><Chip tone={phase === "current" ? "ok" : undefined}>{PHASE_LABEL[phase]}</Chip></td>
+      <td className="right">{canEdit && <span className="row-actions"><Button size="sm" href={`/themes/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={`Edit ${theme.title}`}>Edit</Button></span>}</td>
     </tr>
   );
 }

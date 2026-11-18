@@ -2,6 +2,7 @@ import Link from "next/link";
 import { type AdminEvent, classify, formatDuration, formatPrice, formatWhen } from "@/lib/contract";
 import { Cover } from "./Cover";
 import { TableRegion } from "./TableRegion";
+import { Button, Chip } from "@/components/kit";
 
 /** One compact table row per event: small thumbnail, title, when, where, price, going and row actions. Rendered inside `EventTable`. */
 export function EventCard({ event }: { event: AdminEvent }) {
@@ -10,7 +11,7 @@ export function EventCard({ event }: { event: AdminEvent }) {
   const when = formatWhen(event.startTime, event.endTime);
   const duration = formatDuration(event.startTime, event.endTime);
   const label = kind === "cancelled" ? "Canceled" : kind === "past" ? "Past" : full ? "Full" : "Upcoming";
-  const tone = kind === "cancelled" ? "warn" : kind === "upcoming" && !full ? "ok" : "";
+  const tone = kind === "cancelled" ? "warn" : kind === "upcoming" && !full ? "ok" : undefined;
   const pct = event.capacity > 0 ? Math.min(100, Math.round((event.attendeeCount / event.capacity) * 100)) : 0;
   return (
     <tr className={`event-row ${kind}`} data-testid="event-card">
@@ -27,12 +28,12 @@ export function EventCard({ event }: { event: AdminEvent }) {
       <td data-label="Where"><span className="line">{event.venue.name}</span><span className="line muted">{event.venue.locality}</span></td>
       <td className="num" data-label="Price">{formatPrice(event.costCents)}</td>
       <td className="num" data-label="Going"><div className="going"><span aria-label={`${event.attendeeCount} of ${event.capacity} going`}>{event.attendeeCount} / {event.capacity}</span><span className="meter-mini" aria-hidden><span style={{ width: `${pct}%` }} /></span></div></td>
-      <td data-label="Status"><span className={`info-pill${tone ? ` ${tone}` : ""}`}>{label}</span></td>
+      <td data-label="Status"><Chip tone={tone}>{label}</Chip></td>
       <td className="right">
         <span className="row-actions">
-          <Link className="pill-btn gray small" href={`/events/attendees/?id=${encodeURIComponent(event.id)}`}>Attendees</Link>
-          {kind === "past" && <Link className="pill-btn gray small" href={`/events/album/?id=${encodeURIComponent(event.id)}`}>Album</Link>}
-          <Link className="pill-btn gray small" href={`/events/edit/?id=${encodeURIComponent(event.id)}`} aria-label={`Edit ${event.title}`}>Edit</Link>
+          <Button size="sm" href={`/events/attendees/?id=${encodeURIComponent(event.id)}`}>Attendees</Button>
+          {kind === "past" && <Button size="sm" href={`/events/album/?id=${encodeURIComponent(event.id)}`}>Album</Button>}
+          <Button size="sm" href={`/events/edit/?id=${encodeURIComponent(event.id)}`} aria-label={`Edit ${event.title}`}>Edit</Button>
         </span>
       </td>
     </tr>
