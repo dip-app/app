@@ -10,8 +10,11 @@ public struct Company: Codable, Equatable, Sendable {
     public var officeLatitude: Double
     public var officeLongitude: Double
     public var createdAt: Date
+    public var officeAddress: String?
+    public var officePlaceId: String?
+    public var officeLocationAt: Date?
 
-    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date) {
+    public init(id: String? = nil, name: String, logoURL: String, emailDomain: String, city: String, officeLatitude: Double, officeLongitude: Double, createdAt: Date, officeAddress: String? = nil, officePlaceId: String? = nil, officeLocationAt: Date? = nil) {
         self.id = id
         self.name = name
         self.logoURL = logoURL
@@ -20,6 +23,9 @@ public struct Company: Codable, Equatable, Sendable {
         self.officeLatitude = officeLatitude
         self.officeLongitude = officeLongitude
         self.createdAt = createdAt
+        self.officeAddress = officeAddress
+        self.officePlaceId = officePlaceId
+        self.officeLocationAt = officeLocationAt
     }
 }
 
@@ -160,8 +166,9 @@ public struct Venue: Codable, Equatable, Sendable {
     public var fsqPlaceId: String?
     public var phone: String?
     public var website: String?
+    public var placeId: String?
 
-    public init(name: String, address: String, locality: String, latitude: Double, longitude: Double, fsqPlaceId: String? = nil, phone: String? = nil, website: String? = nil) {
+    public init(name: String, address: String, locality: String, latitude: Double, longitude: Double, fsqPlaceId: String? = nil, phone: String? = nil, website: String? = nil, placeId: String? = nil) {
         self.name = name
         self.address = address
         self.locality = locality
@@ -170,6 +177,7 @@ public struct Venue: Codable, Equatable, Sendable {
         self.fsqPlaceId = fsqPlaceId
         self.phone = phone
         self.website = website
+        self.placeId = placeId
     }
 }
 
@@ -195,8 +203,9 @@ public struct Event: Codable, Equatable, Sendable {
     public var revision: Int
     public var updatedBy: String?
     public var changeLog: [EventChangeLogEntry]?
+    public var venueLocationAt: Date?
 
-    public init(id: String? = nil, companyId: String, title: String, description: String, tagIds: [String], coverImageURL: String, startTime: Date, endTime: Date, venue: Venue, costCents: Int, costNote: String, capacity: Int, pointsValue: Int, isOutdoor: Bool, status: String, attendeeCount: Int, createdBy: String, createdAt: Date, revision: Int, updatedBy: String? = nil, changeLog: [EventChangeLogEntry]? = nil) {
+    public init(id: String? = nil, companyId: String, title: String, description: String, tagIds: [String], coverImageURL: String, startTime: Date, endTime: Date, venue: Venue, costCents: Int, costNote: String, capacity: Int, pointsValue: Int, isOutdoor: Bool, status: String, attendeeCount: Int, createdBy: String, createdAt: Date, revision: Int, updatedBy: String? = nil, changeLog: [EventChangeLogEntry]? = nil, venueLocationAt: Date? = nil) {
         self.id = id
         self.companyId = companyId
         self.title = title
@@ -218,6 +227,7 @@ public struct Event: Codable, Equatable, Sendable {
         self.revision = revision
         self.updatedBy = updatedBy
         self.changeLog = changeLog
+        self.venueLocationAt = venueLocationAt
     }
 }
 
@@ -2667,13 +2677,15 @@ public struct AiCreditCosts: Codable, Equatable, Sendable {
     public var regenerate: Int
     public var weeklyEmail: Int
     public var coverPick: Int
+    public var venueSearch: Int?
 
-    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int) {
+    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int, venueSearch: Int? = nil) {
         self.suggest = suggest
         self.generate = generate
         self.regenerate = regenerate
         self.weeklyEmail = weeklyEmail
         self.coverPick = coverPick
+        self.venueSearch = venueSearch
     }
 }
 
@@ -3116,5 +3128,205 @@ public struct ResolveSuggestedIdeaResponse: Codable, Equatable, Sendable {
         self.contractVersion = contractVersion
         self.ideaId = ideaId
         self.draft = draft
+    }
+}
+
+public struct CompanyOffice: Codable, Equatable, Sendable {
+    public var address: String
+    public var locality: String
+    public var latitude: Double
+    public var longitude: Double
+
+    public init(address: String, locality: String, latitude: Double, longitude: Double) {
+        self.address = address
+        self.locality = locality
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
+
+public struct SetCompanyOfficeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var placeId: String
+    public var sessionToken: String?
+
+    public init(contractVersion: Int, companyId: String, placeId: String, sessionToken: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.placeId = placeId
+        self.sessionToken = sessionToken
+    }
+}
+
+public struct SetCompanyOfficeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var office: CompanyOffice
+
+    public init(contractVersion: Int, office: CompanyOffice) {
+        self.contractVersion = contractVersion
+        self.office = office
+    }
+}
+
+public struct FindVenuesRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var title: String
+    public var description: String?
+    public var tagIds: [String]?
+    public var isOutdoor: Bool?
+    public var capacity: Int?
+    public var costCents: Int?
+    public var radiusMiles: Double?
+
+    public init(contractVersion: Int, companyId: String, requestId: String, title: String, description: String? = nil, tagIds: [String]? = nil, isOutdoor: Bool? = nil, capacity: Int? = nil, costCents: Int? = nil, radiusMiles: Double? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.title = title
+        self.description = description
+        self.tagIds = tagIds
+        self.isOutdoor = isOutdoor
+        self.capacity = capacity
+        self.costCents = costCents
+        self.radiusMiles = radiusMiles
+    }
+}
+
+public struct VenueOption: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var address: String
+    public var locality: String
+    public var latitude: Double
+    public var longitude: Double
+    public var kind: String
+    public var setting: String
+    public var distanceMiles: Double
+    public var website: String?
+    public var reasons: [String]
+    public var placeId: String
+
+    public init(id: String, name: String, address: String, locality: String, latitude: Double, longitude: Double, kind: String, setting: String, distanceMiles: Double, website: String? = nil, reasons: [String], placeId: String) {
+        self.id = id
+        self.name = name
+        self.address = address
+        self.locality = locality
+        self.latitude = latitude
+        self.longitude = longitude
+        self.kind = kind
+        self.setting = setting
+        self.distanceMiles = distanceMiles
+        self.website = website
+        self.reasons = reasons
+        self.placeId = placeId
+    }
+}
+
+public struct FindVenuesResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var venues: [VenueOption]
+    public var provider: String?
+    public var cached: Bool
+    public var charged: Bool
+    public var radiusMiles: Double
+    public var office: CompanyOffice
+
+    public init(contractVersion: Int, venues: [VenueOption], provider: String? = nil, cached: Bool, charged: Bool, radiusMiles: Double, office: CompanyOffice) {
+        self.contractVersion = contractVersion
+        self.venues = venues
+        self.provider = provider
+        self.cached = cached
+        self.charged = charged
+        self.radiusMiles = radiusMiles
+        self.office = office
+    }
+}
+
+public struct PlaceSuggestion: Codable, Equatable, Sendable {
+    public var placeId: String
+    public var primary: String
+    public var secondary: String
+    public var isPlace: Bool
+
+    public init(placeId: String, primary: String, secondary: String, isPlace: Bool) {
+        self.placeId = placeId
+        self.primary = primary
+        self.secondary = secondary
+        self.isPlace = isPlace
+    }
+}
+
+public struct AutocompletePlacesRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var sessionToken: String
+    public var input: String
+
+    public init(contractVersion: Int, companyId: String, sessionToken: String, input: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.sessionToken = sessionToken
+        self.input = input
+    }
+}
+
+public struct AutocompletePlacesResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var suggestions: [PlaceSuggestion]
+
+    public init(contractVersion: Int, suggestions: [PlaceSuggestion]) {
+        self.contractVersion = contractVersion
+        self.suggestions = suggestions
+    }
+}
+
+public struct ResolvedPlace: Codable, Equatable, Sendable {
+    public var placeId: String
+    public var name: String?
+    public var address: String
+    public var locality: String
+    public var latitude: Double
+    public var longitude: Double
+    public var kind: String
+    public var setting: String
+
+    public init(placeId: String, name: String? = nil, address: String, locality: String, latitude: Double, longitude: Double, kind: String, setting: String) {
+        self.placeId = placeId
+        self.name = name
+        self.address = address
+        self.locality = locality
+        self.latitude = latitude
+        self.longitude = longitude
+        self.kind = kind
+        self.setting = setting
+    }
+}
+
+public struct ResolvePlaceRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var sessionToken: String?
+    public var placeId: String?
+    public var query: String?
+
+    public init(contractVersion: Int, companyId: String, sessionToken: String? = nil, placeId: String? = nil, query: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.sessionToken = sessionToken
+        self.placeId = placeId
+        self.query = query
+    }
+}
+
+public struct ResolvePlaceResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var place: ResolvedPlace?
+
+    public init(contractVersion: Int, place: ResolvedPlace? = nil) {
+        self.contractVersion = contractVersion
+        self.place = place
     }
 }

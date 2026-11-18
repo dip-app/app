@@ -30,6 +30,7 @@ export const AUDIT_LABELS: Record<string, AuditLabel> = {
   "ai.generateDrafts": { label: "Generated event drafts with Dipbot", category: "AI" },
   "ai.noteDeclined": { label: "Dipbot declined an event note", category: "AI" },
   "ai.generateFailed": { label: "Couldn't generate event drafts with Dipbot", category: "AI" },
+  "company.office.update": { label: "Changed the company office address", category: "Settings" },
   "suggestions.setSchedule": { label: "Changed the weekly ideas email schedule", category: "Email" },
 };
 

@@ -31,6 +31,8 @@ export interface AiConfig {
   draftCheck: DecisionStepConfig;
   /** Picks a cover from the cover library shortlist (Choice question); the heuristic answer is the lexical top. */
   coverPick: DecisionStepConfig & CoverPickLimits;
+  /** Ranks venue search results around the office (Choice question); the heuristic answer is the heuristic order. */
+  venuePick: DecisionStepConfig;
   /** Live Pixabay cover fallback of "Let Dipbot choose" (AI_COVER_LIVE_*). */
   coverLive: LiveCoverConfig;
   moderation: { model: string };
@@ -118,6 +120,7 @@ export function aiConfig(env: NodeJS.ProcessEnv): AiConfig {
       maxCandidates: positive(env.AI_COVER_MAX_CANDIDATES, DEFAULT_MAX_CANDIDATES),
       maxOptionsPerCall: positive(env.AI_COVER_MAX_OPTIONS, DEFAULT_MAX_OPTIONS_PER_CALL),
     },
+    venuePick: decision(env.AI_DECISION_PROVIDER_VENUE_PICK, env.AI_MODEL_VENUE_PICK),
     // On unless AI_COVER_LIVE_FALLBACK is exactly "false". The per-instance cap stays low: pickEventCoverV1 runs at most 5 instances
     // and Pixabay allows 100 requests a minute per key.
     coverLive: {

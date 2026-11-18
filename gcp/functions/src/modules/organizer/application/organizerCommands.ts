@@ -4,7 +4,8 @@ import { isDynamicCoverURL } from "../../covers/domain/dynamicCovers";
 import { parseCoverKey, type CoverKeySource } from "../../covers/domain/coverCatalog";
 import { draftHash, parseCreateEventRequest, parseUpdateEventRequest } from "../domain/eventDraft";
 import { OrganizerError } from "../domain/errors";
-import type { OrganizerStore, OrganizerTransaction } from "./ports";
+import type { OrganizerStore, OrganizerTransaction, StoredEvent, VenueLocationStamp } from "./ports";
+import type { ParsedDraft } from "../domain/eventDraft";
 
 /** Trusted caller identity, derived only from the verified Auth token. */
 export interface Caller {
@@ -57,6 +58,18 @@ async function requireStoredDynamicCover(url: string, coverKeys: CoverKeySource 
   }
 }
 
+/**
+ * `venueLocationAt` is server-owned: it records when the venue coordinates were resolved from a Google place ID, which is what the
+ * daily refresh job uses to keep them inside the 30-day caching limit. Stamped on create or when the place ID or the coordinates
+ * change, kept when they did not, removed when the place ID is gone. Existing 0/0 semantics are untouched.
+ */
+export function venueLocationStamp(venue: ParsedDraft["venue"], current: Pick<StoredEvent, "venue" | "venueLocationAt"> | null, now: Date): VenueLocationStamp {
+  if (!venue.placeId) return { kind: "clear" };
+  const same = current?.venue !== undefined && current.venueLocationAt !== undefined && current.venue.placeId === venue.placeId
+    && current.venue.latitude === venue.latitude && current.venue.longitude === venue.longitude;
+  return same ? { kind: "keep" } : { kind: "set", at: now };
+}
+
 /** createEventV1: requestId makes retries return the same event; the same key with another payload fails. */
 export async function createEvent(
   store: OrganizerStore,
@@ -84,7 +97,7 @@ export async function createEvent(
     await requireKnownTags(tx, request.event.tagIds);
     await requireStoredDynamicCover(request.event.coverImageURL, coverKeys);
     const eventId = ids.eventId();
-    tx.createEvent(request.companyId, eventId, authenticated.uid, request.event);
+    tx.createEvent(request.companyId, eventId, authenticated.uid, request.event, venueLocationStamp(request.event.venue, null, clock.now()));
     tx.createReceipt(request.companyId, authenticated.uid, request.requestId, { hash, eventId, revision: 1 });
     return { contractVersion: 1, eventId, revision: 1 };
   });
@@ -128,7 +141,7 @@ export async function updateEvent(
     // Keeping the event's current cover needs no lookup (a cover later removed from the library stays on events that already use it).
     if (request.event.coverImageURL !== current.coverImageURL) await requireStoredDynamicCover(request.event.coverImageURL, coverKeys);
     const nextRevision = current.revision + 1;
-    tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision, authenticated.uid);
+    tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision, authenticated.uid, venueLocationStamp(request.event.venue, current, clock.now()));
     return { contractVersion: 1, eventId: request.eventId, revision: nextRevision };
   });
 }

@@ -14,6 +14,10 @@ export const aiPaths = {
   request: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiRequests/${uid}_${requestId}`,
   /** Content-free record of one cover pick (provider, source, chosen key); never the event text. */
   coverPick: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiCoverPicks/${uid}_${requestId}`,
+  /** Cached ranked venue search of one company (24 h; server-only, never the event text). */
+  venueSearch: (companyId: string, key: string) => `companies/${companyId}/aiVenueSearches/${key}`,
+  /** Provider searches of one company on one UTC day (the daily cap that protects the places quota). */
+  venueUsage: (companyId: string, dayKey: string) => `companies/${companyId}/aiVenueUsage/${dayKey}`,
 };
 
 const two = (value: number) => String(value).padStart(2, "0");

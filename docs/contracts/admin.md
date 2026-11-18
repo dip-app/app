@@ -35,7 +35,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 
 | Permission | Callables / data | member | organizer | admin |
 |---|---|---|---|---|
-| `event.manage` | `createEventV1`, `updateEventV1`, cancelled-event reads | no | yes | yes |
+| `event.manage` | `createEventV1`, `updateEventV1`, `autocompletePlacesV1`, `resolvePlaceV1`, cancelled-event reads | no | yes | yes |
 | `attendee.manage` | `addEventAttendeeV1`, `removeEventAttendeeV1` | no | yes | yes |
 | `attendance.record` | `recordAttendanceV1` | no | yes | yes |
 | `album.moderate` | `removeEventPhotoV1`, `removeEventPhotoCommentV1` | no | yes | yes |
@@ -48,7 +48,8 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `insights.read` | `getCompanyInsightsV1` (points and balances only for admin) | no | yes | yes |
 | `bugreport.manage` | `listBugReportsV1`, `getBugReportV1`, `updateBugReportV1` | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
-| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `pickEventCoverV1`, `searchCoverPhotosV1`, `importCoverPhotoV1`, `getEventIdeaSuggestionsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1` | no | no | yes |
+| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `pickEventCoverV1`, `searchCoverPhotosV1`, `importCoverPhotoV1`, `getEventIdeaSuggestionsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1`, `findVenuesV1` | no | no | yes |
+| `company.manage` | `setCompanyOfficeV1` | no | no | yes |
 
 Only an admin can create another admin or organizer (through `updateMemberV1`, a roster entry or an import). The last admin of a company can never be demoted or deactivated. Clients cannot write `role`, `status`, `teamIds`, `workLocation`, counts, balances or ledger entries (rules allow-list, unchanged).
 

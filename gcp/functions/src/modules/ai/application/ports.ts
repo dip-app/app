@@ -13,7 +13,7 @@ export interface LlmUsage {
 }
 
 /** Steps of the flow. Each has its own provider and model id in the config module (infrastructure/aiConfig.ts). */
-export type DecisionStep = "triage" | "draftCheck" | "coverPick";
+export type DecisionStep = "triage" | "draftCheck" | "coverPick" | "venuePick";
 /** "generate" drafts events; decision steps reach the LLM only through the OpenAI fallback of the DecisionPort. */
 export type GenerationStep = "generate" | DecisionStep;
 

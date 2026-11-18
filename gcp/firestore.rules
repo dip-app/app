@@ -345,6 +345,7 @@ service cloud.firestore {
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
     // coverLibraryDynamic (live Pixabay covers), coverSearchCache, coverLiveCandidates and coverLiveUsage (live cover fallback of
     // pickEventCoverV1) are server-only too: they hold licensing data, cached search results and quota counters, and fall through to deny-all.
+    // aiVenueSearches (24 h cache of findVenuesV1), aiVenueUsage and placesUsage (daily counters) and placesRateLimits (burst limiter) are server-only too and fall through to deny-all.
     // emailOutbox, emailInviteState, emailSuppressions, emailCaps, emailSettings and emulatorEmailOutbox (email module) are server-only too.
     match /{document=**} {
       allow read, write: if false;

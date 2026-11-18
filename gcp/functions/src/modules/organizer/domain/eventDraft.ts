@@ -110,7 +110,7 @@ export function parseEventDraft(data: unknown): ParsedDraft {
 
 function parseVenue(data: unknown): Venue {
   const record = asRecord(data, "venue");
-  const allowed = ["name", "address", "locality", "latitude", "longitude", "fsqPlaceId", "phone", "website"];
+  const allowed = ["name", "address", "locality", "latitude", "longitude", "fsqPlaceId", "phone", "website", "placeId"];
   const unknown = Object.keys(record).filter((key) => !allowed.includes(key)).map((key) => `venue.${key}`);
   const required = ["name", "address", "locality", "latitude", "longitude"].filter((key) => !(key in record)).map((key) => `venue.${key}`);
   if (unknown.length || required.length) fail([...unknown, ...required].sort());
@@ -128,6 +128,12 @@ function parseVenue(data: unknown): Venue {
     if (value === undefined || value === null) continue;
     if (typeof value !== "string" || value.length > LIMITS.textMax) fail([`venue.${key}`]);
     venue[key] = value as string;
+  }
+  const placeId = record.placeId;
+  if (placeId !== undefined && placeId !== null) {
+    // Google Places place IDs are opaque URL-safe strings; they are the only place data stored indefinitely.
+    if (typeof placeId !== "string" || !/^[A-Za-z0-9_-]{1,512}$/.test(placeId)) fail(["venue.placeId"]);
+    venue.placeId = placeId as string;
   }
   return venue;
 }
@@ -181,7 +187,9 @@ export function draftHash(draft: ParsedDraft): string {
   const canonical = JSON.stringify([
     draft.title, draft.description, draft.tagIds, draft.coverImageURL,
     draft.startTime.toISOString(), draft.endTime.toISOString(),
-    [venue.name, venue.address, venue.locality, venue.latitude, venue.longitude, venue.fsqPlaceId ?? null, venue.phone ?? null, venue.website ?? null],
+    [venue.name, venue.address, venue.locality, venue.latitude, venue.longitude, venue.fsqPlaceId ?? null, venue.phone ?? null, venue.website ?? null,
+      // Appended only when present so hashes of drafts without a place ID stay as before (create retries across a deploy).
+      ...(venue.placeId ? [venue.placeId] : [])],
     draft.costCents, draft.costNote, draft.capacity, draft.isOutdoor,
   ]);
   return createHash("sha256").update(canonical).digest("hex");

@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS = [
   "ai.noteDeclined",
   "ai.generateFailed",
   "suggestions.setSchedule",
+  "company.office.update",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
