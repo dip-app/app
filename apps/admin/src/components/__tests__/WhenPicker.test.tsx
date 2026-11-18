@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 import axe from "axe-core";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { localToIso } from "@/lib/when";
 import { WhenPicker } from "../WhenPicker";
 
-beforeAll(() => { process.env.TZ = "America/New_York"; });
 afterEach(cleanup);
 
 const NOW = new Date(2026, 10, 18, 10, 20); // Wed Nov 18 2026, 10:20 AM local
