@@ -1,0 +1,76 @@
+@use "@/styles/variables.scss" as *;
+
+// Where section of the event editor (components/WhereSection.tsx): address typeahead, picked summary, Dipbot venues.
+// Follows pro.scss: hairline borders, 4-8px radii, 36px controls, calm. Dipbot touches stay quiet (one small mark, one tint).
+$line: #e2e4ec;
+$line-strong: #c4c8d6;
+$ctl-border: #8a8fa5;
+$subtle: #f6f7fa;
+$tint: #eef0ff;
+$dipbot: #3f4bc4;
+
+.content .where {
+  // ---------- Typeahead
+  .ac { display: grid; gap: 4px; min-width: 0; }
+  .ac-box { position: relative; min-width: 0; }
+  .ac-input { width: 100%; }
+  .ac-popup { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); background: $white; border: 1px solid $line-strong; border-radius: 8px; box-shadow: 0 8px 24px rgba(30, 33, 43, .12); overflow: hidden;
+    &[hidden] { display: none; } }
+  .ac-list { list-style: none; margin: 0; padding: 4px; display: grid; gap: 1px; &[hidden] { display: none; } }
+  .ac-option { display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; min-height: 40px;
+    &.active { background: $tint; } }
+  .ac-pin { flex: none; margin-top: 2px; color: var(--muted); }
+  .ac-text { display: grid; gap: 1px; min-width: 0; }
+  .ac-primary { font-size: 14px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ac-option mark { background: none; color: $ink; font-weight: 700; }
+  .ac-secondary { font-size: 12px; line-height: 1.3; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ac-msg { margin: 0; padding: 10px 12px; font-size: 13px; color: var(--muted); &.error { color: var(--error); } }
+  // Google Maps Platform attribution (results are not on a Google map): plain text, no wrap, Roboto 12px 400, #5E5E5E (6:1 on this background).
+  .ac-credit, .venues-credit { margin: 0; font-family: Roboto, sans-serif; font-size: 12px; font-weight: 400; letter-spacing: normal; line-height: 1.4; color: #5e5e5e; white-space: nowrap; }
+  .ac-credit { padding: 6px 12px; background: $subtle; border-top: 1px solid $line; }
+
+  // One link style for every "Change" in this section.
+  .where-link { flex: none; font-size: 13px; color: var(--primary); min-height: 28px; padding: 0 4px; }
+
+  // ---------- Picked summary (replaces the search input after a pick)
+  .where-picked { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid $line; border-radius: 8px; background: $subtle; min-width: 0;
+    .where-picked-text { display: grid; gap: 1px; min-width: 0; flex: 1; }
+    .where-picked-primary { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .where-picked-secondary { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+
+  // An invalid field shows the red border and a red focus ring, never red under blue.
+  .field input[aria-invalid="true"]:focus-visible { outline-color: var(--error); }
+
+  // ---------- Dipbot venues (last in the section; the section's own gap spaces it)
+  .venues { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid $line; border-radius: 8px; background: $white; min-width: 0; }
+  .venues-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .venues-title { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--font-figtree), sans-serif; font-size: 13px; font-weight: 600; color: $dipbot; svg { flex: none; } }
+  .venues-where { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .venues-line { margin: 0; font-size: 13px; color: $ink; overflow-wrap: anywhere; }
+  .venues-radius { height: 30px; padding: 0 6px; font-size: 13px; background: $white; border: 1px solid $ctl-border; border-radius: 6px; color: $ink; font-family: inherit; }
+  .venues-find { justify-self: start; }
+  .venues-office { display: grid; gap: 6px; }
+  .venues-note { margin: 0; font-size: 13px; color: var(--muted); &.error { color: var(--error); } &:empty { display: none; } }
+  .venues-live { display: contents; }
+  .venue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .venue-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 6px; background: $subtle; border: 1px solid $line; color: $ink; font-family: var(--font-figtree), sans-serif; cursor: pointer;
+    &:hover { background: $tint; border-color: $line-strong; }
+    &:active { background: #e3e6ff; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+    &.selected { background: $tint; border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); } }
+  .venue-main { display: grid; gap: 2px; min-width: 0; }
+  .venue-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .venue-meta { font-size: 12px; color: var(--muted); }
+  .venue-why { font-size: 12px; color: $ink; }
+  .venue-use { flex: none; font-size: 13px; font-weight: 500; color: var(--primary); line-height: 1.3; padding-top: 1px; }
+  .venues-credit { padding-top: 6px; border-top: 1px solid $line; }
+
+  .dipbot-tag { display: inline-flex; align-items: center; gap: 4px; height: 20px; margin-left: 8px; padding: 0 8px 0 5px; border-radius: 999px; background: $tint; color: $dipbot; font-size: 11.5px; font-weight: 600; line-height: 1; vertical-align: middle; white-space: nowrap; svg { flex: none; } }
+
+  @media (max-width: 520px) {
+    .venues-radius { height: 36px; }
+    .venues-find { width: 100%; justify-self: stretch; .dip-action-cost { margin-left: auto; } }
+    .ac-option { min-height: 48px; }
+    .where-link { min-height: 36px; }
+  }
+}

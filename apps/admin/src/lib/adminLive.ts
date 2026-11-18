@@ -12,6 +12,8 @@ import {
 } from "./adminTypes";
 import type { Session } from "./api";
 import type { TagStat } from "./tagStats";
+import type { PlaceKind, PlaceSetting, PlaceSuggestion, ResolvedPlace } from "./location/types";
+import type { CompanyOffice, FindVenuesResult, VenueOption } from "./venues";
 
 // Live adapter for the admin tools, following docs/contracts/admin.md. Lists are Firestore reads allowed by
 // the rules (album, RSVPs, teams, roster and audit log for admins); members come from listMembersV1 because
@@ -66,7 +68,7 @@ function usageFromWire(value: unknown): AiUsage {
     generationsRemaining: n(u.generationsRemaining),
   };
 }
-const DEFAULT_CREDIT_COST = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1 };
+const DEFAULT_CREDIT_COST = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1 };
 /** The credits block of a response; a missing or malformed one reads as zero credits left (the paid buttons stay off). */
 export function creditsFromWire(value: unknown): AiCredits {
   const c = obj(value);
@@ -75,7 +77,7 @@ export function creditsFromWire(value: unknown): AiCredits {
   const price = (key: keyof typeof DEFAULT_CREDIT_COST) => (typeof cost[key] === "number" ? n(cost[key]) : DEFAULT_CREDIT_COST[key]);
   return {
     creditsAllowance: n(c.creditsAllowance), creditsUsed: n(c.creditsUsed), creditsRemaining: n(c.creditsRemaining), resetsAt: str(c.resetsAt),
-    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick") },
+    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick"), venueSearch: price("venueSearch") },
   };
 }
 /** GetEventIdeaContextResponse -> EventIdeaContext. */
@@ -112,6 +114,37 @@ export function suggestionsFromWire(d: DocumentData): EventIdeaSuggestions {
 /** GenerateEventDraftsResponse -> GenerateDraftsResult. */
 export function draftsFromWire(d: DocumentData): GenerateDraftsResult {
   return { drafts: list(d.drafts).map((x) => x as unknown as GeneratedEventDraft), usage: usageFromWire(d.usage), credits: creditsFromWire(d.credits), replay: d.replay === true };
+}
+
+const VENUE_SETTINGS: readonly string[] = ["outdoor", "indoor", "unknown"];
+const VENUE_REASONS: readonly string[] = ["theme_match", "outdoor_fit", "indoor_fit", "close", "group_fit"];
+/** A `CompanyOffice` from the wire or the company document; null when the position is missing or 0/0 (not set). */
+export function officeFromWire(d: DocumentData): CompanyOffice | null {
+  const latitude = typeof d.latitude === "number" ? d.latitude : NaN;
+  const longitude = typeof d.longitude === "number" ? d.longitude : NaN;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) return null;
+  return { address: str(d.address), locality: str(d.locality), latitude, longitude };
+}
+/** ResolvedPlace from the wire; null when it has no usable position. */
+export function placeFromWire(d: DocumentData): ResolvedPlace | null {
+  if (!str(d.placeId) || typeof d.latitude !== "number" || typeof d.longitude !== "number") return null;
+  return {
+    placeId: str(d.placeId), name: str(d.name) || null, address: str(d.address), locality: str(d.locality), latitude: d.latitude, longitude: d.longitude,
+    kind: (str(d.kind) || "other") as PlaceKind, setting: (VENUE_SETTINGS.includes(str(d.setting)) ? str(d.setting) : "unknown") as PlaceSetting,
+  };
+}
+/** FindVenuesResponse -> FindVenuesResult; malformed venues are dropped. */
+export function venuesFromWire(d: DocumentData): FindVenuesResult {
+  const venues = list(d.venues).filter((v) => str(v.id) && str(v.name) && str(v.placeId) && typeof v.latitude === "number" && typeof v.longitude === "number").map((v): VenueOption => ({
+    id: str(v.id), name: str(v.name), address: str(v.address), locality: str(v.locality), latitude: v.latitude as number, longitude: v.longitude as number,
+    kind: (str(v.kind) || "other") as VenueOption["kind"], setting: (VENUE_SETTINGS.includes(str(v.setting)) ? str(v.setting) : "unknown") as VenueOption["setting"],
+    distanceMiles: typeof v.distanceMiles === "number" ? v.distanceMiles : 0, website: null, placeId: str(v.placeId),
+    reasons: strings(v.reasons).filter((r): r is VenueOption["reasons"][number] => VENUE_REASONS.includes(r)),
+  }));
+  return {
+    venues, provider: str(d.provider) || null, cached: d.cached === true, charged: d.charged === true, radiusMiles: typeof d.radiusMiles === "number" ? d.radiusMiles : 5,
+    office: officeFromWire(obj(d.office)) ?? { address: "", locality: "", latitude: 0, longitude: 0 },
+  };
 }
 
 export function auditFromDoc(id: string, d: DocumentData): AuditEntry {
@@ -504,6 +537,36 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       const session = await organizer();
       const data = await call<DocumentData>(ADMIN_CALLABLES.importCoverPhoto, session, { requestId: crypto.randomUUID(), key }, false);
       return { coverImageURL: String(data.coverImageURL ?? ""), coverAlt: typeof data.coverAlt === "string" ? data.coverAlt.trim().slice(0, 160) : "", newPhoto: data.newPhoto === true };
+    }),
+    // The office lives on the company document (admins and organizers read it); 0/0 or missing means not set.
+    companyOffice: () => run(async () => {
+      const session = await organizer();
+      const company = await getDoc(doc(db, "companies", session.companyId));
+      return officeFromWire({
+        address: company.get("officeAddress"), locality: company.get("city"), latitude: company.get("officeLatitude"), longitude: company.get("officeLongitude"),
+      });
+    }),
+    setCompanyOffice: ({ placeId, sessionToken }) => run(async () => {
+      const session = await organizer();
+      const data = await call<DocumentData>(ADMIN_CALLABLES.setCompanyOffice, session, { placeId, ...(sessionToken ? { sessionToken } : {}) }, false);
+      const office = officeFromWire(obj(data.office));
+      if (!office) throw new Error("The office could not be saved.");
+      return office;
+    }),
+    autocompletePlaces: (input, sessionToken) => run(async () => {
+      const session = await organizer();
+      const data = await call<DocumentData>(ADMIN_CALLABLES.autocompletePlaces, session, { input: input.slice(0, 120), sessionToken }, false);
+      return list(data.suggestions).filter((x) => str(x.placeId) && str(x.primary)).slice(0, 5)
+        .map((x): PlaceSuggestion => ({ placeId: str(x.placeId), primary: str(x.primary), secondary: str(x.secondary), isPlace: x.isPlace === true }));
+    }),
+    resolvePlace: (request) => run(async () => {
+      const session = await organizer();
+      const data = await call<DocumentData>(ADMIN_CALLABLES.resolvePlace, session, "query" in request ? { query: request.query.slice(0, 240) } : { placeId: request.placeId, ...(request.sessionToken ? { sessionToken: request.sessionToken } : {}) }, false);
+      return data.place ? placeFromWire(obj(data.place)) : null;
+    }),
+    findVenues: (input) => run(async () => {
+      const session = await organizer();
+      return venuesFromWire(await call<DocumentData>(ADMIN_CALLABLES.findVenues, session, { ...input }));
     }),
     // The caller owns the requestId (one per attempt), so `call` sends it as given.
     generateEventDrafts: (input) => run(async () => {

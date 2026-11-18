@@ -43,7 +43,7 @@ describe("validateDraft", () => {
     const errors = validateDraft(
       validDraft({ endTime: "2026-11-10T21:00:00.000Z", capacity: 0, costCents: -1, venue: { ...validDraft().venue, latitude: 91, longitude: -181 } }),
       { requireFuture: true, now: NOW });
-    expect(Object.keys(errors).sort()).toEqual(["capacity", "costCents", "endTime", "venue.latitude", "venue.longitude"]);
+    expect(Object.keys(errors).sort()).toEqual(["capacity", "costCents", "endTime", "venue.address"]);
   });
   it("requires a future start only when creating", () => {
     const past = validDraft({ startTime: "2026-11-01T10:00:00.000Z", endTime: "2026-11-01T11:00:00.000Z" });

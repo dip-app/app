@@ -14,6 +14,9 @@ import { mockTagStats } from "./tagStatsMock";
 import { bundledTagId, previewTagId } from "./catalog";
 import { type ImportCoverPhotoResult, type PickEventCoverResult, type SearchCoverPhotosResult, lexicalPick } from "./covers";
 import { rankConsiderationsByRules } from "./considerations";
+import { fakeAutocomplete, fakeResolve } from "./location/fake";
+import { MOCK_OFFICE, mockVenues } from "./venuesMock";
+import type { CompanyOffice } from "./venues";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
   MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, cacheScenarioFromSearch, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
@@ -67,8 +70,9 @@ interface StoredBug extends BugReport {
 
 const KEY = "dip-admin-mock-ops-v4";
 const AI_KEY = "dip-admin-mock-ai-v1";
+const OFFICE_KEY = "dip-admin-mock-office-v1";
 /** Preview usage: some of the quota is already spent so the meter has something to show. */
-interface AiState { usage: Record<string, { monthly: number; daily: number }>; receipts: Record<string, GenerateDraftsResult>; credits?: Record<string, number> }
+interface AiState { usage: Record<string, { monthly: number; daily: number }>; receipts: Record<string, GenerateDraftsResult>; credits?: Record<string, number>; venueRequests?: string[] }
 const TEAMS = ["Platform", "Mentors", "Wellness", "Events crew", "Design"];
 const LOCATIONS = ["Pittsburgh", "Philadelphia", "New York", "Remote"];
 const DEPARTMENTS = ["Engineering", "People", "Marketing", "Finance", "Operations"];
@@ -266,6 +270,17 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
   /** The mock's saved company suggestions after a first visit or refresh in this page load (a reload starts from `?cache=`). */
   const savedSuggest: { at: number | null } = { at: null };
   const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
+  /** `?places=disabled|limit|notfound` preview scenarios: disabled and limit make every Places call fail like the server does. */
+  const placesScenario = (): string | null => {
+    const value = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("places");
+    if (value === "disabled") throw new ApiError("failed-precondition", "Address search is not set up.", {}, "PLACES_DISABLED");
+    if (value === "limit") throw new ApiError("resource-exhausted", "Address search is resting for today.", {}, "PLACES_LIMIT");
+    return value;
+  };
+  const officeMap = (): Record<string, CompanyOffice> => {
+    try { return JSON.parse(store.getItem(OFFICE_KEY) ?? "{}") as Record<string, CompanyOffice>; } catch { return {}; }
+  };
+  const readOffice = (companyId: string): CompanyOffice | null => officeMap()[companyId] ?? null;
   /** Latency only in the browser preview; tests run without it. */
   const aiDelay = (ms: number) => (typeof window === "undefined" ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
@@ -932,6 +947,64 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const alternatives = [lexicalPick(input, [...(input.excludeCoverImageURLs ?? []), pick.url]).url].filter((url) => url !== pick.url);
       return { coverImageURL: pick.url, source: "match", provider: null, alternatives };
     },
+    // ----- Smart location (preview scenarios: ?office=unset starts without an office; ?venues=empty, error, limit)
+    async companyOffice(): Promise<CompanyOffice | null> {
+      const session = staff("events.manage");
+      const saved = readOffice(session.companyId);
+      if (saved) return saved;
+      const unset = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("office") === "unset";
+      return unset ? null : MOCK_OFFICE;
+    },
+    async setCompanyOffice({ placeId }): Promise<CompanyOffice> {
+      const session = staff("ai.generate");
+      await aiDelay(250);
+      placesScenario();
+      const place = fakeResolve({ placeId });
+      if (!place) throw new ApiError("invalid-argument", "Pick an office address from the suggestions.", { placeId: "Pick an address." }, "VALIDATION_FAILED");
+      const saved: CompanyOffice = { address: place.address, locality: place.locality, latitude: place.latitude, longitude: place.longitude };
+      store.setItem(OFFICE_KEY, JSON.stringify({ ...officeMap(), [session.companyId]: saved }));
+      return saved;
+    },
+    // Local stand-ins for autocompletePlacesV1 / resolvePlaceV1 (canned Pittsburgh places; scenarios ?places=disabled|limit|notfound).
+    async autocompletePlaces(input) {
+      staff("events.manage");
+      await aiDelay(150);
+      placesScenario();
+      return fakeAutocomplete(input.slice(0, 120));
+    },
+    async resolvePlace(request) {
+      staff("events.manage");
+      await aiDelay(150);
+      const scenario = placesScenario();
+      if (scenario === "notfound" && "query" in request) return null;
+      return fakeResolve(request);
+    },
+    // Local stand-in for findVenuesV1: four to five fixed Pittsburgh venues, 1 credit, replayed free for the same requestId.
+    async findVenues(input) {
+      const session = staff("ai.generate");
+      const scenario = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("venues");
+      const office = readOffice(session.companyId) ?? (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("office") === "unset" ? null : MOCK_OFFICE);
+      if (!office) throw new ApiError("failed-precondition", "Set your office address first.", {}, "OFFICE_NOT_SET");
+      if (!input.title.trim()) throw new ApiError("invalid-argument", "Add a title first.", { title: "Add a title first." }, "VALIDATION_FAILED");
+      if (aiScenario() === "off") throw new ApiError("failed-precondition", "Venue search is off.", {}, "AI_VENUES_DISABLED");
+      await aiDelay(scenario === "slow" ? 6000 : 900);
+      const cost = MOCK_CREDIT_COSTS.venueSearch;
+      if (MOCK_CREDIT_ALLOWANCE - aiCreditsUsed(session.companyId) < cost) throw new ApiError("resource-exhausted", "You have used this month’s Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
+      if (scenario === "limit") throw new ApiError("resource-exhausted", "Too many venue searches today.", {}, "VENUE_SEARCH_LIMIT");
+      if (scenario === "error") throw new Error("Venue search failed.");
+      const radiusMiles = input.radiusMiles ?? 5;
+      const venues = scenario === "empty" ? [] : mockVenues(input, office);
+      const ai = aiLoad();
+      const seen = ai.venueRequests ?? [];
+      const replay = seen.includes(input.requestId);
+      if (!replay && venues.length > 0) {
+        ai.credits = { ...ai.credits, [session.companyId]: aiCreditsUsed(session.companyId) + cost };
+        ai.venueRequests = [...seen, input.requestId].slice(-50);
+        aiSave(ai);
+      }
+      return { venues, provider: "google", cached: replay, charged: !replay && venues.length > 0, radiusMiles, office };
+    },
+
     // Local stand-in for searchCoverPhotosV1: there is no Pixabay offline, so the search reports "unavailable". No network.
     async searchCoverPhotos(): Promise<SearchCoverPhotosResult> {
       staff("ai.generate");
