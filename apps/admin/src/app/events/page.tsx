@@ -9,6 +9,7 @@ import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { Empty, LoadError, Loading } from "@/components/Ui";
 import { ApiError, type AdminEvent, classify } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 type Filter = "upcoming" | "past" | "cancelled";
 const FILTERS: { id: Filter; label: string }[] = [
@@ -44,13 +45,14 @@ function Events() {
     };
   }, [api, session, attempt]);
 
+  const hold = useSkeletonGate(events === null && !error);
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
   const label = FILTERS.find((item) => item.id === filter)!.label;
 
   return (
     <Shell title="Events" subtitle="Everything your company can see in the DIP app." requires="events.manage" action={<Link className="pill-btn purple" href="/events/new/">New event</Link>}>
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
-        : events === null ? <Loading label="Loading events" />
+        : events === null || hold ? <Loading label="Loading events" layout="events" />
         : (
           <>
             <Tabs idBase="events" label="Filter events" value={filter} onChange={(id) => setQuery({ filter: id })}
@@ -69,5 +71,5 @@ function Events() {
 }
 
 export default function EventsPage() {
-  return <Suspense fallback={<Loading label="Loading events" />}><Events /></Suspense>;
+  return <Suspense fallback={<Loading label="Loading events" layout="events" />}><Events /></Suspense>;
 }

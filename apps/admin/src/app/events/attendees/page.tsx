@@ -17,6 +17,7 @@ import { attendanceLabel, attendeesCsv } from "@/lib/exports";
 import { classify } from "@/lib/contract";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 const DEFAULTS = { q: "" };
 
@@ -53,8 +54,9 @@ function Attendees() {
     return (members.data ?? []).filter((m) => m.status === "active" && !going.has(m.id) && (!q || `${m.displayName} ${m.email}`.toLowerCase().includes(q))).slice(0, 8);
   }, [members.data, attendees.data, pickerSearch]);
 
+  const hold = useSkeletonGate((!attendees.data || !event.data) && !attendees.error && !event.error);
   if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel="Back to events" />;
-  if (!attendees.data || !event.data) return <Loading label="Loading attendees" />;
+  if (!attendees.data || !event.data || hold) return <Loading label="Loading attendees" layout="attendees" />;
   const checkedIn = attendees.data.filter((a) => a.checkedIn).length;
 
   async function mark(attendee: Attendee, next: boolean) {
@@ -206,7 +208,7 @@ function Attendees() {
 export default function AttendeesPage() {
   return (
     <Shell title="Attendees" subtitle="Who is going, who showed up. Changes are recorded in the audit log." requires="attendees.manage">
-      <Suspense fallback={<Loading label="Loading attendees" />}><Attendees /></Suspense>
+      <Suspense fallback={<Loading label="Loading attendees" layout="attendees" />}><Attendees /></Suspense>
     </Shell>
   );
 }

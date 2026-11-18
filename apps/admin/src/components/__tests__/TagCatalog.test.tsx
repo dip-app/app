@@ -49,7 +49,7 @@ describe("TagCatalogProvider / useTags", () => {
     const { result } = renderHook(() => useTags(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe("error"));
     expect(result.current.nameFor("EAI45AaOrCG7kx6v3nQk")).toBe("Unknown tag");
-    act(() => result.current.reload());
+    await act(async () => { expect(await result.current.reload()).toBe(true); });
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(result.current.nameFor("EAI45AaOrCG7kx6v3nQk")).toBe("Fitness");
     expect(state.api.listTags).toHaveBeenCalledTimes(2);

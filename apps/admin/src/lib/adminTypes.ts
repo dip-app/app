@@ -315,8 +315,10 @@ export interface SubmissionPage { submissions: Submission[]; nextCursor: string 
 export interface InsightsDay { date: string; rsvps: number; photos: number }
 export interface InsightsEvent { eventId: string; title: string; startTime: string; attendeeCount: number; capacity: number; status: "scheduled" | "completed" }
 export interface InsightsTheme {
-  challengeId: string; title: string; startDate: string; endDate: string; participantCount: number; completedCount: number; pendingReviews: number;
+  challengeId: string; title: string; /** `catalog://theme/<key>`: picks the bundled illustration (optional). */ coverImageURL?: string; startDate: string; endDate: string; participantCount: number; completedCount: number; pendingReviews: number;
 }
+/** Submissions still waiting for review on one challenge (reviews stay open after the week ends). */
+export interface OpenReview { challengeId: string; title: string; startDate: string; endDate: string; count: number }
 /** Overview sections the server can report as unavailable (a failed query; the rest of the page still renders). */
 export const INSIGHTS_SECTIONS = ["members", "events", "participation", "content", "challenges", "points", "activity"] as const;
 export type InsightsSection = (typeof INSIGHTS_SECTIONS)[number];
@@ -328,7 +330,8 @@ export interface CompanyInsights {
   events: { upcoming: number; thisMonth: number; completed: number; cancelled: number };
   participation: { rsvpsLast30Days: number; attendanceRate: number | null; attendanceSample: number; topEvents: InsightsEvent[] };
   content: { photosLast30Days: number; commentsLast30Days: number };
-  challenges: { pendingReviews: number; current: InsightsTheme | null };
+  /** `pendingReviews` is every open submission; `current.pendingReviews` only this week's. `openReviews` splits the total per challenge when the server sends it. */
+  challenges: { pendingReviews: number; current: InsightsTheme | null; openReviews?: OpenReview[] };
   /** Admins only; null for organizers (the backend never sends it to them). */
   points: { issuedLast30Days: number; topMembers: { userId: string; displayName: string; pointsBalance: number; photoURL?: string; avatarId?: string }[] } | null;
   /** The last 30 UTC days, oldest first. */

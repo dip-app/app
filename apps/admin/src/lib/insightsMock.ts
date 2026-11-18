@@ -1,4 +1,4 @@
-import type { CompanyInsights, InsightsDay, Role } from "./adminTypes";
+import type { CompanyInsights, InsightsDay, OpenReview, Role } from "./adminTypes";
 
 /**
  * Preview data for the Overview. The mock derives what it can from the preview company (members, roster,
@@ -18,8 +18,11 @@ export interface MockInsightsInput {
   events: { id: string; title: string; status: string; startTime: string; attendeeCount: number; capacity: number }[];
   photos: number;
   comments: number;
-  theme: { id: string; title: string; startDate: string; endDate: string; participantCount: number; completedCount: number } | null;
+  theme: { id: string; title: string; coverImageURL?: string; startDate: string; endDate: string; participantCount: number; completedCount: number } | null;
+  /** Open submissions on this week's theme. */
   pendingReviews: number;
+  /** Open submissions per challenge, this week and past weeks; the total becomes `challenges.pendingReviews`. */
+  openReviews?: OpenReview[];
 }
 
 const DAY = 86_400_000;
@@ -52,8 +55,9 @@ export function buildMockInsights(input: MockInsightsInput, scenario: InsightsSc
       eventId: e.id, title: e.title, startTime: e.startTime, attendeeCount: high ? e.attendeeCount * 14 : e.attendeeCount, capacity: high ? e.capacity * 14 : e.capacity,
       status: Date.parse(e.startTime) < nowMs ? "completed" as const : "scheduled" as const,
     }));
-  const current = !empty && input.theme ? { challengeId: input.theme.id, title: input.theme.title, startDate: input.theme.startDate, endDate: input.theme.endDate,
+  const current = !empty && input.theme ? { challengeId: input.theme.id, title: input.theme.title, ...(input.theme.coverImageURL ? { coverImageURL: input.theme.coverImageURL } : {}), startDate: input.theme.startDate, endDate: input.theme.endDate,
     participantCount: high ? 612 : input.theme.participantCount, completedCount: high ? 340 : input.theme.completedCount, pendingReviews: empty ? 0 : high ? 37 : input.pendingReviews } : null;
+  const open = empty ? undefined : input.openReviews?.map((r) => (high && r.challengeId === current?.challengeId ? { ...r, count: 37 } : r));
   return {
     generatedAt: now.toISOString(), windowDays: 30,
     members: {
@@ -66,7 +70,10 @@ export function buildMockInsights(input: MockInsightsInput, scenario: InsightsSc
         completed: live.filter((e) => Date.parse(e.startTime) < nowMs).length, cancelled: input.events.length - live.length },
     participation: { rsvpsLast30Days: rsvps, attendanceRate: empty ? null : high ? 0.81 : scenario === "low" ? 0.5 : 0.74, attendanceSample: empty ? 0 : high ? 25 : scenario === "low" ? 1 : Math.min(8, live.length), topEvents },
     content: { photosLast30Days: empty ? 0 : Math.max(photos, input.photos), commentsLast30Days: empty ? 0 : high ? 530 : Math.max(input.comments, scenario === "low" ? 0 : 6) },
-    challenges: { pendingReviews: current?.pendingReviews ?? 0, current },
+    challenges: {
+      pendingReviews: open ? open.reduce((n, r) => n + r.count, 0) : current?.pendingReviews ?? 0,
+      current, ...(open ? { openReviews: open } : {}),
+    },
     points: role !== "admin" ? null : {
       issuedLast30Days: empty ? 0 : high ? 48_250 : scenario === "low" ? 120 : 3_420,
       topMembers: empty ? [] : [...active].sort((a, b) => b.pointsBalance - a.pointsBalance).slice(0, scenario === "low" ? 1 : 5)

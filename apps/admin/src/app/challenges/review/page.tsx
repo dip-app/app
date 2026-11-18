@@ -261,7 +261,7 @@ function Review() {
       {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><button type="button" className="pill-btn gray small" onClick={() => setBanner(null)}>Dismiss</button></div>}
 
       {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/" backLabel="Back to challenges" />
-        : !items ? <Loading label="Loading submissions" />
+        : !items ? <Loading label="Loading submissions" layout="review" />
         : items.length === 0 ? (
           cursor ? <Loading label="Loading more submissions" /> : <Empty title={EMPTY[status].title} body={EMPTY[status].body} />
         )
@@ -360,7 +360,7 @@ function Review() {
 export default function ChallengeReviewPage() {
   return (
     <Shell title="Review submissions" subtitle="Approve to award the points, or request changes with a note. Use J and K to move between entries, or turn the shortcuts off." requires="challenges.review">
-      <Suspense fallback={<Loading label="Loading submissions" />}><Review /></Suspense>
+      <Suspense fallback={<Loading label="Loading submissions" layout="review" />}><Review /></Suspense>
     </Shell>
   );
 }

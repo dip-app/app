@@ -1,0 +1,67 @@
+@use "@/styles/variables.scss" as *;
+
+// Overview cards that grew in the layout pass: the Interests grid/list switch and cards, the theme hero, the People
+// stacked bar and the Shortcuts list. Follows pro.scss (hairlines, 4-8px radii, purple only for the selected state).
+// Card look mirrors the Dipbot option cards (art tile flush left, name, one-line blurb) without sharing their components.
+$line: #e2e4ec;
+$line-strong: #c4c8d6;
+$ctl-border: #8a8fa5;
+$subtle: #f6f7fa;
+
+.content {
+  // ---------- Equal-height rows: every card in a row is as tall as the tallest, and its list grows to use the room
+  .overview-row > .panel { display: flex; flex-direction: column; }
+  .overview-row > .panel > :is(.rank-list, .action-list, .breakdown) { flex: 1 1 auto; align-content: stretch; }
+  .overview-row > .panel > .breakdown div { align-items: center; }
+  .panel > .muted.fill, .overview-row > .panel > .section-unavailable { flex: 1 1 auto; display: grid; place-content: center; text-align: center; }
+
+  // ---------- Shortcuts (under Needs attention)
+  .shortcuts { margin-top: auto; padding-top: 4px; display: grid; gap: 2px;
+    h3 { font-size: 13px; font-weight: 600; color: var(--muted); } }
+  .shortcut-list { list-style: none; display: grid; }
+  .shortcut { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 0 4px; border-top: 1px solid $line; color: inherit; font-weight: 500;
+    svg { flex: none; color: var(--muted); }
+    &:is(a):hover { background: $subtle; } }
+  .shortcut-list li:first-child .shortcut { border-top: 0; }
+
+  // ---------- This week's theme
+  .theme-hero { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .theme-hero-art { flex: none; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; display: block;
+    img { width: 100%; height: 100%; object-fit: cover; display: block; } }
+  .theme-hero-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+  .theme-meters { display: grid; gap: 10px; margin-top: auto; }
+  .theme-meter { display: grid; gap: 4px;
+    p { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; } }
+  .theme-cta { margin-top: 2px; }
+
+  // ---------- People: stacked bar + legend dots
+  .stack-bar { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; flex: none;
+    span { min-width: 3px; display: block; } }
+  .seg-active { background: var(--primary); }
+  .seg-invited { background: #8f99f6; }
+  .seg-off { background: $line-strong; }
+  .seg-empty { background: $line; }
+  .breakdown .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+
+  // ---------- Interests: view switch + cards
+  .interests-panel > .panel-head { flex-wrap: nowrap; }
+  .view-toggle { display: inline-flex; flex: none; border: 1px solid $ctl-border; border-radius: 6px; overflow: hidden; background: #fff; }
+  .view-toggle-btn { width: 36px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #1e212b; cursor: pointer;
+    & + & { border-left: 1px solid $ctl-border; }
+    &[aria-pressed="true"] { background: var(--primary); color: #fff; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; } }
+  .tag-grid { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; }
+  .tag-card { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr); height: 76px; min-width: 0; background: #fff; border: 1px solid $line-strong; border-radius: 6px; overflow: hidden; }
+  .tag-card-art { position: relative; display: block; overflow: hidden;
+    img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; padding: 8%; box-sizing: border-box; }
+    &[data-kind="theme"] img { object-fit: cover; padding: 0; object-position: 60% 50%; }
+    &[data-kind="mascot"] img { padding: 10%; } }
+  .tag-card-text { display: grid; align-content: center; gap: 1px; min-width: 0; padding: 8px 12px 12px; }
+  .tag-card-name { font-size: 14px; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag-card-blurb { font-size: 12px; line-height: 1.3; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag-card-meta { font-size: 12px; line-height: 1.3; strong { font-weight: 600; } }
+  .tag-card .tag-card-bar { position: absolute; left: 76px; right: 12px; bottom: 8px; height: 3px; border-radius: 2px; background: $line; span { border-radius: 2px; background: var(--primary); } }
+}
+@media (max-width: 900px) {
+  .content .view-toggle-btn { width: 44px; height: 44px; }
+}

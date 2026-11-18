@@ -249,7 +249,7 @@ export default function ImportPage() {
           <h2>3. Checking {fileName}</h2>
           <progress className="progress" aria-label="Checking rows" />
           <p className="muted">{progress.total ? `Checking ${progress.total} ${progress.total === 1 ? "row" : "rows"}. Nothing is saved yet.` : "Reading the file…"}</p>
-          <Loading label="Checking rows" />
+          <Loading label="Checking rows" layout="importPreview" />
         </section>
       )}
 

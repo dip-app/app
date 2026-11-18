@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Tag } from "@/lib/catalog";
 import { createTagResolver } from "@/lib/tagCatalog";
 import { useApp } from "./AppProvider";
@@ -17,7 +17,11 @@ export interface TagCatalogState {
    */
   nameFor: (id: string) => string;
   has: (id: string) => boolean;
-  reload: () => void;
+  /**
+   * Reads the catalog again. A catalog that already loaded keeps its names on screen while this runs (no flash to "…"
+   * or to an empty list); one that never loaded goes back to loading. Resolves true when the read worked.
+   */
+  reload: () => Promise<boolean>;
 }
 
 const Context = createContext<TagCatalogState | null>(null);
@@ -30,25 +34,36 @@ export function TagCatalogProvider({ children }: { children: React.ReactNode }) 
   const { api, session } = useApp();
   const signedIn = Boolean(session);
   const [state, setState] = useState<{ tags: Tag[]; status: TagCatalogStatus }>({ tags: [], status: "loading" });
-  const [attempt, setAttempt] = useState(0);
+  const latest = useRef(0);
+
+  // Only the newest read counts: a reload makes an older, slower answer irrelevant.
+  const read = useCallback(async (keepTags: boolean): Promise<boolean> => {
+    const mine = ++latest.current;
+    try {
+      const tags = await api.listTags();
+      if (mine === latest.current) setState({ tags, status: "ready" });
+      return true;
+    } catch {
+      if (mine === latest.current) setState((now) => (keepTags && now.status === "ready" ? now : { tags: [], status: "error" }));
+      return false;
+    }
+  }, [api]);
 
   useEffect(() => {
     if (!signedIn) {
+      latest.current++;
       setState({ tags: [], status: "loading" });
       return;
     }
-    let cancelled = false;
-    api.listTags().then(
-      (tags) => !cancelled && setState({ tags, status: "ready" }),
-      () => !cancelled && setState({ tags: [], status: "error" }),
-    );
-    return () => { cancelled = true; };
-  }, [api, signedIn, attempt]);
+    void read(false);
+    const counter = latest;
+    return () => { counter.current++; };
+  }, [signedIn, read]);
 
-  const reload = useCallback(() => {
-    setState({ tags: [], status: "loading" });
-    setAttempt((n) => n + 1);
-  }, []);
+  const reload = useCallback((): Promise<boolean> => {
+    setState((now) => (now.status === "ready" ? now : { tags: [], status: "loading" }));
+    return read(true);
+  }, [read]);
 
   const value = useMemo<TagCatalogState>(() => {
     const resolver = createTagResolver(state.tags);

@@ -14,6 +14,7 @@ import type { Session } from "@/lib/api";
 import { type Member, type MemberPatch, ROLE_LABEL, type Role, can } from "@/lib/adminTypes";
 import { ApiError } from "@/lib/contract";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 const ROLE_DESCRIPTION: Record<Role, string> = {
   member: "Members join events and challenges in the app but can’t use the admin portal.",
@@ -28,8 +29,9 @@ function MemberDetail() {
   const { api, session } = useApp();
   const member = useLoad((a) => a.getMember(id), id);
   const company = useLoad((a) => a.companyInfo(), "company");
+  const hold = useSkeletonGate((!member.data || !company.data) && !member.error);
   if (member.error) return <LoadError error={member.error} onRetry={member.reload} backHref="/members/" backLabel="Back to members" />;
-  if (!member.data || !company.data) return <Loading label="Loading member" />;
+  if (!member.data || !company.data || hold) return <Loading label="Loading member" layout="memberDetail" />;
   return <Editor key={`${member.data.id}-${member.data.revision}`} member={member.data} teams={company.data.teams} self={session?.uid === member.data.id} session={session}
     api={api} onSaved={(next) => member.setData(next)} onReload={member.reload} />;
 }
@@ -200,7 +202,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
 export default function MemberDetailPage() {
   return (
     <Shell title="Member" subtitle="Edit details, access, points and profile. Every change is recorded in the audit log." requires="members.view">
-      <Suspense fallback={<Loading label="Loading member" />}><MemberDetail /></Suspense>
+      <Suspense fallback={<Loading label="Loading member" layout="memberDetail" />}><MemberDetail /></Suspense>
     </Shell>
   );
 }

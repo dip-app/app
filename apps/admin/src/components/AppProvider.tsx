@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { TagCatalogProvider } from "./TagCatalog";
+import { holdReadsFromQuery } from "@/lib/loadingHold";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
 
 interface AppState {
@@ -33,9 +34,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (configured) {
         const { createFirebaseApi, readLiveConfig } = await import("@/lib/firebaseAdapter");
         const live = readLiveConfig();
-        created = live ? createFirebaseApi(live) : createMockApi(browserStore(), () => new Date(), true);
+        created = live ? createFirebaseApi(live) : holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search);
       } else {
-        created = createMockApi(browserStore(), () => new Date(), true);
+        // `?loading=1` (mock only) keeps every page in its loading state for screenshots.
+        created = holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search);
       }
       if (cancelled) return;
       setApi(created);

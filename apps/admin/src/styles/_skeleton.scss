@@ -1,0 +1,54 @@
+@use "@/styles/variables.scss" as *;
+
+// Loading skeletons (components/Skeleton.tsx). Placeholders are built from the real page markup, so only the fill is
+// styled here: a quiet gray with a slow shimmer. `.sk-still` (and prefers-reduced-motion) turns the shimmer off.
+$sk-base: #eceef4;
+$sk-hi: #f6f7fa;
+$sk-line: #e2e4ec;
+
+@keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+.sk-region { min-width: 0; }
+.sk, .sk-text::before {
+  background: linear-gradient(90deg, $sk-base 30%, $sk-hi 50%, $sk-base 70%) $sk-base;
+  background-size: 300% 100%;
+  animation: sk-shimmer 1.8s ease-in-out infinite;
+}
+.sk-still .sk, .sk-still .sk-text::before { animation: none; background: $sk-base; }
+@media (prefers-reduced-motion: reduce) { .sk, .sk-text::before { animation: none; background: $sk-base; } }
+
+// Text placeholder: the box is a full line of the surrounding font (non-breaking space), the visible bar is inset.
+.sk-text { display: block; position: relative; width: var(--sk-w, 100%); max-width: 100%; color: transparent; user-select: none; overflow: hidden;
+  &::before { content: ""; position: absolute; inset: .2em 0; border-radius: 4px; } }
+.sk-line, .sk-block, .sk-circle { display: block; flex: none; max-width: 100%; }
+.sk-circle { border-radius: 50%; }
+
+// Elements that show a text placeholder keep their layout role but lose interaction and ink.
+.sk-region a, .sk-region button { pointer-events: none; }
+
+.sk-chart { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; padding: 12px 0 8px 44px; box-sizing: border-box; background: transparent;
+  .sk-chart-plot { position: relative; min-height: 0; }
+  .sk-chart-grid { position: absolute; left: 0; right: 0; height: 1px; background: $sk-line; }
+  .sk-chart-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 3px; padding: 0 2px; }
+  .sk-chart-bar { flex: 1 1 0; min-width: 2px; border-radius: 3px 3px 0 0; }
+  .sk-chart-axis { display: flex; justify-content: space-between; } }
+
+// A form control (36 px, 44 px on touch screens, like the real inputs and selects)
+.sk-input { display: block; width: 100%; height: 36px; border-radius: 6px; }
+@media (max-width: 900px) { .sk-input { height: 44px; } }
+
+.sk-card-grid { display: grid; }
+.sk-card { border: 1px solid $sk-line; border-radius: 8px; overflow: hidden; background: #fff; }
+
+// Overview placeholders that need a little extra than the shared markup
+.content {
+  .rank.sk-rank { background: $sk-base; }
+  .sk-disclosure { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px 0 4px; }
+  .sk-disclosure .sk-text { width: 78px; }
+  .shortcut > .sk-shortcut { flex: 1; }
+  .tag-card.sk-tag-card .tag-card-art { background: $sk-base; border-radius: 0; animation-name: sk-shimmer; }
+  .view-toggle-btn.sk { border-color: transparent; }
+  // Tab strip ghost: the first tab looks selected and reserves room for its count, like the loaded strip
+  .tabs .tab.sk-current { background: none; color: #1e212b; border-bottom-color: var(--primary); font-weight: 600; }
+  .sk-tab-count { color: transparent; }
+}

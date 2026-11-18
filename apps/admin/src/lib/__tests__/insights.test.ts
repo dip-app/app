@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { insightsFromWire } from "../adminLive";
 import { can, type CompanyInsights } from "../adminTypes";
 import { buildMockInsights, mockActivity, scenarioFromSearch, type MockInsightsInput } from "../insightsMock";
-import { chartModel, completionRate, formatPercent, isQuiet, niceMax, pendingActions, updatedLabel } from "../insights";
+import { chartModel, completionRate, formatPercent, isQuiet, niceMax, pendingActions, reviewGroups, themePhase, updatedLabel, weekRange } from "../insights";
 
 const NOW = new Date("2026-11-11T12:00:00Z");
 const input: MockInsightsInput = {
@@ -97,9 +97,41 @@ describe("pending actions", () => {
 
   test("admins get links, organizers see the counts without the roster link", () => {
     const admin = pendingActions(data, "admin");
-    expect(admin.map((a) => [a.id, a.count, a.href])).toEqual([["reviews", 3, "/challenges/"], ["invited", 4, "/roster/"]]);
+    expect(admin.map((a) => [a.id, a.count, a.href])).toEqual([["reviews", 3, "/challenges/review/?id=t1&status=submitted"], ["invited", 4, "/roster/"]]);
     const organizer = pendingActions(data, "organizer");
     expect(organizer.map((a) => a.href)).toEqual([null, null]);
+  });
+
+  test("review item and theme card come from one helper, and the label says what it counts", () => {
+    const past = { challengeId: "t0", title: "Walk week", startDate: "2026-11-02T05:00:00Z", endDate: "2026-11-09T04:59:59Z", count: 1 };
+    // Last week's challenge has one open submission, this week none: the theme card says 0, the item says "Past theme".
+    const onlyPast = buildMockInsights({ ...input, pendingReviews: 0, openReviews: [past] }, "default", "admin", NOW);
+    expect(onlyPast.challenges.current?.pendingReviews).toBe(0);
+    expect(onlyPast.challenges.pendingReviews).toBe(1);
+    const [item] = pendingActions(onlyPast, "admin", NOW);
+    expect(item).toMatchObject({ label: "Submission to review", count: 1, href: "/challenges/review/?id=t0&status=submitted" });
+    expect(item.lines).toEqual(["Past theme: Walk week, Nov 2 to Nov 8"]);
+    expect(reviewGroups(onlyPast, NOW).reduce((n, g) => n + g.count, 0)).toBe(item.count);
+    // Both: two lines with counts, and the link goes to the list of themes.
+    const both = buildMockInsights({ ...input, pendingReviews: 2, openReviews: [{ ...past, count: 1 }, { challengeId: "t1", title: "Walk week", startDate: input.theme!.startDate, endDate: input.theme!.endDate, count: 2 }] }, "default", "admin", NOW);
+    const [mixed] = pendingActions(both, "admin", NOW);
+    expect(mixed.count).toBe(3);
+    expect(mixed.label).toBe("Submissions to review");
+    expect(mixed.lines).toEqual(["2 from Current theme: Walk week", "1 from Past theme: Walk week, Nov 2 to Nov 8"]);
+    expect(mixed.href).toBe("/challenges/");
+    // A server that sends only totals: this week's count stays, the rest is "past themes".
+    const totalsOnly: CompanyInsights = { ...both, challenges: { pendingReviews: 3, current: both.challenges.current } };
+    expect(reviewGroups(totalsOnly, NOW).map((g) => [g.phase, g.count])).toEqual([["current", 2], ["past", 1]]);
+    expect(pendingActions(totalsOnly, "admin", NOW)[0].lines).toEqual(["2 from Current theme: Walk week", "1 from Past themes"]);
+  });
+
+  test("themePhase uses the exact instants of the Eastern week, in any time zone", () => {
+    const start = "2026-11-09T05:00:00Z", end = "2026-11-16T04:59:59Z"; // Monday 00:00 ET to Sunday 23:59:59 ET
+    expect(themePhase(start, end, new Date("2026-11-09T04:59:59Z"))).toBe("upcoming");
+    expect(themePhase(start, end, new Date("2026-11-09T05:00:00Z"))).toBe("current");
+    expect(themePhase(start, end, new Date("2026-11-16T04:59:59Z"))).toBe("current");
+    expect(themePhase(start, end, new Date("2026-11-16T05:00:00Z"))).toBe("past");
+    expect(weekRange(start, end)).toBe("Nov 9 to Nov 15");
   });
 
   test("completion rate is bounded", () => {

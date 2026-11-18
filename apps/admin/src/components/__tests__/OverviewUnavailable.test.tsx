@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompanyInsights } from "@/lib/adminTypes";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { OverviewLoading, PeopleCard, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "../Overview";
+import { PeopleCard, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "../Overview";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 
@@ -60,12 +60,6 @@ describe("Overview people and stacking", () => {
     expect(rows[1].querySelector("img.avatar.mascot")!.getAttribute("src")).toBe("/admin/img/avatars/teal.webp");
     expect(rows[2].querySelector("svg.avatar.crew")!.getAttribute("data-avatar")).toBe("crew-square-wink-grey");
     expect(container.querySelector(".avatar:not(img):not(svg)")).toBeNull();
-  });
-
-  it("the loading page stacks skeleton tiles and the Interests card inside one .overview grid, like the loaded page", () => {
-    const { container } = render(<OverviewLoading><section className="panel" aria-label="Interests" /></OverviewLoading>);
-    const stack = container.querySelector(".overview")!;
-    expect([...stack.children].map((c) => c.className)).toEqual(["stat-grid", "panel"]);
   });
 
   it("the stack has a gap in both style sheets (no flush sections)", () => {

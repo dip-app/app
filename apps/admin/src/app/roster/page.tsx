@@ -14,6 +14,7 @@ import { useDebounced, usePaged } from "@/components/usePaged";
 import { LIST_PAGE_SIZE, ROLE_LABEL, type ResendResult, type RosterCounts, type RosterRow, type RosterState } from "@/lib/adminTypes";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 type Filter = RosterState | "all";
 const FILTERS: { id: Filter; label: string }[] = [
@@ -115,6 +116,7 @@ function Roster() {
   }
 
   const empty = list.items.length === 0;
+  const hold = useSkeletonGate(list.loading && empty);
   return (
     <Shell title="Roster" subtitle="Everyone at your company. Invited people were added in advance and get their role and teams when they sign in; anyone with a company email can join." requires="roster.manage"
       action={<Link className="pill-btn purple" href="/import/">Import people</Link>}>
@@ -130,7 +132,7 @@ function Roster() {
       {error && <div className="banner error" role="alert"><span>{error}</span></div>}
       <div {...tabPanelProps("roster", filter)}>
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
-        : list.loading && empty ? <Loading label="Loading roster" />
+        : (list.loading && empty) || hold ? <Loading label="Loading roster" layout="roster" />
         : empty ? (
           <Empty
             title={counts?.all === 0 ? "The roster is empty" : searching ? "No matches" : filter === "invited" ? "No pending invites" : `No ${FILTERS.find((item) => item.id === filter)!.label.toLowerCase()} people`}
@@ -210,7 +212,7 @@ function Roster() {
 }
 
 export default function RosterPage() {
-  return <Suspense fallback={<Loading label="Loading roster" />}><Roster /></Suspense>;
+  return <Suspense fallback={<Loading label="Loading roster" layout="roster" />}><Roster /></Suspense>;
 }
 
 /** DIP sends no email: the resend is recorded and this is what the admin shares through their own channel. */

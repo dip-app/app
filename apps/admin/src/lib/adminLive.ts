@@ -175,9 +175,11 @@ export function insightsFromWire(d: DocumentData): CompanyInsights {
     challenges: {
       pendingReviews: num(challenges.pendingReviews),
       current: current && {
-        challengeId: str(current.challengeId), title: str(current.title), startDate: iso(current.startDate), endDate: iso(current.endDate),
+        challengeId: str(current.challengeId), title: str(current.title), ...(str(current.coverImageURL) ? { coverImageURL: str(current.coverImageURL) } : {}), startDate: iso(current.startDate), endDate: iso(current.endDate),
         participantCount: num(current.participantCount), completedCount: num(current.completedCount), pendingReviews: num(current.pendingReviews),
       },
+      // Optional split of the total per challenge (reviews stay open after a week ends); absent from older servers.
+      ...(Array.isArray(challenges.openReviews) ? { openReviews: list(challenges.openReviews).map((r) => ({ challengeId: str(r.challengeId), title: str(r.title), startDate: iso(r.startDate), endDate: iso(r.endDate), count: num(r.count) })) } : {}),
     },
     points: points && {
       issuedLast30Days: num(points.issuedLast30Days),

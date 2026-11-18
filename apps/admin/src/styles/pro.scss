@@ -2,6 +2,8 @@
 @use "@/styles/flows";
 @use "@/styles/covers";
 @use "@/styles/when";
+@use "@/styles/skeleton";
+@use "@/styles/interests";
 
 // Professional, dense content area for the signed-in portal (everything inside <main class="content">).
 // Loaded after globals.scss so it wins at equal specificity. The sidebar, top bar, login page and the public landing
@@ -260,7 +262,7 @@ $ctl-h: 36px;
     .stat-label { font-size: 12px; font-weight: 500; } .stat-value { font-size: 26px; } .stat-note { font-size: 12px; }
     &.accent { background: $white; color: $ink; .stat-label, .stat-note { color: var(--muted); } }
     &.skeleton-tile { min-height: 89px; background: $subtle; } }
-  .overview-row { gap: 14px; align-items: start; }
+  .overview-row { gap: 14px; align-items: stretch; }
   .legend { font-size: 12px; }
   .chart { max-height: 220px; .grid { stroke: $line; stroke-width: 1; } .series { stroke-width: 2; } .axis { font-size: 11px; } }
   .chart-empty, .section-unavailable { background: $subtle; border-radius: $r-ctl; padding: 24px 16px; }

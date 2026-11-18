@@ -1,4 +1,5 @@
 import { type CompanyInsights, type InsightsDay, type Role, can } from "./adminTypes";
+import { AI_NAME } from "./aiStrings";
 
 // Pure helpers behind the Overview page (formatting, the activity chart geometry, the "needs attention" list).
 
@@ -96,25 +97,96 @@ export function chartModel(days: InsightsDay[], width = 720, height = 260): Char
   };
 }
 
-export interface PendingAction { id: string; label: string; detail: string; count: number; href: string | null }
+export interface PendingAction { id: string; label: string; detail: string; /** One line per theme when the open reviews span several. */ lines: string[]; count: number; href: string | null }
+
+export type ThemePhase = "past" | "current" | "upcoming";
+
+/** Where a theme's date range sits relative to `now`. Instants, so week edges (Sunday 23:59:59 Eastern) hold in any time zone. */
+export function themePhase(startDate: string, endDate: string, now: Date): ThemePhase {
+  const t = now.getTime();
+  if (t < Date.parse(startDate)) return "upcoming";
+  if (t > Date.parse(endDate)) return "past";
+  return "current";
+}
+
+/** "Nov 9 to Nov 15", always in Eastern Time because weekly themes run on Eastern weeks. */
+export function weekRange(startDate: string, endDate: string): string {
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+  return `${fmt(startDate)} to ${fmt(endDate)}`;
+}
+
+export interface ReviewGroup { phase: ThemePhase; challengeId: string | null; title: string; range: string; count: number }
+
+/**
+ * The single source for "submissions waiting for review": the total (`challenges.pendingReviews`, every open challenge)
+ * split into this week's theme and past themes. The server's `openReviews` gives the exact split; without it the split is
+ * this week's count versus "the rest" (past themes), so the Overview's review numbers can never disagree.
+ */
+export function reviewGroups(insights: CompanyInsights, now: Date): ReviewGroup[] {
+  const { pendingReviews, current, openReviews } = insights.challenges;
+  const groups: ReviewGroup[] = [];
+  if (openReviews && openReviews.length > 0) {
+    for (const item of [...openReviews].sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate))) {
+      if (item.count > 0) groups.push({ phase: themePhase(item.startDate, item.endDate, now), challengeId: item.challengeId, title: item.title, range: weekRange(item.startDate, item.endDate), count: item.count });
+    }
+    return groups;
+  }
+  const thisWeek = Math.min(current?.pendingReviews ?? 0, pendingReviews);
+  if (current && thisWeek > 0) groups.push({ phase: "current", challengeId: current.challengeId, title: current.title, range: weekRange(current.startDate, current.endDate), count: thisWeek });
+  if (pendingReviews - thisWeek > 0) groups.push({ phase: "past", challengeId: null, title: "", range: "", count: pendingReviews - thisWeek });
+  return groups;
+}
+
+const groupText = (g: ReviewGroup, several: boolean): string => {
+  const kind = g.phase === "current" ? "Current theme" : g.phase === "past" ? "Past theme" : "Upcoming theme";
+  const where = g.title ? `${kind}: ${g.title}${g.phase === "current" ? "" : `, ${g.range}`}` : "Past themes";
+  return several ? `${g.count} from ${where}` : where;
+};
 
 /** What needs a person: reviews waiting, people invited who haven't signed in. Zero-count items are left out. */
-export function pendingActions(insights: CompanyInsights, role: Role): PendingAction[] {
+export function pendingActions(insights: CompanyInsights, role: Role, now: Date = new Date()): PendingAction[] {
   const items: PendingAction[] = [];
-  if (insights.challenges.pendingReviews > 0) {
+  const total = insights.challenges.pendingReviews;
+  if (total > 0) {
+    const groups = reviewGroups(insights, now);
+    const lines = groups.length > 0 ? groups.map((g) => groupText(g, groups.length > 1)) : ["Recent weekly themes"];
+    // One challenge: open its queue directly (submitted filter); several: the list of themes.
+    const only = groups.length === 1 ? groups[0].challengeId : null;
     items.push({
-      id: "reviews", label: "Challenge submissions to review", count: insights.challenges.pendingReviews,
-      detail: insights.challenges.current ? `Current theme: ${insights.challenges.current.title}` : "Recent weekly themes",
-      href: can(role, "challenges.review") ? "/challenges/" : null,
+      id: "reviews", label: total === 1 ? "Submission to review" : "Submissions to review", count: total,
+      detail: lines.join(" · "), lines,
+      href: can(role, "challenges.review") ? (only ? `/challenges/review/?id=${encodeURIComponent(only)}&status=submitted` : "/challenges/") : null,
     });
   }
   if (insights.members.invited > 0) {
     items.push({
       id: "invited", label: "Invited, not joined yet", count: insights.members.invited,
-      detail: "Resend the invite message from the roster", href: can(role, "roster.manage") ? "/roster/" : null,
+      detail: "Resend the invite message from the roster", lines: ["Resend the invite message from the roster"], href: can(role, "roster.manage") ? "/roster/" : null,
     });
   }
   return items;
+}
+
+export interface Shortcut { id: string; label: string; href: string }
+
+/** Quick links under "Needs attention" (what the role can actually do), so a short card is still useful. At most two. */
+export function shortcutsFor(role: Role): Shortcut[] {
+  const all: [Parameters<typeof can>[1], Shortcut][] = [
+    ["events.manage", { id: "new-event", label: "Create an event", href: "/events/new/" }],
+    ["themes.manage", { id: "new-theme", label: "Plan a weekly theme", href: "/themes/new/" }],
+    ["ai.generate", { id: "ideas", label: `Ask ${AI_NAME} for event ideas`, href: "/ideas/" }],
+    ["import.run", { id: "import", label: "Import people", href: "/import/" }],
+  ];
+  return all.filter(([capability]) => can(role, capability)).map(([, shortcut]) => shortcut).slice(0, 2);
+}
+
+/** Where `now` is inside a theme's range: day number, number of days and the elapsed fraction (0..1). */
+export function weekProgress(startDate: string, endDate: string, now: Date): { day: number; days: number; fraction: number } {
+  const start = Date.parse(startDate), end = Date.parse(endDate);
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return { day: 1, days: 1, fraction: 0 };
+  const days = Math.max(1, Math.round((end - start) / 86_400_000));
+  const fraction = Math.min(1, Math.max(0, (now.getTime() - start) / (end - start)));
+  return { day: Math.min(days, Math.floor(fraction * days) + 1), days, fraction };
 }
 
 /** Share of a theme's participants who finished, 0..1 (0 without participants). */
@@ -125,4 +197,10 @@ export function completionRate(participants: number, completed: number): number 
 /** True when the company has produced nothing the page can chart yet (never while a section is unavailable). */
 export function isQuiet(insights: CompanyInsights): boolean {
   return insights.unavailable.length === 0 && insights.participation.rsvpsLast30Days === 0 && insights.events.completed === 0 && insights.events.upcoming === 0;
+}
+
+/** Names the sections that failed to refresh: "insights", "insights and interest counts". */
+export function refreshFailureMessage(failed: string[]): string {
+  const list = failed.length > 1 ? `${failed.slice(0, -1).join(", ")} and ${failed[failed.length - 1]}` : failed[0];
+  return `Couldn’t refresh the ${list}. What’s shown is from the last update; try again in a moment.`;
 }

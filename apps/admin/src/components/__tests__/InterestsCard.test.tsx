@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubLocalStorage } from "./storageStub";
 import type { TagStat } from "@/lib/tagStats";
 import { InterestsCard } from "../Overview";
 
 afterEach(cleanup);
+// The list view is the table; the grid is the default (see Overview.grid tests).
+beforeEach(() => { stubLocalStorage().setItem("dip.admin.interestsView", "list"); });
 
 const tags = [{ id: "a", name: "Alpha" }, { id: "b", name: "Beta" }, { id: "c", name: "Gamma" }];
 const stat = (tagId: string, memberCount: number): TagStat => ({ tagId, memberCount, updatedAt: "2026-11-01T00:00:00.000Z" });

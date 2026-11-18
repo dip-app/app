@@ -14,6 +14,7 @@ import { downloadText } from "@/lib/csv";
 import { membersCsv } from "@/lib/exports";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 const STATUSES: { id: MemberStatus | "all"; label: string }[] = [
   { id: "all", label: "All" }, { id: "active", label: "Active" }, { id: "invited", label: "Invited" }, { id: "deactivated", label: "Deactivated" },
@@ -59,6 +60,7 @@ function Members() {
   const clearable = search !== "" || role !== "all" || team !== "all" || location !== "all";
   const total = list.extra;
   const firstLoad = list.loading && list.items.length === 0;
+  const holdLoad = useSkeletonGate(firstLoad);
 
   async function exportCsv() {
     setExporting(true);
@@ -100,7 +102,7 @@ function Members() {
       )}
       <div {...tabPanelProps("members", status)}>
         {list.error && list.items.length === 0 ? <LoadError error={list.error} onRetry={list.reload} />
-          : firstLoad ? <Loading label="Loading members" />
+          : firstLoad || holdLoad ? <Loading label="Loading members" layout="members" />
           : list.items.length === 0 ? (
             <Empty title="No one matches" body="Clear a filter or search for a different name." />
           ) : (
@@ -134,5 +136,5 @@ function Members() {
 }
 
 export default function MembersPage() {
-  return <Suspense fallback={<Loading label="Loading members" />}><Members /></Suspense>;
+  return <Suspense fallback={<Loading label="Loading members" layout="members" />}><Members /></Suspense>;
 }
