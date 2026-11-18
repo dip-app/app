@@ -17,6 +17,7 @@ import type { BucketLike, FirestoreLike, SnapshotLike, TransactionLike } from ".
 import { PixabayImageDownloader } from "../../functions/src/modules/covers/infrastructure/imageDownloader";
 import { PixabayHttpClient } from "../../functions/src/modules/covers/infrastructure/pixabayHttpClient";
 import { SharpImageProcessor } from "../../functions/src/modules/covers/infrastructure/sharpImageProcessor";
+import { keepAliveUntilAbort } from "./helpers/keepAlive";
 
 // sharp is a dependency of gcp/functions, so resolve it from there (this test file lives outside that package).
 const sharp = createRequire(join(__dirname, "../../functions/package.json"))("sharp") as typeof import("sharp");
@@ -53,6 +54,7 @@ function fakeFetch(handler: (url: string, init: RequestInit | undefined) => Resp
 }
 const json = (body: unknown, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" }, ...init });
 const waitForAbort = (init: RequestInit | undefined) => new Promise<Response>((_, reject) => {
+  keepAliveUntilAbort(init?.signal);
   init?.signal?.addEventListener("abort", () => reject(new Error(`aborted ${init.signal ? "" : ""}`)));
 });
 

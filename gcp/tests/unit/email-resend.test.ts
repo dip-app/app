@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import { after, afterEach, before, describe, test } from "node:test";
 import type { OutgoingEmail } from "../../functions/src/modules/email/application/ports";
 import { ResendProvider, ResendWebhookVerifier, resendTagValue } from "../../functions/src/modules/email/infrastructure/resendProvider";
+import { keepAliveUntilAbort } from "./helpers/keepAlive";
 
 const API_KEY = "re_test_key_123";
 const message: OutgoingEmail = {
@@ -120,6 +121,7 @@ describe("ResendProvider error classification", () => {
 
   test("timeout is unknown (at most once)", async () => {
     const f = ((_u: string, init: RequestInit) => new Promise((_r, reject) => {
+      keepAliveUntilAbort(init.signal);
       init.signal?.addEventListener("abort", () => reject(Object.assign(new Error("t"), { name: "TimeoutError" })));
     })) as unknown as typeof fetch;
     assert.deepEqual(await provider({ fetchImpl: f, timeoutMs: 20 }).send(message), { kind: "unknown", code: "timeout" });
