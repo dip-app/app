@@ -160,8 +160,8 @@ test('AiCredits carries credits and prices only, never money', () => {
   rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, generate: 0.5}});
   rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, extra: 1}});
   rejects('AiCredits', {...credits, creditCost: without(credits.creditCost, 'coverPick')}, 'missing coverPick');
-  accepts('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], credits, cached: false});
-  rejects('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], cached: false}, 'missing credits');
+  accepts('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], credits, cached: false, cacheStatus: 'computed', creditsCharged: 1, considerations: [{id: 'vegan', probability: 0.5}]});
+  rejects('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], cached: false, cacheStatus: 'fresh', creditsCharged: 0}, 'missing credits');
 });
 
 test('AiStepSuggestion carries an honest reasonBasis', () => {
