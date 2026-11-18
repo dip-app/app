@@ -14,6 +14,13 @@ import { members } from "./members";
 import { overview } from "./overview";
 import { shell } from "./shell";
 import { ui } from "./ui";
+import { themeForm } from "./themeForm";
+import { attendees } from "./attendees";
+import { memberDetail } from "./memberDetail";
+import { review } from "./review";
+import { bugs } from "./bugs";
+import { roster } from "./roster";
+import { importer } from "./importer";
 
 export type Prefixed<T, P extends string> = { [K in keyof T & string as `${P}${K}`]: T[K] };
 
@@ -34,6 +41,13 @@ export const en = {
   ...members,
   ...audit,
   ...challenges,
+  ...themeForm,
+  ...attendees,
+  ...memberDetail,
+  ...review,
+  ...bugs,
+  ...roster,
+  ...importer,
   ...prefixed("ai.", ai),
 };
 

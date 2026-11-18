@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -18,12 +19,13 @@ import { formatWindow } from "@/lib/weeks";
 import { isTypingTarget } from "@/lib/useSlashFocus";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { Button } from "@/components/kit";
+import { t, type MessageKey } from "@/lib/i18n";
 
 const TABS: SubmissionStatus[] = ["submitted", "rejected", "approved"];
-const STATUS_LABEL: Record<SubmissionStatus, string> = { submitted: "Pending", rejected: "Changes requested", approved: "Approved" };
+const STATUS_KEY: Record<SubmissionStatus, MessageKey> = { submitted: "review.status.submitted", rejected: "review.status.rejected", approved: "review.status.approved" };
+const statusLabel = (status: SubmissionStatus) => t(STATUS_KEY[status]);
 const DEFAULTS = { status: "submitted" };
 const KEYS_STORAGE = "dip-admin-review-keys";
-const NO_THEME = new ApiError("not-found", "No weekly theme was selected. Pick one from the challenges list.");
 
 /** Single-key shortcuts can be switched off (WCAG 2.1.4). The choice is remembered in this browser; storage may be blocked. */
 function useShortcutsSetting(): [boolean, (on: boolean) => void] {
@@ -36,11 +38,21 @@ function useShortcutsSetting(): [boolean, (on: boolean) => void] {
     try { window.localStorage.setItem(KEYS_STORAGE, next ? "on" : "off"); } catch { /* the choice just won't be remembered */ }
   }];
 }
-const EMPTY: Record<SubmissionStatus, { title: string; body: string }> = {
-  submitted: { title: "Nothing waiting for review", body: "New submissions show up here as people send them in." },
-  rejected: { title: "No changes requested", body: "Entries you ask to change wait here until the member resubmits." },
-  approved: { title: "Nothing approved yet", body: "Approved entries, with the points they earned, are listed here." },
+const EMPTY_KEYS: Record<SubmissionStatus, { title: MessageKey; body: MessageKey }> = {
+  submitted: { title: "review.empty.submitted.title", body: "review.empty.submitted.body" },
+  rejected: { title: "review.empty.rejected.title", body: "review.empty.rejected.body" },
+  approved: { title: "review.empty.approved.title", body: "review.empty.approved.body" },
 };
+
+/** Single-key shortcuts shown next to the buttons; the labels are translated at render. */
+function keyHints(canReview: boolean): { key: string; label: string; press: string }[] {
+  const hints = [
+    { key: "J", label: t("review.keys.next"), press: t("review.keys.pressNext") },
+    { key: "K", label: t("review.keys.previous"), press: t("review.keys.pressPrevious") },
+  ];
+  if (canReview) hints.push({ key: "A", label: t("review.keys.approve"), press: t("review.keys.pressApprove") }, { key: "R", label: t("review.keys.requestChanges"), press: t("review.keys.pressRequestChanges") });
+  return hints;
+}
 
 /** Evidence picture; opens larger on click. Live mode reads the bytes through the signed-in admin's Storage access. */
 function Evidence({ submission }: { submission: Submission }) {
@@ -76,20 +88,20 @@ function Evidence({ submission }: { submission: Submission }) {
     if (!open && el?.open) el.close();
   }, [open]);
 
-  if (!path) return <div className="evidence none"><p>No photo. This is a note-only entry.</p></div>;
-  if (failed) return <div className="evidence none" role="alert"><p>The photo couldn’t be loaded.</p></div>;
-  if (!url) return <div className="evidence loading" role="status" aria-label="Loading photo" />;
+  if (!path) return <div className="evidence none"><p>{t("review.photo.none")}</p></div>;
+  if (failed) return <div className="evidence none" role="alert"><p>{t("review.photo.failed")}</p></div>;
+  if (!url) return <div className="evidence loading" role="status" aria-label={t("review.photo.loading")} />;
   return (
     <>
-      <button className="evidence" onClick={() => setOpen(true)} aria-label={`View full size: photo from ${submission.userName}`}>
+      <button className="evidence" onClick={() => setOpen(true)} aria-label={t("review.photo.viewAria", { who: submission.userName })}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={`Evidence from ${submission.userName}`} draggable={false} />
-        <span className="view-full">View full size</span>
+        <img src={url} alt={t("review.photo.alt", { who: submission.userName })} draggable={false} />
+        <span className="view-full">{t("review.photo.viewFull")}</span>
       </button>
-      <dialog ref={dialog} className="dialog viewer" aria-label={`${submission.userName}’s photo`} onClose={() => setOpen(false)}>
+      <dialog ref={dialog} className="dialog viewer" aria-label={t("review.photo.dialogLabel", { who: submission.userName })} onClose={() => setOpen(false)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="photo-frame large" src={url} alt={`Evidence from ${submission.userName}`} draggable={false} />
-        <div className="actions"><Button onClick={() => setOpen(false)}>Close</Button></div>
+        <img className="photo-frame large" src={url} alt={t("review.photo.alt", { who: submission.userName })} draggable={false} />
+        <div className="actions"><Button onClick={() => setOpen(false)}>{t("review.photo.close")}</Button></div>
       </dialog>
     </>
   );
@@ -132,7 +144,7 @@ function Review() {
         // Keep the open entry through a reload; otherwise start at the first.
         setSelectedId((current) => (page.submissions.some((s) => s.id === current) ? current : (page.submissions[0]?.id ?? null)));
       },
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load submissions. Check your connection and try again.")),
+      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("review.error.loadFailed"))),
     );
     return () => { cancelled = true; };
   }, [api, id, status, attempt]);
@@ -180,9 +192,9 @@ function Review() {
   function explain(failure: unknown, who: string): boolean {
     if (!(failure instanceof ApiError)) return false;
     if (failure.reason === "SUBMISSION_CHANGED") {
-      setBanner({ tone: "warn", text: `${who} changed this submission while you were reviewing it. It is reloaded below: check the update, then review again.` });
+      setBanner({ tone: "warn", text: t("review.banner.changed", { who }) });
     } else if (failure.reason === "SUBMISSION_NOT_PENDING" || failure.reason === "SUBMISSION_LOCKED") {
-      setBanner({ tone: "warn", text: `${who}’s submission was already reviewed, so nothing changed. The list is up to date.` });
+      setBanner({ tone: "warn", text: t("review.banner.alreadyReviewed", { who }) });
     } else return false;
     reload();
     return true;
@@ -193,11 +205,11 @@ function Review() {
       const result = await api.approveSubmission(item);
       setDialog(null);
       if (result.replayed) {
-        setBanner({ tone: "warn", text: `${item.userName}’s submission was already approved, so no points were awarded again.` });
+        setBanner({ tone: "warn", text: t("review.banner.alreadyApproved", { who: item.userName }) });
         reload();
       } else {
         setBanner(null);
-        toast(`Approved ${item.userName}. ${result.pointsAwarded} points awarded.`);
+        toast(t("review.toast.approved", { who: item.userName, points: result.pointsAwarded }));
         removeAndAdvance(item);
       }
     } catch (failure) {
@@ -210,11 +222,11 @@ function Review() {
       const result = await api.rejectSubmission(item, note);
       setDialog(null);
       if (result.replayed) {
-        setBanner({ tone: "warn", text: `You already requested changes from ${item.userName}.` });
+        setBanner({ tone: "warn", text: t("review.banner.alreadyRejected", { who: item.userName }) });
         reload();
       } else {
         setBanner(null);
-        toast(`Requested changes from ${item.userName}. They can resubmit while the week is open.`);
+        toast(t("review.toast.rejected", { who: item.userName }));
         removeAndAdvance(item);
       }
     } catch (failure) {
@@ -245,29 +257,30 @@ function Review() {
     setQs({ status: next }); setItems(null); setSelectedId(null); setBanner(null); setError(null);
   }
 
-  if (!id) return <LoadError error={NO_THEME} onRetry={themes.reload} backHref="/challenges/" backLabel="Back to challenges" />;
-  if (themes.error) return <LoadError error={themes.error} onRetry={themes.reload} backHref="/challenges/" backLabel="Back to challenges" />;
+  const backLabel = t("review.backToChallenges");
+  if (!id) return <LoadError error={new ApiError("not-found", t("review.error.noTheme"))} onRetry={themes.reload} backHref="/challenges/" backLabel={backLabel} />;
+  if (themes.error) return <LoadError error={themes.error} onRetry={themes.reload} backHref="/challenges/" backLabel={backLabel} />;
   if (themes.data && !theme) {
-    return <LoadError error={new ApiError("not-found", "That weekly theme doesn’t exist.")} onRetry={themes.reload} backHref="/challenges/" backLabel="Back to challenges" />;
+    return <LoadError error={new ApiError("not-found", t("review.error.themeMissing"))} onRetry={themes.reload} backHref="/challenges/" backLabel={backLabel} />;
   }
 
   return (
     <>
       <div className="toolbar">
-        <Button href="/challenges/">All themes</Button>
-        {theme && <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" /><strong className="theme-name">{theme.title}</strong><span className="muted">{formatWindow(theme.startDate, theme.endDate)} · {formatGoal(theme.goal, theme.goalUnit)}</span></>}
+        <Button href="/challenges/">{t("review.allThemes")}</Button>
+        {theme && <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" /><strong className="theme-name">{theme.title}</strong><span className="muted">{t("review.themeMeta", { window: formatWindow(theme.startDate, theme.endDate), goal: formatGoal(theme.goal, theme.goalUnit) })}</span></>}
       </div>
-      <Tabs idBase="review" label="Filter submissions" value={status} onChange={(id) => chooseStatus(id as SubmissionStatus)} items={TABS.map((tab) => ({ id: tab, label: STATUS_LABEL[tab] }))} />
-      {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><Button size="sm" onClick={() => setBanner(null)}>Dismiss</Button></div>}
+      <Tabs idBase="review" label={t("review.filterLabel")} value={status} onChange={(id) => chooseStatus(id as SubmissionStatus)} items={TABS.map((tab) => ({ id: tab, label: statusLabel(tab) }))} />
+      {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><Button size="sm" onClick={() => setBanner(null)}>{t("review.banner.dismiss")}</Button></div>}
 
-      {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/" backLabel="Back to challenges" />
-        : !items ? <Loading label="Loading submissions" layout="review" />
+      {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/" backLabel={backLabel} />
+        : !items ? <Loading label={t("review.loading")} layout="review" />
         : items.length === 0 ? (
-          cursor ? <Loading label="Loading more submissions" /> : <Empty title={EMPTY[status].title} body={EMPTY[status].body} />
+          cursor ? <Loading label={t("review.loadingMore")} /> : <Empty title={t(EMPTY_KEYS[status].title)} body={t(EMPTY_KEYS[status].body)} />
         )
         : (
           <div className="review-layout" {...tabPanelProps("review", status)}>
-            <section aria-label="Submissions" className="queue-wrap" ref={queueTop}>
+            <section aria-label={t("review.queueLabel")} className="queue-wrap" ref={queueTop}>
               <ul className="queue">
                 {items.map((item) => (
                   <li key={item.id}>
@@ -275,8 +288,8 @@ function Review() {
                       <Avatar name={item.userName} userId={item.userId} photoURL={item.photoURL} avatarId={item.avatarId} />
                       <span className="queue-text">
                         <strong>{item.userName}</strong>
-                        <span className="muted">{item.progress} of {theme?.goal ?? "?"} {theme?.goalUnit ?? ""} · {formatDateTime(item.updatedAt)}</span>
-                        {(item.attempt > 1 || !item.storagePath) && <span className="queue-chips">{item.attempt > 1 && <Info>Attempt {item.attempt}</Info>}{!item.storagePath && <Info>No photo</Info>}</span>}
+                        <span className="muted">{t("review.queue.progress", { progress: item.progress, goal: theme?.goal ?? "?", unit: theme?.goalUnit ?? "", when: formatDateTime(item.updatedAt) })}</span>
+                        {(item.attempt > 1 || !item.storagePath) && <span className="queue-chips">{item.attempt > 1 && <Info>{t("review.attempt", { n: item.attempt })}</Info>}{!item.storagePath && <Info>{t("review.noPhotoChip")}</Info>}</span>}
                       </span>
                     </button>
                   </li>
@@ -286,52 +299,52 @@ function Review() {
             </section>
 
             {selected && theme && (
-              <article className="review-detail panel" ref={detail} aria-label={`Submission from ${selected.userName}`}>
+              <article className="review-detail panel" ref={detail} aria-label={t("review.detail.label", { who: selected.userName })}>
                 <div className="review-head">
-                  <div className="person big"><Avatar name={selected.userName} userId={selected.userId} photoURL={selected.photoURL} avatarId={selected.avatarId} /><div><h2>{selected.userName}</h2><p className="muted">Submitted {formatDateTime(selected.createdAt)}{selected.updatedAt !== selected.createdAt ? `, updated ${formatDateTime(selected.updatedAt)}` : ""}</p></div></div>
+                  <div className="person big"><Avatar name={selected.userName} userId={selected.userId} photoURL={selected.photoURL} avatarId={selected.avatarId} /><div><h2>{selected.userName}</h2><p className="muted">{selected.updatedAt !== selected.createdAt ? t("review.detail.submittedUpdated", { created: formatDateTime(selected.createdAt), updated: formatDateTime(selected.updatedAt) }) : t("review.detail.submitted", { created: formatDateTime(selected.createdAt) })}</p></div></div>
                   <div className="review-pills">
-                    <Info tone={selected.status === "approved" ? "ok" : selected.status === "rejected" ? "warn" : undefined}>{STATUS_LABEL[selected.status]}</Info>
-                    {selected.attempt > 1 && <Info>Attempt {selected.attempt}</Info>}
+                    <Info tone={selected.status === "approved" ? "ok" : selected.status === "rejected" ? "warn" : undefined}>{statusLabel(selected.status)}</Info>
+                    {selected.attempt > 1 && <Info>{t("review.attempt", { n: selected.attempt })}</Info>}
                   </div>
                 </div>
                 <div className="review-actions">
                   {selected.status === "submitted" && (
                     <div className="actions">
-                      <Button variant="primary" onClick={() => setDialog("approve")}>Approve · {points} points</Button>
-                      <Button onClick={() => setDialog("reject")}>Request changes</Button>
+                      <Button variant="primary" onClick={() => setDialog("approve")}>{t("review.action.approve", { points })}</Button>
+                      <Button onClick={() => setDialog("reject")}>{t("review.action.requestChanges")}</Button>
                     </div>
                   )}
                   <div className="review-nav">
-                    <Button size="sm" onClick={() => go(-1)} disabled={index <= 0}>Previous</Button>
-                    <span className="muted" aria-live="polite">{index + 1} of {items.length}{cursor ? "+" : ""}</span>
-                    <Button size="sm" onClick={() => go(1)} disabled={index >= items.length - 1}>Next</Button>
-                    <Button size="sm" className="to-list" onClick={() => queueTop.current?.scrollIntoView?.({ block: "start" })}>Back to list</Button>
+                    <Button size="sm" onClick={() => go(-1)} disabled={index <= 0}>{t("review.nav.previous")}</Button>
+                    <span className="muted" aria-live="polite">{t("review.nav.position", { current: index + 1, total: items.length, more: cursor ? "+" : "" })}</span>
+                    <Button size="sm" onClick={() => go(1)} disabled={index >= items.length - 1}>{t("review.nav.next")}</Button>
+                    <Button size="sm" className="to-list" onClick={() => queueTop.current?.scrollIntoView?.({ block: "start" })}>{t("review.nav.backToList")}</Button>
                   </div>
                   <div className="keys-toggle">
                     {shortcuts && (
-                      <ul className="key-hints" aria-label="Keyboard shortcuts">
-                        {[["J", "Next"], ["K", "Previous"], ...(selected.status === "submitted" ? [["A", "Approve"], ["R", "Request changes"]] : [])].map(([key, action]) => (
-                          <li key={key} aria-label={`Press ${key} for ${action.toLowerCase()}`}><kbd aria-hidden>{key}</kbd><span aria-hidden>{action}</span></li>
+                      <ul className="key-hints" aria-label={t("review.keys.label")}>
+                        {keyHints(selected.status === "submitted").map(({ key, label, press }) => (
+                          <li key={key} aria-label={t("review.keys.press", { key, action: press })}><kbd aria-hidden>{key}</kbd><span aria-hidden>{label}</span></li>
                         ))}
                       </ul>
                     )}
-                    <Toggle checked={shortcuts} onChange={setShortcuts} label="Keyboard shortcuts" hint="Single-key shortcuts for this page. Turn them off if they get in the way." />
+                    <Toggle checked={shortcuts} onChange={setShortcuts} label={t("review.keys.label")} hint={t("review.keys.hint")} />
                   </div>
                 </div>
                 <dl className="facts">
-                  <div><dt>Progress</dt><dd>{selected.progress} of {formatGoal(theme.goal, theme.goalUnit)}</dd></div>
-                  <div><dt>Reward</dt><dd>{theme.pointsReward} points</dd></div>
+                  <div><dt>{t("review.facts.progress")}</dt><dd>{t("review.facts.progressValue", { progress: selected.progress, goal: formatGoal(theme.goal, theme.goalUnit) })}</dd></div>
+                  <div><dt>{t("review.facts.reward")}</dt><dd>{t("review.facts.rewardValue", { points: theme.pointsReward })}</dd></div>
                 </dl>
                 <div>
-                  <h3>Member’s note</h3>
-                  {selected.caption ? <blockquote className="member-note">{selected.caption}</blockquote> : <p className="muted">No note.</p>}
+                  <h3>{t("review.note.heading")}</h3>
+                  {selected.caption ? <blockquote className="member-note">{selected.caption}</blockquote> : <p className="muted">{t("review.note.none")}</p>}
                 </div>
-                <div><h3>Evidence</h3><Evidence submission={selected} /></div>
+                <div><h3>{t("review.evidence.heading")}</h3><Evidence submission={selected} /></div>
 
-                {selected.status === "approved" && <p className="review-result ok" role="status">Approved{selected.reviewedAt ? ` on ${formatDateTime(selected.reviewedAt)}` : ""}. {selected.pointsAwarded} points awarded. Approvals are final.</p>}
+                {selected.status === "approved" && <p className="review-result ok" role="status">{selected.reviewedAt ? t("review.result.approvedOn", { when: formatDateTime(selected.reviewedAt), points: selected.pointsAwarded }) : t("review.result.approved", { points: selected.pointsAwarded })}</p>}
                 {selected.status === "rejected" && (
                   <div className="review-result warn" role="status">
-                    <p>Changes requested{selected.reviewedAt ? ` on ${formatDateTime(selected.reviewedAt)}` : ""}. It stays here until the member resubmits.</p>
+                    <p>{selected.reviewedAt ? t("review.result.rejectedOn", { when: formatDateTime(selected.reviewedAt) }) : t("review.result.rejected")}</p>
                     {selected.reviewNote && <blockquote className="member-note">{selected.reviewNote}</blockquote>}
                   </div>
                 )}
@@ -342,15 +355,15 @@ function Review() {
         )}
 
       {dialog === "approve" && selected && (
-        <Dialog title={`Approve ${selected.userName}?`} confirmLabel={`Approve and award ${points} points`} focusCancel busyLabel="Approving…" onClose={() => setDialog(null)} onConfirm={() => approve(selected)}>
-          <p className="muted">{selected.progress} of {formatGoal(theme?.goal ?? 0, theme?.goalUnit ?? "")}{selected.storagePath ? ", with a photo" : ", no photo"}.</p>
-          <p><strong>{points} points</strong> are added to {selected.userName}’s balance now. Approvals are final and can’t be undone.</p>
+        <Dialog title={t("review.approve.title", { who: selected.userName })} confirmLabel={t("review.approve.confirm", { points })} focusCancel busyLabel={t("review.approve.busy")} onClose={() => setDialog(null)} onConfirm={() => approve(selected)}>
+          <p className="muted">{t(selected.storagePath ? "review.approve.summaryPhoto" : "review.approve.summaryNoPhoto", { progress: selected.progress, goal: formatGoal(theme?.goal ?? 0, theme?.goalUnit ?? "") })}</p>
+          <p><strong>{t("review.approve.pointsBold", { points })}</strong>{" "}{t("review.approve.addedNow", { who: selected.userName })}</p>
           {selected.caption && <p className="muted">“{selected.caption}”</p>}
         </Dialog>
       )}
       {dialog === "reject" && selected && (
-        <Dialog title={`Request changes from ${selected.userName}?`} confirmLabel="Request changes" busyLabel="Requesting changes…" reasonLabel="What should they change?" reasonMax={280} reasonHint="The member sees this note." onClose={() => setDialog(null)} onConfirm={(note) => reject(selected, note)}>
-          <p>{selected.userName} gets your note and the submission goes back to them. They can edit and resubmit while the week is open.</p>
+        <Dialog title={t("review.reject.title", { who: selected.userName })} confirmLabel={t("review.reject.confirm")} busyLabel={t("review.reject.busy")} reasonLabel={t("review.reject.reasonLabel")} reasonMax={280} reasonHint={t("review.reject.reasonHint")} onClose={() => setDialog(null)} onConfirm={(note) => reject(selected, note)}>
+          <p>{t("review.reject.body", { who: selected.userName })}</p>
         </Dialog>
       )}
     </>
@@ -359,8 +372,8 @@ function Review() {
 
 export default function ChallengeReviewPage() {
   return (
-    <Shell title="Review submissions" subtitle="Approve to award the points, or request changes with a note. Use J and K to move between entries, or turn the shortcuts off." requires="challenges.review">
-      <Suspense fallback={<Loading label="Loading submissions" layout="review" />}><Review /></Suspense>
+    <Shell title={t("review.title")} subtitle={t("review.subtitle")} requires="challenges.review">
+      <Suspense fallback={<Loading label={t("review.loading")} layout="review" />}><Review /></Suspense>
     </Shell>
   );
 }

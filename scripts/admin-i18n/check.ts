@@ -260,6 +260,19 @@ export function sourceFiles(root = ROOT): SourceFile[] {
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+// Files that hold server or mock content (or endonyms), not portal chrome. They stay English until the backend phase of #259
+// (message keys for audit summaries and errors); the mock stands in for the backend. --remaining skips them.
+export const SERVER_CONTENT_FILES: ReadonlySet<string> = new Set([
+  "apps/admin/src/lib/adminMock.ts",
+  "apps/admin/src/lib/api.ts",
+  "apps/admin/src/lib/firebaseAdapter.ts",
+  "apps/admin/src/lib/ideasMock.ts",
+  "apps/admin/src/lib/ideasForYouMock.ts",
+  "apps/admin/src/lib/considerations.ts",
+  // Language names are shown in their own language on purpose (LOCALE_NAMES).
+  "apps/admin/src/lib/i18n/index.ts",
+]);
+
 export const isMigrated = (text: string) => text.includes(MARKER);
 
 export function readAllowlist(text: string): Set<string> {
@@ -291,7 +304,7 @@ export function run(argv: readonly string[]): number {
 
   if (argv.includes("--remaining")) {
     // Follow-up inventory: likely UI strings in files not migrated yet.
-    const rest = files.filter((f) => !isMigrated(f.text)).map((f) => ({ path: f.path, count: findHardCoded(f.path, f.text, keys).length })).filter((r) => r.count > 0);
+    const rest = files.filter((f) => !isMigrated(f.text) && !SERVER_CONTENT_FILES.has(f.path)).map((f) => ({ path: f.path, count: findHardCoded(f.path, f.text, keys).length })).filter((r) => r.count > 0);
     for (const r of rest) console.log(`${String(r.count).padStart(4)}  ${r.path}`);
     console.log(`${rest.reduce((n, r) => n + r.count, 0)} likely UI strings in ${rest.length} files not yet migrated.`);
   }

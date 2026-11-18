@@ -1,5 +1,7 @@
+// @i18n-migrated
 import { type ImportField, type ImportRow, IMPORT_FIELDS, IMPORT_LIMITS, type Role } from "./adminTypes";
-import { FIELD_LABEL, type ParsedImport, validateRow } from "./importFile";
+import { fieldLabel, type ParsedImport, validateRow } from "./importFile";
+import { t } from "./i18n";
 import type { KeyValueStore } from "./api";
 
 // Column mapping for the bulk import: which spreadsheet column feeds which field we ingest. The browser suggests
@@ -8,7 +10,6 @@ import type { KeyValueStore } from "./api";
 
 export type Target = ImportField | "skip";
 
-export const TARGET_LABEL: Record<Target, string> = { ...FIELD_LABEL, skip: "Skip this column" };
 export const REQUIRED_FIELDS: readonly ImportField[] = ["email"];
 
 const HEADER_ALIASES: Record<string, ImportField> = {
@@ -49,12 +50,12 @@ export function mappingIssues(mapping: Target[]): MappingIssues {
   const errors: string[] = [];
   const warnings: string[] = [];
   for (const field of REQUIRED_FIELDS) {
-    if (!mapping.includes(field)) errors.push(`Choose which column holds ${FIELD_LABEL[field].toLowerCase()}. It is required.`);
+    if (!mapping.includes(field)) errors.push(t("import.err.requireColumn", { field: fieldLabel(field).toLowerCase() }));
   }
   for (const field of IMPORT_FIELDS) {
-    if (mapping.filter((target) => target === field).length > 1) errors.push(`${FIELD_LABEL[field]} is mapped to more than one column. Pick one and skip the others.`);
+    if (mapping.filter((target) => target === field).length > 1) errors.push(t("import.err.duplicateColumn", { field: fieldLabel(field) }));
   }
-  if (!mapping.includes("displayName")) warnings.push("No name column: people who aren’t in DIP yet can’t be added without one (people already in DIP are fine).");
+  if (!mapping.includes("displayName")) warnings.push(t("import.err.noName"));
   return { errors, warnings };
 }
 
@@ -102,8 +103,8 @@ export function applyMapping(rows: string[][], headerRow: number, mapping: Targe
   const issues = mappingIssues(mapping);
   if (issues.errors.length) return { ...empty, fatal: issues.errors[0] };
   const data = dataRowsOf(rows, headerRow);
-  if (data.length === 0) return { ...empty, fatal: "There are no rows under the header row." };
-  if (data.length > IMPORT_LIMITS.maxRows) return { ...empty, fatal: `Files are limited to ${IMPORT_LIMITS.maxRows} rows; this one has ${data.length}. Split it and import in parts.` };
+  if (data.length === 0) return { ...empty, fatal: t("import.map.noRows") };
+  if (data.length > IMPORT_LIMITS.maxRows) return { ...empty, fatal: t("import.err.tooManyRows", { max: IMPORT_LIMITS.maxRows, count: data.length }) };
   const mapped: ImportRow[] = [];
   const lines: number[] = [];
   const localErrors = new Map<number, string[]>();
@@ -112,7 +113,7 @@ export function applyMapping(rows: string[][], headerRow: number, mapping: Targe
     const row = mapRow(cells, mapping);
     const errors = validateRow(row, domain);
     const first = seen.get(row.email);
-    if (row.email && first !== undefined) errors.push(`Duplicate of line ${first}.`);
+    if (row.email && first !== undefined) errors.push(t("import.err.duplicateLine", { line: first }));
     else if (row.email) seen.set(row.email, line);
     mapped.push(row);
     lines.push(line);
@@ -123,7 +124,7 @@ export function applyMapping(rows: string[][], headerRow: number, mapping: Targe
 
 /** Header row 0 with suggested columns: what a file that follows the template gets without a mapping step. */
 export function rowsFromTable(table: string[][], domain: string): ParsedImport {
-  if (table.length === 0) return { rows: [], lines: [], localErrors: new Map(), unknownColumns: [], fatal: "The file is empty." };
+  if (table.length === 0) return { rows: [], lines: [], localErrors: new Map(), unknownColumns: [], fatal: t("import.err.fileEmpty") };
   const headerRow = guessHeaderRow(table);
   return applyMapping(table, headerRow, suggestMapping(table[headerRow] ?? []), domain);
 }

@@ -1,11 +1,13 @@
 "use client";
+// @i18n-migrated
 
 import { useMemo, useState } from "react";
 import { IMPORT_FIELDS } from "@/lib/adminTypes";
 import type { KeyValueStore } from "@/lib/api";
-import { type ParsedImport, type RawFile, FIELD_LABEL } from "@/lib/importFile";
+import { type ParsedImport, type RawFile, fieldLabel } from "@/lib/importFile";
+import { t } from "@/lib/i18n";
 import {
-  type Target, TARGET_LABEL, applyMapping, dataRowsOf, forgetMapping, guessHeaderRow, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues,
+  type Target, applyMapping, dataRowsOf, forgetMapping, guessHeaderRow, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues,
   columnLetter, saveMapping, suggestMapping,
 } from "@/lib/importMapping";
 import { TableRegion } from "./TableRegion";
@@ -23,6 +25,8 @@ interface Props {
 }
 
 const SAMPLE_ROWS = 3;
+
+
 const HEADER_CHOICES = 10;
 
 /** First guess for a sheet: the remembered mapping when it recognises the headers, otherwise a match by header name. */
@@ -73,38 +77,38 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
   return (
     <section className="panel mapping" aria-labelledby="map-h">
       <div>
-        <h2 id="map-h">2. Match your columns</h2>
-        <p className="muted">Tell us what each column of <strong>{raw.fileName}</strong> holds. We guessed from the headers; change anything that’s off. Email is required.</p>
+        <h2 id="map-h">{t("import.map.title")}</h2>
+        <p className="muted">{t("import.map.introBefore")} <strong>{raw.fileName}</strong>{t("import.map.introAfter")}</p>
       </div>
 
       {(raw.sheets.length > 1 || rows.length > 1) && (
         <div className="row">
           {raw.sheets.length > 1 && (
-            <div className="field"><label htmlFor="map-sheet">Sheet</label>
+            <div className="field"><label htmlFor="map-sheet">{t("import.map.sheet")}</label>
               <select id="map-sheet" value={sheetIndex} onChange={(e) => reset(Number(e.target.value), guessHeaderRow(raw.sheets[Number(e.target.value)].rows))}>
                 {raw.sheets.map((sheet, i) => <option key={sheet.name} value={i}>{sheet.name}</option>)}
               </select></div>
           )}
-          <div className="field"><label htmlFor="map-header">Header row</label>
+          <div className="field"><label htmlFor="map-header">{t("import.map.headerRow")}</label>
             <select id="map-header" value={headerRow} onChange={(e) => reset(sheetIndex, Number(e.target.value))}>
-              {Array.from({ length: headerChoices }, (_, i) => <option key={i} value={i}>Row {i + 1}{rows[i]?.some((c) => c.trim()) ? `: ${rows[i].filter((c) => c.trim()).slice(0, 3).join(", ")}` : " (empty)"}</option>)}
+              {Array.from({ length: headerChoices }, (_, i) => <option key={i} value={i}>{rows[i]?.some((c) => c.trim()) ? t("import.map.rowOption", { n: i + 1, cells: rows[i].filter((c) => c.trim()).slice(0, 3).join(", ") }) : t("import.map.rowEmpty", { n: i + 1 })}</option>)}
             </select>
-            <span className="hint">The row with column names. Rows above it are ignored.</span></div>
+            <span className="hint">{t("import.map.headerHint")}</span></div>
         </div>
       )}
 
       {saved && (
         <p className="notice" role="status">
-          Using the mapping you saved for this company.{" "}
-          <Button size="sm" onClick={() => setState({ mapping: suggestMapping(headers), saved: false })}>Start from suggestions</Button>{" "}
-          <Button size="sm" onClick={() => { forgetMapping(store, companyId); setState({ mapping: suggestMapping(headers), saved: false }); }}>Forget it</Button>
+          {t("import.map.saved")}{" "}
+          <Button size="sm" onClick={() => setState({ mapping: suggestMapping(headers), saved: false })}>{t("import.map.suggestions")}</Button>{" "}
+          <Button size="sm" onClick={() => { forgetMapping(store, companyId); setState({ mapping: suggestMapping(headers), saved: false }); }}>{t("import.map.forget")}</Button>
         </p>
       )}
 
-      <TableRegion label="Match spreadsheet columns">
+      <TableRegion label={t("import.map.table")}>
         <table className="table mapping-table">
-          <caption className="sr-only">Map each spreadsheet column to a field</caption>
-          <thead><tr><th scope="col">Column in your file</th><th scope="col">Sample values</th><th scope="col">Goes into</th></tr></thead>
+          <caption className="sr-only">{t("import.map.caption")}</caption>
+          <thead><tr><th scope="col">{t("import.map.colFile")}</th><th scope="col">{t("import.map.colSamples")}</th><th scope="col">{t("import.map.colGoes")}</th></tr></thead>
           <tbody>
             {columns.map((i) => {
               const header = (headers[i] ?? "").trim();
@@ -112,13 +116,13 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
               const target = full[i];
               return (
                 <tr key={i}>
-                  <th scope="row"><span className="col-letter" aria-hidden>{columnLetter(i)}</span> {header || <span className="muted">(no header)</span>}</th>
-                  <td>{values.length ? values.map((v, k) => <span key={k} className={`sample${k > 0 ? " extra" : ""}`}>{v}</span>) : <span className="muted">Empty</span>}</td>
+                  <th scope="row"><span className="col-letter" aria-hidden>{columnLetter(i)}</span> {header || <span className="muted">{t("import.map.noHeader")}</span>}</th>
+                  <td>{values.length ? values.map((v, k) => <span key={k} className={`sample${k > 0 ? " extra" : ""}`}>{v}</span>) : <span className="muted">{t("import.map.empty")}</span>}</td>
                   <td>
-                    <label className="sr-only" htmlFor={`map-${i}`}>Field for column {columnLetter(i)} {header}</label>
+                    <label className="sr-only" htmlFor={`map-${i}`}>{t("import.map.fieldFor", { letter: columnLetter(i), header })}</label>
                     <select id={`map-${i}`} value={target} onChange={(e) => change(i, e.target.value as Target)} aria-invalid={target !== "skip" && full.filter((t) => t === target).length > 1}>
-                      <option value="skip">{TARGET_LABEL.skip}</option>
-                      {IMPORT_FIELDS.map((field) => <option key={field} value={field}>{FIELD_LABEL[field]}{field === "email" ? " (required)" : ""}</option>)}
+                      <option value="skip">{t("import.map.skip")}</option>
+                      {IMPORT_FIELDS.map((field) => <option key={field} value={field}>{field === "email" ? t("import.map.required", { field: fieldLabel(field) }) : fieldLabel(field)}</option>)}
                     </select>
                   </td>
                 </tr>
@@ -132,24 +136,24 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
       {issues.warnings.map((message) => <p key={message} className="notice" role="status">{message}</p>)}
 
       <div className="sample-row" aria-live="polite">
-        <h3>First row, as it will be imported</h3>
-        {!sample || issues.errors.length ? <p className="muted">{data.length === 0 ? "There are no rows under the header row." : "Fix the matches above to see a preview."}</p> : (
+        <h3>{t("import.map.firstRow")}</h3>
+        {!sample || issues.errors.length ? <p className="muted">{data.length === 0 ? t("import.map.noRows") : t("import.map.fixMatches")}</p> : (
           <dl className="facts">
             {IMPORT_FIELDS.filter((field) => full.includes(field)).map((field) => {
               const value = field === "teams" ? sample.teams.join("; ") : sample[field];
-              return <div key={field}><dt>{FIELD_LABEL[field]}</dt><dd>{value || <span className="muted">Empty</span>}</dd></div>;
+              return <div key={field}><dt>{fieldLabel(field)}</dt><dd>{value || <span className="muted">{t("import.map.empty")}</span>}</dd></div>;
             })}
           </dl>
         )}
-        <p className="muted"><Info>{data.length} {data.length === 1 ? "row" : "rows"} found</Info> {mappedCount} of {columnCount} columns used. Skipped columns are ignored.</p>
-        <p className="hint">Dates should look like 2026-01-31. Several teams are separated by semicolons.</p>
+        <p className="muted"><Info>{t("import.map.rowsFound", { count: data.length })}</Info> {t("import.map.columnsUsed", { mapped: mappedCount, total: columnCount })}</p>
+        <p className="hint">{t("import.map.dates")}</p>
       </div>
 
-      <Toggle checked={remember} onChange={setRemember} label="Remember this mapping" hint="Used next time a file has the same column names. Saved in this browser for your company." />
+      <Toggle checked={remember} onChange={setRemember} label={t("import.map.remember")} hint={t("import.map.rememberHint")} />
 
       <div className="actions">
-        <Button variant="primary" disabled={issues.errors.length > 0 || data.length === 0} onClick={next}>Check the rows</Button>
-        <Button onClick={onBack}>Choose a different file</Button>
+        <Button variant="primary" disabled={issues.errors.length > 0 || data.length === 0} onClick={next}>{t("import.map.check")}</Button>
+        <Button onClick={onBack}>{t("import.map.otherFile")}</Button>
       </div>
     </section>
   );

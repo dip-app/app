@@ -1,10 +1,13 @@
-import { type ImportField, type ImportRow, IMPORT_FIELDS, IMPORT_LIMITS, type PlanRow, type Role } from "./adminTypes";
+// @i18n-migrated
+import { type ImportRow, IMPORT_FIELDS, IMPORT_LIMITS, type PlanRow, type Role } from "./adminTypes";
 import { parseCsv, toCsv } from "./csv";
+import { hasMessage, t } from "./i18n";
 
-export const FIELD_LABEL: Record<ImportField, string> = {
-  email: "Email", displayName: "Name", role: "Role", teams: "Teams", department: "Department",
-  jobTitle: "Job title", workLocation: "Work location", managerEmail: "Manager email", startDate: "Start date",
-};
+/** The display name of an import field in the current language; an unknown field shows as is. */
+export function fieldLabel(field: string): string {
+  const key = `import.field.${field}`;
+  return hasMessage(key) ? t(key) : field;
+}
 
 export const TEMPLATE_HEADER: string[] = [...IMPORT_FIELDS];
 const TEMPLATE_EXAMPLE = ["sam.rivera@example.com", "Sam Rivera", "member", "Platform;Mentors", "Engineering", "Software engineer", "Pittsburgh", "lee.chen@example.com", "2026-01-12"];
@@ -32,14 +35,14 @@ const ROLES: Role[] = ["member", "organizer", "admin"];
 export function validateRow(row: ImportRow, domain: string): string[] {
   const errors: string[] = [];
   const email = row.email;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Email isn’t valid.");
-  else if (domain && !(email.endsWith(`@${domain}`) || email.endsWith(`.${domain}`))) errors.push(`Email must end in @${domain}.`);
-  if (row.managerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.managerEmail)) errors.push("Manager email isn’t valid.");
-  if (row.displayName.length > 80) errors.push("Name is longer than 80 characters.");
-  if (row.role !== "" && !ROLES.includes(row.role)) errors.push("Role must be member, organizer or admin.");
-  if (row.startDate && (!/^\d{4}-\d{2}-\d{2}$/.test(row.startDate) || Number.isNaN(Date.parse(row.startDate)))) errors.push("Start date must look like 2026-01-31.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push(t("import.err.email"));
+  else if (domain && !(email.endsWith(`@${domain}`) || email.endsWith(`.${domain}`))) errors.push(t("import.err.domain", { domain }));
+  if (row.managerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.managerEmail)) errors.push(t("import.err.manager"));
+  if (row.displayName.length > 80) errors.push(t("import.err.name"));
+  if (row.role !== "" && !ROLES.includes(row.role)) errors.push(t("import.err.role"));
+  if (row.startDate && (!/^\d{4}-\d{2}-\d{2}$/.test(row.startDate) || Number.isNaN(Date.parse(row.startDate)))) errors.push(t("import.err.startDate"));
   for (const [field, max] of [["department", 120], ["jobTitle", 120], ["workLocation", 120]] as const) {
-    if (row[field].length > max) errors.push(`${FIELD_LABEL[field]} is longer than ${max} characters.`);
+    if (row[field].length > max) errors.push(t("import.err.tooLong", { field: fieldLabel(field), max }));
   }
   return errors;
 }
@@ -54,22 +57,22 @@ export interface RawFile {
 /** Reads the file into raw rows without interpreting columns; the mapping step does that. */
 export async function readRawFile(file: File): Promise<RawFile> {
   const base: RawFile = { fileName: file.name, sheets: [] };
-  if (file.size > IMPORT_LIMITS.maxBytes) return { ...base, fatal: `Files are limited to ${IMPORT_LIMITS.maxBytes / 1024 / 1024} MB.` };
+  if (file.size > IMPORT_LIMITS.maxBytes) return { ...base, fatal: t("import.err.fileSize", { mb: IMPORT_LIMITS.maxBytes / 1024 / 1024 }) };
   const name = file.name.toLowerCase();
   try {
     if (name.endsWith(".xlsx")) {
       const { readXlsxWorkbook } = await import("./xlsx");
       const sheets = (await readXlsxWorkbook(await file.arrayBuffer())).filter((sheet) => sheet.rows.some((row) => row.some((cell) => cell.trim() !== "")));
-      return sheets.length ? { ...base, sheets } : { ...base, fatal: "The workbook is empty." };
+      return sheets.length ? { ...base, sheets } : { ...base, fatal: t("import.err.workbookEmpty") };
     }
     if (name.endsWith(".csv") || name.endsWith(".txt") || file.type === "text/csv") {
       // Blank lines are kept so row numbers match the file.
       const rows = parseCsv(await file.text(), true);
-      return rows.some((row) => row.some((cell) => cell.trim() !== "")) ? { ...base, sheets: [{ name: "CSV", rows }] } : { ...base, fatal: "The file is empty." };
+      return rows.some((row) => row.some((cell) => cell.trim() !== "")) ? { ...base, sheets: [{ name: "CSV", rows }] } : { ...base, fatal: t("import.err.fileEmpty") };
     }
-    return { ...base, fatal: "Upload a .csv or .xlsx file." };
+    return { ...base, fatal: t("import.err.fileType") };
   } catch {
-    return { ...base, fatal: "That file couldn’t be read. Save it as .csv or .xlsx and try again." };
+    return { ...base, fatal: t("import.err.unreadable") };
   }
 }
 

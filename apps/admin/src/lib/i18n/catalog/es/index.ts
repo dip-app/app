@@ -16,6 +16,13 @@ import { members } from "./members";
 import { overview } from "./overview";
 import { shell } from "./shell";
 import { ui } from "./ui";
+import { themeForm } from "./themeForm";
+import { attendees } from "./attendees";
+import { memberDetail } from "./memberDetail";
+import { review } from "./review";
+import { bugs } from "./bugs";
+import { roster } from "./roster";
+import { importer } from "./importer";
 
 export const es: Record<MessageKey, string> = {
   ...common,
@@ -30,5 +37,12 @@ export const es: Record<MessageKey, string> = {
   ...members,
   ...audit,
   ...challenges,
+  ...themeForm,
+  ...attendees,
+  ...memberDetail,
+  ...review,
+  ...bugs,
+  ...roster,
+  ...importer,
   ...prefixed("ai.", ai),
 };

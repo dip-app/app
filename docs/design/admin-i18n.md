@@ -28,34 +28,8 @@ import the catalogs and the message parser directly.
 | `scripts/admin-i18n-allowlist.txt` | Reviewed guardrail exceptions (`file<TAB>text`) |
 
 Areas: `common`, `shell`, `ui`, `login`, `account`, `events`, `editor`, `dipbot`, `overview`, `members`, `audit`,
-`challenges`, `ai`. 1,214 keys in total (337 of them `ai.*`).
-
-## Writing copy
-
-```ts
-import { formatDate, formatNumber, t } from "@/lib/i18n";
-
-t("events.title");
-t("members.count.people", { count: total, shown: formatNumber(shown) });
-// en: "{count, plural, one {# person} other {# people}}"
-```
-
-- **Never call `t()` at module scope.** A module constant keeps the language it was built in. Store keys
-  (`{ id: "upcoming", labelKey: "events.filter.upcoming" }`) and translate at render, use a function, or use getters
-  (`ROLE_LABEL`, `AUDIT_LABELS` and `STEPS` are getter-backed so existing callers keep working). The guardrail flags
-  `t()` outside a function.
-- **One message per sentence.** Use slots for values and plural messages for counts instead of English ternaries. `#`
-  is formatted with the locale (en-US output stays "1,234"); a plain `{slot}` inserts `String(value)`, so format
-  numbers with `formatNumber` first when they were grouped before.
-- **Dates and numbers** go through `formatDate`, `formatTime`, `formatNumber`, `dateTimeFormat` or `intlLocale()`.
-  English maps to `en-US`, so output is unchanged; Spanish uses `es-419`. Currency stays USD and uses the narrow
-  symbol (`$15.00` in both languages).
-- **Not translated:** event titles and descriptions, names, emails, team and theme names, interest names from the tag
-  catalog, audit summaries and reasons written by the backend, ApiError messages from the backend (and the mock that
-  stands in for it), CSV file names, "DIP", "DIP Admin" (`BRAND`) and "Dipbot" (`{ai}`). `<head>` metadata (title,
-  description, Open Graph) is static and stays English.
-- US English, no em dashes, no provider names in new copy. Compare ids in logic, never display text.
-- Mark a migrated file with a `// @i18n-migrated` comment. The guardrail then scans it for hard-coded strings.
+`challenges`, `importer` (`import.*`), `roster`, `bugs`, `review`, `memberDetail`, `attendees` (`attendees.*` and
+`album.*`), `themeForm`, `ai`. 1,842 keys in total (337 of them `ai.*`).
 
 To add an area, create `en/<area>.ts` and `es/<area>.ts` and spread both into the two `index.ts` files.
 
@@ -108,25 +82,35 @@ findings (review the diff). `--remaining` lists likely UI strings in files not y
 
 ## What is migrated
 
-Shared chrome (Shell and navigation, boot and error pages, kit components, dialogs, tabs, toasts, skeletons, load
-states, AdminOnly), sign-in, Overview, Events list and the event editor (form, preview, When, Where, venues, covers),
-Members list, Weekly themes and Challenges lists, Audit log (labels, categories, facts), the Dipbot wizard and Ideas
-for you, the weekly ideas email settings, and Your settings with the new Language section. 89 files carry the marker.
+Everything in the signed-in portal. Shared chrome (Shell and navigation, boot and error pages, kit components, dialogs,
+tabs, toasts, skeletons, load states, AdminOnly), sign-in, Overview, Events list and the event editor, Event attendees
+and Event album, Members list and Member detail, Roster, Import people (page, column mapping and the validation
+messages in `importFile.ts` / `importMapping.ts`), Bug reports, Review submissions, Weekly themes (list, ThemeForm,
+ThemePreview, new and edit), Challenges list, Audit log, the Dipbot wizard and Ideas for you, the weekly ideas email
+settings, and Your settings with the Language section. 103 files carry the marker.
 
-**Follow-up (not migrated yet): 634 likely UI strings in 12 files** per `--remaining`: import page (112) and
-ImportMapping (34), roster (88), bug reports (84), challenge review (83), member detail (72), event attendees (63),
-event album (35), ThemeForm (42), ThemePreview (11), theme edit/new pages (10). The other 195 findings are the mock
-backend and API adapters (server content until the backend phase).
+`npm run check:admin-i18n -- --remaining` is at zero. It skips `SERVER_CONTENT_FILES` in `scripts/admin-i18n/check.ts`:
+the mock backend and API adapters (`adminMock.ts`, `api.ts`, `firebaseAdapter.ts`, `ideasMock.ts`,
+`ideasForYouMock.ts`), `considerations.ts` (byte-identical with the server copy) and the language names in
+`i18n/index.ts` (endonyms by design). Those are server content until the backend phase.
+
+Left in English on purpose: CSV file contents that are file formats (import template and error report headers, the
+attendee export), "Copy as issue text" in Bug reports (pasted into an issue tracker), and the Review and Attendees
+point counts that never pluralized ("1 points").
 
 ## Evidence that English did not change
 
-Mock mode, Chrome headless with reduced motion, full-page screenshots of the base commit and this branch at 1440 and
-390 px for Overview, Events, Members and Audit log (plus Challenges and Weekly themes at 390): the visible text and
-every `aria-label`, `title` and `placeholder` are identical on all pages, and the images are pixel-identical except 26
-antialiased pixels on Overview at 1440 and 2 at 390 (the week progress label is now one text node instead of
-several), plus 51 on Weekly themes at 390 from the same cause. Spanish and pseudo screenshots of the same pages and Your
-settings were reviewed by a design auditor; the phone-card label column and a few Spanish terms were fixed, and the
-review passed. Details are in `docs/sessions/SESSION_sandervonk_2026-11-18_976.md`.
+Mock mode, Chrome headless over the DevTools protocol with reduced motion and a fixed clock, admin persona, base commit
+vs. the branch at 1440 and 390 px. Pages: Import, Roster, Bug reports, Review submissions, Member detail, Event
+attendees, Event album, New theme and Edit theme (9 pages, 18 captures). The visible text (`innerText`) and every
+`aria-label`, `title`, `placeholder` and `alt` are byte-identical on all 18. Screenshots have identical dimensions;
+Album and Member detail are pixel-identical, the others differ by a few hundred antialiased pixels where one text node
+became several messages (under 0.2% of the page). The first phase measured the same on Overview, Events, Members and
+Audit log. Spanish and pseudo screenshots of the migrated pages were reviewed by a design auditor; the rounds and
+fixes are in `docs/sessions/SESSION_sandervonk_2026-11-18_985.md` and `docs/sessions/SESSION_sandervonk_2026-11-18_976.md`.
+
+Phone cards: the `td[data-label]::before` label is now an in-flow float (`display: flow-root` on the cell), so a label
+that wraps to three lines grows the row instead of overlapping the next one. English rendering is unchanged.
 
 ## Known limitations
 

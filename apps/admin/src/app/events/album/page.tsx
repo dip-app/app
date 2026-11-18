@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import { useLoad } from "@/components/useLoad";
 import type { AlbumComment, AlbumPhoto } from "@/lib/adminTypes";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button, InlineNotice } from "@/components/kit";
+import { t } from "@/lib/i18n";
 
 function PhotoImage({ photo, large }: { photo: AlbumPhoto; large?: boolean }) {
   const { api } = useApp();
@@ -24,10 +26,10 @@ function PhotoImage({ photo, large }: { photo: AlbumPhoto; large?: boolean }) {
     );
     return () => { cancelled = true; if (made?.startsWith("blob:")) URL.revokeObjectURL(made); };
   }, [api, photo]);
-  if (failed) return <div className={`photo-frame missing${large ? " large" : ""}`}>Photo unavailable</div>;
+  if (failed) return <div className={`photo-frame missing${large ? " large" : ""}`}>{t("album.photoUnavailable")}</div>;
   if (!url) return <div className={`photo-frame loading${large ? " large" : ""}`} aria-hidden />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img className={`photo-frame${large ? " large" : ""}`} src={url} alt={photo.caption || `Photo by ${photo.uploaderName}`} draggable={false} />;
+  return <img className={`photo-frame${large ? " large" : ""}`} src={url} alt={photo.caption || t("album.photoBy", { name: photo.uploaderName })} draggable={false} />;
 }
 
 type Pending =
@@ -48,7 +50,7 @@ function Viewer({ eventId, photo, onClose, onChanged }: { eventId: string; photo
 
   return (
     <>
-      <dialog ref={ref} className="dialog viewer" aria-label={`Photo by ${photo.uploaderName}`} onCancel={(e) => { e.preventDefault(); if (!pending) onClose(); }}>
+      <dialog ref={ref} className="dialog viewer" aria-label={t("album.photoBy", { name: photo.uploaderName })} onCancel={(e) => { e.preventDefault(); if (!pending) onClose(); }}>
         <div className="viewer-grid">
           <PhotoImage photo={photo} large />
           <div className="viewer-side">
@@ -57,13 +59,13 @@ function Viewer({ eventId, photo, onClose, onChanged }: { eventId: string; photo
                 <h2>{photo.uploaderName}</h2>
                 <p className="subtitle">{formatDateTime(photo.createdAt)}</p>
               </div>
-              <Button onClick={onClose}>Close</Button>
+              <Button onClick={onClose}>{t("album.viewer.close")}</Button>
             </div>
             {photo.caption && <p>{photo.caption}</p>}
-            <h3>Comments ({photo.commentCount})</h3>
+            <h3>{t("album.viewer.comments", { count: photo.commentCount })}</h3>
             {comments.error ? <LoadError error={comments.error} onRetry={comments.reload} />
-              : !comments.data ? <Loading label="Loading comments" />
-              : comments.data.length === 0 ? <p className="muted">No comments on this photo.</p>
+              : !comments.data ? <Loading label={t("album.loadingComments")} />
+              : comments.data.length === 0 ? <p className="muted">{t("album.viewer.noComments")}</p>
               : (
                 <ul className="comment-list">
                   {comments.data.map((comment) => (
@@ -72,13 +74,13 @@ function Viewer({ eventId, photo, onClose, onChanged }: { eventId: string; photo
                         <strong>{comment.authorName}</strong> <span className="muted">{formatDateTime(comment.createdAt)}</span>
                         <p>{comment.text}</p>
                       </div>
-                      <Button size="sm" onClick={() => setPending({ kind: "comment", photo, comment })} aria-label={`Remove comment by ${comment.authorName}`}>Remove</Button>
+                      <Button size="sm" onClick={() => setPending({ kind: "comment", photo, comment })} aria-label={t("album.viewer.removeCommentBy", { name: comment.authorName })}>{t("album.viewer.remove")}</Button>
                     </li>
                   ))}
                 </ul>
               )}
             <div className="actions">
-              <Button variant="danger" onClick={() => setPending({ kind: "photo", photo })}>Remove photo</Button>
+              <Button variant="danger" onClick={() => setPending({ kind: "photo", photo })}>{t("album.viewer.removePhoto")}</Button>
             </div>
           </div>
         </div>
@@ -86,26 +88,26 @@ function Viewer({ eventId, photo, onClose, onChanged }: { eventId: string; photo
       {pending && (
         <Dialog
           danger
-          title={pending.kind === "photo" ? "Remove this photo?" : "Remove this comment?"}
-          confirmLabel={pending.kind === "photo" ? "Remove photo" : "Remove comment"}
-          reasonLabel="Why is it being removed?"
+          title={pending.kind === "photo" ? t("album.remove.photoTitle") : t("album.remove.commentTitle")}
+          confirmLabel={pending.kind === "photo" ? t("album.remove.photoConfirm") : t("album.remove.commentConfirm")}
+          reasonLabel={t("album.remove.reason")}
           onClose={() => setPending(null)}
           onConfirm={async (reason) => {
             if (pending.kind === "photo") {
               await api.removePhoto(eventId, photo.id, reason);
               setPending(null);
-              onChanged("Photo removed. Its comments went with it and the member’s upload slot is free again.", true);
+              onChanged(t("album.remove.photoDone"), true);
             } else {
               await api.removePhotoComment(eventId, photo.id, pending.comment.id, reason);
               setPending(null);
               comments.reload();
-              onChanged("Comment removed.", false);
+              onChanged(t("album.remove.commentDone"), false);
             }
           }}
         >
           {pending.kind === "photo"
-            ? <p>The photo, its file and all {photo.commentCount} comments are deleted for everyone. This can’t be undone. The removal is recorded in the audit log.</p>
-            : <p>The comment by {pending.comment.authorName} is deleted for everyone. This can’t be undone. The removal is recorded in the audit log.</p>}
+            ? <p>{t("album.remove.photoBody", { count: photo.commentCount })}</p>
+            : <p>{t("album.remove.commentBody", { name: pending.comment.authorName })}</p>}
         </Dialog>
       )}
     </>
@@ -120,29 +122,29 @@ function Album() {
   const [message, setMessage] = useState("");
 
   const hold = useSkeletonGate(!photos.data && !photos.error);
-  if (photos.error) return <LoadError error={photos.error} onRetry={photos.reload} backHref="/events/" backLabel="Back to events" />;
-  if (!photos.data || hold) return <Loading label="Loading album" layout="album" />;
+  if (photos.error) return <LoadError error={photos.error} onRetry={photos.reload} backHref="/events/" backLabel={t("attendees.backToEvents")} />;
+  if (!photos.data || hold) return <Loading label={t("album.loading")} layout="album" />;
   return (
     <>
       <div className="toolbar">
-        <Button href="/events/">All events</Button>
-        <Info>{photos.data.length} {photos.data.length === 1 ? "photo" : "photos"}</Info>
+        <Button href="/events/">{t("album.allEvents")}</Button>
+        <Info>{t("album.count.photos", { count: photos.data.length })}</Info>
         {event.data && <span className="muted">{event.data.title}</span>}
       </div>
       {message && <InlineNotice>{message}</InlineNotice>}
       {photos.data.length === 0 ? (
-        <Empty title="No photos yet" body="Members who went can add photos after the event ends. They show up here." />
+        <Empty title={t("album.empty.title")} body={t("album.empty.body")} />
       ) : (
-        <ul className="photo-grid" aria-label="Album photos">
+        <ul className="photo-grid" aria-label={t("album.grid.label")}>
           {photos.data.map((photo) => (
             <li key={photo.id}>
-              <button className="photo-tile" onClick={() => setOpen(photo)} aria-label={`${photo.uploaderName}, ${formatDateTime(photo.createdAt)}, ${photo.commentCount} ${photo.commentCount === 1 ? "comment" : "comments"}: open photo`}>
+              <button className="photo-tile" onClick={() => setOpen(photo)} aria-label={t("album.tile.label", { name: photo.uploaderName, date: formatDateTime(photo.createdAt), count: photo.commentCount })}>
                 <PhotoImage photo={photo} />
                 <span className="photo-meta">
                   <strong>{photo.uploaderName}</strong>
                   <span className="muted">{formatDateTime(photo.createdAt)}</span>
                 </span>
-                <Info>{photo.commentCount} {photo.commentCount === 1 ? "comment" : "comments"}</Info>
+                <Info>{t("album.count.comments", { count: photo.commentCount })}</Info>
               </button>
             </li>
           ))}
@@ -162,8 +164,8 @@ function Album() {
 
 export default function AlbumPage() {
   return (
-    <Shell title="Event album" subtitle="Photos members shared after the event. Remove anything that doesn’t belong." requires="albums.moderate">
-      <Suspense fallback={<Loading label="Loading album" layout="album" />}><Album /></Suspense>
+    <Shell title={t("album.title")} subtitle={t("album.subtitle")} requires="albums.moderate">
+      <Suspense fallback={<Loading label={t("album.loading")} layout="album" />}><Album /></Suspense>
     </Shell>
   );
 }

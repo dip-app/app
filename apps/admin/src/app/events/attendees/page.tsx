@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useRef, useState } from "react";
@@ -12,12 +13,13 @@ import { Avatar, Empty, Info, LoadError, Loading, ResultCount, SearchBox, format
 import { describe, useLoad } from "@/components/useLoad";
 import type { Attendee, Member } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
-import { attendanceLabel, attendeesCsv } from "@/lib/exports";
+import { attendeesCsv } from "@/lib/exports";
 import { classify } from "@/lib/contract";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button, InlineNotice } from "@/components/kit";
+import { t } from "@/lib/i18n";
 
 const DEFAULTS = { q: "" };
 
@@ -55,8 +57,8 @@ function Attendees() {
   }, [members.data, attendees.data, pickerSearch]);
 
   const hold = useSkeletonGate((!attendees.data || !event.data) && !attendees.error && !event.error);
-  if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel="Back to events" />;
-  if (!attendees.data || !event.data || hold) return <Loading label="Loading attendees" layout="attendees" />;
+  if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel={t("attendees.backToEvents")} />;
+  if (!attendees.data || !event.data || hold) return <Loading label={t("attendees.loading")} layout="attendees" />;
   const checkedIn = attendees.data.filter((a) => a.checkedIn).length;
 
   async function mark(attendee: Attendee, next: boolean) {
@@ -64,9 +66,9 @@ function Attendees() {
     setError("");
     try {
       const { pointsAwarded } = await api.recordAttendance(eventId, attendee.memberId, next);
-      const text = `${attendee.name}: ${next ? "checked in" : "marked as not checked in"}.${pointsAwarded ? ` ${pointsAwarded} points awarded.` : ""}`;
+      const text = `${t(next ? "attendees.toast.checkedIn" : "attendees.toast.notCheckedIn", { name: attendee.name })}${pointsAwarded ? ` ${t("attendees.toast.pointsAwarded", { count: pointsAwarded })}` : ""}`;
       // Undo is offered only while it can work: once points were awarded the check-in is final.
-      toast(text, next && pointsAwarded === 0 ? { action: { label: "Undo", onClick: () => undoCheckIn(attendee) } } : {});
+      toast(text, next && pointsAwarded === 0 ? { action: { label: t("attendees.action.undo"), onClick: () => undoCheckIn(attendee) } } : {});
       attendees.reload();
     } catch (failure) {
       setError(describe(failure));
@@ -78,7 +80,7 @@ function Attendees() {
   async function undoCheckIn(attendee: Attendee) {
     try {
       await api.recordAttendance(eventId, attendee.memberId, false);
-      toast(`Check-in undone for ${attendee.name}.`);
+      toast(t("attendees.toast.undone", { name: attendee.name }));
       attendees.reload();
     } catch (failure) {
       toast(describe(failure), { tone: "error" });
@@ -88,72 +90,72 @@ function Attendees() {
   function exportCsv() {
     try {
       downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, attendees.data!, ended));
-      toast(`Exported ${attendees.data!.length} ${attendees.data!.length === 1 ? "attendee" : "attendees"}.`);
+      toast(t("attendees.toast.exported", { count: attendees.data!.length }));
     } catch {
-      toast("The export didn’t finish. Try again.", { tone: "error" });
+      toast(t("attendees.toast.exportFailed"), { tone: "error" });
     }
   }
 
   return (
     <>
       <div className="toolbar">
-        <Button href="/events/">All events</Button>
-        <Info>{attendees.data.length} of {event.data.capacity} going</Info>
-        <Info>{checkedIn} checked in</Info>
+        <Button href="/events/">{t("attendees.allEvents")}</Button>
+        <Info>{t("attendees.going", { count: attendees.data.length, capacity: event.data.capacity })}</Info>
+        <Info>{t("attendees.checkedInCount", { count: checkedIn })}</Info>
         <span className="spacer" />
-        <Button onClick={exportCsv} disabled={attendees.data.length === 0}>Export CSV</Button>
-        {kind === "upcoming" && <Button variant="primary" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>Add attendee</Button>}
+        <Button onClick={exportCsv} disabled={attendees.data.length === 0}>{t("attendees.exportCsv")}</Button>
+        {kind === "upcoming" && <Button variant="primary" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>{t("attendees.addAttendee")}</Button>}
       </div>
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
 
       {adding && (
-        <section className="panel" aria-label="Add attendee">
-          <h2>Add a member as going</h2>
+        <section className="panel" aria-label={t("attendees.add.panel")}>
+          <h2>{t("attendees.add.heading")}</h2>
           {members.error ? <LoadError error={members.error} onRetry={members.reload} /> : (
             <>
-              <SearchBox value={pickerSearch} onChange={setPickerSearch} label="Search members by name or email" />
+              <SearchBox value={pickerSearch} onChange={setPickerSearch} label={t("attendees.add.searchLabel")} />
               <ul className="pick-list">
                 {candidates.map((m) => (
                   <li key={m.id}>
                     <Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} />
                     <span className="grow"><strong>{m.displayName}</strong><span className="muted"> {m.email}</span></span>
-                    <Button variant="primary" size="sm" onClick={() => { setCandidate(m); setNotify(true); }}>Add</Button>
+                    <Button variant="primary" size="sm" onClick={() => { setCandidate(m); setNotify(true); }}>{t("attendees.add.button")}</Button>
                   </li>
                 ))}
-                {candidates.length === 0 && <li className="muted">{members.data ? "No active members match." : "Loading members…"}</li>}
+                {candidates.length === 0 && <li className="muted">{members.data ? t("attendees.add.noMatch") : t("attendees.add.loadingMembers")}</li>}
               </ul>
             </>
           )}
         </section>
       )}
 
-      <SearchBox id="attendee-search" value={search} onChange={(v) => setQs({ q: v })} label="Search attendees" placeholder="Search attendees (press / to focus)" />
+      <SearchBox id="attendee-search" value={search} onChange={(v) => setQs({ q: v })} label={t("attendees.search.label")} placeholder={t("attendees.search.placeholder")} />
       {attendees.data.length === 0 ? (
-        <Empty title="Nobody is going yet" body="Add members yourself, or they can join from the app." />
+        <Empty title={t("attendees.empty.title")} body={t("attendees.empty.body")} />
       ) : shown.length === 0 ? (
-        <Empty title="No matches" body="Try a different name, email or department." />
+        <Empty title={t("attendees.noMatches.title")} body={t("attendees.noMatches.body")} />
       ) : (
         <>
-        <ResultCount>{search.trim() ? `${shown.length} of ${attendees.data.length} attendees match` : `${attendees.data.length} ${attendees.data.length === 1 ? "attendee" : "attendees"}`}</ResultCount>
-        <TableRegion label={`Attendees for ${event.data.title}`}>
+        <ResultCount>{search.trim() ? t("attendees.count.matches", { shown: shown.length, total: attendees.data.length }) : t("attendees.count.total", { count: attendees.data.length })}</ResultCount>
+        <TableRegion label={t("attendees.table.label", { title: event.data.title })}>
           <table className="table responsive">
-            <caption className="sr-only">Attendees for {event.data.title}</caption>
-            <thead><tr><th scope="col">Name</th><th scope="col">Department</th><th scope="col">RSVP</th><th scope="col">Attendance</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+            <caption className="sr-only">{t("attendees.table.label", { title: event.data.title })}</caption>
+            <thead><tr><th scope="col">{t("attendees.table.name")}</th><th scope="col">{t("attendees.table.department")}</th><th scope="col">{t("attendees.table.rsvp")}</th><th scope="col">{t("attendees.table.attendance")}</th><th scope="col"><span className="sr-only">{t("attendees.table.actions")}</span></th></tr></thead>
             <tbody>
               {shown.map((a) => (
                 <tr key={a.memberId}>
                   <th scope="row"><span className="person"><Avatar name={a.name} userId={a.memberId} photoURL={a.photoURL} avatarId={a.avatarId} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></th>
-                  <td data-label="Department">{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
-                  <td data-label="RSVP">{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>Added by staff</Info></>}</td>
-                  <td data-label="Attendance">
+                  <td data-label={t("attendees.table.department")}>{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
+                  <td data-label={t("attendees.table.rsvp")}>{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>{t("attendees.table.addedByStaff")}</Info></>}</td>
+                  <td data-label={t("attendees.table.attendance")}>
                     <span className="attendance">
-                      <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{attendanceLabel(a.checkedIn, ended)}</Info>
+                      <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{t(a.checkedIn ? "attendees.status.checkedIn" : ended ? "attendees.status.noShow" : "attendees.status.notCheckedIn")}</Info>
                       <Button size="sm" variant={a.checkedIn ? "outline" : "primary"} disabled={busyId === a.memberId || (!started && !a.checkedIn)}
-                        title={!started ? "Attendance opens when the event starts" : undefined} onClick={() => void mark(a, !a.checkedIn)}
-                        aria-label={`${a.checkedIn ? "Undo check-in for" : "Check in"} ${a.name}`}>{a.checkedIn ? "Undo" : "Check in"}</Button>
+                        title={!started ? t("attendees.action.opensAtStart") : undefined} onClick={() => void mark(a, !a.checkedIn)}
+                        aria-label={t(a.checkedIn ? "attendees.action.undoCheckInFor" : "attendees.action.checkInFor", { name: a.name })}>{a.checkedIn ? t("attendees.action.undo") : t("attendees.action.checkIn")}</Button>
                     </span>
                   </td>
-                  <td className="right"><Button size="sm" className="quiet-danger" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={`Remove ${a.name}`}>Remove</Button></td>
+                  <td className="right"><Button size="sm" className="quiet-danger" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={t("attendees.action.removeNamed", { name: a.name })}>{t("attendees.action.remove")}</Button></td>
                 </tr>
               ))}
             </tbody>
@@ -164,41 +166,41 @@ function Attendees() {
 
       {candidate && (
         <Dialog
-          title={`Add ${candidate.displayName}?`}
-          confirmLabel="Add as going" busyLabel="Adding…"
-          reasonLabel={full ? "Why is the event going over capacity?" : undefined}
+          title={t("attendees.addDialog.title", { name: candidate.displayName })}
+          confirmLabel={t("attendees.addDialog.confirm")} busyLabel={t("attendees.addDialog.busy")}
+          reasonLabel={full ? t("attendees.addDialog.reason") : undefined}
           onClose={() => setCandidate(null)}
           onConfirm={async (reason) => {
             await api.addAttendee({ eventId, memberId: candidate.id, requestId: requestId.current, ...(full ? { capacityOverrideReason: reason } : {}), notify });
             requestId.current = crypto.randomUUID();
             setCandidate(null);
-            toast(`${candidate.displayName} is now going.`);
+            toast(t("attendees.toast.nowGoing", { name: candidate.displayName }));
             attendees.reload();
             event.reload();
           }}
         >
-          <p>They are marked as going and get the event’s default notifications.</p>
-          {full && <InlineNotice>The event is full ({event.data.capacity} places). Adding them raises the capacity by one and needs a reason.</InlineNotice>}
-          <Toggle checked={notify} onChange={setNotify} label="Notify them" hint="Sends a notification that they were added." />
+          <p>{t("attendees.addDialog.body")}</p>
+          {full && <InlineNotice>{t("attendees.addDialog.full", { capacity: event.data.capacity })}</InlineNotice>}
+          <Toggle checked={notify} onChange={setNotify} label={t("attendees.notify.label")} hint={t("attendees.notify.addedHint")} />
         </Dialog>
       )}
       {removing && (
         <Dialog
           danger
-          title={`Remove ${removing.name}?`}
-          confirmLabel="Remove from event" busyLabel="Removing…"
-          reasonLabel="Why is this person being removed?"
+          title={t("attendees.removeDialog.title", { name: removing.name })}
+          confirmLabel={t("attendees.removeDialog.confirm")} busyLabel={t("attendees.removeDialog.busy")}
+          reasonLabel={t("attendees.removeDialog.reason")}
           onClose={() => setRemoving(null)}
           onConfirm={async (reason) => {
             await api.removeAttendee(eventId, removing.memberId, notify, reason);
             setRemoving(null);
-            toast(`${removing.name} was removed from the event.`);
+            toast(t("attendees.toast.removed", { name: removing.name }));
             attendees.reload();
             event.reload();
           }}
         >
-          <p>Their RSVP is canceled and the going count drops by one. Attendance already recorded is kept.</p>
-          <Toggle checked={notify} onChange={setNotify} label="Notify them" hint="Sends a notification that they were removed." />
+          <p>{t("attendees.removeDialog.body")}</p>
+          <Toggle checked={notify} onChange={setNotify} label={t("attendees.notify.label")} hint={t("attendees.notify.removedHint")} />
         </Dialog>
       )}
     </>
@@ -207,8 +209,8 @@ function Attendees() {
 
 export default function AttendeesPage() {
   return (
-    <Shell title="Attendees" subtitle="Who is going, who showed up. Changes are recorded in the audit log." requires="attendees.manage">
-      <Suspense fallback={<Loading label="Loading attendees" layout="attendees" />}><Attendees /></Suspense>
+    <Shell title={t("attendees.title")} subtitle={t("attendees.subtitle")} requires="attendees.manage">
+      <Suspense fallback={<Loading label={t("attendees.loading")} layout="attendees" />}><Attendees /></Suspense>
     </Shell>
   );
 }
