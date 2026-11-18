@@ -239,6 +239,7 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
       return snap.docs
         .map((d): Tag & { order: number } => ({ id: d.id, name: String(d.get("name") ?? d.id), order: Number(d.get("sortOrder") ?? 0), ...(typeof d.get("description") === "string" && d.get("description") ? { description: String(d.get("description")) } : {}) }))
         .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         .map(({ order: _order, ...tag }) => tag);
     }),
     listEvents: () => run(async () => {
