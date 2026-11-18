@@ -1465,6 +1465,44 @@ export interface PickEventCoverResponse {
   coverAlt?: string;
 }
 
+export type CoverSearchStatus = "ok" | "rate_limited" | "quota" | "unavailable";
+
+export interface CoverPhotoCandidate {
+  key: string;
+  previewURL: string;
+  tags: Array<string>;
+  width: number;
+  height: number;
+  stored: boolean;
+}
+
+export interface SearchCoverPhotosRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  query: string;
+}
+
+export interface SearchCoverPhotosResponse {
+  contractVersion: number;
+  candidates: Array<CoverPhotoCandidate>;
+  status: CoverSearchStatus;
+}
+
+export interface ImportCoverPhotoRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  key: string;
+}
+
+export interface ImportCoverPhotoResponse {
+  contractVersion: number;
+  coverImageURL: string;
+  coverAlt: string;
+  newPhoto: boolean;
+}
+
 export type SuggestionsEmailAction = "status" | "preview" | "sendTest" | "subscribe" | "unsubscribe" | "setSchedule";
 
 export interface SuggestionsEmailSchedule {

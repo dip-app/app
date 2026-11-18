@@ -32,6 +32,13 @@ $subtle: #f6f7fa;
   .cp-search, .cp-theme { height: 36px; min-width: 0; width: 100%; padding: 0 10px; font-size: 14px; background: $white; border: 1px solid $ctl-border; border-radius: 6px;
     &:hover:not(:focus) { border-color: #5f6478; } }
   .cp-theme { padding-right: 6px; }
+  // ---------- Search more photos: temporary Pixabay previews with the required credit line
+  .cp-more { display: grid; gap: 8px; justify-items: start; }
+  .cp-more-status { font-size: 13px; color: var(--muted); &.error { color: var(--error); } &:empty { display: none; } }
+  .cp-more-grid { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+  .cp-more-tile { width: 100%; &:disabled { cursor: progress; } }
+  .cp-busy { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 8px; background: rgba(255, 255, 255, .75); font-size: 12px; font-weight: 600; }
+  .cp-credit { margin: 0; font-size: 12px; color: var(--muted); a { color: inherit; text-decoration: underline; } }
   .cp-count { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 
   // ---------- Scroll region: fixed height so filtering never moves the page below
@@ -66,7 +73,7 @@ $subtle: #f6f7fa;
     .cp-toolbar { grid-template-columns: minmax(0, 1fr) 156px; }
     .cp-theme { padding: 0 4px; font-size: 13px; }
     .cp-region, &.compact .cp-region { height: 260px; }
-    .cp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cp-grid, .cp-more-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (prefers-reduced-motion: reduce) { .cp-thumb img { transition: none; } }
 }

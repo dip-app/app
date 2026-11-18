@@ -61,7 +61,10 @@ export type AdminErrorReason =
   | "AI_BUDGET_EXHAUSTED"
   | "AI_CREDITS_EXHAUSTED"
   | "AI_OUTPUT_INVALID"
-  | "AI_UNAVAILABLE";
+  | "AI_UNAVAILABLE"
+  | "COVER_SEARCH_UNAVAILABLE"
+  | "COVER_CANDIDATE_EXPIRED"
+  | "COVER_IMPORT_FAILED";
 
 export class AdminError extends Error {
   constructor(

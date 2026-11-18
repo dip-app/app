@@ -62,6 +62,8 @@ export const ADMIN_CALLABLES = {
   generateEventDrafts: "generateEventDraftsV1",
   eventIdeaSuggestions: "getEventIdeaSuggestionsV1",
   pickEventCover: "pickEventCoverV1",
+  searchCoverPhotos: "searchCoverPhotosV1",
+  importCoverPhoto: "importCoverPhotoV1",
 } as const;
 
 export interface Team { id: string; name: string }

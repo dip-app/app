@@ -6861,6 +6861,178 @@
         "alternatives"
       ]
     },
+    "CoverSearchStatus": {
+      "type": "string",
+      "description": "Outcome of searchCoverPhotosV1: ok; rate_limited (Pixabay or the per-instance limiter); quota (daily live caps reached); unavailable (Pixabay failed).",
+      "enum": [
+        "ok",
+        "rate_limited",
+        "quota",
+        "unavailable"
+      ]
+    },
+    "CoverPhotoCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One Pixabay photo offered for import. previewURL is a temporary (24 hour) Pixabay rendition that may only be displayed in the search results, never stored or hotlinked permanently.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^pixabay-[1-9][0-9]{0,11}$"
+        },
+        "previewURL": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^https://pixabay\\.com/get/"
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stored": {
+          "type": "boolean",
+          "description": "true when the photo is already in the stored dynamic library (importing it needs no download)."
+        }
+      },
+      "required": [
+        "key",
+        "previewURL",
+        "tags",
+        "width",
+        "height",
+        "stored"
+      ]
+    },
+    "SearchCoverPhotosRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "searchCoverPhotosV1: an admin searches Pixabay for more cover photos. ai.generate (admin); free (no credits); counts against the live daily quotas only on a cache miss. The text is treated as a title and stripped of personal data before it leaves the server.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "query"
+      ]
+    },
+    "SearchCoverPhotosResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/CoverPhotoCandidate"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/CoverSearchStatus"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "candidates",
+        "status"
+      ]
+    },
+    "ImportCoverPhotoRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "importCoverPhotoV1: stores a photo from a recent search as a dynamic cover. The client sends only the key; the server fetches only a photo it remembered from a search within 24 hours (COVER_CANDIDATE_EXPIRED otherwise). ai.generate (admin); free.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "key": {
+          "type": "string",
+          "pattern": "^pixabay-[1-9][0-9]{0,11}$"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "key"
+      ]
+    },
+    "ImportCoverPhotoResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "coverImageURL": {
+          "type": "string",
+          "pattern": "^catalog://cover/pixabay-[1-9][0-9]{0,11}$"
+        },
+        "coverAlt": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "newPhoto": {
+          "type": "boolean",
+          "description": "true when this call stored a fresh photo; false when an existing stored cover was reused."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "coverImageURL",
+        "coverAlt",
+        "newPhoto"
+      ]
+    },
     "SuggestionsEmailAction": {
       "type": "string",
       "description": "What manageSuggestionsEmailV1 does: read status, render a dry-run preview, queue a test email to the caller, turn the caller's own email preference on or off, or set the company schedule.",

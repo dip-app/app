@@ -161,6 +161,22 @@ export interface PickEventCoverResult {
   coverAlt?: string;
 }
 
+// searchCoverPhotosV1 / importCoverPhotoV1 wire types ("Search more photos", docs/contracts/callables.md)
+export interface CoverPhotoCandidate {
+  /** `pixabay-<id>`; the only thing sent back to import. */
+  key: string;
+  /** Temporary (24 h) Pixabay rendition: displayed in the results only, never stored. */
+  previewURL: string;
+  tags: string[];
+  width: number;
+  height: number;
+  /** Already stored on the server (importing needs no download). */
+  stored: boolean;
+}
+export type CoverSearchStatus = "ok" | "rate_limited" | "quota" | "unavailable";
+export interface SearchCoverPhotosResult { candidates: CoverPhotoCandidate[]; status: CoverSearchStatus }
+export interface ImportCoverPhotoResult { coverImageURL: string; coverAlt: string; newPhoto: boolean }
+
 export interface CoverEvent { title: string; description?: string; tagIds?: readonly string[]; theme?: CoverThemeKey | "" | null }
 
 /**

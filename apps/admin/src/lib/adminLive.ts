@@ -487,6 +487,22 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         ...(typeof data.coverAlt === "string" && data.coverAlt.trim() ? { coverAlt: data.coverAlt.trim().slice(0, 160) } : {}),
       };
     }),
+    searchCoverPhotos: (query) => run(async () => {
+      const session = await organizer();
+      const data = await call<DocumentData>(ADMIN_CALLABLES.searchCoverPhotos, session, { requestId: crypto.randomUUID(), query: query.trim().slice(0, 60) }, false);
+      const status = data.status === "rate_limited" || data.status === "quota" || data.status === "ok" ? data.status : "unavailable";
+      const candidates = Array.isArray(data.candidates) ? data.candidates.flatMap((c: DocumentData) => (
+        typeof c?.key === "string" && typeof c.previewURL === "string" && c.previewURL.startsWith("https://pixabay.com/")
+          ? [{ key: c.key, previewURL: c.previewURL, tags: Array.isArray(c.tags) ? c.tags.map(String).slice(0, 8) : [], width: Number(c.width) || 0, height: Number(c.height) || 0, stored: c.stored === true }]
+          : []
+      )) : [];
+      return { candidates, status };
+    }),
+    importCoverPhoto: (key) => run(async () => {
+      const session = await organizer();
+      const data = await call<DocumentData>(ADMIN_CALLABLES.importCoverPhoto, session, { requestId: crypto.randomUUID(), key }, false);
+      return { coverImageURL: String(data.coverImageURL ?? ""), coverAlt: typeof data.coverAlt === "string" ? data.coverAlt.trim().slice(0, 160) : "", newPhoto: data.newPhoto === true };
+    }),
     // The caller owns the requestId (one per attempt), so `call` sends it as given.
     generateEventDrafts: (input) => run(async () => {
       const session = await organizer();

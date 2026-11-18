@@ -79,9 +79,13 @@ function failureCode(error: unknown): string {
   return "error";
 }
 
-class Removed extends Error { constructor() { super("removed"); this.name = "RemovedCover"; } }
+/** Thrown by `materializeCover` when the stored cover for the key was removed. */
+export class RemovedCoverError extends Error { constructor() { super("removed"); this.name = "RemovedCover"; } }
 
-interface Materialized { doc: Pick<DynamicCoverDoc, "key" | "themes" | "tags" | "label" | "alt">; stored: boolean }
+export interface Materialized { doc: Pick<DynamicCoverDoc, "key" | "themes" | "tags" | "label" | "alt">; stored: boolean }
+
+/** What `materializeCover` needs besides the hit: who stores it, the themes to fall back to and the static index for theme voting. */
+export interface MaterializeOptions { companyId: string; uid: string; themes: readonly string[]; staticIndex: readonly CoverIndexEntry[] }
 
 /**
  * The live path of "Let Dipbot choose": when the library has no good match, search Pixabay (cached, quota-limited),
@@ -143,7 +147,9 @@ export async function runLiveCover(deps: LiveRunDeps, input: LiveInput, signal?:
       }
     }
     try {
-      const stored = await materialize(deps, chosen, input, liveSignal);
+      const stored = await materializeCover(deps, chosen, {
+        companyId: input.context.companyId, uid: input.context.uid, themes: queryThemes(input.query), staticIndex: input.staticIndex,
+      }, liveSignal);
       return done({
         entry: toIndexEntry(stored.doc), source: result.provider === "heuristic" ? "match" : "dipbot", provider: result.provider,
         // A photo found beyond the library for this event (stored now or reused from an earlier pull) is announced either way.
@@ -161,12 +167,12 @@ export async function runLiveCover(deps: LiveRunDeps, input: LiveInput, signal?:
 }
 
 /** Reuses the stored cover when it exists, otherwise downloads, processes, de-duplicates and stores the photo. */
-async function materialize(deps: LiveRunDeps, hit: PixabayHit, input: LiveInput, signal: AbortSignal): Promise<Materialized> {
+export async function materializeCover(deps: Pick<LiveRunDeps, "live" | "now">, hit: PixabayHit, options: MaterializeOptions, signal: AbortSignal): Promise<Materialized> {
   const { live } = deps;
   const key = dynamicKeyFor(hit.id);
   const reuse = async (existing: DynamicCoverDoc | null): Promise<Materialized> => {
     if (!existing) throw new PixabayUnavailableError("missing");
-    if (existing.status !== "active") throw new Removed();
+    if (existing.status !== "active") throw new RemovedCoverError();
     await live.writer.touch(existing.key, deps.now());
     return { doc: existing, stored: false };
   };
@@ -184,10 +190,10 @@ async function materialize(deps: LiveRunDeps, hit: PixabayHit, input: LiveInput,
   const now = deps.now();
   const doc: DynamicCoverDoc = {
     key, status: "active", source: "pixabay", pixabayId: hit.id, pageURL: hit.pageURL, user: hit.user, userId: hit.user_id,
-    license: pixabayLicense(hit), ...docFieldsFromHit(hit, queryThemes(input.query), input.staticIndex),
+    license: pixabayLicense(hit), ...docFieldsFromHit(hit, options.themes, options.staticIndex),
     width: processed.width, height: processed.height, dHash: processed.dHash, sha256: processed.sha256,
     bytes: { webp: processed.webp.length, jpeg: processed.jpeg.length }, storagePaths: paths, storedURL: dynamicCoverImagePath(key),
-    createdAt: now, createdBy: { companyId: input.context.companyId, uid: input.context.uid }, usageCount: 1, lastUsedAt: now,
+    createdAt: now, createdBy: { companyId: options.companyId, uid: options.uid }, usageCount: 1, lastUsedAt: now,
   };
   if (await live.writer.create(doc)) return { doc, stored: true };
   // A concurrent pick stored the same photo first.

@@ -1,10 +1,11 @@
 import { defineSecret } from "firebase-functions/params";
 import { logger } from "firebase-functions/v2";
 import { onCall, onRequest } from "firebase-functions/v2/https";
-import { base, command, JEV_API_KEY, OPENAI_API_KEY } from "../../ai/transport/aiCallables";
+import { base, command, deps, JEV_API_KEY, OPENAI_API_KEY } from "../../ai/transport/aiCallables";
 import { aiConfig, secretPresent } from "../../ai/infrastructure/aiConfig";
 import { providerFromEnv } from "../../ai/infrastructure/settings";
 import { pickEventCover } from "../application/pickCover";
+import { importCoverPhoto, searchCoverPhotos, type SearchCoverDeps } from "../application/searchCoverPhotos";
 import type { LiveCoverDeps } from "../application/livePorts";
 import { handleCoverImage } from "../infrastructure/coverImageHandler";
 import { buildLiveCoverDeps, coverObjectReader, dynamicCoverCatalog } from "./liveWiring";
@@ -50,6 +51,34 @@ export const pickEventCoverV1 = onCall(
       ...(aiEnabled && providerFromEnv(process.env, () => undefined) !== "demo" ? { dynamic: dynamicCoverCatalog() } : {}),
     }, caller, data);
   }),
+);
+
+/** Shared deps of the two "Search more photos" callables: live Pixabay deps only when AI is enabled and the key is real. */
+async function searchDeps(d: Awaited<ReturnType<typeof deps>>): Promise<SearchCoverDeps> {
+  const aiEnabled = process.env.AI_EVENTS_ENABLED === "true";
+  const live = aiEnabled ? await liveDeps() : undefined;
+  return { store: d.store, aiEnabled, now: d.now, ...(d.limiter ? { limiter: d.limiter } : {}), ...(d.log ? { log: d.log } : {}), ...(live ? { live } : {}) };
+}
+
+/**
+ * searchCoverPhotosV1 (SearchCoverPhotosRequest -> SearchCoverPhotosResponse): the cover picker's "Search more photos".
+ * Admin only (ai.generate), same burst limiter as pickEventCoverV1, free (no credits). Needs AI_EVENTS_ENABLED and the
+ * PIXABAY_API_KEY secret, else COVER_SEARCH_UNAVAILABLE. Pixabay failures come back as a status, never an error. At most 5
+ * instances keeps the per-instance search limiter (and so Pixabay's 100 requests per minute) valid.
+ */
+export const searchCoverPhotosV1 = onCall(
+  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY, PIXABAY_API_KEY], timeoutSeconds: 30, memory: "256MiB", maxInstances: 5 },
+  command("searchCoverPhotosV1", async (d, caller, data) => searchCoverPhotos(await searchDeps(d), caller, data)),
+);
+
+/**
+ * importCoverPhotoV1 (ImportCoverPhotoRequest -> ImportCoverPhotoResponse): stores a photo chosen from the search results
+ * as a dynamic cover (download, re-encode, store). The client sends only the key; the server uses the hit it remembered
+ * from the search (24 hours). Admin only, free.
+ */
+export const importCoverPhotoV1 = onCall(
+  { ...base, secrets: [OPENAI_API_KEY, JEV_API_KEY, PIXABAY_API_KEY], timeoutSeconds: 60, memory: "512MiB", maxInstances: 5 },
+  command("importCoverPhotoV1", async (d, caller, data) => importCoverPhoto(await searchDeps(d), caller, data)),
 );
 
 /**

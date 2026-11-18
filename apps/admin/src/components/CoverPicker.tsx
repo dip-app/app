@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverThemeKey, coverByURL, coverImage, coverThumb, rememberCoverAlt, searchCovers, themeLabel } from "@/lib/covers";
+import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverPhotoCandidate, type CoverThemeKey, coverByURL, coverImage, coverThumb, rememberCoverAlt, searchCovers, themeLabel } from "@/lib/covers";
 import type { AiCredits } from "@/lib/adminTypes";
 import { tMaybe } from "@/lib/aiStrings";
 import { ApiError } from "@/lib/contract";
@@ -27,6 +27,10 @@ interface Props {
   credits?: AiCredits;
 }
 
+/** "Search more photos" results live in component state only: Pixabay previews may be shown temporarily, never persisted. */
+type More = { kind: "idle" } | { kind: "loading" } | { kind: "results"; candidates: CoverPhotoCandidate[] } | { kind: "message"; text: string };
+const MORE_UNAVAILABLE = "More photos are not available right now. Try again later.";
+
 type Note = { kind: "picked"; text: string; badge: string; fresh?: boolean; url?: string } | { kind: "error"; text: string } | null;
 
 /** Thumbnails above this index lazy-load inside the scroll region; the first screenful loads eagerly so tiles are never blank. */
@@ -49,6 +53,9 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
   const [theme, setTheme] = useState<CoverThemeKey | "">("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note>(null);
+  const [more, setMore] = useState<More>({ kind: "idle" });
+  const [importing, setImporting] = useState<string | null>(null);
+  const [moreError, setMoreError] = useState("");
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -112,6 +119,38 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
       setNote({ kind: "error", text: known ?? "Dipbot couldn’t pick a cover this time. Try again or choose one yourself." });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function searchMore() {
+    const text = query.trim();
+    if (!text || more.kind === "loading" || importing) return;
+    setMore({ kind: "loading" });
+    setMoreError("");
+    try {
+      const result = await api.searchCoverPhotos(text);
+      if (result.status === "ok" && result.candidates.length > 0) setMore({ kind: "results", candidates: result.candidates });
+      else if (result.status === "ok") setMore({ kind: "message", text: "No more photos found. Try different words." });
+      else setMore({ kind: "message", text: MORE_UNAVAILABLE });
+    } catch {
+      setMore({ kind: "message", text: MORE_UNAVAILABLE });
+    }
+  }
+
+  async function importPhoto(candidate: CoverPhotoCandidate) {
+    if (importing) return;
+    setImporting(candidate.key);
+    setMoreError("");
+    try {
+      const result = await api.importCoverPhoto(candidate.key);
+      rememberCoverAlt(result.coverImageURL, result.coverAlt);
+      onChange(result.coverImageURL);
+      setNote({ kind: "picked", url: result.coverImageURL, fresh: result.newPhoto, badge: "Photo from Pixabay", text: "Picked a photo from Pixabay" });
+    } catch (error) {
+      const reason = error instanceof ApiError ? error.reason : undefined;
+      setMoreError(reason === "COVER_CANDIDATE_EXPIRED" ? "That photo is no longer available. Search again." : reason === "COVER_SEARCH_UNAVAILABLE" ? MORE_UNAVAILABLE : "That photo couldn’t be added. Try another one.");
+    } finally {
+      setImporting(null);
     }
   }
 
@@ -199,6 +238,39 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
       </div>
       </div>
       <span className="cp-count" id={resultsId} aria-live="polite">{count}</span>
+
+      {query.trim() && (
+        <div className="cp-more">
+          <button type="button" className="pill-btn gray small cp-more-btn" onClick={() => void searchMore()} aria-busy={more.kind === "loading" || undefined} disabled={more.kind === "loading" || importing !== null}>
+            {more.kind === "loading" ? "Searching…" : "Search more photos"}
+          </button>
+          <div className="cp-more-status" role="status" aria-live="polite">
+            {more.kind === "message" ? more.text : more.kind === "loading" ? "Searching for more photos…" : ""}
+          </div>
+          {moreError && <div className="cp-more-status error" role="alert">{moreError}</div>}
+          {more.kind === "results" && (
+            <>
+              <ul className="cp-more-grid" aria-label="More photos">
+                {more.candidates.map((c) => (
+                  <li key={c.key}>
+                    <button type="button" className="cp-tile cp-more-tile" onClick={() => void importPhoto(c)} disabled={importing !== null} aria-busy={importing === c.key || undefined}
+                      aria-label={c.tags.length ? `Use photo: ${c.tags.slice(0, 3).join(", ")}` : "Use this photo"}>
+                      <span className="cp-thumb">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- temporary third-party preview, not optimizable */}
+                        <img src={c.previewURL} alt={c.tags.slice(0, 3).join(", ")} width={200} height={125} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                        {importing === c.key && <span className="cp-busy">Adding…</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="cp-credit">
+                <a href="https://pixabay.com/" target="_blank" rel="noopener noreferrer">Photos from Pixabay</a>
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
