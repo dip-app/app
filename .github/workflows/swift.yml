@@ -22,6 +22,9 @@ concurrency:
 jobs:
   swift-foundations:
     runs-on: macos-15-intel
+    env:
+      # Hosted runners have no GPU: skip ImageRenderer smoke tests (they abort the process).
+      DIP_DISABLE_METAL: "1"
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
