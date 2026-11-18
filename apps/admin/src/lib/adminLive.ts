@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type AiBucket, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type AiBucket, type AiConsiderationRank, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -98,7 +98,16 @@ export function suggestionsFromWire(d: DocumentData): EventIdeaSuggestions {
   const suggestions = list(d.suggestions)
     .filter((s) => SUGGEST_QUESTIONS.includes(str(s.question)) && str(s.value) && typeof s.probability === "number" && s.probability >= 0 && s.probability <= 1)
     .map((s): AiStepSuggestion => ({ question: str(s.question) as AiStepSuggestion["question"], value: str(s.value), probability: s.probability as number, reason: str(s.reason), reasonBasis: s.reasonBasis === "company_data" ? "company_data" : "generic" }));
-  return { provider, suggestions, ...(d.credits ? { credits: creditsFromWire(d.credits) } : {}) };
+  const cacheStatus = d.cacheStatus === "fresh" || d.cacheStatus === "stale" ? d.cacheStatus : "computed";
+  const considerations = list(d.considerations)
+    .filter((c) => str(c.id) && typeof c.probability === "number" && c.probability >= 0 && c.probability <= 1)
+    .map((c): AiConsiderationRank => ({ id: str(c.id), probability: c.probability as number }));
+  return {
+    provider, suggestions, cacheStatus, considerations, creditsCharged: typeof d.creditsCharged === "number" ? d.creditsCharged : 0,
+    ...(typeof d.computedAt === "string" ? { computedAt: d.computedAt } : {}),
+    ...(d.staleReason === "data" || d.staleReason === "age" ? { staleReason: d.staleReason } : {}),
+    ...(d.credits ? { credits: creditsFromWire(d.credits) } : {}),
+  };
 }
 /** GenerateEventDraftsResponse -> GenerateDraftsResult. */
 export function draftsFromWire(d: DocumentData): GenerateDraftsResult {
@@ -457,9 +466,11 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       const session = await organizer();
       return ideaContextFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaContext, session, {}, false));
     }),
-    eventIdeaSuggestions: (sessionId) => run(async () => {
+    eventIdeaSuggestions: (input) => run(async () => {
       const session = await organizer();
-      return suggestionsFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaSuggestions, session, { sessionId }, false));
+      // A plain visit sends no model-spending flag: the server answers from the saved company suggestions.
+      const payload = input?.refresh ? { requestId: input.requestId ?? crypto.randomUUID(), refresh: true } : {};
+      return suggestionsFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaSuggestions, session, payload, false));
     }),
     pickEventCover: (input) => run(async () => {
       const session = await organizer();
@@ -479,6 +490,7 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       const session = await organizer();
       return draftsFromWire(await call<DocumentData>(ADMIN_CALLABLES.generateEventDrafts, session, {
         requestId: input.requestId, choices: input.choices, prompt: input.prompt, count: input.count,
+        ...(input.considerations && input.considerations.length > 0 ? { considerations: input.considerations } : {}),
       }));
     }),
 

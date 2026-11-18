@@ -2744,12 +2744,16 @@ public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
 public struct GetEventIdeaSuggestionsRequest: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var companyId: String
-    public var sessionId: String
+    public var sessionId: String?
+    public var requestId: String?
+    public var refresh: Bool?
 
-    public init(contractVersion: Int, companyId: String, sessionId: String) {
+    public init(contractVersion: Int, companyId: String, sessionId: String? = nil, requestId: String? = nil, refresh: Bool? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.sessionId = sessionId
+        self.requestId = requestId
+        self.refresh = refresh
     }
 }
 
@@ -2769,19 +2773,39 @@ public struct AiStepSuggestion: Codable, Equatable, Sendable {
     }
 }
 
+public struct AiConsiderationRank: Codable, Equatable, Sendable {
+    public var id: String
+    public var probability: Double
+
+    public init(id: String, probability: Double) {
+        self.id = id
+        self.probability = probability
+    }
+}
+
 public struct GetEventIdeaSuggestionsResponse: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var provider: String
     public var suggestions: [AiStepSuggestion]
     public var cached: Bool
     public var credits: AiCredits
+    public var cacheStatus: String
+    public var computedAt: Date?
+    public var staleReason: String?
+    public var creditsCharged: Int
+    public var considerations: [AiConsiderationRank]?
 
-    public init(contractVersion: Int, provider: String, suggestions: [AiStepSuggestion], cached: Bool, credits: AiCredits) {
+    public init(contractVersion: Int, provider: String, suggestions: [AiStepSuggestion], cached: Bool, credits: AiCredits, cacheStatus: String, computedAt: Date? = nil, staleReason: String? = nil, creditsCharged: Int, considerations: [AiConsiderationRank]? = nil) {
         self.contractVersion = contractVersion
         self.provider = provider
         self.suggestions = suggestions
         self.cached = cached
         self.credits = credits
+        self.cacheStatus = cacheStatus
+        self.computedAt = computedAt
+        self.staleReason = staleReason
+        self.creditsCharged = creditsCharged
+        self.considerations = considerations
     }
 }
 
@@ -2810,14 +2834,16 @@ public struct GenerateEventDraftsRequest: Codable, Equatable, Sendable {
     public var choices: AiEventChoices
     public var prompt: String
     public var count: Int
+    public var considerations: [String]?
 
-    public init(contractVersion: Int, companyId: String, requestId: String, choices: AiEventChoices, prompt: String, count: Int) {
+    public init(contractVersion: Int, companyId: String, requestId: String, choices: AiEventChoices, prompt: String, count: Int, considerations: [String]? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.requestId = requestId
         self.choices = choices
         self.prompt = prompt
         self.count = count
+        self.considerations = considerations
     }
 }
 

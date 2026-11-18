@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { LlmUnavailableError, type AiSettings, type DecisionRequest, type DecisionResult } from "../../functions/src/modules/ai/application/ports";
 import {
-  getEventIdeaSuggestions, suggestionPath, suggestionWorstMicros, type PastEventSource, type SuggestionDeps, type SuggestionProvider,
+  getEventIdeaSuggestions, suggestionWorstMicros, type PastEventSource, type SuggestionDeps, type SuggestionProvider,
 } from "../../functions/src/modules/ai/application/suggestions";
 import {
   aggregatePastEvents, fromAnswers, heuristicSuggestions, suggestionQuestions, suggestionState, timingOf, topOption, type PastEventInput, type SuggestionFacts,
@@ -11,6 +11,8 @@ import { DEFAULT_TAGS } from "../../functions/src/modules/ai/infrastructure/fire
 import { ScriptedDecisions, benignDecision, type DecisionStepScript } from "../../functions/src/modules/ai/infrastructure/fakes";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { PAST_EVENTS_FLOOR, reasonWithBasis } from "../../functions/src/modules/ai/domain/suggestionReasons";
+import { CONSIDERATION_IDS } from "../../functions/src/modules/ai/domain/considerations";
+import { activeLease } from "../../functions/src/modules/ai/domain/suggestionCache";
 import { NOW, caller, seedCompany, FakeAdminStore } from "./helpers/adminFakes";
 import { JEV_USAGE, SETTINGS, USAGE, MemoryCatalog, MemoryInterests, MemoryThemes } from "./helpers/aiFakes";
 
@@ -37,7 +39,12 @@ function jevAnswer(request: DecisionRequest, p = 0.9, provider: DecisionResult["
   return { ...base, usage: provider === "jev" ? JEV_USAGE : USAGE, model: provider === "jev" ? "jev-latest" : "gpt-6-luna", provider };
 }
 
-interface Rig { store: FakeAdminStore; jev: ScriptedDecisions; openai: ScriptedDecisions; deps: SuggestionDeps; logs: Array<{ event: string; fields: Record<string, unknown> }> }
+const CACHE = "companies/alpha/aiCache/suggestions";
+const CREDITS = "companies/alpha/aiCredits/203001";
+const DAY = 24 * 60 * 60_000;
+const REFRESH = (n: number, extra: Record<string, unknown> = {}) => req({ requestId: `00000000-0000-4000-8000-00000000010${n}`, refresh: true, ...extra });
+
+interface Rig { clock: { t: Date }; interests: MemoryInterests; themes: MemoryThemes; store: FakeAdminStore; jev: ScriptedDecisions; openai: ScriptedDecisions; deps: SuggestionDeps; logs: Array<{ event: string; fields: Record<string, unknown> }> }
 
 function rig(opts: { jev?: DecisionStepScript[]; openai?: DecisionStepScript[]; withJev?: boolean; settings?: Partial<AiSettings>; data?: boolean } = {}): Rig {
   const store = new FakeAdminStore();
@@ -49,18 +56,20 @@ function rig(opts: { jev?: DecisionStepScript[]; openai?: DecisionStepScript[]; 
   if (opts.withJev !== false) providers.push({ port: jev, model: "jev-latest" });
   providers.push({ port: openai, model: "gpt-6-luna" });
   const data = opts.data !== false;
+  const clock = { t: NOW };
   const interests = new MemoryInterests(data ? [{ tagId: "tag-fitness", memberCount: 25 }, { tagId: "tag-games", memberCount: 12 }, { tagId: "tag-arts", memberCount: 2 }] : null);
   const past = new MemoryPast(data ? [
     { startTime: new Date("2029-12-18T22:00:00Z"), costCents: 1000, capacity: 20, isOutdoor: false, tagIds: ["tag-games"] },
     { startTime: new Date("2029-12-11T22:00:00Z"), costCents: 800, capacity: 25, isOutdoor: true, tagIds: ["tag-fitness"] },
   ] : []);
+  const themes = new MemoryThemes({ title: "Fall Fitness Week", tagIds: ["tag-fitness"] });
   const logs: Rig["logs"] = [];
   const deps: SuggestionDeps = {
     store, llm: { generate: async () => { throw new Error("no llm"); }, moderate: async () => [] }, decisions: jev, interests, catalog: new MemoryCatalog(),
-    themes: new MemoryThemes({ title: "Fall Fitness Week", tagIds: ["tag-fitness"] }), pastEvents: past, providers,
-    settings: { ...SETTINGS, ...opts.settings }, now: () => NOW, log: (event, fields) => logs.push({ event, fields: fields as Record<string, unknown> }),
+    themes, pastEvents: past, providers, leasePollMs: 2, leaseWaitMs: 4000,
+    settings: { ...SETTINGS, ...opts.settings }, now: () => clock.t, log: (event, fields) => logs.push({ event, fields: fields as Record<string, unknown> }),
   };
-  return { store, jev, openai, deps, logs };
+  return { clock, interests, themes, store, jev, openai, deps, logs };
 }
 
 async function fails(promise: Promise<unknown>, reason: string) {
@@ -133,7 +142,7 @@ describe("getEventIdeaSuggestionsV1", () => {
       const r = rig();
       await fails(getEventIdeaSuggestions(r.deps, caller(uid), req()), reason);
       assert.equal(r.jev.calls.length + r.openai.calls.length, 0);
-      assert.deepEqual(r.store.children("companies/alpha/aiSuggestions"), []);
+      assert.equal(r.store.get(CACHE), undefined);
     });
   }
 
@@ -151,26 +160,159 @@ describe("getEventIdeaSuggestionsV1", () => {
     assert.equal(r.jev.calls.length, 0);
   });
 
-  test("Jev answers first in one call; spend is metered; the session is cached for the same admin only", async () => {
+  test("first visit: Jev answers in one call, spend is metered, 1 credit, the answer is saved for the company", async () => {
     const r = rig();
     const first = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
     assert.equal(first.provider, "jev");
+    assert.equal(first.cacheStatus, "computed");
     assert.equal(first.cached, false);
+    assert.equal(first.creditsCharged, 1);
     assert.equal(first.suggestions.length, 6);
-    assert.equal(r.jev.calls.length, 1, "one decision call for every step");
+    assert.equal(first.considerations!.length, CONSIDERATION_IDS.length, "every consideration is ranked, none is dropped");
+    assert.equal(r.jev.calls.length, 1, "one decision call for every step and every consideration");
     assert.equal(r.openai.calls.length, 0);
     assert.doesNotMatch(r.jev.calls[0]!.state, /Ada|alpha\.test|Boat Ride/);
     assert.ok((r.store.get(MONTH)!.inputTokens as number) === JEV_USAGE.inputTokens);
     assert.equal(r.store.get(MONTH)!.generations, 0, "suggestions never count as generations");
-    const again = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
-    assert.equal(again.cached, true);
-    assert.deepEqual(again.suggestions, first.suggestions);
-    assert.equal(r.jev.calls.length, 1);
-    // Another admin with the same session id gets their own answer, never the first admin's cache.
-    await getEventIdeaSuggestions(r.deps, caller("admin2"), req());
-    assert.equal(r.jev.calls.length, 2);
-    assert.ok(r.store.get(suggestionPath("alpha", "admin2", SESSION)));
+    assert.equal(r.store.get(CREDITS)!.used, 1);
+    const saved = r.store.get(CACHE)!;
+    assert.equal(saved.provider, "jev");
+    assert.match(String(saved.fingerprint), /^[0-9a-f]{32}$/);
     assert.equal(r.logs[0]!.fields.provider, "jev");
+  });
+
+  test("a visit with a valid saved answer costs 0 credits and makes no model call, for every admin and session", async () => {
+    const r = rig();
+    const first = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    r.clock.t = new Date(NOW.getTime() + 6 * DAY);
+    for (const [uid, session] of [["admin1", SESSION], ["admin2", SESSION], ["admin2", "00000000-0000-4000-8000-0000000000ab"]] as const) {
+      const again = await getEventIdeaSuggestions(r.deps, caller(uid), req({ sessionId: session }));
+      assert.equal(again.cacheStatus, "fresh");
+      assert.equal(again.cached, true);
+      assert.equal(again.creditsCharged, 0);
+      assert.deepEqual(again.suggestions, first.suggestions);
+      assert.deepEqual(again.considerations, first.considerations);
+      assert.equal(again.computedAt, first.computedAt);
+    }
+    assert.equal(r.jev.calls.length, 1);
+    assert.equal(r.store.get(CREDITS)!.used, 1);
+  });
+
+  test("changed company data: the saved answer is shown as stale (reason data), nothing is recomputed or charged", async () => {
+    const r = rig();
+    await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    r.interests.stats = [{ tagId: "tag-fitness", memberCount: 25 }, { tagId: "tag-games", memberCount: 12 }, { tagId: "tag-arts", memberCount: 7 }];
+    const next = await getEventIdeaSuggestions(r.deps, caller("admin2"), req());
+    assert.deepEqual({ status: next.cacheStatus, reason: next.staleReason, charged: next.creditsCharged }, { status: "stale", reason: "data", charged: 0 });
+    assert.equal(next.suggestions.length, 6, "the saved suggestions are still shown");
+    assert.equal(r.jev.calls.length, 1, "stale does not auto-run");
+    assert.equal(r.store.get(CREDITS)!.used, 1);
+  });
+
+  test("older than the max age: stale (reason age), still no auto-run", async () => {
+    const r = rig();
+    await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    r.clock.t = new Date(NOW.getTime() + 7 * DAY + 1000);
+    const old = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    assert.deepEqual({ status: old.cacheStatus, reason: old.staleReason, charged: old.creditsCharged }, { status: "stale", reason: "age", charged: 0 });
+    assert.equal(r.jev.calls.length, 1);
+  });
+
+  test("a configured max age applies", async () => {
+    const r = rig();
+    r.deps.cacheMaxAgeMs = 2 * DAY;
+    await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    r.clock.t = new Date(NOW.getTime() + 3 * DAY);
+    assert.equal((await getEventIdeaSuggestions(r.deps, caller("admin1"), req())).cacheStatus, "stale");
+  });
+
+  test("refresh recomputes and charges 1; the same requestId again is free and returns the same answer", async () => {
+    const r = rig();
+    await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    r.clock.t = new Date(NOW.getTime() + 8 * DAY);
+    const refreshed = await getEventIdeaSuggestions(r.deps, caller("admin1"), REFRESH(1));
+    assert.deepEqual({ status: refreshed.cacheStatus, charged: refreshed.creditsCharged, used: refreshed.credits.creditsUsed }, { status: "computed", charged: 1, used: 2 });
+    assert.equal(r.jev.calls.length, 2);
+    const replay = await getEventIdeaSuggestions(r.deps, caller("admin1"), REFRESH(1));
+    assert.deepEqual({ charged: replay.creditsCharged, at: replay.computedAt }, { charged: 0, at: refreshed.computedAt });
+    assert.equal(r.jev.calls.length, 2);
+    assert.equal(r.store.get(CREDITS)!.used, 2);
+  });
+
+  test("refresh without a requestId is invalid", async () => {
+    const r = rig();
+    await assert.rejects(getEventIdeaSuggestions(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha", refresh: true }), (e: unknown) => e instanceof AdminError && e.code === "invalid-argument");
+  });
+
+  test("two admins refreshing at once share one run and one credit", async () => {
+    const r = rig();
+    await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const slow = new ScriptedDecisions([async (request: DecisionRequest) => { await gate; return jevAnswer(request); }]);
+    r.deps.providers = [{ port: slow, model: "jev-latest" }];
+    r.clock.t = new Date(NOW.getTime() + 8 * DAY);
+    const a = getEventIdeaSuggestions(r.deps, caller("admin1"), REFRESH(1));
+    const b = getEventIdeaSuggestions(r.deps, caller("admin2"), REFRESH(2));
+    await new Promise(resolve => setTimeout(resolve, 30));
+    release();
+    const [one, two] = await Promise.all([a, b]);
+    assert.equal(slow.calls.length, 1, "only one model call");
+    assert.equal(one.creditsCharged + two.creditsCharged, 1, "charged once");
+    assert.equal(one.computedAt, two.computedAt);
+    assert.deepEqual(one.suggestions, two.suggestions);
+    assert.equal(r.store.get(CREDITS)!.used, 2, "the first visit plus one shared refresh");
+  });
+
+  test("two admins on the very first visit also share one run", async () => {
+    const r = rig();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const slow = new ScriptedDecisions([async (request: DecisionRequest) => { await gate; return jevAnswer(request); }]);
+    r.deps.providers = [{ port: slow, model: "jev-latest" }];
+    const a = getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    const b = getEventIdeaSuggestions(r.deps, caller("admin2"), req());
+    await new Promise(resolve => setTimeout(resolve, 30));
+    release();
+    const [one, two] = await Promise.all([a, b]);
+    assert.equal(slow.calls.length, 1);
+    assert.equal(one.creditsCharged + two.creditsCharged, 1);
+    assert.equal(r.store.get(CREDITS)!.used, 1);
+  });
+
+  test("a crashed run does not block: an expired lease is taken over", async () => {
+    const r = rig();
+    r.store.seed(CACHE, { leaseHolder: "ghost", leaseUntil: new Date(NOW.getTime() - 1000) });
+    const out = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    assert.equal(out.cacheStatus, "computed");
+  });
+
+  test("a failed refresh keeps the saved answer, charges nothing and releases the lease", async () => {
+    const r = rig();
+    const first = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    r.deps.providers = [{ port: new ScriptedDecisions([new Error("down")]), model: "jev-latest" }];
+    r.clock.t = new Date(NOW.getTime() + 1000);
+    const out = await getEventIdeaSuggestions(r.deps, caller("admin1"), REFRESH(3));
+    assert.equal(out.creditsCharged, 0);
+    assert.equal(out.computedAt, first.computedAt, "the saved answer is unchanged");
+    assert.equal(r.store.get(CREDITS)!.used, 1);
+    assert.equal(activeLease(r.store.get(CACHE), r.clock.t), null);
+  });
+
+  test("out of credits: never auto-runs; first visit gets the free heuristic (nothing saved), a stale cache is shown, refresh is refused", async () => {
+    const r = rig();
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyCredits: 0 });
+    const free = await getEventIdeaSuggestions(r.deps, caller("admin1"), req());
+    assert.equal(free.provider, "heuristic");
+    assert.equal(free.creditsCharged, 0);
+    assert.equal(r.jev.calls.length + r.openai.calls.length, 0);
+    assert.equal(r.store.get(CACHE), undefined);
+    assert.equal(free.considerations!.length, CONSIDERATION_IDS.length);
+    await fails(getEventIdeaSuggestions(r.deps, caller("admin1"), REFRESH(4)), "AI_CREDITS_EXHAUSTED");
+    r.store.seed(CACHE, { provider: "jev", suggestions: [], considerations: [], fingerprint: "00000000", computedAt: new Date(NOW.getTime() - DAY) });
+    const stale = await getEventIdeaSuggestions(r.deps, caller("admin2"), req());
+    assert.equal(stale.cacheStatus, "stale");
+    assert.equal(r.jev.calls.length, 0);
   });
 
   test("Jev unavailable: the OpenAI mini fallback answers", async () => {

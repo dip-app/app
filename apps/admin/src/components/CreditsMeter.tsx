@@ -10,9 +10,14 @@ import { DipbotMark } from "./DipbotMark";
  * The monthly Dipbot credits as a quiet outline meter: text, a thin bar and the reset date in the tooltip. Credits are
  * the only unit shown for AI use; nothing here ever mentions money.
  */
-export function CreditsMeter({ credits, daily }: { credits: AiCredits; /** The caller's draft runs left today (a separate per-admin limit), folded into the tooltip. */ daily?: { left: number; limit: number } }) {
+export function CreditsMeter({ credits, daily, visitCharged }: {
+  credits: AiCredits;
+  /** The caller's draft runs left today (a separate per-admin limit), folded into the tooltip. */ daily?: { left: number; limit: number };
+  /** Credits this page visit charged for the suggestions: 0 for a saved answer, 1 for the very first visit. Undefined while loading. */ visitCharged?: number;
+}) {
   const view = creditsView(credits);
-  const tip = `${t("credits.tip", { date: view.date, suggest: creditsText(credits.creditCost.suggest), generate: creditsText(credits.creditCost.generate) })}${daily ? ` ${t("credits.daily", daily)}` : ""}`;
+  const visit = visitCharged === undefined ? "" : visitCharged === 0 ? t("credits.visit.free") : t("credits.visit.charged", { cost: creditsText(visitCharged) });
+  const tip = `${t("credits.tip", { date: view.date, suggest: creditsText(credits.creditCost.suggest), generate: creditsText(credits.creditCost.generate) })}${daily ? ` ${t("credits.daily", daily)}` : ""}${visit ? ` ${visit}` : ""}`;
   const tipId = useId();
   return (
     <p className="credits-meter" data-level={view.level} tabIndex={0} aria-describedby={tipId}>

@@ -176,8 +176,32 @@ $r-box: 8px;
   .note-step { display: grid; gap: 12px; }
   .note-step .field textarea { min-height: 96px; }
   .note-meta { display: flex; justify-content: space-between; gap: 12px; min-height: 18px; .count { margin-left: auto; } }
-  .suggest { display: flex; flex-wrap: wrap; gap: 6px; }
-  .suggest-chip { min-height: 28px; padding: 0 10px; text-align: left; border-radius: $r-ctl; border: 1px solid $line-strong; background: $white; color: $ink; font: inherit; font-size: 13px; cursor: pointer; &:hover { background: $subtle; } }
+  // ---------- Considerations: compact toggle chips, the top few up front, everything else under "More options".
+  .consider { display: grid; gap: 8px; }
+  .consider-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    h3 { margin: 0; font-size: 14px; font-weight: 600; }
+    p { margin: 0; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); svg { color: $sg-ink; } } }
+  .pref-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .pref-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid $line-strong; background: $white; color: $ink; font: inherit; font-size: 13px; line-height: 1.2; text-align: left; cursor: pointer;
+    &:hover { background: $subtle; }
+    &:focus-visible { outline: 3px solid $ink; outline-offset: 2px; }
+    &[aria-pressed="true"] { border-color: $purple; box-shadow: inset 0 0 0 1px $purple; background: $tint; }
+    &[data-suggested="true"]:not([aria-pressed="true"]) { border-color: $sg-line; } }
+  .consider-more { display: grid; gap: 10px; }
+  .consider-toggle { justify-self: start; font-size: 13px; color: $sg-ink; display: inline-flex; align-items: center; gap: 4px; .muted { color: var(--muted); } }
+  .consider-panel[hidden] { display: none; }
+  .consider-panel { display: grid; gap: 12px; padding: 12px 0 2px; border-top: 1px solid $line-strong;
+    input[type="search"] { width: 100%; max-width: 340px; min-height: 34px; padding: 0 10px; border-radius: $r-ctl; border: 1px solid $line-strong; font: inherit; font-size: 13px; }
+    .consider-groups { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
+    legend { padding: 0; font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; } }
+  @media (max-width: 699px) { .consider-panel .consider-groups { grid-template-columns: 1fr; } .pref-chip { min-height: 36px; } }
+
+  // ---------- Saved suggestions: one quiet line (when it was updated, and the refresh action).
+  .sg-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -4px 0 0; padding-left: 2px; font-size: 12.5px; color: var(--muted);
+    svg { flex: none; color: $sg-ink; }
+    .link-btn { color: $sg-ink; font-size: 12.5px; white-space: nowrap; &:disabled { color: var(--muted); cursor: not-allowed; text-decoration: none; } } }
+  .sg-meta[data-stale="true"] { color: $ink; }
   .drafts-count { border: 0; padding: 0; margin: 0; display: flex; align-items: center; gap: 12px; legend { float: left; font-size: 13px; font-weight: 500; margin-right: 12px; padding: 0; line-height: 32px; } }
   .seg-radio { display: inline-flex; padding: 2px; gap: 2px; border-radius: $r-ctl; box-shadow: inset 0 0 0 1px $line-strong;
     label { position: relative; display: block; cursor: pointer; }
@@ -238,7 +262,6 @@ $r-box: 8px;
   .draft-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 
   @media (max-width: 900px) {
-    .suggest-chip { min-height: 36px; padding: 4px 10px; }
     .seg-radio span { min-width: 44px; height: 40px; }
   }
   @media (max-width: 700px) {

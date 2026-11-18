@@ -172,7 +172,17 @@ const SUGGESTED: AiStepSuggestion[] = [
   { question: "timing", value: "after_work", probability: 0.63, reason: "Easy to join without missing work", reasonBasis: "generic" },
 ];
 
-export function mockSuggestions(scenario: SuggestScenario): EventIdeaSuggestions {
+// ---------- Saved suggestions (the company-level cache). `?cache=` picks the state of the saved answer for design review:
+// fresh (default: computed 2 hours ago), stale (company data changed 3 days after it was computed), age (9 days old),
+// first (nothing saved: the first visit computes once and charges 1 credit).
+
+export type CacheScenario = "fresh" | "stale" | "age" | "first";
+export function cacheScenarioFromSearch(search: string): CacheScenario {
+  const value = new URLSearchParams(search).get("cache");
+  return value === "stale" || value === "age" || value === "first" ? value : "fresh";
+}
+
+export function mockSuggestions(scenario: SuggestScenario): Pick<EventIdeaSuggestions, "provider" | "suggestions"> {
   if (scenario === "none") return { provider: "none", suggestions: [] };
   const at = (p: number) => SUGGESTED.map((s) => ({ ...s, probability: p }));
   switch (scenario) {

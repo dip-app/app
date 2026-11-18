@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AiEventChoices } from "../../../generated/models";
 import { AdminError, invalid } from "../../admin/domain/errors";
+import { isConsiderationId, MAX_CONSIDERATIONS } from "./considerations";
 import { BUDGETS, GOALS, GROUP_SIZES, LIMITS, SETTINGS, TIMINGS } from "./vocabulary";
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -11,6 +12,8 @@ export interface ParsedGenerateRequest {
   requestId: string;
   choices: AiEventChoices;
   prompt: string;
+  /** Catalog consideration ids (accessibility, food, vibe, ...), validated and unique. */
+  considerations: string[];
   count: number;
 }
 
@@ -103,6 +106,9 @@ export function GenerateRequestSchema(catalogIds: ReadonlySet<string>) {
       timing: z.enum(TIMINGS),
     }),
     prompt: promptField,
+    considerations: z.array(z.string()).max(MAX_CONSIDERATIONS)
+      .refine(ids => new Set(ids).size === ids.length)
+      .refine(ids => ids.every(isConsiderationId)).default([]),
     count: z.number().int().min(1).max(LIMITS.draftsMax),
   });
 }
@@ -114,5 +120,5 @@ export function parseGenerateRequest(data: unknown, catalogIds: ReadonlySet<stri
   if (containsContactInfo(prompt)) {
     throw new AdminError("invalid-argument", "AI_PROMPT_REJECTED", "Leave out links, email addresses and phone numbers.", ["prompt"]);
   }
-  return { ...rest, choices: { ...choices, focusTagIds: [...choices.focusTagIds] }, prompt };
+  return { ...rest, choices: { ...choices, focusTagIds: [...choices.focusTagIds] }, prompt, considerations: [...rest.considerations] };
 }

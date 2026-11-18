@@ -49,7 +49,7 @@ describe("credits in the mock API", () => {
     const again = await api.generateEventDrafts({ requestId: "c1", choices, prompt: "", count: 3 });
     expect(again.replay).toBe(true);
     expect((await api.eventIdeaContext()).credits.creditsRemaining).toBe(402);
-    expect((await api.eventIdeaSuggestions("00000000-0000-4000-8000-000000000001")).credits?.creditsRemaining).toBe(402);
+    expect((await api.eventIdeaSuggestions()).credits?.creditsRemaining).toBe(402);
   });
 
   it("carries no money in any AI payload", async () => {

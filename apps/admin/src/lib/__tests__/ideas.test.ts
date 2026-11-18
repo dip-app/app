@@ -110,7 +110,7 @@ describe("flow helpers", () => {
     expect(choicesOf(full)).toMatchObject({ focusTagIds: ["tag-fitness", "tag-games"], goal: "team_bonding", timing: "after_work" });
     expect(choicesOf({ ...full, focusTagIds: [] })?.focusTagIds).toEqual([]);
     const lines = summaryLines(full, tagName);
-    expect(lines.map((l) => l.value)).toEqual(["Fitness, Games", "Team bonding", "Team, Indoors", "Under $15, After work", "Something new for the team"]);
+    expect(lines.map((l) => l.value)).toEqual(["Fitness, Games", "Team bonding", "Team, Indoors", "Under $15, After work", "2 preferences"]);
     expect(summaryLines(emptyAnswers(), tagName)[0].value).toBe("Any interest");
   });
 

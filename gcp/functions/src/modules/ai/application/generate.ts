@@ -102,7 +102,7 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
   const catalog = await deps.catalog.list();
   const request = parseGenerateRequest(data, new Set(catalog.map(tag => tag.id)));
   const { companyId, requestId } = request;
-  const hash = payloadHash({ choices: request.choices, prompt: request.prompt, count: request.count });
+  const hash = payloadHash({ choices: request.choices, prompt: request.prompt, count: request.count, ...(request.considerations.length > 0 ? { considerations: request.considerations } : {}) });
   const worst = worstCaseMicros(deps.settings);
   const key = `${caller.uid}_${requestId}`;
   await deps.limiter?.consume(caller.uid);
@@ -220,7 +220,7 @@ async function run(
     const interests = summarizeInterests(stats, catalog);
     const catalogIds = catalog.map(tag => tag.id);
     const input = buildGenerateUserContent({
-      choices: request.choices, count: request.count, note: request.prompt, catalog, topInterests: interests.top,
+      choices: request.choices, count: request.count, note: request.prompt, considerations: request.considerations, catalog, topInterests: interests.top,
       thinTagIds: interests.thinTagIds.slice(0, THIN_IN_PROMPT), theme, now,
     });
     const schema = modelDraftsSchema(catalogIds, { count: request.count, choices: request.choices });
