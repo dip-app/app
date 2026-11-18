@@ -33,7 +33,31 @@
   .series { fill: none; stroke: $ink; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; } }
 .chart-empty, .section-unavailable { background: $white; border-radius: $radius-inset; padding: 40px 20px; text-align: center; color: var(--muted); }
 
-.data-table { summary { cursor: pointer; font-family: var(--font-figtree), sans-serif; font-size: 15px; width: fit-content; padding: 6px 0; &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }
+.chart-frame { position: relative; border-radius: $radius-xs; touch-action: pan-y; -webkit-tap-highlight-color: transparent;
+  &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; }
+  .hit { fill: transparent; cursor: crosshair; }
+  .hover-band { fill: $ink; opacity: .09; }
+  .crosshair { stroke: $ink; stroke-width: 1; stroke-dasharray: 3 3; opacity: .45; }
+  .series-dot { fill: $white; stroke: $ink; stroke-width: 2; }
+  .bar.on { fill: #5f6df0; } }
+.chart-tooltip { position: absolute; z-index: 2; pointer-events: none; background: $white; color: $ink; border: 1px solid #c4c8d6; border-radius: 6px; padding: 8px 10px; min-width: 120px; box-shadow: 0 4px 12px rgba(30, 33, 43, .12); font-family: var(--font-figtree), sans-serif; font-size: 13px; line-height: 1.35;
+  p { margin: 0; }
+  .tip-date { font-weight: 600; margin-bottom: 4px; white-space: nowrap; }
+  .tip-row { display: flex; align-items: center; gap: 8px; strong { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; } }
+  .swatch { display: inline-block; flex: none; }
+  .swatch.bar { width: 10px; height: 10px; border-radius: 2px; background: $purple; }
+  .swatch.line { width: 10px; height: 0; border-top: 2.5px solid $ink; border-radius: 2px; } }
+@media (prefers-reduced-motion: no-preference) { .chart-tooltip { animation: tip-in .12s ease-out; } @keyframes tip-in { from { opacity: 0; } to { opacity: 1; } } }
+
+.disclosure { font-family: var(--font-figtree), sans-serif;
+  .disclosure-trigger { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px 0 4px; margin: 0; border: 0; background: transparent; color: $ink; font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; border-radius: $radius-xs;
+    &:focus-visible { outline: 3px solid $ink; outline-offset: 2px; } }
+  .disclosure-chevron { flex: none; transition: transform .16s ease; }
+  &.open .disclosure-chevron { transform: rotate(90deg); }
+  .disclosure-panel[hidden] { display: none; } }
+@media (prefers-reduced-motion: reduce) { .disclosure .disclosure-chevron { transition: none; } }
+
+.data-table {
   .table-scroll { max-height: 280px; overflow: auto; background: $white; border-radius: $radius-inset; padding: 4px 12px; margin-top: 8px; }
   .table thead th { position: sticky; top: 0; background: $white; } }
 

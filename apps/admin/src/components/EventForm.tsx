@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; // tags load from the shared catalog
-import { COVERS, type Tag } from "@/lib/catalog";
+import { COVERS } from "@/lib/catalog";
 import { type TagStat, countsByTag, hasStats, interestLabel } from "@/lib/tagStats";
 import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
@@ -17,6 +17,7 @@ import { Dialog } from "./Dialog";
 import { EventPreview } from "./EventPreview";
 import { RadioGrid } from "./RadioGrid";
 import { toast } from "./Toast";
+import { useTags } from "./TagCatalog";
 import { Toggle } from "./Toggle";
 import { t } from "@/lib/aiStrings";
 
@@ -51,30 +52,37 @@ export function EventForm({ event, onReload }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
-  const [tags, setTags] = useState<Tag[]>([]);
+  // IDs are opaque in production: the selector writes IDs and shows the catalog's names.
+  const catalog = useTags();
+  const tags = catalog.tags;
   // Interest counts (organizers and admins). Shown only once the company has stat docs; any failure hides them.
   const [stats, setStats] = useState<TagStat[] | null>(null);
   useEffect(() => {
     let cancelled = false;
-    api.listTags().then((list) => !cancelled && setTags(list), () => !cancelled && setTags([]));
     api.tagStats().then((list) => !cancelled && setStats(list), () => !cancelled && setStats(null));
     return () => { cancelled = true; };
   }, [api]);
-  // Create only, and only when arriving from Dipbot (?from=ai): fill the AI draft once. Venue and times stay empty.
+  // Create only, and only when arriving from Dipbot (?from=ai): fill the AI draft once, after the tag catalog has loaded
+  // so its tag IDs are matched against the real catalog. Venue and times stay empty.
   const [fromAi, setFromAi] = useState(false);
   const aiChecked = useRef(false);
+  const aiTaken = useRef<ReturnType<typeof takeAiDraft>>(null);
   useEffect(() => {
     if (editing || aiChecked.current) return;
     aiChecked.current = true;
     if (new URLSearchParams(window.location.search).get("from") !== "ai") return;
-    let taken = null;
-    try { taken = takeAiDraft(window.sessionStorage); } catch { /* storage blocked: start empty */ }
-    if (!taken) return;
-    const fill = draftToPrefill(taken);
+    try { aiTaken.current = takeAiDraft(window.sessionStorage); } catch { /* storage blocked: start empty */ }
+  }, [editing]);
+  useEffect(() => {
+    const taken = aiTaken.current;
+    if (!taken || catalog.status === "loading") return;
+    aiTaken.current = null;
+    // If the catalog couldn't load, keep the draft's tag IDs and let the server validate them.
+    const fill = draftToPrefill(taken, catalog.status === "ready" ? catalog.tags.map((tag) => tag.id) : taken.tagIds);
     setDraft((current) => ({ ...current, ...fill }));
     setPrice(centsToDollars(fill.costCents));
     setFromAi(true);
-  }, [editing]);
+  }, [catalog.status, catalog.tags]);
   const tagCounts = hasStats(stats) ? countsByTag(stats) : null;
   // One key per create attempt, kept across retries so a lost response can never create two events.
   const requestId = useRef(crypto.randomUUID());
@@ -172,7 +180,8 @@ export function EventForm({ event, onReload }: Props) {
         <fieldset className="field">
           <legend>Tags</legend>
           <div className="chips">
-            {tags.length === 0 && <span className="hint">Loading tags…</span>}
+            {catalog.status === "loading" && <span className="hint">Loading tags…</span>}
+            {catalog.status === "error" && <span className="hint">Couldn’t load tags. <button type="button" className="link-btn" onClick={catalog.reload}>Try again</button></span>}
             {tags.map((tag) => (
               <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
                 aria-label={tagCounts ? `${tag.name}, ${interestLabel(tagCounts.get(tag.id) ?? 0)}` : undefined}

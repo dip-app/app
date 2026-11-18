@@ -14,13 +14,14 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined })
 vi.mock("../AppProvider", () => ({ useApp: () => ({ api: current!.api, session: { uid: "u" } }) }));
 
 import { Ideas } from "../Ideas";
+import { TagCatalogProvider } from "../TagCatalog";
 
 async function open(search: string) {
   const api = createMockApi(memory(), () => NOW);
   await api.signIn("admin");
   current = { api };
   window.history.replaceState(null, "", `/${search}`);
-  render(<Ideas />);
+  render(<TagCatalogProvider><Ideas /></TagCatalogProvider>);
 }
 
 beforeEach(() => { current = null; });

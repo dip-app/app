@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { type CompanyInsights, type InsightsSection, type Role, can } from "@/lib/adminTypes";
 import {
-  chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, shortDay,
+  chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, placeTooltip, shortDay, stepDay, tooltipDay,
 } from "@/lib/insights";
 import type { Tag } from "@/lib/catalog";
 import { type TagStat, hasStats, interestLabel, interestRows } from "@/lib/tagStats";
+import { Disclosure } from "./Disclosure";
 import { TableRegion } from "./TableRegion";
 import { Avatar, formatDate } from "./Ui";
 
@@ -88,6 +89,42 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
     return () => observer.disconnect();
   }, []);
   const model = chartModel(insights.activity, Math.max(280, width), width < 480 ? 220 : 260);
+  // Hover, focus and tap all drive one active day; `via` decides whether the live region announces it (keyboard and touch only).
+  const [active, setActive] = useState<number | null>(null);
+  const [via, setVia] = useState<"pointer" | "keyboard">("pointer");
+  const tip = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ left: number; top: number; flipped: boolean }>({ left: 0, top: 0, flipped: false });
+  const count = insights.activity.length;
+  const slot = count > 0 ? (model.plotRight - model.plotLeft) / count : 0;
+  const linePoints = model.line.split(" ").map((pair) => Number(pair.split(",")[1]));
+  useLayoutEffect(() => {
+    const frameNode = frame.current, tipNode = tip.current;
+    if (active === null || !frameNode || !tipNode) return;
+    const f = frameNode.getBoundingClientRect();
+    const svg = frameNode.querySelector("svg")?.getBoundingClientRect();
+    const sx = svg && svg.width > 0 ? svg.width / model.width : 1, sy = svg && svg.height > 0 ? svg.height / model.height : 1;
+    const ox = svg ? svg.left - f.left : 0, oy = svg ? svg.top - f.top : 0;
+    setPlace(placeTooltip({
+      anchorX: ox + (model.plotLeft + (active + 0.5) * slot) * sx, anchorY: oy + model.plotTop * sy,
+      width: tipNode.offsetWidth, height: tipNode.offsetHeight, boundsWidth: f.width || model.width, boundsHeight: f.height || model.height,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, width]);
+  // Tapping anywhere outside the chart dismisses a touch tooltip.
+  useEffect(() => {
+    if (active === null) return;
+    const away = (event: PointerEvent) => { if (!frame.current?.contains(event.target as Node)) setActive(null); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [active]);
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const next = stepDay(active, event.key, count);
+    if (next === undefined) return;
+    event.preventDefault();
+    setVia("keyboard");
+    setActive(next);
+  };
+  const activeDay = active !== null ? insights.activity[active] : undefined;
   const unavailable = off(insights, "activity");
   const quiet = model.total.rsvps === 0 && model.total.photos === 0;
   const first = insights.activity[0]?.date, last = insights.activity[insights.activity.length - 1]?.date;
@@ -104,24 +141,52 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
       {unavailable ? <SectionUnavailable /> : quiet ? (
         <p className="chart-empty">No RSVPs or photos in the last 30 days. Activity shows up here as soon as people join events.</p>
       ) : (
-        <div ref={frame} className="chart-frame"><svg className="chart" viewBox={`0 0 ${model.width} ${model.height}`} role="img" aria-labelledby={`${id}-t ${id}-d`} preserveAspectRatio="xMidYMid meet">
-          <title id={`${id}-t`}>Activity in the last 30 days</title>
-          <desc id={`${id}-d`}>{summary}</desc>
-          {model.ticks.map((tick) => (
-            <g key={tick.value}>
-              <line x1={model.plotLeft} x2={model.plotRight} y1={tick.y} y2={tick.y} className="grid" />
-              <text x={model.plotLeft - 8} y={tick.y + 4} textAnchor="end" className="axis">{formatCount(tick.value)}</text>
-            </g>
-          ))}
-          {model.bars.map((bar) => (
-            <rect key={bar.day.date} x={bar.x} y={bar.y} width={bar.width} height={Math.max(bar.height, 0)} rx={Math.min(3, bar.width / 2)} className="bar" />
-          ))}
-          <polyline points={model.line} className="series" />
-          {model.labels.map((label) => <text key={label.text} x={label.x} y={model.height - 8} textAnchor={label.anchor} className="axis">{label.text}</text>)}
-        </svg></div>
+        <div ref={frame} className="chart-frame" tabIndex={0} role="group" aria-roledescription="chart" aria-label="Activity chart. Use the left and right arrow keys to move between days."
+          onKeyDown={onKeyDown}
+          onFocus={(event) => {
+            let visible = true;
+            try { visible = event.currentTarget.matches(":focus-visible"); } catch { /* older engines: treat as keyboard focus */ }
+            if (visible && active === null) { setVia("keyboard"); setActive(count - 1); }
+          }}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(null); }}
+          onPointerLeave={(event) => { if (event.pointerType === "mouse") setActive(null); }}>
+          <svg className="chart" viewBox={`0 0 ${model.width} ${model.height}`} role="img" aria-labelledby={`${id}-t ${id}-d`} preserveAspectRatio="xMidYMid meet">
+            <title id={`${id}-t`}>Activity in the last 30 days</title>
+            <desc id={`${id}-d`}>{summary}</desc>
+            {model.ticks.map((tick) => (
+              <g key={tick.value}>
+                <line x1={model.plotLeft} x2={model.plotRight} y1={tick.y} y2={tick.y} className="grid" />
+                <text x={model.plotLeft - 8} y={tick.y + 4} textAnchor="end" className="axis">{formatCount(tick.value)}</text>
+              </g>
+            ))}
+            {active !== null && <g aria-hidden pointerEvents="none">
+              <rect x={model.plotLeft + active * slot} y={model.plotTop} width={slot} height={model.plotBottom - model.plotTop} className="hover-band" />
+              <line x1={model.plotLeft + (active + 0.5) * slot} x2={model.plotLeft + (active + 0.5) * slot} y1={model.plotTop} y2={model.plotBottom} className="crosshair" />
+            </g>}
+            {model.bars.map((bar, i) => (
+              <rect key={bar.day.date} x={bar.x} y={bar.y} width={bar.width} height={Math.max(bar.height, 0)} rx={Math.min(3, bar.width / 2)} className={`bar${active === i ? " on" : ""}`} pointerEvents="none" />
+            ))}
+            <polyline points={model.line} className="series" pointerEvents="none" />
+            {active !== null && <circle cx={model.plotLeft + (active + 0.5) * slot} cy={linePoints[active]} r={4} className="series-dot" aria-hidden pointerEvents="none" />}
+            {model.labels.map((label) => <text key={label.text} x={label.x} y={model.height - 8} textAnchor={label.anchor} className="axis">{label.text}</text>)}
+            {insights.activity.map((day, i) => (
+              <rect key={day.date} data-col={i} data-date={day.date} x={model.plotLeft + i * slot} y={0} width={slot} height={model.plotBottom} className="hit" aria-hidden
+                onPointerEnter={(event) => { if (event.pointerType === "mouse") { setVia("pointer"); setActive(i); } }}
+                onPointerMove={(event) => { if (event.pointerType === "mouse" && active !== i) { setVia("pointer"); setActive(i); } }}
+                onPointerDown={(event) => { if (event.pointerType !== "mouse") { setVia("keyboard"); setActive(i); } }} />
+            ))}
+          </svg>
+          {activeDay && (
+            <div ref={tip} className={`chart-tooltip${place.flipped ? " flipped" : ""}`} style={{ left: place.left, top: place.top }} aria-hidden data-testid="chart-tooltip">
+              <p className="tip-date">{tooltipDay(activeDay.date)}</p>
+              <p className="tip-row"><span className="swatch bar" />RSVPs <strong>{formatCount(activeDay.rsvps)}</strong></p>
+              <p className="tip-row"><span className="swatch line" />Photos <strong>{formatCount(activeDay.photos)}</strong></p>
+            </div>
+          )}
+          <p className="sr-only" aria-live="polite" role="status">{activeDay && via === "keyboard" ? `${tooltipDay(activeDay.date)}: ${formatCount(activeDay.rsvps)} RSVPs, ${formatCount(activeDay.photos)} photos` : ""}</p>
+        </div>
       )}
-      {!unavailable && <details className="data-table">
-        <summary>View as table</summary>
+      {!unavailable && <Disclosure className="data-table" summary="View as table">
         <div className="table-scroll">
           <table className="table compact">
             <caption className="sr-only">RSVPs and photos per day, last 30 days</caption>
@@ -133,7 +198,7 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
             </tbody>
           </table>
         </div>
-      </details>}
+      </Disclosure>}
     </section>
   );
 }

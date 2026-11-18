@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
+import { ThemeArt } from "@/components/ThemeArt";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { toast } from "@/components/Toast";
 import { Toggle } from "@/components/Toggle";
@@ -254,7 +255,7 @@ function Review() {
     <>
       <div className="toolbar">
         <Link className="pill-btn gray" href="/challenges/">All themes</Link>
-        {theme && <><strong className="theme-name">{theme.title}</strong><span className="muted">{formatWindow(theme.startDate, theme.endDate)} · {formatGoal(theme.goal, theme.goalUnit)}</span></>}
+        {theme && <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" /><strong className="theme-name">{theme.title}</strong><span className="muted">{formatWindow(theme.startDate, theme.endDate)} · {formatGoal(theme.goal, theme.goalUnit)}</span></>}
       </div>
       <Tabs idBase="review" label="Filter submissions" value={status} onChange={(id) => chooseStatus(id as SubmissionStatus)} items={TABS.map((tab) => ({ id: tab, label: STATUS_LABEL[tab] }))} />
       {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><button type="button" className="pill-btn gray small" onClick={() => setBanner(null)}>Dismiss</button></div>}
@@ -307,7 +308,13 @@ function Review() {
                     <button className="pill-btn gray small to-list" onClick={() => queueTop.current?.scrollIntoView?.({ block: "start" })}>Back to list</button>
                   </div>
                   <div className="keys-toggle">
-                    {shortcuts && <p className="hint keys">Keys: <kbd>J</kbd> next, <kbd>K</kbd> previous{selected.status === "submitted" && <>, <kbd>A</kbd> approve, <kbd>R</kbd> request changes</>}.</p>}
+                    {shortcuts && (
+                      <ul className="key-hints" aria-label="Keyboard shortcuts">
+                        {[["J", "Next"], ["K", "Previous"], ...(selected.status === "submitted" ? [["A", "Approve"], ["R", "Request changes"]] : [])].map(([key, action]) => (
+                          <li key={key} aria-label={`Press ${key} for ${action.toLowerCase()}`}><kbd aria-hidden>{key}</kbd><span aria-hidden>{action}</span></li>
+                        ))}
+                      </ul>
+                    )}
                     <Toggle checked={shortcuts} onChange={setShortcuts} label="Keyboard shortcuts" hint="Single-key shortcuts for this page. Turn them off if they get in the way." />
                   </div>
                 </div>
