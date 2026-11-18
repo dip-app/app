@@ -21,11 +21,11 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | unauthenticated | `UNAUTHENTICATED` |
 | invalid-argument | `VALIDATION_FAILED` (with `fields`), `TEAM_NOT_FOUND` (unknown or archived team in an edit), `EMAIL_DOMAIN_MISMATCH`, `IMPORT_TOO_LARGE`, `AI_PROMPT_REJECTED` (with `fields: ["prompt"]`) |
 | permission-denied | `EMAIL_NOT_VERIFIED`, `PROVIDER_NOT_ALLOWED`, `INSUFFICIENT_ROLE`, `COMPANY_MISMATCH`, `ACCOUNT_DEACTIVATED`, `MEMBERSHIP_CONFLICT` (caller has no membership) |
-| not-found | `BUG_REPORT_NOT_FOUND` (also for another company's report), `ASSIGNEE_NOT_FOUND`, `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND` (also for a user of another company), `ROSTER_ENTRY_NOT_FOUND`, `IMPORT_JOB_NOT_FOUND`, `TEAM_NOT_FOUND` (upsert of an unknown teamId) |
-| failed-precondition | `AI_DISABLED`, `ROSTER_ENTRY_CLAIMED` (resend for someone who already signed in), `ROSTER_ENTRY_NOT_INVITED` (resend for a revoked entry), `REQUEST_REUSED`, `EVENT_CLOSED` (cancelled or ended), `EVENT_NOT_STARTED`, `NOT_GOING`, `LAST_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `ATTENDANCE_LOCKED`, `INSUFFICIENT_POINTS`, `EMAIL_ALREADY_MEMBER`, `IMPORT_PLAN_MISMATCH`, `IMPORT_NOT_PLANNED` |
+| not-found | `COVER_CANDIDATE_EXPIRED` (importing a photo not shown by a search in the last 24 hours), `BUG_REPORT_NOT_FOUND` (also for another company's report), `ASSIGNEE_NOT_FOUND`, `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND` (also for a user of another company), `ROSTER_ENTRY_NOT_FOUND`, `IMPORT_JOB_NOT_FOUND`, `TEAM_NOT_FOUND` (upsert of an unknown teamId) |
+| failed-precondition | `AI_DISABLED`, `COVER_SEARCH_UNAVAILABLE` (Search more photos while AI or the Pixabay key is off), `ROSTER_ENTRY_CLAIMED` (resend for someone who already signed in), `ROSTER_ENTRY_NOT_INVITED` (resend for a revoked entry), `REQUEST_REUSED`, `EVENT_CLOSED` (cancelled or ended), `EVENT_NOT_STARTED`, `NOT_GOING`, `LAST_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `ATTENDANCE_LOCKED`, `INSUFFICIENT_POINTS`, `EMAIL_ALREADY_MEMBER`, `IMPORT_PLAN_MISMATCH`, `IMPORT_NOT_PLANNED` |
 | resource-exhausted | `AI_FLAG_LIMIT`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `AI_BUDGET_EXHAUSTED`, `AI_CREDITS_EXHAUSTED` (details `creditsRemaining` and `resetsAt`) (see [AI event drafts](#ai-event-drafts-aigenerate-admin-only)), `EVENT_FULL` (no `capacityOverrideReason`, or capacity already 10000), `RATE_LIMITED`, `RESEND_LIMIT` (an invite was already resent 10 times) |
 | aborted | `REVISION_CONFLICT`, `IMPORT_JOB_BUSY`, `REQUEST_IN_PROGRESS` (same `requestId` still generating) |
-| unavailable | `AI_UNAVAILABLE`, `AI_OUTPUT_INVALID` (model provider failed or returned unusable output; safe to retry with the same `requestId`) |
+| unavailable | `COVER_IMPORT_FAILED` (download or processing of a chosen photo failed; pick another), `AI_UNAVAILABLE`, `AI_OUTPUT_INVALID` (model provider failed or returned unusable output; safe to retry with the same `requestId`) |
 | internal | `INVALID_STORED_DATA` (generic message) |
 
 ## Roles and permission matrix
@@ -47,7 +47,7 @@ Server-side contract for the admin portal: roles and permissions, the append-onl
 | `insights.read` | `getCompanyInsightsV1` (points and balances only for admin) | no | yes | yes |
 | `bugreport.manage` | `listBugReportsV1`, `getBugReportV1`, `updateBugReportV1` | no | no | yes |
 | `challenge.manage` | `createChallengeV1`, `updateChallengeV1` | no | admin only today (challenges module not yet migrated to `can`) | yes |
-| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `pickEventCoverV1`, `getEventIdeaSuggestionsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1` | no | no | yes |
+| `ai.generate` | `getEventIdeaContextV1`, `generateEventDraftsV1`, `pickEventCoverV1`, `searchCoverPhotosV1`, `importCoverPhotoV1`, `getEventIdeaSuggestionsV1`, `manageSuggestionsEmailV1`, `resolveSuggestedIdeaV1` | no | no | yes |
 
 Only an admin can create another admin or organizer (through `updateMemberV1`, a roster entry or an import). The last admin of a company can never be demoted or deactivated. Clients cannot write `role`, `status`, `teamIds`, `workLocation`, counts, balances or ledger entries (rules allow-list, unchanged).
 

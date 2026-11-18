@@ -2937,6 +2937,85 @@ public struct PickEventCoverResponse: Codable, Equatable, Sendable {
     }
 }
 
+public enum CoverSearchStatus: String, Codable, Equatable, Sendable {
+    case ok = "ok"
+    case rate_limited = "rate_limited"
+    case quota = "quota"
+    case unavailable = "unavailable"
+}
+
+public struct CoverPhotoCandidate: Codable, Equatable, Sendable {
+    public var key: String
+    public var previewURL: String
+    public var tags: [String]
+    public var width: Int
+    public var height: Int
+    public var stored: Bool
+
+    public init(key: String, previewURL: String, tags: [String], width: Int, height: Int, stored: Bool) {
+        self.key = key
+        self.previewURL = previewURL
+        self.tags = tags
+        self.width = width
+        self.height = height
+        self.stored = stored
+    }
+}
+
+public struct SearchCoverPhotosRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var query: String
+
+    public init(contractVersion: Int, companyId: String, requestId: String, query: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.query = query
+    }
+}
+
+public struct SearchCoverPhotosResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var candidates: [CoverPhotoCandidate]
+    public var status: CoverSearchStatus
+
+    public init(contractVersion: Int, candidates: [CoverPhotoCandidate], status: CoverSearchStatus) {
+        self.contractVersion = contractVersion
+        self.candidates = candidates
+        self.status = status
+    }
+}
+
+public struct ImportCoverPhotoRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var key: String
+
+    public init(contractVersion: Int, companyId: String, requestId: String, key: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.key = key
+    }
+}
+
+public struct ImportCoverPhotoResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var coverImageURL: String
+    public var coverAlt: String
+    public var newPhoto: Bool
+
+    public init(contractVersion: Int, coverImageURL: String, coverAlt: String, newPhoto: Bool) {
+        self.contractVersion = contractVersion
+        self.coverImageURL = coverImageURL
+        self.coverAlt = coverAlt
+        self.newPhoto = newPhoto
+    }
+}
+
 public enum SuggestionsEmailAction: String, Codable, Equatable, Sendable {
     case status = "status"
     case preview = "preview"

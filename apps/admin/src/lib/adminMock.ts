@@ -12,7 +12,7 @@ import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
 import { mockTagStats } from "./tagStatsMock";
 import { bundledTagId, previewTagId } from "./catalog";
-import { type PickEventCoverResult, lexicalPick } from "./covers";
+import { type ImportCoverPhotoResult, type PickEventCoverResult, type SearchCoverPhotosResult, lexicalPick } from "./covers";
 import { rankConsiderationsByRules } from "./considerations";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
@@ -913,6 +913,16 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const pick = lexicalPick(input, input.excludeCoverImageURLs ?? []);
       const alternatives = [lexicalPick(input, [...(input.excludeCoverImageURLs ?? []), pick.url]).url].filter((url) => url !== pick.url);
       return { coverImageURL: pick.url, source: "match", provider: null, alternatives };
+    },
+    // Local stand-in for searchCoverPhotosV1: there is no Pixabay offline, so the search reports "unavailable". No network.
+    async searchCoverPhotos(): Promise<SearchCoverPhotosResult> {
+      staff("ai.generate");
+      await aiDelay(250);
+      return { candidates: [], status: "unavailable" };
+    },
+    async importCoverPhoto(): Promise<ImportCoverPhotoResult> {
+      staff("ai.generate");
+      throw new ApiError("failed-precondition", "More photos are not available in the demo.", {}, "COVER_SEARCH_UNAVAILABLE");
     },
     async generateEventDrafts(input): Promise<GenerateDraftsResult> {
       const session = staff("ai.generate");

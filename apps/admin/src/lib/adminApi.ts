@@ -4,7 +4,7 @@ import type {
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
   EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
-import type { PickEventCoverInput, PickEventCoverResult } from "./covers";
+import type { ImportCoverPhotoResult, PickEventCoverInput, PickEventCoverResult, SearchCoverPhotosResult } from "./covers";
 import type { TagStat } from "./tagStats";
 
 /**
@@ -94,6 +94,10 @@ export interface AdminOpsApi {
   eventIdeaSuggestions(input?: EventIdeaSuggestionsInput): Promise<EventIdeaSuggestions>;
   /** pickEventCoverV1: Dipbot picks a cover from the library for the event text. Nothing is stored; the form applies the result. */
   pickEventCover(input: PickEventCoverInput): Promise<PickEventCoverResult>;
+  /** searchCoverPhotosV1: "Search more photos". Free; returns up to 12 temporary Pixabay previews or a polite status. Nothing is stored. */
+  searchCoverPhotos(query: string): Promise<SearchCoverPhotosResult>;
+  /** importCoverPhotoV1: stores a photo from a recent search (by key only) as a dynamic cover and returns its catalog URL. Free. */
+  importCoverPhoto(key: string): Promise<ImportCoverPhotoResult>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

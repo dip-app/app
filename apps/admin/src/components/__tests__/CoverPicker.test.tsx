@@ -7,10 +7,12 @@ import { ApiError } from "@/lib/contract";
 import { CoverPicker } from "../CoverPicker";
 
 const pickEventCover = vi.fn();
+const searchCoverPhotos = vi.fn();
+const importCoverPhoto = vi.fn();
 let failWith: Error | null = null; // a plain rejection, outside the spy, so vitest does not track it
-vi.mock("../AppProvider", () => ({ useApp: () => ({ api: { pickEventCover: (input: unknown) => (failWith ? Promise.reject(failWith) : pickEventCover(input)) } }) }));
+vi.mock("../AppProvider", () => ({ useApp: () => ({ api: { pickEventCover: (input: unknown) => (failWith ? Promise.reject(failWith) : pickEventCover(input)), searchCoverPhotos, importCoverPhoto } }) }));
 
-beforeEach(() => { pickEventCover.mockReset(); failWith = null; });
+beforeEach(() => { searchCoverPhotos.mockReset(); importCoverPhoto.mockReset(); pickEventCover.mockReset(); failWith = null; });
 afterEach(cleanup);
 
 function Harness({ initial = "catalog://default/hiking", title = "Kayak day", onChange }: { initial?: string; title?: string; onChange?: (u: string) => void }) {
@@ -160,5 +162,84 @@ describe("CoverPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Let Dipbot choose/ }));
     expect(pickEventCover).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toContain("Add a title");
+  });
+
+  describe("Search more photos", () => {
+    const candidate = (id: number) => ({ key: `pixabay-${id}`, previewURL: `https://pixabay.com/get/web-${id}_640.jpg`, tags: ["axe", "throwing", "wood"], width: 4000, height: 2500, stored: false });
+    const type = (text: string) => fireEvent.change(screen.getByLabelText("Search covers"), { target: { value: text } });
+    const searchButton = () => screen.queryByRole("button", { name: "Search more photos" });
+
+    it("shows the button only when the search box has text", () => {
+      render(<Harness />);
+      expect(searchButton()).toBeNull();
+      type("axe throwing");
+      expect(searchButton()).toBeTruthy();
+      type("   ");
+      expect(searchButton()).toBeNull();
+    });
+
+    it("renders candidates with the Pixabay credit link, then imports on select and selects the new cover", async () => {
+      searchCoverPhotos.mockResolvedValue({ status: "ok", candidates: [candidate(111), candidate(222)] });
+      importCoverPhoto.mockResolvedValue({ coverImageURL: "catalog://cover/pixabay-111", coverAlt: "Photo of axe throwing", newPhoto: true });
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+      type("axe throwing");
+      fireEvent.click(searchButton()!);
+      const grid = await screen.findByRole("list", { name: "More photos" });
+      expect(searchCoverPhotos).toHaveBeenCalledWith("axe throwing");
+      const imgs = Array.from(grid.querySelectorAll("img"));
+      expect(imgs).toHaveLength(2);
+      expect(imgs[0].getAttribute("src")).toBe("https://pixabay.com/get/web-111_640.jpg");
+      expect(imgs[0].getAttribute("referrerpolicy")).toBe("no-referrer");
+      expect(imgs[0].getAttribute("loading")).toBe("lazy");
+      expect(imgs[0].getAttribute("alt")).toBe("axe, throwing, wood");
+      const credit = screen.getByRole("link", { name: "Photos from Pixabay" });
+      expect(credit.getAttribute("href")).toBe("https://pixabay.com/");
+      expect(credit.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(credit.getAttribute("target")).toBe("_blank");
+      fireEvent.click(screen.getAllByRole("button", { name: /Use photo/ })[0]);
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith("catalog://cover/pixabay-111"));
+      expect(importCoverPhoto).toHaveBeenCalledWith("pixabay-111");
+      expect(await screen.findByText("Found a new photo for this event")).toBeTruthy();
+    });
+
+    it("shows a busy state on the imported tile and keeps the others disabled meanwhile", async () => {
+      searchCoverPhotos.mockResolvedValue({ status: "ok", candidates: [candidate(111), candidate(222)] });
+      let finish: (v: unknown) => void = () => undefined;
+      importCoverPhoto.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+      render(<Harness />);
+      type("axe");
+      fireEvent.click(searchButton()!);
+      const buttons = await screen.findAllByRole("button", { name: /Use photo/ });
+      fireEvent.click(buttons[0]);
+      expect(await screen.findByText("Adding…")).toBeTruthy();
+      expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
+      finish({ coverImageURL: "catalog://cover/pixabay-111", coverAlt: "x", newPhoto: false });
+      await waitFor(() => expect(screen.queryByText("Adding…")).toBeNull());
+    });
+
+    it.each(["rate_limited", "quota", "unavailable"] as const)("shows a polite message for status %s", async (status) => {
+      searchCoverPhotos.mockResolvedValue({ status, candidates: [] });
+      render(<Harness />);
+      type("axe");
+      fireEvent.click(searchButton()!);
+      expect(await screen.findByText("More photos are not available right now. Try again later.")).toBeTruthy();
+      expect(screen.queryByRole("link", { name: "Photos from Pixabay" })).toBeNull();
+    });
+
+    it("shows the same message when the call fails, and an import error leaves the cover unchanged", async () => {
+      searchCoverPhotos.mockRejectedValueOnce(new Error("boom"));
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+      type("axe");
+      fireEvent.click(searchButton()!);
+      expect(await screen.findByText("More photos are not available right now. Try again later.")).toBeTruthy();
+      searchCoverPhotos.mockResolvedValue({ status: "ok", candidates: [candidate(111)] });
+      importCoverPhoto.mockRejectedValue(new ApiError("not-found", "gone", {}, "COVER_CANDIDATE_EXPIRED"));
+      fireEvent.click(searchButton()!);
+      fireEvent.click(await screen.findByRole("button", { name: /Use photo/ }));
+      expect((await screen.findByRole("alert")).textContent).toContain("no longer available");
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 });
