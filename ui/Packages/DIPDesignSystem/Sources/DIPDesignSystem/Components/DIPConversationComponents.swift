@@ -117,8 +117,18 @@ public struct DIPMessageComposer: View {
                 }
                 .buttonStyle(DIPPressFeedbackStyle())
                 .disabled(!canSend)
-                .accessibilityLabel("Send")
-                .accessibilityValue(isSending ? "Sending" : (canSend ? "" : "Enter a message within the character limit"))
+                .accessibilityLabel(Text("Send", bundle: .module))
+                .accessibilityValue(
+                    isSending
+                        ? String(
+                            localized: "ds.composer.sending", defaultValue: "Sending", bundle: .module,
+                            comment: "Accessibility value of the send button while a message is being sent")
+                        : (canSend
+                            ? ""
+                            : String(
+                                localized: "ds.composer.messageHint", defaultValue: "Enter a message within the character limit",
+                                bundle: .module,
+                                comment: "Accessibility value of the disabled send button in the chat composer")))
                 .accessibilityIdentifier(identifierPrefix + ".send")
             }
     }
@@ -155,8 +165,17 @@ public struct DIPMessageComposer: View {
             }
             .buttonStyle(DIPPressFeedbackStyle())
             .disabled(!canSend)
-            .accessibilityLabel("Send")
-            .accessibilityValue(isSending ? "Sending" : (canSend ? "" : "Type a comment to send"))
+            .accessibilityLabel(Text("Send", bundle: .module))
+            .accessibilityValue(
+                isSending
+                    ? String(
+                        localized: "ds.composer.sending", defaultValue: "Sending", bundle: .module,
+                        comment: "Accessibility value of the send button while a message is being sent")
+                    : (canSend
+                        ? ""
+                        : String(
+                            localized: "ds.composer.commentHint", defaultValue: "Type a comment to send", bundle: .module,
+                            comment: "Accessibility value of the disabled send button in the photo comment composer")))
             .accessibilityIdentifier(identifierPrefix + ".send")
         }
     }
@@ -169,7 +188,7 @@ public struct DIPMessageComposer: View {
                         .font(.footnote).foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
                         .accessibilityIdentifier(identifierPrefix + ".error")
                     Button(action: onSend) {
-                        Text("Try Again").dipHitSlop(horizontal: 12, vertical: 14)
+                        Text("Try Again", bundle: .module).dipHitSlop(horizontal: 12, vertical: 14)
                     }
                         .font(.footnote.weight(.semibold))
                         .disabled(!canSend)
@@ -208,6 +227,11 @@ public struct DIPConversationBubble: View {
         self.authorName = authorName; self.text = text; self.timestamp = timestamp
         self.isOwn = isOwn; self.avatar = AnyView(avatar())
     }
+    private var ownAuthorLabel: String {
+        String(
+            localized: "ds.conversation.you", defaultValue: "You", bundle: .module,
+            comment: "Author label on the member's own chat messages")
+    }
     public var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if isOwn { Spacer(minLength: 36) }
@@ -220,7 +244,7 @@ public struct DIPConversationBubble: View {
             }
             VStack(alignment: isOwn ? .trailing : .leading, spacing: 5) {
                 if showsAuthor {
-                    Text(isOwn ? "You" : authorName)
+                    Text(isOwn ? ownAuthorLabel : authorName)
                         .font(DIPReferenceAssets.font("Figtree-Bold", size: 13))
                         .accessibilityHidden(true)
                 }
@@ -241,7 +265,13 @@ public struct DIPConversationBubble: View {
         }
         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
         .accessibilityElement(children: .combine)
-        .accessibilityValue("\(isOwn ? "You" : authorName), \(timestamp.formatted(date: .abbreviated, time: .shortened))")
+        .accessibilityValue(
+            String(
+                localized: "ds.conversation.bubble.value",
+                defaultValue: "\(isOwn ? ownAuthorLabel : authorName), \(timestamp.formatted(date: .abbreviated, time: .shortened))",
+                bundle: .module,
+                comment: "Accessibility value of a chat message; %1$@ = author name or You, %2$@ = date and time sent")
+        )
     }
 }
 

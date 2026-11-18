@@ -52,10 +52,10 @@ public final class DIPInvitesModel {
                 invites = value; phase = .ready; isStale = false
             }
             guard !Task.isCancelled, generation == current else { return }
-            markUnavailable("Updates stopped. Check your connection.")
+            markUnavailable(String(localized: "notifications.error.updatesStopped", defaultValue: "Updates stopped. Check your connection.", bundle: .module, comment: "Error shown when live updates stop"))
         } catch {
             guard !Task.isCancelled, generation == current else { return }
-            markUnavailable((error as? DIPInviteFailure)?.message ?? "Couldn’t load your invitations. Please try again.")
+            markUnavailable((error as? DIPInviteFailure)?.message ?? String(localized: "invites.error.load", defaultValue: "Couldn’t load your invitations. Please try again.", bundle: .module, comment: "Error shown when the invitations list fails to load"))
         }
     }
 

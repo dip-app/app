@@ -26,12 +26,12 @@ public struct AvailabilityOption: Equatable, Hashable, Sendable, Identifiable {
     public init(id: String, label: String) { self.id = id; self.label = label }
 
     /// V1 choices offered by the profile editor.
-    public static let all: [AvailabilityOption] = [
-        .init(id: "weekday-mornings", label: "Weekday mornings"),
-        .init(id: "weekday-lunch", label: "Weekday lunch"),
-        .init(id: "weekday-evenings", label: "Weekday evenings"),
-        .init(id: "weekends", label: "Weekends"),
-    ]
+    public static var all: [AvailabilityOption] { [
+        .init(id: "weekday-mornings", label: String(localized: "profile.availability.mornings", defaultValue: "Weekday mornings", bundle: .module, comment: "Profile availability choice")),
+        .init(id: "weekday-lunch", label: String(localized: "profile.availability.lunch", defaultValue: "Weekday lunch", bundle: .module, comment: "Profile availability choice")),
+        .init(id: "weekday-evenings", label: String(localized: "profile.availability.evenings", defaultValue: "Weekday evenings", bundle: .module, comment: "Profile availability choice")),
+        .init(id: "weekends", label: String(localized: "profile.availability.weekends", defaultValue: "Weekends", bundle: .module, comment: "Profile availability choice")),
+    ] }
 }
 
 extension EditableProfile {

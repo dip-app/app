@@ -52,10 +52,18 @@ public struct DIPPhotoCommentBubble: View {
                 .fixedSize(horizontal: true, vertical: true)
                 .background(.white, in: Capsule())
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(authorName.isEmpty ? text : "\(authorName): \(text)")
+                .accessibilityLabel(spokenLabel)
             }
         }
         .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+    }
+
+    private var spokenLabel: String {
+        authorName.isEmpty
+            ? text
+            : String(
+                localized: "ds.photoComment.spoken", defaultValue: "\(authorName): \(text)", bundle: .module,
+                comment: "Accessibility label of a photo comment; %1$@ = author name, %2$@ = comment text")
     }
 
     private var fullText: some View {
@@ -65,7 +73,7 @@ public struct DIPPhotoCommentBubble: View {
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(authorName.isEmpty ? text : "\(authorName): \(text)")
+            .accessibilityLabel(spokenLabel)
     }
 }
 #endif

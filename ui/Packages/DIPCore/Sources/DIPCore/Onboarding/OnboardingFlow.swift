@@ -173,7 +173,7 @@ public struct OnboardingFlow: Equatable, Sendable {
         var copy = self
         copy.phase = .step(step)
         guard let progress = copy.progress else { return title }
-        return String(localized: "Step \(progress.number) of \(progress.count), \(title)")
+        return String(localized: "onboarding.announcement.step", defaultValue: "Step \(progress.number) of \(progress.count), \(title)", bundle: .module, comment: "VoiceOver announcement when the onboarding tour arrives on a step; first %lld = step number, second %lld = total steps, %@ = step title")
     }
 }
 
@@ -181,12 +181,12 @@ public extension OnboardingStep {
     /// The header pill copy (spec §3). B0 has no pill; its title is used only for announcements.
     var pillTitle: String {
         switch self {
-        case .arrival: String(localized: "onboarding.pill.arrival", defaultValue: "You're in")
-        case .discover: String(localized: "onboarding.pill.discover", defaultValue: "Find events")
-        case .people: String(localized: "onboarding.pill.people", defaultValue: "Who's going")
-        case .challenges: String(localized: "onboarding.pill.challenges", defaultValue: "Challenges")
-        case .memories: String(localized: "onboarding.pill.memories", defaultValue: "Memories")
-        case .interests: String(localized: "onboarding.pill.interests", defaultValue: "Interests")
+        case .arrival: String(localized: "onboarding.pill.arrival", defaultValue: "You're in", bundle: .module, comment: "Onboarding header pill, first step")
+        case .discover: String(localized: "onboarding.pill.discover", defaultValue: "Find events", bundle: .module, comment: "Onboarding header pill, discover step")
+        case .people: String(localized: "onboarding.pill.people", defaultValue: "Who's going", bundle: .module, comment: "Onboarding header pill, people step")
+        case .challenges: String(localized: "onboarding.pill.challenges", defaultValue: "Challenges", bundle: .module, comment: "Onboarding header pill, challenges step")
+        case .memories: String(localized: "onboarding.pill.memories", defaultValue: "Memories", bundle: .module, comment: "Onboarding header pill, memories step")
+        case .interests: String(localized: "onboarding.pill.interests", defaultValue: "Interests", bundle: .module, comment: "Onboarding header pill, interests step")
         }
     }
 }

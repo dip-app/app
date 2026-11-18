@@ -31,11 +31,11 @@ public enum DIPRepositoryError: Error, Equatable, Sendable {
 public extension DIPRepository {
     /// Adapters without challenge support refuse instead of pretending to join.
     func setChallengeJoined(challengeID: String, joined: Bool) async throws {
-        throw DIPRepositoryError.invalidInput("Challenges aren’t available yet")
+        throw DIPRepositoryError.invalidInput(String(localized: "repository.error.challengesUnavailable", defaultValue: "Challenges aren’t available yet", bundle: .module, comment: "Error when the data source has no challenge support"))
     }
 
     func originalPhotoData(eventID: String, photoID: String) async throws -> Data {
-        throw DIPRepositoryError.notFound("This photo can’t be saved right now")
+        throw DIPRepositoryError.notFound(String(localized: "repository.error.photoUnavailable", defaultValue: "This photo can’t be saved right now", bundle: .module, comment: "Error when the original photo cannot be fetched for saving"))
     }
 
     /// The member removed a failed upload draft: adapters that reserve a slot per upload release it.

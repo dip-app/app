@@ -193,7 +193,7 @@ public extension OnboardingFlow {
     /// The header's Skip label: "Done" in replay.
     var skipTitle: String {
         mode == .replay
-            ? String(localized: "onboarding.skip.replay", defaultValue: "Done")
-            : String(localized: "onboarding.skip", defaultValue: "Skip")
+            ? String(localized: "onboarding.skip.replay", defaultValue: "Done", bundle: .module, comment: "Onboarding header button that closes a replayed tour")
+            : String(localized: "onboarding.skip", defaultValue: "Skip", bundle: .module, comment: "Onboarding header button that skips the tour")
     }
 }

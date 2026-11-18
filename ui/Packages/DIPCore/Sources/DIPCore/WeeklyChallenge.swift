@@ -45,25 +45,23 @@ public enum DIPWeeklyChallengeSelection {
 public enum DIPChallengeText {
     public static func participation(_ count: Int) -> String {
         switch count {
-        case ...0: "Be the first this week"
-        case 1: "+ 1 other participating"
-        default: "+ \(count) others participating"
+        case ...0: String(localized: "challenge.participation.none", defaultValue: "Be the first this week", bundle: .module, comment: "Challenge card: nobody has taken part yet")
+        default: String(localized: "challenge.participation.others", defaultValue: "+ \(count) others participating", bundle: .module, comment: "Challenge card; %lld = number of other participants (1 or more)")
         }
     }
     public static func participationSpoken(_ count: Int) -> String {
         switch count {
-        case ...0: "be the first this week"
-        case 1: "1 other participating"
-        default: "\(count) others participating"
+        case ...0: String(localized: "challenge.participation.spoken.none", defaultValue: "be the first this week", bundle: .module, comment: "VoiceOver for the challenge card: nobody has taken part yet")
+        default: String(localized: "challenge.participation.spoken.others", defaultValue: "\(count) others participating", bundle: .module, comment: "VoiceOver for the challenge card; %lld = number of other participants (1 or more)")
         }
     }
     /// How entries work, shown above the entry action (the testing finding: explain before submit).
-    public static let howItWorks = "Do the activity with coworkers during this week, then add how much you did, a short note and optionally a photo as your entry. Entries are reviewed before points are awarded."
-    public static let submissionsSoon = "Submissions open soon"
-    public static let noneTitle = "No weekly theme right now."
-    public static let noneBody = "A new one starts Monday."
-    public static let failure = "Couldn’t load this week’s challenge."
-    public static let stale = "Offline · last update"
+    public static var howItWorks: String { String(localized: "challenge.text.howItWorks", defaultValue: "Do the activity with coworkers during this week, then add how much you did, a short note and optionally a photo as your entry. Entries are reviewed before points are awarded.", bundle: .module, comment: "Challenge details: explains how entries work") }
+    public static var submissionsSoon: String { String(localized: "challenge.text.submissionsSoon", defaultValue: "Submissions open soon", bundle: .module, comment: "Challenge note: entries are not open yet") }
+    public static var noneTitle: String { String(localized: "challenge.text.noneTitle", defaultValue: "No weekly theme right now.", bundle: .module, comment: "Home empty state title: no weekly theme") }
+    public static var noneBody: String { String(localized: "challenge.text.noneBody", defaultValue: "A new one starts Monday.", bundle: .module, comment: "Home empty state body: no weekly theme") }
+    public static var failure: String { String(localized: "challenge.text.failure", defaultValue: "Couldn’t load this week’s challenge.", bundle: .module, comment: "Home error: challenge failed to load") }
+    public static var stale: String { String(localized: "challenge.text.stale", defaultValue: "Offline · last update", bundle: .module, comment: "Badge shown when the challenge comes from the offline cache") }
 }
 
 public enum DIPChallengeProjection {
@@ -114,7 +112,7 @@ public enum DIPChallengeProjection {
                 formatter.setLocalizedDateFormatFromTemplate("MMMd")
                 formatters[key] = formatter
             }
-            return "\(formatter.string(from: start)) - \(formatter.string(from: last))"
+            return String(localized: "challenge.window.range", defaultValue: "\(formatter.string(from: start)) - \(formatter.string(from: last))", bundle: .module, comment: "Date range of a weekly theme; first %@ = first day, second %@ = last day, e.g. Nov 9 - Nov 15")
         }
     }
 
@@ -122,10 +120,10 @@ public enum DIPChallengeProjection {
         guard goal.isFinite, goal > 0 else { return nil }
         let number = goal.rounded() == goal ? String(Int(goal)) : String(format: "%g", goal)
         let trimmed = unit.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? number : "\(number) \(trimmed)"
+        return trimmed.isEmpty ? number : String(localized: "challenge.goal.format", defaultValue: "\(number) \(trimmed)", bundle: .module, comment: "Goal text; first %@ = number, second %@ = unit such as miles")
     }
 
-    public static func rewardText(_ points: Int) -> String? { points > 0 ? "+\(points) points" : nil }
+    public static func rewardText(_ points: Int) -> String? { points > 0 ? String(localized: "challenge.reward.points", defaultValue: "+\(points) points", bundle: .module, comment: "Reward text; %lld = points") : nil }
 }
 
 /// What the Home challenge section renders. Pure value so every state is testable without UI.

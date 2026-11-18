@@ -62,7 +62,7 @@ public final class DIPNotificationsModel {
                 reconcileLocalReads()
             }
             guard !Task.isCancelled, generation == current else { return }
-            markUnavailable("Updates stopped. Check your connection.")
+            markUnavailable(String(localized: "notifications.error.updatesStopped", defaultValue: "Updates stopped. Check your connection.", bundle: .module, comment: "Error shown when live updates stop"))
         } catch {
             guard !Task.isCancelled, generation == current else { return }
             markUnavailable(failure(error).message)
@@ -149,7 +149,7 @@ public final class DIPNotificationsModel {
             locallyRead.formUnion(pending)
             do { try await repository.markRead(ids: pending) } catch {
                 locallyRead.subtract(pending)
-                markAllError = failure(error) == .offline ? "You’re offline. Try again when you’re back online." : "Couldn’t mark everything as read. Try again."
+                markAllError = failure(error) == .offline ? String(localized: "notifications.error.offline", defaultValue: "You’re offline. Try again when you’re back online.", bundle: .module, comment: "Error shown when an action fails because the device is offline") : String(localized: "notifications.error.markAllRead", defaultValue: "Couldn’t mark everything as read. Try again.", bundle: .module, comment: "Error when marking all notifications as read failed")
                 return false
             }
             // Let the live listeners deliver the remainder (if any) before another round.
@@ -171,7 +171,7 @@ public final class DIPNotificationsModel {
             older.append(contentsOf: page)
             hasMorePages = page.count >= DIPNotificationRules.pageSize
         } catch {
-            loadMoreError = failure(error) == .offline ? "You’re offline. Try again when you’re back online." : "Couldn’t load more. Try again."
+            loadMoreError = failure(error) == .offline ? String(localized: "notifications.error.offline", defaultValue: "You’re offline. Try again when you’re back online.", bundle: .module, comment: "Error shown when an action fails because the device is offline") : String(localized: "notifications.error.loadMore", defaultValue: "Couldn’t load more. Try again.", bundle: .module, comment: "Error when loading more notifications failed")
         }
     }
 }

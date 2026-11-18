@@ -66,10 +66,10 @@ public enum DIPNotificationFailure: Error, Equatable, Sendable {
     case offline, unauthenticated, denied, unknown
     public var message: String {
         switch self {
-        case .offline: "You’re offline. Check your connection and try again."
-        case .unauthenticated: "Please sign in again to see your notifications."
-        case .denied: "Notifications aren’t available for this account."
-        case .unknown: "Couldn’t load your notifications. Please try again."
+        case .offline: String(localized: "notifications.error.offline", defaultValue: "You’re offline. Check your connection and try again.", bundle: .module, comment: "Notifications error: no network")
+        case .unauthenticated: String(localized: "notifications.error.unauthenticated", defaultValue: "Please sign in again to see your notifications.", bundle: .module, comment: "Notifications error: session expired")
+        case .denied: String(localized: "notifications.error.denied", defaultValue: "Notifications aren’t available for this account.", bundle: .module, comment: "Notifications error: access denied")
+        case .unknown: String(localized: "notifications.error.unknown", defaultValue: "Couldn’t load your notifications. Please try again.", bundle: .module, comment: "Notifications error: generic failure")
         }
     }
 }
@@ -94,6 +94,15 @@ public enum DIPNotificationRules {
 
     public enum Group: String, Equatable, Sendable, CaseIterable {
         case today = "Today", yesterday = "Yesterday", earlier = "Earlier"
+
+        /// Localized section header; `rawValue` stays the English identifier.
+        public var localizedTitle: String {
+            switch self {
+            case .today: String(localized: "notifications.group.today", defaultValue: "Today", bundle: .module, comment: "Notifications list section header: today")
+            case .yesterday: String(localized: "notifications.group.yesterday", defaultValue: "Yesterday", bundle: .module, comment: "Notifications list section header: yesterday")
+            case .earlier: String(localized: "notifications.group.earlier", defaultValue: "Earlier", bundle: .module, comment: "Notifications list section header: older than yesterday")
+            }
+        }
     }
 
     public struct Section: Equatable, Sendable {
@@ -118,16 +127,16 @@ public enum DIPNotificationRules {
     }
 
     /// "Just now", "5m ago", "3h ago" today; the clock time yesterday; "Nov 3" before that (the group header already names the day).
-    public static func relativeTime(_ date: Date, now: Date, calendar: Calendar = .current) -> String {
+    public static func relativeTime(_ date: Date, now: Date, calendar: Calendar = .current, locale: Locale = .current) -> String {
         let seconds = now.timeIntervalSince(date)
-        if seconds < 60 { return "Just now" }
-        if seconds < 3_600 { return "\(Int(seconds / 60))m ago" }
+        if seconds < 60 { return String(localized: "notifications.time.justNow", defaultValue: "Just now", bundle: .module, comment: "Relative time on a notification row: less than a minute ago") }
+        if seconds < 3_600 { return String(localized: "notifications.time.minutesAgo", defaultValue: "\(Int(seconds / 60))m ago", bundle: .module, comment: "Relative time on a notification row; %lld = minutes ago (1 to 59)") }
         let day = group(for: date, now: now, calendar: calendar)
-        if day == .today { return "\(Int(seconds / 3_600))h ago" }
+        if day == .today { return String(localized: "notifications.time.hoursAgo", defaultValue: "\(Int(seconds / 3_600))h ago", bundle: .module, comment: "Relative time on a notification row; %lld = hours ago") }
         if day == .yesterday {
-            return date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "en_US")))
+            return date.formatted(.dateTime.hour().minute().locale(locale))
         }
-        return date.formatted(.dateTime.month(.abbreviated).day().locale(Locale(identifier: "en_US")))
+        return date.formatted(.dateTime.month(.abbreviated).day().locale(locale))
     }
 
     /// Splits ids into write batches.

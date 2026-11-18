@@ -14,7 +14,7 @@ public final class DIPNotificationSettingsModel {
         case push, email
 
         public var title: String {
-            switch self { case .push: "Push"; case .email: "Email" }
+            switch self { case .push: String(localized: "notificationSettings.channel.push", defaultValue: "Push", bundle: .module, comment: "Settings section title for push notifications"); case .email: String(localized: "notificationSettings.channel.email", defaultValue: "Email", bundle: .module, comment: "Settings section title for email notifications") }
         }
         public var channel: DIPNotificationChannel {
             switch self { case .push: .push; case .email: .email }
@@ -31,12 +31,12 @@ public final class DIPNotificationSettingsModel {
 
     public enum MasterAction: Equatable, Sendable { case turnOn, openSettings }
 
-    public static let perActivityTitle = "Per-activity settings"
-    public static let perActivityMessage = "Each activity has a bell in its chat. It overrides the chat, change and reminder switches for that activity."
-    public static let emailFootnote = "Emails go to your Google account address. Every email has an unsubscribe link."
-    public static let disabledFootnote = "Allow notifications to change these."
-    public static let saveFailureMessage = "Couldn’t save that change. Check your connection and try again."
-    public static let loadFailureMessage = "Couldn’t load your notification settings. Check your connection and try again."
+    public static var perActivityTitle: String { String(localized: "notificationSettings.perActivity.title", defaultValue: "Per-activity settings", bundle: .module, comment: "Per-activity explainer title") }
+    public static var perActivityMessage: String { String(localized: "notificationSettings.perActivity.message", defaultValue: "Each activity has a bell in its chat. It overrides the chat, change and reminder switches for that activity.", bundle: .module, comment: "Per-activity explainer body") }
+    public static var emailFootnote: String { String(localized: "notificationSettings.email.footnote", defaultValue: "Emails go to your Google account address. Every email has an unsubscribe link.", bundle: .module, comment: "Footnote under the email section") }
+    public static var disabledFootnote: String { String(localized: "notificationSettings.disabled.footnote", defaultValue: "Allow notifications to change these.", bundle: .module, comment: "Footnote when notification switches are disabled") }
+    public static var saveFailureMessage: String { String(localized: "notificationSettings.error.save", defaultValue: "Couldn’t save that change. Check your connection and try again.", bundle: .module, comment: "Error when saving a notification switch failed") }
+    public static var loadFailureMessage: String { String(localized: "notificationSettings.error.load", defaultValue: "Couldn’t load your notification settings. Check your connection and try again.", bundle: .module, comment: "Error when loading notification settings failed") }
 
     public private(set) var phase: Phase = .loading
     public private(set) var authorization: DIPPushAuthorization = .notDetermined
@@ -92,16 +92,16 @@ public final class DIPNotificationSettingsModel {
 
     public var masterTitle: String {
         switch authorization {
-        case .authorized, .provisional, .ephemeral: "Push notifications are on"
-        case .denied: "Push is off"
-        case .notDetermined: "Push is off"
+        case .authorized, .provisional, .ephemeral: String(localized: "notificationSettings.master.on", defaultValue: "Push notifications are on", bundle: .module, comment: "Permission row title when push is allowed")
+        case .denied: String(localized: "notificationSettings.master.off", defaultValue: "Push is off", bundle: .module, comment: "Permission row title when push is not allowed")
+        case .notDetermined: String(localized: "notificationSettings.master.off", defaultValue: "Push is off", bundle: .module, comment: "Permission row title when push is not allowed")
         }
     }
 
     public var masterDetail: String? {
         switch authorization {
         case .authorized, .provisional, .ephemeral: nil
-        case .denied: "Allow notifications for DIP in iOS Settings to get alerts on this phone."
+        case .denied: String(localized: "notificationSettings.master.deniedDetail", defaultValue: "Allow notifications for DIP in iOS Settings to get alerts on this phone.", bundle: .module, comment: "Permission row detail when notifications are denied in iOS Settings")
         case .notDetermined: nil
         }
     }
@@ -117,8 +117,8 @@ public final class DIPNotificationSettingsModel {
 
     public var masterActionTitle: String? {
         switch masterAction {
-        case .turnOn: "Turn on notifications"
-        case .openSettings: "Open Settings"
+        case .turnOn: String(localized: "notificationSettings.master.turnOn", defaultValue: "Turn on notifications", bundle: .module, comment: "Button that asks for notification permission")
+        case .openSettings: String(localized: "notificationSettings.master.openSettings", defaultValue: "Open Settings", bundle: .module, comment: "Button that opens iOS Settings")
         case nil: nil
         }
     }

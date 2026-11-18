@@ -20,8 +20,8 @@ public extension DIPChallengeDetail {
             let formatter = DateFormatter()
             formatter.locale = locale; formatter.timeZone = timeZone
             formatter.setLocalizedDateFormatFromTemplate("EEEMMMd")
-            return "Starts \(formatter.string(from: startDate ?? now))"
-        case .ended?: return "This weekly theme has ended"
+            return String(localized: "challenge.window.starts", defaultValue: "Starts \(formatter.string(from: startDate ?? now))", bundle: .module, comment: "Challenge note: theme starts on a date; %@ = short weekday and date, e.g. Mon, Nov 9")
+        case .ended?: return String(localized: "challenge.window.ended", defaultValue: "This weekly theme has ended", bundle: .module, comment: "Challenge note: the theme window is over")
         default:
             guard submissionsOpen, let endDate else { return DIPChallengeText.submissionsSoon }
             let formatter = DateFormatter()
@@ -47,10 +47,12 @@ public extension DIPChallengeDetail {
         // The end is exclusive: the last included day is the one containing the last instant.
         let lastInstant = endDate.addingTimeInterval(-1)
         let lastDay = calendar.startOfDay(for: max(lastInstant, firstDay))
-        let notes = [description, goalText.map { "Goal: \($0)" }, rewardText.map { "Reward: \($0)" }]
+        let notes = [description,
+                     goalText.map { String(localized: "challenge.calendar.goal", defaultValue: "Goal: \($0)", bundle: .module, comment: "Calendar entry note line; %@ = goal such as 10 miles") },
+                     rewardText.map { String(localized: "challenge.calendar.reward", defaultValue: "Reward: \($0)", bundle: .module, comment: "Calendar entry note line; %@ = reward such as +50 points") }]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.joined(separator: "\n")
         return DIPCalendarEventFields(
-            title: String("Weekly theme: \(title)".prefix(DIPEventMetadata.calendarTitleLimit)),
+            title: String(String(localized: "challenge.calendar.title", defaultValue: "Weekly theme: \(title)", bundle: .module, comment: "Calendar entry title for a weekly theme; %@ = theme title").prefix(DIPEventMetadata.calendarTitleLimit)),
             startDate: firstDay, endDate: lastDay, isAllDay: true, timeZone: timeZone, location: "",
             notes: String(notes.prefix(DIPEventMetadata.calendarNotesLimit)), url: nil)
     }

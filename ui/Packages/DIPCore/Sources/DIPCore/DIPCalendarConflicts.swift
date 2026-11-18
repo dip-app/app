@@ -166,16 +166,19 @@ public struct DIPCalendarIndex: Sendable {
 
 /// Text for the "Overlaps with" modal, the pill and VoiceOver. Up to two names, then "and N more".
 public enum DIPCalendarOverlapText {
-    public static let untitled = "a busy time"
+    public static var untitled: String { String(localized: "calendar.overlap.untitled", defaultValue: "a busy time", bundle: .module, comment: "Name used inside a sentence for one calendar entry with no title, e.g. Overlaps with a busy time") }
 
     public static func title(_ conflicts: [DIPCalendarConflict]) -> String {
         guard !conflicts.isEmpty else { return "" }
         let allSoft = conflicts.allSatisfy(\.isSoft)
-        return (allSoft ? "May overlap with " : "Overlaps with ") + names(conflicts)
+        let joined = names(conflicts)
+        return allSoft
+            ? String(localized: "calendar.overlap.title.soft", defaultValue: "May overlap with \(joined)", bundle: .module, comment: "Calendar overlap title when every overlap is tentative; %@ = names of the overlapping entries")
+            : String(localized: "calendar.overlap.title", defaultValue: "Overlaps with \(joined)", bundle: .module, comment: "Calendar overlap title; %@ = names of the overlapping entries")
     }
 
     /// The word for a personal-calendar entry whose title is empty (or hidden).
-    public static let busy = "Busy"
+    public static var busy: String { String(localized: "calendar.overlap.busy", defaultValue: "Busy", bundle: .module, comment: "Label for a personal calendar entry whose title is empty or hidden") }
 
     /// Alert title when only the member's own calendar overlaps: the entry's title, or "Busy" without one
     /// ("Team Lunch", "Team Lunch and Standup", "Busy"). Never reveals more than the calendar itself showed.
@@ -187,8 +190,8 @@ public enum DIPCalendarOverlapText {
         let more = conflicts.count - names.count
         switch (names.count, more) {
         case (1, _): return names[0]
-        case (2, 0): return "\(names[0]) and \(names[1])"
-        default: return "\(names[0]), \(names[1]) and \(more) more"
+        case (2, 0): return String(localized: "calendar.overlap.two", defaultValue: "\(names[0]) and \(names[1])", bundle: .module, comment: "Two names joined; each %@ = a calendar entry title")
+        default: return String(localized: "calendar.overlap.listMore", defaultValue: "\(names[0]), \(names[1]) and \(more) more", bundle: .module, comment: "Two names then a count; first two %@ = entry titles, %lld = how many more entries")
         }
     }
 
@@ -203,7 +206,7 @@ public enum DIPCalendarOverlapText {
     public static func alertMessage(_ conflicts: [DIPCalendarConflict], eventStart: Date? = nil,
                                     locale: Locale = .current, timeZone: TimeZone = .current) -> String {
         let lines = message(relabeled(conflicts), eventStart: eventStart, locale: locale, timeZone: timeZone)
-        return conflicts.contains(where: \.isDIP) ? lines : "You have something else then.\n" + lines
+        return conflicts.contains(where: \.isDIP) ? lines : String(localized: "calendar.overlap.somethingElse", defaultValue: "You have something else then.", bundle: .module, comment: "First line of the calendar overlap alert for personal-calendar-only overlaps") + "\n" + lines
     }
 
     private static func relabeled(_ conflicts: [DIPCalendarConflict]) -> [DIPCalendarConflict] {
@@ -225,13 +228,13 @@ public enum DIPCalendarOverlapText {
             if !title.isEmpty { names.append(title); continue }
             guard !placedUntitled else { continue }
             placedUntitled = true
-            names.append(untitledCount == 1 ? untitled : "\(untitledCount) busy times")
+            names.append(untitledCount == 1 ? untitled : String(localized: "calendar.overlap.untitledMany", defaultValue: "\(untitledCount) busy times", bundle: .module, comment: "Name for several untitled calendar entries; %lld = how many"))
         }
         switch names.count {
         case 0: return ""
         case 1: return names[0]
-        case 2: return "\(names[0]) and \(names[1])"
-        default: return "\(names[0]), \(names[1]) and \(names.count - 2) more"
+        case 2: return String(localized: "calendar.overlap.two", defaultValue: "\(names[0]) and \(names[1])", bundle: .module, comment: "Two names joined; each %@ = a calendar entry title")
+        default: return String(localized: "calendar.overlap.listMore", defaultValue: "\(names[0]), \(names[1]) and \(names.count - 2) more", bundle: .module, comment: "Two names then a count; first two %@ = entry titles, %lld = how many more entries")
         }
     }
 
@@ -260,17 +263,22 @@ public enum DIPCalendarOverlapText {
             let crossesMidnight = !calendar.isDate(conflict.start, inSameDayAs: lastInstant)
             let otherDay = eventStart.map { !calendar.isDate(conflict.start, inSameDayAs: $0) } ?? false
             if conflict.isAllDay {
-                guard crossesMidnight || otherDay else { return "All day" }
-                return "\(dayOnly.string(from: conflict.start, to: end)), all day"
+                guard crossesMidnight || otherDay else { return String(localized: "calendar.overlap.allDay", defaultValue: "All day", bundle: .module, comment: "Time of an all-day calendar entry in the overlap alert") }
+                return String(localized: "calendar.overlap.daysAllDay", defaultValue: "\(dayOnly.string(from: conflict.start, to: end)), all day", bundle: .module, comment: "All-day entry on another day in the overlap alert; %@ = date or date range")
             }
             return (crossesMidnight || otherDay ? withDay : timeOnly).string(from: conflict.start, to: end)
         }
 
         let lines = conflicts.prefix(3).map { conflict -> String in
-            let label = conflicts.count == 1 ? "" : "\(name(conflict.title)): "
-            return "\(label)\(timeText(conflict))\(conflict.isSoft ? " (tentative)" : "")"
+            let time = timeText(conflict)
+            let timing = conflict.isSoft
+                ? String(localized: "calendar.overlap.tentative", defaultValue: "\(time) (tentative)", bundle: .module, comment: "Time of a tentative calendar entry in the overlap alert; %@ = time or time range")
+                : time
+            guard conflicts.count > 1 else { return timing }
+            let entry = name(conflict.title)
+            return String(localized: "calendar.overlap.line", defaultValue: "\(entry): \(timing)", bundle: .module, comment: "One line of the overlap alert; first %@ = entry title, second %@ = its time")
         }
-        let more = conflicts.count > 3 ? ["and \(conflicts.count - 3) more"] : []
+        let more = conflicts.count > 3 ? [String(localized: "calendar.overlap.andMore", defaultValue: "and \(conflicts.count - 3) more", bundle: .module, comment: "Last line of the overlap alert when more than 3 entries overlap; %lld = how many are not listed")] : []
         return (lines + more).joined(separator: "\n")
     }
 
@@ -320,11 +328,11 @@ public enum DIPCalendarPillState: Equatable, Sendable {
     public var accessibilityLabel: String {
         switch self {
         case .hidden: ""
-        case .free: "Add to calendar"
-        case .conflict(let conflicts, _): "Add to calendar. \(DIPCalendarOverlapText.alertTitle(conflicts))"
-        case .busy: "Add to calendar. Busy at this time"
-        case .adding: "Adding to calendar"
-        case .added: "Added to your calendar"
+        case .free: String(localized: "calendar.pill.free", defaultValue: "Add to calendar", bundle: .module, comment: "VoiceOver label of the add-to-calendar pill")
+        case .conflict(let conflicts, _): String(localized: "calendar.pill.conflict", defaultValue: "Add to calendar. \(DIPCalendarOverlapText.alertTitle(conflicts))", bundle: .module, comment: "VoiceOver label of the add-to-calendar pill when events overlap; %@ = overlap title such as Overlaps with Team Lunch")
+        case .busy: String(localized: "calendar.pill.busy", defaultValue: "Add to calendar. Busy at this time", bundle: .module, comment: "VoiceOver label of the add-to-calendar pill when the personal calendar is busy")
+        case .adding: String(localized: "calendar.pill.adding", defaultValue: "Adding to calendar", bundle: .module, comment: "VoiceOver label while the event is being saved to the calendar")
+        case .added: String(localized: "calendar.pill.added", defaultValue: "Added to your calendar", bundle: .module, comment: "VoiceOver label once the event is in the calendar")
         }
     }
 
@@ -332,16 +340,16 @@ public enum DIPCalendarPillState: Equatable, Sendable {
     public func accessibilityLabel(date: String?) -> String {
         let action = accessibilityLabel
         guard let date, !date.isEmpty, !action.isEmpty else { return action }
-        return "\(date). \(action)"
+        return String(localized: "calendar.pill.withDate", defaultValue: "\(date). \(action)", bundle: .module, comment: "VoiceOver for the date pill; first %@ = the visible date, second %@ = the action such as Add to calendar")
     }
 
     /// What activation does, so the editor and the direct save are not a surprise.
     public var accessibilityHint: String {
         switch self {
         case .hidden, .adding, .added: ""
-        case .free(let direct): direct ? "Saves it to your calendar" : "Opens the calendar editor to review before saving"
+        case .free(let direct): direct ? String(localized: "calendar.pill.hint.freeDirect", defaultValue: "Saves it to your calendar", bundle: .module, comment: "VoiceOver hint of the add-to-calendar pill") : String(localized: "calendar.pill.hint.freeEditor", defaultValue: "Opens the calendar editor to review before saving", bundle: .module, comment: "VoiceOver hint of the add-to-calendar pill")
         case .conflict(_, let direct), .busy(_, let direct):
-            direct ? "Asks you to confirm, then saves it to your calendar" : "Asks you to confirm, then opens the calendar editor"
+            direct ? String(localized: "calendar.pill.hint.confirmDirect", defaultValue: "Asks you to confirm, then saves it to your calendar", bundle: .module, comment: "VoiceOver hint of the add-to-calendar pill when there is an overlap") : String(localized: "calendar.pill.hint.confirmEditor", defaultValue: "Asks you to confirm, then opens the calendar editor", bundle: .module, comment: "VoiceOver hint of the add-to-calendar pill when there is an overlap")
         }
     }
 }

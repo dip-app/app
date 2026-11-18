@@ -31,11 +31,11 @@ public final class DIPAppViewModel {
             }
             guard !Task.isCancelled, observationGeneration == generation else { return }
             isLoading = false
-            loadError = "Updates stopped. Please reconnect."
+            loadError = String(localized: "app.error.updatesStopped", defaultValue: "Updates stopped. Please reconnect.", bundle: .module, comment: "Error banner when the live data stream ended")
         } catch {
             guard !Task.isCancelled, observationGeneration == generation else { return }
             isLoading = false
-            loadError = "Couldn’t load updates. Please try again."
+            loadError = String(localized: "app.error.loadUpdates", defaultValue: "Couldn’t load updates. Please try again.", bundle: .module, comment: "Error banner when loading live data failed")
         }
     }
 
@@ -97,7 +97,7 @@ public final class DIPAppViewModel {
         do { try await action() }
         catch {
             if !(error is CancellationError) {
-                commandError = "Couldn’t save that change. Please try again."
+                commandError = String(localized: "app.error.saveChange", defaultValue: "Couldn’t save that change. Please try again.", bundle: .module, comment: "Error banner when a save command failed")
             }
             throw error
         }

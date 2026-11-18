@@ -1,0 +1,1237 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "shouldTranslate" : false
+    },
+    "%lld going" : {
+      "comment" : "Home event card chip; %lld = number of members going",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld going"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld going"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld va"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld van"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld jaH"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "+%lld" : {
+      "shouldTranslate" : false
+    },
+    "Image unavailable" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen no disponible"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh tu'lu'be'"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notificaciones"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey"
+          }
+        }
+      }
+    },
+    "Open profile" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir perfil"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "De' yIpoSmoH"
+          }
+        }
+      }
+    },
+    "Open profile for %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir el perfil de %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "De' yIpoSmoH %@ vaD"
+          }
+        }
+      }
+    },
+    "Opens event details" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre los detalles del evento"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI' De' poSmoH"
+          }
+        }
+      }
+    },
+    "Opens the challenge details" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre los detalles del reto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaD De' poSmoH"
+          }
+        }
+      }
+    },
+    "Opens the event page" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la página del evento"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI' mIw poSmoH"
+          }
+        }
+      }
+    },
+    "Send" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yIngeH"
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yInIDqa'"
+          }
+        }
+      }
+    },
+    "ds.avatar.coworker" : {
+      "comment" : "Name fallback for a person without a display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Coworker"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colega"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jup"
+          }
+        }
+      }
+    },
+    "ds.avatarGroup.count" : {
+      "comment" : "Spoken attendee total; %lld = number of attendees",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attendee"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attendees"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld asistente"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld asistentes"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld ghommey"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.avatarGroup.countWithNames" : {
+      "comment" : "Spoken attendee total followed by names; %1$lld = number of attendees, %2$@ = comma separated names and overflow",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$lld attendee: %2$@"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$lld attendees: %2$@"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$lld asistente: %2$@"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$lld asistentes: %2$@"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%1$lld ghommey: %2$@"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.avatarGroup.empty" : {
+      "comment" : "Spoken and visible label for an avatar group with nobody in it",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No attendees yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay asistentes"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ghom pagh"
+          }
+        }
+      }
+    },
+    "ds.avatarGroup.more" : {
+      "comment" : "Spoken avatar group overflow item; %lld = number of additional attendees not named",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld más"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld más"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld latlh"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.button.inProgress" : {
+      "comment" : "Accessibility value of a button that is busy",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "In progress"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En curso"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qap"
+          }
+        }
+      }
+    },
+    "ds.button.unavailable" : {
+      "comment" : "Accessibility value of a button that is disabled",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "tu'lu'be'"
+          }
+        }
+      }
+    },
+    "ds.challenge.accessibility" : {
+      "comment" : "Accessibility label of the Home challenge card; %1$@ = challenge category, %2$lld = number of other members participating",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "This week’s challenge: %1$@, %2$lld others participating"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "This week’s challenge: %1$@, %2$lld others participating"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "El reto de esta semana: %1$@, %2$lld persona más participa"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "El reto de esta semana: %1$@, %2$lld personas más participan"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "qaD Hoghvam: %1$@, %2$lld pIj ghoS"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.challenge.participation" : {
+      "comment" : "Home challenge card pill; %lld = number of other members participating",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld others participating"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld others participating"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld más participa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld más participan"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "+ %lld pIj ghoS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.composer.commentHint" : {
+      "comment" : "Accessibility value of the disabled send button in the photo comment composer",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Type a comment to send"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe un comentario para enviarlo"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn yIghItlh, yIngeH"
+          }
+        }
+      }
+    },
+    "ds.composer.messageHint" : {
+      "comment" : "Accessibility value of the disabled send button in the chat composer",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enter a message within the character limit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe un mensaje dentro del límite de caracteres"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mu'mey law' puS yIchel"
+          }
+        }
+      }
+    },
+    "ds.composer.sending" : {
+      "comment" : "Accessibility value of the send button while a message is being sent",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sending"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ngeH"
+          }
+        }
+      }
+    },
+    "ds.conversation.bubble.value" : {
+      "comment" : "Accessibility value of a chat message; %1$@ = author name or You, %2$@ = date and time sent",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "ds.conversation.you" : {
+      "comment" : "Author label on the member's own chat messages",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tú"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "SoH"
+          }
+        }
+      }
+    },
+    "ds.eventCard.attendeesUnavailable" : {
+      "comment" : "Event card attendance line when the attendee count is not available",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Attendees unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asistentes no disponibles"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ghom tu'lu'be'"
+          }
+        }
+      }
+    },
+    "ds.eventCard.attending" : {
+      "comment" : "Event card attendance line; %lld = number of people attending",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attending"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attending"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld asistente"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld asistentes"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld jaH"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.eventCard.calendarBusy" : {
+      "comment" : "Accessibility value on an event card that overlaps the member's own calendar",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Busy at this time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocupado a esta hora"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "poH Qu'"
+          }
+        }
+      }
+    },
+    "ds.eventCard.calendarConflict" : {
+      "comment" : "Accessibility value on an event card that overlaps another joined event",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Overlaps another activity you joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se superpone con otra actividad a la que te uniste"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' latlh muvta' tay"
+          }
+        }
+      }
+    },
+    "ds.eventCard.dateTbc" : {
+      "comment" : "Event card date fallback when the event has no date yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Date to be confirmed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fecha por confirmar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jaj laj ghap"
+          }
+        }
+      }
+    },
+    "ds.eventCard.joined" : {
+      "comment" : "Event card status: the member has joined this event",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te uniste"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "bImuvta'"
+          }
+        }
+      }
+    },
+    "ds.eventCard.locationTbc" : {
+      "comment" : "Event card location fallback when the event has no location yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Location to be confirmed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lugar por confirmar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Daq laj ghap"
+          }
+        }
+      }
+    },
+    "ds.eventCard.registrationUnavailable" : {
+      "comment" : "Event card status: joining this event is not possible",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Registration unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inscripción no disponible"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "muv tu'lu'be'"
+          }
+        }
+      }
+    },
+    "ds.eventCard.untitled" : {
+      "comment" : "Event card title fallback when the event has no title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Untitled event"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evento sin título"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI' pong pagh"
+          }
+        }
+      }
+    },
+    "ds.header.unread" : {
+      "comment" : "Accessibility value of the notifications button; %lld = unread count",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld unread"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld unread"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sin leer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sin leer"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld legh'a'be'"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.home.notifications.label" : {
+      "comment" : "Accessibility label of the Home bell; %lld = unread notification count",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Notifications, %lld unread"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Notifications, %lld unread"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Notificaciones, %lld sin leer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Notificaciones, %lld sin leer"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "QInmey, %lld legh'a'be'"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ds.photoComment.spoken" : {
+      "comment" : "Accessibility label of a photo comment; %1$@ = author name, %2$@ = comment text",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "ds.state.retry" : {
+      "comment" : "Default retry button title on a failed state",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Try again"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yInIDqa'"
+          }
+        }
+      }
+    },
+    "ds.tab.home" : {
+      "comment" : "Tab bar item: home",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Home"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicio"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "juH"
+          }
+        }
+      }
+    },
+    "ds.tab.myEvents" : {
+      "comment" : "Tab bar item: the member's events",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "My Events"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis eventos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI'meywIj"
+          }
+        }
+      }
+    },
+    "ds.tab.profile" : {
+      "comment" : "Tab bar item: profile",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Profile"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perfil"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "De'wIj"
+          }
+        }
+      }
+    },
+    "ds.tab.rewards" : {
+      "comment" : "Tab bar item: rewards",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rewards"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recompensas"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "popmey"
+          }
+        }
+      }
+    },
+    "→" : {
+      "shouldTranslate" : false
+    }
+  },
+  "version" : "1.0"
+}

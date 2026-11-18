@@ -9,11 +9,11 @@ public enum BugReportCategory: String, CaseIterable, Codable, Sendable {
 
     public var title: String {
         switch self {
-        case .bug: "Bug"
-        case .confusing: "Confusing"
-        case .looksWrong: "Looks wrong"
-        case .idea: "Idea"
-        case .unspecified: "Other"
+        case .bug: String(localized: "bugreport.category.bug", defaultValue: "Bug", bundle: .module, comment: "Bug report category chip")
+        case .confusing: String(localized: "bugreport.category.confusing", defaultValue: "Confusing", bundle: .module, comment: "Bug report category chip")
+        case .looksWrong: String(localized: "bugreport.category.looksWrong", defaultValue: "Looks wrong", bundle: .module, comment: "Bug report category chip")
+        case .idea: String(localized: "bugreport.category.idea", defaultValue: "Idea", bundle: .module, comment: "Bug report category chip")
+        case .unspecified: String(localized: "bugreport.category.other", defaultValue: "Other", bundle: .module, comment: "Bug report category when no chip is selected")
         }
     }
 }

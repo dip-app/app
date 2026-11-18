@@ -70,11 +70,11 @@ public struct DIPEventMetadata: Equatable, Sendable {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         // Include the end date too: overnight and multi-day events must remain unambiguous.
-        return "\(formatter.string(from: startTime)) – \(formatter.string(from: endTime))"
+        return String(localized: "event.dateTimeRange", defaultValue: "\(formatter.string(from: startTime)) – \(formatter.string(from: endTime))", bundle: .module, comment: "Event date and time range; first %@ = start, second %@ = end")
     }
 
     public func priceText(locale: Locale = .current) -> String {
-        guard costCents > 0 else { return "Free" }
+        guard costCents > 0 else { return String(localized: "event.price.free", defaultValue: "Free", bundle: .module, comment: "Event price when the activity costs nothing") }
         let formatter = NumberFormatter()
         formatter.locale = locale
         formatter.numberStyle = .currency
@@ -89,24 +89,38 @@ public struct DIPEventMetadata: Equatable, Sendable {
     public func shareText(title: String, description: String = "", link: URL? = nil, locale: Locale = .current,
                           timeZone: TimeZone = .current) -> String {
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let subject = name.isEmpty ? "this activity" : name
+        let subject = name.isEmpty ? String(localized: "event.share.thisActivity", defaultValue: "this activity", bundle: .module, comment: "Share text fallback when the activity has no title; used inside a sentence") : name
         if status == .cancelled {
-            return "Heads up: \(subject) has been cancelled. Hopefully we can find another time to get together."
+            return String(localized: "event.share.cancelled", defaultValue: "Heads up: \(subject) has been cancelled. Hopefully we can find another time to get together.", bundle: .module, comment: "Share text for a cancelled activity; %@ = activity title")
         }
-        var intro = "Join me for \(subject)!"
-        if let sentence = Self.firstSentence(description) { intro += " \(sentence)" }
+        var intro = String(localized: "event.share.intro", defaultValue: "Join me for \(subject)!", bundle: .module, comment: "Share text opening line; %@ = activity title")
+        if let sentence = Self.firstSentence(description) {
+            intro = String(localized: "event.share.introWithDescription", defaultValue: "Join me for \(subject)! \(sentence)", bundle: .module, comment: "Share text opening line followed by the first sentence of the description; first %@ = activity title, second %@ = description sentence")
+        }
 
-        var details = "It’s \(whenPhrase(locale: locale, timeZone: timeZone))"
+        let when = whenPhrase(locale: locale, timeZone: timeZone)
         let place = Self.uniqueJoined([venueName, address, locality])
-        if !place.isEmpty { details += " at \(place)" }
-        details += "."
+        var sentences: [String] = []
+        if place.isEmpty {
+            sentences.append(String(localized: "event.share.when", defaultValue: "It’s \(when).", bundle: .module, comment: "Share text sentence; %@ = time phrase such as on Monday, Nov 9 from 6:00 PM to 7:00 PM"))
+        } else {
+            sentences.append(String(localized: "event.share.whenAt", defaultValue: "It’s \(when) at \(place).", bundle: .module, comment: "Share text sentence; first %@ = time phrase such as on Monday, Nov 9 from 6:00 PM to 7:00 PM, second %@ = venue and address"))
+        }
         let note = costNote.trimmingCharacters(in: .whitespacesAndNewlines)
         if costCents > 0 {
-            details += " It costs \(priceText(locale: locale))\(note.isEmpty ? "" : " (\(note))")."
+            let price = priceText(locale: locale)
+            if note.isEmpty {
+                sentences.append(String(localized: "event.share.cost", defaultValue: "It costs \(price).", bundle: .module, comment: "Share text sentence; %@ = price such as $5.00"))
+            } else {
+                sentences.append(String(localized: "event.share.costNote", defaultValue: "It costs \(price) (\(note)).", bundle: .module, comment: "Share text sentence; first %@ = price such as $5.00, second %@ = organizer's cost note"))
+            }
+        } else if note.isEmpty {
+            sentences.append(String(localized: "event.share.free", defaultValue: "It’s free to join.", bundle: .module, comment: "Share text sentence for a free activity"))
         } else {
-            details += " It’s free to join\(note.isEmpty ? "" : " (\(note))")."
+            sentences.append(String(localized: "event.share.freeNote", defaultValue: "It’s free to join (\(note)).", bundle: .module, comment: "Share text sentence for a free activity; %@ = organizer's cost note"))
         }
-        var text = "\(intro)\n\n\(details) Hope to see you there!"
+        sentences.append(String(localized: "event.share.closing", defaultValue: "Hope to see you there!", bundle: .module, comment: "Share text closing line"))
+        var text = "\(intro)\n\n\(sentences.joined(separator: " "))"
         if let link { text += "\n\n\(link.absoluteString)" }
         return text
     }
@@ -121,11 +135,15 @@ public struct DIPEventMetadata: Equatable, Sendable {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let startDay = day.string(from: startTime), startTimeText = time.string(from: startTime)
-        guard endTime > startTime else { return "on \(startDay) at \(startTimeText)" }
-        if calendar.isDate(startTime, inSameDayAs: endTime) {
-            return "on \(startDay) from \(startTimeText) to \(time.string(from: endTime))"
+        guard endTime > startTime else {
+            return String(localized: "event.share.phrase.start", defaultValue: "on \(startDay) at \(startTimeText)", bundle: .module, comment: "Time phrase in share text, no end; first %@ = date, second %@ = time")
         }
-        return "from \(startDay) at \(startTimeText) to \(day.string(from: endTime)) at \(time.string(from: endTime))"
+        if calendar.isDate(startTime, inSameDayAs: endTime) {
+            let endTimeText = time.string(from: endTime)
+            return String(localized: "event.share.phrase.sameDay", defaultValue: "on \(startDay) from \(startTimeText) to \(endTimeText)", bundle: .module, comment: "Time phrase in share text for a same-day event; %@ = date, start time, end time in order")
+        }
+        let endDay = day.string(from: endTime), endTimeText = time.string(from: endTime)
+        return String(localized: "event.share.phrase.multiDay", defaultValue: "from \(startDay) at \(startTimeText) to \(endDay) at \(endTimeText)", bundle: .module, comment: "Time phrase in share text for a multi-day event; %@ = start date, start time, end date, end time in order")
     }
 
     private static func firstSentence(_ text: String) -> String? {

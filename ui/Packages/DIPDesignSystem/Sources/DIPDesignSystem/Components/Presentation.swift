@@ -20,19 +20,46 @@ public struct DIPEventCardContent: Equatable, Sendable {
         self.registration = registration
     }
 
-    public var displayTitle: String { title.nonempty ?? "Untitled event" }
-    public var displayDate: String { dateText.nonempty ?? "Date to be confirmed" }
-    public var displayLocality: String { locality.nonempty ?? "Location to be confirmed" }
+    public var displayTitle: String {
+        title.nonempty
+            ?? String(
+                localized: "ds.eventCard.untitled", defaultValue: "Untitled event", bundle: .module,
+                comment: "Event card title fallback when the event has no title")
+    }
+    public var displayDate: String {
+        dateText.nonempty
+            ?? String(
+                localized: "ds.eventCard.dateTbc", defaultValue: "Date to be confirmed", bundle: .module,
+                comment: "Event card date fallback when the event has no date yet")
+    }
+    public var displayLocality: String {
+        locality.nonempty
+            ?? String(
+                localized: "ds.eventCard.locationTbc", defaultValue: "Location to be confirmed", bundle: .module,
+                comment: "Event card location fallback when the event has no location yet")
+    }
     public var attendanceText: String {
-        guard let attendeeCount else { return "Attendees unavailable" }
+        guard let attendeeCount else {
+            return String(
+                localized: "ds.eventCard.attendeesUnavailable", defaultValue: "Attendees unavailable",
+                bundle: .module, comment: "Event card attendance line when the attendee count is not available")
+        }
         let count = max(0, attendeeCount)
-        return count == 1 ? "1 attending" : "\(count) attending"
+        return String(
+            localized: "ds.eventCard.attending", defaultValue: "\(count) attending", bundle: .module,
+            comment: "Event card attendance line; %lld = number of people attending")
     }
     public var registrationText: String {
         switch registration {
         case .available: return ""
-        case .joined: return "Joined"
-        case .unavailable: return "Registration unavailable"
+        case .joined:
+            return String(
+                localized: "ds.eventCard.joined", defaultValue: "Joined", bundle: .module,
+                comment: "Event card status: the member has joined this event")
+        case .unavailable:
+            return String(
+                localized: "ds.eventCard.registrationUnavailable", defaultValue: "Registration unavailable",
+                bundle: .module, comment: "Event card status: joining this event is not possible")
         }
     }
     public var accessibilityLabel: String {
@@ -47,7 +74,12 @@ public struct DIPAvatarIdentity: Identifiable, Equatable, Sendable {
         self.id = id
         self.name = name
     }
-    public var displayName: String { name.nonempty ?? "Coworker" }
+    public var displayName: String {
+        name.nonempty
+            ?? String(
+                localized: "ds.avatar.coworker", defaultValue: "Coworker", bundle: .module,
+                comment: "Name fallback for a person without a display name")
+    }
     public var initials: String {
         name.split(whereSeparator: { $0.isWhitespace }).prefix(2).compactMap(\.first).map(String.init).joined()
             .uppercased()
@@ -67,12 +99,28 @@ public struct DIPAvatarGroupSummary: Equatable, Sendable {
         self.overflowCount = max(0, self.totalCount - visiblePeople.count)
     }
     public var accessibilityLabel: String {
-        guard totalCount > 0 else { return "No attendees yet" }
+        guard totalCount > 0 else {
+            return String(
+                localized: "ds.avatarGroup.empty", defaultValue: "No attendees yet", bundle: .module,
+                comment: "Spoken and visible label for an avatar group with nobody in it")
+        }
         let names = visiblePeople.map(\.displayName)
         var parts = names
-        if overflowCount > 0 { parts.append("\(overflowCount) more") }
-        let count = totalCount == 1 ? "1 attendee" : "\(totalCount) attendees"
-        return parts.isEmpty ? count : count + ": " + parts.joined(separator: ", ")
+        if overflowCount > 0 {
+            parts.append(
+                String(
+                    localized: "ds.avatarGroup.more", defaultValue: "\(overflowCount) more", bundle: .module,
+                    comment: "Spoken avatar group overflow item; %lld = number of additional attendees not named"))
+        }
+        if parts.isEmpty {
+            return String(
+                localized: "ds.avatarGroup.count", defaultValue: "\(totalCount) attendees", bundle: .module,
+                comment: "Spoken attendee total; %lld = number of attendees")
+        }
+        return String(
+            localized: "ds.avatarGroup.countWithNames", defaultValue: "\(totalCount) attendees: \(parts.joined(separator: ", "))",
+            bundle: .module,
+            comment: "Spoken attendee total followed by names; %1$lld = number of attendees, %2$@ = comma separated names and overflow")
     }
 }
 
@@ -81,9 +129,11 @@ public enum DIPDestination: String, CaseIterable, Identifiable, Sendable {
     public var id: Self { self }
     public var title: String {
         switch self {
-        case .home: "Home"
-        case .myEvents: "My Events"
-        case .profile: "Profile"
+        case .home: String(localized: "ds.tab.home", defaultValue: "Home", bundle: .module, comment: "Tab bar item: home")
+        case .myEvents:
+            String(localized: "ds.tab.myEvents", defaultValue: "My Events", bundle: .module, comment: "Tab bar item: the member's events")
+        case .profile:
+            String(localized: "ds.tab.profile", defaultValue: "Profile", bundle: .module, comment: "Tab bar item: profile")
         }
     }
     /// Native symbols deliberately replace prototype Heroicons; calendar addresses the research finding.

@@ -1,0 +1,510 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "app.error.loadUpdates" : {
+      "comment" : "Error banner when loading live data failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load updates. Please try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron cargar las novedades. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "chu' lan Qagh! yInIDqa'."
+          }
+        }
+      }
+    },
+    "app.error.saveChange" : {
+      "comment" : "Error banner when a save command failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t save that change. Please try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo guardar ese cambio. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "choH pollu'be'. yInIDqa'."
+          }
+        }
+      }
+    },
+    "app.error.updatesStopped" : {
+      "comment" : "Error banner when the live data stream ended",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Updates stopped. Please reconnect."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las actualizaciones se detuvieron. Vuelve a conectarte."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "chu' mevta'. yIjonqa'."
+          }
+        }
+      }
+    },
+    "invites.error.load" : {
+      "comment" : "Error shown when the invitations list fails to load",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load your invitations. Please try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron cargar tus invitaciones. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rItmeylIj lan Qagh! yInIDqa'."
+          }
+        }
+      }
+    },
+    "notificationSettings.channel.email" : {
+      "comment" : "Settings section title for email notifications",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Email"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn De'wI'"
+          }
+        }
+      }
+    },
+    "notificationSettings.channel.push" : {
+      "comment" : "Settings section title for push notifications",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Push"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn pup"
+          }
+        }
+      }
+    },
+    "notificationSettings.disabled.footnote" : {
+      "comment" : "Footnote when notification switches are disabled",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Allow notifications to change these."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite las notificaciones para cambiar esto."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey yIchaw' choHmeH."
+          }
+        }
+      }
+    },
+    "notificationSettings.email.footnote" : {
+      "comment" : "Footnote under the email section",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Emails go to your Google account address. Every email has an unsubscribe link."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los correos llegan a la dirección de tu cuenta de Google. Cada correo incluye un enlace para cancelar la suscripción."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn De'wI' Google De'lIj Daq ngeH. QIn Hoch mev QIj ghaj."
+          }
+        }
+      }
+    },
+    "notificationSettings.error.load" : {
+      "comment" : "Error when loading notification settings failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load your notification settings. Check your connection and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron cargar tus ajustes de notificaciones. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "SeHlaw QInmey lan Qagh! De' ghom yIpoj 'ej yInIDqa'."
+          }
+        }
+      }
+    },
+    "notificationSettings.error.save" : {
+      "comment" : "Error when saving a notification switch failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t save that change. Check your connection and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo guardar ese cambio. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "choH pollu'be'. De' ghom yIpoj 'ej yInIDqa'."
+          }
+        }
+      }
+    },
+    "notificationSettings.master.deniedDetail" : {
+      "comment" : "Permission row detail when notifications are denied in iOS Settings",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Allow notifications for DIP in iOS Settings to get alerts on this phone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite las notificaciones de DIP en los Ajustes de iOS para recibir alertas en este teléfono."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DIP QInmey yIchaw' SeHlaw iOS Daq, QInmey De'wI'vam Daq legh."
+          }
+        }
+      }
+    },
+    "notificationSettings.master.off" : {
+      "comment" : "Permission row title when push is not allowed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Push is off"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push desactivadas"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "pup chu'be'"
+          }
+        }
+      }
+    },
+    "notificationSettings.master.on" : {
+      "comment" : "Permission row title when push is allowed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Push notifications are on"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notificaciones push activadas"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn pup chu'"
+          }
+        }
+      }
+    },
+    "notificationSettings.master.openSettings" : {
+      "comment" : "Button that opens iOS Settings",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "SeHlaw yIpoSmoH"
+          }
+        }
+      }
+    },
+    "notificationSettings.master.turnOn" : {
+      "comment" : "Button that asks for notification permission",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Turn on notifications"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activar notificaciones"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey yIchu'"
+          }
+        }
+      }
+    },
+    "notificationSettings.perActivity.message" : {
+      "comment" : "Per-activity explainer body",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Each activity has a bell in its chat. It overrides the chat, change and reminder switches for that activity."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada actividad tiene una campana en su chat. Esta reemplaza los interruptores de chat, cambios y recordatorios para esa actividad."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' Hoch ja'chuq Daq jIb ghaj. ja'chuq, choH, qaw'moHwI' je ghItlhmeyvam Qu'vaD qIj."
+          }
+        }
+      }
+    },
+    "notificationSettings.perActivity.title" : {
+      "comment" : "Per-activity explainer title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Per-activity settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes por actividad"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' Hoch SeHlaw"
+          }
+        }
+      }
+    },
+    "notifications.error.loadMore" : {
+      "comment" : "Error when loading more notifications failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load more. Try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar más. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "law' lan Qagh! yInIDqa'."
+          }
+        }
+      }
+    },
+    "notifications.error.markAllRead" : {
+      "comment" : "Error when marking all notifications as read failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t mark everything as read. Try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo marcar todo como leído. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hoch legh Qagh! yInIDqa'."
+          }
+        }
+      }
+    },
+    "notifications.error.offline" : {
+      "comment" : "Error shown when an action fails because the device is offline",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re offline. Try again when you’re back online."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estás sin conexión. Inténtalo de nuevo cuando vuelvas a conectarte."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jIDoSbe'. yInIDqa' DaH."
+          }
+        }
+      }
+    },
+    "notifications.error.updatesStopped" : {
+      "comment" : "Error shown when live updates stop",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Updates stopped. Check your connection."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las actualizaciones se detuvieron. Revisa tu conexión."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "chu' mevta'. De' ghom yIpoj."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
