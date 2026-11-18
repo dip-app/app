@@ -19,3 +19,8 @@
 }
 @keyframes sug-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .sug-opening .spinner { animation-duration: 3s; } }
+
+// Your settings: stacked sections, each with its own heading above its panels.
+.user-settings { display: grid; gap: 40px; max-width: 760px; min-width: 0; }
+.settings-section { display: grid; gap: 16px; min-width: 0; }
+.settings-section-head { display: grid; gap: 4px; h2 { font-size: 22px; margin: 0; } .muted { margin: 0; font-size: 15px; } }

@@ -74,7 +74,7 @@ Each idea links to `https://letsdip.work/admin/ideas/suggested/?t=<token>`. The 
 
 ## Portal
 
-`/admin/suggestions/` ("Weekly ideas email", admins only): an on/off switch for the admin's own `admin_suggestions` email preference, day and hour (company time zone shown), a dry-run preview of this week's email (rendered server-side, shown in a sandboxed frame, nothing sent), and "Send me a test" (enqueues one test email through the normal outbox; at most one per admin per hour; needs email enabled and the switch on).
+`/admin/account/` ("Your settings", first section "Weekly ideas email", admins only; reached from the name block at the bottom of the nav): an on/off switch for the admin's own `admin_suggestions` email preference, day and hour (company time zone shown), a dry-run preview of this week's email (rendered server-side, shown in a sandboxed frame, nothing sent), and "Send me a test" (enqueues one test email through the normal outbox; at most one per admin per hour; needs email enabled and the switch on).
 
 Callables (v1, additive): `manageSuggestionsEmailV1` (`status`, `preview`, `sendTest`, `subscribe`, `unsubscribe`, `setSchedule`) and `resolveSuggestedIdeaV1`.
 
