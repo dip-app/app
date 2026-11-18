@@ -6,6 +6,7 @@ import {
   LlmUnavailableError, type AiDeps, type AiSettings, type DecisionRequest, type DecisionResult, type ModerationResult,
 } from "../../functions/src/modules/ai/application/ports";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
+import { CREDIT_COSTS } from "../../functions/src/modules/ai/domain/credits";
 import { payloadHash } from "../../functions/src/modules/admin/domain/reader";
 import { APPROVED_COVER_URLS } from "../../functions/src/modules/organizer/domain/eventDraft";
 import { callWorstCaseMicros, costMicros, outputCeiling, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
@@ -150,7 +151,7 @@ describe("kill switches", () => {
     const context = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
     assert.equal(context.enabled, true);
     assert.deepEqual(context.usage, {
-      monthlyGenerationLimit: 5, monthlyGenerationsUsed: 0, dailyGenerationLimit: 3, dailyGenerationsUsed: 0, generationsRemaining: 3, budgetExhausted: false,
+      monthlyGenerationLimit: 5, monthlyGenerationsUsed: 0, dailyGenerationLimit: 3, dailyGenerationsUsed: 0, generationsRemaining: 3,
     });
   });
 });
@@ -222,7 +223,9 @@ describe("generateEventDraftsV1 happy path", () => {
     const field = (name: string) => changes.find(c => c.field === name)!.after;
     assert.equal(field("models"), "jev-latest,gpt-4o-mini");
     assert.equal(field("tokens"), `${USAGE.inputTokens + 4 * JEV_USAGE.inputTokens} in, ${USAGE.outputTokens} out`);
-    assert.equal(field("costUsd"), ((costMicros(SETTINGS.models.generate, USAGE) + 4 * jev) / 1_000_000).toFixed(4));
+    // Admins can read the audit log: it records credits, never money.
+    assert.equal(field("credits"), "10");
+    assert.ok(!changes.some(c => /usd|cost|dollar|cents|micros/i.test(c.field)));
     const log = r.logs.find(l => l.event === "ai.generate")!.fields as Record<string, unknown>;
     assert.equal(log.calls, 5);
     assert.equal(log.decisionProviders, "jev");
@@ -669,7 +672,6 @@ describe("caps", () => {
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
     assert.equal(r.llm.calls.length, 0);
     const ctx = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
-    assert.equal(ctx.usage.budgetExhausted, true);
     assert.equal(ctx.usage.generationsRemaining, 0);
   });
 
@@ -684,7 +686,6 @@ describe("caps", () => {
     });
     assert.equal(r.llm.calls.length, 0);
     const ctx = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
-    assert.equal(ctx.usage.budgetExhausted, true);
     assert.equal(ctx.usage.generationsRemaining, 0);
   });
 
@@ -886,7 +887,7 @@ describe("getEventIdeaContextV1", () => {
     r.store.seed(DAY("admin1"), { generations: 1, flags: 0 });
     r.store.seed(DAY("admin2"), { generations: 3, flags: 0 });
     assert.deepEqual((await ask(r, "admin1")).usage, {
-      monthlyGenerationLimit: 5, monthlyGenerationsUsed: 2, dailyGenerationLimit: 3, dailyGenerationsUsed: 1, generationsRemaining: 2, budgetExhausted: false,
+      monthlyGenerationLimit: 5, monthlyGenerationsUsed: 2, dailyGenerationLimit: 3, dailyGenerationsUsed: 1, generationsRemaining: 2,
     });
     assert.equal((await ask(r, "admin2")).usage.generationsRemaining, 0);
   });
@@ -1025,5 +1026,105 @@ describe("audit hardening", () => {
     const platform = r.store.get("aiUsagePlatform/203001")!;
     assert.equal(platform.spentMicros, month(r).spentMicros);
     assert.deepEqual(platform.pending, {});
+  });
+});
+
+const CREDITS = "companies/alpha/aiCredits/203001";
+const ledger = (r: Rig) => r.store.get(CREDITS)!;
+
+describe("Dipbot credits (generate)", () => {
+  test("a successful run charges the table price and answers with credits only", async () => {
+    const r = rig([drafts()]);
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(ledger(r).used, CREDIT_COSTS.generateDrafts);
+    assert.equal(CREDIT_COSTS.generateDrafts, 10);
+    assert.deepEqual(response.credits, {
+      creditsAllowance: 500, creditsUsed: 10, creditsRemaining: 490, resetsAt: "2030-02-01T00:00:00.000Z",
+      creditCost: { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3 },
+    });
+    assert.ok(!/usd|dollar|cents|micros|spent|\$/i.test(JSON.stringify({ usage: response.usage, credits: response.credits })));
+  });
+
+  test("a replayed requestId is free and reports the same balance", async () => {
+    const r = rig([drafts()]);
+    await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    const again = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(again.replay, true);
+    assert.equal(again.credits.creditsUsed, 10);
+    assert.equal(ledger(r).used, 10);
+  });
+
+  test("a declined note is refunded (and a note rejected before any model call is never charged)", async () => {
+    const r = rig([], {}, true, { moderation: [flaggedModeration] });
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1, { prompt: "bad note" })), "invalid-argument", "AI_PROMPT_REJECTED");
+    assert.equal(ledger(r).used, 0);
+    assert.deepEqual(ledger(r).charges, {});
+    const v = rig([]);
+    await fails(generateEventDrafts(v.deps, caller("admin1"), request(1, { count: 9 })), "invalid-argument", "VALIDATION_FAILED");
+    assert.equal(v.store.get(CREDITS), undefined);
+  });
+
+  test("a provider failure with no drafts is refunded, and the retry with the same requestId is charged once", async () => {
+    const r = rig([new LlmUnavailableError(503), drafts()]);
+    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "unavailable", "AI_UNAVAILABLE");
+    assert.equal(ledger(r).used, 0);
+    const ok = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(ok.credits.creditsUsed, 10);
+    assert.equal(ledger(r).used, 10);
+  });
+
+  test("out of credits: AI_CREDITS_EXHAUSTED with the balance and reset date, before any model call", async () => {
+    const r = rig([]);
+    r.store.seed(CREDITS, { period: "203001", used: 495, charges: {} });
+    await assert.rejects(generateEventDrafts(r.deps, caller("admin1"), request(1)), (e: unknown) => {
+      assert.ok(e instanceof AdminError);
+      assert.equal(e.reason, "AI_CREDITS_EXHAUSTED");
+      assert.equal(e.code, "resource-exhausted");
+      assert.deepEqual(e.details, { creditsRemaining: 5, resetsAt: "2030-02-01T00:00:00.000Z" });
+      assert.ok(!/\$|usd|dollar/i.test(e.message));
+      return true;
+    });
+    assert.equal(r.llm.calls.length, 0);
+    assert.equal(ledger(r).used, 495);
+    assert.equal(r.store.children("companies/alpha/aiRequests").length, 0);
+  });
+
+  test("a company override of monthlyCredits sets the allowance", async () => {
+    const r = rig([drafts()]);
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyCredits: 10 });
+    const first = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(first.credits.creditsAllowance, 10);
+    assert.equal(first.credits.creditsRemaining, 0);
+    await assert.rejects(generateEventDrafts(r.deps, caller("admin2"), request(2)), (e: unknown) => e instanceof AdminError && e.reason === "AI_CREDITS_EXHAUSTED" && e.details.creditsRemaining === 0);
+  });
+
+  test("the allowance resets with the calendar month in the company's time zone", async () => {
+    // 2030-01-02 12:00Z: a previous month's ledger does not count, and the reset follows the company's zone.
+    const r = rig([drafts()]);
+    r.store.seed("companies/alpha/aiCredits/202912", { period: "202912", used: 500, charges: {} });
+    r.store.seed("emailSettings/alpha", { enabled: true, timeZone: "America/Los_Angeles" });
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(response.credits.creditsUsed, 10);
+    assert.equal(response.credits.resetsAt, "2030-02-01T08:00:00.000Z");
+  });
+
+  test("parallel runs cannot overspend the allowance", async () => {
+    const slow = async () => { await new Promise(resolve => setTimeout(resolve, 20)); return drafts(); };
+    const r = rig([slow, slow, slow, slow]);
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyCredits: 20 });
+    const results = await Promise.allSettled(["admin1", "admin2", "admin3", "admin4"].map((uid, i) => generateEventDrafts(r.deps, caller(uid), request(20 + i))));
+    assert.equal(results.filter(x => x.status === "fulfilled").length, 2);
+    for (const x of results) if (x.status === "rejected") assert.equal((x.reason as AdminError).reason, "AI_CREDITS_EXHAUSTED");
+    assert.equal(ledger(r).used, 20);
+  });
+
+  test("the context call reports credits, exhausted or not, with no money fields", async () => {
+    const r = rig();
+    const context = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
+    assert.equal(context.credits.creditsRemaining, 500);
+    assert.equal(context.credits.creditCost.generate, 10);
+    assert.ok(!/usd|dollar|cents|micros|spent|\$/i.test(JSON.stringify({ usage: context.usage, credits: context.credits })));
+    r.store.seed(CREDITS, { period: "203001", used: 500, charges: {} });
+    assert.equal((await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" })).credits.creditsRemaining, 0);
   });
 });

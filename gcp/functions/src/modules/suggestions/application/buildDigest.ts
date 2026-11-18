@@ -67,7 +67,7 @@ async function runEngine(
     failed = true;
   }
   try {
-    await deps.budget.settle(companyId, key, spent, tokensIn, tokensOut, now);
+    await deps.budget.settle(companyId, key, spent, tokensIn, tokensOut, now, !failed);
   } catch (error) {
     deps.log?.("suggestions.settle_failed", { companyId, weekKey, engine, error: error instanceof Error ? error.name : "unknown" });
   }

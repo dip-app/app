@@ -1,6 +1,7 @@
 import type { AiEventChoices, AiInterestTag } from "../../../generated/models";
 import type { CatalogTag, CurrentTheme, DecisionAnswer, DecisionQuestion } from "../application/ports";
 import { block } from "./prompt";
+import { reasonWithBasis } from "./suggestionReasons";
 import { BUDGETS, GOALS, GROUP_SIZES, SETTINGS, TIMINGS } from "./vocabulary";
 
 /**
@@ -24,6 +25,8 @@ export interface Suggestion {
   probability: number;
   /** One deterministic line built by code from the facts (never model text). */
   reason: string;
+  /** "company_data" when the company's own data (above the privacy floor) drove it, else "generic" (never implies personalization). */
+  reasonBasis: "company_data" | "generic";
 }
 
 /** Aggregates of the company's recent past events. Counts only: nothing that could identify a person or an event. */
@@ -66,6 +69,11 @@ const SETTING_TEXT: Record<AiEventChoices["setting"], string> = {
 const TIMING_TEXT: Record<AiEventChoices["timing"], string> = {
   weekday_lunch: "A weekday lunch break", after_work: "A weekday evening after work", weekend: "On Saturday or Sunday",
 };
+
+function withReason(question: SuggestionQuestion, value: string, facts: SuggestionFacts) {
+  const { reason, basis } = reasonWithBasis(question, value, facts);
+  return { reason, reasonBasis: basis };
+}
 
 export function hasSignal(facts: SuggestionFacts): boolean {
   return facts.interests.length > 0 || (facts.past?.total ?? 0) > 0;
@@ -172,7 +180,7 @@ export function fromAnswers(answers: Record<string, DecisionAnswer>, facts: Sugg
   const out: Suggestion[] = [];
   for (const question of SUGGESTION_QUESTIONS) {
     const top = topOption(answers[question], optionsOf(question, facts));
-    if (top) out.push({ question, value: top.value, probability: round3(top.probability), reason: reasonFor(question, top.value, facts) });
+    if (top) out.push({ question, value: top.value, probability: round3(top.probability), ...withReason(question, top.value, facts) });
   }
   return out;
 }
@@ -234,53 +242,12 @@ export function heuristicSuggestions(facts: SuggestionFacts): Suggestion[] {
     const options = optionsOf(question, facts);
     if (question === "interest" && options.length < 2) continue;
     const top = normalized(options, weights[question]);
-    if (top) out.push({ question, value: top.value, probability: round3(top.probability), reason: reasonFor(question, top.value, facts) });
+    if (top) out.push({ question, value: top.value, probability: round3(top.probability), ...withReason(question, top.value, facts) });
   }
   return out;
 }
 
-// ---------- Reasons: one line, built by code from the same facts
-
-const BUDGET_LABEL: Record<AiEventChoices["budget"], string> = { free: "free", under_15: "under $15 per person", from_15_to_50: "$15 to $50 per person", over_50: "over $50 per person" };
-const TIMING_LABEL: Record<AiEventChoices["timing"], string> = { weekday_lunch: "at lunch", after_work: "after work", weekend: "on the weekend" };
-const SIZE_LABEL: Record<AiEventChoices["groupSize"], string> = { small: "under 10 people", team: "10 to 30 people", company: "the whole company" };
-const BUCKET_SHORT: Record<AiInterestTag["bucket"], string> = { "20+": "20+ members", "10-19": "10 to 19 members", "5-9": "5 to 9 members" };
-
-export function reasonFor(question: SuggestionQuestion, value: string, facts: SuggestionFacts): string {
-  const past = facts.past && facts.past.total > 0 ? facts.past : null;
-  const top = facts.interests.slice(0, 2).map(i => nameOf(facts, i.tagId));
-  const of = (n: number) => `${n} of your last ${past!.total} events`;
-  switch (question) {
-    case "interest": {
-      const hit = facts.interests.find(i => i.tagId === value);
-      const theme = facts.theme?.tagIds.includes(value) ? ", and it fits this week's theme" : "";
-      return hit ? `${BUCKET_SHORT[hit.bucket]} like ${nameOf(facts, value)}${theme}` : `Fits your members' interests${theme}`;
-    }
-    case "goal":
-      return top.length > 0 ? `Fits your top interests: ${top.join(" and ")}` : "A good fit for most workplace groups";
-    case "groupSize": {
-      const n = past?.size[value as AiEventChoices["groupSize"]] ?? 0;
-      if (past && n > 0) return `${of(n)} had room for ${SIZE_LABEL[value as AiEventChoices["groupSize"]]}`;
-      return value === "company" ? "Your largest interest groups have 20+ members" : "Fits the size of your interest groups";
-    }
-    case "setting": {
-      if (past && value === "outdoors" && past.outdoor > 0) return `${of(past.outdoor)} were outdoors`;
-      if (past && value === "indoors" && past.total - past.outdoor > 0) return `${of(past.total - past.outdoor)} were indoors`;
-      if (value === "outdoors" && facts.interests.some(i => i.tagId === "tag-outdoors")) return "Outdoors is one of your top interests";
-      return "Works in any weather";
-    }
-    case "budget": {
-      const n = past?.budget[value as AiEventChoices["budget"]] ?? 0;
-      if (past && n > 0) return `${of(n)} were ${BUDGET_LABEL[value as AiEventChoices["budget"]]}`;
-      return value === "free" || value === "under_15" ? "Low cost makes it easy for everyone to join" : "Fits your members' interests";
-    }
-    case "timing": {
-      const n = past?.timing[value as AiEventChoices["timing"]] ?? 0;
-      if (past && n > 0) return `${of(n)} were ${TIMING_LABEL[value as AiEventChoices["timing"]]}`;
-      return value === "after_work" ? "Easy to join without missing work" : "Easy for most people to join";
-    }
-  }
-}
+// ---------- Reasons: one line built by code (domain/suggestionReasons.ts), honest about what drove it
 
 // ---------- Past-event aggregation (pure; the Firestore adapter only reads the documents)
 

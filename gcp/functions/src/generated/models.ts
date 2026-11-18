@@ -1326,13 +1326,27 @@ export interface AiIdeaTheme {
   tagIds: Array<string>;
 }
 
+export interface AiCreditCosts {
+  suggest: number;
+  generate: number;
+  regenerate: number;
+  weeklyEmail: number;
+}
+
+export interface AiCredits {
+  creditsAllowance: number;
+  creditsUsed: number;
+  creditsRemaining: number;
+  resetsAt: string;
+  creditCost: AiCreditCosts;
+}
+
 export interface AiUsageSummary {
   monthlyGenerationLimit: number;
   monthlyGenerationsUsed: number;
   dailyGenerationLimit: number;
   dailyGenerationsUsed: number;
   generationsRemaining: number;
-  budgetExhausted: boolean;
 }
 
 export interface GetEventIdeaContextRequest {
@@ -1348,6 +1362,7 @@ export interface GetEventIdeaContextResponse {
   thinInterestTagIds: Array<string>;
   currentTheme?: AiIdeaTheme;
   usage: AiUsageSummary;
+  credits: AiCredits;
 }
 
 export interface GetEventIdeaSuggestionsRequest {
@@ -1361,6 +1376,7 @@ export interface AiStepSuggestion {
   value: string;
   probability: number;
   reason: string;
+  reasonBasis: "company_data" | "generic";
 }
 
 export interface GetEventIdeaSuggestionsResponse {
@@ -1368,6 +1384,7 @@ export interface GetEventIdeaSuggestionsResponse {
   provider: "jev" | "openai" | "heuristic" | "none";
   suggestions: Array<AiStepSuggestion>;
   cached: boolean;
+  credits: AiCredits;
 }
 
 export interface AiEventChoices {
@@ -1409,6 +1426,7 @@ export interface GenerateEventDraftsResponse {
   drafts: Array<GeneratedEventDraft>;
   usage: AiUsageSummary;
   replay: boolean;
+  credits: AiCredits;
 }
 
 export type SuggestionsEmailAction = "status" | "preview" | "sendTest" | "subscribe" | "unsubscribe" | "setSchedule";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type KeyValueStore, createMockApi } from "../api";
 import { ApiError } from "../contract";
 import {
-  AI_DRAFT_KEY, AI_DRAFT_TTL_MS, MAX_FOCUS, chooseSurprise, choicesOf, costLabel, draftToPrefill, durationLabel, emptyAnswers, firstOpenStep,
+  AI_DRAFT_KEY, AI_DRAFT_TTL_MS, MAX_FOCUS, choicesOf, costLabel, draftToPrefill, durationLabel, emptyAnswers, firstOpenStep,
   presetAnswers, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, takeAiDraft, toggleInterest, venueLabel,
 } from "../ideas";
 import { buildMockDrafts } from "../ideasMock";
@@ -88,18 +88,16 @@ describe("event ideas mock API", () => {
 describe("flow helpers", () => {
   it("validates each step and limits interests to three", () => {
     let a = emptyAnswers();
-    expect(stepValid("interests", a)).toBe(false);
-    expect(firstOpenStep(a)).toBe(0);
+    expect(stepValid("interests", a)).toBe(true);
+    expect(firstOpenStep(a)).toBe(1);
     for (const id of ["tag-fitness", "tag-games", "tag-music", "tag-chill"]) a = toggleInterest(a, id);
     expect(a.focusTagIds).toHaveLength(MAX_FOCUS);
     expect(a.focusTagIds).not.toContain("tag-chill");
     a = toggleInterest(a, "tag-games");
     expect(a.focusTagIds).toEqual(["tag-fitness", "tag-music"]);
-    a = chooseSurprise(a);
-    expect(a).toMatchObject({ surprise: true, focusTagIds: [] });
-    expect(stepValid("interests", a)).toBe(true);
+    // No pick is a valid answer: any interest can fit.
+    expect(stepValid("interests", emptyAnswers())).toBe(true);
     a = toggleInterest(a, "tag-games");
-    expect(a.surprise).toBe(false);
     expect(stepValid("goal", a)).toBe(false);
     expect(stepValid("group", { ...a, groupSize: "small" })).toBe(false);
     expect(stepValid("note", { ...a, prompt: "x".repeat(501) })).toBe(false);
@@ -110,10 +108,10 @@ describe("flow helpers", () => {
     const full = presetAnswers();
     expect(readyToGenerate(full)).toBe(true);
     expect(choicesOf(full)).toMatchObject({ focusTagIds: ["tag-fitness", "tag-games"], goal: "team_bonding", timing: "after_work" });
-    expect(choicesOf({ ...full, surprise: true, focusTagIds: [] })?.focusTagIds).toEqual([]);
+    expect(choicesOf({ ...full, focusTagIds: [] })?.focusTagIds).toEqual([]);
     const lines = summaryLines(full, tagName);
     expect(lines.map((l) => l.value)).toEqual(["Fitness, Games", "Team bonding", "Team, Indoors", "Under $15, After work", "Something new for the team"]);
-    expect(summaryLines(emptyAnswers(), tagName)[0].value).toBe("Not set");
+    expect(summaryLines(emptyAnswers(), tagName)[0].value).toBe("Any interest");
   });
 
   it("reuses a requestId only for an unchanged retry after a retryable failure", () => {

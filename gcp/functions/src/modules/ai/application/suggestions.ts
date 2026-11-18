@@ -3,6 +3,8 @@ import type { GetEventIdeaSuggestionsResponse } from "../../../generated/models"
 import { authorize, requireCaller } from "../../admin/application/context";
 import type { AdminTransaction, Doc } from "../../admin/application/ports";
 import { AdminError, invalid } from "../../admin/domain/errors";
+import { chargeCredits, CREDIT_COSTS, creditsRemaining, creditsSummary, ledgerDocument } from "../domain/credits";
+import { loadLedger } from "./credits";
 import { summarizeInterests } from "../domain/interests";
 import { dayKey, monthKey, aiPaths } from "../domain/paths";
 import { costMicros, DECISION_MAX_TOKENS } from "../domain/pricing";
@@ -50,7 +52,7 @@ const StoredSchema = z.object({
   uid: z.string(),
   provider: z.enum(["jev", "openai", "heuristic", "none"]),
   suggestions: z.array(z.object({
-    question: z.enum(["interest", "goal", "groupSize", "setting", "budget", "timing"]), value: z.string(), probability: z.number().min(0).max(1), reason: z.string(),
+    question: z.enum(["interest", "goal", "groupSize", "setting", "budget", "timing"]), value: z.string(), probability: z.number().min(0).max(1), reason: z.string(), reasonBasis: z.enum(["company_data", "generic"]).default("generic"),
   })).max(6),
 });
 
@@ -84,9 +86,11 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
     ]);
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
     if (!limits.enabled) throw new AdminError("failed-precondition", "AI_DISABLED", "AI event ideas are turned off for this company.");
+    const { ledger } = await loadLedger(tx, companyId, settingsDoc ?? null, now);
+    const credits = creditsSummary(ledger);
     if (cacheDoc && expiry(cacheDoc) > now.getTime()) {
       const stored = StoredSchema.safeParse(cacheDoc);
-      if (stored.success && stored.data.uid === caller.uid) return { cached: stored.data };
+      if (stored.success && stored.data.uid === caller.uid) return { cached: stored.data, credits };
     }
     const month = readMonth(monthDoc ?? null, now);
     const pending = Object.values(month.pending).reduce((sum, r) => sum + r.micros, 0);
@@ -98,10 +102,12 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
     } catch {
       platformOk = false;
     }
-    return { budgetOk: monthLeft >= worst && dayLeft >= worst && platformOk };
+    // Out of credits: the panel still answers with the free heuristic suggestions and no model call is made.
+    const creditsOk = creditsRemaining(ledger) >= CREDIT_COSTS.suggestPanel;
+    return { budgetOk: monthLeft >= worst && dayLeft >= worst && platformOk && creditsOk, credits };
   });
   if ("cached" in start) {
-    return { contractVersion: 1, provider: start.cached.provider, suggestions: start.cached.suggestions, cached: true };
+    return { contractVersion: 1, provider: start.cached.provider, suggestions: start.cached.suggestions, credits: start.credits, cached: true };
   }
 
   const now = deps.now();
@@ -149,11 +155,12 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
     }
   }
 
-  await deps.store.runTransaction(async tx => {
+  const credits = await deps.store.runTransaction(async tx => {
     const at = deps.now();
     const monthPath = aiPaths.month(companyId, monthKey(at));
     const platformPath = aiPaths.platform(monthKey(at));
-    const [monthDoc, cacheDoc, platformDoc] = await tx.getMany([monthPath, path, platformPath]);
+    const [monthDoc, cacheDoc, platformDoc, settingsDoc] = await tx.getMany([monthPath, path, platformPath, aiPaths.settings(companyId)]);
+    const loaded = await loadLedger(tx, companyId, settingsDoc ?? null, at);
     if (spent.micros > 0 || spent.tokensIn > 0) {
       const month = readMonth(monthDoc ?? null, at);
       addSpend(month, dayKey(at).slice(-2), { spentMicros: spent.micros, inputTokens: spent.tokensIn, outputTokens: spent.tokensOut });
@@ -163,13 +170,20 @@ export async function getEventIdeaSuggestions(deps: SuggestionDeps, rawCaller: C
       platform.spentMicros += spent.micros;
       put(tx, platformPath, platformDoc ?? null, platformDocument(platform));
     }
+    // One credit per visit that a model answered (the key makes a repeated or concurrent visit free). Heuristic and empty answers are free.
+    if (provider === "jev" || provider === "openai") {
+      if (chargeCredits(loaded.ledger, `suggest_${caller.uid}_${sessionId.toLowerCase()}`, CREDIT_COSTS.suggestPanel) === "charged") {
+        put(tx, loaded.path, loaded.doc, ledgerDocument(loaded.ledger));
+      }
+    }
     put(tx, path, cacheDoc ?? null, { uid: caller.uid, provider, suggestions, createdAt: at, expireAt: new Date(at.getTime() + SUGGESTION_TTL_MS) });
+    return creditsSummary(loaded.ledger);
   });
   // Ids, counts and outcome only: never the state, the questions or the answers.
   deps.log?.("ai.suggest", {
     companyId, provider, detail, suggestions: suggestions.length, model: spent.model || null, tokensIn: spent.tokensIn, costMicros: spent.micros,
   });
-  return { contractVersion: 1, provider, suggestions, cached: false };
+  return { contractVersion: 1, provider, suggestions, credits, cached: false };
 }
 
 function put(tx: AdminTransaction, path: string, existing: Doc | null, data: Doc): void {

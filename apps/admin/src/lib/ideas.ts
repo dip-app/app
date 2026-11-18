@@ -14,8 +14,9 @@ export const MAX_PROMPT = 500;
 
 export type StepId = "interests" | "goal" | "group" | "budget" | "note";
 const STEP_IDS: StepId[] = ["interests", "goal", "group", "budget", "note"];
-export const STEPS: { id: StepId; label: string; heading: string }[] = STEP_IDS.map((id) => ({
-  id, label: t(`step.${id}.label` as AiStringKey), heading: t(`step.${id}.heading` as AiStringKey),
+/** `label` is the short stepper text; `full` is the whole wording for names, tooltips and the summary. */
+export const STEPS: { id: StepId; label: string; full: string; heading: string }[] = STEP_IDS.map((id) => ({
+  id, label: t(`step.${id}.label` as AiStringKey), full: t(`step.${id}.full` as AiStringKey), heading: t(`step.${id}.heading` as AiStringKey),
 }));
 
 interface Option<T extends string> { value: T; label: string; hint: string }
@@ -31,9 +32,8 @@ export const TIMINGS = options<AiTiming>("timing", ["weekday_lunch", "after_work
 export const NOTE_SUGGESTIONS = (["note.chip.new", "note.chip.vegetarian", "note.chip.wheelchair", "note.chip.quiet"] as const).map((key) => t(key));
 
 export interface Answers {
+  /** Empty means any interest can fit (the server treats no focus tags that way). */
   focusTagIds: string[];
-  /** "Surprise me": answers step 1 without picking interests. */
-  surprise: boolean;
   goal: AiGoal | null;
   groupSize: AiGroupSize | null;
   setting: AiSetting | null;
@@ -44,22 +44,19 @@ export interface Answers {
 }
 
 export function emptyAnswers(): Answers {
-  return { focusTagIds: [], surprise: false, goal: null, groupSize: null, setting: null, budget: null, timing: null, prompt: "", count: 3 };
+  return { focusTagIds: [], goal: null, groupSize: null, setting: null, budget: null, timing: null, prompt: "", count: 3 };
 }
 
-/** Toggles one interest: at most MAX_FOCUS; picking one cancels "Surprise me". Unknown extra picks are ignored. */
+/** Toggles one interest: at most MAX_FOCUS; extra picks are ignored. */
 export function toggleInterest(answers: Answers, tagId: string): Answers {
   if (answers.focusTagIds.includes(tagId)) return { ...answers, focusTagIds: answers.focusTagIds.filter((id) => id !== tagId) };
   if (answers.focusTagIds.length >= MAX_FOCUS) return answers;
-  return { ...answers, surprise: false, focusTagIds: [...answers.focusTagIds, tagId] };
-}
-export function chooseSurprise(answers: Answers): Answers {
-  return { ...answers, surprise: true, focusTagIds: [] };
+  return { ...answers, focusTagIds: [...answers.focusTagIds, tagId] };
 }
 
 export function stepValid(step: StepId, a: Answers): boolean {
   switch (step) {
-    case "interests": return a.surprise || a.focusTagIds.length > 0;
+    case "interests": return true;
     case "goal": return a.goal !== null;
     case "group": return a.groupSize !== null && a.setting !== null;
     case "budget": return a.budget !== null && a.timing !== null;
@@ -79,8 +76,8 @@ export function firstOpenStep(a: Answers): number {
 }
 
 export function choicesOf(a: Answers): AiEventChoices | null {
-  if (!a.goal || !a.groupSize || !a.setting || !a.budget || !a.timing || !(a.surprise || a.focusTagIds.length)) return null;
-  return { focusTagIds: a.surprise ? [] : [...a.focusTagIds], goal: a.goal, groupSize: a.groupSize, setting: a.setting, budget: a.budget, timing: a.timing };
+  if (!a.goal || !a.groupSize || !a.setting || !a.budget || !a.timing) return null;
+  return { focusTagIds: [...a.focusTagIds], goal: a.goal, groupSize: a.groupSize, setting: a.setting, budget: a.budget, timing: a.timing };
 }
 
 const labelOf = <T extends string>(options: Option<T>[], value: T | null) => options.find((o) => o.value === value)?.label ?? "";
@@ -90,16 +87,16 @@ export const NONE = t("rail.none");
 export interface SummaryLine { step: number; label: string; value: string }
 /** The "Your choices" list. Unanswered lines read "Not set". */
 export function summaryLines(a: Answers, tagName: (id: string) => string): SummaryLine[] {
-  const interests = a.surprise ? t("interests.surprise") : a.focusTagIds.map(tagName).join(", ");
+  const interests = a.focusTagIds.map(tagName).join(", ") || t("interests.any");
   const group = [labelOf(GROUP_SIZES, a.groupSize), labelOf(SETTINGS, a.setting)].filter(Boolean).join(", ");
   const budget = [labelOf(BUDGETS, a.budget), labelOf(TIMINGS, a.timing)].filter(Boolean).join(", ");
   const note = a.prompt.trim();
   return [
-    { step: 0, label: STEPS[0].label, value: interests || NOT_SET },
-    { step: 1, label: STEPS[1].label, value: labelOf(GOALS, a.goal) || NOT_SET },
-    { step: 2, label: STEPS[2].label, value: group || NOT_SET },
-    { step: 3, label: STEPS[3].label, value: budget || NOT_SET },
-    { step: 4, label: STEPS[4].label, value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : NONE },
+    { step: 0, label: STEPS[0].full, value: interests },
+    { step: 1, label: STEPS[1].full, value: labelOf(GOALS, a.goal) || NOT_SET },
+    { step: 2, label: STEPS[2].full, value: group || NOT_SET },
+    { step: 3, label: STEPS[3].full, value: budget || NOT_SET },
+    { step: 4, label: STEPS[4].full, value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : NONE },
   ];
 }
 
@@ -213,7 +210,7 @@ export function takeAiDraft(store: Store, now: number = Date.now()): GeneratedEv
 
 export function presetAnswers(): Answers {
   return {
-    focusTagIds: ["tag-fitness", "tag-games"], surprise: false, goal: "team_bonding", groupSize: "team", setting: "indoors",
+    focusTagIds: ["tag-fitness", "tag-games"], goal: "team_bonding", groupSize: "team", setting: "indoors",
     budget: "under_15", timing: "after_work", prompt: "Something new for the team", count: 3,
   };
 }

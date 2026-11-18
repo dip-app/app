@@ -59,6 +59,7 @@ export type AdminErrorReason =
   | "AI_DAILY_LIMIT"
   | "AI_MONTHLY_LIMIT"
   | "AI_BUDGET_EXHAUSTED"
+  | "AI_CREDITS_EXHAUSTED"
   | "AI_OUTPUT_INVALID"
   | "AI_UNAVAILABLE";
 
@@ -68,6 +69,8 @@ export class AdminError extends Error {
     readonly reason: AdminErrorReason,
     message: string,
     readonly fields: readonly string[] = [],
+    /** Extra scalar details sent to the client next to `reason` (for example the reset date of AI credits). Never dollar figures. */
+    readonly details: Readonly<Record<string, string | number>> = {},
   ) {
     super(message);
     this.name = "AdminError";

@@ -10,6 +10,7 @@ import {
 import { DEFAULT_TAGS } from "../../functions/src/modules/ai/infrastructure/firestoreSources";
 import { ScriptedDecisions, benignDecision, type DecisionStepScript } from "../../functions/src/modules/ai/infrastructure/fakes";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
+import { PAST_EVENTS_FLOOR, reasonWithBasis } from "../../functions/src/modules/ai/domain/suggestionReasons";
 import { NOW, caller, seedCompany, FakeAdminStore } from "./helpers/adminFakes";
 import { JEV_USAGE, SETTINGS, USAGE, MemoryCatalog, MemoryInterests, MemoryThemes } from "./helpers/aiFakes";
 
@@ -98,7 +99,7 @@ describe("suggestion domain", () => {
     const answers = jevAnswer({ step: "triage", state: "", questions: suggestionQuestions(FACTS) }, 0.88).answers;
     const out = fromAnswers(answers, FACTS);
     assert.equal(out.length, 6);
-    assert.deepEqual(out[0], { question: "interest", value: "tag-fitness", probability: 0.88, reason: "20+ members like Fitness, and it fits this week's theme" });
+    assert.deepEqual(out[0], { question: "interest", value: "tag-fitness", probability: 0.88, reason: "Lines up with this week's Fall Fitness Week", reasonBasis: "company_data" });
     assert.equal(out.find(s => s.question === "budget")!.value, "under_15");
   });
 
@@ -111,7 +112,9 @@ describe("suggestion domain", () => {
     const pick = (q: string) => out.find(s => s.question === q)!;
     assert.equal(pick("interest").value, "tag-fitness");
     assert.equal(pick("budget").value, "under_15");
-    assert.equal(pick("budget").reason, "2 of your last 2 events were under $15 per person");
+    // Two events are under the privacy floor, so the budget line stays generic and does not claim anything about them.
+    assert.equal(pick("budget").reasonBasis, "generic");
+    assert.ok(!/your|recent/i.test(pick("budget").reason));
     assert.equal(pick("timing").value, "after_work");
     assert.ok(out.every(s => s.probability > 0 && s.probability <= 1));
   });
@@ -220,3 +223,68 @@ function r0Providers(): SuggestionProvider[] {
   const noop = new ScriptedDecisions();
   return [{ port: noop, model: "jev-latest" }, { port: noop, model: "gpt-6-luna" }];
 }
+
+
+describe("suggestion reasons: basis, rotation, privacy floor", () => {
+  const event = (day: number, costCents: number, capacity: number, isOutdoor: boolean): PastEventInput => ({
+    startTime: new Date(`2029-12-${String(day).padStart(2, "0")}T22:00:00Z`), costCents, capacity, isOutdoor, tagIds: [],
+  });
+  const history = (n: number, over: Partial<PastEventInput> = {}) =>
+    aggregatePastEvents(Array.from({ length: n }, (_, i) => ({ ...event(10 + i, 1000, 20, false), ...over })), new Set());
+  const QUESTIONS = ["interest", "goal", "groupSize", "setting", "budget", "timing"] as const;
+  const values = { interest: "tag-fitness", goal: "wellness", groupSize: "team", setting: "outdoors", budget: "under_15", timing: "after_work" } as const;
+  const PERSONAL = /\b(your|you|team|members|recent|lately)\b/i;
+
+  test("no data at all: every reason is generic and none sounds personalized", () => {
+    const facts: SuggestionFacts = { interests: [], theme: null, past: null, catalog: DEFAULT_TAGS };
+    for (const q of QUESTIONS) {
+      const r = reasonWithBasis(q, values[q], facts);
+      assert.equal(r.basis, "generic", q);
+      assert.ok(!PERSONAL.test(r.reason), `${q}: ${r.reason}`);
+    }
+  });
+
+  test("interest counts drive interest, goal and a theme line; an unknown interest stays generic", () => {
+    assert.deepEqual(reasonWithBasis("interest", "tag-fitness", FACTS), { reason: "Lines up with this week's Fall Fitness Week", basis: "company_data" });
+    const noTheme = { ...FACTS, theme: null };
+    const r = reasonWithBasis("interest", "tag-games", noTheme);
+    assert.equal(r.basis, "company_data");
+    assert.equal(reasonWithBasis("goal", "competition", noTheme).basis, "company_data");
+    const unknown = reasonWithBasis("interest", "tag-music", noTheme);
+    assert.equal(unknown.basis, "generic");
+    assert.ok(!PERSONAL.test(unknown.reason));
+  });
+
+  test("past events count only from the privacy floor on", () => {
+    const base = { ...FACTS, interests: [], theme: null };
+    const few = { ...base, past: history(PAST_EVENTS_FLOOR - 1) };
+    assert.equal(reasonWithBasis("budget", "under_15", few).basis, "generic");
+    const enough = { ...base, past: history(PAST_EVENTS_FLOOR) };
+    const budget = reasonWithBasis("budget", "under_15", enough);
+    assert.equal(budget.basis, "company_data");
+    assert.match(budget.reason, /recent events/);
+    // A range never used reads as variety, not as a habit.
+    const variety = reasonWithBasis("budget", "over_50", enough);
+    assert.equal(variety.basis, "company_data");
+    assert.match(variety.reason, /variety|not used much/);
+  });
+
+  test("lines carry no numbers, names or titles, and stay short", () => {
+    const facts: SuggestionFacts = { ...FACTS, past: history(8, { isOutdoor: true }) };
+    for (const q of QUESTIONS) {
+      for (const value of [values[q], "other"]) {
+        const r = reasonWithBasis(q, value, facts);
+        assert.ok(r.reason.length <= 60 || /week's/.test(r.reason), r.reason);
+        assert.ok(!/\d/.test(r.reason), r.reason);
+      }
+    }
+  });
+
+  test("wording rotates deterministically by option, so neighbors differ", () => {
+    const facts: SuggestionFacts = { ...FACTS, theme: null, past: history(8) };
+    const again = reasonWithBasis("timing", "after_work", facts);
+    assert.deepEqual(reasonWithBasis("timing", "after_work", facts), again);
+    const lines = new Set(["tag-fitness", "tag-games", "tag-arts", "tag-food", "tag-music", "tag-cooking"].map(id => reasonWithBasis("interest", id, { ...facts, interests: [{ tagId: id, bucket: "10-19" }] }).reason));
+    assert.ok(lines.size >= 2, "several phrasings in use");
+  });
+});

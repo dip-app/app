@@ -1,3 +1,4 @@
+import { AI_STRINGS } from "../aiStrings";
 import { describe, expect, it } from "vitest";
 import type { AiStepSuggestion } from "../adminTypes";
 import { emptyAnswers } from "../ideas";
@@ -7,7 +8,7 @@ import {
 } from "../suggestionLabels";
 
 const any = () => true;
-const s = (question: AiStepSuggestion["question"], value: string, probability: number): AiStepSuggestion => ({ question, value, probability, reason: "r" });
+const s = (question: AiStepSuggestion["question"], value: string, probability: number): AiStepSuggestion => ({ question, value, probability, reason: "r", reasonBasis: "generic" });
 
 describe("suggestion labels", () => {
   it("maps Jev probabilities to three labels at the boundaries", () => {
@@ -51,9 +52,9 @@ describe("suggestion labels", () => {
 
   it("Use suggestions fills only labeled choices and keeps the note", () => {
     const labeled = labeledSuggestions([s("interest", "tag-games", 0.9), s("goal", "competition", 0.75), s("setting", "outdoors", 0.4)], "jev", any);
-    const start = { ...emptyAnswers(), prompt: "Quiet please", surprise: true, setting: "indoors" as const };
+    const start = { ...emptyAnswers(), prompt: "Quiet please", setting: "indoors" as const };
     const next = applySuggestions(start, labeled);
-    expect(next).toMatchObject({ focusTagIds: ["tag-games"], surprise: false, goal: "competition", setting: "indoors", groupSize: null, prompt: "Quiet please" });
+    expect(next).toMatchObject({ focusTagIds: ["tag-games"], goal: "competition", setting: "indoors", groupSize: null, prompt: "Quiet please" });
     expect(suggestionsApplied(next, labeled)).toBe(true);
     expect(suggestionsApplied(start, labeled)).toBe(false);
   });
@@ -65,11 +66,12 @@ describe("suggestion labels", () => {
     expect(applySuggestions({ ...emptyAnswers(), focusTagIds: ["a", "b", "c"] }, labeled).focusTagIds).toEqual(["a", "b", "tag-food"]);
   });
 
-  it("names Jev only when Jev answered", () => {
-    expect(suggestedBy("jev")).toBe("Suggested by Jev");
-    expect(suggestedBy("openai")).toBe("Suggested");
-    expect(spokenSuggestion("perfect", "jev")).toBe("Jev suggests this: perfect fit");
-    expect(spokenSuggestion("good", "heuristic")).toBe("Suggested: good match");
+  it("never names a provider: every answer reads as Dipbot", () => {
+    for (const provider of ["jev", "openai", "heuristic"] as const) {
+      expect(suggestedBy(provider)).toBe("Suggested by Dipbot");
+      expect(spokenSuggestion("perfect", provider)).toBe("Dipbot suggests this: perfect fit");
+    }
+    expect(JSON.stringify(Object.values(AI_STRINGS))).not.toMatch(/Jev|TypeSafe|OpenAI/);
   });
 
   it("the mock covers every label level by default and none for the empty scenario", () => {

@@ -156,7 +156,6 @@ export function usageSummary(month: MonthState, day: DayState, uid: string, limi
     dailyGenerationLimit: limits.dailyGenerationLimit,
     dailyGenerationsUsed: day.generations,
     generationsRemaining: limits.enabled ? Math.min(f.monthlyRemaining, f.dailyRemaining, f.budgetRemaining) : 0,
-    budgetExhausted: !(f.monthEnough && f.dayEnough),
   };
 }
 

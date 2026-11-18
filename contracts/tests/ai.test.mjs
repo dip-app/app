@@ -28,8 +28,9 @@ const choices = {focusTagIds: ['hiking'], goal: 'team_bonding', groupSize: 'team
 const request = {contractVersion: 1, companyId: 'acme', requestId: uuid, choices, prompt: '', count: 2};
 const draft = {title: 'Lunch walk', description: 'A relaxed walk.', tagIds: ['hiking'], coverImageURL: 'catalog://default/outdoors', suggestedDaypart: 'weekday_lunch',
   durationMinutes: 60, venueType: 'park_or_outdoors', venueSearchHint: 'park near office', costCents: 0, costNote: 'Free', capacity: 20, isOutdoor: true, rationale: 'Many hikers.'};
-const usage = {monthlyGenerationLimit: 30, monthlyGenerationsUsed: 1, dailyGenerationLimit: 10, dailyGenerationsUsed: 1, generationsRemaining: 9, budgetExhausted: false};
-const context = {contractVersion: 1, enabled: true, interestDataAvailable: true, topInterests: [{tagId: 'hiking', bucket: '10-19'}], thinInterestTagIds: ['chess'], usage};
+const usage = {monthlyGenerationLimit: 30, monthlyGenerationsUsed: 1, dailyGenerationLimit: 10, dailyGenerationsUsed: 1, generationsRemaining: 9};
+const credits = {creditsAllowance: 500, creditsUsed: 88, creditsRemaining: 412, resetsAt: '2026-12-01T08:00:00.000Z', creditCost: {suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3}};
+const context = {contractVersion: 1, enabled: true, interestDataAvailable: true, topInterests: [{tagId: 'hiking', bucket: '10-19'}], thinInterestTagIds: ['chess'], usage, credits};
 
 test('AiInterestTag uses suppressed buckets only', () => {
   for (const bucket of ['5-9', '10-19', '20+']) accepts('AiInterestTag', {tagId: 'hiking', bucket});
@@ -44,13 +45,12 @@ test('AiIdeaTheme and AiUsageSummary are strict', () => {
   rejects('AiIdeaTheme', {title: 'x'.repeat(121), tagIds: []});
   rejects('AiIdeaTheme', {title: 'Move more', tagIds: Array(11).fill('t')});
   accepts('AiUsageSummary', usage);
-  accepts('AiUsageSummary', {...usage, monthlyGenerationLimit: 0, generationsRemaining: 0, budgetExhausted: true});
+  accepts('AiUsageSummary', {...usage, monthlyGenerationLimit: 0, generationsRemaining: 0});
   for (const key of ['monthlyGenerationLimit', 'monthlyGenerationsUsed', 'dailyGenerationLimit', 'dailyGenerationsUsed', 'generationsRemaining']) {
     rejects('AiUsageSummary', {...usage, [key]: -1}, `negative ${key}`);
   }
-  rejects('AiUsageSummary', {...usage, budgetExhausted: 'no'});
+  rejects('AiUsageSummary', {...usage, budgetExhausted: false}, 'the budget flag is no longer part of the contract');
   rejects('AiUsageSummary', {...usage, extra: 1});
-  rejects('AiUsageSummary', without(usage, 'budgetExhausted'), 'missing budgetExhausted');
 });
 
 test('GetEventIdeaContextRequest and Response', () => {
@@ -65,6 +65,7 @@ test('GetEventIdeaContextRequest and Response', () => {
   rejects('GetEventIdeaContextResponse', {...context, thinInterestTagIds: Array(51).fill('t')});
   rejects('GetEventIdeaContextResponse', {...context, currentTheme: {title: 'Move more'}});
   rejects('GetEventIdeaContextResponse', without(context, 'usage'), 'missing usage');
+  rejects('GetEventIdeaContextResponse', without(context, 'credits'), 'missing credits');
   rejects('GetEventIdeaContextResponse', {...context, extra: true});
 });
 
@@ -139,7 +140,7 @@ test('GeneratedEventDraft bounds', () => {
 });
 
 test('GenerateEventDraftsResponse holds 1 to 3 drafts', () => {
-  const response = {contractVersion: 1, drafts: [draft], usage, replay: false};
+  const response = {contractVersion: 1, drafts: [draft], usage, credits, replay: false};
   accepts('GenerateEventDraftsResponse', response);
   accepts('GenerateEventDraftsResponse', {...response, drafts: [draft, draft, draft], replay: true});
   rejects('GenerateEventDraftsResponse', {...response, drafts: []});
@@ -148,4 +149,24 @@ test('GenerateEventDraftsResponse holds 1 to 3 drafts', () => {
   rejects('GenerateEventDraftsResponse', {...response, usage: {...usage, dailyGenerationsUsed: -1}});
   rejects('GenerateEventDraftsResponse', without(response, 'replay'), 'missing replay');
   rejects('GenerateEventDraftsResponse', {...response, extra: 1});
+});
+
+test('AiCredits carries credits and prices only, never money', () => {
+  accepts('AiCredits', credits);
+  accepts('AiCredits', {...credits, creditsRemaining: 0, creditsUsed: 500});
+  for (const key of ['creditsAllowance', 'creditsUsed', 'creditsRemaining']) rejects('AiCredits', {...credits, [key]: -1}, `negative ${key}`);
+  for (const key of Object.keys(credits)) rejects('AiCredits', without(credits, key), `missing ${key}`);
+  rejects('AiCredits', {...credits, costUsd: 0.12}, 'no money fields');
+  rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, generate: 0.5}});
+  rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, extra: 1}});
+  accepts('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], credits, cached: false});
+  rejects('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], cached: false}, 'missing credits');
+});
+
+test('AiStepSuggestion carries an honest reasonBasis', () => {
+  const suggestion = {question: 'goal', value: 'wellness', probability: 0.7, reason: 'A good fit for most workplace groups', reasonBasis: 'generic'};
+  accepts('AiStepSuggestion', suggestion);
+  accepts('AiStepSuggestion', {...suggestion, reasonBasis: 'company_data'});
+  rejects('AiStepSuggestion', {...suggestion, reasonBasis: 'personal'});
+  rejects('AiStepSuggestion', without(suggestion, 'reasonBasis'), 'missing reasonBasis');
 });
