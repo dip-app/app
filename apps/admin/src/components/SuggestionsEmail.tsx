@@ -10,6 +10,7 @@ import { t } from "@/lib/aiStrings";
 import { creditsText } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter } from "./CreditsMeter";
+import { DipbotAction } from "./DipbotAction";
 import { Loading, Notice } from "./Ui";
 import { Toggle } from "./Toggle";
 import { useLoad } from "./useLoad";
@@ -144,9 +145,7 @@ export function SuggestionsEmail() {
         <h2 id="sug-preview">Preview</h2>
         <p className="muted">See this week’s email before it goes out. Dry run: nothing is sent.</p>
         <div className="actions inline">
-          <button type="button" className="pill-btn gray" disabled={disabled} onClick={() => void showPreview()}>
-            {busy === "preview" ? "Building the preview..." : "Preview this week’s email"}
-          </button>
+          <DipbotAction label="Preview this week’s email" loadingLabel="Building the preview..." loading={busy === "preview"} disabled={disabled} onClick={() => void showPreview()} />
         </div>
         {preview && (
           <div className="sug-preview">
@@ -179,9 +178,7 @@ export function SuggestionsEmail() {
         <h2 id="sug-test">Test</h2>
         <p className="muted">Get this week’s email in your own inbox. You can send one test per hour.</p>
         <div className="actions inline">
-          <button type="button" className="pill-btn gray" disabled={disabled} onClick={() => void sendTest()}>
-            {busy === "test" ? "Sending..." : "Send me a test"}
-          </button>
+          <DipbotAction label="Send me a test" loadingLabel="Sending..." loading={busy === "test"} disabled={disabled} onClick={() => void sendTest()} />
         </div>
         {testResult && <Notice>{testResult.text}</Notice>}
       </section>

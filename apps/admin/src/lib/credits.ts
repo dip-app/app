@@ -36,7 +36,8 @@ export function creditsView(credits: AiCredits, timeZone?: string): CreditsView 
 /** "1 credit" or "10 credits". */
 export const creditsText = (n: number) => tn("credits.unit", n);
 
-/** A button label with its price, for example "Generate drafts, 10 credits". */
-export function priceLabel(key: "action.generateCost" | "results.regenerateCost", credits: AiCredits): string {
-  return t(key, { cost: creditsText(credits.creditCost[key === "action.generateCost" ? "generate" : "regenerate"]) });
+/** The cost as muted text: "1 credit", "10 credits"; 0 is "Free" when asked for and nothing otherwise. */
+export function creditCostLabel(n: number, showFree = false): string {
+  if (n <= 0) return showFree ? t("credits.free") : "";
+  return creditsText(n);
 }

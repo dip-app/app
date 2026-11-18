@@ -57,7 +57,7 @@ describe("saved suggestions: visiting is free", () => {
     expect(document.querySelector(".credits-tip")?.textContent).toContain("This visit used 0 credits.");
     expect(document.querySelector(".credits-meter")?.textContent).toContain("Credits: 412 of 500");
     expect(refreshButton()?.disabled).toBe(false);
-    expect(refreshButton()?.textContent).toBe("Refresh, 1 credit");
+    expect(refreshButton()?.getAttribute("aria-label")).toBe("Refresh Dipbot suggestions, 1 credit");
   });
 
   it("stale data shows the hint and a Refresh button but does not run anything on load", async () => {
@@ -147,7 +147,7 @@ describe("preference chips on the last step", () => {
 
   it("keeps the chosen preferences across steps and sends the ids with the request", async () => {
     const { drafts } = await open("?step=5");
-    const generate = await screen.findByRole("button", { name: /Generate drafts/ }, wait);
+    await screen.findByRole("button", { name: /Generate drafts/ }, wait);
     const first = within(await screen.findByRole("list", { name: "Preferences" }, wait)).getAllByRole("button")[0]!;
     const firstLabel = first.querySelector("span")!.textContent!;
     fireEvent.click(first);
@@ -156,7 +156,7 @@ describe("preference chips on the last step", () => {
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("button", { name: /Step-free access/ }).getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(generate);
+    fireEvent.click(await screen.findByRole("button", { name: /Generate drafts/ }, wait));
     await waitFor(() => expect(drafts).toHaveBeenCalledTimes(1), wait);
     const sent = drafts.mock.calls[0]![0].considerations!;
     expect(sent).toHaveLength(2);

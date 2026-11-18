@@ -5,10 +5,10 @@ import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverPho
 import type { AiCredits } from "@/lib/adminTypes";
 import { tMaybe } from "@/lib/aiStrings";
 import { ApiError } from "@/lib/contract";
-import { creditsText, resetDate } from "@/lib/credits";
+import { resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { DipbotCoverTag } from "./DipbotCoverTag";
-import { DipbotMark } from "./DipbotMark";
+import { DipbotAction } from "./DipbotAction";
 
 export interface CoverPickerEvent { title: string; description?: string; tagIds?: readonly string[]; theme?: CoverThemeKey }
 
@@ -183,11 +183,7 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
             <span className="cp-selected-label">{selected ? selected.label : "No cover selected"}</span>
             <span className="cp-selected-meta">{selected ? selected.themes.map(themeLabel).join(" · ") : "Search or browse, or let Dipbot choose."}</span>
           </div>
-          <button type="button" className="pill-btn gray cp-dipbot" onClick={() => void dipbotPick()} aria-busy={busy || undefined} aria-describedby={noteId}>
-            <DipbotMark size={16} />
-            {busy ? "Dipbot is choosing…" : "Let Dipbot choose"}
-            <span className="cp-cost">{creditsText(credits?.creditCost.coverPick ?? 1)}</span>
-          </button>
+          <DipbotAction className="cp-dipbot" label="Let Dipbot choose" loadingLabel="Dipbot is choosing…" credits={credits?.creditCost.coverPick ?? 1} loading={busy} onClick={() => void dipbotPick()} aria-describedby={noteId} />
           <div id={noteId} className={`cp-note ${note?.kind ?? ""}`} role={note?.kind === "error" ? "alert" : "status"} aria-live="polite">
             {note?.kind === "error" ? note.text : note?.kind === "picked" ? <><span className="sr-only">{note.text}</span>{note.fresh && <span className="cp-fresh">Found a new photo for this event</span>}</> : ""}
           </div>
