@@ -43,6 +43,8 @@ export function readLiveConfig(): LiveConfig | null {
     firebase: {
       apiKey, projectId, appId,
       authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
+      // Storage reads (challenge evidence, album photos) need the default bucket; without it getStorage() throws.
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.firebasestorage.app`,
     },
     emulatorHost: process.env.NEXT_PUBLIC_FIREBASE_EMULATOR_HOST || undefined,
     appCheckSiteKey: process.env.NEXT_PUBLIC_APPCHECK_SITE_KEY || undefined,
