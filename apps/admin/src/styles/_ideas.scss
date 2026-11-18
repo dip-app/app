@@ -80,7 +80,7 @@ $r-box: 8px;
   // ---------- Option cards: a real input inside a label, styled as a compact card. Columns follow the width of the
   // step panel (a container query), not the window: 4 across when there is room, then 3, 2 and 1, never overflowing.
   .step-panel { container: step / inline-size; }
-  .opt-grid { display: grid; align-items: stretch; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+  .opt-grid { display: grid; align-items: stretch; grid-auto-rows: 1fr; gap: 10px; grid-template-columns: minmax(0, 1fr); }
   // Interests: 4 across when the step panel is wide (>= 760 px), 3 from 660, 2 from 400, 1 below; goals: 3, 2, 1.
   // Image-led cards need about 200 px each, so the columns follow the panel's own width, not the window.
   .opt-grid.cols-3 { --cols: 3; }
@@ -107,9 +107,9 @@ $r-box: 8px;
   // The check sits top-right; a selected card's name leaves room for it.
   .opt[data-art] { container: opt / inline-size; }
   .opt[data-art] .opt-body {
-    display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: stretch; padding: 0; min-height: 68px; gap: 0;
+    display: grid; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: 1fr; align-content: stretch; align-items: stretch; padding: 0; min-height: 68px; gap: 0;
   }
-  .opt-art { position: relative; display: block; min-height: 0; border-radius: ($r-ctl - 1px) 0 0 ($r-ctl - 1px); overflow: hidden; box-shadow: none;
+  .opt-art { position: relative; display: block; align-self: stretch; height: 100%; min-height: 0; border-radius: ($r-ctl - 1px) 0 0 ($r-ctl - 1px); overflow: hidden; box-shadow: none;
     img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; padding: 8%; box-sizing: border-box; }
     &[data-kind="theme"] img { object-fit: cover; padding: 0; object-position: 60% 50%; }
     &[data-kind="mascot"] img { padding: 10%; } }
