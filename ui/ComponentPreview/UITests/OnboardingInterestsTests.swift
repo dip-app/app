@@ -60,6 +60,9 @@ final class OnboardingInterestsTests: XCTestCase {
         let filtered = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: food)
         XCTAssertEqual(XCTWaiter.wait(for: [filtered], timeout: 5), .completed, "non-matching options leave the list once the query applies")
         app.buttons["profile.interests.option.tag-outdoors"].tap()
+        // The keyboard covers the Skip button: send the search key to put it away first.
+        let search = app.keyboards.buttons["Search"]
+        if search.exists { search.tap() }
         app.buttons["onboarding.interests.skip"].tap()
         XCTAssertTrue(waitForLabel(app.staticTexts["onboarding.interests.done"], "Skipped"))
     }

@@ -194,12 +194,21 @@ struct DemoStage<Scene: DemoScene>: View {
         .contentShape(Rectangle())
         .onTapGesture { replay() }
         .gesture(scrubGesture, including: canScrub ? .all : .none)
-        // `.contain` (not `.ignore`) so the Replay button stays an accessibility element; the drawing itself is hidden
-        // below and described by this container's value.
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Example", comment: "VoiceOver label of the onboarding demo stage"))
-        .accessibilityValue(Text(scene.description))
-        .accessibilityIdentifier("onboarding.stage")
+        // The drawing is described by the container's value and none of its parts is exposed (hiding them one by one left the
+        // whole canvas, event.primary and all, in the accessibility tree). The Replay button stays reachable for VoiceOver and
+        // Voice Control while the stage rests.
+        .accessibilityRepresentation {
+            VStack {
+                if showsReplay {
+                    Button(action: replay) { Text("Replay", comment: "VoiceOver label of the button that replays the onboarding demo") }
+                        .accessibilityIdentifier("onboarding.stage.replay")
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("Example", comment: "VoiceOver label of the onboarding demo stage"))
+            .accessibilityValue(Text(scene.description))
+            .accessibilityIdentifier("onboarding.stage")
+        }
         .onAppear {
             if !prepared {
                 scene.prepare()

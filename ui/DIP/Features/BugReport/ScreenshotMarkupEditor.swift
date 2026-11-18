@@ -86,6 +86,8 @@ import SwiftUI
             .padding(.vertical, 16)
             .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
             .preferredColorScheme(.light)
+            // A container, so this identifier does not replace the canvas, Undo, Clear, Cancel and Done identifiers below it.
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("markup.editor")
         }
 

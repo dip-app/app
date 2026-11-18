@@ -98,6 +98,9 @@ struct OnboardingInterestsPreview: View {
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 8)
+        // Like the real tour (fixed positions, whole window): the keyboard overlays the bar instead of squeezing the list to
+        // nothing, so search results stay visible while typing.
+        .ignoresSafeArea(.keyboard)
         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
         .background(DIPTokens.Color.surfaceDefault.swiftUIColor.ignoresSafeArea())
         .animation(DIPMotion.navigation(), value: model.bar)
