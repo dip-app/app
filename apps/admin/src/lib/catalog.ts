@@ -21,7 +21,7 @@ export function coverFor(url: string): CoverOption | undefined {
 }
 
 /** Mirrors tags/{tagId}: events store IDs, never labels. The portal reads the same catalog the app uses. */
-export interface Tag { id: string; name: string; }
+export interface Tag { id: string; name: string; /** Optional one-line description on the tag document; Dipbot cards show it instead of the built-in blurb. */ description?: string }
 
 export const TAGS: Tag[] = [
   { id: "tag-fitness", name: "Fitness" }, { id: "tag-energetic", name: "Energetic" }, { id: "tag-hype", name: "Hype" },
@@ -64,3 +64,10 @@ export const previewTagId = (id: string): string => (opaqueTagsPreview() && TAG_
 
 /** The reverse of `previewTagId`, for requests the mock receives. */
 export const bundledTagId = (id: string): string => (opaqueTagsPreview() ? TAG_IDS.find((own) => opaqueTagId(own) === id) ?? id : id);
+
+/** Production-like tag names for `?tags=live` (mock only): real catalogs hold names that match none of our theme keys. */
+export const LIVE_TAG_NAMES = [
+  "Fitness", "Water Sport", "Bonding", "Energetic", "Hype", "Weekly Activity", "Cooking", "Outdoors", "Carpentry", "Social",
+  "Food", "Games", "Volunteering", "Creative", "Pottery", "Trivia Night", "Rooftop Happy Hour",
+];
+export const liveTagsPreview = (): boolean => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tags") === "live";

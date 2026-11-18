@@ -83,10 +83,10 @@ export function Avatar({ name, userId, photoURL, avatarId, size }: AvatarProps) 
   const photo = photoFailed ? null : photoSrc(photoURL, px >= 48 ? 192 : 96);
   const mascot = mascotFailed ? null : mascotFor(avatarId);
   if (photo) {
-    return <img className="avatar photo" src={photo} alt="" width={px} height={px} loading="lazy" decoding="async" referrerPolicy="no-referrer" style={style} onError={() => setPhotoFailed(true)} />;
+    return <img className="avatar photo" src={photo} alt="" width={px} height={px} loading="lazy" decoding="async" referrerPolicy="no-referrer" style={style} draggable={false} onError={() => setPhotoFailed(true)} />;
   }
   if (mascot) {
-    return <img className="avatar mascot" src={asset(`/img/avatars/${mascot}.webp`)} alt="" width={px} height={px} loading="lazy" decoding="async" style={style} onError={() => setMascotFailed(true)} />;
+    return <img className="avatar mascot" src={asset(`/img/avatars/${mascot}.webp`)} alt="" width={px} height={px} loading="lazy" decoding="async" style={style} draggable={false} onError={() => setMascotFailed(true)} />;
   }
   if (userId) return <CrewFace avatar={generatedAvatarFor(userId)} size={px} />;
   return <span className="avatar" aria-hidden style={style}>{initials(name)}</span>;
