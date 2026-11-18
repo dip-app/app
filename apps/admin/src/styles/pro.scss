@@ -205,6 +205,15 @@ $ctl-h: 36px;
   .toolbar .thumb.tile { width: 56px; height: 40px; }
   .cell-main { min-width: 200px; }
   .audit-table { min-width: 680px; .audit-detail-row td { background: $subtle; } }
+  .audit-what { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+  .audit-label { font-weight: 600; }
+  // Calm category chip: informational (not pressable), neutral wash, a small dot is the only color.
+  .audit-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 20px; padding: 0 8px; border: 1px solid $line; border-radius: 999px; background: $subtle; color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap;
+    &::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: $line-strong; }
+    &.people::before { background: var(--primary); } &.events::before { background: $events-pink; } &.challenges::before { background: $yellow; }
+    &.ai::before { background: $purple; } &.email::before { background: #3aa57a; } &.security::before { background: var(--error); } }
+  .audit-facts { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; div { display: flex; gap: 6px; } dt { color: var(--muted); } dd { margin: 0; font-weight: 600; } }
+  .audit-key code { font-size: 12px; }
   .audit-detail .table { thead th { position: static; } tbody tr:hover td, tbody tr:hover th { background: transparent; } }
   .audit-detail { background: $white; border: 1px solid $line; border-radius: $r-ctl; padding: 8px 12px; gap: 6px; }
 

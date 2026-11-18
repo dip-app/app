@@ -1,3 +1,4 @@
+import type { AuditAction } from "./auditActions";
 import { SERVER_TIME, type ServerTime } from "./ops";
 import type { Role } from "./permissions";
 import { length } from "./reader";
@@ -9,7 +10,7 @@ export interface AuditChange { field: string; before: string | null; after: stri
 export interface AuditInput {
   /** Document id; deterministic from actor + requestId so a replay never duplicates. */
   id: string;
-  action: string;
+  action: AuditAction;
   targetType: AuditTargetType;
   targetId: string;
   summary: string;
@@ -24,7 +25,7 @@ export interface AuditActor { uid: string; name: string; role: Role }
 
 export interface AuditDocument {
   companyId: string; actorId: string; actorName: string; actorRole: Role;
-  action: string; targetType: AuditTargetType; targetId: string; summary: string; changes: AuditChange[];
+  action: AuditAction; targetType: AuditTargetType; targetId: string; summary: string; changes: AuditChange[];
   reason?: string; requestId?: string; selfTarget?: true; createdAt: ServerTime;
 }
 

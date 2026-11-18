@@ -224,27 +224,7 @@ export interface AuditEntry {
   changes: { field: string; before: string; after: string }[];
 }
 
-export const AUDIT_ACTIONS: Record<string, string> = {
-  "member.update": "Member edited",
-  "member.reset": "Profile reset",
-  "member.status": "Access changed",
-  "points.adjust": "Points changed",
-  "photo.remove": "Photo removed",
-  "photo.comment.remove": "Comment removed",
-  "attendee.add": "Attendee added",
-  "attendee.remove": "Attendee removed",
-  "attendance.record": "Attendance recorded",
-  "team.upsert": "Team saved",
-  "company.settings": "Settings changed",
-  "roster.upsert": "Roster entry saved",
-  "roster.revoke": "Invite revoked",
-  "roster.resend": "Invite resent",
-  "roster.backfill": "Roster backfilled",
-  "roster.claim": "Invite claimed",
-  "import.plan": "Import previewed",
-  "import.apply": "Import applied",
-  "bugreport.update": "Bug report updated",
-};
+// Action labels live in auditLabels.ts.
 
 // ---------- Bulk import
 
