@@ -100,6 +100,26 @@ export function isApprovedCoverURL(url: unknown, index: readonly CoverIndexEntry
   return key !== null && coverByKey(key, index) !== null;
 }
 
+/**
+ * A source of valid `catalog://cover/<key>` keys. The generated index is the first one (`indexKeySource`); a later
+ * Firestore-backed list of dynamically added covers can be a second one without changing callers of `isApprovedCoverURLFrom`.
+ */
+export interface CoverKeySource { has(key: string): boolean | Promise<boolean> }
+
+export function indexKeySource(index: readonly CoverIndexEntry[] = COVER_INDEX): CoverKeySource {
+  return { has: key => coverByKey(key, index) !== null };
+}
+
+/** Like `isApprovedCoverURL`, but accepts a key known to any of the given sources (legacy URLs always pass). */
+export async function isApprovedCoverURLFrom(url: unknown, sources: readonly CoverKeySource[]): Promise<boolean> {
+  if (typeof url !== "string") return false;
+  if (LEGACY_COVER_URLS.has(url)) return true;
+  const key = parseCoverKey(url);
+  if (key === null) return false;
+  for (const source of sources) if (await source.has(key)) return true;
+  return false;
+}
+
 /** Entry of a theme's default cover, or null for an unknown theme. */
 export function themeDefault(theme: string | undefined, index: readonly CoverIndexEntry[] = COVER_INDEX): CoverIndexEntry | null {
   if (theme === undefined || !Object.hasOwn(THEME_DEFAULT_KEYS, theme)) return null;

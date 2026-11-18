@@ -1,3 +1,4 @@
+// DEPRECATED: Pexels paused API keys; use fetch-pixabay.ts instead. Kept for reference.
 // Fetch candidate photos from the official Pexels API into a staging folder OUTSIDE public/.
 //   PEXELS_API_KEY=... node --import tsx scripts/covers/fetch-pexels.ts [--out .covers-staging] [--theme food] [--shot <id>]
 //     [--candidates 2] [--max-requests 150] [--delay 20] [--dry-run]

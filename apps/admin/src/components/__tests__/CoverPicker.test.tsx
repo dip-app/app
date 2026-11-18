@@ -34,11 +34,22 @@ describe("CoverPicker", () => {
     expect(img.getAttribute("src")).toContain("/img/covers/thumbs/");
   });
 
+  it("renders the whole real library, loading only the first screenful eagerly", () => {
+    render(<Harness />);
+    expect(COVER_LIBRARY.length).toBeGreaterThanOrEqual(150);
+    expect(tiles()).toHaveLength(COVER_LIBRARY.length);
+    const loading = tiles().map((t) => t.querySelector("img")!.getAttribute("loading"));
+    expect(loading.filter((l) => l === "eager")).toHaveLength(16);
+    expect(loading.filter((l) => l === "lazy")).toHaveLength(COVER_LIBRARY.length - 16);
+    expect(screen.getByLabelText("Search covers").getAttribute("placeholder")).toBe(`Search ${COVER_LIBRARY.length} covers`);
+  });
+
   it("filters by search text and shows an empty state with a clear button", () => {
     render(<Harness />);
     const box = screen.getByLabelText("Search covers") as HTMLInputElement;
     fireEvent.change(box, { target: { value: "kayak" } });
-    expect(tiles().map((t) => t.getAttribute("aria-label"))).toEqual(["Kayaking along the coast"]);
+    expect(tiles().map((t) => t.getAttribute("aria-label"))).toContain("Kayaking along the coast");
+    expect(tiles().length).toBeLessThan(COVER_LIBRARY.length / 4);
     fireEvent.change(box, { target: { value: "zzzz" } });
     expect(screen.queryAllByRole("radio")).toHaveLength(0);
     expect(screen.getByText(/No covers match/).textContent).toContain("zzzz");
@@ -52,14 +63,16 @@ describe("CoverPicker", () => {
     render(<Harness />);
     const select = screen.getByLabelText("Filter by theme") as HTMLSelectElement;
     const option = (label: RegExp) => screen.getByRole("option", { name: label }) as HTMLOptionElement;
-    expect(option(/^All themes \(14\)/)).toBeTruthy();
-    expect(option(/^Music \(1\)/)).toBeTruthy();
+    const musicCount = COVER_LIBRARY.filter((c) => c.themes.includes("music")).length;
+    expect(option(new RegExp(`^All themes \\(${COVER_LIBRARY.length}\\)`))).toBeTruthy();
+    expect(option(new RegExp(`^Music \\(${musicCount}\\)`))).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search covers"), { target: { value: "kayak" } });
     expect(option(/^Music \(0\)/).disabled).toBe(true); // no match: disabled during a search
     fireEvent.change(screen.getByLabelText("Search covers"), { target: { value: "" } });
     fireEvent.change(select, { target: { value: "music" } });
-    expect(tiles().map((t) => t.getAttribute("aria-label"))).toEqual(["Music and jam session"]);
-    expect(screen.getByText("1 of 14")).toBeTruthy();
+    expect(tiles()).toHaveLength(musicCount);
+    expect(tiles().map((t) => t.getAttribute("aria-label"))).toContain("Music and jam session");
+    expect(screen.getByText(`${musicCount} of ${COVER_LIBRARY.length}`)).toBeTruthy();
     fireEvent.change(select, { target: { value: "" } });
     expect(tiles()).toHaveLength(COVER_LIBRARY.length);
   });

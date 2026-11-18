@@ -7,10 +7,10 @@ import { ScriptedDecisions, type DecisionStepScript } from "../../functions/src/
 import { pickCover, pickEventCover, type PickCoverDeps } from "../../functions/src/modules/covers/application/pickCover";
 import { COVER_INDEX, type CoverIndexEntry } from "../../functions/src/modules/covers/domain/catalog.generated";
 import {
-  coverByKey, coverJpegURL, coverKeyFromURL, DEFAULT_COVER_URL, isApprovedCoverURL, LEGACY_COVER_URLS, parseCoverKey, themesFromTagIds,
+  coverByKey, coverJpegURL, coverKeyFromURL, DEFAULT_COVER_URL, indexKeySource, isApprovedCoverURL, isApprovedCoverURLFrom, LEGACY_COVER_URLS, parseCoverKey, themesFromTagIds,
 } from "../../functions/src/modules/covers/domain/coverCatalog";
 import { chosenCoverKey, coverQuestion } from "../../functions/src/modules/covers/domain/coverQuestion";
-import { isEligible, lexicalRank, lexicalTop, optionsForSingleCall, rankCovers, shortlist, stem, themeGroups, tokenize } from "../../functions/src/modules/covers/domain/shortlist";
+import { DEFAULT_MAX_CANDIDATES, isEligible, lexicalRank, lexicalTop, optionsForSingleCall, rankCovers, shortlist, stem, themeGroups, tokenize } from "../../functions/src/modules/covers/domain/shortlist";
 import { parseEventDraft } from "../../functions/src/modules/organizer/domain/eventDraft";
 import { OrganizerError } from "../../functions/src/modules/organizer/domain/errors";
 import { buildPreview, renderSharePage, resolveImage, SHARE_ORIGIN } from "../../functions/src/modules/share/domain/sharePage";
@@ -172,7 +172,7 @@ describe("lexical shortlist", () => {
     assert.equal(list[0]!.entry.key, "karaoke-stage");
     assert.ok(list.some(item => item.entry.key === "default-outdoors"), "the theme default is forced in");
     assert.equal(shortlist(query, FIXTURE).length, FIXTURE.length, "a bigger size returns everything once");
-    assert.equal(shortlist({ title: "Pottery night" }).length, COVER_INDEX.length, "the real index is a small seed: all entries");
+    assert.equal(shortlist({ title: "Pottery night" }).length, Math.min(COVER_INDEX.filter(isEligible).length, DEFAULT_MAX_CANDIDATES), "the real index: everything up to the candidate limit");
     assert.ok(shortlist({ title: "x" }, FIXTURE, 20).length <= 20);
   });
 
@@ -537,5 +537,78 @@ describe("hosted JPEGs for the share page and emails", () => {
     assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://cover/nope"), null);
     assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://default/games"), null, "legacy covers keep their own mapping");
     assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://cover/no-jpeg", [entry("no-jpeg", ["arts"], ["x"], "x", { hasJpeg: false })]), null);
+  });
+});
+
+describe("the real library at 150 to 200 covers", () => {
+  const eligible = COVER_INDEX.filter(isEligible);
+  const themes = ["outdoors", "food", "arts", "games", "music", "learning", "volunteering", "wellness", "fitness"];
+
+  test("every index key is approved, legacy URLs stay valid and a second key source can be added", async () => {
+    assert.ok(COVER_INDEX.length >= 150 && COVER_INDEX.length <= 200, `${COVER_INDEX.length} covers`);
+    assert.equal(new Set(COVER_INDEX.map(c => c.key)).size, COVER_INDEX.length);
+    for (const c of COVER_INDEX) assert.equal(isApprovedCoverURL(`catalog://cover/${c.key}`), true, c.key);
+    for (const url of LEGACY_COVER_URLS) assert.equal(isApprovedCoverURL(url), true, url);
+    const sources = [indexKeySource(), { has: (key: string) => key === "dynamic-cover-1" }];
+    assert.equal(await isApprovedCoverURLFrom("catalog://cover/dynamic-cover-1", sources), true);
+    assert.equal(await isApprovedCoverURLFrom("catalog://cover/dynamic-cover-1", [indexKeySource()]), false);
+    assert.equal(await isApprovedCoverURLFrom(`catalog://cover/${COVER_INDEX[0]!.key}`, sources), true);
+    assert.equal(await isApprovedCoverURLFrom("catalog://default/games", []), true);
+    assert.equal(await isApprovedCoverURLFrom("catalog://cover/Not_A_Key", sources), false);
+  });
+
+  test("the five original photos stay eligible for Dipbot", () => {
+    for (const key of ["default-cooking", "default-fitness", "default-games", "default-hiking", "default-outdoors"]) {
+      assert.equal(isEligible(coverByKey(key)!), true, key);
+    }
+  });
+
+  test("each theme has at least 12 covers and a theme default that lists the theme", () => {
+    for (const theme of themes) {
+      assert.ok(COVER_INDEX.filter(c => c.themes.includes(theme)).length >= 12, theme);
+      assert.ok(shortlist({ title: "Zzzz qqqq", theme: theme as never }).some(i => i.entry.themes.includes(theme)), theme);
+    }
+  });
+
+  test("the default shortlist is capped at maxCandidates and one call carries at most maxOptionsPerCall real options", async () => {
+    assert.ok(eligible.length > DEFAULT_MAX_CANDIDATES, "the library is larger than the candidate budget");
+    const query = { title: "Sunrise yoga in the park", tagIds: ["tag-wellness"] };
+    const list = shortlist(query);
+    assert.equal(list.length, DEFAULT_MAX_CANDIDATES);
+    assert.ok(list.some(i => i.entry.key.startsWith("yoga-")), "a yoga cover reaches the model");
+    const decisions = new ScriptedDecisions([(req: DecisionRequest) => decision(req, { cover: choiceAnswer(names(req).find(k => k.startsWith("yoga-")) ?? names(req)[0]!, 0.9) })]);
+    const result = await pickCover(base(decisions, { index: COVER_INDEX }), query);
+    assert.equal(decisions.calls.length, 1);
+    assert.equal(names(decisions.calls[0]!).length, DEFAULT_MAX_CANDIDATES);
+    assert.deepEqual([result.source, result.provider], ["dipbot", "jev"]);
+    assert.equal(isApprovedCoverURL(result.coverImageURL), true);
+  });
+
+  test("with the real index above maxOptionsPerCall the pick splits into a theme call, then a cover call", async () => {
+    const limits = { maxCandidates: 120, maxOptionsPerCall: 40 };
+    const query = { title: "Pottery and painting night", tagIds: ["tag-arts"] };
+    const decisions = new ScriptedDecisions([
+      (req: DecisionRequest) => decision(req, { cover: choiceAnswer(names(req).includes("arts") ? "arts" : names(req)[0]!, 0.9) }),
+      (req: DecisionRequest) => decision(req, { cover: choiceAnswer(names(req)[0]!, 0.9) }),
+    ]);
+    const result = await pickCover(base(decisions, { index: COVER_INDEX, limits }), query);
+    assert.equal(decisions.calls.length, 2);
+    assert.ok(names(decisions.calls[0]!).every(n => themes.includes(n)), "the first call offers theme groups");
+    assert.ok(names(decisions.calls[1]!).length <= 40);
+    assert.ok(names(decisions.calls[1]!).every(k => coverByKey(k)?.themes.includes("arts") || coverByKey(k)), "the second call offers real cover keys");
+    assert.equal(result.source, "dipbot");
+    assert.equal(isApprovedCoverURL(result.coverImageURL), true);
+    assert.ok(result.shortlistSize! >= 100);
+  });
+
+  test("lexical top for typical event titles lands on a matching real cover", () => {
+    const cases: Array<[string, string]> = [
+      ["Sunrise yoga session", "yoga"], ["Clay pottery workshop", "pottery"], ["Karaoke Friday", "karaoke"], ["Hands-on coding workshop", "cod"],
+      ["Beach volleyball", "volleyball"], ["Pizza dough workshop", "pizza"],
+    ];
+    for (const [title, word] of cases) {
+      const hit = lexicalTop({ title })!.entry;
+      assert.ok(`${hit.key} ${hit.tags.join(" ")} ${hit.label}`.toLowerCase().includes(word), `${title} -> ${hit.key}`);
+    }
   });
 });
