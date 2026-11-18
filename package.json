@@ -9,6 +9,12 @@
     "gcp/functions"
   ],
   "scripts": {
+    "covers:seed": "node --import tsx scripts/covers/seed.ts",
+    "covers:import": "node --import tsx scripts/covers/import.ts",
+    "covers:validate": "node --import tsx scripts/covers/validate.ts",
+    "covers:index": "node --import tsx scripts/covers/generate-index.ts",
+    "covers:fetch:pexels": "node --import tsx scripts/covers/fetch-pexels.ts",
+    "test:covers": "node --import tsx --test scripts/covers/covers.test.ts",
     "email:preview": "node --import tsx gcp/functions/src/modules/email/scripts/preview.ts",
     "check:email": "node --import tsx gcp/functions/tools/emailCompat/cli.ts",
     "generate": "python3 scripts/generate-contracts.py && python3 scripts/generate-tokens.py",

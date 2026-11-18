@@ -1,13 +1,14 @@
 import { z } from "zod";
 import type { AiEventChoices, EventDraft, GeneratedEventDraft } from "../../../generated/models";
-import { APPROVED_COVER_URLS, LIMITS as ORGANIZER_LIMITS } from "../../organizer/domain/eventDraft";
+import { LIMITS as ORGANIZER_LIMITS } from "../../organizer/domain/eventDraft";
+import { isApprovedCoverURL } from "../../covers/domain/coverCatalog";
 import { coverURLFor } from "./covers";
 import { DAYPARTS_FOR_TIMING, DURATION_FOR_TIMING, modelDraftsSchema, VENUES_FOR_SETTING } from "./prompt";
 import { containsContactInfo } from "./request";
 import { BUDGET_CENTS, DAYPARTS, GROUP_CAPACITY, LIMITS, VENUE_TYPES } from "./vocabulary";
 
 const TAG_ID = /^[A-Za-z0-9_-]{1,128}$/;
-const approvedCover = z.string().refine(url => APPROVED_COVER_URLS.has(url));
+const approvedCover = z.string().refine(url => isApprovedCoverURL(url));
 const uniqueIds = (ids: readonly string[]) => new Set(ids).size === ids.length;
 
 /** Mirrors the contract GeneratedEventDraft bounds exactly; the last gate before a draft leaves the server. */

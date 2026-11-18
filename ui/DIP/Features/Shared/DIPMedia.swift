@@ -23,6 +23,15 @@ struct DIPMedia: View {
                     DIPMediaLoading()
                 }
             }
+        case .remoteCover(let url, let fallbackAsset):
+            // Bundled tag-based cover while loading and when the hosted image is missing or fails.
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image.resizable()
+                } else {
+                    DIPReferenceAssets.image(fallbackAsset).resizable()
+                }
+            }
         case .generatedAvatar(let userID):
             // Flexible: sizes to whatever frame the caller gives it (small stacks and the large profile photo).
             DIPCrewFace(style: .assigned(forUserID: userID))

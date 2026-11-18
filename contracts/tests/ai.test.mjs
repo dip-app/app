@@ -29,7 +29,7 @@ const request = {contractVersion: 1, companyId: 'acme', requestId: uuid, choices
 const draft = {title: 'Lunch walk', description: 'A relaxed walk.', tagIds: ['hiking'], coverImageURL: 'catalog://default/outdoors', suggestedDaypart: 'weekday_lunch',
   durationMinutes: 60, venueType: 'park_or_outdoors', venueSearchHint: 'park near office', costCents: 0, costNote: 'Free', capacity: 20, isOutdoor: true, rationale: 'Many hikers.'};
 const usage = {monthlyGenerationLimit: 30, monthlyGenerationsUsed: 1, dailyGenerationLimit: 10, dailyGenerationsUsed: 1, generationsRemaining: 9};
-const credits = {creditsAllowance: 500, creditsUsed: 88, creditsRemaining: 412, resetsAt: '2026-12-01T08:00:00.000Z', creditCost: {suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3}};
+const credits = {creditsAllowance: 500, creditsUsed: 88, creditsRemaining: 412, resetsAt: '2026-12-01T08:00:00.000Z', creditCost: {suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1}};
 const context = {contractVersion: 1, enabled: true, interestDataAvailable: true, topInterests: [{tagId: 'hiking', bucket: '10-19'}], thinInterestTagIds: ['chess'], usage, credits};
 
 test('AiInterestTag uses suppressed buckets only', () => {
@@ -159,6 +159,7 @@ test('AiCredits carries credits and prices only, never money', () => {
   rejects('AiCredits', {...credits, costUsd: 0.12}, 'no money fields');
   rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, generate: 0.5}});
   rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, extra: 1}});
+  rejects('AiCredits', {...credits, creditCost: without(credits.creditCost, 'coverPick')}, 'missing coverPick');
   accepts('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], credits, cached: false});
   rejects('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], cached: false}, 'missing credits');
 });
@@ -169,4 +170,38 @@ test('AiStepSuggestion carries an honest reasonBasis', () => {
   accepts('AiStepSuggestion', {...suggestion, reasonBasis: 'company_data'});
   rejects('AiStepSuggestion', {...suggestion, reasonBasis: 'personal'});
   rejects('AiStepSuggestion', without(suggestion, 'reasonBasis'), 'missing reasonBasis');
+});
+
+test('GeneratedEventDraft cover accepts legacy defaults and library covers only', () => {
+  for (const coverImageURL of ['catalog://default/hiking', 'catalog://cover/kayaking-lake', 'catalog://cover/theme-arts', 'catalog://cover/a1']) {
+    accepts('GeneratedEventDraft', {...draft, coverImageURL});
+  }
+  for (const coverImageURL of ['catalog://cover/', 'catalog://cover/Kayak', 'catalog://cover/a--b', 'catalog://cover/-a', 'catalog://cover/a/b', 'https://example.com/a.jpg', 'catalog://other/x']) {
+    rejects('GeneratedEventDraft', {...draft, coverImageURL});
+  }
+});
+
+test('PickEventCoverRequest and Response bounds', () => {
+  const pick = {contractVersion: 1, companyId: 'acme', requestId: uuid, title: 'Sunset kayak trip'};
+  accepts('PickEventCoverRequest', pick);
+  accepts('PickEventCoverRequest', {...pick, description: 'x'.repeat(5000), tagIds: ['tag-outdoors'], theme: 'outdoors', excludeCoverImageURLs: ['catalog://cover/kayaking-lake', 'catalog://default/games']});
+  rejects('PickEventCoverRequest', {...pick, title: ''});
+  rejects('PickEventCoverRequest', {...pick, title: 'x'.repeat(121)});
+  rejects('PickEventCoverRequest', {...pick, description: 'x'.repeat(5001)});
+  rejects('PickEventCoverRequest', {...pick, tagIds: Array.from({length: 11}, (_, i) => `t${i}`)});
+  rejects('PickEventCoverRequest', {...pick, theme: 'sports'});
+  rejects('PickEventCoverRequest', {...pick, excludeCoverImageURLs: Array(11).fill('catalog://default/games')});
+  rejects('PickEventCoverRequest', {...pick, excludeCoverImageURLs: ['https://example.com/a.jpg']});
+  rejects('PickEventCoverRequest', {...pick, extra: 1});
+  for (const key of ['companyId', 'requestId', 'title']) rejects('PickEventCoverRequest', without(pick, key), `missing ${key}`);
+
+  const response = {contractVersion: 1, coverImageURL: 'catalog://cover/kayaking-lake', source: 'dipbot', provider: 'jev', alternatives: ['catalog://default/outdoors']};
+  accepts('PickEventCoverResponse', response);
+  for (const source of ['match', 'default']) accepts('PickEventCoverResponse', {...response, source});
+  for (const provider of ['openai', 'heuristic', null]) accepts('PickEventCoverResponse', {...response, provider});
+  rejects('PickEventCoverResponse', {...response, provider: 'gemini'});
+  rejects('PickEventCoverResponse', {...response, source: 'random'});
+  rejects('PickEventCoverResponse', {...response, alternatives: Array(5).fill('catalog://default/games')});
+  rejects('PickEventCoverResponse', {...response, coverImageURL: 'https://x.test/a.jpg'});
+  rejects('PickEventCoverResponse', without(response, 'alternatives'), 'missing alternatives');
 });

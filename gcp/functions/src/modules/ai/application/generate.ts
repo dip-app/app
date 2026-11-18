@@ -5,6 +5,9 @@ import { change, type AuditChange } from "../../admin/domain/audit";
 import { AdminError, type AdminErrorReason } from "../../admin/domain/errors";
 import { payloadHash } from "../../admin/domain/reader";
 import { chargeCredits, creditsExhausted, creditsSummary, CREDIT_COSTS, ledgerDocument, ledgerFromDoc, refundCredits, type LedgerBase } from "../domain/credits";
+import { coverKeyFromURL } from "../../covers/domain/coverCatalog";
+import { COVER_INDEX } from "../../covers/domain/catalog.generated";
+import { DEFAULT_MAX_OPTIONS_PER_CALL, lexicalTop, optionsForSingleCall, shortlist } from "../../covers/domain/shortlist";
 import { draftCheckQuestions, draftState, interpretDraftCheck, TRIAGE_QUESTIONS, triageState, triageVerdict } from "../domain/decisions";
 import { InvalidModelOutput, parseModelDrafts } from "../domain/drafts";
 import { summarizeInterests } from "../domain/interests";
@@ -259,22 +262,38 @@ async function review(
   const verdicts = await deps.llm.moderate(drafts.map(draft => `${draft.title}\n${draft.description}\n${draft.rationale}`), signal);
   const clean = drafts.filter((_, i) => verdicts[i] !== undefined && !verdicts[i]!.flagged);
   if (clean.length === 0) return [];
-  const questions = draftCheckQuestions(request.choices, focusTags);
-  const checked = await Promise.all(clean.map(async draft => {
+  // Each draft's cover shortlist leaves out the lexical top picks of the drafts before it, so one photo is not reused.
+  const claimed: string[] = [];
+  const plans = clean.map(draft => {
+    const query = { title: draft.title, description: draft.description, tagIds: draft.tagIds, exclude: [...claimed] };
+    // Everything eligible is offered (up to maxCandidates); only beyond maxOptionsPerCall is the single call narrowed to the draft's own theme.
+    const candidates = optionsForSingleCall(shortlist(query, COVER_INDEX, deps.coverLimits?.maxCandidates), query, deps.coverLimits?.maxOptionsPerCall ?? DEFAULT_MAX_OPTIONS_PER_CALL);
+    const top = lexicalTop(query);
+    const lexicalURL = top ? top.entry.url : draft.coverImageURL;
+    claimed.push(top ? top.entry.key : coverKeyFromURL(draft.coverImageURL) ?? draft.coverImageURL);
+    return { draft, candidates, lexicalURL };
+  });
+  const checked = await Promise.all(plans.map(async plan => {
+    const questions = draftCheckQuestions(request.choices, focusTags, plan.candidates);
     try {
-      const result = await meter.guard("draftCheck", () => deps.decisions.decide({ step: "draftCheck", state: draftState(draft), questions, signal }));
+      const result = await meter.guard("draftCheck", () => deps.decisions.decide({ step: "draftCheck", state: draftState(plan.draft), questions, signal }));
       meter.record(result.model, result.usage, result.provider);
-      return { draft, check: interpretDraftCheck(result.answers) };
+      return { ...plan, check: interpretDraftCheck(result.answers, plan.candidates) };
     } catch {
-      return { draft, check: interpretDraftCheck(null) };
+      return { ...plan, check: interpretDraftCheck(null) };
     }
   }));
+  // Final covers in draft order: the confident model choice, else the lexical pick; never one already given to an earlier draft.
+  const taken = new Set<string>();
   return checked
     .filter(item => !item.check.unsafe)
-    .map(({ draft, check }) => ({
-      draft: check.cover ? { ...draft, coverImageURL: `catalog://default/${check.cover}` } : draft,
-      fit: check.fit ?? -1,
-    }))
+    .map(({ draft, candidates, lexicalURL, check }) => {
+      const choice = check.cover ? candidates.find(item => item.entry.key === check.cover)?.entry.url : undefined;
+      const options = [choice, lexicalURL, ...candidates.map(item => item.entry.url)];
+      const coverImageURL = options.find((url): url is string => url !== undefined && !taken.has(url)) ?? lexicalURL;
+      taken.add(coverImageURL);
+      return { draft: { ...draft, coverImageURL }, fit: check.fit ?? -1 };
+    })
     .sort((a, b) => b.fit - a.fit)
     .map(item => item.draft);
 }

@@ -6,6 +6,7 @@ export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
 export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1, emailOpenV1, emailOutboxReaper } from "./modules/email";
 export { getEventIdeaContextV1, generateEventDraftsV1, getEventIdeaSuggestionsV1 } from "./modules/ai";
+export { pickEventCoverV1 } from "./modules/covers";
 export { sendAdminSuggestionsEmails, manageSuggestionsEmailV1, resolveSuggestedIdeaV1 } from "./modules/suggestions";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";
 export { onUserInterestsWritten, reconcileTagStats } from "./modules/tags";

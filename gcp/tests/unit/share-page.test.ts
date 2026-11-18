@@ -162,7 +162,7 @@ describe("share page domain", () => {
   });
 
   test("every catalog category in APPROVED_COVER_URLS has a committed 1200x630-style JPEG under 300KB", () => {
-    const source = readFileSync(new URL("../../functions/src/modules/organizer/domain/eventDraft.ts", import.meta.url), "utf8");
+    const source = readFileSync(new URL("../../functions/src/modules/covers/domain/coverCatalog.ts", import.meta.url), "utf8");
     const categories = [...source.matchAll(/catalog:\/\/default\/(\w+)/g)].map((m) => m[1]!);
     assert.ok(categories.length >= 5);
     for (const category of [...categories, "default"]) {

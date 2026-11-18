@@ -34,8 +34,26 @@ public enum DIPEventCover: String, CaseIterable, Sendable {
         return tagIds.lazy.compactMap { tagCategories[$0] }.first ?? fallback
     }
 
+    /// Cover library entries (`catalog://cover/<key>`) are hosted images, not bundled ones.
+    public static let libraryPrefix = "catalog://cover/"
+    public static let libraryBaseURL = "https://letsdip.work/img/covers/"
+
+    /// The hosted full-size image for a valid library URL (key `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 chars), else nil.
+    public static func libraryImageURL(_ coverImageURL: String?) -> URL? {
+        guard let value = coverImageURL, value.hasPrefix(libraryPrefix) else { return nil }
+        let key = String(value.dropFirst(libraryPrefix.count))
+        guard !key.isEmpty, key.utf8.count <= 64 else { return nil }
+        for part in key.split(separator: "-", omittingEmptySubsequences: false) {
+            guard !part.isEmpty, part.utf8.allSatisfy({ ($0 >= 97 && $0 <= 122) || ($0 >= 48 && $0 <= 57) }) else { return nil }
+        }
+        return URL(string: libraryBaseURL + key + ".webp")
+    }
+
+    /// Library covers load remotely with the tag-based bundled cover as placeholder/fallback; everything else is bundled.
     public static func media(coverImageURL: String?, tagIds: [String]) -> MediaReference {
-        .asset(resolve(coverImageURL: coverImageURL, tagIds: tagIds).assetName)
+        let bundled = resolve(coverImageURL: coverImageURL, tagIds: tagIds).assetName
+        if let url = libraryImageURL(coverImageURL) { return .remoteCover(url, fallbackAsset: bundled) }
+        return .asset(bundled)
     }
 
     /// A real per-event cover (the event's first album photo, already downloaded) wins over the catalog image;

@@ -1331,6 +1331,7 @@ export interface AiCreditCosts {
   generate: number;
   regenerate: number;
   weeklyEmail: number;
+  coverPick: number;
 }
 
 export interface AiCredits {
@@ -1427,6 +1428,25 @@ export interface GenerateEventDraftsResponse {
   usage: AiUsageSummary;
   replay: boolean;
   credits: AiCredits;
+}
+
+export interface PickEventCoverRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  title: string;
+  description?: string;
+  tagIds?: Array<string>;
+  theme?: "outdoors" | "food" | "arts" | "games" | "music" | "learning" | "volunteering" | "wellness" | "fitness";
+  excludeCoverImageURLs?: Array<string>;
+}
+
+export interface PickEventCoverResponse {
+  contractVersion: number;
+  coverImageURL: string;
+  source: "dipbot" | "match" | "default";
+  provider: string | null;
+  alternatives: Array<string>;
 }
 
 export type SuggestionsEmailAction = "status" | "preview" | "sendTest" | "subscribe" | "unsubscribe" | "setSchedule";

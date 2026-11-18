@@ -1,0 +1,668 @@
+{
+  "version": 1,
+  "baseURL": "https://letsdip.work/img/covers/",
+  "themeDefaults": {
+    "outdoors": "default-outdoors",
+    "fitness": "default-fitness",
+    "food": "default-cooking",
+    "games": "default-games",
+    "arts": "theme-arts",
+    "music": "theme-music",
+    "learning": "theme-learning",
+    "volunteering": "theme-volunteering",
+    "wellness": "theme-wellness"
+  },
+  "covers": [
+    {
+      "key": "default-cooking",
+      "url": "catalog://default/cooking",
+      "kind": "photo",
+      "file": "default-cooking.webp",
+      "thumb": "thumbs/default-cooking.webp",
+      "jpeg": "jpg/default-cooking.jpg",
+      "width": 1100,
+      "height": 688,
+      "themes": [
+        "food"
+      ],
+      "tags": [
+        "cafe",
+        "cooking",
+        "lunch",
+        "coffee",
+        "brunch",
+        "dining",
+        "restaurant"
+      ],
+      "mood": [
+        "cozy",
+        "social"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Cafe lunch spot",
+      "alt": "A bright cafe with wooden tables, blue cross-back chairs, pendant lamps and a patterned tile floor",
+      "orientation": "landscape",
+      "dominantColor": "#E8D8C8",
+      "bytes": {
+        "full": 114112,
+        "thumb": 18144,
+        "jpeg": 73650
+      },
+      "sha256": "a82ebb35bd4ae6db89a051354dc8718734fbf83707be224d2a4b8d9a26f8cba2",
+      "license": {
+        "type": "prototype-unconfirmed",
+        "source": "DIP Figma prototype",
+        "sourceURL": "",
+        "creator": "",
+        "creatorURL": "",
+        "notes": "Rights unconfirmed; replace when licensed photos arrive"
+      }
+    },
+    {
+      "key": "default-fitness",
+      "url": "catalog://default/fitness",
+      "kind": "photo",
+      "file": "default-fitness.webp",
+      "thumb": "thumbs/default-fitness.webp",
+      "jpeg": "jpg/default-fitness.jpg",
+      "width": 1100,
+      "height": 688,
+      "themes": [
+        "fitness",
+        "wellness"
+      ],
+      "tags": [
+        "puppy yoga",
+        "yoga",
+        "pug",
+        "dog",
+        "stretching",
+        "indoor workout",
+        "yoga mat"
+      ],
+      "mood": [
+        "playful",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Puppy yoga session",
+      "alt": "A woman in blue activewear lies on a yoga mat holding a pug on her raised legs",
+      "orientation": "landscape",
+      "dominantColor": "#C8C8B8",
+      "bytes": {
+        "full": 40896,
+        "thumb": 7190,
+        "jpeg": 33492
+      },
+      "sha256": "9994fef579513265f38eea74371376adbe471d8fea1c5bed51146ceecc9f791b",
+      "license": {
+        "type": "prototype-unconfirmed",
+        "source": "DIP Figma prototype",
+        "sourceURL": "",
+        "creator": "",
+        "creatorURL": "",
+        "notes": "Rights unconfirmed; replace when licensed photos arrive"
+      }
+    },
+    {
+      "key": "default-games",
+      "url": "catalog://default/games",
+      "kind": "photo",
+      "file": "default-games.webp",
+      "thumb": "thumbs/default-games.webp",
+      "jpeg": "jpg/default-games.jpg",
+      "width": 1100,
+      "height": 688,
+      "themes": [
+        "games",
+        "food"
+      ],
+      "tags": [
+        "board games",
+        "game night",
+        "game cafe",
+        "puzzles",
+        "cards",
+        "cafe"
+      ],
+      "mood": [
+        "social",
+        "playful",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Game night at the cafe",
+      "alt": "A colorful cafe with round game tables, patterned armchairs and shelves of jars",
+      "orientation": "landscape",
+      "dominantColor": "#080808",
+      "bytes": {
+        "full": 76682,
+        "thumb": 13660,
+        "jpeg": 55063
+      },
+      "sha256": "d2bce5c2ee0ffbc731479c9b9a5116fe420e6e509fbcf1d2ec5462de7527bc15",
+      "license": {
+        "type": "prototype-unconfirmed",
+        "source": "DIP Figma prototype",
+        "sourceURL": "",
+        "creator": "",
+        "creatorURL": "",
+        "notes": "Rights unconfirmed; replace when licensed photos arrive"
+      }
+    },
+    {
+      "key": "default-hiking",
+      "url": "catalog://default/hiking",
+      "kind": "photo",
+      "file": "default-hiking.webp",
+      "thumb": "thumbs/default-hiking.webp",
+      "jpeg": "jpg/default-hiking.jpg",
+      "width": 1100,
+      "height": 688,
+      "themes": [
+        "outdoors",
+        "fitness"
+      ],
+      "tags": [
+        "hiking",
+        "trail",
+        "mountains",
+        "walking",
+        "nature",
+        "alpine"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ],
+      "label": "Mountain trail hike",
+      "alt": "A narrow gravel trail curves across a green alpine slope toward rocky peaks under a blue sky",
+      "orientation": "landscape",
+      "dominantColor": "#3888F8",
+      "bytes": {
+        "full": 128468,
+        "thumb": 20094,
+        "jpeg": 75865
+      },
+      "sha256": "74f990faa17c71f6168ac2228fda47f58b2a8acf9035906ecc6dd8ba231e469d",
+      "license": {
+        "type": "prototype-unconfirmed",
+        "source": "DIP Figma prototype",
+        "sourceURL": "",
+        "creator": "",
+        "creatorURL": "",
+        "notes": "Rights unconfirmed; replace when licensed photos arrive"
+      }
+    },
+    {
+      "key": "default-outdoors",
+      "url": "catalog://default/outdoors",
+      "kind": "photo",
+      "file": "default-outdoors.webp",
+      "thumb": "thumbs/default-outdoors.webp",
+      "jpeg": "jpg/default-outdoors.jpg",
+      "width": 1100,
+      "height": 688,
+      "themes": [
+        "outdoors",
+        "fitness"
+      ],
+      "tags": [
+        "kayaking",
+        "kayak",
+        "paddling",
+        "water",
+        "coast",
+        "lake"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ],
+      "label": "Kayaking along the coast",
+      "alt": "A paddler in a yellow life vest steers an orange kayak past a forested rocky shoreline",
+      "orientation": "landscape",
+      "dominantColor": "#C8D8E8",
+      "bytes": {
+        "full": 136270,
+        "thumb": 19008,
+        "jpeg": 77847
+      },
+      "sha256": "ab555a83f54c60ccac52a7ed5735fa49b007d26ec5b58cde787bf685bdd3bde5",
+      "license": {
+        "type": "prototype-unconfirmed",
+        "source": "DIP Figma prototype",
+        "sourceURL": "",
+        "creator": "",
+        "creatorURL": "",
+        "notes": "Rights unconfirmed; replace when licensed photos arrive"
+      }
+    },
+    {
+      "key": "theme-arts",
+      "url": "catalog://cover/theme-arts",
+      "kind": "illustration",
+      "file": "theme-arts.webp",
+      "thumb": "thumbs/theme-arts.webp",
+      "jpeg": "jpg/theme-arts.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "arts"
+      ],
+      "tags": [
+        "arts",
+        "painting",
+        "crafts",
+        "drawing",
+        "creative",
+        "easel"
+      ],
+      "mood": [
+        "playful",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Arts and crafts",
+      "alt": "A cartoon painter in a beret stands by an easel with a palette on a purple background",
+      "orientation": "landscape",
+      "dominantColor": "#7888F8",
+      "bytes": {
+        "full": 12810,
+        "thumb": 2802,
+        "jpeg": 11443
+      },
+      "sha256": "f3297acc46319d587ef2a9273728e009a7c2def32c6237228cc7222c3f6b17b8",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-fitness",
+      "url": "catalog://cover/theme-fitness",
+      "kind": "illustration",
+      "file": "theme-fitness.webp",
+      "thumb": "thumbs/theme-fitness.webp",
+      "jpeg": "jpg/theme-fitness.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "fitness"
+      ],
+      "tags": [
+        "fitness",
+        "workout",
+        "weights",
+        "gym",
+        "strength",
+        "training"
+      ],
+      "mood": [
+        "energetic",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Fitness and workout",
+      "alt": "A cartoon blob in a headband lifts a barbell overhead on a pink background",
+      "orientation": "landscape",
+      "dominantColor": "#F878E8",
+      "bytes": {
+        "full": 15582,
+        "thumb": 3372,
+        "jpeg": 13343
+      },
+      "sha256": "0a18c3e7bd58a4b1d64061274063f1a0757c49784e9be12962a9111262faf3d7",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-food",
+      "url": "catalog://cover/theme-food",
+      "kind": "illustration",
+      "file": "theme-food.webp",
+      "thumb": "thumbs/theme-food.webp",
+      "jpeg": "jpg/theme-food.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "food"
+      ],
+      "tags": [
+        "food",
+        "cooking",
+        "pizza",
+        "chef",
+        "baking",
+        "dinner"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Food and cooking",
+      "alt": "A cartoon chef in a toque holds up a slice of pizza on a coral background",
+      "orientation": "landscape",
+      "dominantColor": "#F87878",
+      "bytes": {
+        "full": 11104,
+        "thumb": 2390,
+        "jpeg": 9930
+      },
+      "sha256": "873653cca60e170522ca8125fa187a4d116454423368122eb2f5f518ebce1757",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-games",
+      "url": "catalog://cover/theme-games",
+      "kind": "illustration",
+      "file": "theme-games.webp",
+      "thumb": "thumbs/theme-games.webp",
+      "jpeg": "jpg/theme-games.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "games"
+      ],
+      "tags": [
+        "games",
+        "board games",
+        "dice",
+        "game night",
+        "chess",
+        "puzzles"
+      ],
+      "mood": [
+        "playful",
+        "social"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Games night",
+      "alt": "Three cartoon characters cheer over a checkered game board with dice on a yellow background",
+      "orientation": "landscape",
+      "dominantColor": "#F8C838",
+      "bytes": {
+        "full": 13282,
+        "thumb": 3392,
+        "jpeg": 13171
+      },
+      "sha256": "19fcba1871b4d0053bb2bd9be6a7b4bc7cf9f2ff26a2a06f8e73d7f7cb79249e",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-learning",
+      "url": "catalog://cover/theme-learning",
+      "kind": "illustration",
+      "file": "theme-learning.webp",
+      "thumb": "thumbs/theme-learning.webp",
+      "jpeg": "jpg/theme-learning.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "learning"
+      ],
+      "tags": [
+        "learning",
+        "books",
+        "book club",
+        "study",
+        "workshop",
+        "reading"
+      ],
+      "mood": [
+        "focused",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Learning and book club",
+      "alt": "A cartoon character in round glasses stands by a stack of books under a lightbulb on a green background",
+      "orientation": "landscape",
+      "dominantColor": "#68F898",
+      "bytes": {
+        "full": 11778,
+        "thumb": 2684,
+        "jpeg": 11553
+      },
+      "sha256": "518d5a835679311f7a4da4e2faed0f72df12eac92d72a0673980af49a63e8942",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-music",
+      "url": "catalog://cover/theme-music",
+      "kind": "illustration",
+      "file": "theme-music.webp",
+      "thumb": "thumbs/theme-music.webp",
+      "jpeg": "jpg/theme-music.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "music"
+      ],
+      "tags": [
+        "music",
+        "guitar",
+        "band",
+        "jam session",
+        "headphones",
+        "concert"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Music and jam session",
+      "alt": "A cartoon character with headphones plays guitar among floating music notes on a blue background",
+      "orientation": "landscape",
+      "dominantColor": "#68D8F8",
+      "bytes": {
+        "full": 13400,
+        "thumb": 2968,
+        "jpeg": 11777
+      },
+      "sha256": "3d618611f39c5332f75d05881708059fb5466da8d857397b81f13c351c922cbd",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-outdoors",
+      "url": "catalog://cover/theme-outdoors",
+      "kind": "illustration",
+      "file": "theme-outdoors.webp",
+      "thumb": "thumbs/theme-outdoors.webp",
+      "jpeg": "jpg/theme-outdoors.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "outdoors"
+      ],
+      "tags": [
+        "outdoors",
+        "hiking",
+        "camping",
+        "adventure",
+        "nature",
+        "mountains"
+      ],
+      "mood": [
+        "energetic",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Outdoors adventure",
+      "alt": "A cartoon hiker in a straw hat with a backpack walks past a snowy mountain on a teal background",
+      "orientation": "landscape",
+      "dominantColor": "#68E8C8",
+      "bytes": {
+        "full": 11874,
+        "thumb": 2718,
+        "jpeg": 11053
+      },
+      "sha256": "0ac8ed11149cf9a594a139317374b77064050acf7c00f4ce2ae026a65b57d99c",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-volunteering",
+      "url": "catalog://cover/theme-volunteering",
+      "kind": "illustration",
+      "file": "theme-volunteering.webp",
+      "thumb": "thumbs/theme-volunteering.webp",
+      "jpeg": "jpg/theme-volunteering.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "volunteering"
+      ],
+      "tags": [
+        "volunteering",
+        "community",
+        "charity",
+        "helping",
+        "giving back",
+        "cleanup"
+      ],
+      "mood": [
+        "social",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Volunteering together",
+      "alt": "Two cartoon characters hold a heart-shaped balloon together on a dark background",
+      "orientation": "landscape",
+      "dominantColor": "#182828",
+      "bytes": {
+        "full": 11592,
+        "thumb": 2922,
+        "jpeg": 10964
+      },
+      "sha256": "5356afc2ca7cf73392f68b769eec7813748dbb4546697d37615ae2fe42ad571e",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    },
+    {
+      "key": "theme-wellness",
+      "url": "catalog://cover/theme-wellness",
+      "kind": "illustration",
+      "file": "theme-wellness.webp",
+      "thumb": "thumbs/theme-wellness.webp",
+      "jpeg": "jpg/theme-wellness.jpg",
+      "width": 1200,
+      "height": 750,
+      "themes": [
+        "wellness"
+      ],
+      "tags": [
+        "wellness",
+        "yoga",
+        "meditation",
+        "relaxing",
+        "self care",
+        "mindfulness"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ],
+      "label": "Wellness and relaxing",
+      "alt": "A cartoon character balances on a yoga mat under a crescent moon next to a water bottle on a coral background",
+      "orientation": "landscape",
+      "dominantColor": "#F87878",
+      "bytes": {
+        "full": 11574,
+        "thumb": 2518,
+        "jpeg": 10451
+      },
+      "sha256": "5ccc0af3eb65a63e81e8543b0de918879c59c082c9940ae0a02debfe684a90c5",
+      "license": {
+        "type": "dip-original",
+        "source": "DIP weekly theme art",
+        "sourceURL": "",
+        "creator": "DIP",
+        "creatorURL": "",
+        "notes": "Original DIP mascot art on the theme accent from apps/admin/public/img/themes/ACCENTS.md"
+      }
+    }
+  ]
+}

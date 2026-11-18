@@ -11,6 +11,7 @@ import { ScriptedDecisions, ScriptedLlm, ZERO_USAGE } from "../../functions/src/
 import { JevDecisions } from "../../functions/src/modules/ai/infrastructure/jevDecisions";
 import { DECISION_INSTRUCTIONS, OpenAiDecisions, decisionInput, schemaFor } from "../../functions/src/modules/ai/infrastructure/openAiDecisions";
 import { HeuristicDecisions } from "../../functions/src/modules/ai/infrastructure/heuristicDecisions";
+import { shortlist } from "../../functions/src/modules/covers/domain/shortlist";
 import { TRIAGE_QUESTIONS, draftCheckQuestions, draftState, interpretDraftCheck, triageState, triageVerdict } from "../../functions/src/modules/ai/domain/decisions";
 import { OpenAiLlm, type OpenAiLike, type ParsedResponseLike } from "../../functions/src/modules/ai/infrastructure/openaiLlm";
 import { providerFromEnv, settingsFromEnv } from "../../functions/src/modules/ai/infrastructure/settings";
@@ -357,13 +358,17 @@ describe("HeuristicDecisions", () => {
     assert.deepEqual(result.usage, ZERO_USAGE);
   });
 
-  test("draft checks: cover from keywords, a flat fit, unsafe from rules", async () => {
+  test("draft checks: cover from the shortlist (never a confident heuristic pick), a flat fit, unsafe from rules", async () => {
     const draft = (title: string) => ({ title, description: "Fun for all.", tagIds: ["tag-games"], coverImageURL: "catalog://default/games", suggestedDaypart: "after_work" as const,
       durationMinutes: 60, venueType: "office" as const, venueSearchHint: "office", costCents: 0, costNote: "", capacity: 10, isOutdoor: false, rationale: "r" });
-    const questions = draftCheckQuestions({ focusTagIds: [], goal: "team_bonding", groupSize: "team", setting: "indoors", budget: "free", timing: "after_work" }, []);
-    const check = async (title: string) => interpretDraftCheck((await new HeuristicDecisions().decide({ step: "draftCheck", state: draftState(draft(title)), questions })).answers);
-    assert.deepEqual(await check("Potluck Cooking Swap"), { unsafe: false, cover: "cooking", fit: 1 });
-    assert.deepEqual(await check("Mystery Afternoon"), { unsafe: false, cover: null, fit: 1 }, "an unsettled choice keeps the model's own cover");
+    const candidates = shortlist({ title: "Potluck cooking swap", tagIds: ["tag-games"] });
+    const questions = draftCheckQuestions({ focusTagIds: [], goal: "team_bonding", groupSize: "team", setting: "indoors", budget: "free", timing: "after_work" }, [], candidates);
+    const answers = async (title: string) => (await new HeuristicDecisions().decide({ step: "draftCheck", state: draftState(draft(title)), questions })).answers;
+    const check = async (title: string) => interpretDraftCheck(await answers(title), candidates);
+    const heuristic = await answers("Potluck Cooking Swap");
+    assert.equal(heuristic.cover!.type === "choice" && heuristic.cover!.choice, candidates[0]!.entry.key, "the heuristic answer is the lexical top (the first option)");
+    assert.deepEqual(await check("Mystery Afternoon"), { unsafe: false, cover: null, fit: 1 }, "an unsettled choice keeps the lexical pick");
+    assert.equal(interpretDraftCheck(await answers("Mystery Afternoon")).cover, null, "no shortlist, no cover");
     assert.equal((await check("Beer Pong Night")).unsafe, true);
     const unknown = await new HeuristicDecisions().decide({ step: "triage", state: "x", questions: { other: { type: "noul", instructions: "?" } } });
     assert.deepEqual(unknown.answers.other, { type: "noul", noul: 0.5 });

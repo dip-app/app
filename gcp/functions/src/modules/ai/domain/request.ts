@@ -23,7 +23,7 @@ export const ContextRequestSchema = z.strictObject({ contractVersion: z.literal(
  * Field paths of a failed parse as VALIDATION_FAILED fields: dotted paths ("choices.goal"), unknown keys named by
  * their own path, list members reported on the list. An unparseable body is reported as "request".
  */
-function fieldsOf(error: z.ZodError): string[] {
+export function fieldsOf(error: z.ZodError): string[] {
   const fields = new Set<string>();
   for (const issue of error.issues) {
     const path = issue.path.map(String);
