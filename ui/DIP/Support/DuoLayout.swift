@@ -46,13 +46,64 @@ struct DIPDuoLayout: Equatable {
     }
 }
 
+/// The Duo's sensor column on the open inner display: the full-height side safe area that holds the system status
+/// pill (wifi, clock, Control Center). The app's navigation rail lives in this column, below the pill, so the content
+/// panes can start at the opposite edge. The side comes from the safe-area inset that is non-zero (so it follows a 180
+/// degree rotation), never from a hardcoded edge.
+struct DIPDuoSensor: Equatable {
+    /// True when the column is on the physical right of the window.
+    var onTrailing: Bool
+    var width: CGFloat
+
+    /// Height the status pill occupies at the top of the column (about 100 pt on the 951x669 inner display, plus margin). UIKit exposes only the side inset,
+    /// not the pill, so this is a measured constant: the rail starts below it and nothing is drawn under the pill.
+    static let pillClearance: CGFloat = 120
+
+    /// The sensor column implied by the safe-area insets: the larger side inset. Nil when neither side has an inset.
+    static func resolve(safeLeading: CGFloat, safeTrailing: CGFloat) -> DIPDuoSensor? {
+        let leading = max(0, safeLeading), trailing = max(0, safeTrailing)
+        guard max(leading, trailing) > 0 else { return nil }
+        return DIPDuoSensor(onTrailing: trailing >= leading, width: max(leading, trailing))
+    }
+}
+
 private struct DIPDuoOpenKey: EnvironmentKey { static let defaultValue = false }
+private struct DIPDuoSensorKey: EnvironmentKey { static let defaultValue: DIPDuoSensor? = nil }
+private struct DIPDuoRailSlotKey: EnvironmentKey { static let defaultValue: DIPDuoRailSlot? = nil }
+
+/// Where the shell hands its navigation rail to the Duo window: the rail is drawn by a second hosting controller that
+/// sits in the sensor column, because SwiftUI cannot draw outside the column the content host is limited to.
+@MainActor @Observable final class DIPDuoRailSlot {
+    var rail: AnyView?
+}
+
+private struct DIPDuoRailHostView: View {
+    let slot: DIPDuoRailSlot
+    var body: some View {
+        Group { if let rail = slot.rail { rail } }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .preferredColorScheme(.light)
+    }
+}
 
 extension EnvironmentValues {
     /// True only on a hinge device whose window is the open inner display. False on every regular iPhone and iPad.
     var dipDuoOpen: Bool {
         get { self[DIPDuoOpenKey.self] }
         set { self[DIPDuoOpenKey.self] = newValue }
+    }
+}
+
+extension EnvironmentValues {
+    /// The sensor column of the open inner display; nil on every other device and posture.
+    var dipDuoSensor: DIPDuoSensor? {
+        get { self[DIPDuoSensorKey.self] }
+        set { self[DIPDuoSensorKey.self] = newValue }
+    }
+    /// Where the open Duo shell publishes its rail (see `DIPDuoRailSlot`); nil elsewhere.
+    var dipDuoRailSlot: DIPDuoRailSlot? {
+        get { self[DIPDuoRailSlotKey.self] }
+        set { self[DIPDuoRailSlotKey.self] = newValue }
     }
 }
 
@@ -95,19 +146,39 @@ private struct DIPDuoColumn<Content: View>: UIViewControllerRepresentable {
     }
 }
 
+/// Holds the rail's hosting view and lets no touch through while the app presents a sheet, so the rail (which sits
+/// beside the presenting content, not under the sheet) cannot switch tabs behind a modal.
+private final class DIPDuoRailContainer: UIView {
+    var isBlocked: () -> Bool = { false }
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        isBlocked() ? nil : super.hitTest(point, with: event)
+    }
+}
+
 private final class DIPDuoColumnController<Content: View>: UIViewController {
     let host: UIHostingController<AnyView>
     var content: Content
     private var isOpen = false
+    private var sensor: DIPDuoSensor?
+    private let railSlot = DIPDuoRailSlot()
+    private let railHost: UIHostingController<DIPDuoRailHostView>
+    private let railContainer = DIPDuoRailContainer()
 
     init(content: Content) {
         self.content = content
         host = UIHostingController(rootView: AnyView(content.environment(\.dipDuoOpen, false)))
+        railHost = UIHostingController(rootView: DIPDuoRailHostView(slot: railSlot))
         super.init(nibName: nil, bundle: nil)
     }
 
-    /// Re-renders the content with the posture the last layout pass found (open reads `\.dipDuoOpen` in the shell).
-    func applyRoot() { host.rootView = AnyView(content.environment(\.dipDuoOpen, isOpen)) }
+    /// Re-renders the content with the posture the last layout pass found (open reads `\.dipDuoOpen` in the shell). On the
+    /// open display the content also learns the sensor column and where to publish its rail.
+    func applyRoot() {
+        guard isOpen, let sensor else { host.rootView = AnyView(content.environment(\.dipDuoOpen, isOpen)); return }
+        host.rootView = AnyView(
+            content.environment(\.dipDuoOpen, true).environment(\.dipDuoSensor, sensor)
+                .environment(\.dipDuoRailSlot, railSlot))
+    }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
@@ -121,6 +192,18 @@ private final class DIPDuoColumnController<Content: View>: UIViewController {
         addChild(host)
         view.addSubview(host.view)
         host.didMove(toParent: self)
+        railHost.view.backgroundColor = .clear
+        railHost.overrideUserInterfaceStyle = .light
+        // The rail column is the sensor safe area itself; the rail positions itself from the top of the window.
+        railHost.safeAreaRegions = []
+        railContainer.isHidden = true
+        railContainer.isBlocked = { [weak self] in self?.host.presentedViewController != nil }
+        railHost.view.frame = railContainer.bounds
+        railHost.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        railContainer.addSubview(railHost.view)
+        addChild(railHost)
+        view.addSubview(railContainer)
+        railHost.didMove(toParent: self)
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -136,7 +219,14 @@ private final class DIPDuoColumnController<Content: View>: UIViewController {
         let width = max(0, view.bounds.width - layout.leading - layout.trailing)
         host.view.frame = CGRect(x: layout.leading, y: 0, width: width, height: view.bounds.height)
         let open = DIPDuoLayout.isOpen(hingeAvailable: true, width: width, wasOpen: isOpen)
-        if open != isOpen { isOpen = open; applyRoot() }
+        // The rail lives in the sensor column, on whichever side the safe area reports (it follows a 180 degree turn).
+        let newSensor = open ? DIPDuoSensor.resolve(safeLeading: insets.left, safeTrailing: insets.right) : nil
+        if let newSensor {
+            let x = newSensor.onTrailing ? view.bounds.width - newSensor.width : 0
+            railContainer.frame = CGRect(x: x, y: 0, width: newSensor.width, height: view.bounds.height)
+        }
+        railContainer.isHidden = newSensor == nil
+        if open != isOpen || newSensor != sensor { isOpen = open; sensor = newSensor; applyRoot() }
     }
 }
 

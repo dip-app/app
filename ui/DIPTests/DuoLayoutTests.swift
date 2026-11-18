@@ -57,10 +57,27 @@ final class DuoLayoutTests: XCTestCase {
     func testPanesFillTheOpenInnerDisplayExactly() {
         let free: CGFloat = 951 - 84
         let detail = DIPDuoPaneLayout.detailWidth(total: free)
-        XCTAssertEqual(DIPDuoPaneLayout.railWidth + DIPDuoPaneLayout.listWidth + DIPDuoPaneLayout.dividerWidth + detail, free)
+        // The rail lives in the sensor column, so list and detail share the whole free width.
+        XCTAssertEqual(DIPDuoPaneLayout.listWidth + DIPDuoPaneLayout.dividerWidth + detail, free)
+        XCTAssertEqual(detail, 473)
         // The detail pane has to hold the event page: never narrower than a 44 pt target row plus its 20 pt insets.
         XCTAssertGreaterThanOrEqual(detail, 360)
         XCTAssertEqual(DIPDuoPaneLayout.detailWidth(total: 100), 0)
+    }
+
+    func testSensorColumnFollowsTheSafeAreaSide() {
+        // Landscape: island on the right. Rotated 180: it mirrors to the left. The rail follows it.
+        XCTAssertEqual(DIPDuoSensor.resolve(safeLeading: 0, safeTrailing: 84), DIPDuoSensor(onTrailing: true, width: 84))
+        XCTAssertEqual(DIPDuoSensor.resolve(safeLeading: 84, safeTrailing: 0), DIPDuoSensor(onTrailing: false, width: 84))
+        XCTAssertNil(DIPDuoSensor.resolve(safeLeading: 0, safeTrailing: 0))
+        XCTAssertNil(DIPDuoSensor.resolve(safeLeading: -3, safeTrailing: 0))
+    }
+
+    func testRailFitsTheSensorColumnBelowThePill() {
+        // 4 tabs + bell at 56 pt, 10 pt gaps, divider, capsule padding: must fit under the pill in a 669 pt window.
+        let rail: CGFloat = 5 * 56 + 5 * 10 + 1 + 20
+        XCTAssertLessThanOrEqual(DIPDuoSensor.pillClearance + rail, 669)
+        XCTAssertGreaterThanOrEqual(84, 56 + 12)
     }
 
     func testListPaneIsAPhonesWidthSoPhoneCardsKeepTheirDesignedGeometry() {
