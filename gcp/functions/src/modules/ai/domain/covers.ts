@@ -1,4 +1,4 @@
-import { APPROVED_COVER_URLS } from "../../organizer/domain/eventDraft";
+import { isApprovedCoverURL } from "../../covers/domain/coverCatalog";
 import { COVER_CATEGORIES, type CoverCategory } from "./vocabulary";
 
 /** Closest approved cover for each catalog tag. */
@@ -46,7 +46,7 @@ export function coverURLFor(category: unknown, tagIds: readonly string[]): strin
   const normalized = normalizeCoverCategory(category);
   if (normalized) {
     const url = `catalog://default/${normalized}`;
-    if (APPROVED_COVER_URLS.has(url)) return url;
+    if (isApprovedCoverURL(url)) return url;
   }
   for (const id of tagIds) {
     const mapped = Object.hasOwn(TAG_COVER, id) ? TAG_COVER[id] : undefined;

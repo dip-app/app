@@ -50,7 +50,10 @@ export interface EventFacts {
    * only to such members). Never coordinates.
    */
   venueAddress?: string;
-  /** `catalog://default/<key>` or an approved https URL; anything else renders without an image. */
+  /**
+   * `catalog://default/<category>`, `catalog://cover/<key>` or an approved https URL; anything else renders without an image.
+   * Emails use the hosted JPEG of a library cover (`coverJpegURL` in covers/domain/coverCatalog.ts: Outlook has no WebP).
+   */
   coverImageURL?: string;
   /** Event revision, used as the ICS SEQUENCE so calendar clients replace older copies. */
   revision?: number;

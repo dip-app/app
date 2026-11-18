@@ -1,0 +1,3282 @@
+{
+  "version": 1,
+  "note": "Query plan for scripts/covers/fetch-pexels.ts; see docs/design/cover-library.md. Each shot yields candidates for one library image.",
+  "perShotCandidates": 2,
+  "themes": [
+    {
+      "theme": "outdoors",
+      "target": 25
+    },
+    {
+      "theme": "food",
+      "target": 22
+    },
+    {
+      "theme": "arts",
+      "target": 18
+    },
+    {
+      "theme": "games",
+      "target": 18
+    },
+    {
+      "theme": "music",
+      "target": 16
+    },
+    {
+      "theme": "learning",
+      "target": 16
+    },
+    {
+      "theme": "volunteering",
+      "target": 16
+    },
+    {
+      "theme": "wellness",
+      "target": 18
+    },
+    {
+      "theme": "fitness",
+      "target": 22
+    }
+  ],
+  "shots": [
+    {
+      "id": "hiking-forest-trail",
+      "theme": "outdoors",
+      "sub": "hiking",
+      "label": "Forest trail hike",
+      "query": "friends hiking forest trail",
+      "tags": [
+        "hiking",
+        "trail",
+        "forest"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "hiking-mountain-summit",
+      "theme": "outdoors",
+      "sub": "hiking",
+      "label": "Mountain summit views",
+      "query": "hikers mountain summit view",
+      "tags": [
+        "hiking",
+        "summit",
+        "mountains"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "hiking-group-walk",
+      "theme": "outdoors",
+      "sub": "hiking",
+      "label": "Group hike",
+      "query": "group of friends hiking together",
+      "tags": [
+        "hiking",
+        "group walk",
+        "friends"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "hiking-autumn-woods",
+      "theme": "outdoors",
+      "sub": "hiking",
+      "label": "Autumn woods walk",
+      "query": "walking autumn forest path",
+      "tags": [
+        "hiking",
+        "autumn",
+        "woods",
+        "walking"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "hiking-ridge-sunrise",
+      "theme": "outdoors",
+      "sub": "hiking",
+      "label": "Sunrise on the ridge",
+      "query": "sunrise hike mountain ridge",
+      "tags": [
+        "hiking",
+        "sunrise",
+        "ridge"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "kayaking-lake-pair",
+      "theme": "outdoors",
+      "sub": "water",
+      "label": "Kayaking on a lake",
+      "query": "two people kayaking calm lake",
+      "tags": [
+        "kayaking",
+        "paddling",
+        "lake"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "canoe-river-morning",
+      "theme": "outdoors",
+      "sub": "water",
+      "label": "Morning canoe trip",
+      "query": "canoe river morning mist",
+      "tags": [
+        "canoeing",
+        "river",
+        "paddling"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "paddleboard-sunset",
+      "theme": "outdoors",
+      "sub": "water",
+      "label": "Paddleboarding at sunset",
+      "query": "stand up paddle board sunset",
+      "tags": [
+        "paddleboarding",
+        "sup",
+        "sunset"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "sailing-day",
+      "theme": "outdoors",
+      "sub": "water",
+      "label": "Day out sailing",
+      "query": "friends sailing boat sunny day",
+      "tags": [
+        "sailing",
+        "boat",
+        "sea"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "picnic-park-blanket",
+      "theme": "outdoors",
+      "sub": "picnic",
+      "label": "Picnic in the park",
+      "query": "friends picnic blanket park",
+      "tags": [
+        "picnic",
+        "park",
+        "blanket"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "picnic-basket-spread",
+      "theme": "outdoors",
+      "sub": "picnic",
+      "label": "Picnic basket spread",
+      "query": "picnic basket food on grass",
+      "tags": [
+        "picnic",
+        "basket",
+        "food"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "picnic-lakeside",
+      "theme": "outdoors",
+      "sub": "picnic",
+      "label": "Lakeside picnic",
+      "query": "picnic by the lake",
+      "tags": [
+        "picnic",
+        "lake",
+        "lunch"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "beach-day-friends",
+      "theme": "outdoors",
+      "sub": "beach",
+      "label": "Beach day with friends",
+      "query": "friends relaxing on beach",
+      "tags": [
+        "beach",
+        "friends",
+        "sand"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "beach-volleyball",
+      "theme": "outdoors",
+      "sub": "beach",
+      "label": "Beach volleyball",
+      "query": "beach volleyball game",
+      "tags": [
+        "beach volleyball",
+        "beach",
+        "sport"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "beach-sunset-walk",
+      "theme": "outdoors",
+      "sub": "beach",
+      "label": "Sunset beach walk",
+      "query": "walking beach sunset",
+      "tags": [
+        "beach",
+        "sunset",
+        "walk"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "camping-tent-forest",
+      "theme": "outdoors",
+      "sub": "camping",
+      "label": "Tent camping",
+      "query": "tent camping forest",
+      "tags": [
+        "camping",
+        "tent",
+        "forest"
+      ],
+      "mood": [
+        "cozy",
+        "social"
+      ],
+      "season": [
+        "summer",
+        "autumn"
+      ]
+    },
+    {
+      "id": "campfire-night",
+      "theme": "outdoors",
+      "sub": "camping",
+      "label": "Campfire evening",
+      "query": "friends around campfire night",
+      "tags": [
+        "campfire",
+        "camping",
+        "night"
+      ],
+      "mood": [
+        "cozy",
+        "social"
+      ],
+      "season": [
+        "summer",
+        "autumn"
+      ]
+    },
+    {
+      "id": "camping-lake-morning",
+      "theme": "outdoors",
+      "sub": "camping",
+      "label": "Lakeside camp morning",
+      "query": "camp by lake morning",
+      "tags": [
+        "camping",
+        "lake",
+        "morning"
+      ],
+      "mood": [
+        "cozy",
+        "social"
+      ],
+      "season": [
+        "summer",
+        "autumn"
+      ]
+    },
+    {
+      "id": "park-lawn-games",
+      "theme": "outdoors",
+      "sub": "park",
+      "label": "Park lawn games",
+      "query": "friends playing frisbee park",
+      "tags": [
+        "frisbee",
+        "park",
+        "lawn games"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "park-bench-chat",
+      "theme": "outdoors",
+      "sub": "park",
+      "label": "Chat on a park bench",
+      "query": "people talking park bench",
+      "tags": [
+        "park",
+        "bench",
+        "chat"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "park-city-stroll",
+      "theme": "outdoors",
+      "sub": "park",
+      "label": "City park stroll",
+      "query": "walking city park trees",
+      "tags": [
+        "park",
+        "stroll",
+        "walking"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "gardening-planting",
+      "theme": "outdoors",
+      "sub": "gardening",
+      "label": "Planting seedlings",
+      "query": "planting seedlings garden",
+      "tags": [
+        "gardening",
+        "planting",
+        "seedlings"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "spring"
+      ]
+    },
+    {
+      "id": "gardening-harvest",
+      "theme": "outdoors",
+      "sub": "gardening",
+      "label": "Garden harvest",
+      "query": "harvesting vegetables garden",
+      "tags": [
+        "gardening",
+        "harvest",
+        "vegetables"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "spring"
+      ]
+    },
+    {
+      "id": "cycling-country-road",
+      "theme": "outdoors",
+      "sub": "cycling",
+      "label": "Country road ride",
+      "query": "cycling country road group",
+      "tags": [
+        "cycling",
+        "bike ride",
+        "road"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "cycling-city-bikes",
+      "theme": "outdoors",
+      "sub": "cycling",
+      "label": "City bike ride",
+      "query": "friends riding bikes city",
+      "tags": [
+        "cycling",
+        "bikes",
+        "city"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "cooking-class-kitchen",
+      "theme": "food",
+      "sub": "cooking",
+      "label": "Cooking class",
+      "query": "cooking class kitchen group",
+      "tags": [
+        "cooking class",
+        "cooking",
+        "kitchen"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "cooking-pasta-handmade",
+      "theme": "food",
+      "sub": "cooking",
+      "label": "Handmade pasta",
+      "query": "making fresh pasta by hand",
+      "tags": [
+        "pasta",
+        "cooking",
+        "handmade"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "cooking-chopping-veg",
+      "theme": "food",
+      "sub": "cooking",
+      "label": "Chopping vegetables",
+      "query": "chopping vegetables kitchen friends",
+      "tags": [
+        "cooking",
+        "vegetables",
+        "chopping"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "cooking-wok-stirfry",
+      "theme": "food",
+      "sub": "cooking",
+      "label": "Stir fry night",
+      "query": "stir fry wok cooking",
+      "tags": [
+        "stir fry",
+        "cooking",
+        "wok"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "cooking-pizza-making",
+      "theme": "food",
+      "sub": "cooking",
+      "label": "Pizza making",
+      "query": "making pizza dough toppings",
+      "tags": [
+        "pizza",
+        "cooking",
+        "dough"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "baking-cookies",
+      "theme": "food",
+      "sub": "baking",
+      "label": "Cookie baking",
+      "query": "baking cookies kitchen",
+      "tags": [
+        "baking",
+        "cookies",
+        "dessert"
+      ],
+      "mood": [
+        "cozy",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "baking-bread-dough",
+      "theme": "food",
+      "sub": "baking",
+      "label": "Bread baking",
+      "query": "kneading bread dough",
+      "tags": [
+        "baking",
+        "bread",
+        "dough"
+      ],
+      "mood": [
+        "cozy",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "baking-cupcake-decorating",
+      "theme": "food",
+      "sub": "baking",
+      "label": "Cupcake decorating",
+      "query": "decorating cupcakes",
+      "tags": [
+        "baking",
+        "cupcakes",
+        "decorating"
+      ],
+      "mood": [
+        "cozy",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "potluck-table",
+      "theme": "food",
+      "sub": "potluck",
+      "label": "Potluck table",
+      "query": "potluck dinner table dishes",
+      "tags": [
+        "potluck",
+        "dinner",
+        "shared meal"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "dinner-party-friends",
+      "theme": "food",
+      "sub": "potluck",
+      "label": "Dinner with friends",
+      "query": "friends dinner party table",
+      "tags": [
+        "dinner party",
+        "friends",
+        "dinner"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "lunch-team-table",
+      "theme": "food",
+      "sub": "potluck",
+      "label": "Team lunch",
+      "query": "team lunch together table",
+      "tags": [
+        "team lunch",
+        "lunch",
+        "colleagues"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "coffee-cafe-chat",
+      "theme": "food",
+      "sub": "coffee",
+      "label": "Coffee catch-up",
+      "query": "friends coffee cafe",
+      "tags": [
+        "coffee",
+        "cafe",
+        "catch up"
+      ],
+      "mood": [
+        "cozy",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "coffee-latte-art",
+      "theme": "food",
+      "sub": "coffee",
+      "label": "Latte art",
+      "query": "barista latte art",
+      "tags": [
+        "coffee",
+        "latte art",
+        "barista"
+      ],
+      "mood": [
+        "cozy",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "tea-time-table",
+      "theme": "food",
+      "sub": "coffee",
+      "label": "Tea time",
+      "query": "afternoon tea table",
+      "tags": [
+        "tea",
+        "afternoon tea",
+        "cafe"
+      ],
+      "mood": [
+        "cozy",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "brunch-table-spread",
+      "theme": "food",
+      "sub": "brunch",
+      "label": "Brunch spread",
+      "query": "brunch table spread friends",
+      "tags": [
+        "brunch",
+        "breakfast",
+        "spread"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "breakfast-pancakes",
+      "theme": "food",
+      "sub": "brunch",
+      "label": "Pancake breakfast",
+      "query": "pancakes breakfast table",
+      "tags": [
+        "pancakes",
+        "breakfast",
+        "brunch"
+      ],
+      "mood": [
+        "social",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "bbq-grill-friends",
+      "theme": "food",
+      "sub": "grill",
+      "label": "Backyard barbecue",
+      "query": "backyard barbecue grill friends",
+      "tags": [
+        "bbq",
+        "grill",
+        "barbecue"
+      ],
+      "mood": [
+        "festive",
+        "social"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "bbq-skewers",
+      "theme": "food",
+      "sub": "grill",
+      "label": "Grilled skewers",
+      "query": "grilling skewers outdoor",
+      "tags": [
+        "grilling",
+        "skewers",
+        "bbq"
+      ],
+      "mood": [
+        "festive",
+        "social"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "bbq-summer-party",
+      "theme": "food",
+      "sub": "grill",
+      "label": "Summer cookout",
+      "query": "summer cookout party",
+      "tags": [
+        "cookout",
+        "bbq",
+        "party"
+      ],
+      "mood": [
+        "festive",
+        "social"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "wine-tasting",
+      "theme": "food",
+      "sub": "drinks",
+      "label": "Wine tasting",
+      "query": "wine tasting glasses friends",
+      "tags": [
+        "wine tasting",
+        "wine",
+        "drinks"
+      ],
+      "mood": [
+        "festive",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "craft-beer-flight",
+      "theme": "food",
+      "sub": "drinks",
+      "label": "Craft beer flight",
+      "query": "craft beer flight tasting",
+      "tags": [
+        "beer tasting",
+        "craft beer",
+        "drinks"
+      ],
+      "mood": [
+        "festive",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "cocktail-making",
+      "theme": "food",
+      "sub": "drinks",
+      "label": "Cocktail making",
+      "query": "making cocktails bar",
+      "tags": [
+        "cocktails",
+        "mixology",
+        "drinks"
+      ],
+      "mood": [
+        "festive",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "painting-canvas-studio",
+      "theme": "arts",
+      "sub": "painting",
+      "label": "Painting at the easel",
+      "query": "painting canvas easel studio",
+      "tags": [
+        "painting",
+        "canvas",
+        "easel"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "painting-watercolor",
+      "theme": "arts",
+      "sub": "painting",
+      "label": "Watercolor painting",
+      "query": "watercolor painting brushes",
+      "tags": [
+        "watercolor",
+        "painting",
+        "art"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "painting-group-class",
+      "theme": "arts",
+      "sub": "painting",
+      "label": "Group painting class",
+      "query": "group painting class friends",
+      "tags": [
+        "painting class",
+        "painting",
+        "workshop"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "painting-mural",
+      "theme": "arts",
+      "sub": "painting",
+      "label": "Mural painting",
+      "query": "painting wall mural",
+      "tags": [
+        "mural",
+        "painting",
+        "street art"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "pottery-wheel-throwing",
+      "theme": "arts",
+      "sub": "pottery",
+      "label": "Pottery wheel",
+      "query": "pottery wheel hands clay",
+      "tags": [
+        "pottery",
+        "clay",
+        "wheel"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "pottery-glazing-bowls",
+      "theme": "arts",
+      "sub": "pottery",
+      "label": "Glazing ceramics",
+      "query": "glazing ceramic bowls",
+      "tags": [
+        "ceramics",
+        "glazing",
+        "pottery"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "pottery-studio-shelf",
+      "theme": "arts",
+      "sub": "pottery",
+      "label": "Ceramics studio",
+      "query": "ceramic studio shelves handmade",
+      "tags": [
+        "ceramics",
+        "studio",
+        "handmade"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "knitting-circle",
+      "theme": "arts",
+      "sub": "crafts",
+      "label": "Knitting circle",
+      "query": "knitting yarn hands",
+      "tags": [
+        "knitting",
+        "yarn",
+        "crafts"
+      ],
+      "mood": [
+        "cozy",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "crafts-table-supplies",
+      "theme": "arts",
+      "sub": "crafts",
+      "label": "Craft table",
+      "query": "craft table supplies scissors paper",
+      "tags": [
+        "crafts",
+        "paper craft",
+        "diy"
+      ],
+      "mood": [
+        "cozy",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "sewing-fabric-machine",
+      "theme": "arts",
+      "sub": "crafts",
+      "label": "Sewing session",
+      "query": "sewing machine fabric",
+      "tags": [
+        "sewing",
+        "fabric",
+        "crafts"
+      ],
+      "mood": [
+        "cozy",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "drawing-sketchbook",
+      "theme": "arts",
+      "sub": "drawing",
+      "label": "Sketchbook drawing",
+      "query": "sketching in sketchbook",
+      "tags": [
+        "drawing",
+        "sketching",
+        "sketchbook"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "drawing-urban-sketch",
+      "theme": "arts",
+      "sub": "drawing",
+      "label": "Urban sketching",
+      "query": "urban sketching outdoors",
+      "tags": [
+        "urban sketching",
+        "drawing",
+        "outdoors"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "drawing-life-class",
+      "theme": "arts",
+      "sub": "drawing",
+      "label": "Life drawing class",
+      "query": "drawing class easels",
+      "tags": [
+        "life drawing",
+        "drawing",
+        "class"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "photography-walk",
+      "theme": "arts",
+      "sub": "photography",
+      "label": "Photo walk",
+      "query": "photographer camera city walk",
+      "tags": [
+        "photography",
+        "photo walk",
+        "camera"
+      ],
+      "mood": [
+        "calm",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "photography-landscape",
+      "theme": "arts",
+      "sub": "photography",
+      "label": "Landscape photography",
+      "query": "photographer landscape tripod",
+      "tags": [
+        "photography",
+        "landscape",
+        "tripod"
+      ],
+      "mood": [
+        "calm",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "photography-portrait-fun",
+      "theme": "arts",
+      "sub": "photography",
+      "label": "Portrait fun",
+      "query": "friends taking portraits camera",
+      "tags": [
+        "photography",
+        "portrait",
+        "camera"
+      ],
+      "mood": [
+        "calm",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "calligraphy-pen",
+      "theme": "arts",
+      "sub": "lettering",
+      "label": "Calligraphy",
+      "query": "calligraphy pen ink",
+      "tags": [
+        "calligraphy",
+        "lettering",
+        "ink"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "printmaking-linocut",
+      "theme": "arts",
+      "sub": "lettering",
+      "label": "Printmaking",
+      "query": "linocut printmaking studio",
+      "tags": [
+        "printmaking",
+        "linocut",
+        "print"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "board-games-table",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Board game night",
+      "query": "friends playing board game table",
+      "tags": [
+        "board games",
+        "game night",
+        "friends"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "board-games-strategy",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Strategy board game",
+      "query": "strategy board game pieces",
+      "tags": [
+        "board games",
+        "strategy",
+        "pieces"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "board-games-shelf",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Game library shelf",
+      "query": "board game shelf collection",
+      "tags": [
+        "board games",
+        "game library",
+        "shelf"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "chess-match",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Chess match",
+      "query": "chess game players",
+      "tags": [
+        "chess",
+        "board games",
+        "match"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "board-games-cafe",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Board game cafe",
+      "query": "board game cafe",
+      "tags": [
+        "board games",
+        "game cafe",
+        "cafe"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "card-game-poker-night",
+      "theme": "games",
+      "sub": "cards",
+      "label": "Card game night",
+      "query": "friends playing cards table",
+      "tags": [
+        "card games",
+        "cards",
+        "game night"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "card-game-uno",
+      "theme": "games",
+      "sub": "cards",
+      "label": "Casual card game",
+      "query": "colorful card game hands",
+      "tags": [
+        "card games",
+        "uno",
+        "cards"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "card-game-deck-shuffle",
+      "theme": "games",
+      "sub": "cards",
+      "label": "Shuffling the deck",
+      "query": "shuffling deck of cards",
+      "tags": [
+        "card games",
+        "shuffle",
+        "deck"
+      ],
+      "mood": [
+        "social",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "trivia-night-pub",
+      "theme": "games",
+      "sub": "trivia",
+      "label": "Pub trivia night",
+      "query": "pub quiz night team",
+      "tags": [
+        "trivia",
+        "pub quiz",
+        "quiz night"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "trivia-team-answers",
+      "theme": "games",
+      "sub": "trivia",
+      "label": "Team trivia",
+      "query": "quiz team writing answers",
+      "tags": [
+        "trivia",
+        "quiz",
+        "team"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "quiz-game-show",
+      "theme": "games",
+      "sub": "trivia",
+      "label": "Game show quiz",
+      "query": "game show buzzers quiz",
+      "tags": [
+        "quiz",
+        "game show",
+        "buzzers"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "video-games-couch",
+      "theme": "games",
+      "sub": "video-games",
+      "label": "Couch video games",
+      "query": "friends playing video games couch",
+      "tags": [
+        "video games",
+        "console",
+        "couch"
+      ],
+      "mood": [
+        "playful",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "video-games-lan",
+      "theme": "games",
+      "sub": "video-games",
+      "label": "LAN party",
+      "query": "gaming lan party computers",
+      "tags": [
+        "gaming",
+        "lan party",
+        "pc games"
+      ],
+      "mood": [
+        "playful",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "video-games-arcade",
+      "theme": "games",
+      "sub": "video-games",
+      "label": "Arcade night",
+      "query": "arcade machines friends",
+      "tags": [
+        "arcade",
+        "video games",
+        "retro"
+      ],
+      "mood": [
+        "playful",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "jigsaw-puzzle-table",
+      "theme": "games",
+      "sub": "puzzles",
+      "label": "Jigsaw puzzle",
+      "query": "jigsaw puzzle table pieces",
+      "tags": [
+        "puzzles",
+        "jigsaw",
+        "pieces"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "escape-room-clues",
+      "theme": "games",
+      "sub": "puzzles",
+      "label": "Escape room",
+      "query": "escape room puzzle clues team",
+      "tags": [
+        "escape room",
+        "puzzles",
+        "team"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "tabletop-rpg-dice",
+      "theme": "games",
+      "sub": "tabletop",
+      "label": "Tabletop RPG night",
+      "query": "dungeons and dragons dice miniatures",
+      "tags": [
+        "tabletop rpg",
+        "dice",
+        "dungeons and dragons"
+      ],
+      "mood": [
+        "playful",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "miniatures-painting",
+      "theme": "games",
+      "sub": "tabletop",
+      "label": "Miniature painting",
+      "query": "painting miniatures tabletop",
+      "tags": [
+        "miniatures",
+        "painting",
+        "tabletop"
+      ],
+      "mood": [
+        "playful",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "live-band-stage",
+      "theme": "music",
+      "sub": "live",
+      "label": "Live band on stage",
+      "query": "live band stage concert",
+      "tags": [
+        "live band",
+        "concert",
+        "stage"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "live-crowd-gig",
+      "theme": "music",
+      "sub": "live",
+      "label": "Gig crowd",
+      "query": "concert crowd hands up",
+      "tags": [
+        "concert",
+        "crowd",
+        "gig"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "live-open-air",
+      "theme": "music",
+      "sub": "live",
+      "label": "Open-air festival",
+      "query": "outdoor music festival crowd",
+      "tags": [
+        "festival",
+        "open air",
+        "concert"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "live-acoustic-set",
+      "theme": "music",
+      "sub": "live",
+      "label": "Acoustic set",
+      "query": "acoustic live performance small venue",
+      "tags": [
+        "acoustic",
+        "live music",
+        "performance"
+      ],
+      "mood": [
+        "energetic",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "karaoke-night",
+      "theme": "music",
+      "sub": "singing",
+      "label": "Karaoke night",
+      "query": "friends singing karaoke",
+      "tags": [
+        "karaoke",
+        "singing",
+        "night out"
+      ],
+      "mood": [
+        "playful",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "singing-microphone",
+      "theme": "music",
+      "sub": "singing",
+      "label": "Singing on stage",
+      "query": "singer microphone stage",
+      "tags": [
+        "singing",
+        "microphone",
+        "vocals"
+      ],
+      "mood": [
+        "playful",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "open-mic-night",
+      "theme": "music",
+      "sub": "singing",
+      "label": "Open mic night",
+      "query": "open mic night performer",
+      "tags": [
+        "open mic",
+        "performance",
+        "music"
+      ],
+      "mood": [
+        "playful",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "guitar-jam-session",
+      "theme": "music",
+      "sub": "guitar",
+      "label": "Guitar jam",
+      "query": "friends jamming guitars",
+      "tags": [
+        "guitar",
+        "jam session",
+        "friends"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "guitar-lesson",
+      "theme": "music",
+      "sub": "guitar",
+      "label": "Guitar lesson",
+      "query": "guitar lesson hands strings",
+      "tags": [
+        "guitar",
+        "lesson",
+        "strings"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "campfire-guitar",
+      "theme": "music",
+      "sub": "guitar",
+      "label": "Campfire guitar",
+      "query": "guitar around campfire",
+      "tags": [
+        "guitar",
+        "campfire",
+        "singalong"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "choir-rehearsal",
+      "theme": "music",
+      "sub": "choir",
+      "label": "Choir rehearsal",
+      "query": "choir singing together",
+      "tags": [
+        "choir",
+        "singing",
+        "rehearsal"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "a-cappella-group",
+      "theme": "music",
+      "sub": "choir",
+      "label": "A cappella group",
+      "query": "a cappella group singing",
+      "tags": [
+        "a cappella",
+        "choir",
+        "harmony"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "drum-circle",
+      "theme": "music",
+      "sub": "drums",
+      "label": "Drum circle",
+      "query": "drum circle people",
+      "tags": [
+        "drumming",
+        "drum circle",
+        "percussion"
+      ],
+      "mood": [
+        "energetic",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "drum-kit-practice",
+      "theme": "music",
+      "sub": "drums",
+      "label": "Drum kit practice",
+      "query": "drummer drum kit",
+      "tags": [
+        "drums",
+        "drum kit",
+        "practice"
+      ],
+      "mood": [
+        "energetic",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "dj-booth-party",
+      "theme": "music",
+      "sub": "dance-floor",
+      "label": "DJ party",
+      "query": "dj booth party lights",
+      "tags": [
+        "dj",
+        "party",
+        "dance"
+      ],
+      "mood": [
+        "festive",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "dance-night-lights",
+      "theme": "music",
+      "sub": "dance-floor",
+      "label": "Dance night",
+      "query": "people dancing nightclub lights",
+      "tags": [
+        "dancing",
+        "dance floor",
+        "party"
+      ],
+      "mood": [
+        "festive",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "book-club-circle",
+      "theme": "learning",
+      "sub": "book-club",
+      "label": "Book club",
+      "query": "book club discussion friends",
+      "tags": [
+        "book club",
+        "books",
+        "discussion"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "reading-cozy-corner",
+      "theme": "learning",
+      "sub": "book-club",
+      "label": "Reading nook",
+      "query": "reading book cozy armchair",
+      "tags": [
+        "reading",
+        "books",
+        "cozy"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "library-stacks",
+      "theme": "learning",
+      "sub": "book-club",
+      "label": "Library afternoon",
+      "query": "library bookshelves reader",
+      "tags": [
+        "library",
+        "books",
+        "reading"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "workshop-whiteboard",
+      "theme": "learning",
+      "sub": "workshop",
+      "label": "Workshop session",
+      "query": "workshop whiteboard team sticky notes",
+      "tags": [
+        "workshop",
+        "brainstorm",
+        "whiteboard"
+      ],
+      "mood": [
+        "focused",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "workshop-hands-on",
+      "theme": "learning",
+      "sub": "workshop",
+      "label": "Hands-on workshop",
+      "query": "hands on workshop participants table",
+      "tags": [
+        "workshop",
+        "hands-on",
+        "learning"
+      ],
+      "mood": [
+        "focused",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "skillshare-teaching",
+      "theme": "learning",
+      "sub": "workshop",
+      "label": "Skill share",
+      "query": "person teaching small group",
+      "tags": [
+        "skill share",
+        "teaching",
+        "class"
+      ],
+      "mood": [
+        "focused",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "language-exchange-cafe",
+      "theme": "learning",
+      "sub": "language",
+      "label": "Language exchange",
+      "query": "language exchange conversation cafe",
+      "tags": [
+        "language exchange",
+        "conversation",
+        "languages"
+      ],
+      "mood": [
+        "social",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "language-flashcards",
+      "theme": "learning",
+      "sub": "language",
+      "label": "Language flashcards",
+      "query": "language learning flashcards notebook",
+      "tags": [
+        "language learning",
+        "flashcards",
+        "study"
+      ],
+      "mood": [
+        "social",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "language-class-board",
+      "theme": "learning",
+      "sub": "language",
+      "label": "Language class",
+      "query": "language class classroom",
+      "tags": [
+        "language class",
+        "classroom",
+        "learning"
+      ],
+      "mood": [
+        "social",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "coding-laptops-group",
+      "theme": "learning",
+      "sub": "coding",
+      "label": "Coding together",
+      "query": "developers coding laptops together",
+      "tags": [
+        "coding",
+        "programming",
+        "laptops"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "coding-hackathon",
+      "theme": "learning",
+      "sub": "coding",
+      "label": "Hackathon",
+      "query": "hackathon team laptops",
+      "tags": [
+        "hackathon",
+        "coding",
+        "team"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "coding-screen-code",
+      "theme": "learning",
+      "sub": "coding",
+      "label": "Code on screen",
+      "query": "code on laptop screen",
+      "tags": [
+        "coding",
+        "code",
+        "laptop"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "study-group-table",
+      "theme": "learning",
+      "sub": "study",
+      "label": "Study group",
+      "query": "study group table notebooks",
+      "tags": [
+        "study group",
+        "studying",
+        "notebooks"
+      ],
+      "mood": [
+        "focused",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "study-desk-notes",
+      "theme": "learning",
+      "sub": "study",
+      "label": "Focused study",
+      "query": "student desk notes coffee",
+      "tags": [
+        "studying",
+        "notes",
+        "desk"
+      ],
+      "mood": [
+        "focused",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "talk-speaker-audience",
+      "theme": "learning",
+      "sub": "talks",
+      "label": "Talk and lecture",
+      "query": "speaker presenting audience",
+      "tags": [
+        "talk",
+        "lecture",
+        "presentation"
+      ],
+      "mood": [
+        "focused",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "lunch-and-learn",
+      "theme": "learning",
+      "sub": "talks",
+      "label": "Lunch and learn",
+      "query": "lunch and learn presentation office",
+      "tags": [
+        "lunch and learn",
+        "presentation",
+        "team"
+      ],
+      "mood": [
+        "focused",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "beach-cleanup-volunteers",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Beach cleanup",
+      "query": "volunteers beach cleanup",
+      "tags": [
+        "beach cleanup",
+        "volunteering",
+        "cleanup"
+      ],
+      "mood": [
+        "social",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "river-cleanup",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "River cleanup",
+      "query": "volunteers cleaning river bank trash",
+      "tags": [
+        "river cleanup",
+        "volunteering",
+        "litter"
+      ],
+      "mood": [
+        "social",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "litter-picking-street",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Neighborhood litter pick",
+      "query": "litter picking neighborhood volunteers",
+      "tags": [
+        "litter picking",
+        "cleanup",
+        "neighborhood"
+      ],
+      "mood": [
+        "social",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "park-cleanup-team",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Park cleanup",
+      "query": "park cleanup volunteers bags",
+      "tags": [
+        "park cleanup",
+        "volunteering",
+        "community"
+      ],
+      "mood": [
+        "social",
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "community-garden-planting",
+      "theme": "volunteering",
+      "sub": "community-garden",
+      "label": "Community garden",
+      "query": "community garden volunteers planting",
+      "tags": [
+        "community garden",
+        "gardening",
+        "volunteering"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "garden-raised-beds",
+      "theme": "volunteering",
+      "sub": "community-garden",
+      "label": "Building raised beds",
+      "query": "building raised garden beds volunteers",
+      "tags": [
+        "raised beds",
+        "garden",
+        "building"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "school-garden-kids",
+      "theme": "volunteering",
+      "sub": "community-garden",
+      "label": "Garden with kids",
+      "query": "children gardening volunteers school",
+      "tags": [
+        "kids",
+        "garden",
+        "volunteering"
+      ],
+      "mood": [
+        "calm",
+        "social"
+      ],
+      "season": [
+        "spring",
+        "summer"
+      ]
+    },
+    {
+      "id": "food-bank-sorting",
+      "theme": "volunteering",
+      "sub": "food-bank",
+      "label": "Food bank sorting",
+      "query": "volunteers sorting food donations",
+      "tags": [
+        "food bank",
+        "donations",
+        "volunteering"
+      ],
+      "mood": [
+        "social",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "community-meal-serving",
+      "theme": "volunteering",
+      "sub": "food-bank",
+      "label": "Serving community meals",
+      "query": "volunteers serving meal community kitchen",
+      "tags": [
+        "community meal",
+        "serving",
+        "volunteering"
+      ],
+      "mood": [
+        "social",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "food-drive-boxes",
+      "theme": "volunteering",
+      "sub": "food-bank",
+      "label": "Food drive",
+      "query": "food drive boxes volunteers",
+      "tags": [
+        "food drive",
+        "donations",
+        "community"
+      ],
+      "mood": [
+        "social",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "tree-planting-group",
+      "theme": "volunteering",
+      "sub": "trees",
+      "label": "Tree planting",
+      "query": "volunteers planting trees",
+      "tags": [
+        "tree planting",
+        "trees",
+        "volunteering"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "spring",
+        "autumn"
+      ]
+    },
+    {
+      "id": "trail-maintenance",
+      "theme": "volunteering",
+      "sub": "trees",
+      "label": "Trail maintenance",
+      "query": "volunteers trail maintenance forest",
+      "tags": [
+        "trail maintenance",
+        "volunteering",
+        "forest"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "spring",
+        "autumn"
+      ]
+    },
+    {
+      "id": "animal-shelter-dog-walk",
+      "theme": "volunteering",
+      "sub": "animals",
+      "label": "Shelter dog walk",
+      "query": "volunteer walking shelter dog",
+      "tags": [
+        "animal shelter",
+        "dog walking",
+        "volunteering"
+      ],
+      "mood": [
+        "calm",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "animal-shelter-cats",
+      "theme": "volunteering",
+      "sub": "animals",
+      "label": "Shelter cuddles",
+      "query": "volunteer with shelter cat",
+      "tags": [
+        "animal shelter",
+        "cats",
+        "volunteering"
+      ],
+      "mood": [
+        "calm",
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "charity-fundraiser-event",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Charity fundraiser",
+      "query": "charity fundraiser event people",
+      "tags": [
+        "fundraiser",
+        "charity",
+        "community"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "charity-run-team",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Charity run",
+      "query": "charity run volunteers finish",
+      "tags": [
+        "charity run",
+        "fundraiser",
+        "running"
+      ],
+      "mood": [
+        "social",
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "yoga-studio-class",
+      "theme": "wellness",
+      "sub": "yoga",
+      "label": "Yoga class",
+      "query": "yoga class studio group",
+      "tags": [
+        "yoga",
+        "class",
+        "studio"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "yoga-outdoor-sunrise",
+      "theme": "wellness",
+      "sub": "yoga",
+      "label": "Sunrise yoga",
+      "query": "yoga outdoors sunrise",
+      "tags": [
+        "yoga",
+        "sunrise",
+        "outdoors"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "yoga-beach-pose",
+      "theme": "wellness",
+      "sub": "yoga",
+      "label": "Yoga on the beach",
+      "query": "yoga beach pose",
+      "tags": [
+        "yoga",
+        "beach",
+        "stretching"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "yoga-mats-living-room",
+      "theme": "wellness",
+      "sub": "yoga",
+      "label": "Yoga at home",
+      "query": "yoga mat living room",
+      "tags": [
+        "yoga",
+        "home",
+        "mat"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "meditation-sitting-group",
+      "theme": "wellness",
+      "sub": "meditation",
+      "label": "Group meditation",
+      "query": "group meditation sitting circle",
+      "tags": [
+        "meditation",
+        "mindfulness",
+        "group"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "meditation-nature",
+      "theme": "wellness",
+      "sub": "meditation",
+      "label": "Meditating in nature",
+      "query": "meditation in nature forest",
+      "tags": [
+        "meditation",
+        "nature",
+        "mindfulness"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "meditation-cushion-candle",
+      "theme": "wellness",
+      "sub": "meditation",
+      "label": "Quiet meditation",
+      "query": "meditation cushion candle",
+      "tags": [
+        "meditation",
+        "candle",
+        "quiet"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "spa-day-relax",
+      "theme": "wellness",
+      "sub": "spa",
+      "label": "Spa day",
+      "query": "spa relaxation towels candles",
+      "tags": [
+        "spa",
+        "relaxing",
+        "self care"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "sauna-wood-bench",
+      "theme": "wellness",
+      "sub": "spa",
+      "label": "Sauna",
+      "query": "wooden sauna",
+      "tags": [
+        "sauna",
+        "relaxing",
+        "wellness"
+      ],
+      "mood": [
+        "calm",
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "stretching-class-mats",
+      "theme": "wellness",
+      "sub": "stretching",
+      "label": "Stretching class",
+      "query": "stretching class mats",
+      "tags": [
+        "stretching",
+        "mobility",
+        "class"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "foam-roller-recovery",
+      "theme": "wellness",
+      "sub": "stretching",
+      "label": "Recovery session",
+      "query": "foam roller recovery",
+      "tags": [
+        "recovery",
+        "foam rolling",
+        "mobility"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "mindful-walk-forest",
+      "theme": "wellness",
+      "sub": "mindful-walk",
+      "label": "Mindful forest walk",
+      "query": "mindful walk forest path",
+      "tags": [
+        "mindful walk",
+        "forest",
+        "walking"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "breathwork-outdoors",
+      "theme": "wellness",
+      "sub": "mindful-walk",
+      "label": "Breathing break",
+      "query": "breathing exercise outdoors",
+      "tags": [
+        "breathwork",
+        "breathing",
+        "mindfulness"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "wellness-lunch-walk",
+      "theme": "wellness",
+      "sub": "mindful-walk",
+      "label": "Lunchtime walk",
+      "query": "lunchtime walk park colleagues",
+      "tags": [
+        "lunch walk",
+        "walking",
+        "wellness"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "tea-ceremony-calm",
+      "theme": "wellness",
+      "sub": "slow-living",
+      "label": "Tea ritual",
+      "query": "tea ritual teapot cups",
+      "tags": [
+        "tea",
+        "ritual",
+        "slow living"
+      ],
+      "mood": [
+        "cozy",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "herbal-tea-cozy",
+      "theme": "wellness",
+      "sub": "slow-living",
+      "label": "Herbal tea break",
+      "query": "herbal tea cozy blanket",
+      "tags": [
+        "herbal tea",
+        "cozy",
+        "relaxing"
+      ],
+      "mood": [
+        "cozy",
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "journaling-notebook-coffee",
+      "theme": "wellness",
+      "sub": "journaling",
+      "label": "Journaling",
+      "query": "journaling notebook pen coffee",
+      "tags": [
+        "journaling",
+        "notebook",
+        "reflection"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "gratitude-journal",
+      "theme": "wellness",
+      "sub": "journaling",
+      "label": "Gratitude journal",
+      "query": "gratitude journal writing",
+      "tags": [
+        "gratitude",
+        "journaling",
+        "mindfulness"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "running-group-park",
+      "theme": "fitness",
+      "sub": "running",
+      "label": "Group run",
+      "query": "group of runners park",
+      "tags": [
+        "running",
+        "group run",
+        "park"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "running-trail-run",
+      "theme": "fitness",
+      "sub": "running",
+      "label": "Trail run",
+      "query": "trail running forest",
+      "tags": [
+        "trail running",
+        "running",
+        "forest"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "running-city-morning",
+      "theme": "fitness",
+      "sub": "running",
+      "label": "Morning city run",
+      "query": "runner city morning",
+      "tags": [
+        "running",
+        "morning",
+        "city"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "running-race-start",
+      "theme": "fitness",
+      "sub": "running",
+      "label": "Race start",
+      "query": "race start line runners",
+      "tags": [
+        "race",
+        "running",
+        "start line"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "gym-weights-rack",
+      "theme": "fitness",
+      "sub": "gym",
+      "label": "Weight training",
+      "query": "gym weights training",
+      "tags": [
+        "weights",
+        "gym",
+        "strength"
+      ],
+      "mood": [
+        "energetic",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "gym-kettlebell",
+      "theme": "fitness",
+      "sub": "gym",
+      "label": "Kettlebell workout",
+      "query": "kettlebell workout",
+      "tags": [
+        "kettlebell",
+        "strength",
+        "workout"
+      ],
+      "mood": [
+        "energetic",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "gym-friends-workout",
+      "theme": "fitness",
+      "sub": "gym",
+      "label": "Workout buddies",
+      "query": "friends working out gym",
+      "tags": [
+        "workout buddies",
+        "gym",
+        "training"
+      ],
+      "mood": [
+        "energetic",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "group-fitness-class",
+      "theme": "fitness",
+      "sub": "group-class",
+      "label": "Group fitness class",
+      "query": "group fitness class studio",
+      "tags": [
+        "group fitness",
+        "class",
+        "workout"
+      ],
+      "mood": [
+        "energetic",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "hiit-circuit",
+      "theme": "fitness",
+      "sub": "group-class",
+      "label": "HIIT circuit",
+      "query": "hiit circuit training",
+      "tags": [
+        "hiit",
+        "circuit training",
+        "workout"
+      ],
+      "mood": [
+        "energetic",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "bootcamp-outdoors",
+      "theme": "fitness",
+      "sub": "group-class",
+      "label": "Outdoor bootcamp",
+      "query": "outdoor bootcamp fitness group",
+      "tags": [
+        "bootcamp",
+        "outdoors",
+        "fitness class"
+      ],
+      "mood": [
+        "energetic",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "spin-class-bikes",
+      "theme": "fitness",
+      "sub": "spin",
+      "label": "Spin class",
+      "query": "spin class cycling studio",
+      "tags": [
+        "spin class",
+        "cycling",
+        "indoor cycling"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "road-bike-training",
+      "theme": "fitness",
+      "sub": "spin",
+      "label": "Cycling training",
+      "query": "cyclists training road",
+      "tags": [
+        "cycling",
+        "training",
+        "road bike"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "swimming-pool-laps",
+      "theme": "fitness",
+      "sub": "swimming",
+      "label": "Swimming laps",
+      "query": "swimmer pool laps",
+      "tags": [
+        "swimming",
+        "pool",
+        "laps"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "open-water-swim",
+      "theme": "fitness",
+      "sub": "swimming",
+      "label": "Open water swim",
+      "query": "open water swimming lake",
+      "tags": [
+        "open water",
+        "swimming",
+        "lake"
+      ],
+      "mood": [
+        "energetic",
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "pilates-reformer",
+      "theme": "fitness",
+      "sub": "pilates",
+      "label": "Pilates reformer",
+      "query": "pilates reformer studio",
+      "tags": [
+        "pilates",
+        "reformer",
+        "core"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "pilates-mat-class",
+      "theme": "fitness",
+      "sub": "pilates",
+      "label": "Pilates mat class",
+      "query": "pilates mat class group",
+      "tags": [
+        "pilates",
+        "mat",
+        "core"
+      ],
+      "mood": [
+        "calm",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "boxing-bag-training",
+      "theme": "fitness",
+      "sub": "boxing",
+      "label": "Boxing training",
+      "query": "boxing bag training gloves",
+      "tags": [
+        "boxing",
+        "gloves",
+        "training"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "kickboxing-class",
+      "theme": "fitness",
+      "sub": "boxing",
+      "label": "Kickboxing class",
+      "query": "kickboxing class pads",
+      "tags": [
+        "kickboxing",
+        "martial arts",
+        "class"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "climbing-gym-wall",
+      "theme": "fitness",
+      "sub": "climbing",
+      "label": "Climbing gym",
+      "query": "indoor climbing wall",
+      "tags": [
+        "climbing",
+        "bouldering",
+        "climbing gym"
+      ],
+      "mood": [
+        "energetic",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "climbing-outdoor-rock",
+      "theme": "fitness",
+      "sub": "climbing",
+      "label": "Rock climbing",
+      "query": "outdoor rock climbing",
+      "tags": [
+        "rock climbing",
+        "climbing",
+        "outdoors"
+      ],
+      "mood": [
+        "energetic",
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "football-pickup-game",
+      "theme": "fitness",
+      "sub": "team-sports",
+      "label": "Pickup football",
+      "query": "friends playing football pitch",
+      "tags": [
+        "football",
+        "soccer",
+        "pickup game"
+      ],
+      "mood": [
+        "energetic",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "basketball-court-game",
+      "theme": "fitness",
+      "sub": "team-sports",
+      "label": "Basketball game",
+      "query": "basketball game court friends",
+      "tags": [
+        "basketball",
+        "court",
+        "team sport"
+      ],
+      "mood": [
+        "energetic",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    }
+  ]
+}

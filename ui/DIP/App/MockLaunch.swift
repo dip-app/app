@@ -64,6 +64,13 @@ enum MockLaunch {
             for id in snapshot.albums.keys { snapshot.albums[id]?.canAddPhotos = false }
         }
         if let state = DIPCalendarModel.fakeState(arguments) { snapshot = DIPCalendarModel.alignedFixtures(snapshot, state: state) }
+        // `--cover-library`: every event uses a hosted library cover (to review remote loading and the bundled fallback).
+        if arguments.contains("--cover-library") {
+            let cover = DIPEventCover.media(coverImageURL: "catalog://cover/theme-outdoors", tagIds: [])
+            for index in snapshot.home.events.indices { snapshot.home.events[index].image = cover }
+            for index in snapshot.activeEvents.indices { snapshot.activeEvents[index].image = cover }
+            for id in snapshot.eventDetails.keys { snapshot.eventDetails[id]?.image = cover }
+        }
         return snapshot
     }
     #else

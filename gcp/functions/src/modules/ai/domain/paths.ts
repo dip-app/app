@@ -10,6 +10,8 @@ export const aiPaths = {
   /** Platform-wide spend of one UTC month, shared by every company (top level, server-owned). */
   platform: (monthKey: string) => `aiUsagePlatform/${monthKey}`,
   request: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiRequests/${uid}_${requestId}`,
+  /** Content-free record of one cover pick (provider, source, chosen key); never the event text. */
+  coverPick: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiCoverPicks/${uid}_${requestId}`,
 };
 
 const two = (value: number) => String(value).padStart(2, "0");

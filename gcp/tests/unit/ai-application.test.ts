@@ -8,7 +8,7 @@ import {
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { CREDIT_COSTS } from "../../functions/src/modules/ai/domain/credits";
 import { payloadHash } from "../../functions/src/modules/admin/domain/reader";
-import { APPROVED_COVER_URLS } from "../../functions/src/modules/organizer/domain/eventDraft";
+import { coverByKey, isApprovedCoverURL } from "../../functions/src/modules/covers/domain/coverCatalog";
 import { callWorstCaseMicros, costMicros, outputCeiling, worstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
 import { GENERATE_SYSTEM_PROMPT } from "../../functions/src/modules/ai/domain/prompt";
 import {
@@ -165,7 +165,7 @@ describe("generateEventDraftsV1 happy path", () => {
     assert.equal(response.contractVersion, 1);
     assert.equal(response.drafts.length, 3);
     for (const draft of response.drafts) {
-      assert.ok(APPROVED_COVER_URLS.has(draft.coverImageURL), draft.coverImageURL);
+      assert.ok(isApprovedCoverURL(draft.coverImageURL), draft.coverImageURL);
       assert.ok(draft.tagIds.length >= 1);
     }
     assert.equal(new Set(response.drafts.map(d => d.title)).size, 3);
@@ -417,9 +417,9 @@ describe("model output handling", () => {
   test("a model cover outside the approved set never reaches the response", async () => {
     const r = rig([ok({ drafts: [modelDraft(0, { coverCategory: "https://evil.example/x.png" })] })]);
     const [repaired] = (await generateEventDrafts(r.deps, caller("admin1"), request(1))).drafts;
-    assert.ok(APPROVED_COVER_URLS.has(repaired!.coverImageURL), "mapped to an approved cover from the tags");
+    assert.ok(isApprovedCoverURL(repaired!.coverImageURL), "mapped to an approved cover from the tags");
     const fine = rig([drafts(3)]);
-    for (const draft of (await generateEventDrafts(fine.deps, caller("admin1"), request(1))).drafts) assert.ok(APPROVED_COVER_URLS.has(draft.coverImageURL));
+    for (const draft of (await generateEventDrafts(fine.deps, caller("admin1"), request(1))).drafts) assert.ok(isApprovedCoverURL(draft.coverImageURL));
   });
 
   test("output moderation drops the flagged draft only", async () => {
@@ -470,19 +470,38 @@ describe("model output handling", () => {
     assert.equal(r.decisions.calls.length, 3);
   });
 
-  test("the cover is replaced only when the cover choice is concentrated enough", async () => {
+  test("the cover question is a choice over the draft's cover shortlist; only a confident on-list answer replaces the lexical pick", async () => {
+    const options = (r: Rig, i: number) => {
+      const question = r.decisions.calls[i]!.questions.cover!;
+      assert.equal(question.type, "choice");
+      return Object.keys(question.criteria);
+    };
+    const probe = rig([drafts(3)]);
+    await generateEventDrafts(probe.deps, caller("admin1"), request(1));
+    const lists = [0, 1, 2].map(i => options(probe, i));
+    for (const list of lists) assert.ok(list.length >= 14 && list.length <= 25, "a shortlist of about 15 to 25 covers");
+    const urlOf = (key: string) => coverByKey(key)!.url;
+    const second = lists[0]![1]!;
+
     const r = rig([drafts(3)], {}, true, {
-      decisions: checks(
-        { cover: choiceAnswer("cooking", 0.8) },
-        { cover: choiceAnswer("cooking", 0.5) },
-        { cover: choiceAnswer("bogus", 0.99) },
-      ),
+      decisions: checks({ cover: choiceAnswer(second, 0.8) }, { cover: choiceAnswer(lists[1]![1]!, 0.3) }, { cover: choiceAnswer("bogus", 0.99) }),
     });
     const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
     const cover = (title: string) => response.drafts.find(d => d.title === title)!.coverImageURL;
-    assert.equal(cover("Board game afternoon"), "catalog://default/cooking");
-    assert.equal(cover("Lunchtime cooking swap"), "catalog://default/games", "0.5 is below the threshold: the model's own pick stays");
-    assert.equal(cover("Park walk and picnic"), "catalog://default/games", "an unknown category is ignored");
+    assert.equal(cover("Board game afternoon"), urlOf(second), "0.8 is confident: the model's pick");
+    assert.equal(cover("Lunchtime cooking swap"), urlOf(lists[1]![0]!), "0.3 is too low: the lexical top");
+    assert.equal(cover("Park walk and picnic"), urlOf(lists[2]![0]!), "a key outside the shortlist is ignored");
+  });
+
+  test("covers in one batch are not reused: later shortlists leave out earlier picks", async () => {
+    const r = rig([drafts(3)]);
+    const response = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    const covers = response.drafts.map(d => d.coverImageURL);
+    assert.equal(new Set(covers).size, 3, covers.join(", "));
+    const firstChoices = r.decisions.calls.map(call => Object.keys(call.questions.cover!.criteria)[0]);
+    assert.equal(new Set(firstChoices).size, 3, "each draft's shortlist starts at a different cover");
+    // The fake provider always answers with the first option, so the final covers are those lexical tops.
+    assert.deepEqual(covers.map(url => coverByKey(firstChoices[covers.indexOf(url)]!)!.url), covers);
   });
 
   test("drafts are ordered by fit, best first; ties and unknown fit keep the model's order", async () => {

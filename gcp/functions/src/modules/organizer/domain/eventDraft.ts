@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CreateEventRequest, EventDraft, UpdateEventRequest, Venue } from "../../../generated/models";
+import { isApprovedCoverURL, LEGACY_COVER_URLS } from "../../covers/domain/coverCatalog";
 import { OrganizerError } from "./errors";
 
 export const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -17,16 +18,10 @@ export const LIMITS = {
 } as const;
 
 /**
- * Approved default-image catalog (V1 has no uploads). The incoming URL must be one of these; the
- * design-approved catalog is still pending, so this list is a placeholder owned with the packet.
+ * The five legacy default images (V1 has no uploads). Kept exported for legacy callers; validation uses
+ * isApprovedCoverURL, which also accepts `catalog://cover/<key>` for keys in the cover library index.
  */
-export const APPROVED_COVER_URLS: ReadonlySet<string> = new Set([
-  "catalog://default/fitness",
-  "catalog://default/outdoors",
-  "catalog://default/hiking",
-  "catalog://default/games",
-  "catalog://default/cooking",
-]);
+export const APPROVED_COVER_URLS: ReadonlySet<string> = LEGACY_COVER_URLS;
 
 type Record_ = Record<string, unknown>;
 
@@ -84,7 +79,7 @@ export function parseEventDraft(data: unknown): ParsedDraft {
   if (new Set(tagIds).size !== tagIds.length) fail(["tagIds"]);
 
   const coverImageURL = record.coverImageURL;
-  if (typeof coverImageURL !== "string" || !APPROVED_COVER_URLS.has(coverImageURL)) fail(["coverImageURL"]);
+  if (typeof coverImageURL !== "string" || !isApprovedCoverURL(coverImageURL)) fail(["coverImageURL"]);
 
   const startTime = utcInstant(record, "startTime");
   const endTime = utcInstant(record, "endTime");

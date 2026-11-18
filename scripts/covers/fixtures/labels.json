@@ -1,0 +1,36 @@
+[
+  {
+    "key": "fixture-red",
+    "file": "fixture-red.jpg",
+    "themes": ["outdoors"],
+    "tags": ["hiking", "trail"],
+    "mood": ["calm"],
+    "season": ["summer"],
+    "label": "Fixture red",
+    "alt": "A solid red test image with a white bar",
+    "license": { "type": "dip-original", "source": "test fixture", "sourceURL": "", "creator": "DIP", "creatorURL": "", "notes": "generated" }
+  },
+  {
+    "key": "fixture-green",
+    "file": "fixture-green.jpg",
+    "themes": ["food", "learning"],
+    "tags": ["cooking", "class"],
+    "mood": ["social"],
+    "season": ["any"],
+    "label": "Fixture green",
+    "alt": "A solid green test image with a white bar",
+    "gravity": "north",
+    "license": { "type": "pexels", "source": "Pexels", "sourceURL": "https://www.pexels.com/photo/1/", "creator": "Test Creator", "creatorURL": "https://www.pexels.com/@test", "notes": "fixture" }
+  },
+  {
+    "key": "fixture-blue",
+    "file": "fixture-blue.jpg",
+    "themes": ["music"],
+    "tags": ["live band", "concert"],
+    "mood": ["energetic"],
+    "season": ["any"],
+    "label": "Fixture blue",
+    "alt": "A solid blue test image with a white bar",
+    "license": { "type": "dip-original", "source": "test fixture", "sourceURL": "", "creator": "DIP", "creatorURL": "", "notes": "generated" }
+  }
+]

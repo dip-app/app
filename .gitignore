@@ -37,3 +37,6 @@ site-dist/
 *.dec.*
 *.p8
 *.pem
+
+# Cover library staging area (fetch-pexels output; never committed)
+.covers-staging/

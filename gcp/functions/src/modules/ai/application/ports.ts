@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { CoverPickLimits } from "../../covers/domain/shortlist";
 import type { AdminStore, Caller, RateLimiter } from "../../admin/application/ports";
 
 export type { Caller };
@@ -12,7 +13,7 @@ export interface LlmUsage {
 }
 
 /** Steps of the flow. Each has its own provider and model id in the config module (infrastructure/aiConfig.ts). */
-export type DecisionStep = "triage" | "draftCheck";
+export type DecisionStep = "triage" | "draftCheck" | "coverPick";
 /** "generate" drafts events; decision steps reach the LLM only through the OpenAI fallback of the DecisionPort. */
 export type GenerationStep = "generate" | DecisionStep;
 
@@ -167,6 +168,8 @@ export interface AiDeps {
   now: () => Date;
   /** Overall run deadline in ms (default RUN_DEADLINE_MS). */
   deadlineMs?: number;
+  /** Cover pick limits (defaults apply when absent). */
+  coverLimits?: CoverPickLimits;
   /** Backoff sleep for the settle retry (tests inject a no-op). */
   sleep?: (ms: number) => Promise<void>;
 }

@@ -4,6 +4,8 @@ import Foundation
 public enum MediaReference: Equatable, Sendable {
     case asset(String)
     case remote(URL)
+    /// A hosted catalog cover (`catalog://cover/<key>`) with the bundled asset shown while loading and if the download fails.
+    case remoteCover(URL, fallbackAsset: String)
     case data(Data)
     /// The app-assigned avatar for a user id (shape, mood and colour from a stable hash); no photo needed.
     case generatedAvatar(userID: String)

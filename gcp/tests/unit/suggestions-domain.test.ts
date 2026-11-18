@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import type { DecisionAnswer } from "../../functions/src/modules/ai/application/ports";
+import { isApprovedCoverURL } from "../../functions/src/modules/covers/domain/coverCatalog";
 import { GeneratedEventDraftSchema } from "../../functions/src/modules/ai/domain/drafts";
 import { COVER_CATEGORIES, DAYPARTS, VENUE_TYPES } from "../../functions/src/modules/ai/domain/vocabulary";
 import {
@@ -411,7 +412,7 @@ describe("ideaToDraft", () => {
       const draft = ideaToDraft(i, "Fits the \"Move more\" weekly theme", 40);
       const parsed = GeneratedEventDraftSchema.safeParse(draft);
       assert.ok(parsed.success, i.id);
-      assert.match(draft.coverImageURL, /^catalog:\/\/default\/(fitness|outdoors|hiking|games|cooking)$/);
+      assert.ok(isApprovedCoverURL(draft.coverImageURL), draft.coverImageURL);
       assert.ok(draft.title.length <= 120 && draft.description.length <= 2000);
       assert.ok(draft.rationale.length >= 1 && draft.rationale.length <= 160);
       assert.ok(draft.tagIds.length >= 1 && draft.tagIds.length <= 5);

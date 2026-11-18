@@ -2865,6 +2865,44 @@ public struct GenerateEventDraftsResponse: Codable, Equatable, Sendable {
     }
 }
 
+public struct PickEventCoverRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var title: String
+    public var description: String?
+    public var tagIds: [String]?
+    public var theme: String?
+    public var excludeCoverImageURLs: [String]?
+
+    public init(contractVersion: Int, companyId: String, requestId: String, title: String, description: String? = nil, tagIds: [String]? = nil, theme: String? = nil, excludeCoverImageURLs: [String]? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.title = title
+        self.description = description
+        self.tagIds = tagIds
+        self.theme = theme
+        self.excludeCoverImageURLs = excludeCoverImageURLs
+    }
+}
+
+public struct PickEventCoverResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var coverImageURL: String
+    public var source: String
+    public var provider: String?
+    public var alternatives: [String]
+
+    public init(contractVersion: Int, coverImageURL: String, source: String, provider: String? = nil, alternatives: [String]) {
+        self.contractVersion = contractVersion
+        self.coverImageURL = coverImageURL
+        self.source = source
+        self.provider = provider
+        self.alternatives = alternatives
+    }
+}
+
 public enum SuggestionsEmailAction: String, Codable, Equatable, Sendable {
     case status = "status"
     case preview = "preview"

@@ -50,3 +50,7 @@ Only light appearance is specified. Home and expanded-screen Dynamic Type, Voice
 ## Contributor handoff
 
 UI foundations owns shared components, tokens, resource provenance and preview fixtures. Feature owners own data mapping, formatting and production workflows. Agree on shared APIs before changing consumers. The [component map](components.md) records the current boundary; the [Figma inventory](figma-inventory.json) is a metadata index, not proof every frame was visually audited. No verified Code Connect mapping is registered.
+
+## Event cover library
+
+The curated cover catalog, manifest schema, size budget, license rules, acquisition workflow and query plan are in [cover-library.md](cover-library.md).

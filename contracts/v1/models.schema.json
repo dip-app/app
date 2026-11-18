@@ -6536,8 +6536,8 @@
         },
         "coverImageURL": {
           "type": "string",
-          "pattern": "^catalog://default/[a-z]+$",
-          "description": "Always one of the approved catalog covers accepted by createEventV1."
+          "pattern": "^catalog://(default/[a-z]+|cover/[a-z0-9]+(-[a-z0-9]+)*)$",
+          "description": "Always an approved cover accepted by createEventV1: a legacy catalog://default/<category> image or a catalog://cover/<key> image from the hosted cover library (the key must exist in the library manifest)."
         },
         "suggestedDaypart": {
           "type": "string",
@@ -6644,6 +6644,126 @@
         "usage",
         "replay",
         "credits"
+      ]
+    },
+    "PickEventCoverRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "pickEventCoverV1: Dipbot chooses the best cover from the cover library for an event. ai.generate (admin). Writes no events; the answering provider is logged on a content-free request document.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 5000,
+          "description": "Event description; only the first 600 characters are used. Treated as untrusted data."
+        },
+        "tagIds": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "theme": {
+          "type": "string",
+          "description": "Optional explicit weekly theme; otherwise derived from tagIds.",
+          "enum": [
+            "outdoors",
+            "food",
+            "arts",
+            "games",
+            "music",
+            "learning",
+            "volunteering",
+            "wellness",
+            "fitness"
+          ]
+        },
+        "excludeCoverImageURLs": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "Covers already used by other drafts, avoided when possible.",
+          "items": {
+            "type": "string",
+            "pattern": "^catalog://(default/[a-z]+|cover/[a-z0-9]+(-[a-z0-9]+)*)$"
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "title"
+      ]
+    },
+    "PickEventCoverResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "coverImageURL": {
+          "type": "string",
+          "pattern": "^catalog://(default/[a-z]+|cover/[a-z0-9]+(-[a-z0-9]+)*)$"
+        },
+        "source": {
+          "type": "string",
+          "description": "dipbot: the AI decision chose it; match: the deterministic text match chose it; default: nothing matched, so the theme default.",
+          "enum": [
+            "dipbot",
+            "match",
+            "default"
+          ]
+        },
+        "provider": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(jev|openai|heuristic)$",
+          "description": "Which decision provider answered (jev, openai or heuristic), or null when none was consulted."
+        },
+        "alternatives": {
+          "type": "array",
+          "maxItems": 4,
+          "description": "Other good covers from the shortlist, best first.",
+          "items": {
+            "type": "string",
+            "pattern": "^catalog://(default/[a-z]+|cover/[a-z0-9]+(-[a-z0-9]+)*)$"
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "coverImageURL",
+        "source",
+        "provider",
+        "alternatives"
       ]
     },
     "SuggestionsEmailAction": {

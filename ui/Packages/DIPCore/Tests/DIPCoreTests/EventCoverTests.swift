@@ -39,4 +39,28 @@ final class EventCoverTests: XCTestCase {
         XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/games", tagIds: [], photo: nil), .asset("cover_games"))
         XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/games", tagIds: [], photo: Data()), .asset("cover_games"))
     }
+
+    func testLibraryCoverResolvesToHostedImageWithBundledFallback() {
+        let url = URL(string: "https://letsdip.work/img/covers/theme-outdoors.webp")!
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://cover/theme-outdoors", tagIds: ["tag-cooking"]),
+                       .remoteCover(url, fallbackAsset: "cover_cooking"))
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://cover/a1", tagIds: [], photo: nil),
+                       .remoteCover(URL(string: "https://letsdip.work/img/covers/a1.webp")!, fallbackAsset: "cover_outdoors"))
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://cover/theme-outdoors", tagIds: [], photo: Data([1])), .data(Data([1])))
+    }
+
+    func testInvalidLibraryKeysFallBack() {
+        let bad = ["catalog://cover/", "catalog://cover/Theme-Outdoors", "catalog://cover/a/b", "catalog://cover/../x",
+                   "catalog://cover/..", "catalog://cover/-a", "catalog://cover/a-", "catalog://cover/a--b", "catalog://cover/a_b",
+                   "catalog://cover/a.webp", "catalog://cover/" + String(repeating: "a", count: 65), "catalog://cover/a%2Fb", "catalog://cover/a b"]
+        for value in bad {
+            XCTAssertNil(DIPEventCover.libraryImageURL(value), value)
+            XCTAssertEqual(DIPEventCover.media(coverImageURL: value, tagIds: ["tag-games"]), .asset("cover_games"), value)
+        }
+        XCTAssertNotNil(DIPEventCover.libraryImageURL("catalog://cover/" + String(repeating: "a", count: 64)))
+    }
+
+    func testLegacyURLsStayBundled() {
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/fitness", tagIds: []), .asset("cover_fitness"))
+    }
 }

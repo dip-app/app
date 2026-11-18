@@ -1,3 +1,4 @@
+import { DEFAULT_MAX_CANDIDATES, DEFAULT_MAX_OPTIONS_PER_CALL, type CoverPickLimits } from "../../covers/domain/shortlist";
 import { outputCeiling } from "../domain/pricing";
 
 /**
@@ -27,6 +28,8 @@ export interface AiConfig {
   generate: GenerateConfig;
   triage: DecisionStepConfig;
   draftCheck: DecisionStepConfig;
+  /** Picks a cover from the cover library shortlist (Choice question); the heuristic answer is the lexical top. */
+  coverPick: DecisionStepConfig & CoverPickLimits;
   moderation: { model: string };
 }
 
@@ -54,6 +57,12 @@ export const KNOWN_MODELS = {
 
 const EFFORTS: readonly Effort[] = ["minimal", "low", "medium", "high", "xhigh"];
 const PROVIDERS: readonly DecisionProvider[] = ["jev", "openai-mini"];
+
+
+function positive(raw: string | undefined, fallback: number): number {
+  const value = Number(raw?.trim());
+  return Number.isInteger(value) && value >= 2 ? value : fallback;
+}
 
 function text(raw: string | undefined, fallback: string): string {
   const value = raw?.trim();
@@ -95,6 +104,11 @@ export function aiConfig(env: NodeJS.ProcessEnv): AiConfig {
     },
     triage: decision(env.AI_DECISION_PROVIDER_TRIAGE, env.AI_MODEL_TRIAGE),
     draftCheck: decision(env.AI_DECISION_PROVIDER_DRAFT_CHECK, env.AI_MODEL_DRAFT_CHECK),
+    coverPick: {
+      ...decision(env.AI_DECISION_PROVIDER_COVER_PICK, env.AI_MODEL_COVER_PICK),
+      maxCandidates: positive(env.AI_COVER_MAX_CANDIDATES, DEFAULT_MAX_CANDIDATES),
+      maxOptionsPerCall: positive(env.AI_COVER_MAX_OPTIONS, DEFAULT_MAX_OPTIONS_PER_CALL),
+    },
     moderation: { model: text(env.AI_MODEL_MODERATION, "omni-moderation-latest") },
   };
 }

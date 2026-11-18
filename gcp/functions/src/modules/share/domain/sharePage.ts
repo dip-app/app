@@ -7,6 +7,7 @@
  */
 
 import { APP_STORE_ID, USE_OFFICIAL_APP_STORE_BADGE } from "../../../config/launch";
+import { coverJpegURL } from "../../covers/domain/coverCatalog";
 
 /** Public origin of the share links; must equal `DIPShareLink.baseURL` (checked by scripts/tests). */
 export const SHARE_ORIGIN = "https://letsdip.work";
@@ -29,6 +30,7 @@ export const THEME_COLOR = "#7B88FA";
 export const PREVIEW_IMAGE = { width: 1200, height: 630, type: "image/jpeg" } as const;
 export const CATALOG_CATEGORIES: ReadonlySet<string> = new Set(["fitness", "outdoors", "hiking", "games", "cooking"]);
 const CATALOG_PREFIX = "catalog://default/";
+const COVER_LIBRARY_PREFIX = "catalog://cover/";
 
 /** Origins and Firebase Storage buckets of this project whose https URLs may be used as preview images. */
 const APPROVED_IMAGE_PREFIXES: readonly string[] = [
@@ -118,6 +120,11 @@ export function coarseDate(date: Date | null, timeZone: string = PREVIEW_TIME_ZO
 export function resolveImage(coverImageURL: string | null | undefined): { url: string; standard: boolean } {
   const fallback = { url: `${SHARE_ORIGIN}/share/og/default.jpg`, standard: true };
   if (typeof coverImageURL !== "string") return fallback;
+  if (coverImageURL.startsWith(COVER_LIBRARY_PREFIX)) {
+    // Library covers: the 960 px JPEG next to the WebP (WhatsApp and iMessage previews do not read WebP); unknown keys use the default.
+    const jpeg = coverJpegURL(SHARE_ORIGIN, coverImageURL);
+    return jpeg ? { url: jpeg, standard: false } : fallback;
+  }
   if (coverImageURL.startsWith(CATALOG_PREFIX)) {
     const category = coverImageURL.slice(CATALOG_PREFIX.length);
     return CATALOG_CATEGORIES.has(category) ? { url: `${SHARE_ORIGIN}/share/og/${category}.jpg`, standard: true } : fallback;

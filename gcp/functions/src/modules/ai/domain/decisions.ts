@@ -1,7 +1,9 @@
 import type { AiEventChoices, GeneratedEventDraft } from "../../../generated/models";
 import type { CatalogTag, DecisionAnswer, DecisionQuestion, DecisionResult } from "../application/ports";
+import { chosenCoverKey, coverQuestion, hasClearLexicalWinner } from "../../covers/domain/coverQuestion";
+import type { ScoredCover } from "../../covers/domain/shortlist";
 import { block } from "./prompt";
-import { CHOICE_LABELS, COVER_CATEGORIES, type CoverCategory } from "./vocabulary";
+import { CHOICE_LABELS } from "./vocabulary";
 
 /**
  * Decision steps (DecisionPort: Jev or an OpenAI mini model). Every answer is a hint: the server applies thresholds,
@@ -70,21 +72,16 @@ export function triageVerdict(result: DecisionResult): TriageReason[] {
   return reasons;
 }
 
-/** Questions about one generated draft: cover art category, fit with the request, and a safety check. */
-export function draftCheckQuestions(choices: AiEventChoices, focus: readonly CatalogTag[]): Record<string, DecisionQuestion> {
+/**
+ * Questions about one generated draft: cover art (a Choice over the draft's lexical cover shortlist, in the same call
+ * as the other checks; omitted when no shortlist is given), fit with the request, and a safety check.
+ */
+export function draftCheckQuestions(
+  choices: AiEventChoices, focus: readonly CatalogTag[], coverCandidates: readonly ScoredCover[] = [],
+): Record<string, DecisionQuestion> {
   const focusText = focus.length > 0 ? focus.map(tag => tag.name).join(", ") : "none chosen";
   return {
-    cover: {
-      type: "choice",
-      instructions: "Which cover picture best fits this event?",
-      criteria: {
-        fitness: "Exercise, sport or movement",
-        outdoors: "Outdoor activity on water, in a park or outside the office",
-        hiking: "Hiking, walking trails or nature",
-        games: "Games, trivia, puzzles or friendly competition indoors",
-        cooking: "Food, cooking, tasting or a shared meal",
-      } satisfies Record<CoverCategory, string>,
-    },
+    ...(coverCandidates.length > 0 ? { cover: coverQuestion(coverCandidates) } : {}),
     fit: {
       type: "score",
       instructions: `How well does the event fit this request? Interests: ${focusText}. Goal: ${CHOICE_LABELS.goal[choices.goal]}. Group: ${CHOICE_LABELS.groupSize[choices.groupSize]}. Setting: ${CHOICE_LABELS.setting[choices.setting]}. Budget: ${CHOICE_LABELS.budget[choices.budget]}. Timing: ${CHOICE_LABELS.timing[choices.timing]}.`,
@@ -108,24 +105,20 @@ export function draftState(draft: GeneratedEventDraft): string {
 export interface DraftCheck {
   /** Drop the draft. */
   unsafe: boolean;
-  /** Cover category when the choice is concentrated enough, else null (keep the model's own pick). */
-  cover: CoverCategory | null;
+  /** Cover library key when the answer is on the shortlist and confident enough, else null (the lexical pick stands). */
+  cover: string | null;
   /** Fit from 0 (unrelated) to 3 (strong), or null when unknown; used to order drafts. */
   fit: number | null;
 }
 
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
-export function interpretDraftCheck(answers: Record<string, DecisionAnswer> | null): DraftCheck {
+/** `coverCandidates` is the shortlist the cover question was asked over; an answer outside it is ignored. */
+export function interpretDraftCheck(answers: Record<string, DecisionAnswer> | null, coverCandidates: readonly ScoredCover[] = []): DraftCheck {
   if (!answers) return { unsafe: false, cover: null, fit: null };
   const unsafeAnswer = answers.unsafe;
   const unsafe = unsafeAnswer?.type === "noul" && isNumber(unsafeAnswer.noul) && unsafeAnswer.noul >= NOUL_YES;
-  const coverAnswer = answers.cover;
-  let cover: CoverCategory | null = null;
-  if (coverAnswer?.type === "choice" && (COVER_CATEGORIES as readonly string[]).includes(coverAnswer.choice)) {
-    const probability = coverAnswer.probabilities[coverAnswer.choice];
-    if (isNumber(probability) && probability >= CHOICE_MIN_PROBABILITY) cover = coverAnswer.choice as CoverCategory;
-  }
+  const cover = chosenCoverKey(answers.cover, coverCandidates.map(item => item.entry.key), CHOICE_MIN_PROBABILITY, hasClearLexicalWinner(coverCandidates));
   const fitAnswer = answers.fit;
   const fit = fitAnswer?.type === "score" && isNumber(fitAnswer.score) ? Math.min(SCORE_LEVELS.length - 1, Math.max(0, fitAnswer.score)) : null;
   return { unsafe, cover, fit };

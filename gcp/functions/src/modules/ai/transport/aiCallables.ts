@@ -30,8 +30,8 @@ import { StepDecisions } from "../infrastructure/stepDecisions";
  * context callable can report the feature as disabled when the key is absent; JEV_API_KEY to both so the reserved
  * worst case (which includes the OpenAI fallback of a Jev step) is the same in both.
  */
-const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
-const JEV_API_KEY = defineSecret("JEV_API_KEY");
+export const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
+export const JEV_API_KEY = defineSecret("JEV_API_KEY");
 
 let catalog: FirestoreTagCatalog | null = null;
 
@@ -49,7 +49,7 @@ const unavailableLlm: LlmPort = {
   moderate: async () => { throw new LlmUnavailableError(null); },
 };
 
-function deps(): AiDeps {
+export function deps(): AiDeps {
   const db = getFirestore(defaultAdminApp());
   catalog ??= new FirestoreTagCatalog(db);
   const config = aiConfig(process.env);
@@ -73,18 +73,19 @@ function deps(): AiDeps {
   return {
     store: new FirestoreAdminStore(db), llm, decisions, interests: new FirestoreInterestSource(db), catalog,
     themes: new FirestoreThemeSource(db), settings, limiter: new FirestoreAdminRateLimiter(db), now: () => new Date(),
+    coverLimits: { maxCandidates: config.coverPick.maxCandidates, maxOptionsPerCall: config.coverPick.maxOptionsPerCall },
     // Ids, counts, model and outcome only: never the note, the prompt or the drafts.
     log: (event, fields, level = "info") => logger[level](event, fields),
   };
 }
 
-type Run<T> = (deps: AiDeps, caller: Caller | null, data: unknown) => Promise<T>;
+export type Run<T> = (deps: AiDeps, caller: Caller | null, data: unknown) => Promise<T>;
 
 // Production requires App Check; only the official Functions emulator bypasses it.
-const base = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" } as const;
+export const base = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" } as const;
 
 /** Runs one command and maps failures like the admin commands; payloads and notes are never logged. */
-const command = <T>(name: string, run: Run<T>) => async (request: CallableRequest): Promise<T> => {
+export const command = <T>(name: string, run: Run<T>) => async (request: CallableRequest): Promise<T> => {
   try {
     return await run(deps(), callerFromRequest(request), request.data);
   } catch (error) {
