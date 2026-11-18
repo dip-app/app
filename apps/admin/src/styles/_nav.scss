@@ -19,7 +19,14 @@ $nav-text: #e6e8f0;
   .nav-group { display: grid; gap: 2px; }
   .nav-heading { padding: 0 10px 6px; font-family: var(--font-figtree), sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: $nav-muted; }
   .account { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .14); display: grid; gap: 2px; }
-  .who { display: grid; padding: 4px 10px 8px; min-width: 0; font-family: var(--font-figtree), sans-serif; strong { font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } span { font-size: 13px; color: $nav-muted; } }
+  .who { display: flex; align-items: center; gap: 10px; padding: 6px 10px; min-width: 0; border-radius: 6px; color: $nav-text; font-family: var(--font-figtree), sans-serif; transition: background .15s ease, color .15s ease;
+    .avatar { flex: none; }
+    .who-text { display: grid; min-width: 0; }
+    strong { font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .who-text span { font-size: 13px; color: $nav-muted; }
+    &:hover { background: rgba(255, 255, 255, .08); color: $white; }
+    &[aria-current="page"] { background: rgba(255, 255, 255, .17); color: $white; strong { font-weight: 600; } .who-text span { color: $nav-text; } }
+    &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; } }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; font-family: var(--font-fjalla), Impact, sans-serif; text-transform: uppercase; font-size: 22px; letter-spacing: .01em; color: inherit; }
 

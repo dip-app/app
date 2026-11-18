@@ -7,6 +7,7 @@ import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
 import { AdminOnly } from "./AdminOnly";
 import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
 import { t } from "@/lib/aiStrings";
+import { Avatar } from "./Avatar";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 import { Toaster } from "./Toast";
@@ -32,7 +33,6 @@ const NAV: NavGroup[] = [
   { heading: "Program", items: [
     { href: "/events/", label: "Events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
     { href: "/ideas/", label: t("nav.label"), d: "M7 19.5a4.5 4.5 0 0 1-.9-8.9A6 6 0 0 1 17.4 11.4 4.1 4.1 0 0 1 17 19.5zM19.6 2.4l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z", requires: "ai.generate" },
-    { href: "/suggestions/", label: "Weekly ideas email", d: "M4 6.5h16V18H4zM4 7l8 6 8-6", requires: "ai.generate" },
   ] },
   { heading: "Challenges", items: [
     { href: "/themes/", label: "Weekly themes", d: "M4 5.5h16V20H4zM4 10h16M8 3v4M16 3v4" },
@@ -169,10 +169,13 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
           ))}
         </nav>
         <div className="account">
-          <div className="who" title={`${session.name}, ${ROLE_LABEL[session.role]}`}>
-            <strong>{session.name}</strong>
-            <span>{ROLE_LABEL[session.role]}</span>
-          </div>
+          <Link href="/account/" className="who" aria-current={isWithin(pathname, "/account/")} aria-label={`Your settings, ${session.name}, ${ROLE_LABEL[session.role]}`} title="Your settings" onClick={() => { if (open) close(false); }}>
+            <Avatar name={session.name} userId={session.uid} size={32} />
+            <span className="who-text">
+              <strong>{session.name}</strong>
+              <span>{ROLE_LABEL[session.role]}</span>
+            </span>
+          </Link>
           <button type="button" className="nav-item signout" onClick={() => void signOut()}>
             <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10" /></svg>
             <span className="label">Sign out</span>
