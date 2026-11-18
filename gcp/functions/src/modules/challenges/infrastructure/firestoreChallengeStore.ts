@@ -91,7 +91,11 @@ export class FirestoreChallengeStore implements ChallengeStore {
           const companyId: unknown = snap.get("companyId");
           const role: unknown = snap.get("role");
           const status: unknown = snap.get("status");
-          return { companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "", ...(typeof status === "string" ? { status } : {}) };
+          const displayName: unknown = snap.get("displayName");
+          return {
+            companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "",
+            ...(typeof status === "string" ? { status } : {}), ...(typeof displayName === "string" ? { displayName } : {}),
+          };
         },
         async getChallenge(companyId, challengeId) {
           const snap = await transaction.get(challenges(companyId).doc(challengeId));
@@ -141,6 +145,9 @@ export class FirestoreChallengeStore implements ChallengeStore {
             createdAt: FieldValue.serverTimestamp(),
             expireAt: new Date(Date.now() + RECEIPT_RETENTION_MS),
           });
+        },
+        writeAudit(companyId, id, entry) {
+          transaction.create(db.collection("companies").doc(companyId).collection("auditLog").doc(id), { ...entry, createdAt: FieldValue.serverTimestamp() });
         },
         updateChallenge(companyId, challengeId, draft, nextRevision, updatedAt) {
           transaction.update(challenges(companyId).doc(challengeId), {

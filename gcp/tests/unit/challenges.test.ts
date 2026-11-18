@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { createChallenge, updateChallenge, type Caller } from "../../functions/src/modules/challenges/application/challengeCommands";
+import type { AuditEntry } from "../../functions/src/modules/admin/domain/audit";
 import type { ChallengeReceipt, ChallengeStore, ChallengeTransaction, StoredMembership } from "../../functions/src/modules/challenges/application/ports";
 import {
   APPROVED_THEME_URLS, parseCreateChallengeRequest, parseUpdateChallengeRequest, rfc3339, windowChangeBlocked, windowsOverlap,
@@ -18,7 +19,7 @@ const THIS_WEEK = { startDate: "2026-11-09T05:00:00Z", endDate: "2026-11-16T04:5
 
 class FakeStore implements ChallengeStore {
   members = new Map<string, StoredMembership>([
-    ["admin", { companyId: "acme", role: "admin" }],
+    ["admin", { companyId: "acme", role: "admin", displayName: "Alex Admin" }],
     ["admin2", { companyId: "acme", role: "admin" }],
     ["member", { companyId: "acme", role: "member" }],
     ["other-admin", { companyId: "globex", role: "admin" }],
@@ -27,6 +28,7 @@ class FakeStore implements ChallengeStore {
   challenges = new Map<string, StoredChallenge>();
   receipts = new Map<string, ChallengeReceipt | { kind: string }>();
   writes: string[] = [];
+  audit = new Map<string, AuditEntry>();
   async runTransaction<T>(work: (tx: ChallengeTransaction) => Promise<T>): Promise<T> {
     const staged: Array<() => void> = [];
     const tx: ChallengeTransaction = {
@@ -37,6 +39,7 @@ class FakeStore implements ChallengeStore {
       windowsEndingBetween: async (company, from, to) => [...this.challenges.entries()]
         .filter(([key, c]) => key.startsWith(`${company}/`) && c.endDate >= from && c.endDate <= to)
         .map(([key, c]) => ({ challengeId: key.split("/")[1], type: c.type, startDate: c.startDate, endDate: c.endDate })),
+      writeAudit: (company, id, entry) => { staged.push(() => { if (this.audit.has(`${company}/${id}`)) throw new Error("ALREADY_EXISTS"); this.audit.set(`${company}/${id}`, entry); }); },
       createChallenge: (company, id, challenge) => { staged.push(() => { this.writes.push(`create ${id}`); this.challenges.set(`${company}/${id}`, challenge); }); },
       createReceipt: (company, uid, requestId, receipt) => { staged.push(() => this.receipts.set(`${company}/challenge_${uid}_${requestId}`, receipt)); },
       updateChallenge: (company, id, draft, next, updatedAt) => { staged.push(() => {
@@ -360,5 +363,44 @@ describe("deactivated accounts", () => {
     store.members.set("admin2", { companyId: "acme", role: "admin", status: "active" });
     assert.ok((await createChallenge(store, { ...admin, uid: "admin2" }, createRequest(), ids(), clock)).challengeId);
     assert.ok((await createChallenge(store, admin, createRequest(draftJson({ startDate: THIS_WEEK.startDate, endDate: THIS_WEEK.endDate }), { requestId: "8d444840-9dc0-41f4-9d0c-4d1f4b3a9f11" }), ids(), clock)).challengeId);
+  });
+});
+
+describe("weekly theme audit entries", () => {
+  test("creating writes one entry; a retry with the same requestId writes none", async () => {
+    const store = new FakeStore();
+    await createChallenge(store, admin, createRequest(), ids("ch1"), clock);
+    await createChallenge(store, admin, createRequest(), ids("ch2"), clock);
+    assert.equal(store.audit.size, 1);
+    const entry = store.audit.get(`acme/challenge_create_admin_${REQUEST_ID}`)!;
+    assert.equal(entry.action, "challenge.create");
+    assert.equal(entry.targetType, "challenge");
+    assert.equal(entry.targetId, "ch1");
+    assert.equal(entry.companyId, "acme");
+    assert.equal(entry.actorName, "Alex Admin");
+    assert.equal(entry.requestId, REQUEST_ID);
+  });
+
+  test("rejected commands write nothing (signed out, member, other tenant, validation)", async () => {
+    const store = new FakeStore();
+    await failure(createChallenge(store, null, createRequest(), ids("ch1"), clock));
+    await failure(createChallenge(store, { ...admin, uid: "member" }, createRequest(), ids("ch1"), clock));
+    await failure(createChallenge(store, { ...admin, uid: "other-admin" }, createRequest(), ids("ch1"), clock));
+    await failure(createChallenge(store, admin, createRequest(draftJson({ tagIds: ["tag-nope"] })), ids("ch1"), clock));
+    assert.equal(store.audit.size, 0);
+  });
+
+  test("an update records changed fields once per revision, without the description text", async () => {
+    const store = new FakeStore();
+    await createChallenge(store, admin, createRequest(), ids("ch1"), clock);
+    await updateChallenge(store, admin, updateRequest(1, draftJson({ goal: 5, pointsReward: 80, description: "Private plan for the week." })), clock);
+    const entry = store.audit.get("acme/challenge_update_ch1_r2")!;
+    assert.equal(entry.action, "challenge.update");
+    assert.deepEqual(entry.changes.map((c) => c.field).sort(), ["description", "goal", "pointsReward"]);
+    assert.ok(!JSON.stringify(entry).includes("Private plan"));
+    await failure(updateChallenge(store, admin, updateRequest(1, draftJson({ goal: 6 })), clock));
+    await failure(updateChallenge(store, { ...admin, uid: "other-admin" }, updateRequest(2, draftJson({ goal: 6 })), clock));
+    assert.equal(store.audit.size, 2);
+    assert.ok([...store.audit.keys()].every((key) => key.startsWith("acme/")));
   });
 });

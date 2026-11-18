@@ -1,4 +1,5 @@
 import type { CreateEventResponse, UpdateEventResponse } from "../../../generated/models";
+import { auditEntry, change, diffFields, type AuditChange } from "../../admin/domain/audit";
 import { isDeactivated } from "../../admin/domain/member";
 import { isDynamicCoverURL } from "../../covers/domain/dynamicCovers";
 import { parseCoverKey, type CoverKeySource } from "../../covers/domain/coverCatalog";
@@ -31,6 +32,23 @@ async function requireOrganizer(tx: OrganizerTransaction, caller: Caller, compan
     throw new OrganizerError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's events.");
   }
   return membership;
+}
+
+const iso = (date: Date) => date.toISOString();
+
+/** The changed fields of an update, as short audit facts. Free text is only flagged as edited, never copied. */
+export function eventChanges(current: StoredEvent, next: ParsedDraft, status: string): AuditChange[] {
+  const before = {
+    title: current.title, capacity: current.capacity, costCents: current.costCents, isOutdoor: current.isOutdoor, tagIds: current.tagIds,
+    coverImageURL: current.coverImageURL, startTime: iso(current.startTime), endTime: iso(current.endTime), venue: current.venueName, status: current.status,
+  };
+  const after = {
+    title: next.title, capacity: next.capacity, costCents: next.costCents, isOutdoor: next.isOutdoor, tagIds: next.tagIds,
+    coverImageURL: next.coverImageURL, startTime: iso(next.startTime), endTime: iso(next.endTime), venue: next.venue.name, status,
+  };
+  const out = diffFields(before, after);
+  if (current.description !== undefined && current.description !== next.description) out.push(change("description", null, "edited"));
+  return out;
 }
 
 function requireCaller(caller: Caller | null): Caller {
@@ -83,7 +101,7 @@ export async function createEvent(
   const request = parseCreateEventRequest(data);
   const hash = draftHash(request.event);
   return store.runTransaction(async (tx) => {
-    await requireOrganizer(tx, authenticated, request.companyId);
+    const membership = await requireOrganizer(tx, authenticated, request.companyId);
     const receipt = await tx.getReceipt(request.companyId, authenticated.uid, request.requestId);
     if (receipt) {
       if (receipt.hash !== hash) {
@@ -99,6 +117,12 @@ export async function createEvent(
     const eventId = ids.eventId();
     tx.createEvent(request.companyId, eventId, authenticated.uid, request.event, venueLocationStamp(request.event.venue, null, clock.now()));
     tx.createReceipt(request.companyId, authenticated.uid, request.requestId, { hash, eventId, revision: 1 });
+    // The audit id derives from the request, and the receipt check above returns before this point on a replay: one entry per event.
+    tx.writeAudit(request.companyId, `event_create_${authenticated.uid}_${request.requestId}`, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
+      id: `event_create_${authenticated.uid}_${request.requestId}`, action: "event.create", targetType: "event", targetId: eventId,
+      summary: `Created the event "${request.event.title}"`, requestId: request.requestId,
+      changes: [change("title", null, request.event.title), change("startTime", null, iso(request.event.startTime)), change("capacity", null, request.event.capacity)],
+    }));
     return { contractVersion: 1, eventId, revision: 1 };
   });
 }
@@ -142,6 +166,17 @@ export async function updateEvent(
     if (request.event.coverImageURL !== current.coverImageURL) await requireStoredDynamicCover(request.event.coverImageURL, coverKeys);
     const nextRevision = current.revision + 1;
     tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision, authenticated.uid, venueLocationStamp(request.event.venue, current, clock.now()));
+    // expectedRevision makes this the only writer of revision N+1, so the revision-based id records each saved change exactly once.
+    const statusChanged = request.status !== current.status;
+    const auditId = `event_update_${request.eventId}_r${nextRevision}`;
+    const changes = eventChanges(current, request.event, request.status);
+    tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
+      id: auditId, action: statusChanged ? (request.status === "cancelled" ? "event.cancel" : "event.status") : "event.update",
+      targetType: "event", targetId: request.eventId,
+      summary: statusChanged && request.status === "cancelled" ? `Cancelled the event "${request.event.title}"`
+        : statusChanged ? `Marked the event "${request.event.title}" ${request.status}` : `Edited the event "${request.event.title}"`,
+      changes, ...(request.statusReason ? { reason: request.statusReason } : {}),
+    }));
     return { contractVersion: 1, eventId: request.eventId, revision: nextRevision };
   });
 }

@@ -77,6 +77,9 @@ export class FirestoreSubmissionStore implements SubmissionStore {
             reviewNote: data.reviewNote, pointsAwarded: data.pointsAwarded, updatedAt: FieldValue.serverTimestamp(),
           });
         },
+        writeAudit: (companyId, id, entry) => {
+          transaction.create(this.db.collection("companies").doc(companyId).collection("auditLog").doc(id), { ...entry, createdAt: FieldValue.serverTimestamp() });
+        },
         incrementParticipants: (companyId, challengeId) => {
           transaction.update(this.challenge(companyId, challengeId), { participantCount: FieldValue.increment(1) });
         },

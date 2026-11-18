@@ -629,6 +629,26 @@ describe("manageSuggestionsEmail", () => {
     await fails(manageSuggestionsEmail(noKey.manageDeps, caller("admin1"), req("preview")), "failed-precondition", "AI_UNAVAILABLE");
   });
 
+  test("a queued test email is audited once per hour; refused and duplicate tests write nothing", async () => {
+    const w = world();
+    await manageSuggestionsEmail(w.manageDeps, caller("admin2"), req("sendTest"));
+    assert.equal(w.admin.children("companies/alpha/auditLog").length, 0, "not subscribed: nothing queued, nothing recorded");
+    await fails(manageSuggestionsEmail(w.manageDeps, caller("bo"), req("sendTest")), "permission-denied", "COMPANY_MISMATCH");
+    await fails(manageSuggestionsEmail(w.manageDeps, caller("m1"), req("sendTest")), "permission-denied", "INSUFFICIENT_ROLE");
+    assert.equal(w.admin.children("companies/alpha/auditLog").length + w.admin.children("companies/beta/auditLog").length, 0);
+    await manageSuggestionsEmail(w.manageDeps, caller("admin1"), req("sendTest"));
+    await manageSuggestionsEmail(w.manageDeps, caller("admin1"), req("sendTest"));
+    const audits = w.admin.children("companies/alpha/auditLog");
+    assert.equal(audits.length, 1);
+    assert.equal(audits[0]!.data.action, "suggestions.sendTest");
+    assert.equal(audits[0]!.data.actorId, "admin1");
+    assert.equal(audits[0]!.data.companyId, "alpha");
+    assert.ok(!JSON.stringify(audits[0]!.data).includes("@"), "no address in the entry");
+    w.now = new Date(NOW.getTime() + 3_600_000);
+    await manageSuggestionsEmail(w.manageDeps, caller("admin1"), req("sendTest"));
+    assert.equal(w.admin.children("companies/alpha/auditLog").length, 2);
+  });
+
   test("sendTest reasons and the one-per-hour limit", async () => {
     const disabled = world({ config: { emailEnabled: false } });
     assert.deepEqual(pick(await manageSuggestionsEmail(disabled.manageDeps, caller("admin1"), req("sendTest"))), [false, "EMAIL_DISABLED"]);

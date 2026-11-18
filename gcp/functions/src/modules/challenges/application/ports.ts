@@ -1,3 +1,4 @@
+import type { AuditEntry } from "../../admin/domain/audit";
 import type { ParsedChallengeDraft, StoredChallenge } from "../domain/challengeDraft";
 
 export interface StoredMembership {
@@ -5,6 +6,8 @@ export interface StoredMembership {
   role: string;
   /** Server-owned account status; "deactivated" is refused, a missing status counts as active. */
   status?: string;
+  /** Shown as the actor name in the audit entry (never used for authorization). */
+  displayName?: string;
 }
 
 /** Private deduplication receipt for createChallengeV1. */
@@ -43,6 +46,8 @@ export interface ChallengeTransaction {
   createChallenge(companyId: string, challengeId: string, challenge: StoredChallenge): void;
   /** Creates the private deduplication receipt; fails if it exists. */
   createReceipt(companyId: string, uid: string, requestId: string, receipt: ChallengeReceipt): void;
+  /** Appends one audit entry (`companies/{c}/auditLog/{id}`, create-only) in the same transaction as the command. */
+  writeAudit(companyId: string, id: string, entry: AuditEntry): void;
   /** Replaces the writable draft fields; counts and author/creation fields are never touched. */
   updateChallenge(companyId: string, challengeId: string, draft: ParsedChallengeDraft, nextRevision: number, updatedAt: Date): void;
 }

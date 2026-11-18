@@ -32,6 +32,17 @@ export const AUDIT_LABELS: Record<string, AuditLabel> = {
   "ai.generateFailed": { label: "Couldn't generate event drafts with Dipbot", category: "AI" },
   "company.office.update": { label: "Changed the company office address", category: "Settings" },
   "suggestions.setSchedule": { label: "Changed the weekly ideas email schedule", category: "Email" },
+  "suggestions.sendTest": { label: "Sent a test of the weekly ideas email", category: "Email" },
+  "event.create": { label: "Created an event", category: "Events" },
+  "event.update": { label: "Edited an event", category: "Events" },
+  "event.status": { label: "Changed an event's status", category: "Events" },
+  "event.cancel": { label: "Cancelled an event", category: "Events" },
+  "challenge.create": { label: "Created a weekly theme", category: "Challenges" },
+  "challenge.update": { label: "Edited a weekly theme", category: "Challenges" },
+  "submission.approve": { label: "Approved a theme entry", category: "Challenges" },
+  "submission.reject": { label: "Asked for changes on a theme entry", category: "Challenges" },
+  "cover.pick": { label: "Picked an event cover with Dipbot", category: "AI" },
+  "cover.import": { label: "Imported a new cover photo", category: "AI" },
 };
 
 const ACRONYMS: Record<string, string> = {

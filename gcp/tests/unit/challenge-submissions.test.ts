@@ -69,6 +69,10 @@ class Store implements SubmissionStore {
         }),
         replaceSubmission: (c, id, s, data: SubmissionWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { updatedAt: this.stamp() })),
         reviewSubmission: (c, id, s, data: ReviewWrite) => patch(sub(c, id, s), d => Object.assign(d, data, { reviewedAt: this.stamp(), updatedAt: this.stamp() })),
+        writeAudit: (c, id, entry) => pending.push(() => {
+          if (this.docs.has(`companies/${c}/auditLog/${id}`)) throw new Error("ALREADY_EXISTS");
+          this.put(`companies/${c}/auditLog/${id}`, { ...entry }); // not counted in `writes`: it records, it does not change state
+        }),
         incrementParticipants: (c, id) => patch(ch(c, id), d => { d.participantCount = Number(d.participantCount) + 1; }),
         incrementCompleted: (c, id) => patch(ch(c, id), d => { d.completedCount = Number(d.completedCount) + 1; }),
         createNotice: (u, id, notice) => pending.push(() => {
@@ -416,4 +420,46 @@ test("a throwing review notifier never fails or undoes the review", async () => 
   assert.equal(approved.pointsAwarded, 50);
   assert.equal(subDoc(store)!.status, "approved");
   assert.ok(store.get("users/alice/notifications/challenge_approved_week1"));
+});
+
+const auditKeys = (store: Store) => [...store.docs.keys()].filter(k => k.includes("/auditLog/"));
+
+test("approval writes one tenant-scoped audit entry, even with concurrent and repeated approvals", async () => {
+  const { store, objects } = world();
+  await submitChallenge(store, objects, caller(), request(), now);
+  await Promise.all([1, 2, 3].map(() => approveChallenge(store, caller("boss"), review())));
+  await approveChallenge(store, caller("boss"), review());
+  assert.deepEqual(auditKeys(store), ["companies/alpha/auditLog/submission_approve_week1_alice"]);
+  const entry = store.get(auditKeys(store)[0])!;
+  assert.equal(entry.action, "submission.approve");
+  assert.equal(entry.companyId, "alpha");
+  assert.equal(entry.actorId, "boss");
+  assert.equal(entry.actorName, "Boss");
+  assert.equal(entry.actorRole, "admin");
+  assert.equal(entry.targetId, "week1/alice");
+  assert.deepEqual(entry.changes, [{ field: "status", before: "submitted", after: "approved" }, { field: "pointsAwarded", before: "0", after: "50" }]);
+});
+
+test("each rejection attempt gets one entry, and the reason text is not copied into the log", async () => {
+  const { store, objects } = world();
+  await submitChallenge(store, objects, caller(), request(), now);
+  await rejectChallenge(store, caller("boss"), review({ reason: "Photo shows a private whiteboard" }));
+  await rejectChallenge(store, caller("boss"), review({ reason: "Photo shows a private whiteboard" }));
+  assert.deepEqual(auditKeys(store), ["companies/alpha/auditLog/submission_reject_week1_alice_a1"]);
+  assert.ok(!JSON.stringify(store.get(auditKeys(store)[0])).includes("whiteboard"));
+  await submitChallenge(store, objects, caller(), request({ progress: 4 }), now);
+  await rejectChallenge(store, caller("boss"), review({ reason: "Again" }));
+  assert.equal(auditKeys(store).length, 2);
+  assert.ok(auditKeys(store).includes("companies/alpha/auditLog/submission_reject_week1_alice_a2"));
+});
+
+test("refused reviews write no audit entry in any tenant", async () => {
+  const { store, objects } = world();
+  await submitChallenge(store, objects, caller(), request(), now);
+  await reason(approveChallenge(store, null, review()));
+  await reason(approveChallenge(store, caller("bob"), review()));
+  await reason(approveChallenge(store, caller("otherboss"), review()));
+  await reason(rejectChallenge(store, caller("otherboss"), review({ reason: "No" })));
+  await reason(approveChallenge(store, caller("boss"), review({ userId: "bob" })));
+  assert.deepEqual(auditKeys(store), []);
 });

@@ -1,3 +1,4 @@
+import type { AuditEntry } from "../../admin/domain/audit";
 import type { ParsedDraft } from "../domain/eventDraft";
 
 export interface StoredOrganizer {
@@ -5,6 +6,8 @@ export interface StoredOrganizer {
   role: string;
   /** Server-owned account status; "deactivated" is refused, a missing status counts as active. */
   status?: string;
+  /** Shown as the actor name in the audit entry (never used for authorization). */
+  displayName?: string;
 }
 
 /** The event fields the application service reads before deciding (server-owned values included). */
@@ -19,6 +22,14 @@ export interface StoredEvent {
   /** Stored venue coordinates and place ID, and when the coordinates were last resolved (server-owned `venueLocationAt`). */
   venue?: { latitude: number; longitude: number; placeId?: string };
   venueLocationAt?: Date;
+  /** Current content, used only to describe a change in the audit entry. Absent values show as "not set". */
+  title?: string;
+  description?: string;
+  capacity?: number;
+  costCents?: number;
+  isOutdoor?: boolean;
+  tagIds?: string[];
+  venueName?: string;
 }
 
 /**
@@ -52,6 +63,8 @@ export interface OrganizerTransaction {
   /** Creates the private deduplication receipt; fails if it exists. */
   createReceipt(companyId: string, uid: string, requestId: string, receipt: CommandReceipt): void;
   /** Full-draft replacement; increments revision to `nextRevision` and records `updatedBy` (the editor UID, for the change log). */
+  /** Appends one audit entry (`companies/{c}/auditLog/{id}`, create-only) in the same transaction as the command. */
+  writeAudit(companyId: string, id: string, entry: AuditEntry): void;
   updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled" | "completed", nextRevision: number, updatedBy: string, venueLocation?: VenueLocationStamp): void;
 }
 

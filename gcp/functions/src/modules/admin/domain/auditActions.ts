@@ -29,6 +29,17 @@ export const AUDIT_ACTIONS = [
   "ai.generateFailed",
   "suggestions.setSchedule",
   "company.office.update",
+  "event.create",
+  "event.update",
+  "event.status",
+  "event.cancel",
+  "challenge.create",
+  "challenge.update",
+  "submission.approve",
+  "submission.reject",
+  "cover.pick",
+  "cover.import",
+  "suggestions.sendTest",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

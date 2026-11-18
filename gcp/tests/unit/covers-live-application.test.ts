@@ -404,6 +404,16 @@ describe("pickEventCoverV1 with the live fallback", () => {
     assert.equal(r.live.writer.created[0]?.createdBy.uid, "admin1");
   });
 
+  test("importing a fresh photo is audited as cover.import, once per request", async () => {
+    const r = rig([jev(choiceAnswer("pixabay-111", 0.9))]);
+    await pickEventCover(r.deps, caller("admin1"), body(1));
+    await pickEventCover(r.deps, caller("admin1"), body(1));
+    const audits = r.store.children("companies/alpha/auditLog");
+    assert.equal(audits.length, 1);
+    assert.deepEqual([audits[0]!.data.action, audits[0]!.data.targetId], ["cover.import", "pixabay-111"]);
+    assert.ok(!JSON.stringify(audits[0]!.data).includes("goggles"));
+  });
+
   test("the heuristic pick is free: the credit is refunded and the source is match", async () => {
     const r = rig([asProvider("heuristic", choiceAnswer("pixabay-111", 0.9))]);
     const response = await pickEventCover(r.deps, caller("admin1"), body(2));

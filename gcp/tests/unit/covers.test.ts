@@ -441,6 +441,26 @@ describe("pickEventCoverV1", () => {
     assert.deepEqual([r.consumed, r.decisions.calls.length, r.store.children("companies/alpha/aiCoverPicks").length, usedCredits(r.store)], [[], 0, 0, 0]);
   });
 
+  test("a pick writes one content-free audit entry in the caller's company; a repeated requestId adds none", async () => {
+    const r = rig();
+    await pickEventCover(r.deps, caller("admin1"), body(1, { description: "Private details about the team" }));
+    await pickEventCover(r.deps, caller("admin1"), body(1, { description: "Private details about the team" }));
+    const audits = r.store.children("companies/alpha/auditLog");
+    assert.equal(audits.length, 1);
+    const entry = audits[0]!.data;
+    assert.equal(audits[0]!.id, `cover_pick_admin1_${uuid(1)}`);
+    assert.deepEqual([entry.action, entry.targetType, entry.targetId, entry.companyId, entry.actorId, entry.actorRole], ["cover.pick", "cover", "hike-ridge", "alpha", "admin1", "admin"]);
+    assert.ok(!JSON.stringify(entry).includes("kayak") && !JSON.stringify(entry).includes("Private"), "no event text is stored");
+    assert.deepEqual(r.store.children("companies/beta/auditLog"), []);
+  });
+
+  test("refused callers leave no audit entry", async () => {
+    const r = rig();
+    for (const who of [null, caller("m1"), caller("org1"), caller("bo"), caller("nobody")]) await pickEventCover(r.deps, who, body(1)).catch(() => undefined);
+    assert.deepEqual(r.store.children("companies/alpha/auditLog"), []);
+    assert.deepEqual(r.store.children("companies/beta/auditLog"), []);
+  });
+
   test("validation: required fields stay strict", async () => {
     const r = rig();
     const bad: Array<Record<string, unknown>> = [

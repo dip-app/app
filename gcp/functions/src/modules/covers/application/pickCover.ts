@@ -1,8 +1,10 @@
 import { z } from "zod";
 import type { PickEventCoverResponse } from "../../../generated/models";
-import { authorize, requireCaller } from "../../admin/application/context";
+import { authorize, requireCaller, writeAudit } from "../../admin/application/context";
 import type { AdminStore, AdminTransaction, Caller, Doc, RateLimiter } from "../../admin/application/ports";
+import { change } from "../../admin/domain/audit";
 import { invalid } from "../../admin/domain/errors";
+import { paths } from "../../admin/domain/ops";
 import type { AiLog, DecisionPort } from "../../ai/application/ports";
 import { CHOICE_MIN_PROBABILITY } from "../../ai/domain/decisions";
 import { loadLedger } from "../../ai/application/credits";
@@ -232,7 +234,7 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
   }
   const { companyId, requestId, title, description, tagIds, theme, excludeCoverImageURLs } = parsed.data;
   // Authorization first (so a non-member never touches the limiter), then the burst limit.
-  await deps.store.runReadOnly(tx => authorize(tx, caller, companyId, "ai.generate"));
+  const actor = await deps.store.runReadOnly(tx => authorize(tx, caller, companyId, "ai.generate"));
   await deps.limiter?.consume(caller.uid);
   const chargeKey = `coverPick_${caller.uid}_${requestId.toLowerCase()}`;
   const charged = deps.aiEnabled;
@@ -279,6 +281,21 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
     });
   } catch (error) {
     deps.log?.("ai.cover_pick_record_failed", { companyId, requestId, error: error instanceof Error ? error.name : "unknown" }, "warn");
+  }
+  try {
+    // One entry per request: the id derives from the caller and requestId, and a repeat finds it and writes nothing.
+    // Keys and counts only: never the event title or description that the pick was based on.
+    const auditId = `cover_pick_${caller.uid}_${requestId.toLowerCase()}`;
+    await deps.store.runTransaction(async tx => {
+      if (await tx.get(paths.audit(companyId, auditId))) return;
+      writeAudit(tx, actor, {
+        id: auditId, action: picked.newPhoto ? "cover.import" : "cover.pick", targetType: "cover", targetId: chosenKey ?? "default", requestId,
+        summary: picked.newPhoto ? "Imported a new cover photo for an event draft" : "Picked an event cover",
+        changes: [change("source", null, picked.source), change("provider", null, picked.provider), change("cover", null, chosenKey)],
+      });
+    });
+  } catch (error) {
+    deps.log?.("ai.cover_pick_audit_failed", { companyId, requestId, error: error instanceof Error ? error.name : "unknown" }, "warn");
   }
   deps.log?.("ai.coverPick", {
     companyId, requestId, source: picked.source, provider: picked.provider, model: picked.model, shortlistSize: picked.shortlistSize,

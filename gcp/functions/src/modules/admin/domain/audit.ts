@@ -1,9 +1,9 @@
 import type { AuditAction } from "./auditActions";
 import { SERVER_TIME, type ServerTime } from "./ops";
-import type { Role } from "./permissions";
+import { isRole, type Role } from "./permissions";
 import { length } from "./reader";
 
-export type AuditTargetType = "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
+export type AuditTargetType = "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport" | "challenge" | "submission" | "cover";
 
 export interface AuditChange { field: string; before: string | null; after: string | null }
 
@@ -63,4 +63,18 @@ export function auditDocument(companyId: string, actor: AuditActor, input: Audit
   if (input.requestId) doc.requestId = input.requestId;
   if (input.selfTarget) doc.selfTarget = true;
   return doc;
+}
+
+/** An audit document without its timestamp: what a module store receives; the adapter stamps the server time. */
+export type AuditEntry = Omit<AuditDocument, "createdAt">;
+
+/**
+ * Builds the entry a module-specific transaction (events, themes, submissions) stores through its own `writeAudit` port, so
+ * those commands record the same audit shape as the admin commands without depending on the admin store.
+ */
+export function auditEntry(companyId: string, member: { uid: string; displayName?: unknown; role: string }, input: AuditInput): AuditEntry {
+  const name = typeof member.displayName === "string" && member.displayName !== "" ? member.displayName : "Unknown";
+  const role: Role = isRole(member.role) ? member.role : "member";
+  const { createdAt: _createdAt, ...entry } = auditDocument(companyId, { uid: member.uid, name, role }, input);
+  return entry;
 }
