@@ -23,6 +23,8 @@ Browser (mock, admin) with getBoundingClientRect: art and img height equal card 
 
 ## Decisions
 
+Kept object-fit contain for spot icons and cover for theme art; the accent background fills the column either way. No overflow hidden on the card (suggestion tooltip must escape); the tile clips itself with the card radius.
+
 
 ## Handoff
-
+None. Disk was tight; node_modules removed.
