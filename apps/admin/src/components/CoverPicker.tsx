@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
-import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverThemeKey, coverByURL, coverImage, coverThumb, searchCovers, themeLabel } from "@/lib/covers";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverThemeKey, coverByURL, coverImage, coverThumb, rememberCoverAlt, searchCovers, themeLabel } from "@/lib/covers";
 import type { AiCredits } from "@/lib/adminTypes";
 import { tMaybe } from "@/lib/aiStrings";
 import { ApiError } from "@/lib/contract";
@@ -27,7 +27,7 @@ interface Props {
   credits?: AiCredits;
 }
 
-type Note = { kind: "picked"; text: string; badge: string } | { kind: "error"; text: string } | null;
+type Note = { kind: "picked"; text: string; badge: string; fresh?: boolean; url?: string } | { kind: "error"; text: string } | null;
 
 /** Thumbnails above this index lazy-load inside the scroll region; the first screenful loads eagerly so tiles are never blank. */
 const EAGER_THUMBS = 16;
@@ -57,6 +57,9 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
   const themeCounts = useMemo(() => THEMES.map((t) => ({ ...t, count: searchCovers({ query, theme: t.key }).length })), [query]);
   const total = useMemo(() => searchCovers({ query }).length, [query]);
   const stop = shown.find((c) => c.url === selected?.url)?.url ?? shown[0]?.url;
+
+  // A picked note describes one cover: drop it when the value changes by other means (parent reset, edits elsewhere).
+  useEffect(() => { setNote((n) => (n?.kind === "picked" && n.url && n.url !== value ? null : n)); }, [value]);
 
   const choose = (url: string) => { onChange(url); setNote(null); };
 
@@ -93,14 +96,15 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
       const result = await api.pickEventCover(request);
       const entry = coverByURL(result.coverImageURL);
       if (!entry) { setNote({ kind: "error", text: "Dipbot suggested a cover this portal doesn’t have yet. Pick one below." }); return; }
+      rememberCoverAlt(entry.url, result.coverAlt);
       onChange(entry.url);
       setNote({
-        kind: "picked",
+        kind: "picked", url: entry.url, fresh: result.newPhoto === true,
         badge: result.source === "dipbot" ? "Dipbot picked this" : result.source === "match" ? "Best match" : "Default cover",
         text: result.source === "dipbot" ? `Dipbot picked ${entry.label}` : result.source === "match" ? `Best match: ${entry.label}` : `No close match, so Dipbot used the default: ${entry.label}`,
       });
       // Make sure the new choice is visible and reachable in the grid.
-      if (!searchCovers({ query, theme }).some((c) => c.url === entry.url)) { setQuery(""); setTheme(""); }
+      if (COVER_LIBRARY.some((c) => c.url === entry.url) && !searchCovers({ query, theme }).some((c) => c.url === entry.url)) { setQuery(""); setTheme(""); }
     } catch (error) {
       const known = error instanceof ApiError && error.reason ? tMaybe(`limit.${error.reason}`, { n: "", date: resetDate(credits?.resetsAt ?? "") }) : null;
       // The reason class goes to the console only; the admin sees a plain message and keeps every other form edit.
@@ -139,7 +143,7 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
             <span className="cp-cost">{creditsText(credits?.creditCost.coverPick ?? 1)}</span>
           </button>
           <div id={noteId} className={`cp-note ${note?.kind ?? ""}`} role={note?.kind === "error" ? "alert" : "status"} aria-live="polite">
-            {note?.kind === "error" ? note.text : note?.kind === "picked" ? <span className="sr-only">{note.text}</span> : ""}
+            {note?.kind === "error" ? note.text : note?.kind === "picked" ? <><span className="sr-only">{note.text}</span>{note.fresh && <span className="cp-fresh">Found a new photo</span>}</> : ""}
           </div>
         </div>
       </div>

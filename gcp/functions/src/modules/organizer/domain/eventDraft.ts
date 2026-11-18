@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { CreateEventRequest, EventDraft, UpdateEventRequest, Venue } from "../../../generated/models";
 import { isApprovedCoverURL, LEGACY_COVER_URLS } from "../../covers/domain/coverCatalog";
+import { isDynamicCoverURL } from "../../covers/domain/dynamicCovers";
 import { OrganizerError } from "./errors";
 
 export const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -79,7 +80,8 @@ export function parseEventDraft(data: unknown): ParsedDraft {
   if (new Set(tagIds).size !== tagIds.length) fail(["tagIds"]);
 
   const coverImageURL = record.coverImageURL;
-  if (typeof coverImageURL !== "string" || !isApprovedCoverURL(coverImageURL)) fail(["coverImageURL"]);
+  // Syntax only for a dynamic (live Pixabay) cover: the command checks that the key exists (CoverKeySource.has) because this parser has no store.
+  if (typeof coverImageURL !== "string" || !(isApprovedCoverURL(coverImageURL) || isDynamicCoverURL(coverImageURL))) fail(["coverImageURL"]);
 
   const startTime = utcInstant(record, "startTime");
   const endTime = utcInstant(record, "endTime");

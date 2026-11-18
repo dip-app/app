@@ -2,6 +2,8 @@ import { getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
+import type { CoverKeySource } from "../../covers/domain/coverCatalog";
+import { dynamicCoverCatalog } from "../../covers/transport/liveWiring";
 import { createEvent, updateEvent, type Caller, type Clock, type IdGenerator } from "../application/organizerCommands";
 import type { OrganizerStore } from "../application/ports";
 import { OrganizerError } from "../domain/errors";
@@ -47,12 +49,12 @@ async function run<T>(name: string, request: Pick<CallableRequest, "auth">, work
   }
 }
 
-export function handleCreateEvent(store: OrganizerStore, request: Pick<CallableRequest, "auth" | "data">, ids: IdGenerator = randomIds, clock?: Clock) {
-  return run("createEventV1", request, () => createEvent(store, callerFromRequest(request), request.data, ids, clock));
+export function handleCreateEvent(store: OrganizerStore, request: Pick<CallableRequest, "auth" | "data">, ids: IdGenerator = randomIds, clock?: Clock, coverKeys?: CoverKeySource) {
+  return run("createEventV1", request, () => createEvent(store, callerFromRequest(request), request.data, ids, clock, coverKeys));
 }
 
-export function handleUpdateEvent(store: OrganizerStore, request: Pick<CallableRequest, "auth" | "data">) {
-  return run("updateEventV1", request, () => updateEvent(store, callerFromRequest(request), request.data));
+export function handleUpdateEvent(store: OrganizerStore, request: Pick<CallableRequest, "auth" | "data">, coverKeys?: CoverKeySource) {
+  return run("updateEventV1", request, () => updateEvent(store, callerFromRequest(request), request.data, undefined, coverKeys));
 }
 
 const options = {
@@ -62,7 +64,7 @@ const options = {
 } as const;
 
 export const createEventV1 = onCall(options, (request) =>
-  handleCreateEvent(new FirestoreOrganizerStore(getFirestore(defaultAdminApp())), request));
+  handleCreateEvent(new FirestoreOrganizerStore(getFirestore(defaultAdminApp())), request, undefined, undefined, dynamicCoverCatalog()));
 
 export const updateEventV1 = onCall(options, (request) =>
-  handleUpdateEvent(new FirestoreOrganizerStore(getFirestore(defaultAdminApp())), request));
+  handleUpdateEvent(new FirestoreOrganizerStore(getFirestore(defaultAdminApp())), request, dynamicCoverCatalog()));

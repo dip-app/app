@@ -343,6 +343,8 @@ service cloud.firestore {
     // inviteRateLimits is server-only and falls through to the deny-all rule below.
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
+    // coverLibraryDynamic (live Pixabay covers), coverSearchCache, coverLiveCandidates and coverLiveUsage (live cover fallback of
+    // pickEventCoverV1) are server-only too: they hold licensing data, cached search results and quota counters, and fall through to deny-all.
     // emailOutbox, emailInviteState, emailSuppressions, emailCaps, emailSettings and emulatorEmailOutbox (email module) are server-only too.
     match /{document=**} {
       allow read, write: if false;

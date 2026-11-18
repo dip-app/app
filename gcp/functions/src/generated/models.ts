@@ -1461,6 +1461,8 @@ export interface PickEventCoverResponse {
   source: "dipbot" | "match" | "default";
   provider: string | null;
   alternatives: Array<string>;
+  newPhoto?: boolean;
+  coverAlt?: string;
 }
 
 export type SuggestionsEmailAction = "status" | "preview" | "sendTest" | "subscribe" | "unsubscribe" | "setSchedule";

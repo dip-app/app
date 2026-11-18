@@ -38,10 +38,25 @@ public enum DIPEventCover: String, CaseIterable, Sendable {
     public static let libraryPrefix = "catalog://cover/"
     public static let libraryBaseURL = "https://letsdip.work/img/covers/"
 
-    /// The hosted full-size image for a valid library URL (key `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 chars), else nil.
+    public static let dynamicBaseURL = "https://letsdip.work/img/covers-dyn/"
+    static let dynamicKeyPrefix = "pixabay-"
+
+    /// Dynamic (server-stored photo) keys: `^pixabay-[1-9][0-9]{0,11}$`. Static library keys never use this prefix.
+    static func isDynamicKey(_ key: String) -> Bool {
+        guard key.hasPrefix(dynamicKeyPrefix) else { return false }
+        let digits = key.utf8.dropFirst(dynamicKeyPrefix.utf8.count)
+        guard let first = digits.first, first >= 49, first <= 57, digits.count <= 12 else { return false }
+        return digits.allSatisfy { $0 >= 48 && $0 <= 57 }
+    }
+
+    /// The hosted full-size image for a valid library URL (key `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 chars) or a
+    /// dynamic `pixabay-<id>` key (served from /img/covers-dyn/), else nil. Other `pixabay-` keys are invalid.
     public static func libraryImageURL(_ coverImageURL: String?) -> URL? {
         guard let value = coverImageURL, value.hasPrefix(libraryPrefix) else { return nil }
         let key = String(value.dropFirst(libraryPrefix.count))
+        if key.hasPrefix(dynamicKeyPrefix) {
+            return isDynamicKey(key) ? URL(string: dynamicBaseURL + key + ".webp") : nil
+        }
         guard !key.isEmpty, key.utf8.count <= 64 else { return nil }
         for part in key.split(separator: "-", omittingEmptySubsequences: false) {
             guard !part.isEmpty, part.utf8.allSatisfy({ ($0 >= 97 && $0 <= 122) || ($0 >= 48 && $0 <= 57) }) else { return nil }

@@ -307,6 +307,7 @@ export function writeCoverFiles(coversDir: string, entry: CoverEntry, img: Built
 export function metaErrors(m: Partial<CoverMeta>): string[] {
   const e: string[] = [];
   if (!m.key || !KEY_RE.test(m.key) || m.key.length > 64) e.push(`invalid key "${m.key ?? ""}"`);
+  if (m.key?.startsWith("pixabay-")) e.push(`key "${m.key}" must not start with "pixabay-" (reserved for dynamic covers)`);
   if (!m.themes || m.themes.length < 1 || m.themes.length > 3) e.push("themes must have 1-3 entries");
   for (const t of m.themes ?? []) if (!(THEMES as readonly string[]).includes(t)) e.push(`unknown theme "${t}"`);
   if (!m.tags || m.tags.length < 2 || m.tags.length > 12) e.push("tags must have 2-12 entries");

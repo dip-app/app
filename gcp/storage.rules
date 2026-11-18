@@ -91,6 +91,11 @@ service firebase.storage {
         && profile().companyId == companyId && active()
         && windowOpen();
     }
+    // Live Pixabay cover renditions (WebP and JPEG) are written by pickEventCoverV1 with the Admin SDK and served to everyone
+    // through the coverImageV1 function behind the Hosting rewrite /img/covers-dyn/**. No client reads or writes the bucket path.
+    match /covers-dynamic/{allPaths=**} {
+      allow read, write: if false;
+    }
     // Everything else, including listing album folders, stays denied.
     match /{allPaths=**} {
       allow read, write: if false;

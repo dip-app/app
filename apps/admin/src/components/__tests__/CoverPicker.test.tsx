@@ -110,6 +110,29 @@ describe("CoverPicker", () => {
     expect(checked()).toEqual(["Music and jam session"]);
   });
 
+  it("says 'Found a new photo' only when the pick is a new dynamic photo, and clears it on a manual choice", async () => {
+    pickEventCover.mockResolvedValue({ coverImageURL: "catalog://cover/pixabay-777", source: "dipbot", provider: "jev", alternatives: [], newPhoto: true, coverAlt: "Photo of a sunny trail" });
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} title="Trail day" />);
+    fireEvent.click(screen.getByRole("button", { name: /^Let Dipbot choose/ }));
+    await waitFor(() => expect(screen.getByText("Found a new photo")).toBeTruthy());
+    expect(onChange).toHaveBeenCalledWith("catalog://cover/pixabay-777");
+    expect(screen.getByText("Found a new photo").closest("[aria-live]")?.getAttribute("aria-live")).toBe("polite");
+    const preview = document.querySelector(".cp-preview img") as HTMLImageElement;
+    expect(preview.getAttribute("src")).toBe("/img/covers-dyn/pixabay-777.webp");
+    expect(preview.getAttribute("alt")).toBe("Photo of a sunny trail");
+    fireEvent.click(tiles()[1]);
+    expect(screen.queryByText("Found a new photo")).toBeNull();
+  });
+
+  it("does not say 'Found a new photo' for library picks", async () => {
+    pickEventCover.mockResolvedValue({ coverImageURL: "catalog://cover/theme-music", source: "dipbot", provider: "jev", alternatives: [] });
+    render(<Harness title="Jam night" />);
+    fireEvent.click(screen.getByRole("button", { name: /^Let Dipbot choose/ }));
+    await waitFor(() => expect(screen.getByText("Dipbot picked Music and jam session")).toBeTruthy());
+    expect(screen.queryByText("Found a new photo")).toBeNull();
+  });
+
   it("shows an error inline and keeps the current cover when the pick fails", async () => {
     failWith = new ApiError("invalid-argument", "Invalid request. [400]", { title: "Invalid request." }, "VALIDATION_FAILED");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

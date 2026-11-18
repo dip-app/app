@@ -25,6 +25,8 @@ $subtle: #f6f7fa;
   .cp-dipbot[aria-busy="true"] { cursor: progress; }
   .cp-note { flex-basis: 100%; font-size: 13px; color: $ink; &.error { color: var(--error); } &:empty { display: none; } }
 
+  .cp-fresh { color: var(--muted); }
+
   // ---------- Toolbar: search + theme select on one row; the count sits under the grid
   .cp-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 220px); gap: 8px; align-items: center; }
   .cp-search, .cp-theme { height: 36px; min-width: 0; width: 100%; padding: 0 10px; font-size: 14px; background: $white; border: 1px solid $ctl-border; border-radius: 6px;

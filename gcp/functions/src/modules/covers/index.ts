@@ -1,1 +1,1 @@
-export { pickEventCoverV1 } from "./transport/coverCallables";
+export { coverImageV1, pickEventCoverV1 } from "./transport/coverCallables";

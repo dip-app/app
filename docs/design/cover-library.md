@@ -13,7 +13,7 @@ A curated, licensed catalog of event cover images. Organizers choose from it in 
 | Scheme | Meaning |
 | --- | --- |
 | `catalog://default/<category>` | Legacy, unchanged. Category is fitness, outdoors, hiking, games or cooking. Still valid everywhere. |
-| `catalog://cover/<key>` | New. Key matches `^[a-z0-9]+(?:-[a-z0-9]+)*$`, at most 64 characters, and must exist in the manifest. |
+| `catalog://cover/<key>` | New. Key matches `^[a-z0-9]+(?:-[a-z0-9]+)*$`, at most 64 characters, and must exist in the manifest, or be a dynamic key `pixabay-<id>` that exists in `coverLibraryDynamic` (see Live fallback). Manifest keys may never start with `pixabay-` (validation enforces it). |
 | Weekly-theme art keys | Challenge art, unchanged and separate from this catalog. |
 
 The five legacy seed entries keep their legacy URL as their canonical `url`. All other entries use `catalog://cover/<key>`.
@@ -93,9 +93,40 @@ The Pixabay client (`scripts/covers/pixabay.ts`: rate limiter, search, download,
 
 The server does not narrow eagerly. With fewer than about 60 eligible covers (config `maxCandidates`) all of them are sent to Jev as one-line text labels (`key: theme | tags | short alt`). Larger libraries keep a broad ranked set plus a generous tail and diverse picks, and split into at most two Jev Choice calls (theme group, then cover) when over the per-call option limit. The only hard exclusions are orientation and `autoPick: false`; fallbacks are unchanged.
 
+## Live fallback (fresh Pixabay photos)
+
+When the library has few good matches for an event, "Let Dipbot choose" (`pickEventCoverV1`) pulls fresh candidates from Pixabay at runtime, lets Dipbot choose among them by their tags, and stores the chosen photo as our own copy. Code: `gcp/functions/src/modules/covers/` (`application/liveCover.ts`, `domain/{liveFallback,liveQuery,dynamicCovers,pixabayRules,imageGuards}.ts`, `infrastructure/*`).
+
+**Flow**
+
+1. The shortlist index is the static manifest plus the stored dynamic covers (`coverLibraryDynamic`, newest 300 active, cached 5 minutes per instance), so a photo pulled once is reused by every company before Pixabay is ever called again.
+2. Trigger: AI is on, `AI_COVER_LIVE_FALLBACK` is not `false`, the `PIXABAY_API_KEY` secret is real, and the lexical ranking is weak: best score below `AI_COVER_LIVE_MIN_SCORE` (default 6, one tag matched by a title word) or fewer than `AI_COVER_LIVE_MIN_MATCHES` (default 2) covers matched the text at all. Otherwise the normal pick runs unchanged.
+3. Query: at most 4 words from the event title, description and theme, never anything else. Emails, URLs, @handles, phone numbers and all digits are stripped, words before `'s` and capitalized words in the middle of description sentences (likely names) are dropped, words in the cover vocabulary come first, 100 characters at most. If nothing usable is left, the fallback is skipped.
+4. Search results are cached in Firestore for 24 hours (`coverSearchCache/{sha256 of the normalized query}`; the query text itself is never stored), so repeated queries do not hit Pixabay. A cache miss consumes one live pull from the quotas below, then calls the API once (safesearch on, photos, horizontal, at least 1280 px wide, 5 s timeout).
+5. Candidates: hits with blocked tags (children, nudity, weapons, gore, logos, signage, text), wrong aspect (outside 1.5 to 2.1) or ids already in the static library are dropped; the best `AI_COVER_LIVE_CANDIDATES` (default 8) by tag overlap go forward.
+6. Choice: one Jev Choice question (DecisionPort step `coverPick`, so the cheap OpenAI model and the heuristic are the fallbacks) over lines of `pixabay-<id>: tag, tag, tag` plus the top 3 library covers. Text only, no images. Answers are checked with zod against the offered keys. If no model answered, the deterministic pick is the candidate with the best tag overlap (at least half the query words), else the normal lexical library match.
+7. Store: the server downloads the chosen `largeImageURL` (1280 px), validates it, re-encodes it with sharp to a 1200x750 WebP and a 960x600 JPEG (metadata stripped), checks it against stored covers by difference hash (near-duplicates reuse the existing key), writes `covers-dynamic/<key>.webp` and `covers-dynamic/jpg/<key>.jpg` to the default Storage bucket and creates `coverLibraryDynamic/pixabay-<id>` (tags, themes, label, alt from the Pixabay tags, `source: pixabay`, `pixabayId`, `pageURL`, `user`, `license`, `storedURL`, `createdAt`, `createdBy` company and admin for audit, `usageCount`, `status`).
+8. Any failure (quota, 429, timeout, invalid image, Storage) falls back to the normal library pick inside the same request. The user's flow never fails because of Pixabay. The admin picker shows a quiet "Found a new photo" note when a fresh photo was stored (no provider name).
+
+**Serving and URLs.** A dynamic cover keeps the `catalog://cover/pixabay-<id>` scheme. Clients map the key by prefix, with no extra read: `https://letsdip.work/img/covers-dyn/<key>.webp` (iOS, admin) and `/img/covers-dyn/jpg/<key>.jpg` (emails, share page `og:image`). A Hosting rewrite sends `/img/covers-dyn/**` to the public `coverImageV1` function, which accepts only those two path shapes, streams the Storage object and sets immutable cache headers, so the CDN serves repeats. The Storage prefix and all four Firestore collections are server-only (rules deny every client).
+
+**Validation.** `createEventV1` and `updateEventV1` accept a dynamic key only when an active `coverLibraryDynamic` document exists (cached in memory, unknown keys rejected); an update that keeps the event's current cover is always accepted. Generated drafts and weekly suggestions stay on the static library. To retire a photo, set its document `status` to `removed` (existing events keep displaying it; new picks and writes reject it) and delete the Storage objects if it must disappear.
+
+**Limits.** Pixabay allows 100 requests per 60 seconds per key. Each instance allows at most `AI_COVER_LIVE_INSTANCE_PER_MINUTE` (default 15) searches and `pickEventCoverV1` runs at most 5 instances, so the platform stays under 75 a minute; a 429 blocks the instance until the advertised reset. Daily caps in `coverLiveUsage/{UTC day}`: `AI_COVER_LIVE_COMPANY_DAILY` (default 20) pulls per company and `AI_COVER_LIVE_PLATFORM_DAILY` (default 200) in total. Cache hits and reuse are free.
+
+**Security.** Only `https://pixabay.com/get/...` and `https://cdn.pixabay.com/photo/...` URLs that came from the API response are fetched (never a client-supplied URL), with no credentials, no port, redirects refused, a 10 s timeout, Content-Type `image/jpeg|png|webp`, at most 5 MiB (header and streamed), magic bytes matching the type, at least 960x600 and a landscape aspect, and decoding bounded by a pixel limit. The API key is a `defineSecret` read inside the handler and never logged; log lines (`ai.coverLive`) carry counts and outcome codes only, never the query, URLs or the key. Admin only (`ai.generate`, same as the cover pick).
+
+**License compliance.** Pixabay Content License: free commercial use, modification allowed, no attribution required; no standalone redistribution (we never offer the files as a download pack) and no misleading use or visible brands (blocked tags). API terms: results cached 24 hours, no permanent hotlinking (we download once and serve our own copy), safesearch on, `webformatURL` only for temporarily displaying search results, and Pixabay is credited wherever search results are displayed. Each stored document keeps the Pixabay id, page URL, creator and license so an image can be credited, audited or removed.
+
+**Credits.** No extra charge: the pick costs the same 1 credit as any "Let Dipbot choose", refunded when no model answered.
+
+**Disable.** Set `AI_COVER_LIVE_FALLBACK=false` (or the `PIXABAY_API_KEY` secret to `none`) and redeploy `pickEventCoverV1`. Stored covers keep working.
+
+**Follow-ups.** Perceptual dedupe against the static library needs difference hashes in the generated index (today static duplicates are excluded by Pixabay id only).
+
 ## Credits
 
-"Let Dipbot choose" (`pickEventCoverV1`) costs 1 Dipbot credit (`CREDIT_COSTS.coverPick`, `creditCost.coverPick` in the contract). It is charged before the model call, idempotent per `requestId`, and refunded when no model answered (AI off, provider failure or timeout, heuristic provider), so admins pay only when Dipbot actually chose. With no credits left it fails with `AI_CREDITS_EXHAUSTED` before any model call; the manual search and filters stay free. Covers Dipbot picks for generated drafts add nothing: they ride on the per-draft draftCheck call already inside the 10-credit generation.
+"Let Dipbot choose" (`pickEventCoverV1`) costs 1 Dipbot credit (`CREDIT_COSTS.coverPick`, `creditCost.coverPick` in the contract). It is charged before the model call, idempotent per `requestId`, and refunded when no model answered (AI off, provider failure or timeout, heuristic provider), so admins pay only when Dipbot actually chose. With no credits left it fails with `AI_CREDITS_EXHAUSTED` before any model call; the manual search and filters stay free. A live fallback pick costs the same 1 credit (no extra charge). Covers Dipbot picks for generated drafts add nothing: they ride on the per-draft draftCheck call already inside the 10-credit generation.
 
 Server details live with the covers module; this document only records the contract with the catalog.
 

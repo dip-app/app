@@ -60,6 +60,19 @@ final class EventCoverTests: XCTestCase {
         XCTAssertNotNil(DIPEventCover.libraryImageURL("catalog://cover/" + String(repeating: "a", count: 64)))
     }
 
+    func testDynamicPixabayCoversResolveToTheDynamicPath() {
+        XCTAssertEqual(DIPEventCover.libraryImageURL("catalog://cover/pixabay-1234567"),
+                       URL(string: "https://letsdip.work/img/covers-dyn/pixabay-1234567.webp"))
+        XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://cover/pixabay-9", tagIds: ["tag-games"]),
+                       .remoteCover(URL(string: "https://letsdip.work/img/covers-dyn/pixabay-9.webp")!, fallbackAsset: "cover_games"))
+        XCTAssertNotNil(DIPEventCover.libraryImageURL("catalog://cover/pixabay-999999999999"))
+        let bad = ["catalog://cover/pixabay-", "catalog://cover/pixabay-0", "catalog://cover/pixabay-01", "catalog://cover/pixabay-1234567890123",
+                   "catalog://cover/pixabay-1a", "catalog://cover/pixabay-1/../x", "catalog://cover/pixabay-1/x", "catalog://cover/Pixabay-1",
+                   "catalog://cover/pixabay-1.webp", "catalog://cover/pixabay-1-2", "catalog://cover/pixabay-\u{0661}"]
+        for value in bad { XCTAssertNil(DIPEventCover.libraryImageURL(value), value) }
+        XCTAssertEqual(DIPEventCover.libraryImageURL("catalog://cover/theme-outdoors")?.absoluteString, "https://letsdip.work/img/covers/theme-outdoors.webp")
+    }
+
     func testLegacyURLsStayBundled() {
         XCTAssertEqual(DIPEventCover.media(coverImageURL: "catalog://default/fitness", tagIds: []), .asset("cover_fitness"))
     }
