@@ -143,7 +143,7 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
             <span className="cp-cost">{creditsText(credits?.creditCost.coverPick ?? 1)}</span>
           </button>
           <div id={noteId} className={`cp-note ${note?.kind ?? ""}`} role={note?.kind === "error" ? "alert" : "status"} aria-live="polite">
-            {note?.kind === "error" ? note.text : note?.kind === "picked" ? <><span className="sr-only">{note.text}</span>{note.fresh && <span className="cp-fresh">Found a new photo</span>}</> : ""}
+            {note?.kind === "error" ? note.text : note?.kind === "picked" ? <><span className="sr-only">{note.text}</span>{note.fresh && <span className="cp-fresh">Found a new photo for this event</span>}</> : ""}
           </div>
         </div>
       </div>

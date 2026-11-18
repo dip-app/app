@@ -1,18 +1,29 @@
 import type { DecisionQuestion } from "../../ai/application/ports";
 import type { LiveCoverConfig, PixabayHit } from "../application/livePorts";
 import { dynamicKeyFor } from "./dynamicCovers";
+import { coverMentions } from "./liveQuery";
 import { acceptable, hitTags, popularity, relevance, type RuleHit } from "./pixabayRules";
 import type { ScoredCover } from "./shortlist";
 
 /** Decisions of the live fallback: when to look beyond the library, which hits qualify, and the question about them. */
-export type LiveTriggerReason = "low_score" | "few_matches";
+export type LiveTriggerReason = "low_score" | "few_matches" | "uncovered_terms";
 export interface LiveTrigger { trigger: boolean; reason: LiveTriggerReason | null; bestScore: number; matchedCount: number }
 
-/** Fallback triggers when the best lexical score is below minScore or fewer than minMatches covers matched the text. */
-export function liveTrigger(ranked: readonly ScoredCover[], config: Pick<LiveCoverConfig, "minScore" | "minMatches">): LiveTrigger {
+/**
+ * Fallback triggers when the best lexical score is below minScore, when fewer than minMatches covers matched the text,
+ * or when the event has distinctive terms (distinctiveTerms in liveQuery.ts) and the best library cover mentions none
+ * of them: "Crazy insane clown show" must not settle for a stage photo because "show" matched, however many covers the
+ * theme has.
+ */
+export function liveTrigger(
+  ranked: readonly ScoredCover[], config: Pick<LiveCoverConfig, "minScore" | "minMatches">, terms: readonly string[] = [],
+): LiveTrigger {
   const bestScore = ranked.reduce((best, item) => Math.max(best, item.score), 0);
   const matchedCount = ranked.filter(item => item.matched && item.score > 0).length;
-  const reason: LiveTriggerReason | null = bestScore < config.minScore ? "low_score" : matchedCount < config.minMatches ? "few_matches" : null;
+  const best = ranked[0];
+  const uncovered = terms.length > 0 && (best === undefined || !terms.some(term => coverMentions(best.entry, term)));
+  const reason: LiveTriggerReason | null = bestScore < config.minScore ? "low_score"
+    : matchedCount < config.minMatches ? "few_matches" : uncovered ? "uncovered_terms" : null;
   return { trigger: reason !== null, reason, bestScore, matchedCount };
 }
 

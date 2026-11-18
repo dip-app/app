@@ -5,7 +5,7 @@ import { coverByKey } from "../domain/coverCatalog";
 import { chosenCoverKey } from "../domain/coverQuestion";
 import { dynamicCoverImagePath, dynamicKeyFor, staticPixabayIds, toIndexEntry } from "../domain/dynamicCovers";
 import { deterministicLivePick, liveCandidates, liveQuestion, liveTrigger, type LiveTriggerReason } from "../domain/liveFallback";
-import { buildPixabayQuery, coverVocabulary } from "../domain/liveQuery";
+import { buildPixabayQuery, coverVocabulary, distinctiveTerms } from "../domain/liveQuery";
 import { findNearDuplicate } from "../domain/nearDuplicate";
 import { docFieldsFromHit, pixabayLicense } from "../domain/pixabayRules";
 import { queryThemes, type CoverQuery, type ScoredCover } from "../domain/shortlist";
@@ -91,7 +91,7 @@ interface Materialized { doc: Pick<DynamicCoverDoc, "key" | "themes" | "tags" | 
 export async function runLiveCover(deps: LiveRunDeps, input: LiveInput, signal?: AbortSignal): Promise<LiveOutcome> {
   const started = Date.now();
   const { live } = deps;
-  const trigger = liveTrigger(input.ranked, live.config);
+  const trigger = liveTrigger(input.ranked, live.config, distinctiveTerms(input.query, vocabularyOf(input.staticIndex)));
   const summary: LiveSummary = {
     triggered: trigger.trigger, reason: trigger.reason, bestScore: trigger.bestScore, matchedCount: trigger.matchedCount,
     cacheHit: null, candidateCount: 0, outcome: "skipped:not_triggered", durationMs: 0,
@@ -146,7 +146,8 @@ export async function runLiveCover(deps: LiveRunDeps, input: LiveInput, signal?:
       const stored = await materialize(deps, chosen, input, liveSignal);
       return done({
         entry: toIndexEntry(stored.doc), source: result.provider === "heuristic" ? "match" : "dipbot", provider: result.provider,
-        model: result.model, newPhoto: stored.stored,
+        // A photo found beyond the library for this event (stored now or reused from an earlier pull) is announced either way.
+        model: result.model, newPhoto: true,
       }, stored.stored ? "stored" : "reused");
     } catch (error) {
       // The model's pick could not be stored: answer from the library and report no model answer (the credit is refunded).

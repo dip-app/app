@@ -14,6 +14,10 @@ import { pickCover, pickEventCover, type PickCoverDeps } from "../../functions/s
 import type { CoverIndexEntry } from "../../functions/src/modules/covers/domain/catalog.generated";
 import { dynamicCoverImagePath, toIndexEntry } from "../../functions/src/modules/covers/domain/dynamicCovers";
 import { hammingHex, findNearDuplicate } from "../../functions/src/modules/covers/domain/nearDuplicate";
+import { COVER_INDEX } from "../../functions/src/modules/covers/domain/catalog.generated";
+import { liveTrigger } from "../../functions/src/modules/covers/domain/liveFallback";
+import { buildPixabayQuery, coverVocabulary, distinctiveTerms } from "../../functions/src/modules/covers/domain/liveQuery";
+import { rankCovers } from "../../functions/src/modules/covers/domain/shortlist";
 import { FakeAdminStore, caller, seedCompany } from "./helpers/adminFakes";
 import { choiceAnswer, decision, uuid } from "./helpers/aiFakes";
 
@@ -313,7 +317,7 @@ describe("live fallback: choice and materialization", () => {
     rig.catalog.docs.set("pixabay-111", existingDoc(111, ["forest"]));
     const result = await pickCover(pickDeps(rig, [jev(choiceAnswer("pixabay-111", 0.9))]).deps, WEAK);
     assert.equal(result.coverImageURL, "catalog://cover/pixabay-111");
-    assert.deepEqual([rig.downloads.length, rig.writer.created.length, rig.writer.touched, result.newPhoto], [0, 0, ["pixabay-111"], undefined]);
+    assert.deepEqual([rig.downloads.length, rig.writer.created.length, rig.writer.touched, result.newPhoto], [0, 0, ["pixabay-111"], true]);
   });
 
   test("a removed document is not resurrected: the library answers", async () => {
@@ -329,7 +333,7 @@ describe("live fallback: choice and materialization", () => {
     rig.catalog.docs.set("pixabay-900", existingDoc(900, ["forest"], { dHash: "0f0f0f0f0f0f0f0e" }));
     const result = await pickCover(pickDeps(rig, [jev(choiceAnswer("pixabay-111", 0.9))]).deps, WEAK);
     assert.equal(result.coverImageURL, "catalog://cover/pixabay-900");
-    assert.deepEqual([rig.writer.objects.length, rig.writer.created.length, rig.writer.touched, result.newPhoto], [0, 0, ["pixabay-900"], undefined]);
+    assert.deepEqual([rig.writer.objects.length, rig.writer.created.length, rig.writer.touched, result.newPhoto], [0, 0, ["pixabay-900"], true]);
     assert.equal(rig.downloads.length, 1, "it had to download to compare");
   });
 
@@ -339,7 +343,7 @@ describe("live fallback: choice and materialization", () => {
     rig.writer.onLost = () => rig.catalog.docs.set("pixabay-111", existingDoc(111, ["axe throwing"]));
     const result = await pickCover(pickDeps(rig, [jev(choiceAnswer("pixabay-111", 0.9))]).deps, WEAK);
     assert.equal(result.coverImageURL, "catalog://cover/pixabay-111");
-    assert.deepEqual([rig.writer.touched, result.newPhoto, rig.writer.created.length], [["pixabay-111"], undefined, 0]);
+    assert.deepEqual([rig.writer.touched, result.newPhoto, rig.writer.created.length], [["pixabay-111"], true, 0]);
   });
 
   for (const [label, arrange, outcome] of [
@@ -473,5 +477,49 @@ describe("live fallback config", () => {
     assert.deepEqual(tuned, { enabled: true, minScore: 9, minMatches: 3, maxCandidates: 5, companyDaily: 7, platformDaily: 70, instancePerMinute: 4 });
     const huge = aiConfig({ AI_COVER_LIVE_CANDIDATES: "9999", AI_COVER_LIVE_INSTANCE_PER_MINUTE: "9999", AI_COVER_LIVE_COMPANY_DAILY: "-5", AI_COVER_LIVE_MIN_SCORE: "abc" }).coverLive;
     assert.deepEqual([huge.maxCandidates, huge.instancePerMinute, huge.companyDaily, huge.minScore], [12, 20, 1, DEFAULT_LIVE_COVER_CONFIG.minScore]);
+  });
+});
+
+describe("owner scenario: 'Crazy insane clown show'", () => {
+  // The real library (174 covers) has no clown or circus photo, while the arts and games themes have plenty of covers.
+  const CLOWN = { title: "Crazy insane clown show", theme: "arts" as const, tagIds: ["tag-arts", "tag-social"] };
+  const CLOWN_HITS = [
+    hit(501, "clown, circus, performer, juggling"),
+    hit(502, "circus, tent, carnival, clown"),
+    hit(503, "clown, children, party"), // blocked: minors
+    hit(504, "clown, logo, poster"), // blocked: logos and signage
+    hit(505, "clown, blood, horror"), // blocked: gore
+  ];
+
+  test("distinctive terms drop the generic words, so the query is 'clown'", () => {
+    const vocabulary = coverVocabulary(COVER_INDEX);
+    assert.deepEqual(distinctiveTerms(CLOWN, vocabulary), ["clown"]);
+    assert.equal(buildPixabayQuery(CLOWN, vocabulary)?.q, "clown");
+  });
+
+  test("the best library cover mentions no distinctive term, so the trigger fires however many covers the theme has", () => {
+    const vocabulary = coverVocabulary(COVER_INDEX);
+    // Lenient score thresholds: only the uncovered-terms rule can fire.
+    const trigger = liveTrigger(rankCovers(CLOWN, COVER_INDEX), { minScore: 0, minMatches: 0 }, distinctiveTerms(CLOWN, vocabulary));
+    assert.deepEqual([trigger.trigger, trigger.reason], [true, "uncovered_terms"]);
+    const pottery = { title: "Crazy pottery night", theme: "arts" as const };
+    const covered = liveTrigger(rankCovers(pottery, COVER_INDEX), { minScore: 0, minMatches: 0 }, distinctiveTerms(pottery, vocabulary));
+    assert.equal(covered.trigger, false, "a library cover shows pottery");
+  });
+
+  test("end to end with the real library: searches 'clown', offers only safe candidates, stores the chosen clown photo", async () => {
+    const rig = new Rig();
+    rig.searchImpl = async () => CLOWN_HITS;
+    const decisions = new ScriptedDecisions([jev(choiceAnswer("pixabay-501", 0.9))]);
+    const result = await pickCover({ decisions, aiEnabled: true, live: rig.live, now: NOW, context }, CLOWN);
+    assert.deepEqual(rig.searchCalls, ["clown"]);
+    const offered = criteria(decisions.calls[0]!);
+    assert.ok(offered.includes("pixabay-501") && offered.includes("pixabay-502"));
+    for (const blocked of ["pixabay-503", "pixabay-504", "pixabay-505"]) assert.ok(!offered.includes(blocked), blocked);
+    assert.equal(result.coverImageURL, "catalog://cover/pixabay-501");
+    assert.equal(result.newPhoto, true);
+    assert.deepEqual(rig.downloads, ["https://pixabay.com/get/large-501_1280.jpg"]);
+    const stored = rig.writer.created[0]!;
+    assert.ok(stored.tags.includes("clown") && !stored.tags.some(tag => ["children", "logo", "blood"].includes(tag)));
   });
 });

@@ -71,7 +71,7 @@ describe("live query", () => {
   const q = (title: string, description?: string) => buildPixabayQuery({ title, ...(description === undefined ? {} : { description }), theme: "food" }, vocab);
 
   test("title words in the vocabulary lead, at most 4 words", () => {
-    assert.deepEqual(q("Office pizza lunch with everyone")?.words, ["pizza", "lunch", "office"]);
+    assert.deepEqual(q("Office pizza lunch with everyone")?.words, ["pizza", "lunch"], "office is generic");
     const many = q("alpha bravo charlie delta echo foxtrot", "")!;
     assert.equal(many.words.length, 4);
     assert.ok(many.q.length <= 100);
@@ -98,7 +98,7 @@ describe("live query", () => {
 
   test("description words only count when in the vocabulary, ordered by frequency", () => {
     const r = q("Gathering", "yoga yoga picnic zebra yoga picnic bread")!;
-    assert.deepEqual(r.words, ["gathering", "yoga", "picnic", "bread"]);
+    assert.deepEqual(r.words, ["yoga", "picnic", "bread"], "gathering is generic; zebra is not a library word");
   });
 
   test("theme fallback and null", () => {

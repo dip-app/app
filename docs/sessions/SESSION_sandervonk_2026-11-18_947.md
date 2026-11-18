@@ -8,7 +8,7 @@ Status: completed
 
 ## Summary
 
-Live Pixabay cover fallback for "Let Dipbot choose": when the library has few good matches, pickEventCoverV1 searches Pixabay (24 h Firestore cache, per-instance limiter, per-company and platform daily caps), Dipbot picks among the candidates by their tags (text-only Choice over the DecisionPort), and the server downloads, validates and re-encodes the chosen photo with sharp, stores it in Storage (covers-dynamic/) and records coverLibraryDynamic/pixabay-<id> for global reuse. Dynamic covers keep the catalog://cover/<key> scheme and are served at /img/covers-dyn/** through a Hosting rewrite to coverImageV1. Admin and iOS resolve dynamic keys by prefix; the picker shows "Found a new photo".
+Live Pixabay cover fallback for "Let Dipbot choose": when the library has few good matches, pickEventCoverV1 searches Pixabay (24 h Firestore cache, per-instance limiter, per-company and platform daily caps), Dipbot picks among the candidates by their tags (text-only Choice over the DecisionPort), and the server downloads, validates and re-encodes the chosen photo with sharp, stores it in Storage (covers-dynamic/) and records coverLibraryDynamic/pixabay-<id> for global reuse. Dynamic covers keep the catalog://cover/<key> scheme and are served at /img/covers-dyn/** through a Hosting rewrite to coverImageV1. Admin and iOS resolve dynamic keys by prefix; the picker says "Found a new photo for this event". Owner scenario covered: "Crazy insane clown show" triggers on the uncovered distinctive term `clown` (generic words dropped) and searches Pixabay for "clown".
 
 ## Changes
 
@@ -36,7 +36,7 @@ Live Pixabay cover fallback for "Let Dipbot choose": when the library has few go
 
 - sharp added to functions (WebP 1200 and JPEG 960 renditions, metadata stripped, difference hash); loaded lazily so other functions do not pay at cold start.
 - Dynamic keys are `pixabay-<id>`; clients resolve them by prefix to /img/covers-dyn/ (no Firestore read on clients); served by coverImageV1 behind a Hosting rewrite with immutable caching. Storage and Firestore stay server-only.
-- Trigger: best lexical score below 6 or fewer than 2 matched covers. Quotas: 15 searches per instance per minute (5 instances), 20 pulls per company and 200 per platform per UTC day; 24 h search cache.
+- Trigger: best lexical score below 6, fewer than 2 matched covers, or the best library cover mentions none of the event's distinctive terms (generic words like crazy/insane/show/night/team/event excluded). Quotas: 15 searches per instance per minute (5 instances), 20 pulls per company and 200 per platform per UTC day; 24 h search cache.
 - Same 1 credit as a cover pick, refunded when no model answered. Generated drafts stay static-only.
 
 ## Handoff

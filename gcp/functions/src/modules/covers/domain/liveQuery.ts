@@ -1,5 +1,5 @@
 import type { CoverIndexEntry } from "./catalog.generated";
-import { queryThemes, STOPWORDS, type CoverQuery } from "./shortlist";
+import { queryThemes, stem, STOPWORDS, tokenize, type CoverQuery } from "./shortlist";
 
 /**
  * The Pixabay search text for an event, built so no personal data can leave the system: emails, URLs, handles, phone
@@ -52,13 +52,52 @@ function words(text: string, dropCapitalized: boolean): string[] {
   return found;
 }
 
-/** `{ q, words }` for the Pixabay API (`words` joined by single spaces is the normalized cache key), or null when nothing usable. */
-export function buildPixabayQuery(query: CoverQuery, vocabulary: ReadonlySet<string>): { q: string; words: string[] } | null {
+/**
+ * Words that describe the mood, size or timing of an event rather than what is in the picture. They never count as a
+ * distinctive term and never lead a search ("Crazy insane clown show" searches for "clown").
+ */
+export const GENERIC_WORDS: ReadonlySet<string> = new Set([
+  "crazy", "insane", "awesome", "amazing", "epic", "great", "best", "super", "mega", "ultimate", "wild", "cool", "funny", "happy",
+  "big", "little", "small", "grand", "special", "official", "annual", "monthly", "weekly", "daily", "quarterly", "yearly", "first",
+  "last", "next", "late", "early", "show", "night", "evening", "morning", "afternoon", "weekend", "today", "tonight", "session",
+  "meetup", "hangout", "gathering", "edition", "kickoff", "event", "events", "team", "teams", "office", "company", "staff", "colleagues",
+  "people", "friends", "group", "crew", "club", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+  "activity", "activities", "experience", "challenge", "time", "thing", "things", "stuff", "free", "open", "welcome", "celebrate",
+  "celebration", "party", "social", "fun", "very", "really", "much", "lots", "extra", "mini", "huge",
+]);
+const MAX_DISTINCTIVE = 6;
+
+/** Title words in order, then description words found in the library vocabulary by frequency (both PII-scrubbed). */
+function queryWords(query: CoverQuery, vocabulary: ReadonlySet<string>): { title: string[]; description: string[] } {
   const title = [...new Set(words(query.title, false))];
   const counts = new Map<string, number>();
   for (const word of words(query.description ?? "", true)) if (vocabulary.has(word)) counts.set(word, (counts.get(word) ?? 0) + 1);
   const description = [...counts.keys()].sort((a, b) => counts.get(b)! - counts.get(a)!);
-  let chosen = [...new Set([...title.filter(w => vocabulary.has(w)), ...title, ...description])].slice(0, MAX_QUERY_WORDS);
+  return { title, description };
+}
+
+/**
+ * The event's distinctive terms: non-generic title words (in order), then non-generic description words that the library
+ * vocabulary knows (free description text can hold names, so only library words leave it). These are what the cover must
+ * show: the trigger checks the best library match against them and they lead the Pixabay query.
+ */
+export function distinctiveTerms(query: CoverQuery, vocabulary: ReadonlySet<string>): string[] {
+  const { title, description } = queryWords(query, vocabulary);
+  return [...new Set([...title, ...description])].filter(word => !GENERIC_WORDS.has(word)).slice(0, MAX_DISTINCTIVE);
+}
+
+/** True when a cover's tags, label or alt mention the term (same light stemming as the lexical ranking). */
+export function coverMentions(entry: Pick<CoverIndexEntry, "tags" | "label" | "alt">, term: string): boolean {
+  const target = stem(term);
+  return [...entry.tags, entry.label, entry.alt].some(text => tokenize(text).includes(target));
+}
+
+/** `{ q, words }` for the Pixabay API (`words` joined by single spaces is the normalized cache key), or null when nothing usable. */
+export function buildPixabayQuery(query: CoverQuery, vocabulary: ReadonlySet<string>): { q: string; words: string[] } | null {
+  const { title, description } = queryWords(query, vocabulary);
+  const distinctive = distinctiveTerms(query, vocabulary);
+  // Distinctive words lead; generic words (GENERIC_WORDS) are used only when nothing distinctive is left.
+  let chosen = (distinctive.length > 0 ? distinctive : [...new Set([...title, ...description])]).slice(0, MAX_QUERY_WORDS);
   if (chosen.length === 0) {
     const theme = queryThemes(query)[0];
     if (!theme) return null;
