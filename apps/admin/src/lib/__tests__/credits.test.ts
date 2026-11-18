@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type KeyValueStore, createMockApi } from "../api";
 import type { AiCredits, AiEventChoices } from "../adminTypes";
-import { creditsText, creditsView, priceLabel, resetDate } from "../credits";
+import { creditsText, creditsView, creditCostLabel, resetDate } from "../credits";
 import { AI_STRINGS } from "../aiStrings";
 
 const NOW = new Date("2026-11-17T12:00:00Z");
@@ -35,8 +35,9 @@ describe("credits view", () => {
     expect(resetDate("2026-12-01T08:00:00.000Z", "UTC")).toBe("Dec 1");
     expect(resetDate("garbage")).toBe("the first of next month");
     expect(creditsText(1)).toBe("1 credit");
-    expect(priceLabel("action.generateCost", credits(400))).toBe("Generate drafts, 10 credits");
-    expect(priceLabel("results.regenerateCost", credits(400))).toBe("Regenerate, 10 credits");
+    expect(creditCostLabel(10)).toBe("10 credits");
+    expect(creditCostLabel(0)).toBe("");
+    expect(creditCostLabel(0, true)).toBe("Free");
   });
 });
 
@@ -65,7 +66,7 @@ describe("credit copy", () => {
   it("names the reset date and the price in the visible strings", () => {
     expect(AI_STRINGS["credits.out"]).toContain("{ai}");
     expect(AI_STRINGS["limit.AI_CREDITS_EXHAUSTED"]).toContain("{date}");
-    expect(AI_STRINGS["action.generateCost"]).toContain("{cost}");
-    expect(AI_STRINGS["results.regenerateCost"]).toContain("{cost}");
+    // The price is structured data (DipbotAction credits), never part of a label string.
+    expect(Object.entries(AI_STRINGS).filter(([k, v]) => /^(action|results|quick|suggest)\./.test(k) && v.includes("{cost}"))).toEqual([]);
   });
 });

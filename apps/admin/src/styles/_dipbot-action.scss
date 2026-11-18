@@ -1,0 +1,58 @@
+@use "@/styles/variables.scss" as *;
+
+// DipbotAction and CreditCost (components/DipbotAction.tsx): every Dipbot action that can cost credits.
+// `[mark] Label | 1 credit`. Variants outline (default), solid (main CTA), ghost and link (quiet, inline).
+$da-border: #8a8fa5; // control boundary, 3:1 on white
+$da-line: #c4c8d6;   // the divider
+$da-muted: #646a80;
+$da-wash: #f6f7fa;
+$da-off: #eceef4;
+
+.credit-cost { font-size: 12px; font-weight: 500; line-height: 1; color: var(--muted, #{$da-muted}); white-space: nowrap;
+  &.has-divider { padding-left: 8px; margin-left: 2px; border-left: 1px solid $da-line; } }
+
+.dip-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 36px; padding: 0 12px;
+  border: 0; border-radius: 6px; font-family: var(--font-figtree), sans-serif; font-size: 14px; font-weight: 500; line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer;
+  transition: background-color .12s ease, box-shadow .12s ease, color .12s ease;
+  svg { flex: none; }
+  .dip-action-icon { display: inline-grid; place-items: center; flex: none; }
+  .dip-action-short { display: none; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  &[data-size="sm"] { min-height: 28px; padding: 0 10px; font-size: 13px; gap: 5px; }
+
+  // outline: the hairline button from the design review.
+  &[data-variant="outline"] { background: $white; color: $ink; box-shadow: inset 0 0 0 1px $da-border;
+    &:hover:not([disabled]):not([aria-disabled="true"]) { background: $da-wash; } }
+  // solid: the main call to action (purple, white text); the divider and cost are a lighter tone of white.
+  &[data-variant="solid"] { background: var(--primary); color: $white; font-weight: 600;
+    &:hover:not([disabled]):not([aria-disabled="true"]) { background: var(--primary-hover); }
+    .credit-cost { color: #f4f5ff; &.has-divider { border-left-color: rgba(255, 255, 255, .45); } }
+    &:focus-visible { outline-color: $ink; } }
+  // ghost: no border, a wash on hover. link: inline text with the label underlined.
+  &[data-variant="ghost"] { background: transparent; color: $ink; &:hover:not([disabled]):not([aria-disabled="true"]) { background: $da-wash; } }
+  &[data-variant="link"] { background: none; min-height: 0; padding: 0; font: inherit; color: inherit; gap: 4px; border-radius: 2px;
+    .dip-action-label { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .credit-cost.has-divider { border-left: 0; padding-left: 0; margin-left: 0; &::before { content: "·"; margin-right: 4px; } }
+    &:focus-visible { outline: 3px solid $ink; outline-offset: 2px; } }
+
+  &[disabled], &[aria-disabled="true"] { cursor: not-allowed;
+    &[data-variant="outline"], &[data-variant="solid"], &[data-variant="ghost"] { background: $da-off; color: $da-muted; box-shadow: none; .credit-cost { color: $da-muted; border-left-color: $da-line; } }
+    &[data-variant="link"] { color: var(--muted, #{$da-muted}); .dip-action-label { text-decoration: none; } } }
+  &[data-loading="true"] { cursor: progress; }
+
+  // The spinner takes the mark's place, so the button keeps its width.
+  .dip-action-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: dip-action-spin .8s linear infinite; }
+
+  // Icon only: the text and cost leave, the accessible name stays (aria-label is "Label, 1 credit").
+  &[data-icon-only="true"] { padding: 0; min-width: 36px; .dip-action-label, .dip-action-short, .dip-action-cost { display: none; }
+    &[data-size="sm"] { min-width: 28px; } }
+
+  // Touch targets: 44px for md, 36px for sm. Phones collapse what is marked narrow.
+  @media (max-width: 700px), (pointer: coarse) { &[data-size="md"]:not([data-variant="link"]) { min-height: 44px; } &[data-size="sm"]:not([data-variant="link"]) { min-height: 36px; } }
+  @media (max-width: 700px) {
+    &[data-icon-only="narrow"] { padding: 0; min-width: 44px; .dip-action-label, .dip-action-short, .dip-action-cost { display: none; } }
+    &[data-short="true"] { .dip-action-label, .dip-action-cost { display: none; } .dip-action-short { display: inline; } }
+  }
+}
+@keyframes dip-action-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dip-action { transition: none; } .dip-action .dip-action-spin { animation: none; border-right-color: currentColor; opacity: .6; } }

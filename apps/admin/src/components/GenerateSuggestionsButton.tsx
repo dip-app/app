@@ -4,10 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { can } from "@/lib/adminTypes";
 import { t } from "@/lib/aiStrings";
-import { creditsText } from "@/lib/credits";
 import { armQuick, saveEditorStash } from "@/lib/dipbotTouches";
 import { useApp } from "./AppProvider";
-import { DipbotMark } from "./DipbotMark";
+import { DipbotAction } from "./DipbotAction";
 import { useLoad } from "./useLoad";
 
 /**
@@ -22,7 +21,6 @@ export function GenerateSuggestionsButton() {
   const ctx = useLoad((a) => a.eventIdeaContext(), "event-idea-context").data;
   const [going, setGoing] = useState(false);
   if (!can(session?.role, "ai.generate") || !ctx?.enabled) return null;
-  const cost = creditsText(ctx.credits.creditCost.generate);
   const go = () => {
     if (going) return;
     setGoing(true);
@@ -31,11 +29,6 @@ export function GenerateSuggestionsButton() {
     router.push("/ideas/?quick=1");
   };
   return (
-    <button type="button" className="pill-btn gray with-mark quick-btn" onClick={go} disabled={going} aria-busy={going || undefined} aria-label={t("quick.buttonCost", { cost })} title={t("quick.buttonCost", { cost })}>
-      <DipbotMark size={16} />
-      <span className="quick-long" aria-hidden>{t("quick.button")}</span>
-      <span className="quick-short" aria-hidden>{t("quick.buttonShort")}</span>
-      <span className="quick-cost" aria-hidden>{cost}</span>
-    </button>
+    <DipbotAction className="quick-btn" label={t("quick.button")} shortLabel={t("quick.buttonShort")} credits={ctx.credits.creditCost.generate} loading={going} onClick={go} />
   );
 }

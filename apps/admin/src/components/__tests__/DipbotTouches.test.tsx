@@ -148,7 +148,7 @@ describe("Generate suggestions button", () => {
     expect(push).toHaveBeenCalledWith("/ideas/?quick=1");
     expect(takeQuick(window.sessionStorage)).toBe(true);
     // A second click while leaving does nothing.
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
     fireEvent.click(button);
     expect(push).toHaveBeenCalledTimes(1);
   });

@@ -21,9 +21,10 @@ import {
   NONE, NOT_SET, presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleConsideration, toggleInterest, venueLabel,
 } from "@/lib/ideas";
 import { t, tMaybe, tn } from "@/lib/aiStrings";
-import { creditsText, creditsView, priceLabel, resetDate } from "@/lib/credits";
+import { creditsView, resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter, CreditsNotice, PrivacyInfo } from "./CreditsMeter";
+import { DipbotAction } from "./DipbotAction";
 import { DipbotMark } from "./DipbotMark";
 import { dismissToast, toast } from "./Toast";
 import { Empty, LoadError, Loading } from "./Ui";
@@ -400,17 +401,14 @@ export function Ideas() {
   // Not on the note step: nothing there can be suggested.
   const freshness = loaded ? freshnessLine(loaded, new Date()) : null;
   const cannotRefresh = ctx.credits.creditsRemaining < ctx.credits.creditCost.suggest;
-  const refreshCost = creditsText(ctx.credits.creditCost.suggest);
   // One quiet line: when the saved suggestions were updated, and the only way to spend credits on them (an explicit press).
   const metaRow = phase === "edit" && current.id !== "note" && freshness && (
     <p className="sg-meta" data-stale={freshness.stale ? "true" : undefined}>
       <DipbotMark size={14} />
       <span>{freshness.text}</span>
       <span aria-hidden>·</span>
-      <button type="button" className="link-btn" disabled={refreshing || cannotRefresh || busy} title={cannotRefresh ? t("suggest.refreshOut") : undefined}
-        aria-label={t("suggest.refreshAria", { cost: refreshCost })} onClick={() => void refreshSuggestions()}>
-        {t("suggest.refresh", { cost: refreshCost })}
-      </button>
+      <DipbotAction variant="link" size="sm" icon={null} label={t("suggest.refresh")} accessibleLabel={t("suggest.refreshAria")} credits={ctx.credits.creditCost.suggest}
+        loading={refreshing} disabled={refreshing || cannotRefresh || busy} disabledReason={cannotRefresh ? t("suggest.refreshOut") : undefined} onClick={() => void refreshSuggestions()} />
     </p>
   );
   const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
@@ -434,9 +432,7 @@ export function Ideas() {
             <p role={applied ? "status" : undefined}>
               <strong>{applied ? tn("suggest.matched", stepCount) : tn("suggest.count", stepCount)}</strong>{" "}
             </p>
-            {!applied && <button type="button" className="pill-btn gray small with-mark" disabled={busy} onClick={pickForMe}>
-              <DipbotMark size={16} />{t("suggest.use")}
-            </button>}
+            {!applied && <DipbotAction size="sm" label={t("suggest.use")} disabled={busy} onClick={pickForMe} />}
           </div>
         )
   );
@@ -575,7 +571,7 @@ export function Ideas() {
         )}
         {step > 0 && <button type="button" className="pill-btn gray" onClick={() => goStep(step - 1)}>{t("action.back")}</button>}
         {lastStep
-          ? <button type="button" className="pill-btn purple with-mark" disabled={!readyToGenerate(answers) || exhausted || noCredits} onClick={() => void generate(answers, false)}><DipbotMark size={16} />{priceLabel("action.generateCost", ctx.credits)}</button>
+          ? <DipbotAction variant="solid" label={t("action.generate")} credits={ctx.credits.creditCost.generate} disabled={!readyToGenerate(answers) || exhausted || noCredits} disabledReason={noCredits ? t("credits.not") : undefined} onClick={() => void generate(answers, false)} />
           : <button type="button" className="pill-btn purple" disabled={!stepValid(current.id, answers)} onClick={() => goStep(step + 1)}>{t("action.next")}</button>}
       </div>
     </section>
@@ -613,9 +609,7 @@ export function Ideas() {
         <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} draggable={false} />
         <p><strong>{t("results.ready", { n: result.drafts.length })}</strong> {t("results.review")}</p>
         <div className="results-actions">
-          <button type="button" className="pill-btn gray with-mark" disabled={remaining <= 0 || noCredits} onClick={() => void generate(answers, true)}>
-            <DipbotMark size={16} />{priceLabel("results.regenerateCost", ctx.credits)}
-          </button>
+          <DipbotAction label={t("results.regenerate")} credits={ctx.credits.creditCost.regenerate} disabled={remaining <= 0 || noCredits} disabledReason={noCredits ? t("credits.not") : undefined} onClick={() => void generate(answers, true)} />
           <button type="button" className="pill-btn gray" onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>{t("results.startOver")}</button>
         </div>
       </div>

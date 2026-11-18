@@ -20,8 +20,7 @@ $subtle: #f6f7fa;
   .cp-selected-text { display: grid; gap: 2px; flex: 1 1 140px; min-width: 0; }
   .cp-selected-label { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .cp-selected-meta { font-size: 13px; color: var(--muted); }
-  .cp-dipbot { flex: none; gap: 6px; padding: 0 12px; svg { flex: none; } }
-  .cp-cost { font-size: 12px; font-weight: 500; color: var(--muted); padding-left: 6px; margin-left: 2px; border-left: 1px solid $line-strong; }
+  .cp-dipbot { flex: none; }
   .cp-dipbot[aria-busy="true"] { cursor: progress; }
   .cp-note { flex-basis: 100%; font-size: 13px; color: $ink; &.error { color: var(--error); } &:empty { display: none; } }
 
