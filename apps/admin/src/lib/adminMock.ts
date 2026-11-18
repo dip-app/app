@@ -137,7 +137,25 @@ export function seedOps(now: Date): OpsState {
       });
     }
   }
-  return { companies, members, roster, photos, comments, attendees: {}, audit: [], receipts: {}, jobs: {} };
+  // Older audit history so the Audit log is not empty on first load (newer entries come from actions taken in the session).
+  const who = (i: number) => ({ actorId: members[i].id, actorName: members[i].displayName, actorRole: members[i].role });
+  const hist = (n: number, hours: number, actor: number, e: Omit<AuditEntry, "id" | "at" | "actorId" | "actorName" | "actorRole" | "changes"> & { changes?: AuditEntry["changes"] }): Stored<AuditEntry> =>
+    ({ changes: [], ...e, ...who(actor), companyId: "acme", id: `aud-seed-${n}`, at: new Date(now.getTime() - hours * 3_600_000).toISOString() });
+  const audit: Stored<AuditEntry>[] = [
+    hist(1, 2, 0, { action: "ai.generateDrafts", targetType: "company", targetId: "acme", summary: "Generated 3 AI event drafts", changes: [
+      { field: "models", before: "", after: "gpt-5-mini" }, { field: "tokens", before: "", after: "1840 in, 1210 out" }, { field: "credits", before: "", after: "10" }] }),
+    hist(2, 5, 2, { action: "ai.noteDeclined", targetType: "company", targetId: "acme", summary: "AI note declined by the safety check", changes: [
+      { field: "credits", before: "", after: "0" }, { field: "flaggedCategories", before: "", after: "harassment" }] }),
+    hist(3, 20, 0, { action: "suggestions.setSchedule", targetType: "company", targetId: "acme", summary: "Changed the weekly ideas email schedule", changes: [
+      { field: "weekday", before: "1", after: "3" }, { field: "hour", before: "8", after: "9" }] }),
+    hist(4, 26, 0, { action: "roster.upsert", targetType: "roster", targetId: "nico.farrow@acme.com", summary: "Invited Nico Farrow", changes: [{ field: "role", before: "", after: "member" }] }),
+    hist(5, 30, 0, { action: "attendee.add", targetType: "attendee", targetId: "game-cafe/uid-member", summary: "Added Morgan Lee to Game Cafe" }),
+    hist(6, 50, 2, { action: "attendance.record", targetType: "attendee", targetId: "game-cafe/uid-member", summary: "Marked Morgan Lee as attended" }),
+    hist(7, 73, 0, { action: "member.update", targetType: "member", targetId: "uid-member", summary: "Changed role", reason: "Now leads the events team", changes: [{ field: "role", before: "member", after: "organizer" }] }),
+    hist(8, 96, 0, { action: "import.apply", targetType: "import", targetId: "job-1", summary: "Imported 12 people (9 created, 3 updated)" }),
+    hist(9, 120, 2, { action: "photo.remove", targetType: "photo", targetId: "game-cafe/uid-casey-novak_4", summary: "Removed an event photo", reason: "Photo showed a customer's screen" }),
+  ];
+  return { companies, members, roster, photos, comments, attendees: {}, audit, receipts: {}, jobs: {} };
 }
 
 const hashOf = (value: unknown) => {

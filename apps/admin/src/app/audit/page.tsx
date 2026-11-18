@@ -4,31 +4,36 @@ import { Fragment, Suspense, useMemo, useState } from "react";
 import { Shell } from "@/components/Shell";
 import { TableRegion } from "@/components/TableRegion";
 import { toast } from "@/components/Toast";
-import { Avatar, Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
+import { Avatar, Empty, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
-import { AUDIT_ACTIONS, ROLE_LABEL } from "@/lib/adminTypes";
+import { ROLE_LABEL } from "@/lib/adminTypes";
+import { aiFacts, auditAction, auditCategoriesInUse, isAiAction, isAuditCategory } from "@/lib/auditLabels";
 import { downloadText } from "@/lib/csv";
 import { auditCsv } from "@/lib/exports";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 
 const PAGE = 40;
-const DEFAULTS = { q: "", action: "all" };
+const DEFAULTS = { q: "", category: "all" };
+const CATEGORIES = auditCategoriesInUse();
 
 function Audit() {
   const audit = useLoad((api) => api.listAudit(), "audit");
   const [qs, setQs] = useQueryState(DEFAULTS);
   const search = qs.q;
-  const action = qs.action;
+  const category = isAuditCategory(qs.category) ? qs.category : "all";
   useSlashFocus("audit-search");
   const [shown, setShown] = useState(PAGE);
   const [open, setOpen] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (audit.data ?? []).filter((e) => (action === "all" || e.action === action) &&
-      (!q || `${e.actorName} ${e.targetId} ${e.summary} ${e.reason ?? ""}`.toLowerCase().includes(q)));
-  }, [audit.data, search, action]);
+    return (audit.data ?? []).filter((e) => {
+      const a = auditAction(e.action);
+      return (category === "all" || a.category === category) &&
+        (!q || `${a.label} ${e.actorName} ${e.targetId} ${e.summary} ${e.reason ?? ""}`.toLowerCase().includes(q));
+    });
+  }, [audit.data, search, category]);
 
   function exportCsv() {
     try {
@@ -49,39 +54,46 @@ function Audit() {
           <>
             <div className="filters">
               <SearchBox id="audit-search" value={search} onChange={(v) => { setQs({ q: v }); setShown(PAGE); }} label="Search by person, target or reason" placeholder="Search by person, target or reason (press / to focus)" />
-              <div className="field"><label htmlFor="f-action">Action</label>
-                <select id="f-action" value={action} onChange={(e) => { setQs({ action: e.target.value }); setShown(PAGE); }}>
-                  <option value="all">All actions</option>
-                  {Object.entries(AUDIT_ACTIONS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              <div className="field"><label htmlFor="f-category">Category</label>
+                <select id="f-category" value={category} onChange={(e) => { setQs({ category: e.target.value }); setShown(PAGE); }}>
+                  <option value="all">All categories</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select></div>
             </div>
-            {filtered.length === 0 ? <Empty title="No matches" body="Try a different search or action." /> : (
+            {filtered.length === 0 ? <Empty title="No matches" body="Try a different search or category." /> : (
               <>
                 <ResultCount>{`Showing ${Math.min(shown, filtered.length)} of ${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}`}</ResultCount>
                 <TableRegion label="Audit log">
                   <table className="table responsive audit-table">
                     <caption className="sr-only">Audit log</caption>
-                    <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">Who</th><th scope="col">What</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                    <thead><tr><th scope="col">When</th><th scope="col">What happened</th><th scope="col">Who</th><th scope="col">Target</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
                     <tbody>
                       {filtered.slice(0, shown).map((e) => {
-                        const expandable = e.changes.length > 0 || !!e.reason;
+                        const a = auditAction(e.action);
+                        const ai = isAiAction(e.action);
+                        const facts = ai ? aiFacts(e.changes) : [];
+                        const shownChanges = ai ? [] : e.changes;
                         return (
                           <Fragment key={e.id}>
                             <tr className="audit-entry">
                               <td className="nowrap" data-label="When"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
-                              <td data-label="Action"><Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info></td>
+                              <td data-label="What happened"><span className="audit-what"><span className="audit-label" title={`Action key: ${e.action}`}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{a.category}</span></span></td>
                               <td data-label="Who"><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
-                              <td data-label="What"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
-                              <td className="right">{expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${e.summary}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}</td>
+                              <td data-label="Target"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
+                              <td className="right"><button className="pill-btn gray small" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${a.label}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button></td>
                             </tr>
                             {open === e.id && (
                               <tr className="audit-detail-row" id={`audit-detail-${e.id}`}><td colSpan={5}>
                                 <div className="audit-detail">
                                   {e.reason && <p><strong>Reason:</strong> {e.reason}</p>}
-                                  {e.changes.length > 0 && (
-                                    <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
-                                      <tbody>{e.changes.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || <span className="muted">Empty</span>}</td><td>{c.after || <span className="muted">Empty</span>}</td></tr>)}</tbody></table>
+                                  {facts.length > 0 && (
+                                    <dl className="audit-facts">{facts.map((f) => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl>
                                   )}
+                                  {shownChanges.length > 0 && (
+                                    <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+                                      <tbody>{shownChanges.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || <span className="muted">Empty</span>}</td><td>{c.after || <span className="muted">Empty</span>}</td></tr>)}</tbody></table>
+                                  )}
+                                  <p className="muted audit-key">Action key: <code>{e.action}</code></p>
                                 </div>
                               </td></tr>
                             )}

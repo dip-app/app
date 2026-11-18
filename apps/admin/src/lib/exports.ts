@@ -1,4 +1,5 @@
 import type { Attendee, AuditEntry, Member, Team } from "./adminTypes";
+import { auditAction } from "./auditLabels";
 import { toCsv } from "./csv";
 
 export const attendanceLabel = (checkedIn: boolean, eventEnded: boolean) => (checkedIn ? "Checked in" : eventEnded ? "No-show" : "Not checked in");
@@ -20,7 +21,7 @@ export function membersCsv(rows: Member[], teams: Team[]): string {
 
 export function auditCsv(rows: AuditEntry[]): string {
   return toCsv([
-    ["time", "actor", "role", "action", "target", "summary", "reason", "changes"],
-    ...rows.map((r) => [r.at, r.actorName, r.actorRole, r.action, `${r.targetType}:${r.targetId}`, r.summary, r.reason ?? "", r.changes.map((c) => `${c.field}: ${c.before || "-"} -> ${c.after || "-"}`).join("; ")]),
+    ["time", "actor", "role", "action", "action key", "category", "target", "summary", "reason", "changes"],
+    ...rows.map((r) => [r.at, r.actorName, r.actorRole, auditAction(r.action).label, r.action, auditAction(r.action).category, `${r.targetType}:${r.targetId}`, r.summary, r.reason ?? "", r.changes.map((c) => `${c.field}: ${c.before || "-"} -> ${c.after || "-"}`).join("; ")]),
   ]);
 }
