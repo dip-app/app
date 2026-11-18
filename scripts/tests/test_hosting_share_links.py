@@ -19,7 +19,10 @@ class HostingShareLinks(unittest.TestCase):
         aasa = rewrites["/.well-known/apple-app-site-association"]
         self.assertTrue((ROOT / "apps/admin/public" / aasa["destination"].lstrip("/")).is_file())
         # Function rewrites are path-scoped; no catch-all that would shadow the admin site.
-        self.assertTrue(set(rewrites) <= {"/.well-known/apple-app-site-association", "/e/**", "/u/**", "/o/**"}, sorted(rewrites))
+        self.assertTrue(set(rewrites) <= {"/.well-known/apple-app-site-association", "/e/**", "/u/**", "/o/**", "/img/covers-dyn/**"}, sorted(rewrites))
+        if "/img/covers-dyn/**" in rewrites:
+            # Stored live-fallback covers (docs/design/cover-library.md); the static /img/covers/** files are not rewritten.
+            self.assertEqual(rewrites["/img/covers-dyn/**"]["function"], {"functionId": "coverImageV1", "region": "us-central1"})
         self.assertTrue(all(source not in ("**", "/**") for source in rewrites))
         if "/u/**" in rewrites:
             self.assertEqual(rewrites["/u/**"]["function"], {"functionId": "emailUnsubscribeV1", "region": "us-central1"})

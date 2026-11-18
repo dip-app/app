@@ -1,5 +1,11 @@
 import { strict as assert } from "node:assert";
-import { describe, test } from "node:test";
+import { after, before, describe, test } from "node:test";
+
+// AbortSignal.timeout timers are unref'd: on Node 24 a test waiting only on one lets the event loop drain and the test is
+// cancelled. A ref'd interval keeps the loop alive while this file runs.
+let keepAlive: ReturnType<typeof setInterval> | undefined;
+before(() => { keepAlive = setInterval(() => undefined, 1_000); });
+after(() => clearInterval(keepAlive));
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { PixabayRateLimitedError, PixabayUnavailableError, type DynamicCoverDoc, type PixabayHit, type ProcessedCover } from "../../functions/src/modules/covers/application/livePorts";
