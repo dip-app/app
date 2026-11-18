@@ -25,6 +25,8 @@ interface Common {
   accessibleLabel?: string;
   /** What it costs in credits. Omit for an action that is free and says nothing; 0 is the same unless `showFree`. */
   credits?: number;
+  /** Extra context ("Updated 3 hours ago"): the tooltip when the action is enabled, and read after the name by screen readers. */
+  hint?: string;
   showFree?: boolean;
   variant?: DipbotActionVariant;
   size?: DipbotActionSize;
@@ -53,7 +55,7 @@ export type DipbotActionProps = ButtonProps | LinkProps;
  */
 export const DipbotAction = forwardRef<HTMLButtonElement | HTMLAnchorElement, DipbotActionProps>(function DipbotAction(props, ref) {
   const {
-    label, accessibleLabel, credits, showFree = false, variant = "outline", size = "md", loading = false, loadingLabel, disabledReason,
+    label, accessibleLabel, credits, hint, showFree = false, variant = "outline", size = "md", loading = false, loadingLabel, disabledReason,
     icon, iconOnly = false, shortLabel, className, ...rest
   } = props;
   const reasonId = useId();
@@ -70,12 +72,12 @@ export const DipbotAction = forwardRef<HTMLButtonElement | HTMLAnchorElement, Di
       <span className="dip-action-label" aria-hidden={name ? true : undefined}>{shown}</span>
       {shortLabel && <span className="dip-action-short" aria-hidden>{shortLabel}</span>}
       {costText && <span className="dip-action-cost" aria-hidden><CreditCost credits={credits ?? 0} showFree={showFree} divider /></span>}
-      {reason && <span id={reasonId} className="sr-only">{reason}</span>}
+      {(reason || hint) && <span id={reasonId} className="sr-only">{reason ?? hint}</span>}
     </>
   );
   const common = {
     className: `dip-action${className ? ` ${className}` : ""}`,
-    "aria-label": name || undefined, "aria-busy": loading || undefined, "aria-describedby": [(rest as { "aria-describedby"?: string })["aria-describedby"], reason ? reasonId : undefined].filter(Boolean).join(" ") || undefined, title: reason ?? (name || undefined),
+    "aria-label": name || undefined, "aria-busy": loading || undefined, "aria-describedby": [(rest as { "aria-describedby"?: string })["aria-describedby"], reason || hint ? reasonId : undefined].filter(Boolean).join(" ") || undefined, title: reason ?? (hint ? (name ? `${name}. ${hint}` : hint) : name || undefined),
     "data-variant": variant, "data-size": size, "data-icon-only": iconOnly === true ? "true" : iconOnly === "narrow" ? "narrow" : undefined,
     "data-loading": loading || undefined, "data-short": shortLabel ? "true" : undefined,
   };

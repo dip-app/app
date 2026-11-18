@@ -3,15 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { AiCredits, AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
-import { type Art, DIPBOT_ICON, spotArt, stateArt } from "@/lib/ideaArt";
+import { type Art, spotArt, stateArt } from "@/lib/ideaArt";
 import { tagArt, tagBlurb } from "@/lib/tagArt";
 import {
-  type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied, suggestionsForStep,
+  type LabeledSuggestion, type SuggestionLevel, QUESTION_STEP, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied, suggestionsForStep,
 } from "@/lib/suggestionLabels";
 import { coverByURL, coverImage, lexicalPick } from "@/lib/covers";
 import { freshnessLine } from "@/lib/suggestCache";
 import { quickAnswers, quickRequested, rememberTimeHint, takeQuick } from "@/lib/dipbotTouches";
 import { Considerations } from "./Considerations";
+import { SectionHeader } from "./kit";
 import { CoverPicker } from "./CoverPicker";
 import { Disclosure } from "./Disclosure";
 import { ApiError } from "@/lib/contract";
@@ -204,6 +205,8 @@ export function Ideas() {
   const panelRef = useRef<HTMLElement>(null);
   // "Let Dipbot pick for me" highlights what it selected for a moment.
   const [flashing, setFlashing] = useState(false);
+  // After "Use suggestions" the stepper shows every answered step as complete while the admin stays on the current one.
+  const [usedAll, setUsedAll] = useState(false);
   const lastToast = useRef(0);
   useEffect(() => {
     if (!flashing) return;
@@ -217,6 +220,12 @@ export function Ideas() {
     setStep(index);
     setPhase("edit");
   }, []);
+
+  // On phones the tab row scrolls: keep the current tab in view.
+  useEffect(() => {
+    const item = document.querySelector<HTMLElement>('.ideas .stepper-item[data-state="current"]');
+    item?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [step, phase]);
 
   // Focus follows the step: keyboard and screen reader users land on the new heading.
   useEffect(() => {
@@ -343,7 +352,7 @@ export function Ideas() {
   const current = STEPS[step];
   const lines = summaryLines(answers, tagName);
   const reachable = (index: number) => !busy && STEPS.slice(0, index).every((s) => stepValid(s.id, answers));
-  const done = (index: number) => phase === "results" || (index < step && stepValid(STEPS[index].id, answers));
+  const done = (index: number) => phase === "results" || ((index < step || (usedAll && STEPS[index].id !== "note")) && stepValid(STEPS[index].id, answers));
   // Out of credits disables the paid actions only; every selection and the note stay as they are.
   const noCredits = creditsView(ctx.credits).out;
 
@@ -404,56 +413,55 @@ export function Ideas() {
     const s = labeled[question];
     return s && s.value === value ? { level: s.level, reason: s.reason, provider, flash: flashing } : null;
   };
-  // The banner and the pick button work per step, so what the banner says is always what this step shows.
+  // The banner counts this step's suggestions; "Use suggestions" applies every step's at once (already cached: no call, no credits).
   const stepLabeled = suggestionsForStep(labeled, current.id);
   const stepCount = Object.keys(stepLabeled).length;
-  const applied = stepCount > 0 && suggestionsApplied(answers, stepLabeled);
-  const pickForMe = () => {
-    set(applySuggestions(answers, stepLabeled));
+  const totalCount = Object.keys(labeled).length;
+  const applied = totalCount > 0 && suggestionsApplied(answers, labeled);
+  const useSuggestions = () => {
+    set(applySuggestions(answers, labeled));
+    setUsedAll(true);
     setFlashing(true);
+    const covered = new Set(Object.keys(labeled).map((q) => QUESTION_STEP[q as AiSuggestionQuestion]));
+    const suggestible = STEPS.filter((x) => x.id !== "note");
+    const skipped = suggestible.filter((x) => !covered.has(x.id)).map((x) => x.label);
     if (lastToast.current) dismissToast(lastToast.current);
-    const id = toast(tn("suggest.appliedToast", stepCount));
+    const id = toast(skipped.length === 0 ? t("suggest.appliedAll")
+      : t("suggest.appliedSome", { done: suggestible.length - skipped.length, total: suggestible.length, skipped: skipped.join(", ") }));
     lastToast.current = id;
-    setTimeout(() => dismissToast(id), 2500);
+    setTimeout(() => dismissToast(id), 3500);
   };
-  // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
-  const botIcon = <img className="bot-icon" src={DIPBOT_ICON} alt="" width={36} height={36} draggable={false} />;
 
   // Not on the note step: nothing there can be suggested.
   const freshness = loaded ? freshnessLine(loaded, new Date()) : null;
   const cannotRefresh = ctx.credits.creditsRemaining < ctx.credits.creditCost.suggest;
-  // One quiet line: when the saved suggestions were updated, and the only way to spend credits on them (an explicit press).
-  const metaRow = phase === "edit" && current.id !== "note" && freshness && (
-    <p className="sg-meta" data-stale={freshness.stale ? "true" : undefined}>
-      <DipbotMark size={14} />
-      <span>{freshness.text}</span>
-      <span aria-hidden>·</span>
-      <DipbotAction variant="link" size="sm" icon={null} label={t("suggest.refresh")} accessibleLabel={t("suggest.refreshAria")} credits={ctx.credits.creditCost.suggest}
-        loading={refreshing} disabled={refreshing || cannotRefresh || busy} disabledReason={cannotRefresh ? t("suggest.refreshOut") : undefined} onClick={() => void refreshSuggestions()} />
-    </p>
+  // The only way to spend credits on suggestions is this explicit press (never on a visit).
+  const refreshAction = freshness && (
+    <DipbotAction variant="ghost" size="sm" label={t("suggest.refresh")} accessibleLabel={t("suggest.refreshAria")} credits={ctx.credits.creditCost.suggest}
+      loading={refreshing} disabled={refreshing || cannotRefresh || busy} disabledReason={cannotRefresh ? t("suggest.refreshOut") : undefined} onClick={() => void refreshSuggestions()} />
+  );
+  const useDisabledReason = suggest === "loading" ? t("suggest.useLoading") : busy ? t("suggest.useBusy") : refreshing ? t("suggest.refreshing") : totalCount === 0 ? t("suggest.useNone") : undefined;
+  const useAction = (
+    <DipbotAction variant="outline" size="sm" label={t("suggest.use")} hint={t("suggest.useTitle")} disabled={useDisabledReason !== undefined} disabledReason={useDisabledReason} onClick={useSuggestions} />
+  );
+  // One header row, the same component as "Ideas for you": [mark] title, muted "Updated 3 hours ago", then Refresh and Use suggestions.
+  const sgHeader = (title: string, withUpdated: boolean, showUse: boolean) => (
+    <SectionHeader headingLevel={3} stackActions title={title} updated={withUpdated && freshness ? freshness.text : undefined} end={<>{refreshAction}{showUse && useAction}</>} />
   );
   const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
     suggest === "loading" || refreshing
       ? (suggest === "loading" && !slow ? null : (
-        <div className="sg-bar" data-state="loading" role="status">
-          {botIcon}
-          <p>{t(refreshing ? "suggest.refreshing" : "suggest.loading")}</p>
-        </div>
+        <div className="sg-bar" data-state="loading" role="status">{sgHeader(t(refreshing ? "suggest.refreshing" : "suggest.loading"), false, true)}</div>
       ))
-      : stepCount === 0
+      : totalCount === 0
         ? (
           <div className="sg-bar" data-state="none">
-            {botIcon}
-            <p className="muted">{t(current.id === "interests" ? "suggest.noInterestData" : provider === "none" ? "suggest.noData" : "suggest.noStepSuggestion")}</p>
+            {sgHeader(t(current.id === "interests" ? "suggest.noInterestData" : provider === "none" ? "suggest.noData" : "suggest.noStepSuggestion"), true, true)}
           </div>
         )
         : (
           <div className="sg-bar" role="region" aria-label={t("suggest.feature")} data-state={applied ? "applied" : "ready"}>
-            {botIcon}
-            <p role={applied ? "status" : undefined}>
-              <strong>{applied ? tn("suggest.matched", stepCount) : tn("suggest.count", stepCount)}</strong>{" "}
-            </p>
-            {!applied && <DipbotAction size="sm" label={t("suggest.use")} disabled={busy} onClick={pickForMe} />}
+            {sgHeader(applied ? (stepCount > 0 ? tn("suggest.matched", stepCount) : t("suggest.matchedAll")) : stepCount > 0 ? tn("suggest.count", stepCount) : t("suggest.noStepSuggestion"), true, !applied)}
           </div>
         )
   );
@@ -656,7 +664,6 @@ export function Ideas() {
           {phase !== "generating" && <CreditsNotice credits={ctx.credits} />}
           {summary}
           {suggestBar}
-          {metaRow}
           {phase === "generating" || quick === "armed" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
         </div>
       </div>
