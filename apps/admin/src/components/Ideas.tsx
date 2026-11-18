@@ -39,6 +39,8 @@ type Phase = "edit" | "generating" | "results" | "error";
 type Quick = "none" | "armed" | "running";
 
 /** Remembers Dipbot's best timing bucket for this tab so the editor's "Dipbot suggests" times can use it without a request. */
+/** Mirrors the server: AI_DAILY_GENERATIONS_PER_ADMIN=Infinity is sent as this large number, and the per-admin counter is hidden. */
+const UNLIMITED_DAILY = 1_000_000;
 function rememberTiming(s: EventIdeaSuggestions) {
   const timing = labeledSuggestions(s.suggestions, s.provider, (q, v) => q === "timing" && TIMINGS.some((o) => o.value === v)).timing;
   try { rememberTimeHint(window.sessionStorage, timing ? { timing: timing.value as (typeof TIMINGS)[number]["value"] } : null); } catch { /* storage blocked */ }
@@ -579,6 +581,7 @@ export function Ideas() {
 
   const lastStep = step === STEPS.length - 1;
   const exhausted = remaining <= 0;
+  const quotaReason = failureMessage(new ApiError("resource-exhausted", "", {}, dailyLeft === 0 ? "AI_DAILY_LIMIT" : usage.monthlyGenerationsUsed >= usage.monthlyGenerationLimit ? "AI_MONTHLY_LIMIT" : "AI_BUDGET_EXHAUSTED"), ctx);
   const edit = (
     <section className="step-panel" aria-label={current.label} ref={panelRef}>
       {body()}
@@ -628,7 +631,7 @@ export function Ideas() {
         <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} draggable={false} />
         <p><strong>{t("results.ready", { n: result.drafts.length })}</strong> {t("results.review")}</p>
         <div className="results-actions">
-          <DipbotAction label={t("results.regenerate")} credits={ctx.credits.creditCost.regenerate} disabled={remaining <= 0 || noCredits} disabledReason={noCredits ? t("credits.not") : undefined} onClick={() => void generate(answers, true)} />
+          <DipbotAction label={t("results.regenerate")} credits={ctx.credits.creditCost.regenerate} disabled={remaining <= 0 || noCredits} disabledReason={noCredits ? t("credits.not") : remaining <= 0 ? quotaReason : undefined} onClick={() => void generate(answers, true)} />
           <Button onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>{t("results.startOver")}</Button>
         </div>
       </div>
@@ -645,7 +648,7 @@ export function Ideas() {
 
   return (
     <div className="ideas">
-      <div className="ideas-head"><PrivacyInfo /><CreditsMeter credits={ctx.credits} visitCharged={loaded ? loaded.creditsCharged : undefined} daily={{ left: dailyLeft, limit: usage.dailyGenerationLimit }} /></div>
+      <div className="ideas-head"><PrivacyInfo /><CreditsMeter credits={ctx.credits} visitCharged={loaded ? loaded.creditsCharged : undefined} daily={usage.dailyGenerationLimit >= UNLIMITED_DAILY ? undefined : { left: dailyLeft, limit: usage.dailyGenerationLimit }} /></div>
       <IdeasForYou onCredits={applyCredits} onCustomize={customize} />
       <div className="ideas-layout">
         <div className="ideas-main">

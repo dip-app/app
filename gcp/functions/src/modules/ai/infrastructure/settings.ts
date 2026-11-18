@@ -7,6 +7,12 @@ function int(raw: string | undefined, fallback: number): number {
   return Number.isSafeInteger(value) ? value : fallback;
 }
 
+/** Sent to clients in place of Infinity (JSON cannot carry it); the portal hides the per-admin counter at or above this. */
+export const UNLIMITED_DAILY_GENERATIONS = 1_000_000;
+function unlimitedOr(raw: string | undefined, fallback: number): number {
+  return raw?.trim().toLowerCase() === "infinity" ? UNLIMITED_DAILY_GENERATIONS : int(raw, fallback);
+}
+
 /** The demo provider returns fake drafts, so it is honored only inside the Functions emulator. */
 export function providerFromEnv(env: NodeJS.ProcessEnv, warn?: (message: string) => void): "openai" | "demo" | "disabled" {
   if (env.AI_PROVIDER === "demo") {
@@ -47,7 +53,7 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: strin
     monthlyBudgetMicros: int(env.AI_MONTHLY_BUDGET_CENTS, DEFAULT_MONTHLY_BUDGET_CENTS) * 10_000,
     dailyBudgetMicros: int(env.AI_DAILY_BUDGET_CENTS, DEFAULT_DAILY_BUDGET_CENTS) * 10_000,
     monthlyGenerationLimit: int(env.AI_MONTHLY_GENERATIONS, 30),
-    dailyGenerationLimit: int(env.AI_DAILY_GENERATIONS_PER_ADMIN, 10),
+    dailyGenerationLimit: unlimitedOr(env.AI_DAILY_GENERATIONS_PER_ADMIN, 10),
     dailyFlagLimit: int(env.AI_DAILY_FLAG_LIMIT, 3),
     dailyAttemptLimit: int(env.AI_DAILY_ATTEMPTS_PER_ADMIN, 20),
     platformMonthlyBudgetMicros: int(env.AI_PLATFORM_MONTHLY_BUDGET_CENTS, 20000) * 10_000,

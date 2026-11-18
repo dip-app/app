@@ -16,6 +16,13 @@ import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button } from "@/components/kit";
 
 const PAGE = 40;
+/** Plain-language target kind under the summary; null hides the line (the summary already says it, e.g. company-wide settings). IDs live in Details. */
+const TARGET_KIND: Record<string, string | null> = {
+  company: null, member: "Member", event: "Event", challenge: "Weekly theme", submission: "Submission", cover: "Cover photo",
+  photo: "Photo", comment: "Comment", attendee: "Attendee", roster: "Roster", import: "Import", team: "Team", points: "Points",
+  bugReport: "Bug report", invite: "Invite",
+};
+const targetKind = (type: string) => (type in TARGET_KIND ? TARGET_KIND[type] : null);
 const DEFAULTS = { q: "", category: "all" };
 const CATEGORIES = auditCategoriesInUse();
 
@@ -83,7 +90,7 @@ function Audit() {
                               <td className="nowrap" data-label="When"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
                               <td data-label="What happened"><span className="audit-what"><span className="audit-label" title={`Action key: ${e.action}`}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{a.category}</span></span></td>
                               <td data-label="Who"><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
-                              <td data-label="Target"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
+                              <td data-label="Target"><p>{e.summary}</p>{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
                               <td className="right"><Button size="sm" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${a.label}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</Button></td>
                             </tr>
                             {open === e.id && (
@@ -97,7 +104,7 @@ function Audit() {
                                     <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
                                       <tbody>{shownChanges.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || <span className="muted">Empty</span>}</td><td>{c.after || <span className="muted">Empty</span>}</td></tr>)}</tbody></table>
                                   )}
-                                  <p className="muted audit-key">Action key: <code>{e.action}</code></p>
+                                  <p className="muted audit-key">Action key: <code>{e.action}</code> · Reference: <code>{e.targetType} {e.targetId}</code></p>
                                 </div>
                               </td></tr>
                             )}

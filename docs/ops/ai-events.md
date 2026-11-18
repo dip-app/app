@@ -26,7 +26,7 @@ Runbook for the AI event drafts feature (stretch S2, [design](../design/stretch/
    | `AI_MONTHLY_BUDGET_CENTS` | 200 | Company spend cap per UTC month ($2) |
    | `AI_DAILY_BUDGET_CENTS` | 50 | Company spend cap per UTC day ($0.50) |
    | `AI_MONTHLY_GENERATIONS` | 30 | Generations per company per month |
-   | `AI_DAILY_GENERATIONS_PER_ADMIN` | 10 | Generations per admin per UTC day |
+   | `AI_DAILY_GENERATIONS_PER_ADMIN` | 10 | Generations per admin per UTC day. `Infinity` turns the per-admin cap off (the portal then hides that counter); the monthly and budget limits still apply. Production is set to `Infinity` for now |
    | `AI_DAILY_FLAG_LIMIT` | 3 | Declined notes per admin per UTC day |
    | `AI_DAILY_ATTEMPTS_PER_ADMIN` | 20 | Every reservation per admin per UTC day, failed runs included (error `AI_DAILY_LIMIT`) |
    | `AI_PLATFORM_MONTHLY_BUDGET_CENTS` | 20000 | Spend ceiling per UTC month across all companies (`aiUsagePlatform/{yyyymm}`); refused as `AI_BUDGET_EXHAUSTED` |
