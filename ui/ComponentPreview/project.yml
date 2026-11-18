@@ -35,6 +35,10 @@ targets:
       - ../DIP/Data/Events/MemberEventAppRepository.swift
       # Album image preparation (ImageIO only); the Firebase album adapter stays out of the Preview app.
       - ../DIP/Support/AlbumImageProcessing.swift
+      # Duo layout environment and the launch-flag reader that the shared Features read.
+      - ../DIP/Support/DuoLayout.swift
+      - ../DIP/App/MockLaunch.swift
+      - ../DIP/Domain/Push/PushRegistration.swift
       - ../DIP/Features/Foundation/DIPFoundationGallery.swift
       - path: ../DIP/Features
         excludes: ["**/*.md", "Foundation/DIPFoundationGallery.swift"]
