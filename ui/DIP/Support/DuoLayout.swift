@@ -116,6 +116,8 @@ extension EnvironmentValues {
 
     /// Returns true once the interaction is installed, or when the OS has no hinge API (nothing to wait for).
     @discardableResult func attachIfNeeded() -> Bool {
+        // UIHingeInteraction ships in the iOS 27.1 SDK (Swift 6.4+ toolchains); older SDKs (CI) have no hinge API.
+        #if compiler(>=6.4)
         guard #available(iOS 27.1, *) else { return true }
         if interaction != nil { return true }
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -131,6 +133,9 @@ extension EnvironmentValues {
         window.addInteraction(hinge)
         interaction = hinge
         return true
+        #else
+            return true
+        #endif
     }
 }
 
