@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,8 +10,9 @@ import {
 } from "@/lib/challenge";
 import { ApiError, type FieldErrors } from "@/lib/contract";
 import { THEMES, resolveTheme } from "@/lib/themes";
+import { t } from "@/lib/i18n";
 import {
-  THEME_TIME_ZONE_LABEL, addDays, formatWindow, lastDayOfIso, mondayOfIso, nextMonday, weekEndIso, weekStartIso,
+  themeTimeZoneLabel, addDays, formatWindow, lastDayOfIso, mondayOfIso, nextMonday, weekEndIso, weekStartIso,
 } from "@/lib/weeks";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
@@ -169,7 +171,7 @@ export function ThemeForm({ theme, onReload }: Props) {
       if (theme) await api.updateTheme(theme.id, theme.revision, candidate);
       else await api.createTheme(requestId.current, candidate);
       setSaved(true);
-      toast(editing ? `Saved changes to “${candidate.title}”.` : `Created “${candidate.title}”.`);
+      toast(t(editing ? "themeForm.toast.saved" : "themeForm.toast.created", { title: candidate.title }));
       router.push("/themes/");
     } catch (error) {
       if (error instanceof ApiError && error.reason === THEME_REASONS.overlap) {
@@ -183,7 +185,7 @@ export function ThemeForm({ theme, onReload }: Props) {
         const message = conflict
           ? overlapMessage(conflict)
           : error.conflict
-            ? `Overlaps another theme (${formatWindow(error.conflict.startDate, error.conflict.endDate)}). Pick a week without a theme.`
+            ? t("themeForm.error.overlap", { window: formatWindow(error.conflict.startDate, error.conflict.endDate) })
             : error.message;
         setErrors({ startDate: message });
         setFailure(new ApiError(error.code, message, {}, error.reason, error.conflict));
@@ -194,9 +196,7 @@ export function ThemeForm({ theme, onReload }: Props) {
       // saved revision before saving again, per the callable contract.
       const apiError = error instanceof ApiError ? error : new ApiError(
         editing ? "aborted" : "failed-precondition",
-        editing
-          ? "We couldn’t confirm whether your changes were saved. Reload the latest version to check before saving again."
-          : "Couldn’t create the theme. Your draft is kept; trying again is safe and won’t create a duplicate.",
+        t(editing ? "themeForm.error.unconfirmedSave" : "themeForm.error.createFailed"),
       );
       setFailure(apiError);
       if (apiError.fields) setErrors(apiError.fields);
@@ -216,49 +216,49 @@ export function ThemeForm({ theme, onReload }: Props) {
       <form className="form" onSubmit={submit} noValidate>
         {Object.keys(errors).length > 0 && !failure && (
           <div className="banner error" role="alert">
-            <span>Fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} to continue.</span>
+            <span>{t("themeForm.fixFields", { count: Object.keys(errors).length })}</span>
           </div>
         )}
         {failure && (
           <div className="banner error" role="alert">
             <span>{failure.message}</span>
             {failure.code === "aborted" && onReload && (
-              <Button onClick={onReload}>Reload latest</Button>
+              <Button onClick={onReload}>{t("themeForm.reloadLatest")}</Button>
             )}
           </div>
         )}
 
         <div className="section wide">
           <fieldset className="field">
-            <legend>Theme</legend>
-            <span className="hint">Each theme is a designed illustration that ships with the app. Pick one to fill in a title, description, goal and tag you can still change.</span>
-            <RadioGrid label="Theme" value={draft.coverImageURL} onChange={pickTheme} optionClassName="theme-option"
+            <legend>{t("themeForm.theme")}</legend>
+            <span className="hint">{t("themeForm.themeHint")}</span>
+            <RadioGrid label={t("themeForm.theme")} value={draft.coverImageURL} onChange={pickTheme} optionClassName="theme-option"
               describedBy={err("coverImageURL") ? "theme-first-error" : undefined} invalid={!!err("coverImageURL")}
               options={THEMES.map((option, index) => ({
                 value: option.url, label: option.displayName, id: index === 0 ? "theme-first" : undefined,
                 content: <><ThemeArt url={option.url} className="swatch" /><span>{option.displayName}</span></>,
               }))} />
             {selected.whyItsFun && (
-              <span className="hint" aria-live="polite"><strong>Why it’s fun:</strong> {selected.whyItsFun} Members post: {selected.submissionPrompt}</span>
+              <span className="hint" aria-live="polite"><strong>{t("themeForm.whyItsFun")}</strong> {selected.whyItsFun} {t("themeForm.membersPost", { prompt: selected.submissionPrompt })}</span>
             )}
             {err("coverImageURL") && <span className="error" id="theme-first-error">{err("coverImageURL")}</span>}
           </fieldset>
           <div className="field">
-            <label htmlFor="title">Title</label>
+            <label htmlFor="title">{t("themeForm.titleLabel")}</label>
             <input id="title" aria-describedby={describedBy("title", "title-hint")} value={draft.title} maxLength={THEME_LIMITS.titleMax} aria-invalid={invalid("title")} onChange={(e) => set("title", e.target.value)} />
-            <span className="hint" id="title-hint">Shown in capitals on the app’s Home card.</span>
+            <span className="hint" id="title-hint">{t("themeForm.titleHint")}</span>
             {err("title") && <span className="error" id="title-error">{err("title")}</span>}
           </div>
           <div className="field">
-            <label htmlFor="description">Description</label>
+            <label htmlFor="description">{t("themeForm.description")}</label>
             <textarea id="description" aria-describedby={describedBy("description")} value={draft.description} maxLength={THEME_LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
             {err("description") && <span className="error" id="description-error">{err("description")}</span>}
           </div>
           <fieldset className="field">
-            <legend>Tags</legend>
+            <legend>{t("themeForm.tags")}</legend>
             <div className="chips">
-              {catalog.status === "loading" && <span className="hint">Loading tags…</span>}
-              {catalog.status === "error" && <span className="hint">Couldn’t load tags. <button type="button" className="link-btn" onClick={catalog.reload}>Try again</button></span>}
+              {catalog.status === "loading" && <span className="hint">{t("themeForm.tagsLoading")}</span>}
+              {catalog.status === "error" && <span className="hint">{t("themeForm.tagsError")} <button type="button" className="link-btn" onClick={catalog.reload}>{t("themeForm.tagsRetry")}</button></span>}
               {tags.map((tag) => (
                 <ChipToggle key={tag.id} pressed={draft.tagIds.includes(tag.id)}
                   onClick={() => {
@@ -274,51 +274,49 @@ export function ThemeForm({ theme, onReload }: Props) {
         </div>
 
         <div className="section">
-          <h2>Weeks</h2>
+          <h2>{t("themeForm.weeks")}</h2>
           <div className="field">
-            <label htmlFor="start-week">First week</label>
+            <label htmlFor="start-week">{t("themeForm.firstWeek")}</label>
             <select id="start-week" value={startValue} disabled={startLocked} aria-invalid={invalid("startDate")} aria-describedby={describedBy("startDate", "weeks-hint")}
               onChange={(e) => pickStart(e.target.value)}>
-              {!startValue && <option value="">Choose a week</option>}
+              {!startValue && <option value="">{t("themeForm.chooseWeek")}</option>}
               {startOptions.map((option) => (
                 <option key={option.value} value={option.value} disabled={Boolean(option.takenBy) && option.value !== startValue}>
-                  {option.label}{option.takenBy ? ` (taken: ${option.takenBy.title})` : ""}
+                  {option.takenBy ? t("themeForm.optionTaken", { label: option.label, title: option.takenBy.title }) : option.label}
                 </option>
               ))}
             </select>
             {err("startDate") && <span className="error" id="start-week-error">{err("startDate")}</span>}
           </div>
           <div className="field">
-            <label htmlFor="end-week">Runs until</label>
+            <label htmlFor="end-week">{t("themeForm.runsUntil")}</label>
             <select id="end-week" value={endValue} aria-invalid={invalid("endDate")} aria-describedby={describedBy("endDate", "weeks-hint")}
               onChange={(e) => pickEnd(e.target.value)}>
-              {!endValue && <option value="">Choose the last day</option>}
+              {!endValue && <option value="">{t("themeForm.chooseLastDay")}</option>}
               {endOptions.map((option) => (
                 <option key={option.value} value={option.value} disabled={Boolean(option.takenBy) && option.value !== endValue}>
-                  {option.label}{option.takenBy ? ` (overlaps ${option.takenBy.title})` : ""}
+                  {option.takenBy ? t("themeForm.optionOverlaps", { label: option.label, title: option.takenBy.title }) : option.label}
                 </option>
               ))}
             </select>
             {err("endDate") && <span className="error" id="end-week-error">{err("endDate")}</span>}
           </div>
           <span className="hint" id="weeks-hint">
-            {startLocked
-              ? "The start is locked because people have joined. You can still change when it ends, as long as that isn’t in the past."
-              : `Themes run Monday 12:00 AM to Sunday 11:59 PM ${THEME_TIME_ZONE_LABEL}, for one or two weeks. Weeks that already have a theme are marked taken.`}
+            {startLocked ? t("themeForm.weeksHintLocked") : t("themeForm.weeksHint", { zone: themeTimeZoneLabel() })}
           </span>
         </div>
 
         <div className="section">
-          <h2>Goal &amp; reward</h2>
+          <h2>{t("themeForm.goalReward")}</h2>
           <div className="row">
             <div className="field">
-              <label htmlFor="goal">Goal</label>
+              <label htmlFor="goal">{t("themeForm.goal")}</label>
               <input id="goal" type="number" min={1} max={THEME_LIMITS.goalMax} step="any" inputMode="decimal" value={Number.isNaN(draft.goal) ? "" : draft.goal}
                 aria-invalid={invalid("goal")} aria-describedby={describedBy("goal")} onChange={(e) => set("goal", e.target.valueAsNumber)} />
               {err("goal") && <span className="error" id="goal-error">{err("goal")}</span>}
             </div>
             <div className="field">
-              <label htmlFor="unit">Unit</label>
+              <label htmlFor="unit">{t("themeForm.unit")}</label>
               <input id="unit" list="unit-suggestions" value={draft.goalUnit} maxLength={THEME_LIMITS.goalUnitMax}
                 aria-invalid={invalid("goalUnit")} aria-describedby={describedBy("goalUnit")} onChange={(e) => set("goalUnit", e.target.value)} />
               <datalist id="unit-suggestions">{units.map((unit) => <option key={unit} value={unit} />)}</datalist>
@@ -326,27 +324,27 @@ export function ThemeForm({ theme, onReload }: Props) {
             </div>
           </div>
           <div className="field">
-            <label htmlFor="points">Points reward</label>
+            <label htmlFor="points">{t("themeForm.pointsReward")}</label>
             <input id="points" type="number" min={0} max={THEME_LIMITS.pointsMax} step={1} inputMode="numeric" value={Number.isNaN(draft.pointsReward) ? "" : draft.pointsReward}
               aria-invalid={invalid("pointsReward")} aria-describedby={describedBy("pointsReward", "points-hint")} onChange={(e) => set("pointsReward", e.target.valueAsNumber)} />
-            <span className="hint" id="points-hint">Added to a member’s points when an organizer approves their entry (0 to {THEME_LIMITS.pointsMax}).</span>
+            <span className="hint" id="points-hint">{t("themeForm.pointsHint", { max: THEME_LIMITS.pointsMax })}</span>
             {err("pointsReward") && <span className="error" id="points-error">{err("pointsReward")}</span>}
           </div>
           {editing && theme && (
-            <p className="hint">{theme.participantCount} joined · {theme.completedCount} completed. These counts update as members take part.</p>
+            <p className="hint">{t("themeForm.counts", { joined: theme.participantCount, completed: theme.completedCount })}</p>
           )}
         </div>
 
         <div className="actions">
-          <button className="big-pill dark" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create theme"}</button>
-            <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/themes/"))}>Cancel</button>
+          <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("themeForm.saving") : editing ? t("themeForm.saveChanges") : t("themeForm.create")}</button>
+            <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/themes/"))}>{t("themeForm.cancel")}</button>
         </div>
       </form>
       <ThemePreview draft={draft} participantCount={theme?.participantCount ?? 0} />
       {discarding && (
-        <Dialog danger title="Discard your changes?" confirmLabel="Discard changes" onClose={() => setDiscarding(false)}
+        <Dialog danger title={t("themeForm.discard.title")} confirmLabel={t("themeForm.discard.confirm")}onClose={() => setDiscarding(false)}
           onConfirm={async () => { setSaved(true); router.push("/themes/"); }}>
-          <p>{editing ? "The changes you made to this theme" : "The theme you started"} won’t be saved.</p>
+          <p>{t(editing ? "themeForm.discard.bodyEdit" : "themeForm.discard.bodyNew")}</p>
         </Dialog>
       )}
     </div>

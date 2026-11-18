@@ -325,9 +325,10 @@ $ctl-h: 36px;
     .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } > .field:last-child:nth-child(even) { grid-column: 1 / -1; } }
     .bug-filters { grid-template-columns: minmax(0, 1fr) auto; &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .covers:has(.theme-option) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .table.responsive td[data-label] { position: relative; padding-left: 96px; min-height: 20px; }
-    // The label column is 96px; a longer label (other languages) wraps inside it instead of running into the value.
-    .table.responsive td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 10px; max-width: 88px; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; color: var(--muted); }
+    .table.responsive td[data-label] { display: flow-root; position: relative; padding-left: 96px; min-height: 20px; }
+    // The label column is 96px; a longer label (other languages) wraps inside it instead of running into the value. The label floats
+    // in-flow (negative margin puts it in the padding), so a label of three lines grows the row instead of overlapping the next one.
+    .table.responsive td[data-label]::before { content: attr(data-label); float: left; width: 88px; margin: 2px 0 0 -96px; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; color: var(--muted); }
     .going { justify-items: start; }
     .table-wrap:has(.responsive) { border: 0; background: transparent; overflow: visible; }
     .page-header { flex-wrap: wrap; align-items: flex-start; }
@@ -336,7 +337,7 @@ $ctl-h: 36px;
     .challenges-table td { padding-top: 4px; padding-bottom: 4px; }
     .challenges-table td:not([data-label]) { padding-left: 0; padding-right: 0; }
     .challenges-table td[data-label] { padding-left: 96px; padding-right: 0; }
-    .challenges-table td[data-label]::before { top: 4px; }
+    .challenges-table td[data-label]::before { margin-top: 0; }
     .challenges-table td.right { padding-top: 8px; .pill-btn { width: 100%; } > .muted { display: grid; place-items: center; min-height: 44px; border: 1px dashed $line-strong; border-radius: $r-ctl; font-size: 14px; } }
     .audit-detail-row td { padding: 0; }
   }

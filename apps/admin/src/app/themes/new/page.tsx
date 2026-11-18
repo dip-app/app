@@ -1,11 +1,13 @@
 "use client";
+// @i18n-migrated
 
 import { Shell } from "@/components/Shell";
 import { ThemeForm } from "@/components/ThemeForm";
+import { t } from "@/lib/i18n";
 
 export default function NewThemePage() {
   return (
-    <Shell title="New theme" subtitle="Members see it on Home when its first week starts." requires="themes.manage">
+    <Shell title={t("themeForm.new.title")} subtitle={t("themeForm.new.subtitle")} requires="themes.manage">
       <ThemeForm />
     </Shell>
   );

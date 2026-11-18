@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -12,15 +13,14 @@ import { describe, useLoad } from "@/components/useLoad";
 import type { Session } from "@/lib/api";
 import { type Member, type MemberPatch, ROLE_LABEL, type Role, can } from "@/lib/adminTypes";
 import { ApiError } from "@/lib/contract";
+import { t } from "@/lib/i18n";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button, ChipToggle, InlineNotice, Panel } from "@/components/kit";
 
-const ROLE_DESCRIPTION: Record<Role, string> = {
-  member: "Members join events and challenges in the app but can’t use the admin portal.",
-  organizer: "Organizers manage events, albums and attendees, and can read the member list.",
-  admin: "",
-};
+function roleDescription(role: Role): string {
+  return t(`memberDetail.role.description.${role}`);
+}
 
 type Action = "deactivate" | "reactivate" | "reset" | "points" | "role" | null;
 
@@ -30,8 +30,8 @@ function MemberDetail() {
   const member = useLoad((a) => a.getMember(id), id);
   const company = useLoad((a) => a.companyInfo(), "company");
   const hold = useSkeletonGate((!member.data || !company.data) && !member.error);
-  if (member.error) return <LoadError error={member.error} onRetry={member.reload} backHref="/members/" backLabel="Back to members" />;
-  if (!member.data || !company.data || hold) return <Loading label="Loading member" layout="memberDetail" />;
+  if (member.error) return <LoadError error={member.error} onRetry={member.reload} backHref="/members/" backLabel={t("memberDetail.backToMembers")} />;
+  if (!member.data || !company.data || hold) return <Loading label={t("memberDetail.loading")} layout="memberDetail" />;
   return <Editor key={`${member.data.id}-${member.data.revision}`} member={member.data} teams={company.data.teams} self={session?.uid === member.data.id} session={session}
     api={api} onSaved={(next) => member.setData(next)} onReload={member.reload} />;
 }
@@ -56,7 +56,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
   const deltaValue = Number(delta);
   const deltaValid = Number.isInteger(deltaValue) && deltaValue !== 0;
   const set = <K extends keyof MemberPatch>(key: K, value: Required<MemberPatch>[K]) => setDraft((d) => ({ ...d, [key]: value }));
-  const toggleTeam = (teamId: string) => set("teamIds", draft.teamIds.includes(teamId) ? draft.teamIds.filter((t) => t !== teamId) : [...draft.teamIds, teamId]);
+  const toggleTeam = (teamId: string) => set("teamIds", draft.teamIds.includes(teamId) ? draft.teamIds.filter((id) => id !== teamId) : [...draft.teamIds, teamId]);
 
   useUnsavedGuard(dirty);
 
@@ -71,7 +71,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
     setError(null);
     try {
       onSaved(await api.updateMember(member.id, member.revision, draft));
-      toast("Saved.");
+      toast(t("memberDetail.saved"));
     } catch (failure) {
       setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", describe(failure)));
     } finally {
@@ -84,14 +84,14 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
   return (
     <>
       <div className="toolbar">
-        <Button href="/members/">All members</Button>
-        <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? "Active" : member.status === "invited" ? "Invited" : "Deactivated"}</Info>
-        <span className="muted">Joined {formatDate(member.createdAt)}</span>
+        <Button href="/members/">{t("memberDetail.allMembers")}</Button>
+        <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? t("memberDetail.status.active") : member.status === "invited" ? t("memberDetail.status.invited") : t("memberDetail.status.deactivated")}</Info>
+        <span className="muted">{t("memberDetail.joined", { date: formatDate(member.createdAt) })}</span>
       </div>
       {error && (
         <div className="banner error" role="alert">
           <span>{error.message}</span>
-          {error.code === "aborted" && <Button variant="plain" onClick={onReload}>Reload latest</Button>}
+          {error.code === "aborted" && <Button variant="plain" onClick={onReload}>{t("memberDetail.reloadLatest")}</Button>}
         </div>
       )}
 
@@ -100,94 +100,94 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
           <div className="person big"><Avatar name={member.displayName} userId={member.id} photoURL={member.photoURL} avatarId={member.avatarId} size={64} /><div><h2 id="who">{member.displayName}</h2><p className="muted">{member.email}</p></div></div>
           <fieldset className="bare" disabled={!editable}>
           <div className="form single">
-            <div className="field"><label htmlFor="m-role">Role</label>
+            <div className="field"><label htmlFor="m-role">{t("memberDetail.field.role")}</label>
               <select id="m-role" value={draft.role} onChange={(e) => set("role", e.target.value as Role)} aria-invalid={!!fieldError("role")} disabled={self || !editable}>
                 {(["member", "organizer", "admin"] as const).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
-              <span className="hint">{self ? "You can’t change your own role." : "Organizers manage events, themes, albums and attendees. Admins also manage people and imports."}</span>
+              <span className="hint">{self ? t("memberDetail.hint.ownRole") : t("memberDetail.hint.roles")}</span>
               {fieldError("role") && <span className="error">{fieldError("role")}</span>}
             </div>
-            <fieldset className="field"><legend>Teams</legend>
-              <div className="chips">{teams.map((t) => <ChipToggle key={t.id} pressed={draft.teamIds.includes(t.id)} onClick={() => toggleTeam(t.id)}>{t.name}</ChipToggle>)}</div>
+            <fieldset className="field"><legend>{t("memberDetail.field.teams")}</legend>
+              <div className="chips">{teams.map((team) => <ChipToggle key={team.id} pressed={draft.teamIds.includes(team.id)} onClick={() => toggleTeam(team.id)}>{team.name}</ChipToggle>)}</div>
             </fieldset>
             <div className="row">
-              <div className="field"><label htmlFor="m-loc">Work location</label><input id="m-loc" value={draft.workLocation} maxLength={80} onChange={(e) => set("workLocation", e.target.value)} /></div>
-              <div className="field"><label htmlFor="m-dep">Department</label><input id="m-dep" value={draft.department} maxLength={80} onChange={(e) => set("department", e.target.value)} /></div>
+              <div className="field"><label htmlFor="m-loc">{t("memberDetail.field.workLocation")}</label><input id="m-loc" value={draft.workLocation} maxLength={80} onChange={(e) => set("workLocation", e.target.value)} /></div>
+              <div className="field"><label htmlFor="m-dep">{t("memberDetail.field.department")}</label><input id="m-dep" value={draft.department} maxLength={80} onChange={(e) => set("department", e.target.value)} /></div>
             </div>
-            <div className="field"><label htmlFor="m-job">Job title</label><input id="m-job" value={draft.jobTitle} maxLength={80} onChange={(e) => set("jobTitle", e.target.value)} /></div>
+            <div className="field"><label htmlFor="m-job">{t("memberDetail.field.jobTitle")}</label><input id="m-job" value={draft.jobTitle} maxLength={80} onChange={(e) => set("jobTitle", e.target.value)} /></div>
           </div>
           </fieldset>
-          {!editable && <InlineNotice>Read-only. Only admins can change people.</InlineNotice>}
+          {!editable && <InlineNotice>{t("memberDetail.readOnly")}</InlineNotice>}
           {editable && <div className="actions">
-            <Button variant="primary" disabled={!dirty || saving} onClick={requestSave}>{saving ? "Saving…" : "Save changes"}</Button>
-            <Button disabled={!dirty || saving} onClick={() => setDraft({ role: member.role, teamIds: member.teamIds, workLocation: member.workLocation, department: member.department, jobTitle: member.jobTitle })}>Discard</Button>
+            <Button variant="primary" disabled={!dirty || saving} onClick={requestSave}>{saving ? t("memberDetail.saving") : t("memberDetail.save")}</Button>
+            <Button disabled={!dirty || saving} onClick={() => setDraft({ role: member.role, teamIds: member.teamIds, workLocation: member.workLocation, department: member.department, jobTitle: member.jobTitle })}>{t("memberDetail.discard")}</Button>
           </div>}
         </section>
 
         {editable && <aside className="stack">
-          <Panel id="access" title="Access">
+          <Panel id="access" title={t("memberDetail.access.title")}>
             {member.status === "deactivated"
-              ? <><p className="muted">Deactivated. They can’t sign in and are hidden from events and feeds.</p><Button variant="primary" onClick={() => setAction("reactivate")}>Reactivate</Button></>
-              : <><p className="muted">Deactivating blocks sign-in and removes them from upcoming events. Their history and points stay.</p><Button variant="danger" disabled={self} onClick={() => setAction("deactivate")}>Deactivate</Button>{self && <p className="hint">You can’t deactivate yourself.</p>}</>}
+              ? <><p className="muted">{t("memberDetail.access.deactivatedNote")}</p><Button variant="primary" onClick={() => setAction("reactivate")}>{t("memberDetail.access.reactivate")}</Button></>
+              : <><p className="muted">{t("memberDetail.access.activeNote")}</p><Button variant="danger" disabled={self} onClick={() => setAction("deactivate")}>{t("memberDetail.access.deactivate")}</Button>{self && <p className="hint">{t("memberDetail.access.selfNote")}</p>}</>}
           </Panel>
-          <Panel id="pts" title="Points">
+          <Panel id="pts" title={t("memberDetail.points.title")}>
             <p className="big-number">{member.pointsBalance ?? 0}</p>
-            <Button variant="primary" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>Adjust or reset</Button>
+            <Button variant="primary" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>{t("memberDetail.points.adjustOrReset")}</Button>
           </Panel>
-          <Panel id="prof" title="Participant profile">
+          <Panel id="prof" title={t("memberDetail.profile.title")}>
             <dl className="facts">
-              <div><dt>Avatar</dt><dd>{member.avatarId ? "Chosen" : "Default"}</dd></div>
-              <div><dt>City</dt><dd>{member.city || "Not set"}</dd></div>
+              <div><dt>{t("memberDetail.profile.avatar")}</dt><dd>{member.avatarId ? t("memberDetail.profile.avatarChosen") : t("memberDetail.profile.avatarDefault")}</dd></div>
+              <div><dt>{t("memberDetail.profile.city")}</dt><dd>{member.city || t("memberDetail.profile.cityNotSet")}</dd></div>
             </dl>
-            <p className="muted">Clears what they set themselves: photo, avatar, city, interests, travel radius, availability and favorites. Identity, role, teams and points stay.</p>
-            <Button variant="danger" onClick={() => setAction("reset")}>Reset profile</Button>
+            <p className="muted">{t("memberDetail.profile.clears")}</p>
+            <Button variant="danger" onClick={() => setAction("reset")}>{t("memberDetail.profile.reset")}</Button>
           </Panel>
         </aside>}
       </div>
 
       {action === "role" && (
-        <Dialog danger={draft.role === "admin"} title={`Change ${member.displayName}’s role?`} confirmLabel={`Make ${ROLE_LABEL[draft.role]}`} busyLabel="Changing role…" onClose={() => setAction(null)}
+        <Dialog danger={draft.role === "admin"} title={t("memberDetail.role.title", { name: member.displayName })} confirmLabel={t("memberDetail.role.confirm", { role: draft.role })} busyLabel={t("memberDetail.role.busy")} onClose={() => setAction(null)}
           onConfirm={async () => { await save(); setAction(null); }}>
-          <p>{member.displayName} goes from <strong>{ROLE_LABEL[member.role]}</strong> to <strong>{ROLE_LABEL[draft.role]}</strong>.</p>
+          <p>{t("memberDetail.role.goesFrom", { name: member.displayName })}<strong>{ROLE_LABEL[member.role]}</strong>{t("memberDetail.role.goesTo")}<strong>{ROLE_LABEL[draft.role]}</strong>{t("memberDetail.role.goesEnd")}</p>
           {draft.role === "admin"
-            ? <p>Admins can edit and deactivate people, change points, import and manage the roster, and read the audit log. Only give this to someone you trust with all of that.</p>
-            : <p>{ROLE_DESCRIPTION[draft.role]}</p>}
+            ? <p>{roleDescription("admin")}</p>
+            : <p>{roleDescription(draft.role)}</p>}
           {draft.teamIds.join() !== member.teamIds.join() || draft.workLocation !== member.workLocation || draft.department !== member.department || draft.jobTitle !== member.jobTitle
-            ? <p className="muted">Your other edits on this page are saved at the same time.</p> : null}
+            ? <p className="muted">{t("memberDetail.role.otherEdits")}</p> : null}
         </Dialog>
       )}
       {action === "deactivate" && (
-        <Dialog danger title={`Deactivate ${member.displayName}?`} confirmLabel="Deactivate" reasonLabel="Why are you deactivating them?" onClose={() => setAction(null)}
-          onConfirm={async (reason) => done(await api.setMemberStatus(member.id, "deactivated", reason), "Deactivated. They can no longer sign in.")}>
-          <p>They are signed out of DIP and removed from upcoming events. You can reactivate them later.</p>
+        <Dialog danger title={t("memberDetail.deactivate.title", { name: member.displayName })} confirmLabel={t("memberDetail.access.deactivate")} reasonLabel={t("memberDetail.deactivate.reason")} onClose={() => setAction(null)}
+          onConfirm={async (reason) => done(await api.setMemberStatus(member.id, "deactivated", reason), t("memberDetail.deactivate.done"))}>
+          <p>{t("memberDetail.deactivate.body")}</p>
         </Dialog>
       )}
       {action === "reactivate" && (
-        <Dialog title={`Reactivate ${member.displayName}?`} confirmLabel="Reactivate" reasonLabel="Why are you reactivating them?" onClose={() => setAction(null)}
-          onConfirm={async (reason) => done(await api.setMemberStatus(member.id, "active", reason), "Reactivated.")}>
-          <p>They can sign in again. Events they were removed from are not restored.</p>
+        <Dialog title={t("memberDetail.reactivate.title", { name: member.displayName })} confirmLabel={t("memberDetail.access.reactivate")} reasonLabel={t("memberDetail.reactivate.reason")} onClose={() => setAction(null)}
+          onConfirm={async (reason) => done(await api.setMemberStatus(member.id, "active", reason), t("memberDetail.reactivate.done"))}>
+          <p>{t("memberDetail.reactivate.body")}</p>
         </Dialog>
       )}
       {action === "reset" && (
-        <Dialog danger title={`Reset ${member.displayName}’s profile?`} confirmLabel="Reset profile" reasonLabel="Why is the profile being reset?" onClose={() => setAction(null)}
-          onConfirm={async (reason) => done(await api.resetMemberProfile(member.id, reason), "Profile reset to defaults.")}>
-          <p>Photo, avatar, city, interests, travel radius, availability and favorites go back to defaults. This can’t be undone. Name, role, teams, location and points are kept.</p>
+        <Dialog danger title={t("memberDetail.reset.title", { name: member.displayName })} confirmLabel={t("memberDetail.profile.reset")} reasonLabel={t("memberDetail.reset.reason")} onClose={() => setAction(null)}
+          onConfirm={async (reason) => done(await api.resetMemberProfile(member.id, reason), t("memberDetail.reset.done"))}>
+          <p>{t("memberDetail.reset.body")}</p>
         </Dialog>
       )}
       {action === "points" && (
-        <Dialog danger={resetPoints} title="Change points" confirmLabel={resetPoints ? "Reset to 0" : "Apply change"} reasonLabel="Reason for the change" confirmDisabled={resetPoints ? !member.pointsBalance : !deltaValid}
+        <Dialog danger={resetPoints} title={t("memberDetail.pointsDialog.title")} confirmLabel={resetPoints ? t("memberDetail.pointsDialog.confirmReset") : t("memberDetail.pointsDialog.confirmApply")} reasonLabel={t("memberDetail.pointsDialog.reason")} confirmDisabled={resetPoints ? !member.pointsBalance : !deltaValid}
           onClose={() => { setRequestId(crypto.randomUUID()); setAction(null); }}
           onConfirm={async (reason) => {
             const next = await api.adjustPoints(member.id, requestId, resetPoints ? -(member.pointsBalance ?? 0) : deltaValue, reason);
             setRequestId(crypto.randomUUID()); // a later adjustment is a new request, never a replay
-            done(next, resetPoints ? "Points reset to 0." : `Points changed by ${deltaValue > 0 ? "+" : ""}${deltaValue}.`);
+            done(next, resetPoints ? t("memberDetail.pointsDialog.resetDone") : t("memberDetail.pointsDialog.changedDone", { delta: `${deltaValue > 0 ? "+" : ""}${deltaValue}` }));
           }}>
-          <Tabs label="Kind of change" value={resetPoints ? "reset" : "adjust"} onChange={(id) => setResetPoints(id === "reset")}
-            items={[{ id: "adjust", label: "Adjust" }, { id: "reset", label: "Reset to 0" }]} />
-          {resetPoints ? <p>The balance of {member.pointsBalance} is reduced to 0 by one adjustment.</p> : (
-            <div className="field"><label htmlFor="delta">Points to add or take away</label>
-              <input id="delta" inputMode="numeric" value={delta} placeholder="e.g. 50 or -25" onChange={(e) => setDelta(e.target.value)} aria-invalid={delta !== "" && !deltaValid} />
-              <span className="hint">Balance {member.pointsBalance ?? 0}{deltaValid ? ` becomes ${Math.max(0, (member.pointsBalance ?? 0) + deltaValue)}` : ""}. It can’t go below 0.</span>
+          <Tabs label={t("memberDetail.pointsDialog.kind")} value={resetPoints ? "reset" : "adjust"} onChange={(id) => setResetPoints(id === "reset")}
+            items={[{ id: "adjust", label: t("memberDetail.pointsDialog.tabAdjust") }, { id: "reset", label: t("memberDetail.pointsDialog.tabReset") }]} />
+          {resetPoints ? <p>{t("memberDetail.pointsDialog.resetBody", { balance: member.pointsBalance ?? "" })}</p> : (
+            <div className="field"><label htmlFor="delta">{t("memberDetail.pointsDialog.delta")}</label>
+              <input id="delta" inputMode="numeric" value={delta} placeholder={t("memberDetail.pointsDialog.deltaPlaceholder")} onChange={(e) => setDelta(e.target.value)} aria-invalid={delta !== "" && !deltaValid} />
+              <span className="hint">{deltaValid ? t("memberDetail.pointsDialog.balanceBecomes", { balance: member.pointsBalance ?? 0, next: Math.max(0, (member.pointsBalance ?? 0) + deltaValue) }) : t("memberDetail.pointsDialog.balance", { balance: member.pointsBalance ?? 0 })}</span>
             </div>
           )}
         </Dialog>
@@ -198,8 +198,8 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
 
 export default function MemberDetailPage() {
   return (
-    <Shell title="Member" subtitle="Edit details, access, points and profile. Every change is recorded in the audit log." requires="members.view">
-      <Suspense fallback={<Loading label="Loading member" layout="memberDetail" />}><MemberDetail /></Suspense>
+    <Shell title={t("memberDetail.title")} subtitle={t("memberDetail.subtitle")} requires="members.view">
+      <Suspense fallback={<Loading label={t("memberDetail.loading")} layout="memberDetail" />}><MemberDetail /></Suspense>
     </Shell>
   );
 }

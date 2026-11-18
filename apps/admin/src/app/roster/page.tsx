@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
@@ -16,14 +17,16 @@ import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button, InlineNotice } from "@/components/kit";
+import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
 type Filter = RosterState | "all";
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: "all", label: "Everyone" }, { id: "invited", label: "Invited" }, { id: "active", label: "Active" },
-  { id: "deactivated", label: "Deactivated" }, { id: "revoked", label: "Revoked" },
+const FILTERS: { id: Filter; labelKey: MessageKey }[] = [
+  { id: "all", labelKey: "roster.filter.all" }, { id: "invited", labelKey: "roster.state.invited" }, { id: "active", labelKey: "roster.state.active" },
+  { id: "deactivated", labelKey: "roster.state.deactivated" }, { id: "revoked", labelKey: "roster.state.revoked" },
 ];
-const STATE_LABEL: Record<RosterRow["state"], string> = { invited: "Invited", active: "Active", deactivated: "Deactivated", revoked: "Revoked" };
-const number = (n: number) => n.toLocaleString("en-US");
+const STATE_LABEL_KEY: Record<RosterRow["state"], MessageKey> = { invited: "roster.state.invited", active: "roster.state.active", deactivated: "roster.state.deactivated", revoked: "roster.state.revoked" };
+const EMPTY_FILTER_KEY: Record<Filter, MessageKey> = { all: "roster.empty.noPeople", invited: "roster.empty.noInvites", active: "roster.empty.noActive", deactivated: "roster.empty.noDeactivated", revoked: "roster.empty.noRevoked" };
+const number = (n: number) => formatNumber(n);
 const FILTER_IDS = FILTERS.map((item) => item.id);
 const DEFAULTS = { filter: "all", q: "" };
 const NO_FILTER = { query: "", status: "all", role: "all", teamId: "all", workLocation: "all" } as const;
@@ -69,7 +72,7 @@ function Roster() {
       const result = await api.resendInvite(row);
       list.mutate((rows) => rows.map((r) => (r.entryId === row.entryId ? { ...r, resendCount: result.resendCount, lastResentAt: result.lastResentAt } : r)));
       setResent({ row, result });
-      toast(`Resend recorded for ${row.displayName}. Copy the message to share it.`);
+      toast(t("roster.toast.resent", { name: row.displayName }));
     } catch (failure) {
       setError(describe(failure));
     } finally {
@@ -82,7 +85,7 @@ function Roster() {
     setError("");
     try {
       await api.reinvite(row);
-      toast(`${row.displayName} is invited again. They get the role and teams set here when they sign up.`);
+      toast(t("roster.toast.reinvited", { name: row.displayName }));
       list.reload();
     } catch (failure) {
       setError(describe(failure));
@@ -108,7 +111,7 @@ function Roster() {
     setBackfill({ phase: "checking", scanned: 0 });
     try {
       const total = await walkBackfill(true, (scanned) => setBackfill({ phase: "checking", scanned }));
-      if (total.created === 0) { setBackfill(null); toast("Everyone who has signed in is already on the roster. Nothing to add."); return; }
+      if (total.created === 0) { setBackfill(null); toast(t("roster.toast.nothingToAdd")); return; }
       setBackfill({ phase: "ready", created: total.created, existing: total.existing, skipped: total.skipped });
     } catch (failure) {
       setBackfill(null);
@@ -119,38 +122,38 @@ function Roster() {
   const empty = list.items.length === 0;
   const hold = useSkeletonGate(list.loading && empty);
   return (
-    <Shell title="Roster" subtitle="Everyone at your company. Invited people were added in advance and get their role and teams when they sign in; anyone with a company email can join." requires="roster.manage"
-      action={<Button variant="primary" href="/import/">Import people</Button>}>
+    <Shell title={t("roster.title")} subtitle={t("roster.subtitle")} requires="roster.manage"
+      action={<Button variant="primary" href="/import/">{t("roster.import")}</Button>}>
       {unlisted > 0 && (
         <div className="review-banner ok" role="status">
-          <span><strong>{number(unlisted)} {unlisted === 1 ? "person has" : "people have"} signed in but {unlisted === 1 ? "isn’t" : "aren’t"} on the roster.</strong> They joined before the roster listed everyone. Adding them keeps them Active with the same role and teams.</span>
-          <Button variant="primary" size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? `Checking ${number(backfill.scanned)}…` : "Add existing members to the roster"}</Button>
+          <span><strong>{t("roster.unlisted.headline", { count: unlisted })}</strong> {t("roster.unlisted.detail")}</span>
+          <Button variant="primary" size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? t("roster.unlisted.checking", { count: number(backfill.scanned) }) : t("roster.unlisted.add")}</Button>
         </div>
       )}
-      <Tabs idBase="roster" label="Filter roster" value={filter} onChange={(id) => setQs({ filter: id })}
-        items={FILTERS.map((item) => ({ id: item.id, label: item.label, ...(counts ? { count: number(counts[item.id]) } : {}) }))} />
-      <SearchBox id="roster-search" value={search} onChange={(v) => setQs({ q: v })} label="Search by name or email" placeholder="Search by name or email (press / to focus)" />
+      <Tabs idBase="roster" label={t("roster.filterLabel")} value={filter} onChange={(id) => setQs({ filter: id })}
+        items={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), ...(counts ? { count: number(counts[item.id]) } : {}) }))} />
+      <SearchBox id="roster-search" value={search} onChange={(v) => setQs({ q: v })} label={t("roster.search.label")} placeholder={t("roster.search.placeholder")} />
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div {...tabPanelProps("roster", filter)}>
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
-        : (list.loading && empty) || hold ? <Loading label="Loading roster" layout="roster" />
+        : (list.loading && empty) || hold ? <Loading label={t("roster.loading")} layout="roster" />
         : empty ? (
           <Empty
-            title={counts?.all === 0 ? "The roster is empty" : searching ? "No matches" : filter === "invited" ? "No pending invites" : `No ${FILTERS.find((item) => item.id === filter)!.label.toLowerCase()} people`}
-            body={counts?.all === 0 ? "Import a spreadsheet to add people before they sign in." : filter === "invited" && !searching ? "People you import who haven’t signed in yet show up here as Invited." : searching ? "Try a different name or email, or clear the search." : "Nobody is in this group right now."}
-            action={counts?.all === 0 ? <Button variant="primary" href="/import/">Import people</Button> : undefined}
+            title={counts?.all === 0 ? t("roster.empty.rosterEmpty") : searching ? t("roster.empty.noMatches") : t(EMPTY_FILTER_KEY[filter])}
+            body={counts?.all === 0 ? t("roster.empty.importBody") : filter === "invited" && !searching ? t("roster.empty.invitedBody") : searching ? t("roster.empty.searchBody") : t("roster.empty.groupBody")}
+            action={counts?.all === 0 ? <Button variant="primary" href="/import/">{t("roster.import")}</Button> : undefined}
           />
         ) : (
           <>
             <ResultCount>
               {!searching && counts
-                ? `Showing ${number(list.items.length)} of ${number(counts[filter])} ${counts[filter] === 1 ? "person" : "people"}`
-                : `${number(list.items.length)}${list.hasMore ? " matches so far" : list.items.length === 1 ? " person matches" : " people match"}`}
+                ? t("roster.count.showingOf", { shown: number(list.items.length), total: counts[filter] })
+                : list.hasMore ? t("roster.count.matchesSoFar", { count: number(list.items.length) }) : t("roster.count.matches", { count: list.items.length })}
             </ResultCount>
-            <TableRegion label="Roster" busy={list.loading}>
+            <TableRegion label={t("roster.tableLabel")} busy={list.loading}>
               <table className="table responsive">
-                <caption className="sr-only">Roster</caption>
-                <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Teams</th><th scope="col">Status</th><th scope="col">Added</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+                <caption className="sr-only">{t("roster.tableLabel")}</caption>
+                <thead><tr><th scope="col">{t("roster.table.name")}</th><th scope="col">{t("roster.table.role")}</th><th scope="col">{t("roster.table.teams")}</th><th scope="col">{t("roster.table.status")}</th><th scope="col">{t("roster.table.added")}</th><th scope="col"><span className="sr-only">{t("roster.table.actions")}</span></th></tr></thead>
                 <tbody>
                   {list.items.map((r) => (
                     <tr key={r.entryId}>
@@ -159,18 +162,18 @@ function Roster() {
                           ? <Link className="person" href={`/members/detail/?id=${encodeURIComponent(r.memberId)}`}><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></Link>
                           : <span className="person"><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></span>}
                       </th>
-                      <td data-label="Role">{ROLE_LABEL[r.role]}</td>
-                      <td data-label="Teams">{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
-                      <td data-label="Status">
-                        <Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{STATE_LABEL[r.state]}</Info>
-                        {r.state === "invited" && r.resendCount ? <><br /><span className="muted small-note">Resent {r.resendCount}×{r.lastResentAt ? `, last ${formatDate(r.lastResentAt)}` : ""}</span></> : null}
+                      <td data-label={t("roster.table.role")}>{ROLE_LABEL[r.role]}</td>
+                      <td data-label={t("roster.table.teams")}>{r.teamIds.map(teamName).join(", ") || <span className="muted">{t("roster.table.noTeams")}</span>}</td>
+                      <td data-label={t("roster.table.status")}>
+                        <Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{t(STATE_LABEL_KEY[r.state])}</Info>
+                        {r.state === "invited" && r.resendCount ? <><br /><span className="muted small-note">{r.lastResentAt ? t("roster.table.resentLast", { count: r.resendCount, date: formatDate(r.lastResentAt) }) : t("roster.table.resent", { count: r.resendCount })}</span></> : null}
                       </td>
-                      <td data-label="Added">{formatDate(r.invitedAt)}</td>
+                      <td data-label={t("roster.table.added")}>{formatDate(r.invitedAt)}</td>
                       <td className="right">
                         <div className="row-actions">
-                          {r.state === "invited" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={`Resend invite to ${r.displayName}`}>{busy === r.entryId ? "Resending…" : "Resend invite"}</Button>}
-                          {r.state === "invited" && <Button size="sm" className="quiet-danger" onClick={() => setRevoking(r)} aria-label={`Revoke invite for ${r.displayName}`}>Revoke</Button>}
-                          {r.state === "revoked" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={`Invite again: ${r.displayName}`}>Invite again</Button>}
+                          {r.state === "invited" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={t("roster.action.resendAria", { name: r.displayName })}>{busy === r.entryId ? t("roster.action.resending") : t("roster.action.resend")}</Button>}
+                          {r.state === "invited" && <Button size="sm" className="quiet-danger" onClick={() => setRevoking(r)} aria-label={t("roster.action.revokeAria", { name: r.displayName })}>{t("roster.action.revoke")}</Button>}
+                          {r.state === "revoked" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={t("roster.action.inviteAgainAria", { name: r.displayName })}>{t("roster.action.inviteAgain")}</Button>}
                         </div>
                       </td>
                     </tr>
@@ -184,28 +187,28 @@ function Roster() {
         )}
       </div>
       {revoking && (
-        <Dialog danger title={`Revoke ${revoking.displayName}’s invite?`} confirmLabel="Revoke invite" busyLabel="Revoking…" onClose={() => setRevoking(null)}
+        <Dialog danger title={t("roster.revoke.title", { name: revoking.displayName })} confirmLabel={t("roster.revoke.confirm")} busyLabel={t("roster.revoke.busy")} onClose={() => setRevoking(null)}
           onConfirm={async () => {
             await api.revokeRosterEntry(revoking.entryId);
             setRevoking(null);
-            toast(`Invite for ${revoking.email} revoked. They won’t get the role and teams set here when they sign up.`);
+            toast(t("roster.toast.revoked", { email: revoking.email }));
             list.reload();
           }}>
-          <p>{revoking.email} stays able to sign in with a work account, but won’t get the role, teams and location set here. You can import them again later.</p>
+          <p>{t("roster.revoke.body", { email: revoking.email })}</p>
         </Dialog>
       )}
       {resent && <ResendDialog row={resent.row} result={resent.result} onClose={() => setResent(null)} />}
       {backfill?.phase === "ready" && (
-        <Dialog title="Add existing members to the roster?" confirmLabel={`Add ${number(backfill.created)} ${backfill.created === 1 ? "person" : "people"}`} busyLabel="Adding people…" onClose={() => setBackfill(null)}
+        <Dialog title={t("roster.backfill.title")} confirmLabel={t("roster.backfill.confirm", { count: backfill.created })} busyLabel={t("roster.backfill.busy")} onClose={() => setBackfill(null)}
           onConfirm={async () => {
             const total = await walkBackfill(false);
             setBackfill(null);
-            toast(`Added ${number(total.created)} ${total.created === 1 ? "person" : "people"} to the roster.`);
+            toast(t("roster.toast.added", { count: total.created }));
             list.reload();
             members.reload();
           }}>
-          <p>{number(backfill.created)} {backfill.created === 1 ? "person has" : "people have"} signed in but {backfill.created === 1 ? "isn’t" : "aren’t"} on the roster. They are added as Active with their current role and teams.</p>
-          <p>{number(backfill.existing)} already listed stay as they are{backfill.skipped ? `, ${number(backfill.skipped)} without an email are skipped` : ""}. Nobody is emailed, and it is safe to run again.</p>
+          <p>{t("roster.backfill.signedIn", { count: backfill.created })}</p>
+          <p>{backfill.skipped ? t("roster.backfill.existingSkipped", { count: number(backfill.existing), skipped: number(backfill.skipped) }) : t("roster.backfill.existing", { count: number(backfill.existing) })}</p>
         </Dialog>
       )}
     </Shell>
@@ -213,28 +216,28 @@ function Roster() {
 }
 
 export default function RosterPage() {
-  return <Suspense fallback={<Loading label="Loading roster" layout="roster" />}><Roster /></Suspense>;
+  return <Suspense fallback={<Loading label={t("roster.loading")} layout="roster" />}><Roster /></Suspense>;
 }
 
 /** DIP sends no email: the resend is recorded and this is what the admin shares through their own channel. */
 function ResendDialog({ row, result, onClose }: { row: RosterRow; result: ResendResult; onClose: () => void }) {
   return (
-    <Dialog title={`Invite message for ${row.displayName}`} confirmLabel="Copy message" busyLabel="Copying…" onClose={onClose}
+    <Dialog title={t("roster.message.title", { name: row.displayName })} confirmLabel={t("roster.message.copy")} busyLabel={t("roster.message.copying")} onClose={onClose}
       onConfirm={async () => {
         try {
           await navigator.clipboard.writeText(result.message);
         } catch {
           document.querySelector<HTMLTextAreaElement>("#invite-message")?.select(); // clipboard blocked: leave the text selected to copy by hand
-          throw new Error("Couldn’t copy automatically. The message is selected: copy it with Ctrl+C or Cmd+C.");
+          throw new Error(t("roster.message.copyFailed"));
         }
-        toast("Invite message copied.");
+        toast(t("roster.toast.copied"));
         onClose();
       }}>
-      <p><strong>DIP doesn’t send email, so share this message with {row.email} yourself.</strong> The resend is recorded ({result.resendCount}×).</p>
+      <p><strong>{t("roster.message.intro", { email: row.email })}</strong> {t("roster.message.recorded", { count: result.resendCount })}</p>
       <div className="field">
-        <label htmlFor="invite-message">Message</label>
+        <label htmlFor="invite-message">{t("roster.message.label")}</label>
         <textarea id="invite-message" readOnly rows={5} value={result.message} />
-        <span className="hint">Link: {result.signInUrl}</span>
+        <span className="hint">{t("roster.message.link", { url: result.signInUrl })}</span>
       </div>
     </Dialog>
   );

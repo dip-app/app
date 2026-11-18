@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -12,15 +13,16 @@ import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanRow } from
 import { browserStore } from "@/lib/api";
 import { ApiError } from "@/lib/contract";
 import { downloadText } from "@/lib/csv";
-import { FIELD_LABEL, type ParsedImport, type RawFile, errorCsv, planCounts, readRawFile, templateCsv, validRows } from "@/lib/importFile";
+import { type ParsedImport, fieldLabel, type RawFile, errorCsv, planCounts, readRawFile, templateCsv, validRows } from "@/lib/importFile";
 import { applyAll, planAll } from "@/lib/importRun";
+import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { Button, InlineNotice, Panel } from "@/components/kit";
 
 type Phase = "choose" | "map" | "checking" | "preview" | "applying" | "done";
-const STEPS: { id: string; label: string; phases: Phase[] }[] = [
-  { id: "file", label: "Upload", phases: ["choose"] }, { id: "map", label: "Match columns", phases: ["map"] },
-  { id: "review", label: "Review", phases: ["checking", "preview"] }, { id: "apply", label: "Import", phases: ["applying", "done"] },
+const STEPS: { id: string; labelKey: MessageKey; phases: Phase[] }[] = [
+  { id: "file", labelKey: "import.step.file", phases: ["choose"] }, { id: "map", labelKey: "import.step.map", phases: ["map"] },
+  { id: "review", labelKey: "import.step.review", phases: ["checking", "preview"] }, { id: "apply", labelKey: "import.step.apply", phases: ["applying", "done"] },
 ];
 /**
  * An import that was started survives a reload, a closed tab and a new session in this browser: the server keeps the cursor, so only
@@ -28,7 +30,8 @@ const STEPS: { id: string; label: string; phases: Phase[] }[] = [
  */
 interface SavedJob { jobId: string; planHash: string; lines: number[]; fileName: string }
 const jobKey = (companyId: string) => `dip-admin-import-job-v1:${companyId}`;
-const ACTION_LABEL: Record<PlanAction, string> = { create: "New", update: "Update", unchanged: "No change", invalid: "Invalid" };
+const ACTION_KEY: Record<PlanAction, MessageKey> = { create: "import.action.create", update: "import.action.update", unchanged: "import.action.unchanged", invalid: "import.action.invalid" };
+const STAT_KEY = { create: "import.stat.create", update: "import.stat.update", unchanged: "import.stat.unchanged", invalid: "import.stat.invalid" } as const;
 const PREVIEW_PAGE = 50;
 interface ResultRow { line: number; email: string; outcome: "created" | "updated" | "unchanged" | "failed"; message?: string }
 
@@ -84,7 +87,8 @@ export default function ImportPage() {
         if (info.nextChunk >= info.chunkCount) {
           // It finished (this tab or another): nothing to continue, say what happened instead.
           forget();
-          setResumeNote(`${job.fileName || "Your last import"} finished: ${info.progress.created} added, ${info.progress.updated} updated, ${info.progress.unchanged} unchanged${info.progress.failed ? `, ${info.progress.failed} failed` : ""}.`);
+          const { created, updated, unchanged, failed } = info.progress;
+          setResumeNote(t(failed ? "import.resume.finishedFailed" : "import.resume.finished", { file: job.fileName || t("import.resume.lastImport"), created, updated, unchanged, failed }));
         } else {
           setUnfinished({ ...job, info });
         }
@@ -132,7 +136,7 @@ export default function ImportPage() {
       setLines(validRows(result).lines);
       setPhase("preview");
     } catch (failure) {
-      setError(describe(failure, "The preview couldn’t be built. Nothing was changed. Try again."));
+      setError(describe(failure, t("import.preview.failed")));
       setPhase("map");
     }
   }
@@ -156,7 +160,7 @@ export default function ImportPage() {
       setPhase("done");
     } catch (failure) {
       // Finished chunks are kept; "Continue" asks the server for the next one and is safe to repeat.
-      setError(describe(failure, "The import stopped partway. Finished rows are saved. Continue to retry the rest."));
+      setError(describe(failure, t("import.applying.stopped")));
     }
   }
 
@@ -176,12 +180,12 @@ export default function ImportPage() {
   const outcome = (name: ResultRow["outcome"]) => results.filter((r) => r.outcome === name).length;
 
   return (
-    <Shell title="Import people" subtitle="Add or update many people from a spreadsheet. You see exactly what changes before anything is saved." requires="import.run"
-      action={<Button href="/roster/">Roster</Button>}>
-      <ol className="steps" aria-label="Import steps">
+    <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run"
+      action={<Button href="/roster/">{t("import.roster")}</Button>}>
+      <ol className="steps" aria-label={t("import.steps.label")}>
         {STEPS.map((step, i) => (
           <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>
-            <span className="step-n">{i + 1}</span><span className="step-label">{step.label}</span>
+            <span className="step-n">{i + 1}</span><span className="step-label">{t(step.labelKey)}</span>
           </li>
         ))}
       </ol>
@@ -189,43 +193,45 @@ export default function ImportPage() {
         <>
           {resumeNote && <InlineNotice>{resumeNote}</InlineNotice>}
           {unfinished && (
-            <Panel id="resume-h" title="Unfinished import">
+            <Panel id="resume-h" title={t("import.unfinished.title")}>
               <p className="muted">
-                {unfinished.fileName || "An import"} was being applied when this page closed.
-                {unfinished.info && <> {unfinished.info.progress.processed.toLocaleString("en-US")} of {unfinished.info.progress.total.toLocaleString("en-US")} rows are done ({unfinished.info.nextChunk} of {unfinished.info.chunkCount} batches).</>}
-                {" "}DIP remembers how far it got, so continuing won’t repeat finished rows or change the counts.
+                {[
+                  t("import.unfinished.closed", { file: unfinished.fileName || t("import.unfinished.anImport") }),
+                  unfinished.info && t("import.unfinished.progress", { processed: formatNumber(unfinished.info.progress.processed), total: formatNumber(unfinished.info.progress.total), chunk: unfinished.info.nextChunk, chunks: unfinished.info.chunkCount }),
+                  t("import.unfinished.remembers"),
+                ].filter(Boolean).join(" ")}
               </p>
-              <div className="actions"><Button variant="primary" onClick={() => resumeSaved(unfinished)}>Continue import</Button><Button onClick={() => setDismissing(true)}>Dismiss</Button></div>
+              <div className="actions"><Button variant="primary" onClick={() => resumeSaved(unfinished)}>{t("import.unfinished.continue")}</Button><Button onClick={() => setDismissing(true)}>{t("import.unfinished.dismiss")}</Button></div>
 </Panel>
           )}
           {error && <InlineNotice tone="error">{error}</InlineNotice>}
           <div className="detail-layout">
-            <Panel id="up" title="1. Choose a file">
+            <Panel id="up" title={t("import.choose.title")}>
               <div
                 className={`dropzone${dragging ? " over" : ""}`}
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
                 onDrop={(e) => { e.preventDefault(); setDragging(false); void choose(e.dataTransfer.files[0]); }}
               >
-                <p>Drop a .csv or .xlsx file here, or</p>
+                <p>{t("import.choose.drop")}</p>
                 <label className="pill-btn dark file-btn">
-                  Choose file
+                  {t("import.choose.button")}
                   <input ref={input} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => void choose(e.target.files?.[0])} />
                 </label>
-                <p className="hint">Up to {IMPORT_LIMITS.maxRows.toLocaleString()} rows and {IMPORT_LIMITS.maxBytes / 1024 / 1024} MB. The file is read in your browser; only the checked rows are sent.</p>
+                <p className="hint">{t("import.choose.limits", { rows: formatNumber(IMPORT_LIMITS.maxRows), mb: IMPORT_LIMITS.maxBytes / 1024 / 1024 })}</p>
               </div>
 </Panel>
             <aside className="stack">
-              <Panel id="tpl" title="Need the format?">
-                <p className="muted">The template has every column with one example row.</p>
-                <Button variant="primary" onClick={() => downloadText("dip-people-template.csv", templateCsv(domain))}>Download template</Button>
+              <Panel id="tpl" title={t("import.template.title")}>
+                <p className="muted">{t("import.template.body")}</p>
+                <Button variant="primary" onClick={() => downloadText("dip-people-template.csv", templateCsv(domain))}>{t("import.template.download")}</Button>
 </Panel>
-              <Panel id="rules" title="How it works">
+              <Panel id="rules" title={t("import.rules.title")}>
                 <ul className="plain">
-                  <li>You match your columns to ours next, so any header names work. Email is the key: people are matched by lowercase email{domain && <> and must end in <strong>@{domain}</strong></>}.</li>
-                  <li>Teams are separated by semicolons. Unknown teams are flagged.</li>
-                  <li>Blank cells keep the current value. Points and sign-in data are never touched.</li>
-                  <li>People who haven’t signed in yet appear on the roster as Invited and get these details when they join.</li>
-                  <li>Running the same file twice changes nothing the second time.</li>
+                  <li>{t("import.rules.match")}{domain && <> {t("import.rules.matchDomain")} <strong>@{domain}</strong></>}.</li>
+                  <li>{t("import.rules.teams")}</li>
+                  <li>{t("import.rules.blank")}</li>
+                  <li>{t("import.rules.invited")}</li>
+                  <li>{t("import.rules.twice")}</li>
                 </ul>
 </Panel>
             </aside>
@@ -242,10 +248,10 @@ export default function ImportPage() {
 
       {phase === "checking" && (
         <section className="panel" aria-live="polite">
-          <h2>3. Checking {fileName}</h2>
-          <progress className="progress" aria-label="Checking rows" />
-          <p className="muted">{progress.total ? `Checking ${progress.total} ${progress.total === 1 ? "row" : "rows"}. Nothing is saved yet.` : "Reading the file…"}</p>
-          <Loading label="Checking rows" layout="importPreview" />
+          <h2>{t("import.checking.title", { file: fileName })}</h2>
+          <progress className="progress" aria-label={t("import.checking.label")} />
+          <p className="muted">{progress.total ? t("import.checking.rows", { count: progress.total }) : t("import.checking.reading")}</p>
+          <Loading label={t("import.checking.label")} layout="importPreview" />
         </section>
       )}
 
@@ -253,49 +259,49 @@ export default function ImportPage() {
         <>
           <div className="toolbar">
             <Info>{fileName}</Info>
-            <span className="muted">Preview only. Nothing has been saved.</span>
+            <span className="muted">{t("import.preview.only")}</span>
             <span className="spacer" />
-            <Button onClick={() => setPhase("map")}>Back to columns</Button>
-            {counts.invalid > 0 && <Button onClick={() => downloadText("import-errors.csv", errorCsv(rows.filter((r) => r.action === "invalid")))}>Download error CSV</Button>}
-            <Button variant="primary" disabled={changes === 0} onClick={() => setConfirming(true)}>Apply {changes} {changes === 1 ? "change" : "changes"}</Button>
+            <Button onClick={() => setPhase("map")}>{t("import.preview.back")}</Button>
+            {counts.invalid > 0 && <Button onClick={() => downloadText("import-errors.csv", errorCsv(rows.filter((r) => r.action === "invalid")))}>{t("import.preview.errorCsv")}</Button>}
+            <Button variant="primary" disabled={changes === 0} onClick={() => setConfirming(true)}>{t("import.apply", { count: changes })}</Button>
           </div>
-          {parsed.unknownColumns.length > 0 && <InlineNotice>Ignored columns: {parsed.unknownColumns.join(", ")}.</InlineNotice>}
-          <div className="stats" role="group" aria-label="Preview summary">
+          {parsed.unknownColumns.length > 0 && <InlineNotice>{t("import.preview.ignored", { columns: parsed.unknownColumns.join(", ") })}</InlineNotice>}
+          <div className="stats" role="group" aria-label={t("import.preview.summary")}>
             {(["create", "update", "unchanged", "invalid"] as const).map((a) => (
               <button key={a} className="stat" aria-pressed={filter === a} onClick={() => { setFilter(filter === a ? "all" : a); setShown(PREVIEW_PAGE); }}>
-                <span className="stat-n">{counts[a]}</span><span>{a === "create" ? "To create" : a === "update" ? "To update" : a === "unchanged" ? "Unchanged" : "Invalid"}</span>
+                <span className="stat-n">{counts[a]}</span><span>{t(STAT_KEY[a])}</span>
               </button>
             ))}
           </div>
-          {visible.length === 0 ? <Empty title="Nothing in this group" body="Pick another group above or show all rows." action={<Button variant="primary" onClick={() => setFilter("all")}>Show all</Button>} /> : (
+          {visible.length === 0 ? <Empty title={t("import.preview.emptyTitle")} body={t("import.preview.emptyBody")} action={<Button variant="primary" onClick={() => setFilter("all")}>{t("import.preview.showAll")}</Button>} /> : (
             <>
-              <TableRegion label="Import preview">
+              <TableRegion label={t("import.preview.table")}>
                 <table className="table responsive">
-                  <caption className="sr-only">Import preview</caption>
-                  <thead><tr><th scope="col">Line</th><th scope="col">Email</th><th scope="col">Result</th><th scope="col">Changes</th></tr></thead>
+                  <caption className="sr-only">{t("import.preview.table")}</caption>
+                  <thead><tr><th scope="col">{t("import.preview.line")}</th><th scope="col">{t("import.preview.email")}</th><th scope="col">{t("import.preview.result")}</th><th scope="col">{t("import.preview.changes")}</th></tr></thead>
                   <tbody>
                     {visible.slice(0, shown).map((r) => (
                       <tr key={r.line}>
-                        <td data-label="Line">{r.line}</td>
-                        <td data-label="Email">{r.email || <span className="muted">(blank)</span>}</td>
-                        <td data-label="Result"><Info tone={r.action === "invalid" ? "warn" : r.action === "unchanged" ? undefined : "ok"}>{ACTION_LABEL[r.action]}</Info></td>
-                        <td data-label="Changes">
+                        <td data-label={t("import.preview.line")}>{r.line}</td>
+                        <td data-label={t("import.preview.email")}>{r.email || <span className="muted">{t("import.preview.blank")}</span>}</td>
+                        <td data-label={t("import.preview.result")}><Info tone={r.action === "invalid" ? "warn" : r.action === "unchanged" ? undefined : "ok"}>{t(ACTION_KEY[r.action])}</Info></td>
+                        <td data-label={t("import.preview.changes")}>
                           {r.errors.map((e) => <p key={e} className="error">{e}</p>)}
                           {r.changes.length > 0 && (
                             <ul className="diff">
                               {r.changes.map((c) => (
-                                <li key={c.field}><strong>{FIELD_LABEL[c.field as keyof typeof FIELD_LABEL] ?? c.field}</strong> <span className="before">{c.before || "empty"}</span> <span aria-label="becomes">→</span> <span className="after">{c.after}</span></li>
+                                <li key={c.field}><strong>{fieldLabel(c.field)}</strong> <span className="before">{c.before || t("import.preview.empty")}</span> <span aria-label={t("import.preview.becomes")}>→</span> <span className="after">{c.after}</span></li>
                               ))}
                             </ul>
                           )}
-                          {r.action === "unchanged" && <span className="muted">Already up to date</span>}
+                          {r.action === "unchanged" && <span className="muted">{t("import.preview.upToDate")}</span>}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </TableRegion>
-              {visible.length > shown && <LoadMore shown={shown} total={visible.length} loading={false} label="Show more rows" onClick={() => setShown((n) => n + PREVIEW_PAGE)} />}
+              {visible.length > shown && <LoadMore shown={shown} total={visible.length} loading={false} label={t("import.preview.more")} onClick={() => setShown((n) => n + PREVIEW_PAGE)} />}
             </>
           )}
         </>
@@ -303,15 +309,15 @@ export default function ImportPage() {
 
       {phase === "applying" && (
         <section className="panel" aria-live="polite">
-          <h2>Applying changes</h2>
-          <progress className="progress" value={progress.done} max={Math.max(progress.total, 1)} aria-label="Import progress" />
-          <p className="muted">{progress.done} of {progress.total} rows processed. Keep this page open.</p>
+          <h2>{t("import.applying.title")}</h2>
+          <progress className="progress" value={progress.done} max={Math.max(progress.total, 1)} aria-label={t("import.applying.progress")} />
+          <p className="muted">{t("import.applying.status", { done: progress.done, total: progress.total })}</p>
           {error && (
             <>
               <InlineNotice tone="error">{error}</InlineNotice>
               <div className="actions">
-                <Button variant="primary" onClick={() => void apply(true)}>Continue</Button>
-                <Button onClick={() => setStopping(true)}>Stop here</Button>
+                <Button variant="primary" onClick={() => void apply(true)}>{t("import.applying.continue")}</Button>
+                <Button onClick={() => setStopping(true)}>{t("import.applying.stop")}</Button>
               </div>
             </>
           )}
@@ -319,42 +325,45 @@ export default function ImportPage() {
       )}
 
       {phase === "done" && (
-        <Panel id="done" title={<>{failed.length || !finished ? "Import finished with problems" : "Import complete"}</>}>
-          <div className="stats" role="group" aria-label="Import result">
-            <div className="stat"><span className="stat-n">{serverCounts?.created ?? outcome("created")}</span><span>Added to roster</span></div>
-            <div className="stat"><span className="stat-n">{serverCounts?.updated ?? outcome("updated")}</span><span>Updated</span></div>
-            <div className="stat"><span className="stat-n">{serverCounts?.unchanged ?? outcome("unchanged")}</span><span>Unchanged</span></div>
-            <div className="stat"><span className="stat-n">{failed.length + previewInvalid.size}</span><span>Skipped</span></div>
+        <Panel id="done" title={<>{failed.length || !finished ? t("import.done.problems") : t("import.done.complete")}</>}>
+          <div className="stats" role="group" aria-label={t("import.done.result")}>
+            <div className="stat"><span className="stat-n">{serverCounts?.created ?? outcome("created")}</span><span>{t("import.done.added")}</span></div>
+            <div className="stat"><span className="stat-n">{serverCounts?.updated ?? outcome("updated")}</span><span>{t("import.done.updated")}</span></div>
+            <div className="stat"><span className="stat-n">{serverCounts?.unchanged ?? outcome("unchanged")}</span><span>{t("import.stat.unchanged")}</span></div>
+            <div className="stat"><span className="stat-n">{failed.length + previewInvalid.size}</span><span>{t("import.done.skipped")}</span></div>
           </div>
-          {!finished && <InlineNotice>The import stopped early. Choose the same file again to run it once more: finished rows won’t change.</InlineNotice>}
+          {!finished && <InlineNotice>{t("import.done.stoppedEarly")}</InlineNotice>}
           <div className="actions">
-            <Button variant="primary" href="/roster/">See the roster</Button>
+            <Button variant="primary" href="/roster/">{t("import.done.seeRoster")}</Button>
             {(failed.length > 0 || counts.invalid > 0) && (
               <Button onClick={() => downloadText("import-errors.csv", errorCsv([
-        ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.message ?? "Failed"] })),
-       ]))}>Download error CSV</Button>
+        ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.message ?? t("import.done.failed")] })),
+       ]))}>{t("import.preview.errorCsv")}</Button>
             )}
-            <Button onClick={startOver}>Import another file</Button>
+            <Button onClick={startOver}>{t("import.done.another")}</Button>
           </div>
 </Panel>
       )}
 
       {stopping && (
-        <Dialog danger title="Stop the import here?" confirmLabel="Stop import" busyLabel="Stopping…" onClose={() => setStopping(false)}
+        <Dialog danger title={t("import.stop.title")} confirmLabel={t("import.stop.confirm")} busyLabel={t("import.stop.busy")} onClose={() => setStopping(false)}
           onConfirm={async () => { setStopping(false); setPhase("done"); }}>
-          <p>Rows that were already imported stay. The rest are not imported. To finish later, choose the same file again: finished rows won’t change.</p>
+          <p>{t("import.stop.body")}</p>
         </Dialog>
       )}
       {dismissing && (
-        <Dialog danger title="Dismiss the unfinished import?" confirmLabel="Dismiss import" busyLabel="Dismissing…" onClose={() => setDismissing(false)}
+        <Dialog danger title={t("import.dismiss.title")} confirmLabel={t("import.dismiss.confirm")} busyLabel={t("import.dismiss.busy")} onClose={() => setDismissing(false)}
           onConfirm={async () => { discardSaved(); setDismissing(false); }}>
-          <p>Rows that were already imported stay. You won’t be able to continue this import from here. To finish it, choose the same file again: finished rows won’t change.</p>
+          <p>{t("import.dismiss.body")}</p>
         </Dialog>
       )}
       {confirming && (
-        <Dialog title="Apply this import?" confirmLabel={`Apply ${changes} ${changes === 1 ? "change" : "changes"}`} busyLabel="Starting import…" onClose={() => setConfirming(false)} onConfirm={async () => { void apply(false); }}>
-          <p>{counts.create} new {counts.create === 1 ? "person is" : "people are"} added to the roster and {counts.update} existing {counts.update === 1 ? "record is" : "records are"} updated.
-            {counts.invalid > 0 && <> {counts.invalid} invalid {counts.invalid === 1 ? "row is" : "rows are"} skipped.</>} The import is recorded in the audit log.</p>
+        <Dialog title={t("import.confirm.title")} confirmLabel={t("import.apply", { count: changes })} busyLabel={t("import.confirm.busy")} onClose={() => setConfirming(false)} onConfirm={async () => { void apply(false); }}>
+          <p>{[
+            t("import.confirm.added", { create: counts.create, update: counts.update }),
+            counts.invalid > 0 && t("import.confirm.skipped", { count: counts.invalid }),
+            t("import.confirm.audit"),
+          ].filter(Boolean).join(" ")}</p>
         </Dialog>
       )}
     </Shell>
