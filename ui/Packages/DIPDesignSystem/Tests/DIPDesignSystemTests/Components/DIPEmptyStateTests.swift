@@ -1,3 +1,4 @@
+import Metal
 import XCTest
 
 @testable import DIPDesignSystem
@@ -31,7 +32,14 @@ final class DIPEmptyStateTests: XCTestCase {
     }
 
     #if canImport(SwiftUI)
-        @MainActor func testRendersEveryStyleFaceCountAndAccessibilityTextSize() {
+        /// ImageRenderer needs a real GPU. Hosted CI runners have none (Metal asserts and aborts the
+        /// whole test process), so the render smoke test is skipped there; all logic tests still run.
+        private var metalRenderingUnavailable: Bool {
+            ProcessInfo.processInfo.environment["DIP_DISABLE_METAL"] != nil || MTLCreateSystemDefaultDevice() == nil
+        }
+
+        @MainActor func testRendersEveryStyleFaceCountAndAccessibilityTextSize() throws {
+            try XCTSkipIf(metalRenderingUnavailable, "No Metal device (CI runner); skipping GPU-backed render")
             for style in [DIPEmptyState.Style.card, .compact] {
                 for faces in [-1, 0, 2, 9] {
                     for size in [DynamicTypeSize.large, .accessibility5] {
