@@ -4,6 +4,7 @@ import type {
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
   EventIdeaContext, EventIdeaSuggestions, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
+import type { PickEventCoverInput, PickEventCoverResult } from "./covers";
 import type { TagStat } from "./tagStats";
 
 /**
@@ -91,6 +92,8 @@ export interface AdminOpsApi {
   generateEventDrafts(input: GenerateDraftsInput): Promise<GenerateDraftsResult>;
   /** getEventIdeaSuggestionsV1: per-step suggestions (Jev, then the OpenAI fallback, then a heuristic). One call per `sessionId`, cached by the server. */
   eventIdeaSuggestions(sessionId: string): Promise<EventIdeaSuggestions>;
+  /** pickEventCoverV1: Dipbot picks a cover from the library for the event text. Nothing is stored; the form applies the result. */
+  pickEventCover(input: PickEventCoverInput): Promise<PickEventCoverResult>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

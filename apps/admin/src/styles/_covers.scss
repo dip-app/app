@@ -1,0 +1,70 @@
+@use "@/styles/variables.scss" as *;
+
+// Cover picker (components/CoverPicker.tsx): preview row, one-row toolbar, and a thumbnail grid in its own bordered
+// scroll region. Follows pro.scss: hairline borders, 4-8px radii, 36px controls, purple only for the selected state.
+$line: #e2e4ec;
+$line-strong: #c4c8d6;
+$ctl-border: #8a8fa5;
+$subtle: #f6f7fa;
+
+.content .cover-picker {
+  display: grid; gap: 10px; min-width: 0; max-width: 760px;
+
+  // ---------- Preview row: 160x100 image, then title + Dipbot button on one row
+  .cp-top { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .cp-preview { position: relative; aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; background: $subtle; box-shadow: inset 0 0 0 1px $line;
+    img { width: 100%; height: 100%; object-fit: cover; display: block; } }
+  .cp-empty-preview { width: 100%; height: 100%; display: grid; place-items: center; font-size: 13px; color: var(--muted); border: 1px dashed $line-strong; border-radius: 8px; }
+  .cp-badge { position: absolute; left: 6px; bottom: 6px; padding: 2px 8px; border-radius: 999px; background: var(--primary); color: $white; font-size: 11px; font-weight: 600; line-height: 18px; }
+  .cp-selected { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+  .cp-selected-text { display: grid; gap: 2px; flex: 1 1 140px; min-width: 0; }
+  .cp-selected-label { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .cp-selected-meta { font-size: 13px; color: var(--muted); }
+  .cp-dipbot { flex: none; gap: 6px; padding: 0 12px; svg { flex: none; } }
+  .cp-cost { font-size: 12px; font-weight: 500; color: var(--muted); padding-left: 6px; margin-left: 2px; border-left: 1px solid $line-strong; }
+  .cp-dipbot[aria-busy="true"] { cursor: progress; }
+  .cp-note { flex-basis: 100%; font-size: 13px; color: $ink; &.error { color: var(--error); } &:empty { display: none; } }
+
+  // ---------- Toolbar: search + theme select on one row; the count sits under the grid
+  .cp-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 220px); gap: 8px; align-items: center; }
+  .cp-search, .cp-theme { height: 36px; min-width: 0; width: 100%; padding: 0 10px; font-size: 14px; background: $white; border: 1px solid $ctl-border; border-radius: 6px;
+    &:hover:not(:focus) { border-color: #5f6478; } }
+  .cp-theme { padding-right: 6px; }
+  .cp-count { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+  // ---------- Scroll region: fixed height so filtering never moves the page below
+  .cp-region-wrap { position: relative; &::after { content: ""; position: absolute; left: 1px; right: 1px; bottom: 1px; height: 12px; border-radius: 0 0 5px 5px; pointer-events: none; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), $white); } }
+  .cp-region { height: 320px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; background: $white; border: 1px solid $ctl-border; border-radius: 6px; }
+  .cp-no-results { height: 100%; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; font-size: 14px; p { margin: 0; overflow-wrap: anywhere; } }
+  .cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+  .cp-tile { display: grid; gap: 4px; padding: 0; background: none; border: 0; text-align: left; cursor: pointer; border-radius: 8px; min-width: 0; color: $ink; font: inherit; align-content: start; }
+  .cp-thumb { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: 8px; background: $subtle; // skeleton until the image paints
+    img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 8px; transition: filter .12s ease; }
+    &::after { content: ""; position: absolute; inset: 0; border-radius: 8px; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(30, 33, 43, .12); } }
+  .cp-label { font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cp-tile:hover .cp-thumb img { filter: brightness(1.06); }
+  // Selected: white inner ring + purple outer ring, so it reads on both photos and saturated illustrations.
+  .cp-tile[aria-checked="true"] .cp-thumb::after { box-shadow: inset 0 0 0 2px $white, 0 0 0 2px var(--primary); }
+  .cp-tile[aria-checked="true"] .cp-label { font-weight: 600; }
+  .cp-tile:focus-visible { outline: none; }
+  .cp-tile:focus-visible .cp-thumb { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .cp-check { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; color: var(--primary); border-radius: 50%; box-shadow: 0 0 0 1.5px $white; }
+
+  &.compact .cp-region { height: 280px; }
+  &.compact .cp-top { grid-template-columns: 132px minmax(0, 1fr); }
+
+  @media (max-width: 699px) {
+    // Preview and title side by side, the Dipbot button (with its cost) full width underneath.
+    .cp-top, &.compact .cp-top { grid-template-columns: 104px minmax(0, 1fr); align-items: center; }
+    .cp-selected { display: contents; }
+    .cp-selected-text { grid-column: 2; grid-row: 1; }
+    .cp-dipbot { grid-column: 1 / -1; width: 100%; min-height: 44px; justify-content: center; }
+    .cp-note { grid-column: 1 / -1; }
+    .cp-selected-label { font-size: 14px; }
+    .cp-toolbar { grid-template-columns: minmax(0, 1fr) 156px; }
+    .cp-theme { padding: 0 4px; font-size: 13px; }
+    .cp-region, &.compact .cp-region { height: 260px; }
+    .cp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (prefers-reduced-motion: reduce) { .cp-thumb img { transition: none; } }
+}

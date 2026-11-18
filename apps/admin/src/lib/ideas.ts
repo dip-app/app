@@ -6,7 +6,8 @@ import type {
   AiBudget, AiDaypart, AiEventChoices, AiGoal, AiGroupSize, AiSetting, AiTiming, AiVenueType, GeneratedEventDraft,
 } from "./adminTypes";
 import { type AiStringKey, t } from "./aiStrings";
-import { COVERS, TAG_IDS } from "./catalog";
+import { TAG_IDS } from "./catalog";
+import { coverByURL } from "./covers";
 import type { EventDraft } from "./contract";
 
 export const MAX_FOCUS = 3;
@@ -178,7 +179,7 @@ export function draftToPrefill(d: GeneratedEventDraft, knownTagIds: readonly str
     title: d.title,
     description: d.description,
     tagIds: d.tagIds.filter((id) => knownTagIds.includes(id)),
-    coverImageURL: COVERS.some((c) => c.url === d.coverImageURL) ? d.coverImageURL : "",
+    coverImageURL: coverByURL(d.coverImageURL) ? d.coverImageURL : "",
     costCents: Math.max(0, Math.round(d.costCents)),
     costNote: d.costNote,
     capacity: d.capacity,

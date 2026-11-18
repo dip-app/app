@@ -48,7 +48,7 @@ describe("event ideas mock API", () => {
       expect(d.capacity).toBe(24);
       expect(d.isOutdoor).toBe(true);
       expect(d.suggestedDaypart).toBe("weekday_lunch");
-      expect(d.coverImageURL).toMatch(/^catalog:\/\/default\//);
+      expect(d.coverImageURL).toMatch(/^catalog:\/\/(default|cover)\//);
       expect(d.rationale.length).toBeGreaterThan(0);
     }
     expect(buildMockDrafts(choices, "", 1)).toHaveLength(1);

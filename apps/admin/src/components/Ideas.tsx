@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import type { AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
+import type { AiCredits, AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
 import { type Art, DIPBOT_ICON, spotArt, stateArt } from "@/lib/ideaArt";
 import { tagArt, tagBlurb } from "@/lib/tagArt";
 import {
   type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied, suggestionsForStep,
 } from "@/lib/suggestionLabels";
-import { COVERS } from "@/lib/catalog";
+import { coverByURL, coverImage, lexicalPick } from "@/lib/covers";
+import { CoverPicker } from "./CoverPicker";
+import { Disclosure } from "./Disclosure";
 import { ApiError } from "@/lib/contract";
 import {
   type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, NOTE_SUGGESTIONS, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
@@ -526,8 +528,8 @@ export function Ideas() {
       </div>
       <ul className="draft-list">
         {result.drafts.map((draft, i) => (
-          <DraftCard key={`${i}-${draft.title}`} draft={draft} onOpen={() => {
-            try { saveAiDraft(window.sessionStorage, draft); } catch { /* the editor then opens empty */ }
+          <DraftCard key={`${i}-${draft.title}`} draft={draft} credits={ctx.credits} siblingCovers={result.drafts.filter((_, j) => j !== i).map((d) => d.coverImageURL)} onOpen={(coverImageURL) => {
+            try { saveAiDraft(window.sessionStorage, { ...draft, coverImageURL }); } catch { /* the editor then opens empty */ }
             router.push("/events/new/?from=ai");
           }} />
         ))}
@@ -551,11 +553,12 @@ export function Ideas() {
   );
 }
 
-export function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpen: () => void }) {
+export function DraftCard({ draft, onOpen, siblingCovers = [], credits }: { draft: GeneratedEventDraft; onOpen: (coverImageURL: string) => void; siblingCovers?: string[]; credits?: AiCredits }) {
   const { nameFor: tagName } = useTags();
+  const [coverURL, setCoverURL] = useState(draft.coverImageURL);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const cover = COVERS.find((c) => c.url === draft.coverImageURL) ?? COVERS[0];
+  const cover = coverByURL(coverURL) ?? lexicalPick(draft);
   const long = draft.description.length > 190;
   async function copy() {
     try {
@@ -567,7 +570,7 @@ export function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpe
   return (
     <li className="draft-card">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="draft-thumb" src={cover.image} alt="" width={120} height={80} draggable={false} />
+      <img className="draft-thumb" src={coverImage(cover)} alt="" width={120} height={80} draggable={false} />
       <div className="draft-main">
         <h3>{draft.title}</h3>
         <p className="rationale">{draft.rationale}</p>
@@ -582,9 +585,13 @@ export function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpe
         {draft.tagIds.length > 0 && <ul className="draft-tags" aria-label={t("draft.tags")}>{draft.tagIds.map((id) => <li key={id}>{tagName(id)}</li>)}</ul>}
         <p className={`draft-desc${open ? " open" : ""}`}>{draft.description}</p>
         {long && <button type="button" className="link-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{t(open ? "draft.showLess" : "draft.showMore")}</button>}
+        <Disclosure className="draft-cover" summary="Change cover">
+          <CoverPicker compact label={`Cover for ${draft.title}`} value={coverURL} onChange={setCoverURL} excludeURLs={siblingCovers} credits={credits}
+            event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds }} />
+        </Disclosure>
         <div className="draft-actions">
           <button type="button" className="pill-btn gray" onClick={() => void copy()}>{t(copied ? "draft.copied" : "draft.copy")}</button>
-          <button type="button" className="pill-btn purple" onClick={onOpen}>{t("draft.open")}</button>
+          <button type="button" className="pill-btn purple" onClick={() => onOpen(coverURL)}>{t("draft.open")}</button>
         </div>
       </div>
     </li>

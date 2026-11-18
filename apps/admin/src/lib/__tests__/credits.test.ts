@@ -17,7 +17,7 @@ async function admin() {
 const choices: AiEventChoices = { focusTagIds: ["tag-fitness"], goal: "wellness", groupSize: "team", setting: "outdoors", budget: "under_15", timing: "weekday_lunch" };
 const credits = (left: number, over: Partial<AiCredits> = {}): AiCredits => ({
   creditsAllowance: 500, creditsUsed: 500 - left, creditsRemaining: left, resetsAt: "2026-12-01T08:00:00.000Z",
-  creditCost: { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3 }, ...over,
+  creditCost: { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1 }, ...over,
 });
 
 describe("credits view", () => {

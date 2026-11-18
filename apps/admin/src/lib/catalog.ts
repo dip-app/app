@@ -1,6 +1,6 @@
-import { asset } from "./asset";
-// Default event images from the app's prototype assets (public/img/events). The approved
-// catalog is pending design (callables.md); V1 has no uploads.
+import { COVER_LIBRARY, type CoverEntry, coverByURL, coverImage } from "./covers";
+// Event covers come from the cover library (lib/covers.ts, manifest in public/img/covers). COVERS and coverFor stay
+// for older callers; `id` is the key, or the category for the five legacy `catalog://default/*` photos.
 export interface CoverOption {
   id: string;
   label: string;
@@ -8,16 +8,13 @@ export interface CoverOption {
   image: string;
 }
 
-export const COVERS: CoverOption[] = [
-  { id: "fitness", label: "Fitness", url: "catalog://default/fitness", image: asset("/img/events/fitness.jpg") },
-  { id: "outdoors", label: "Outdoors", url: "catalog://default/outdoors", image: asset("/img/events/outdoors.jpg") },
-  { id: "hiking", label: "Hiking", url: "catalog://default/hiking", image: asset("/img/events/hiking.jpg") },
-  { id: "games", label: "Games", url: "catalog://default/games", image: asset("/img/events/games.jpg") },
-  { id: "cooking", label: "Cooking", url: "catalog://default/cooking", image: asset("/img/events/cooking.jpg") },
-];
+const option = (c: CoverEntry): CoverOption => ({ id: c.key.replace(/^default-/, ""), label: c.label, url: c.url, image: coverImage(c) });
+
+export const COVERS: CoverOption[] = COVER_LIBRARY.map(option);
 
 export function coverFor(url: string): CoverOption | undefined {
-  return COVERS.find((cover) => cover.url === url);
+  const entry = coverByURL(url);
+  return entry ? option(entry) : undefined;
 }
 
 /** Mirrors tags/{tagId}: events store IDs, never labels. The portal reads the same catalog the app uses. */

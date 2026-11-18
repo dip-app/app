@@ -1,7 +1,8 @@
 import type {
   AiBucket, AiCredits, AiDaypart, AiEventChoices, AiStepSuggestion, AiUsage, AiVenueType, EventIdeaContext, EventIdeaSuggestions, GeneratedEventDraft,
 } from "./adminTypes";
-import { COVERS, TAGS, tagName } from "./catalog";
+import { TAGS, tagName } from "./catalog";
+import { lexicalPick } from "./covers";
 import { bucketText } from "./ideas";
 
 // Preview data for Event ideas. The mock follows the server rules: admin only, usage counters, requestId replay
@@ -19,7 +20,7 @@ export const MOCK_DAILY_LIMIT = 10;
 export const MOCK_CREDIT_ALLOWANCE = 500;
 /** The preview month already has some credits spent (412 of 500 left); `?ai=lowcredits` and `?ai=nocredits` show the other states. */
 export const MOCK_CREDITS_USED = 88;
-export const MOCK_CREDIT_COSTS = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3 };
+export const MOCK_CREDIT_COSTS = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1 };
 
 /** First day of next month at local midnight (the mock's reset date). */
 export function mockResetsAt(now: Date): string {
@@ -121,6 +122,7 @@ export function buildMockDrafts(choices: AiEventChoices, _prompt: string, count:
     + (choices.setting === "outdoors" ? (t.outdoor ? 2 : -2) : choices.setting === "indoors" ? (t.outdoor ? -2 : 1) : 0)
     + (choices.budget === "free" && t.venueType === "activity_venue" ? -3 : 0);
   const ranked = TEMPLATES.map((t, i) => ({ t, i, s: score(t) })).sort((a, b) => b.s - a.s || a.i - b.i).slice(0, Math.max(1, Math.min(3, count)));
+  const usedCovers: string[] = [];
   return ranked.map(({ t }): GeneratedEventDraft => {
     const hit = t.tags.find((id) => choices.focusTagIds.includes(id));
     const cited = TOP.find((x) => x.tagId === (hit ?? t.tags[0]));
@@ -128,7 +130,8 @@ export function buildMockDrafts(choices: AiEventChoices, _prompt: string, count:
     const rationale = hit && cited
       ? `${t.why} ${bucketText(cited.bucket)} like ${tagName(hit)}.`
       : `${t.why} Suits your goal of ${goal}.`;
-    const cover = COVERS.find((c) => c.id === t.cover) ?? COVERS[0];
+    const cover = lexicalPick({ title: t.title, description: t.text, tagIds: t.tags }, usedCovers);
+    usedCovers.push(cover.url);
     const cost = COST[choices.budget];
     return {
       title: t.title,
