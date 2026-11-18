@@ -10,6 +10,7 @@ import {
 } from "@/lib/suggestionLabels";
 import { coverByURL, coverImage, lexicalPick } from "@/lib/covers";
 import { freshnessLine } from "@/lib/suggestCache";
+import { quickAnswers, quickRequested, rememberTimeHint, takeQuick } from "@/lib/dipbotTouches";
 import { Considerations } from "./Considerations";
 import { CoverPicker } from "./CoverPicker";
 import { Disclosure } from "./Disclosure";
@@ -30,6 +31,14 @@ import { useLoad } from "./useLoad";
 import { useTags } from "./TagCatalog";
 
 type Phase = "edit" | "generating" | "results" | "error";
+/** Quick mode ("Generate suggestions" in the New event header): armed by the button's one-time token, then running. */
+type Quick = "none" | "armed" | "running";
+
+/** Remembers Dipbot's best timing bucket for this tab so the editor's "Dipbot suggests" times can use it without a request. */
+function rememberTiming(s: EventIdeaSuggestions) {
+  const timing = labeledSuggestions(s.suggestions, s.provider, (q, v) => q === "timing" && TIMINGS.some((o) => o.value === v)).timing;
+  try { rememberTimeHint(window.sessionStorage, timing ? { timing: timing.value as (typeof TIMINGS)[number]["value"] } : null); } catch { /* storage blocked */ }
+}
 
 /** Server reasons with their own copy (aiStrings `limit.<REASON>`); anything else shows the server message. */
 function failureMessage(error: unknown, ctx: EventIdeaContext | null): string {
@@ -118,6 +127,9 @@ export function Ideas() {
   const [suggest, setSuggest] = useState<EventIdeaSuggestions | "loading" | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [slow, setSlow] = useState(false);
+  const [settled, setSettled] = useState(false); // the suggestions request finished (answered or failed)
+  const [quick, setQuick] = useState<Quick>("none");
+  const quickChecked = useRef(false);
   const enabled = ctx?.enabled === true;
   // The suggestions answer carries the balance (a first visit or refresh costs a credit); fold it into the meter.
   const ctxRef = useRef<{ ctx: EventIdeaContext | null; setData: (next: EventIdeaContext) => void }>({ ctx: null, setData: () => undefined });
@@ -135,8 +147,10 @@ export function Ideas() {
         if (!live) return;
         setSuggest(s);
         foldCredits(s);
+        rememberTiming(s);
+        setSettled(true);
       })
-      .catch(() => { if (live) setSuggest(null); });
+      .catch(() => { if (live) { setSuggest(null); setSettled(true); } });
     return () => { live = false; };
   }, [api, enabled, foldCredits]);
   // A saved answer loads fast; the loading line shows only when the first visit is really computing.
@@ -153,6 +167,7 @@ export function Ideas() {
       const s = await api.eventIdeaSuggestions({ refresh: true, requestId: crypto.randomUUID() });
       setSuggest(s);
       foldCredits(s);
+      rememberTiming(s);
       const id = toast(t(s.computedAt !== before ? "suggest.refreshed" : "suggest.refreshFailed"));
       setTimeout(() => dismissToast(id), 2500);
     } catch {
@@ -251,6 +266,45 @@ export function Ideas() {
     }
   }, [ctx, api.mode, generate]);
 
+  // Quick mode needs BOTH ?quick=1 and the one-time token the button set; a bookmark or a reload shows the wizard.
+  useEffect(() => {
+    if (quickChecked.current) return;
+    quickChecked.current = true;
+    if (!quickRequested(window.location.search)) return;
+    let armed = false;
+    try { armed = takeQuick(window.sessionStorage); } catch { /* storage blocked: the wizard opens normally */ }
+    const rest = new URLSearchParams(window.location.search); // a reload must not repeat it
+    rest.delete("quick");
+    window.history.replaceState(null, "", `${window.location.pathname}${rest.size ? `?${rest}` : ""}`);
+    if (armed) setQuick("armed");
+  }, []);
+  // Armed: once the saved suggestions and the tag catalog are in, answer every step as Dipbot would (safe defaults where
+  // it has no suggestion), then start the drafts once. A refused or failed run lands on the normal error panel.
+  useEffect(() => {
+    if (quick !== "armed" || !ctx || !settled || catalog.status === "loading") return;
+    if (!ctx.enabled) { setQuick("none"); return; }
+    setQuick("running");
+    const ids = ctx.interestDataAvailable ? ctx.topInterests.map((i) => i.tagId) : catalog.tags.map((tag) => tag.id);
+    const options: Record<AiSuggestionQuestion, readonly string[]> = {
+      interest: ids, goal: GOALS.map((o) => o.value), groupSize: GROUP_SIZES.map((o) => o.value),
+      setting: SETTINGS.map((o) => o.value), budget: BUDGETS.map((o) => o.value), timing: TIMINGS.map((o) => o.value),
+    };
+    const have = suggest && suggest !== "loading" ? suggest : null;
+    const picked = quickAnswers(have ? labeledSuggestions(have.suggestions, have.provider, (q, v) => options[q].includes(v)) : {});
+    setAnswers(picked);
+    setStep(STEPS.length - 1);
+    moved.current = true;
+    const left = ctx.usage.generationsRemaining;
+    if (creditsView(ctx.credits).out || left <= 0) {
+      const daily = ctx.usage.dailyGenerationLimit - ctx.usage.dailyGenerationsUsed <= 0;
+      const reason = creditsView(ctx.credits).out ? "AI_CREDITS_EXHAUSTED" : daily ? "AI_DAILY_LIMIT" : ctx.usage.monthlyGenerationsUsed >= ctx.usage.monthlyGenerationLimit ? "AI_MONTHLY_LIMIT" : "AI_BUDGET_EXHAUSTED";
+      setFailure(new ApiError("resource-exhausted", "", {}, reason));
+      setPhase("error");
+      return;
+    }
+    void generate(picked, false);
+  }, [quick, ctx, settled, suggest, catalog.status, catalog.tags, generate]);
+
   if (ctxState.error) return <LoadError error={ctxState.error} onRetry={ctxState.reload} />;
   if (!ctx) return <Loading label={t("page.loading")} />;
   if (!ctx.enabled) {
@@ -260,7 +314,7 @@ export function Ideas() {
   const usage = ctx.usage;
   const dailyLeft = Math.max(0, usage.dailyGenerationLimit - usage.dailyGenerationsUsed);
   const remaining = usage.generationsRemaining;
-  const busy = phase === "generating";
+  const busy = phase === "generating" || quick === "armed";
   const set = (patch: Partial<Answers>) => { setAnswers((a) => ({ ...a, ...patch })); setNoteError(""); };
   const current = STEPS[step];
   const lines = summaryLines(answers, tagName);
@@ -530,7 +584,7 @@ export function Ideas() {
       <div className="status-row">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="state-art" src={stateArt("thinking")} alt="" width={64} height={48} draggable={false} />
-        <p className="status-line" role="status" aria-live="polite">{tn("generating.status", answers.count)}</p>
+        <p className="status-line" role="status" aria-live="polite">{tn(quick === "none" ? "generating.status" : "quick.waiting", answers.count)}</p>
       </div>
       <div className="draft-skeletons" aria-hidden>
         {Array.from({ length: answers.count }, (_, i) => (
@@ -544,7 +598,7 @@ export function Ideas() {
     <section className="step-panel" aria-label={t("error.label")}>
       <div className="banner error" role="alert"><span>{failureMessage(failure, ctx)}</span></div>
       <div className="step-actions">
-        <button type="button" className="pill-btn gray" onClick={() => goStep(STEPS.length - 1)}>{t("error.backToChoices")}</button>
+        <button type="button" className="pill-btn gray" onClick={() => goStep(quick === "none" ? STEPS.length - 1 : 0)}>{t(quick === "none" ? "error.backToChoices" : "quick.manual")}</button>
         {readyToGenerate(answers) && remaining > 0 && !noCredits && <button type="button" className="pill-btn purple" onClick={() => void generate(answers, false)}>{t("error.retry")}</button>}
       </div>
     </section>
@@ -566,7 +620,7 @@ export function Ideas() {
       <ul className="draft-list">
         {result.drafts.map((draft, i) => (
           <DraftCard key={`${i}-${draft.title}`} draft={draft} credits={ctx.credits} siblingCovers={result.drafts.filter((_, j) => j !== i).map((d) => d.coverImageURL)} onOpen={(coverImageURL) => {
-            try { saveAiDraft(window.sessionStorage, { ...draft, coverImageURL }); } catch { /* the editor then opens empty */ }
+            try { saveAiDraft(window.sessionStorage, { ...draft, coverImageURL }, Date.now(), coverImageURL === draft.coverImageURL ? "dipbot" : "admin"); } catch { /* the editor then opens empty */ }
             router.push("/events/new/?from=ai");
           }} />
         ))}
@@ -584,7 +638,7 @@ export function Ideas() {
           {summary}
           {suggestBar}
           {metaRow}
-          {phase === "generating" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
+          {phase === "generating" || quick === "armed" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
         </div>
       </div>
     </div>

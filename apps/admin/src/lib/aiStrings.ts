@@ -201,6 +201,14 @@ export const AI_STRINGS = {
   "draft.copy": "Copy text",
   "draft.copied": "Copied",
   "draft.open": "Open in editor",
+  "editor.coverPicked": "{ai} picked this",
+  "editor.timesLabel": "{ai} suggests",
+  "quick.button": "Generate suggestions",
+  "quick.buttonShort": "Suggest",
+  "quick.buttonCost": "Generate suggestions, {cost}",
+  "quick.waiting.one": "{ai} is choosing for you and writing 1 draft. This can take up to a minute.",
+  "quick.waiting.other": "{ai} is choosing for you and writing {n} drafts. This can take up to a minute.",
+  "quick.manual": "Choose manually",
   "editor.fromAi": "Filled from a {ai} draft. Pick a venue and time, review everything, then save.",
 } as const;
 
@@ -214,7 +222,7 @@ export function t(key: AiStringKey, vars: Vars = {}): string {
 }
 
 /** Plural form: `${base}.one` when n is 1, else `${base}.other`, with `{n}` filled. */
-export function tn(base: "suggest.count" | "consider.selected" | "consider.rail" | "suggest.when.minutes" | "suggest.when.hours" | "suggest.when.days" | "suggest.matched" | "suggest.appliedToast" | "generating.status" | "credits.unit", n: number, vars: Vars = {}): string {
+export function tn(base: "suggest.count" | "consider.selected" | "consider.rail" | "suggest.when.minutes" | "suggest.when.hours" | "suggest.when.days" | "suggest.matched" | "suggest.appliedToast" | "generating.status" | "quick.waiting" | "credits.unit", n: number, vars: Vars = {}): string {
   return t(`${base}.${n === 1 ? "one" : "other"}` as AiStringKey, { n, ...vars });
 }
 

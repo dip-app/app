@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   DAY_MIN, HALF_DAY, type DayKey, type WhenIssue, type WhenModel,
-  addMonths, calendarKey, clickDay, dayDiff, describeDuration, dayKey, dragMinutes, dstNote, durationMinutes,
+  addMonths, calendarKey, clickDay, dayDiff, dayOfWeek, describeDuration, dayKey, dragMinutes, dstNote, durationMinutes,
   formatTime, isPm, minutesToAngle, modelFromIso, modelToIso, monthGrid, parseDay, parseTime, pointToAngle, previewRange,
   resolveLocal, settle, sliderKey, withPeriod, zoneAbbreviation, angleToFaceMinutes,
 } from "@/lib/when";
+import { t } from "@/lib/aiStrings";
+import { DEFAULT_PRESETS, type TimePreset, nextWeekday } from "@/lib/dipbotTouches";
 import { Chevron } from "./Chevron";
+import { DipbotMark } from "./DipbotMark";
 
 interface Props {
   /** RFC 3339 UTC, the same values the editor stores. */
@@ -22,14 +25,11 @@ interface Props {
   allowPast?: boolean;
   startError?: string;
   endError?: string;
+  /** Dipbot's suggested times (the best slot from the company's data first); the two defaults when omitted. */
+  presets?: readonly TimePreset[];
   /** For tests and screenshots. */
   now?: Date;
 }
-
-const PRESETS = [
-  { id: "lunch", label: "Lunch 12:00 to 1:00 PM", start: 12 * 60, end: 13 * 60 },
-  { id: "after-work", label: "After work 5:30 to 7:30 PM", start: 17 * 60 + 30, end: 19 * 60 + 30 },
-] as const;
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -63,7 +63,7 @@ function centreDuration(minutes: number): string {
 
 type Handle = "start" | "end";
 
-export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled = false, allowPast = false, startError, endError, now }: Props) {
+export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled = false, allowPast = false, startError, endError, presets = DEFAULT_PRESETS, now }: Props) {
   const uid = useId();
   const clock = useRef(now ?? new Date());
   const today = dayKey(clock.current);
@@ -260,11 +260,14 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
     return { major, x1: C + r1 * Math.sin(a), y1: C - r1 * Math.cos(a), x2: C + r2 * Math.sin(a), y2: C - r2 * Math.cos(a) };
   }), []);
 
-  const presetActive = (p: (typeof PRESETS)[number]) => model.startMin === p.start && model.endMin === p.end;
-  const applyPreset = (p: (typeof PRESETS)[number]) => {
+  const presetActive = (p: TimePreset) => model.startMin === p.start && model.endMin === p.end && (p.weekday === undefined || dayOfWeek(model.range.start) === p.weekday);
+  const applyPreset = (p: TimePreset) => {
     if (disabled) return;
     const m = modelRef.current;
-    apply({ ...m, range: m.rolled ? { ...m.range, end: m.range.start } : m.range, startMin: p.start, endMin: p.end, rolled: false }, true);
+    // A preset with a weekday also moves the date, to the next such day (one-day event); the others keep the dates.
+    const day = p.weekday === undefined || dayOfWeek(m.range.start) === p.weekday ? null : nextWeekday(today, p.weekday);
+    const kept = m.rolled ? { ...m.range, end: m.range.start } : m.range;
+    apply({ ...m, range: day ? { start: day, end: day, phase: "done" } : kept, startMin: p.start, endMin: p.end, rolled: false }, true);
   };
 
   const startId = "start", endId = "end";
@@ -372,10 +375,15 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
           <TimeField id={endId} label="End time" minutes={model.endMin} disabled={disabled} invalid={!!endError || issue !== null} describedBy={describedEnd}
             onCommit={(minutes) => setHandle("end", minutes, true)} />
         </div>
-        <div className="chips when-presets" role="group" aria-label="Quick times">
-          {PRESETS.map((p) => (
-            <button key={p.id} type="button" className="chip" disabled={disabled} aria-pressed={presetActive(p)} onClick={() => applyPreset(p)}>{p.label}</button>
-          ))}
+        <div className="when-suggest">
+          <span className="when-suggest-label" id={`${uid}-presets`}>{t("editor.timesLabel")}</span>
+          <div className="chips when-presets" role="group" aria-labelledby={`${uid}-presets`}>
+            {presets.map((p) => (
+              <button key={p.id} type="button" className="chip dipbot-chip" disabled={disabled} aria-pressed={presetActive(p)} onClick={() => applyPreset(p)}>
+                <DipbotMark size={14} />{p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

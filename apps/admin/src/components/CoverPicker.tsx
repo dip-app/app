@@ -7,13 +7,17 @@ import { tMaybe } from "@/lib/aiStrings";
 import { ApiError } from "@/lib/contract";
 import { creditsText, resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
+import { DipbotCoverTag } from "./DipbotCoverTag";
 import { DipbotMark } from "./DipbotMark";
 
 export interface CoverPickerEvent { title: string; description?: string; tagIds?: readonly string[]; theme?: CoverThemeKey }
 
 interface Props {
   value: string;
-  onChange: (url: string) => void;
+  /** `by: "dipbot"` marks a cover Dipbot chose; any manual choice calls it without. */
+  onChange: (url: string, by?: "dipbot") => void;
+  /** The cover Dipbot picked, when the parent tracks it (a Dipbot draft prefill). Without it, the picker tracks its own "Let Dipbot choose" result. */
+  dipbotURL?: string | null;
   event: CoverPickerEvent;
   /** Covers already used by sibling drafts; Dipbot avoids them. */
   excludeURLs?: readonly string[];
@@ -31,7 +35,7 @@ interface Props {
 type More = { kind: "idle" } | { kind: "loading" } | { kind: "results"; candidates: CoverPhotoCandidate[] } | { kind: "message"; text: string };
 const MORE_UNAVAILABLE = "More photos are not available right now. Try again later.";
 
-type Note = { kind: "picked"; text: string; badge: string; fresh?: boolean; url?: string } | { kind: "error"; text: string } | null;
+type Note = { kind: "picked"; text: string; badge: string; dipbot: boolean; fresh?: boolean; url?: string } | { kind: "error"; text: string } | null;
 
 /** Thumbnails above this index lazy-load inside the scroll region; the first screenful loads eagerly so tiles are never blank. */
 const EAGER_THUMBS = 16;
@@ -46,7 +50,7 @@ function CheckMark() {
 }
 
 /** Searchable cover library: preview, text search, theme filter and a thumbnail grid in its own scroll region, plus "Let Dipbot choose". */
-export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cover image", compact = false, firstId, describedBy, invalid, credits }: Props) {
+export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, label = "Cover image", compact = false, firstId, describedBy, invalid, credits }: Props) {
   const { api } = useApp();
   const uid = useId();
   const [query, setQuery] = useState("");
@@ -69,6 +73,8 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
   useEffect(() => { setNote((n) => (n?.kind === "picked" && n.url && n.url !== value ? null : n)); }, [value]);
 
   const choose = (url: string) => { onChange(url); setNote(null); };
+  // "Dipbot picked this" shows only while Dipbot's pick is still the cover; choosing anything else clears it.
+  const byDipbot = dipbotURL !== undefined ? !!value && dipbotURL === value : note?.kind === "picked" && note.dipbot && note.url === value;
 
   function move(event_: React.KeyboardEvent) {
     const at = shown.findIndex((c) => c.url === (document.activeElement as HTMLElement | null)?.dataset.url);
@@ -104,9 +110,10 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
       const entry = coverByURL(result.coverImageURL);
       if (!entry) { setNote({ kind: "error", text: "Dipbot suggested a cover this portal doesn’t have yet. Pick one below." }); return; }
       rememberCoverAlt(entry.url, result.coverAlt);
-      onChange(entry.url);
+      const dipbot = result.source === "dipbot" || result.source === "match";
+      onChange(entry.url, dipbot ? "dipbot" : undefined);
       setNote({
-        kind: "picked", url: entry.url, fresh: result.newPhoto === true,
+        kind: "picked", url: entry.url, fresh: result.newPhoto === true, dipbot,
         badge: result.source === "dipbot" ? "Dipbot picked this" : result.source === "match" ? "Best match" : "Default cover",
         text: result.source === "dipbot" ? `Dipbot picked ${entry.label}` : result.source === "match" ? `Best match: ${entry.label}` : `No close match, so Dipbot used the default: ${entry.label}`,
       });
@@ -145,7 +152,7 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
       const result = await api.importCoverPhoto(candidate.key);
       rememberCoverAlt(result.coverImageURL, result.coverAlt);
       onChange(result.coverImageURL);
-      setNote({ kind: "picked", url: result.coverImageURL, fresh: result.newPhoto, badge: "Photo from Pixabay", text: "Picked a photo from Pixabay" });
+      setNote({ kind: "picked", url: result.coverImageURL, fresh: result.newPhoto, dipbot: false, badge: "Photo from Pixabay", text: "Picked a photo from Pixabay" });
     } catch (error) {
       const reason = error instanceof ApiError ? error.reason : undefined;
       setMoreError(reason === "COVER_CANDIDATE_EXPIRED" ? "That photo is no longer available. Search again." : reason === "COVER_SEARCH_UNAVAILABLE" ? MORE_UNAVAILABLE : "That photo couldn’t be added. Try another one.");
@@ -169,7 +176,7 @@ export function CoverPicker({ value, onChange, event, excludeURLs, label = "Cove
           ) : (
             <div className="cp-empty-preview" role="img" aria-label="No cover selected">No cover</div>
           )}
-          {note?.kind === "picked" && <span className="cp-badge" aria-hidden>{note.badge}</span>}
+          {byDipbot ? <DipbotCoverTag /> : note?.kind === "picked" && note.url === value && <span className="cp-badge" aria-hidden>{note.badge}</span>}
         </div>
         <div className="cp-selected">
           <div className="cp-selected-text">

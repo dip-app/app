@@ -199,12 +199,15 @@ export function draftToPrefill(d: GeneratedEventDraft, knownTagIds: readonly str
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export function saveAiDraft(store: Store, draft: GeneratedEventDraft, now: number = Date.now()): void {
-  store.setItem(AI_DRAFT_KEY, JSON.stringify({ draft, savedAt: now }));
+/** A draft handed to the editor. `coverBy` says whether the cover is still Dipbot's own pick (the editor then shows "Dipbot picked this"). */
+export type HandedAiDraft = GeneratedEventDraft & { coverBy?: "dipbot" | "admin" };
+
+export function saveAiDraft(store: Store, draft: GeneratedEventDraft, now: number = Date.now(), coverBy: "dipbot" | "admin" = "dipbot"): void {
+  store.setItem(AI_DRAFT_KEY, JSON.stringify({ draft: { ...draft, coverBy }, savedAt: now }));
 }
 
 /** Reads the hand-off once: the entry is removed whatever it holds. Entries older than an hour or malformed ones are ignored. */
-export function takeAiDraft(store: Store, now: number = Date.now()): GeneratedEventDraft | null {
+export function takeAiDraft(store: Store, now: number = Date.now()): HandedAiDraft | null {
   let raw: string | null = null;
   try { raw = store.getItem(AI_DRAFT_KEY); store.removeItem(AI_DRAFT_KEY); } catch { return null; }
   if (!raw) return null;
@@ -213,7 +216,7 @@ export function takeAiDraft(store: Store, now: number = Date.now()): GeneratedEv
     const d = parsed.draft;
     if (typeof parsed.savedAt !== "number" || now - parsed.savedAt > AI_DRAFT_TTL_MS || parsed.savedAt > now + 60_000) return null;
     if (!d || typeof d.title !== "string" || typeof d.description !== "string" || !Array.isArray(d.tagIds)) return null;
-    return d as GeneratedEventDraft;
+    return d as HandedAiDraft;
   } catch { return null; }
 }
 

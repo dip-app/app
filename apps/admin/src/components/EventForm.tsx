@@ -10,6 +10,7 @@ import {
 import { centsToDollars, dollarsToCents } from "@/lib/datetime";
 import { defaultWhen } from "@/lib/when";
 import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
+import { type TimeHint, readTimeHint, registerEditorStash, stashEditor, takeEditorStash, timePresets } from "@/lib/dipbotTouches";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
 import { CoverPicker } from "./CoverPicker";
@@ -27,6 +28,9 @@ interface Props {
   /** Called when the user asks to discard local edits and reload the latest saved event. */
   onReload?: () => void;
 }
+
+/** The New event form as kept while the admin visits Dipbot. */
+interface Stash { draft: EventDraft; price: string; coverBy: string | null }
 
 const FIELD_IDS: Record<string, string> = {
   title: "title", description: "description", coverImageURL: "cover-first", startTime: "start", endTime: "end",
@@ -65,12 +69,23 @@ export function EventForm({ event, onReload }: Props) {
   // Create only, and only when arriving from Dipbot (?from=ai): fill the AI draft once, after the tag catalog has loaded
   // so its tag IDs are matched against the real catalog. Venue and times stay empty.
   const [fromAi, setFromAi] = useState(false);
+  // The cover URL Dipbot picked (Let Dipbot choose, or a Dipbot draft). Any other cover choice clears it.
+  const [coverBy, setCoverBy] = useState<string | null>(null);
   const aiChecked = useRef(false);
   const aiTaken = useRef<ReturnType<typeof takeAiDraft>>(null);
   useEffect(() => {
     if (editing || aiChecked.current) return;
     aiChecked.current = true;
-    if (new URLSearchParams(window.location.search).get("from") !== "ai") return;
+    const fromAiLink = new URLSearchParams(window.location.search).get("from") === "ai";
+    // A form kept while the admin visited Dipbot comes back once (a Dipbot draft opened in the editor wins over it).
+    let kept: Stash | null = null;
+    try { kept = takeEditorStash<Stash>(window.sessionStorage); } catch { /* storage blocked */ }
+    if (kept && !fromAiLink) {
+      setDraft(kept.draft);
+      setPrice(kept.price);
+      setCoverBy(kept.coverBy);
+    }
+    if (!fromAiLink) return;
     try { aiTaken.current = takeAiDraft(window.sessionStorage); } catch { /* storage blocked: start empty */ }
   }, [editing]);
   useEffect(() => {
@@ -81,8 +96,13 @@ export function EventForm({ event, onReload }: Props) {
     const fill = draftToPrefill(taken, catalog.status === "ready" ? catalog.tags.map((tag) => tag.id) : taken.tagIds);
     setDraft((current) => ({ ...current, ...fill }));
     setPrice(centsToDollars(fill.costCents));
+    setCoverBy(fill.coverImageURL && taken.coverBy !== "admin" ? fill.coverImageURL : null);
     setFromAi(true);
   }, [catalog.status, catalog.tags]);
+  // Dipbot's suggested times: the best slot Dipbot saw in this tab (no request here), else the two defaults.
+  const [hint, setHint] = useState<TimeHint | null>(null);
+  useEffect(() => { try { setHint(readTimeHint(window.sessionStorage)); } catch { /* defaults */ } }, []);
+  const presets = timePresets(hint);
   const tagCounts = hasStats(stats) ? countsByTag(stats) : null;
   // One key per create attempt, kept across retries so a lost response can never create two events.
   const requestId = useRef(crypto.randomUUID());
@@ -92,6 +112,18 @@ export function EventForm({ event, onReload }: Props) {
   const initial = useRef(JSON.stringify([draft, status, price]));
   const dirty = !saved && JSON.stringify([draft, status, price]) !== initial.current;
   useUnsavedGuard(dirty);
+
+  // "Generate suggestions" (New event header) keeps this form so Back from Dipbot returns to it.
+  const latest = useRef({ draft, price, coverBy, dirty });
+  latest.current = { draft, price, coverBy, dirty };
+  useEffect(() => {
+    if (editing) return;
+    registerEditorStash(() => {
+      const { draft: d, price: p, coverBy: c, dirty: changed } = latest.current;
+      if (changed) { try { stashEditor(window.sessionStorage, { draft: d, price: p, coverBy: c } satisfies Stash); } catch { /* keep going */ } }
+    });
+    return () => registerEditorStash(null);
+  }, [editing]);
 
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const setVenue = <K extends keyof EventDraft["venue"]>(key: K, value: EventDraft["venue"][K]) =>
@@ -196,7 +228,7 @@ export function EventForm({ event, onReload }: Props) {
         <fieldset className="field">
           <legend>Cover image</legend>
           <span className="hint">Pick from the library or let Dipbot choose. Photo uploads aren’t available yet.</span>
-          <CoverPicker value={draft.coverImageURL} onChange={(url) => set("coverImageURL", url)} firstId="cover-first"
+          <CoverPicker value={draft.coverImageURL} onChange={(url, by) => { set("coverImageURL", url); setCoverBy(by === "dipbot" ? url : null); }} dipbotURL={coverBy} firstId="cover-first"
             event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds }}
             describedBy={err("coverImageURL") ? "cover-error" : undefined} invalid={!!err("coverImageURL")} />
           {err("coverImageURL") && <span className="error" id="cover-error">{err("coverImageURL")}</span>}
@@ -205,7 +237,7 @@ export function EventForm({ event, onReload }: Props) {
 
       <div className="section wide">
         <h2>When</h2>
-        <WhenPicker startTime={draft.startTime} endTime={draft.endTime} disabled={timesLocked} allowPast={editing}
+        <WhenPicker startTime={draft.startTime} endTime={draft.endTime} disabled={timesLocked} allowPast={editing} presets={presets}
           startError={err("startTime")} endError={err("endTime")}
           onChange={(startTime, endTime) => setDraft((current) => ({ ...current, startTime, endTime }))} />
         <span className="hint">
@@ -272,7 +304,7 @@ export function EventForm({ event, onReload }: Props) {
         <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/events/"))}>Cancel</button>
       </div>
     </form>
-    <EventPreview draft={draft} price={price} />
+    <EventPreview draft={draft} price={price} dipbotCover={!!draft.coverImageURL && coverBy === draft.coverImageURL} />
     {confirmCancel && (
       <Dialog danger title="Cancel this event?" confirmLabel="Cancel event" busyLabel="Canceling event…" onClose={() => setConfirmCancel(null)}
         onConfirm={async () => { await persist(confirmCancel); setConfirmCancel(null); }}>

@@ -269,3 +269,20 @@ $r-box: 8px;
     .step-actions { .pill-btn.purple { flex: 1; } }
   }
 }
+
+// "Generate suggestions" in the New event header: a secondary action with the Dipbot mark and its cost. On phones it
+// collapses to the mark and "Suggest" (the full name and cost stay in its accessible name), with a 44px target.
+.content .quick-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  svg { flex: none; }
+  .quick-short { display: none; }
+  .quick-cost { padding-left: 8px; margin-left: 2px; border-left: 1px solid $line-strong; font-size: 12px; font-weight: 500; color: var(--muted); }
+  &[aria-busy="true"] { cursor: progress; }
+  @media (max-width: 700px) { min-height: 44px; .quick-long, .quick-cost { display: none; } .quick-short { display: inline; } }
+}
+// Phones: the title and the button share the first row, the subtitle runs full width under them.
+@media (max-width: 700px) {
+  .content .page-header:has(.quick-btn) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;
+    .titles { display: contents; }
+    .titles .subtitle { grid-column: 1 / -1; grid-row: 2; }
+    .header-action { grid-column: 2; grid-row: 1; } }
+}

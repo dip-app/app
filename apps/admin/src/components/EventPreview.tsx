@@ -2,16 +2,20 @@ import { type EventDraft } from "@/lib/contract";
 import { dollarsToCents } from "@/lib/datetime";
 import { formatDuration, formatPrice, formatWhen } from "@/lib/contract";
 import { Cover } from "./Cover";
+import { DipbotCoverTag } from "./DipbotCoverTag";
 
 /** Live preview of how the event reads in the app: photo, title, key details. */
-export function EventPreview({ draft, price }: { draft: EventDraft; price: string }) {
+export function EventPreview({ draft, price, dipbotCover = false }: { draft: EventDraft; price: string; dipbotCover?: boolean }) {
   const start = Date.parse(draft.startTime);
   const cents = dollarsToCents(price);
   return (
     <aside className="preview" aria-label="Preview">
       <p className="preview-label">Preview</p>
       <div className="preview-card">
-        <Cover url={draft.coverImageURL} className="photo" eager />
+        <div className="cover-with-tag">
+          <Cover url={draft.coverImageURL} className="photo" eager />
+          {dipbotCover && <DipbotCoverTag />}
+        </div>
         <div className="details">
           <h2>{draft.title.trim() || "Event title"}</h2>
           <dl>
