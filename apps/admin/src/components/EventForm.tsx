@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; // tags load from the shared catalog
-import { COVERS } from "@/lib/catalog";
 import { type TagStat, countsByTag, hasStats, interestLabel } from "@/lib/tagStats";
 import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
@@ -12,10 +11,9 @@ import { centsToDollars, dollarsToCents, isoToLocalInput, localInputToIso } from
 import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
-import { Cover } from "./Cover";
+import { CoverPicker } from "./CoverPicker";
 import { Dialog } from "./Dialog";
 import { EventPreview } from "./EventPreview";
-import { RadioGrid } from "./RadioGrid";
 import { toast } from "./Toast";
 import { useTags } from "./TagCatalog";
 import { Toggle } from "./Toggle";
@@ -195,13 +193,10 @@ export function EventForm({ event, onReload }: Props) {
         </fieldset>
         <fieldset className="field">
           <legend>Cover image</legend>
-          <span className="hint">Pick one of the ready-made covers. Photo uploads aren’t available yet.</span>
-          <RadioGrid label="Cover image" value={draft.coverImageURL} onChange={(url) => set("coverImageURL", url)}
-            describedBy={err("coverImageURL") ? "cover-error" : undefined} invalid={!!err("coverImageURL")}
-            options={COVERS.map((cover) => ({
-              value: cover.url, label: cover.label, id: cover.id === COVERS[0].id ? "cover-first" : undefined,
-              content: <><Cover url={cover.url} className="swatch" eager /><span>{cover.label}</span></>,
-            }))} />
+          <span className="hint">Pick from the library or let Dipbot choose. Photo uploads aren’t available yet.</span>
+          <CoverPicker value={draft.coverImageURL} onChange={(url) => set("coverImageURL", url)} firstId="cover-first"
+            event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds }}
+            describedBy={err("coverImageURL") ? "cover-error" : undefined} invalid={!!err("coverImageURL")} />
           {err("coverImageURL") && <span className="error" id="cover-error">{err("coverImageURL")}</span>}
         </fieldset>
       </div>

@@ -1,5 +1,6 @@
 @use "@/styles/variables.scss" as *;
 @use "@/styles/flows";
+@use "@/styles/covers";
 
 // Professional, dense content area for the signed-in portal (everything inside <main class="content">).
 // Loaded after globals.scss so it wins at equal specificity. The sidebar, top bar, login page and the public landing

@@ -12,6 +12,7 @@ import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
 import { mockTagStats } from "./tagStatsMock";
 import { bundledTagId, previewTagId } from "./catalog";
+import { type PickEventCoverResult, lexicalPick } from "./covers";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
   MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
@@ -867,6 +868,21 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         ...found, credits: creditsOf(aiCreditsUsed(session.companyId), now()),
         suggestions: found.suggestions.map((s) => (s.question === "interest" ? { ...s, value: previewTagId(s.value) } : s)),
       };
+    },
+    // Local stand-in for pickEventCoverV1: the deterministic lexical pick. No model answers, so the 1 credit the server
+    // charges is refunded: the mock checks the balance (`?ai=nocredits` shows the exhausted state) and leaves it unchanged.
+    async pickEventCover(input): Promise<PickEventCoverResult> {
+      const session = staff("events.manage");
+      const title = input.title.trim();
+      if (title.length < 1 || title.length > 120) throw new ApiError("invalid-argument", "Add a title (up to 120 characters) first.", { title: "Add a title first." });
+      await aiDelay(350);
+      if (MOCK_CREDIT_ALLOWANCE - aiCreditsUsed(session.companyId) < MOCK_CREDIT_COSTS.coverPick) {
+        throw new ApiError("resource-exhausted", "You have used this month’s Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
+      }
+      input = { ...input, tagIds: input.tagIds?.map(bundledTagId) };
+      const pick = lexicalPick(input, input.excludeCoverImageURLs ?? []);
+      const alternatives = [lexicalPick(input, [...(input.excludeCoverImageURLs ?? []), pick.url]).url].filter((url) => url !== pick.url);
+      return { coverImageURL: pick.url, source: "match", provider: null, alternatives };
     },
     async generateEventDrafts(input): Promise<GenerateDraftsResult> {
       const session = staff("ai.generate");

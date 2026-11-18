@@ -61,6 +61,7 @@ export const ADMIN_CALLABLES = {
   eventIdeaContext: "getEventIdeaContextV1",
   generateEventDrafts: "generateEventDraftsV1",
   eventIdeaSuggestions: "getEventIdeaSuggestionsV1",
+  pickEventCover: "pickEventCoverV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -423,7 +424,7 @@ export interface AiCredits {
   creditsRemaining: number;
   /** ISO instant the allowance resets (start of next month in the company's time zone). */
   resetsAt: string;
-  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number };
+  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number };
 }
 export interface EventIdeaContext {
   enabled: boolean;

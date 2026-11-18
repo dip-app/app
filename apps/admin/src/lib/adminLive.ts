@@ -66,7 +66,7 @@ function usageFromWire(value: unknown): AiUsage {
     generationsRemaining: n(u.generationsRemaining),
   };
 }
-const DEFAULT_CREDIT_COST = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3 };
+const DEFAULT_CREDIT_COST = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1 };
 /** The credits block of a response; a missing or malformed one reads as zero credits left (the paid buttons stay off). */
 export function creditsFromWire(value: unknown): AiCredits {
   const c = obj(value);
@@ -75,7 +75,7 @@ export function creditsFromWire(value: unknown): AiCredits {
   const price = (key: keyof typeof DEFAULT_CREDIT_COST) => (typeof cost[key] === "number" ? n(cost[key]) : DEFAULT_CREDIT_COST[key]);
   return {
     creditsAllowance: n(c.creditsAllowance), creditsUsed: n(c.creditsUsed), creditsRemaining: n(c.creditsRemaining), resetsAt: str(c.resetsAt),
-    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail") },
+    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick") },
   };
 }
 /** GetEventIdeaContextResponse -> EventIdeaContext. */
@@ -460,6 +460,19 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     eventIdeaSuggestions: (sessionId) => run(async () => {
       const session = await organizer();
       return suggestionsFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaSuggestions, session, { sessionId }, false));
+    }),
+    pickEventCover: (input) => run(async () => {
+      const session = await organizer();
+      const data = await call<DocumentData>(ADMIN_CALLABLES.pickEventCover, session, {
+        requestId: crypto.randomUUID(), title: input.title, description: input.description, tagIds: input.tagIds,
+        theme: input.theme, excludeCoverImageURLs: input.excludeCoverImageURLs,
+      });
+      return {
+        coverImageURL: String(data.coverImageURL ?? ""),
+        source: data.source === "dipbot" || data.source === "match" ? data.source : "default",
+        provider: data.provider === "jev" || data.provider === "openai" || data.provider === "heuristic" ? data.provider : null,
+        alternatives: Array.isArray(data.alternatives) ? data.alternatives.map(String) : [],
+      };
     }),
     // The caller owns the requestId (one per attempt), so `call` sends it as given.
     generateEventDrafts: (input) => run(async () => {
