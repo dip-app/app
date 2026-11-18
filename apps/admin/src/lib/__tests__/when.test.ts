@@ -1,11 +1,10 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type RangeState, type WhenModel, addDays, addMonths, angleToFaceMinutes, calendarKey, clickDay, defaultWhen, describeDuration, dragMinutes,
   dstNote, durationMinutes, formatDuration, formatTime, isoToLocal, localToIso, minutesToAngle, modelFromIso, modelToIso, monthGrid,
   parseTime, pointToAngle, previewRange, resolveLocal, settle, sliderKey, withPeriod, zoneAbbreviation,
 } from "../when";
 
-beforeAll(() => { process.env.TZ = "America/New_York"; });
 
 const done = (start: string, end: string): RangeState => ({ start, end, phase: "done" });
 const picking = (day: string): RangeState => ({ start: day, end: day, phase: "picking" });
