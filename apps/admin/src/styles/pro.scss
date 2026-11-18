@@ -171,7 +171,7 @@ $ctl-h: 36px;
 
   // ---------- Data table: one shared primitive (sticky header, tight rows, tabular numerals, hover actions)
   .table-wrap { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 0; margin-bottom: 14px; overflow: auto; }
-  .table-wrap:has(.events-table, .themes-table, .audit-table) { max-height: calc(100dvh - 190px); }
+  .table-wrap:has(.events-table, .themes-table, .challenges-table, .audit-table) { max-height: calc(100dvh - 190px); }
   .table { font-size: 14px; border-collapse: separate; border-spacing: 0;
     th, td { padding: 8px 12px; vertical-align: middle; border: 0; }
     thead th { position: sticky; top: 0; z-index: 1; background: $subtle; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--muted); border-bottom: 1px solid $line; padding: 8px 12px; }
@@ -197,15 +197,22 @@ $ctl-h: 36px;
   .going { display: grid; gap: 4px; justify-items: end; }
   .meter-mini { display: block; width: 56px; height: 4px; border-radius: 2px; background: $line; overflow: hidden; span { display: block; height: 100%; background: $purple; } }
   .events-table, .themes-table { min-width: 760px; }
+  .challenges-table { min-width: 880px; }
+  .thumb.tile { width: 72px; height: 52px; }
+  .challenge-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; strong { font-weight: 600; font-size: 14px; } }
+  .toolbar .thumb.tile { width: 56px; height: 40px; }
   .cell-main { min-width: 200px; }
   .audit-table { min-width: 680px; .audit-detail-row td { background: $subtle; } }
   .audit-detail .table { thead th { position: static; } tbody tr:hover td, tbody tr:hover th { background: transparent; } }
   .audit-detail { background: $white; border: 1px solid $line; border-radius: $r-ctl; padding: 8px 12px; gap: 6px; }
 
   // ---------- Selectable lists (queues, bug inbox): hairline rows, tinted selection with a primary ring
-  .queue { gap: 0; border: 1px solid $line; border-radius: $r-box; padding: 0; overflow: auto; background: $white; }
-  .queue li + li .queue-item { border-top: 1px solid $line; }
-  .queue-item { background: $white; border-radius: 0; min-height: 48px; padding: 8px 12px; gap: 10px; font-size: 14px; position: relative; &:hover { background: $subtle; }
+  // One radius family: the list is 8px (like panels), its items 6px (like buttons) inside a 2px inset, so the
+  // corners are concentric and the selected ring is a full, uniform 1px border that follows the item's shape.
+  .queue { gap: 2px; border: 1px solid $line; border-radius: $r-box; padding: 3px; overflow: auto; background: $white; }
+  .queue li { border-radius: $r-ctl; overflow: hidden; }
+  .queue-item { background: $white; border-radius: $r-ctl; min-height: 48px; padding: 8px 12px; gap: 10px; font-size: 14px; position: relative; box-shadow: inset 0 0 0 1px transparent; &:hover { background: $subtle; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
     .queue-text .muted { font-size: 12px; }
     &[aria-current="true"] { background: $tint; color: $ink; box-shadow: inset 0 0 0 1px var(--primary); .muted { color: var(--muted); } .info-pill { color: $ink; border-color: $line-strong; background: $white; } .avatar { background: var(--primary); color: $white; outline: 0; } } }
   .bug-item[aria-current="true"] { .muted { color: var(--muted); } .info-pill.warn { color: $ink; border-color: $line-strong; } }
@@ -223,7 +230,11 @@ $ctl-h: 36px;
   .photo-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
   .photo-tile { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 6px; gap: 6px; font-size: 13px; &:hover { transform: none; border-color: $line-strong; } }
   .triage { border-top: 1px solid $line; padding-top: 12px; gap: 10px; }
-  .keys kbd { border-width: 1px; border-radius: $r-xs; font-size: 12px; }
+  // Shortcut hints: informational outlined chips, a key-cap square plus the action
+  .key-hints { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px;
+    li { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px 0 4px; border: 1px solid $line-strong; border-radius: $r-ctl; background: $white; font-size: 13px; color: $ink; }
+    kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 4px; border: 1px solid $ctl-border; border-radius: $r-xs; background: $subtle; box-shadow: inset 0 -1px 0 $line-strong; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 600; line-height: 1; } }
+  .keys-toggle { display: grid; gap: 8px; }
   .comment-list li { background: $white; box-shadow: inset 0 0 0 1px $line; border-radius: $r-ctl; padding: 8px 12px; }
   .view-full { border-radius: $r-xs; padding: 2px 10px; font-size: 13px; box-shadow: 0 0 0 1px $ctl-border; }
   .theme-rows { gap: 0; border: 1px solid $line; border-radius: $r-box; overflow: hidden; }
@@ -281,7 +292,7 @@ $ctl-h: 36px;
     .seg, .chip { min-height: 44px; }
     .table-wrap { max-height: none; }
     .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .events-table, .themes-table, .audit-table { min-width: 0; }
+    .events-table, .themes-table, .challenges-table, .audit-table { min-width: 0; }
     // Tablet: data tables keep readable columns and scroll inside their focusable region instead of wrapping dates.
     .table.responsive { min-width: 720px; td:not(:first-child) { white-space: nowrap; } }
   }
@@ -303,6 +314,12 @@ $ctl-h: 36px;
     .table-wrap:has(.responsive) { border: 0; background: transparent; overflow: visible; }
     .page-header { flex-wrap: wrap; align-items: flex-start; }
     .cell-main { min-width: 0; }
+    // Challenge cards: art row on top, label/value lines aligned to the card edge, full-width action.
+    .challenges-table td { padding-top: 4px; padding-bottom: 4px; }
+    .challenges-table td:not([data-label]) { padding-left: 0; padding-right: 0; }
+    .challenges-table td[data-label] { padding-left: 96px; padding-right: 0; }
+    .challenges-table td[data-label]::before { top: 4px; }
+    .challenges-table td.right { padding-top: 8px; .pill-btn { width: 100%; } > .muted { display: grid; place-items: center; min-height: 44px; border: 1px dashed $line-strong; border-radius: $r-ctl; font-size: 14px; } }
     .audit-detail-row td { padding: 0; }
   }
 }

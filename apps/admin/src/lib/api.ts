@@ -158,25 +158,36 @@ function hashOf(draft: EventDraft): string {
 }
 
 /** Last week, this week (both Fitness, like the seed script) and one Globex theme for tenant isolation. */
-export function seedThemes(now: Date): WeeklyTheme[] {
-  const fitness = THEMES[0];
+export function seedThemes(now: Date, showcase = false): WeeklyTheme[] {
   const thisMonday = mondayOf(civilDateIn(now));
-  const theme = (id: string, companyId: string, monday: string, counts: { participantCount: number; completedCount: number }): WeeklyTheme => ({
-    id, companyId, title: fitness.displayName, description: fitness.defaultDescription,
-    tagIds: TAGS.filter((tag) => tag.name === fitness.defaultTagName).map((tag) => tag.id), type: "weekly",
-    goal: fitness.defaultGoal, goalUnit: fitness.goalUnits[0], coverImageURL: fitness.url,
-    startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)), pointsReward: 50, ...counts,
-    createdBy: PERSONAS.admin.uid, createdAt: weekStartIso(addDays(monday, -7)), updatedAt: weekStartIso(addDays(monday, -7)), revision: 1,
-  });
-  const lastMonday = addDays(thisMonday, -7);
+  const theme = (key: string, companyId: string, monday: string, counts: { participantCount: number; completedCount: number }): WeeklyTheme => {
+    const option = THEMES.find((item) => item.key === key) ?? THEMES[0];
+    return {
+      id: `weekly-${key}-${monday.replaceAll("-", "")}`, companyId, title: option.displayName, description: option.defaultDescription,
+      tagIds: TAGS.filter((tag) => tag.name === option.defaultTagName).map((tag) => tag.id), type: "weekly",
+      goal: option.defaultGoal, goalUnit: option.goalUnits[0], coverImageURL: option.url,
+      startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)), pointsReward: 50, ...counts,
+      createdBy: PERSONAS.admin.uid, createdAt: weekStartIso(addDays(monday, -7)), updatedAt: weekStartIso(addDays(monday, -7)), revision: 1,
+    };
+  };
+  const weeksFrom = (n: number) => addDays(thisMonday, 7 * n);
+  // This week and last week are Fitness like the seed script. The showcase (the hosted preview only, never the
+  // unit tests) adds an upcoming week and older weeks with other themes so the Challenges list has variety.
+  const extras = showcase ? [
+    theme("outdoors", "acme", weeksFrom(1), { participantCount: 0, completedCount: 0 }),
+    theme("food", "acme", weeksFrom(-2), { participantCount: 84, completedCount: 52 }),
+    theme("music", "acme", weeksFrom(-3), { participantCount: 71, completedCount: 40 }),
+    theme("learning", "acme", weeksFrom(-4), { participantCount: 58, completedCount: 29 }),
+  ] : [];
   return [
-    theme(`weekly-fitness-${thisMonday.replaceAll("-", "")}`, "acme", thisMonday, { participantCount: 128, completedCount: 41 }),
-    theme(`weekly-fitness-${lastMonday.replaceAll("-", "")}`, "acme", lastMonday, { participantCount: 96, completedCount: 63 }),
-    theme(`weekly-fitness-${thisMonday.replaceAll("-", "")}`, "globex", thisMonday, { participantCount: 5, completedCount: 0 }),
+    theme("fitness", "acme", thisMonday, { participantCount: 128, completedCount: 41 }),
+    theme("fitness", "acme", weeksFrom(-1), { participantCount: 96, completedCount: 63 }),
+    ...extras,
+    theme("fitness", "globex", thisMonday, { participantCount: 5, completedCount: 0 }),
   ];
 }
 
-export function createMockApi(store: KeyValueStore, now: () => Date = () => new Date()): AdminApi {
+export function createMockApi(store: KeyValueStore, now: () => Date = () => new Date(), showcase = false): AdminApi {
   function load(): Persisted {
     const raw = store.getItem(KEY);
     if (raw) {
@@ -192,7 +203,7 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
         // Fall through to a fresh seed when stored data is unreadable.
       }
     }
-    const fresh: Persisted = { ...seed(), themes: seedThemes(now()), themeReceipts: {} };
+    const fresh: Persisted = { ...seed(), themes: seedThemes(now(), showcase), themeReceipts: {} };
     store.setItem(KEY, JSON.stringify(fresh));
     return fresh;
   }

@@ -184,7 +184,6 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .review-nav { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; span { white-space: nowrap; } }
 .keys kbd { display: inline-block; min-width: 24px; padding: 0 6px; text-align: center; border: 2px solid $ink; border-radius: 8px; font-family: var(--font-figtree), sans-serif; font-size: 13px; }
 .dialog:not([open]) { display: none; }
-@media (max-width: 700px) { .keys { display: none; } }
 .queue-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .theme-row-pills { display: flex; gap: 8px; flex-wrap: wrap; }
 .view-full { position: absolute; right: 12px; bottom: 12px; background: $white; color: $ink; border-radius: 999px; padding: 6px 16px; font-family: var(--font-figtree), sans-serif; font-size: 15px; box-shadow: 0 0 0 2px $ink inset; }

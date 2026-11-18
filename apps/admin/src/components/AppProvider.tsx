@@ -32,9 +32,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (configured) {
         const { createFirebaseApi, readLiveConfig } = await import("@/lib/firebaseAdapter");
         const live = readLiveConfig();
-        created = live ? createFirebaseApi(live) : createMockApi(browserStore());
+        created = live ? createFirebaseApi(live) : createMockApi(browserStore(), () => new Date(), true);
       } else {
-        created = createMockApi(browserStore());
+        created = createMockApi(browserStore(), () => new Date(), true);
       }
       if (cancelled) return;
       setApi(created);
