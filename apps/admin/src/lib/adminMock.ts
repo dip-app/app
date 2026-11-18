@@ -11,6 +11,7 @@ import { t } from "./aiStrings";
 import { ApiError } from "./contract";
 import { validateRow } from "./importFile";
 import { mockTagStats } from "./tagStatsMock";
+import { bundledTagId, previewTagId } from "./catalog";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
   MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
@@ -231,6 +232,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     if (raw) { try { return JSON.parse(raw) as AiState; } catch { /* start fresh */ } }
     return { usage: {}, receipts: {} };
   }
+  /** `?tags=opaque` preview: drafts carry opaque tag IDs like production. */
+  const previewDrafts = (result: GenerateDraftsResult): GenerateDraftsResult => ({ ...result, drafts: result.drafts.map((d) => ({ ...d, tagIds: d.tagIds.map(previewTagId) })) });
   const aiSave = (state: AiState) => store.setItem(AI_KEY, JSON.stringify(state));
   const aiUsage = (companyId: string) => aiLoad().usage[companyId] ?? { monthly: 12, daily: 3 };
   const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
@@ -841,7 +844,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     async eventIdeaContext(): Promise<EventIdeaContext> {
       const session = staff("ai.generate");
       const { monthly, daily } = aiUsage(session.companyId);
-      return mockIdeaContext(aiScenario(), monthly, daily);
+      const ctx = mockIdeaContext(aiScenario(), monthly, daily);
+      return { ...ctx, topInterests: ctx.topInterests.map((i) => ({ ...i, tagId: previewTagId(i.tagId) })), thinInterestTagIds: ctx.thinInterestTagIds.map(previewTagId) };
     },
     // A fake Jev provider: fixed, typed answers (no model call). `?jev=` picks a scenario, `?ai=nodata` has no suggestions.
     async eventIdeaSuggestions() {
@@ -850,7 +854,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const scenario = typeof window === "undefined" ? "default" as const : suggestScenarioFromSearch(window.location.search);
       await aiDelay(scenario === "slow" ? 6000 : 400);
       if (scenario === "error") throw new ApiError("failed-precondition", "Suggestions are not available right now.", {}, "AI_UNAVAILABLE");
-      return mockSuggestions(aiScenario() === "nodata" ? "none" : scenario);
+      const found = mockSuggestions(aiScenario() === "nodata" ? "none" : scenario);
+      return { ...found, suggestions: found.suggestions.map((s) => (s.question === "interest" ? { ...s, value: previewTagId(s.value) } : s)) };
     },
     async generateEventDrafts(input): Promise<GenerateDraftsResult> {
       const session = staff("ai.generate");
@@ -860,7 +865,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const replayed = ai.receipts[receiptKey];
       if (replayed) {
         await aiDelay(300);
-        return { ...replayed, replay: true };
+        return previewDrafts({ ...replayed, replay: true });
       }
       await aiDelay(scenario === "slow" ? 8000 : 900);
       if (scenario === "off") throw new ApiError("failed-precondition", `${t("off.title")}.`, {}, "AI_DISABLED");
@@ -874,10 +879,11 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (scenario === "quota" || daily >= MOCK_DAILY_LIMIT) throw new ApiError("resource-exhausted", "You have used today’s AI drafts.", {}, "AI_DAILY_LIMIT");
       if (monthly >= MOCK_MONTHLY_LIMIT) throw new ApiError("resource-exhausted", "You have used this month’s AI drafts.", {}, "AI_MONTHLY_LIMIT");
       ai.usage[session.companyId] = { monthly: monthly + 1, daily: daily + 1 };
-      const result: GenerateDraftsResult = { drafts: buildMockDrafts(input.choices, input.prompt, input.count), usage: usageOf(monthly + 1, daily + 1), replay: false };
+      const choices = { ...input.choices, focusTagIds: input.choices.focusTagIds.map(bundledTagId) };
+      const result: GenerateDraftsResult = { drafts: buildMockDrafts(choices, input.prompt, input.count), usage: usageOf(monthly + 1, daily + 1), replay: false };
       ai.receipts[receiptKey] = result;
       aiSave(ai);
-      return result;
+      return previewDrafts(result);
     },
 
     // ----- tag interest counts (preview scenarios: ?tagstats=empty, ?tagstats=denied)
@@ -885,7 +891,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const session = staff("insights.view");
       const scenario = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("tagstats");
       if (scenario === "denied") return null;
-      return mockTagStats(session.companyId, scenario === "empty");
+      return mockTagStats(session.companyId, scenario === "empty").map((stat) => ({ ...stat, tagId: previewTagId(stat.tagId) }));
     },
 
     // ----- audit

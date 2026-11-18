@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { TagCatalogProvider } from "./TagCatalog";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
 
 interface AppState {
@@ -71,7 +72,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }
   if (!value) return <div className="boot-state" role="status"><title>DIP Admin</title><span className="sr-only">Loading DIP Admin</span></div>;
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+  return <Context.Provider value={value}><TagCatalogProvider>{children}</TagCatalogProvider></Context.Provider>;
 }
 
 export function useApp(): AppState {

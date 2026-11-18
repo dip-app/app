@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Tag } from "@/lib/catalog";
+import { useTags } from "./TagCatalog";
 import {
   THEME_LIMITS, THEME_REASONS, type ThemeDraft, type WeeklyTheme, endWeekOptions, findOverlap, firstFreeMonday,
   normalizeThemeDraft, overlapMessage, startWeekOptions, validateThemeDraft, windowLocked,
@@ -57,7 +57,8 @@ export function ThemeForm({ theme, onReload }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
-  const [tags, setTags] = useState<Tag[]>([]);
+  const catalog = useTags();
+  const tags = catalog.tags;
   const [others, setOthers] = useState<WeeklyTheme[]>([]);
   // Defaults (tags, first free week) apply only until the organizer changes those fields.
   const touched = useRef({ tags: false, weeks: false });
@@ -70,16 +71,17 @@ export function ThemeForm({ theme, onReload }: Props) {
   const dirty = edited && !saved;
   useUnsavedGuard(dirty);
 
+  // A new theme starts with its picked theme's tag, once the shared catalog is in.
+  useEffect(() => {
+    if (editing || touched.current.tags || catalog.status !== "ready") return;
+    const name = resolveTheme(draft.coverImageURL).defaultTagName.toLowerCase();
+    setDraft((current) => ({ ...current, tagIds: catalog.tags.filter((tag) => tag.name.toLowerCase() === name).map((tag) => tag.id) }));
+    // Applies once when the catalog arrives; the draft's theme at that moment picks the default tag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog.status]);
+
   useEffect(() => {
     let cancelled = false;
-    api.listTags().then((list) => {
-      if (cancelled) return;
-      setTags(list);
-      if (!editing && !touched.current.tags) {
-        const name = resolveTheme(draft.coverImageURL).defaultTagName.toLowerCase();
-        setDraft((current) => ({ ...current, tagIds: list.filter((tag) => tag.name.toLowerCase() === name).map((tag) => tag.id) }));
-      }
-    }, () => !cancelled && setTags([]));
     api.listThemes().then((list) => {
       if (cancelled) return;
       const rest = list.filter((item) => item.id !== theme?.id);
@@ -254,7 +256,8 @@ export function ThemeForm({ theme, onReload }: Props) {
           <fieldset className="field">
             <legend>Tags</legend>
             <div className="chips">
-              {tags.length === 0 && <span className="hint">Loading tags…</span>}
+              {catalog.status === "loading" && <span className="hint">Loading tags…</span>}
+              {catalog.status === "error" && <span className="hint">Couldn’t load tags. <button type="button" className="link-btn" onClick={catalog.reload}>Try again</button></span>}
               {tags.map((tag) => (
                 <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
                   onClick={() => {

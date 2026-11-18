@@ -1,7 +1,7 @@
 import { createMockOps } from "./adminMock";
 import type { AdminOpsApi } from "./adminApi";
 import { type Role, can } from "./adminTypes";
-import { type Tag, TAGS } from "./catalog";
+import { type Tag, TAGS, opaqueTagId, opaqueTagsPreview } from "./catalog";
 import {
   THEME_REASONS, type ThemeCommandResult, type ThemeDraft, type WeeklyTheme, findOverlap, normalizeThemeDraft,
   validateThemeDraft, windowLocked,
@@ -243,7 +243,7 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
       return load().session;
     },
     async listTags() {
-      return TAGS;
+      return opaqueTagsPreview() ? TAGS.map((tag) => ({ ...tag, id: opaqueTagId(tag.id) })) : TAGS;
     },
     async signIn(persona = "admin") {
       const data = load();
