@@ -11,6 +11,7 @@ root = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', default=os.environ.get('SIMULATOR_ID'))
 parser.add_argument('--derived-data', type=Path)
+parser.add_argument('--build-only', action='store_true', help='Compile the host and UI test bundle without running the UI suite (CI).')
 args = parser.parse_args()
 if not args.device:
     devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))
@@ -20,4 +21,4 @@ if not args.device:
 derived = args.derived_data or Path(tempfile.mkdtemp(prefix='dip-component-preview-'))
 print(f'Simulator: {args.device}; derived data: {derived}', flush=True)
 subprocess.run(['xcodegen', 'generate', '--spec', str(root / 'project.yml')], check=True)
-subprocess.run(['xcodebuild', '-project', str(root / 'DIPFoundationPreview.xcodeproj'), '-scheme', 'Preview', '-destination', f'platform=iOS Simulator,id={args.device}', '-derivedDataPath', str(derived), '-parallel-testing-enabled', 'NO', '-collect-test-diagnostics', 'never', 'CODE_SIGNING_ALLOWED=NO', 'test'], check=True)
+subprocess.run(['xcodebuild', '-project', str(root / 'DIPFoundationPreview.xcodeproj'), '-scheme', 'Preview', '-destination', f'platform=iOS Simulator,id={args.device}', '-derivedDataPath', str(derived), '-parallel-testing-enabled', 'NO', '-collect-test-diagnostics', 'never', 'CODE_SIGNING_ALLOWED=NO', 'build-for-testing' if args.build_only else 'test'], check=True)
