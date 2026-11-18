@@ -7,7 +7,7 @@ import { type Art, DIPBOT_ICON, SPOT_BG, interestArt, spotArt, stateArt } from "
 import {
   type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied,
 } from "@/lib/suggestionLabels";
-import { COVERS, TAGS, tagName } from "@/lib/catalog";
+import { COVERS } from "@/lib/catalog";
 import { ApiError } from "@/lib/contract";
 import {
   type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, NOTE_SUGGESTIONS, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
@@ -18,6 +18,7 @@ import { t, tMaybe, tn } from "@/lib/aiStrings";
 import { useApp } from "./AppProvider";
 import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
+import { useTags } from "./TagCatalog";
 
 type Phase = "edit" | "generating" | "results" | "error";
 
@@ -92,6 +93,8 @@ export function Ideas() {
   const router = useRouter();
   const ctxState = useLoad((a) => a.eventIdeaContext(), "event-idea-context");
   const ctx = ctxState.data;
+  const catalog = useTags();
+  const tagName = catalog.nameFor;
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("edit");
@@ -270,7 +273,7 @@ export function Ideas() {
   const thin = ctx.interestDataAvailable ? ctx.thinInterestTagIds.map(tagName) : [];
   const interestCards = ctx.interestDataAvailable
     ? ctx.topInterests.map((t) => ({ id: t.tagId, name: tagName(t.tagId), bucket: t.bucket as "5-9" | "10-19" | "20+" | null }))
-    : TAGS.map((t) => ({ id: t.id, name: t.name, bucket: null as null }));
+    : catalog.tags.map((t) => ({ id: t.id, name: t.name, bucket: null as null }));
   const atMax = answers.focusTagIds.length >= MAX_FOCUS;
 
   // ---------- Suggestions: at most one labeled option per question; nothing is ever selected for the admin.
@@ -537,7 +540,8 @@ export function Ideas() {
   );
 }
 
-function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpen: () => void }) {
+export function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpen: () => void }) {
+  const { nameFor: tagName } = useTags();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const cover = COVERS.find((c) => c.url === draft.coverImageURL) ?? COVERS[0];

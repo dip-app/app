@@ -175,11 +175,12 @@ export const AI_DRAFT_TTL_MS = 60 * 60 * 1000;
 /** The fields an AI draft may fill. Venue, start and end stay empty: the admin picks a real venue and time. */
 export type FormPrefill = Pick<EventDraft, "title" | "description" | "tagIds" | "coverImageURL" | "costCents" | "costNote" | "capacity" | "isOutdoor">;
 
-export function draftToPrefill(d: GeneratedEventDraft): FormPrefill {
+/** `knownTagIds` is the loaded catalog's IDs (opaque in production); tags outside it are dropped. Without it, the bundled mock IDs apply. */
+export function draftToPrefill(d: GeneratedEventDraft, knownTagIds: readonly string[] = TAG_IDS): FormPrefill {
   return {
     title: d.title,
     description: d.description,
-    tagIds: d.tagIds.filter((id) => TAG_IDS.includes(id)),
+    tagIds: d.tagIds.filter((id) => knownTagIds.includes(id)),
     coverImageURL: COVERS.some((c) => c.url === d.coverImageURL) ? d.coverImageURL : "",
     costCents: Math.max(0, Math.round(d.costCents)),
     costNote: d.costNote,

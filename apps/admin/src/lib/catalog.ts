@@ -33,6 +33,34 @@ export const TAGS: Tag[] = [
 
 export const TAG_IDS = TAGS.map((tag) => tag.id);
 
+/** Shown for a tag ID the catalog doesn't know. Raw IDs are opaque Firestore IDs and never go on screen. */
+export const UNKNOWN_TAG_NAME = "Unknown tag";
+
+/** Name from the bundled (mock) catalog only. Live screens resolve through `useTagCatalog`, which reads `tags/{tagId}`. */
 export function tagName(id: string): string {
-  return TAGS.find((tag) => tag.id === id)?.name ?? id;
+  return TAGS.find((tag) => tag.id === id)?.name ?? UNKNOWN_TAG_NAME;
 }
+
+/**
+ * Mock only, for design review: `?tags=opaque` serves the catalog with opaque 20-character IDs like production's,
+ * so a screen that shows an ID instead of a name is visible in the preview.
+ */
+export const opaqueTagsPreview = (): boolean => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tags") === "opaque";
+
+export function opaqueTagId(id: string): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let seed = 2166136261;
+  for (const ch of id) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
+  let out = "";
+  for (let i = 0; i < 20; i += 1) {
+    seed = (Math.imul(seed ^ (seed >>> 15), 2246822519) + i) >>> 0;
+    out += alphabet[seed % alphabet.length];
+  }
+  return out;
+}
+
+/** Maps a bundled tag ID to the preview's opaque one when `?tags=opaque` is on; other IDs pass through. */
+export const previewTagId = (id: string): string => (opaqueTagsPreview() && TAG_IDS.includes(id) ? opaqueTagId(id) : id);
+
+/** The reverse of `previewTagId`, for requests the mock receives. */
+export const bundledTagId = (id: string): string => (opaqueTagsPreview() ? TAG_IDS.find((own) => opaqueTagId(own) === id) ?? id : id);

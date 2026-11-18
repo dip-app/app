@@ -5,6 +5,7 @@ import { ActivityChart, InterestsCard, OverviewLoading, PeopleCard, PendingActio
 import { Shell } from "@/components/Shell";
 import { LoadError } from "@/components/Ui";
 import { useApp } from "@/components/AppProvider";
+import { useTags } from "@/components/TagCatalog";
 import { describe, useLoad } from "@/components/useLoad";
 import { can } from "@/lib/adminTypes";
 import { updatedLabel } from "@/lib/insights";
@@ -14,7 +15,7 @@ export default function OverviewPage() {
   const insights = useLoad((a) => a.companyInsights(), "insights");
   // Interest counts load on their own, so the card still shows when insights fail. A failure or a denied read just hides it.
   const tagStats = useLoad((a) => a.tagStats(), "tagStats");
-  const tagCatalog = useLoad((a) => a.listTags(), "tags");
+  const tagCatalog = useTags();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
   const [now, setNow] = useState(() => new Date());
@@ -47,8 +48,8 @@ export default function OverviewPage() {
   ) : undefined;
 
   // The active total comes from insights; without it the card draws bars relative to the top interest.
-  const interests = tagStats.data && tagCatalog.data
-    ? <InterestsCard stats={tagStats.data} tags={tagCatalog.data} activeMembers={data && !data.unavailable.includes("members") ? data.members.active : null} />
+  const interests = tagStats.data && tagCatalog.status === "ready"
+    ? <InterestsCard stats={tagStats.data} tags={tagCatalog.tags} activeMembers={data && !data.unavailable.includes("members") ? data.members.active : null} />
     : null;
 
   return (
