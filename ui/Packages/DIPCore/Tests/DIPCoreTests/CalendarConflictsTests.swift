@@ -283,7 +283,7 @@ final class CalendarConflictsTests: XCTestCase {
     // MARK: pill state
 
     func testPillResolveEveryState() {
-        let c = [conflict("A", 0, 60)]
+        let c = [conflict("A", 0, 60, source: .dip(eventID: "x"))]
         func resolve(canAdd: Bool = true, added: Bool = false, adding: Bool = false, direct: Bool = false,
                      conflicts: [DIPCalendarConflict] = []) -> DIPCalendarPillState {
             .resolve(canAdd: canAdd, isAdded: added, isAdding: adding, direct: direct, conflicts: conflicts)
@@ -298,7 +298,7 @@ final class CalendarConflictsTests: XCTestCase {
     }
 
     func testPillEnabledAndAccessibilityLabels() {
-        let c = [conflict("Dentist", 0, 60)]
+        let c = [conflict("Dentist", 0, 60, source: .dip(eventID: "x"))]
         XCTAssertFalse(DIPCalendarPillState.hidden.isEnabled)
         XCTAssertTrue(DIPCalendarPillState.free(direct: true).isEnabled)
         XCTAssertTrue(DIPCalendarPillState.conflict(c, direct: false).isEnabled)

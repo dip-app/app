@@ -48,6 +48,9 @@ public struct DIPCalendarConflict: Equatable, Sendable {
     /// An all-day entry (only present when the member counts all-day entries as busy): worded "All day".
     public var isAllDay: Bool
 
+    /// Another DIP event the member joined (amber); everything else is the member's own calendar (grey).
+    public var isDIP: Bool { if case .dip = source { true } else { false } }
+
     public init(title: String, start: Date, end: Date, isSoft: Bool = false, source: Source, isAllDay: Bool = false) {
         self.title = title; self.start = start; self.end = end; self.isSoft = isSoft; self.source = source
         self.isAllDay = isAllDay
@@ -171,6 +174,46 @@ public enum DIPCalendarOverlapText {
         return (allSoft ? "May overlap with " : "Overlaps with ") + names(conflicts)
     }
 
+    /// The word for a personal-calendar entry whose title is empty (or hidden).
+    public static let busy = "Busy"
+
+    /// Alert title when only the member's own calendar overlaps: the entry's title, or "Busy" without one
+    /// ("Team Lunch", "Team Lunch and Standup", "Busy"). Never reveals more than the calendar itself showed.
+    public static func busyTitle(_ conflicts: [DIPCalendarConflict]) -> String {
+        let titled = conflicts.map { clean($0.title) }.filter { !$0.isEmpty }
+        guard !titled.isEmpty else { return busy }
+        var names = Array(titled.prefix(2))
+        if conflicts.count > titled.count && names.count < 2 { names.append(busy) }
+        let more = conflicts.count - names.count
+        switch (names.count, more) {
+        case (1, _): return names[0]
+        case (2, 0): return "\(names[0]) and \(names[1])"
+        default: return "\(names[0]), \(names[1]) and \(more) more"
+        }
+    }
+
+    /// Alert title for any mix: a DIP overlap wins ("Overlaps with ..."), otherwise the busy title. Personal entries
+    /// without a title read "Busy" next to DIP titles.
+    public static func alertTitle(_ conflicts: [DIPCalendarConflict]) -> String {
+        guard conflicts.contains(where: \.isDIP) else { return busyTitle(conflicts) }
+        return title(relabeled(conflicts))
+    }
+
+    /// Alert body. For personal-only overlaps it opens with the plain meaning of the grey pill.
+    public static func alertMessage(_ conflicts: [DIPCalendarConflict], eventStart: Date? = nil,
+                                    locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+        let lines = message(relabeled(conflicts), eventStart: eventStart, locale: locale, timeZone: timeZone)
+        return conflicts.contains(where: \.isDIP) ? lines : "You have something else then.\n" + lines
+    }
+
+    private static func relabeled(_ conflicts: [DIPCalendarConflict]) -> [DIPCalendarConflict] {
+        conflicts.map { conflict in
+            var copy = conflict
+            if clean(conflict.title).isEmpty { copy.title = busy }
+            return copy
+        }
+    }
+
     /// "Team Lunch", "Team Lunch and Standup", "Team Lunch, Standup and 2 more". Untitled entries collapse into
     /// one name ("a busy time", "2 busy times") so a calendar full of blanks does not read as a list of copies.
     public static func names(_ conflicts: [DIPCalendarConflict]) -> String {
@@ -246,8 +289,12 @@ public enum DIPCalendarPillState: Equatable, Sendable {
     /// Nothing known to overlap. `direct` saves straight to the default calendar (full access); otherwise the
     /// system editor opens, which needs no permission.
     case free(direct: Bool)
-    /// Something overlaps: tapping opens the "Overlaps with" modal first.
+    /// Another DIP event the member joined overlaps (amber): tapping opens the "Overlaps with" alert first. Any
+    /// personal-calendar overlaps ride along so the alert can list both.
     case conflict([DIPCalendarConflict], direct: Bool)
+    /// Only the member's own (non-DIP) calendar overlaps (grey): "you have something else then". Still tappable;
+    /// the alert is titled with the busy entry and offers Add anyway.
+    case busy([DIPCalendarConflict], direct: Bool)
     /// A save is in flight.
     case adding
     /// Already in the member's calendar: informational, disabled.
@@ -258,12 +305,14 @@ public enum DIPCalendarPillState: Equatable, Sendable {
         guard canAdd else { return .hidden }
         if isAdded { return .added }
         if isAdding { return .adding }
-        return conflicts.isEmpty ? .free(direct: direct) : .conflict(conflicts, direct: direct)
+        // Priority: DIP overlap, then personal overlap, then free.
+        if conflicts.contains(where: \.isDIP) { return .conflict(conflicts, direct: direct) }
+        return conflicts.isEmpty ? .free(direct: direct) : .busy(conflicts, direct: direct)
     }
 
     public var isEnabled: Bool {
         switch self {
-        case .free, .conflict: true
+        case .free, .conflict, .busy: true
         case .hidden, .adding, .added: false
         }
     }
@@ -272,7 +321,8 @@ public enum DIPCalendarPillState: Equatable, Sendable {
         switch self {
         case .hidden: ""
         case .free: "Add to calendar"
-        case .conflict(let conflicts, _): "Add to calendar. \(DIPCalendarOverlapText.title(conflicts))"
+        case .conflict(let conflicts, _): "Add to calendar. \(DIPCalendarOverlapText.alertTitle(conflicts))"
+        case .busy: "Add to calendar. Busy at this time"
         case .adding: "Adding to calendar"
         case .added: "Added to your calendar"
         }
@@ -290,17 +340,41 @@ public enum DIPCalendarPillState: Equatable, Sendable {
         switch self {
         case .hidden, .adding, .added: ""
         case .free(let direct): direct ? "Saves it to your calendar" : "Opens the calendar editor to review before saving"
-        case .conflict(_, let direct):
+        case .conflict(_, let direct), .busy(_, let direct):
             direct ? "Asks you to confirm, then saves it to your calendar" : "Asks you to confirm, then opens the calendar editor"
         }
     }
 }
 
-/// Events that fit the member's calendar come first; nothing is ever hidden and order is otherwise kept.
+/// Which upcoming events overlap something, for Home: `dip` overlaps another joined DIP event (amber badge),
+/// `personal` overlaps only the member's own calendar (grey badge). An event is never in both (DIP wins).
+public struct DIPCalendarOverlaps: Equatable, Sendable {
+    public var dip: Set<String>
+    public var personal: Set<String>
+
+    public static let none = DIPCalendarOverlaps(dip: [], personal: [])
+
+    public init(dip: Set<String> = [], personal: Set<String> = []) {
+        self.dip = dip
+        self.personal = personal.subtracting(dip)
+    }
+
+    public var isEmpty: Bool { dip.isEmpty && personal.isEmpty }
+}
+
+/// Events that fit the member's calendar come first, then personal-calendar overlaps (grey), then DIP overlaps
+/// (amber); nothing is ever hidden and order is otherwise kept.
 public enum DIPCalendarFit {
-    public static func prioritized<Item>(_ items: [Item], id: (Item) -> String, conflicted: Set<String>) -> [Item] {
-        guard !conflicted.isEmpty else { return items }
-        return items.filter { !conflicted.contains(id($0)) } + items.filter { conflicted.contains(id($0)) }
+    public static func prioritized<Item>(_ items: [Item], id: (Item) -> String, conflicted: Set<String>,
+                                         busy: Set<String> = []) -> [Item] {
+        guard !conflicted.isEmpty || !busy.isEmpty else { return items }
+        return items.filter { !conflicted.contains(id($0)) && !busy.contains(id($0)) }
+            + items.filter { busy.contains(id($0)) && !conflicted.contains(id($0)) }
+            + items.filter { conflicted.contains(id($0)) }
+    }
+
+    public static func prioritized<Item>(_ items: [Item], id: (Item) -> String, overlaps: DIPCalendarOverlaps) -> [Item] {
+        prioritized(items, id: id, conflicted: overlaps.dip, busy: overlaps.personal)
     }
 }
 

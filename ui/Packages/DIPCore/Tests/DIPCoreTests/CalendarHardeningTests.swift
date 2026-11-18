@@ -22,8 +22,9 @@ final class CalendarHardeningTests: XCTestCase {
         .init(startTime: start, endTime: end, venueName: "", address: "", locality: "", costCents: 0, capacity: 5)
     }
 
-    private func conflict(_ title: String, _ start: Double, _ end: Double, allDay: Bool = false) -> DIPCalendarConflict {
-        .init(title: title, start: at(start), end: at(end), source: .device, isAllDay: allDay)
+    private func conflict(_ title: String, _ start: Double, _ end: Double, allDay: Bool = false,
+                          source: DIPCalendarConflict.Source = .device) -> DIPCalendarConflict {
+        .init(title: title, start: at(start), end: at(end), source: source, isAllDay: allDay)
     }
 
     // MARK: All-day detection across daylight saving (CAL-Q7)
@@ -125,7 +126,7 @@ final class CalendarHardeningTests: XCTestCase {
     // MARK: Pill VoiceOver text (CAL-Q12)
 
     func testPillLabelStartsWithTheVisibleDate() {
-        let c = [conflict("Dentist", 0, 60)]
+        let c = [conflict("Dentist", 0, 60, source: .dip(eventID: "x"))]
         XCTAssertEqual(DIPCalendarPillState.free(direct: false).accessibilityLabel(date: "Monday 11/23"), "Monday 11/23. Add to calendar")
         XCTAssertEqual(DIPCalendarPillState.conflict(c, direct: true).accessibilityLabel(date: "Monday 11/23"),
                        "Monday 11/23. Add to calendar. Overlaps with Dentist")
@@ -137,7 +138,7 @@ final class CalendarHardeningTests: XCTestCase {
     func testPillHintSaysWhetherItSavesDirectlyOrOpensTheEditor() {
         XCTAssertTrue(DIPCalendarPillState.free(direct: true).accessibilityHint.contains("Saves"))
         XCTAssertTrue(DIPCalendarPillState.free(direct: false).accessibilityHint.contains("editor"))
-        XCTAssertTrue(DIPCalendarPillState.conflict([conflict("A", 0, 60)], direct: false).accessibilityHint.contains("confirm"))
+        XCTAssertTrue(DIPCalendarPillState.conflict([conflict("A", 0, 60, source: .dip(eventID: "x"))], direct: false).accessibilityHint.contains("confirm"))
         XCTAssertEqual(DIPCalendarPillState.added.accessibilityHint, "")
     }
 

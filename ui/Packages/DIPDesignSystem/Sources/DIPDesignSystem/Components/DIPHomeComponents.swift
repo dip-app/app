@@ -280,11 +280,19 @@ public enum DIPBadgeCount {
         let onSelect: () -> Void
         @Environment(\.dynamicTypeSize) private var dynamicTypeSize
         /// Informational: the event overlaps the member's calendar. Never hides or disables the card.
-        private var overlapsCalendar = false
+        private var calendarBadge: CalendarBadge = .none
+        /// Which calendar-overlap badge the card shows.
+        public enum CalendarBadge: Equatable, Sendable {
+            case none
+            /// Overlaps another DIP event the member joined: amber warning.
+            case conflict
+            /// Overlaps only the member's own calendar: neutral gray calendar badge.
+            case busy
+        }
         /// Marks the card with the calendar-overlap badge (trailing, below the going chip).
-        public func overlapsCalendar(_ on: Bool) -> Self {
+        public func calendarBadge(_ badge: CalendarBadge) -> Self {
             var copy = self
-            copy.overlapsCalendar = on
+            copy.calendarBadge = badge
             return copy
         }
         public init(
@@ -385,16 +393,19 @@ public enum DIPBadgeCount {
                         }
                 }
                 .overlay(alignment: .topTrailing) {
-                    if overlapsCalendar {
-                        Image(systemName: "exclamationmark.triangle.fill")
+                    if calendarBadge != .none {
+                        let isConflict = calendarBadge == .conflict
+                        Image(systemName: isConflict ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(DIPTokens.Color.textOnCalendarConflict.swiftUIColor)
+                            .foregroundStyle((isConflict ? DIPTokens.Color.textOnCalendarConflict : DIPTokens.Color.textOnCalendarBusy).swiftUIColor)
                             .frame(width: 28, height: 28)
-                            .background(DIPTokens.Color.calendarConflict.swiftUIColor, in: Circle())
+                            .background((isConflict ? DIPTokens.Color.calendarConflict : DIPTokens.Color.calendarBusy).swiftUIColor, in: Circle())
+                            // The light gray needs a ring to stay visible on pale photos (design audit).
+                            .overlay { if !isConflict { Circle().strokeBorder(.white, lineWidth: 1.5) } }
                             // Below the going chip, which can span the card's full width.
                             .padding(.top, 46).padding(.trailing, 10)
                             .accessibilityHidden(true)
-                            .accessibilityIdentifier("home.event.calendarConflict")
+                            .accessibilityIdentifier(isConflict ? "home.event.calendarConflict" : "home.event.calendarBusy")
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -402,7 +413,8 @@ public enum DIPBadgeCount {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(spokenLabel)
-            .accessibilityValue(overlapsCalendar ? "Overlaps your calendar" : "")
+            .accessibilityValue(calendarBadge == .conflict ? "Overlaps another activity you joined"
+                                : calendarBadge == .busy ? "Busy at this time" : "")
             .accessibilityHint("Opens the event page")
             .accessibilityIdentifier("home.event.\(identifier)")
         }
