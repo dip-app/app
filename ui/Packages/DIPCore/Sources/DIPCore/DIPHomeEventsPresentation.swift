@@ -61,7 +61,7 @@ public enum DIPHomeFilterAnnouncement {
     public static func text(scope: DIPHomeEventScope, shown: Int, total: Int) -> String {
         switch scope {
         case .all:
-            return String(localized: "home.filter.announce.all", defaultValue: "All events. \(total) events.", bundle: .module, comment: "VoiceOver when the Home filter shows all events; %lld = number of events")
+            return String(localized: "home.filter.announce.all", defaultValue: total == 1 ? "All events. \(total) event." : "All events. \(total) events.", bundle: .module, comment: "VoiceOver when the Home filter shows all events; %lld = number of events")
         case .matching:
             if shown == 0 { return String(localized: "home.filter.announce.matchingNone", defaultValue: "Matching your interests. No events match.", bundle: .module, comment: "VoiceOver when the interest filter matches no events") }
             return String(localized: "home.filter.announce.matching", defaultValue: "Matching your interests. Showing \(shown) of \(total) events.", bundle: .module, comment: "VoiceOver when the interest filter is on; first %lld = events shown, second %lld = total events")

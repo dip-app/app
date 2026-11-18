@@ -114,11 +114,11 @@ public struct DIPAvatarGroupSummary: Equatable, Sendable {
         }
         if parts.isEmpty {
             return String(
-                localized: "ds.avatarGroup.count", defaultValue: "\(totalCount) attendees", bundle: .module,
+                localized: "ds.avatarGroup.count", defaultValue: totalCount == 1 ? "\(totalCount) attendee" : "\(totalCount) attendees", bundle: .module,
                 comment: "Spoken attendee total; %lld = number of attendees")
         }
         return String(
-            localized: "ds.avatarGroup.countWithNames", defaultValue: "\(totalCount) attendees: \(parts.joined(separator: ", "))",
+            localized: "ds.avatarGroup.countWithNames", defaultValue: totalCount == 1 ? "\(totalCount) attendee: \(parts.joined(separator: ", "))" : "\(totalCount) attendees: \(parts.joined(separator: ", "))",
             bundle: .module,
             comment: "Spoken attendee total followed by names; %1$lld = number of attendees, %2$@ = comma separated names and overflow")
     }
