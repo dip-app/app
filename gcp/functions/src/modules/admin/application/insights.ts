@@ -156,12 +156,16 @@ async function compute(deps: AdminDeps, companyId: string, now: Date): Promise<G
     section<InsightsPoints>("points", { issuedLast30Days: 0, topMembers: [] }, async () => {
       const [issued, topMemberDocs] = await Promise.all([
         store.aggregate({ collection: paths.pointTransactions(companyId) }, [["amount", ">", 0], ["createdAt", ">=", windowStart]], "amount"),
-        store.queryDocs({ collection: "users" }, { where: [eq("companyId", companyId)], orderBy: "pointsBalance", descending: true, select: ["displayName", "pointsBalance", "status"], limit: 8 }),
+        store.queryDocs({ collection: "users" }, { where: [eq("companyId", companyId)], orderBy: "pointsBalance", descending: true, select: ["displayName", "pointsBalance", "status", "photoURL", "avatarId"], limit: 8 }),
       ]);
       const topMembers: InsightsTopMember[] = topMemberDocs
         .filter(d => d.data.status !== "deactivated" && toCount(d.data.pointsBalance) > 0)
         .slice(0, 5)
-        .map(d => ({ userId: idOf(d.path), displayName: String(d.data.displayName ?? "").slice(0, 120), pointsBalance: toCount(d.data.pointsBalance) }));
+        .map((d): InsightsTopMember => ({
+          userId: idOf(d.path), displayName: String(d.data.displayName ?? "").slice(0, 120), pointsBalance: toCount(d.data.pointsBalance),
+          ...(typeof d.data.photoURL === "string" && d.data.photoURL ? { photoURL: d.data.photoURL.slice(0, 2048) } : {}),
+          ...(typeof d.data.avatarId === "string" && d.data.avatarId ? { avatarId: d.data.avatarId.slice(0, 120) } : {}),
+        }));
       return { issuedLast30Days: toCount(issued.sum), topMembers };
     }),
     section<InsightsActivityDay[]>("activity", zeroDays, async () => {

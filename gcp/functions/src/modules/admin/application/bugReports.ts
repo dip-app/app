@@ -3,7 +3,7 @@ import type {
 } from "../../../generated/models";
 import { change } from "../domain/audit";
 import {
-  MAX_INLINE_SCREENSHOT, SCREENSHOT_TTL_MS, decodeCursor, dayEnd, dayStart, encodeCursor, matchesBugText, readTriage, toDiagnostics, toReport,
+  MAX_INLINE_SCREENSHOT, SCREENSHOT_TTL_MS, decodeCursor, dayEnd, dayStart, encodeCursor, matchesBugText, readTriage, reporterOf, toDiagnostics, toReport,
   type Triage,
 } from "../domain/bugReports";
 import { AdminError, stored } from "../domain/errors";
@@ -63,7 +63,7 @@ export async function listBugReports(deps: AdminDeps, caller: Caller | null, dat
         if (createdAt instanceof Date) after = { at: createdAt, id: item.id };
         const reporter = typeof item.data.uid === "string" ? users.get(item.data.uid) : null;
         if (!reporter || reporter.companyId !== actor.companyId) continue;
-        const report = toReport(item.id, item.data, { name: typeof reporter.displayName === "string" ? reporter.displayName : MISSING_REPORTER.name, email: "" }, triageById.get(item.id) ?? readTriage(null));
+        const report = toReport(item.id, item.data, reporterOf(reporter, MISSING_REPORTER.name), triageById.get(item.id) ?? readTriage(null));
         if (!report || !matchesBugText(report, req)) continue;
         if (firstPage) { counts.all += 1; counts[report.status] += 1; }
         if (req.status && report.status !== req.status) continue;
@@ -106,8 +106,7 @@ export async function getBugReport(deps: AdminDeps, caller: Caller | null, data:
     return loadReport(tx, actor, req.reportId);
   });
   const triage = readTriage(loaded.triageDoc);
-  const reporterName = typeof loaded.reporter.displayName === "string" ? loaded.reporter.displayName : MISSING_REPORTER.name;
-  const report = toReport(req.reportId, loaded.report, { name: reporterName, email: "" }, triage);
+  const report = toReport(req.reportId, loaded.report, reporterOf(loaded.reporter, MISSING_REPORTER.name), triage);
   stored(report !== null, "bug report");
   const uid = loaded.report.uid as string;
   // Only the exact object the rules allow the reporter to write is ever read.

@@ -153,8 +153,8 @@ function Roster() {
                     <tr key={r.entryId}>
                       <th scope="row">
                         {r.memberId
-                          ? <Link className="person" href={`/members/detail/?id=${encodeURIComponent(r.memberId)}`}><Avatar name={r.displayName} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></Link>
-                          : <span className="person"><Avatar name={r.displayName} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></span>}
+                          ? <Link className="person" href={`/members/detail/?id=${encodeURIComponent(r.memberId)}`}><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></Link>
+                          : <span className="person"><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></span>}
                       </th>
                       <td data-label="Role">{ROLE_LABEL[r.role]}</td>
                       <td data-label="Teams">{r.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>

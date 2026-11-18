@@ -95,7 +95,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
 
       <div className="detail-layout">
         <section className="panel" aria-labelledby="who">
-          <div className="person big"><Avatar name={member.displayName} photoURL={member.photoURL} avatarId={member.avatarId} size={64} /><div><h2 id="who">{member.displayName}</h2><p className="muted">{member.email}</p></div></div>
+          <div className="person big"><Avatar name={member.displayName} userId={member.id} photoURL={member.photoURL} avatarId={member.avatarId} size={64} /><div><h2 id="who">{member.displayName}</h2><p className="muted">{member.email}</p></div></div>
           <fieldset className="bare" disabled={!editable}>
           <div className="form single">
             <div className="field"><label htmlFor="m-role">Role</label>

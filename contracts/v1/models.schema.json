@@ -2648,6 +2648,16 @@
           "type": "string",
           "maxLength": 128
         },
+        "memberPhotoURL": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Wire-only (never stored): the claiming member's photoURL from their users document, same company only; absent when none or unclaimed."
+        },
+        "memberAvatarId": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Wire-only (never stored): the claiming member's avatarId; absent when empty or unclaimed."
+        },
         "claimedAt": {
           "type": "string",
           "format": "date-time"
@@ -5249,6 +5259,16 @@
           "type": "string",
           "maxLength": 200
         },
+        "reporterPhotoURL": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "The reporter's stored Google photo base URL; absent when none."
+        },
+        "reporterAvatarId": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "The reporter's stored avatar id; absent when empty."
+        },
         "appVersion": {
           "type": "string",
           "maxLength": 32
@@ -5696,6 +5716,16 @@
         "displayName": {
           "type": "string",
           "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "The member's stored Google photo base URL; absent when none."
+        },
+        "avatarId": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "The member's stored avatar id; absent when empty (the app then generates one from the user id)."
         },
         "pointsBalance": {
           "type": "integer",

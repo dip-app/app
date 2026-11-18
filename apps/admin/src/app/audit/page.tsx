@@ -4,7 +4,7 @@ import { Fragment, Suspense, useMemo, useState } from "react";
 import { Shell } from "@/components/Shell";
 import { TableRegion } from "@/components/TableRegion";
 import { toast } from "@/components/Toast";
-import { Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
+import { Avatar, Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import { AUDIT_ACTIONS, ROLE_LABEL } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
@@ -70,7 +70,7 @@ function Audit() {
                             <tr className="audit-entry">
                               <td className="nowrap" data-label="When"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
                               <td data-label="Action"><Info>{AUDIT_ACTIONS[e.action] ?? e.action}</Info></td>
-                              <td data-label="Who"><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></td>
+                              <td data-label="Who"><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
                               <td data-label="What"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
                               <td className="right">{expandable && <button className="pill-btn gray small" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${e.summary}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button>}</td>
                             </tr>

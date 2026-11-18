@@ -2,33 +2,40 @@
 
 User: sandervonk
 Date: 2026-11-17
-Workstream: duo-rail-sensor-side
-Agent: Claude Code
+Workstream: admin-avatars-gap
+Agent: Claude
 Status: completed
 
 ## Summary
-iPhone Duo inner screen: the navigation rail moved from the left into the 84 pt sensor column, below the status pill, so list and detail panes fill from the left edge (detail pane 380 -> 473 pt). Regular iPhones and iPads are untouched.
 
+Every person in the admin portal now uses the shared `Avatar`, and it works for real Google-signed-in accounts (empty `photoURL` and `avatarId`) by drawing the app's generated character for the user id. Fixed the missing gap under the Overview loading tiles and the other stacked-section margins.
 
 ## Changes
-- ui/DIP/Support/DuoLayout.swift: `DIPDuoSensor` (side and width from the safe-area insets, so it follows the pill to either edge), `\.dipDuoSensor`, `DIPDuoRailSlot`; a second hosting controller in the sensor column draws the rail (touches blocked while a sheet is presented).
-- ui/DIP/Features/Duo/DIPDuoShell.swift: rail takes column width and pill clearance; pane geometry no longer subtracts the rail.
-- ui/DIP/Features/Prototype/DIPPrototypeApp.swift: shell publishes the rail to the slot; rail stays at the leading edge only if no sensor inset exists.
-- ui/DIPTests/DuoLayoutTests.swift: sensor side, pane widths, rail fits under the pill.
 
+- `apps/admin/src/lib/generatedAvatar.ts` (new): port of `DIPAvatarStyle.assigned(forUserID:)` (FNV-1a 64, SplitMix64, figure/mood/palette digits).
+- `apps/admin/src/components/Avatar.tsx`: `userId` prop, `CrewFace` SVG, chain photo > stored avatar > generated > initials.
+- Call sites: Overview top members, Roster, Attendees, Audit log (new avatar), Bug reports list and detail, Review submissions, Admins-only page, Members detail.
+- Contract (additive, optional): `InsightsTopMember.photoURL/avatarId`, `AdminBugReport.reporterPhotoURL/reporterAvatarId`, `RosterEntry.memberPhotoURL/memberAvatarId`; regenerated `gcp/functions/src/generated/models.ts` and `ui/Packages/DIPContracts/.../Models.swift`.
+- Backend: `admin/application/insights.ts`, `bugReports.ts`, `roster.ts` (batched same-company users read), `domain/bugReports.ts`.
+- Portal live adapter and mock map the new fields; mock members mostly have no photo or avatar id, like real accounts.
+- Spacing: `OverviewLoading` keeps skeleton tiles and the Interests card in the `.overview` grid; `.overview .panel/.notice` margins zeroed in `pro.scss` (28px double gaps became 14px); `.review-layout` single column under 1000px (also fixed the Bug reports and Review submissions overflow at 390 px); skeleton tile height 89px.
+- Tests: `generatedAvatar.test.ts`, `Avatar.test.tsx`, `OverviewUnavailable.test.tsx` (top members render, loading stack, stylesheet gap), `gcp/tests/unit/admin-avatars.test.ts`.
+- README: Avatar section.
 
 ## Validation
-- xcodebuild test -only-testing:DIPTests/DuoLayoutTests: 19 tests, 0 failures.
-- Simulator (Claude-Duo, --mock-member): Home, My Events, Rewards, Profile before/after; rail taps switch tabs, bell opens the sheet, rail taps are ignored while the sheet is up. Design auditor: PASS on all four.
-- Claude-Base (iPhone 17 Pro) Home, Rewards, My Events, Profile before/after: pixel diff shows only the clock and mock event time text (Rewards/Profile: clock box only).
-- Not run: full suites, 180 degree pill on the leading edge (the simulator kept the pill on the right after rotating).
 
+- `apps/admin`: `npx tsc --noEmit`, `npx eslint src`, `npx vitest run` (235 passed, 2 skipped).
+- `node --import tsx --test gcp/tests/unit/admin-avatars.test.ts admin-insights admin-bug-reports admin-roster-import admin-audit-fixes` (64 passed); `npx tsc --noEmit -p gcp/functions`.
+- `python3 scripts/generate-contracts.py --check`, `npm run test:contracts`, `swift test --package-path ui/Packages/DIPContracts` (0 tests, builds).
+- Browser pass in mock mode at 1440 and 390 (Overview loading, partial and loaded; Members; Roster; Bug reports; Review; Attendees; detail); a design auditor found the stacked-gap and mobile layout issues, now fixed (Overview gaps measured at 14px throughout).
+- Not run: full `npm run check`, rules emulator, Xcode build (targeted only).
 
 ## Decisions
-- A single full-width host was tried first; SwiftUI safe-area handling double-inset the content or changed the bottom inset that Home relies on, so the rail is a separate hosting controller and the content host is unchanged.
-- Pill clearance is a measured constant (120 pt): UIKit exposes only the side inset, not the pill.
-- The rail is not dimmed behind a sheet (it sits beside the presenting content).
 
+- The iOS app draws the generated character for every small avatar and ignores stored `avatarId`; the portal keeps the requested chain (stored avatar before generated) for the rare id that is set.
+- Audit log actors use the user id only (no extra server join); a stored photo for an actor is not shown there.
+- Attendees get photo/avatar from the member list join the live adapter already does.
 
 ## Handoff
-None. Screenshots are in the session scratchpad only (27 MB, not committed).
+
+None. No deploy was done; the backend additions ship with the next functions deploy and the portal degrades to the generated avatar until then.
