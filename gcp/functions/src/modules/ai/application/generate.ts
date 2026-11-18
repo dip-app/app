@@ -4,6 +4,7 @@ import type { AdminTransaction, Doc } from "../../admin/application/ports";
 import { change, type AuditChange } from "../../admin/domain/audit";
 import { AdminError, type AdminErrorReason } from "../../admin/domain/errors";
 import { payloadHash } from "../../admin/domain/reader";
+import { chargeCredits, creditsExhausted, creditsSummary, CREDIT_COSTS, ledgerDocument, ledgerFromDoc, refundCredits, type LedgerBase } from "../domain/credits";
 import { draftCheckQuestions, draftState, interpretDraftCheck, TRIAGE_QUESTIONS, triageState, triageVerdict } from "../domain/decisions";
 import { InvalidModelOutput, parseModelDrafts } from "../domain/drafts";
 import { summarizeInterests } from "../domain/interests";
@@ -15,6 +16,7 @@ import {
   RUN_DEADLINE_MS, usageSummary, type Limits,
 } from "../domain/quota";
 import { parseGenerateRequest, type ParsedGenerateRequest } from "../domain/request";
+import { loadLedger } from "./credits";
 import { LlmUnavailableError, type AiDeps, type Caller, type CatalogTag, type LlmUsage } from "./ports";
 
 const REQUEST_RETENTION_MS = 24 * 3_600_000;
@@ -72,6 +74,8 @@ const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms
 
 interface Reservation {
   actor: Actor; limits: Limits; attempt: number; month: string; day: string;
+  /** Where the run's credits were charged, under which key, and the period figures needed to answer after a month change. */
+  credits: { path: string; key: string; base: LedgerBase };
 }
 
 const SETTLE_ATTEMPTS = 3;
@@ -112,18 +116,25 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
     const monthState = readMonth(monthDoc ?? null, now);
     const dayState = readDay(dayDoc ?? null);
+    const { ledger, base, path: creditsPath, doc: creditsDoc } = await loadLedger(tx, companyId, settingsDoc ?? null, now);
     if (requestDoc) {
       if (requestDoc.hash !== hash) {
         throw new AdminError("failed-precondition", "REQUEST_REUSED", "This request ID was already used with different details.", ["requestId"]);
       }
       if (requestDoc.status === "done") {
-        return { replay: { contractVersion: 1, drafts: storedDrafts(requestDoc), usage: usageSummary(monthState, dayState, caller.uid, limits, worst, now), replay: true } };
+        return { replay: { contractVersion: 1, drafts: storedDrafts(requestDoc), usage: usageSummary(monthState, dayState, caller.uid, limits, worst, now), credits: creditsSummary(ledger), replay: true } };
       }
       if (requestDoc.status === "pending" && key in monthState.pending) {
         throw new AdminError("aborted", "REQUEST_IN_PROGRESS", "These ideas are still being written. Wait a moment.");
       }
     }
     if (!limits.enabled) throw new AdminError("failed-precondition", "AI_DISABLED", "AI event ideas are turned off for this company.");
+    const attempt = (typeof requestDoc?.attempts === "number" ? requestDoc.attempts : 0) + 1;
+    // A run that died without settling (its reservation expired) is refunded before the retry is charged.
+    if (requestDoc?.status === "pending") refundCredits(ledger, creditKey(caller.uid, requestId, attempt - 1));
+    const charge = creditKey(caller.uid, requestId, attempt);
+    // Credits are charged once the request passed validation, authorization and the switches; a run that produces no drafts is refunded on settle.
+    if (chargeCredits(ledger, charge, CREDIT_COSTS.generateDrafts) === "insufficient") throw creditsExhausted(ledger);
     checkReservation(monthState, dayState, caller.uid, limits, worst, now);
     const platformState = readPlatform(platformDoc ?? null, now);
     checkPlatform(platformState, deps.settings.platformMonthlyBudgetMicros, worst);
@@ -136,11 +147,11 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
     put(tx, aiPaths.day(companyId, day, caller.uid), dayDoc ?? null, {
       generations: dayState.generations, flags: dayState.flags, attempts: dayState.attempts + 1, expireAt: new Date(now.getTime() + DAY_RETENTION_MS),
     });
-    const attempt = (typeof requestDoc?.attempts === "number" ? requestDoc.attempts : 0) + 1;
+    put(tx, creditsPath, creditsDoc, ledgerDocument(ledger));
     put(tx, aiPaths.request(companyId, caller.uid, requestId), requestDoc ?? null, {
       uid: caller.uid, hash, status: "pending", attempts: attempt, month, day, updatedAt: now, expireAt: new Date(now.getTime() + REQUEST_RETENTION_MS),
     });
-    return { reservation: { actor, limits, attempt, month, day } };
+    return { reservation: { actor, limits, attempt, month, day, credits: { path: creditsPath, key: charge, base } } };
   });
   if ("replay" in reserved) {
     deps.log?.("ai.generate", { companyId, requestId, outcome: "replay" });
@@ -163,14 +174,14 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
     clearTimeout(timer);
   }
 
-  const usage = await settleWithRetry(deps, caller.uid, request, reservation, result, worst);
+  const settled = await settleWithRetry(deps, caller.uid, request, reservation, result, worst);
   deps.log?.("ai.generate", {
     companyId, requestId, outcome: result.status, detail: result.status === "done" ? null : result.detail, models: result.models.join(","),
     calls: result.calls, tokensIn: result.tokensIn, tokensOut: result.tokensOut, costMicros: result.spentMicros,
-    decisionProviders: result.providers.join(","),
+    credits: result.status === "done" ? CREDIT_COSTS.generateDrafts : 0, decisionProviders: result.providers.join(","),
   });
   if (unexpected) throw unexpected;
-  if (result.status === "done") return { contractVersion: 1, drafts: result.drafts, usage, replay: false };
+  if (result.status === "done") return { contractVersion: 1, drafts: result.drafts, usage: settled.usage, credits: settled.credits, replay: false };
   throw failure(result.reason);
 }
 
@@ -308,13 +319,16 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
     const monthPath = aiPaths.month(companyId, reservation.month);
     const dayPath = aiPaths.day(companyId, reservation.day, uid);
     const requestPath = aiPaths.request(companyId, uid, requestId);
-    const [monthDoc, dayDoc, requestDoc] = await tx.getMany([monthPath, dayPath, requestPath]);
+    const [monthDoc, dayDoc, requestDoc, creditsDoc] = await tx.getMany([monthPath, dayPath, requestPath, reservation.credits.path]);
     const month = readMonth(monthDoc ?? null, now);
     const day = readDay(dayDoc ?? null);
+    const ledger = ledgerFromDoc(reservation.credits.base, creditsDoc ?? null);
     // A retry after a commit whose acknowledgement was lost must not count the run twice.
     if (requestDoc && requestDoc.status !== "pending" && requestDoc.attempts === reservation.attempt) {
-      return usageSummary(month, day, uid, reservation.limits, worst, now);
+      return { usage: usageSummary(month, day, uid, reservation.limits, worst, now), credits: creditsSummary(ledger) };
     }
+    // No drafts produced (declined note, provider failure, invalid output): the charge is given back.
+    if (result.status !== "done") refundCredits(ledger, reservation.credits.key);
     const platformPath = aiPaths.platform(reservation.month);
     const platformDoc = await tx.get(platformPath);
     const platform = readPlatform(platformDoc ?? null, now);
@@ -333,6 +347,7 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
     put(tx, dayPath, dayDoc ?? null, { generations: day.generations, flags: day.flags, attempts: day.attempts, expireAt: new Date(now.getTime() + DAY_RETENTION_MS) });
     // Which models and decision providers (jev, openai or heuristic) answered, for observability; never content.
     const observed = { models: result.models, decisionProviders: result.providers };
+    if (creditsDoc) tx.update(reservation.credits.path, ledgerDocument(ledger));
     put(tx, requestPath, requestDoc ?? null, result.status === "done"
       ? { status: "done", response: { drafts: result.drafts }, ...observed, updatedAt: now }
       : { status: "failed", reason: result.reason, ...observed, updatedAt: now });
@@ -346,13 +361,17 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
       changes: [
         change("models", null, result.models.join(",")),
         change("tokens", null, `${result.tokensIn} in, ${result.tokensOut} out`),
-        change("costUsd", null, (result.spentMicros / 1_000_000).toFixed(4)),        ...result.extra,
+        // Admins can read the audit log: credits only, never money. Cost stays in the server log.
+        change("credits", null, String(result.status === "done" ? CREDIT_COSTS.generateDrafts : 0)),
+        ...result.extra,
       ],
       requestId,
     });
-    return usageSummary(month, day, uid, reservation.limits, worst, now);
+    return { usage: usageSummary(month, day, uid, reservation.limits, worst, now), credits: creditsSummary(ledger) };
   });
 }
+
+const creditKey = (uid: string, requestId: string, attempt: number) => `gen_${uid}_${requestId}_${attempt}`;
 
 /** Creates or merges a server-owned document inside the transaction (the adapter has create and update only). */
 function put(tx: AdminTransaction, path: string, existing: Doc | null, data: Doc): void {

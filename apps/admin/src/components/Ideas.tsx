@@ -3,19 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
-import { type Art, DIPBOT_ICON, SPOT_BG, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
+import { type Art, DIPBOT_ICON, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
 import {
-  type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied,
+  type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied, suggestionsForStep,
 } from "@/lib/suggestionLabels";
 import { COVERS, TAGS, tagName } from "@/lib/catalog";
 import { ApiError } from "@/lib/contract";
 import {
   type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, NOTE_SUGGESTIONS, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
-  bucketLevel, bucketText, capacityLabel, chooseSurprise, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
+  bucketLevel, bucketText, capacityLabel, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
   NONE, NOT_SET, presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleInterest, venueLabel,
 } from "@/lib/ideas";
 import { t, tMaybe, tn } from "@/lib/aiStrings";
+import { creditsView, priceLabel, resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
+import { CreditsMeter, CreditsNotice, PrivacyInfo } from "./CreditsMeter";
+import { DipbotMark } from "./DipbotMark";
+import { dismissToast, toast } from "./Toast";
 import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
 
@@ -25,7 +29,7 @@ type Phase = "edit" | "generating" | "results" | "error";
 function failureMessage(error: unknown, ctx: EventIdeaContext | null): string {
   if (error instanceof ApiError) {
     const n = error.reason === "AI_DAILY_LIMIT" ? ctx?.usage.dailyGenerationLimit : ctx?.usage.monthlyGenerationLimit;
-    const known = error.reason ? tMaybe(`limit.${error.reason}`, { n: n ?? "" }) : null;
+    const known = error.reason ? tMaybe(`limit.${error.reason}`, { n: n ?? "", date: ctx ? resetDate(ctx.credits.resetsAt) : "" }) : null;
     return known ? known.replace("all  of", "all of") : error.message;
   }
   return t("error.offline");
@@ -35,20 +39,15 @@ const Check = () => (
   <svg className="opt-check" viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg>
 );
 
-const Sparkle = ({ filled = true }: { filled?: boolean }) => (
-  <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M6 .8l1.3 3.9L11.2 6 7.3 7.3 6 11.2 4.7 7.3.8 6l3.9-1.3z" /></svg>
-);
-const TickSmall = () => (
-  <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.3l2.3 2.2 4.7-5" /></svg>
-);
+const Sparkle = ({ filled = false }: { filled?: boolean }) => <DipbotMark size={14} strong={filled} />;
 
-interface Shown { level: SuggestionLevel; reason: string; provider: AiSuggestionProvider }
+interface Shown { level: SuggestionLevel; reason: string; provider: AiSuggestionProvider; flash?: boolean }
 
 /** Informational outline tag (not a control): label plus a hover/focus tooltip with who suggested it and why. */
 function SuggestTag({ s }: { s: Shown }) {
   return (
     <span className="sg-tag" data-level={s.level}>
-      {s.level === "good" ? <TickSmall /> : <Sparkle filled={s.level === "perfect"} />}
+      <Sparkle filled={s.level === "perfect"} />
       <span aria-hidden>{labelOf(s.level)}</span>
       <span className="sr-only">. {spokenSuggestion(s.level, s.provider)}. {s.reason}</span>
       <span className="sg-tip" aria-hidden><strong>{suggestedBy(s.provider)}</strong><span>{s.reason}</span></span>
@@ -71,7 +70,7 @@ interface OptionProps {
 }
 function Option({ type, name, label, hint, checked, disabled, onChange, children, art, suggestion }: OptionProps) {
   return (
-    <label className="opt" data-disabled={disabled ? "true" : undefined} data-suggested={suggestion ? suggestion.level : undefined} data-art={art ? "true" : undefined}>
+    <label className="opt" data-flash={suggestion?.flash && checked ? "true" : undefined} data-disabled={disabled ? "true" : undefined} data-suggested={suggestion ? suggestion.level : undefined} data-art={art ? "true" : undefined}>
       <input className="opt-input" type={type} name={name} checked={checked} disabled={disabled} onChange={onChange} />
       <span className="opt-body">
         {art && <OptArt art={art} />}
@@ -109,20 +108,37 @@ export function Ideas() {
   const sessionId = useRef<string>("");
   const [suggest, setSuggest] = useState<EventIdeaSuggestions | "loading" | null>(null);
   const enabled = ctx?.enabled === true;
+  // The suggestions answer carries the balance (a model-answered visit costs a credit); fold it into the meter.
+  const ctxRef = useRef<{ ctx: EventIdeaContext | null; setData: (next: EventIdeaContext) => void }>({ ctx: null, setData: () => undefined });
+  ctxRef.current = { ctx, setData: ctxState.setData };
   useEffect(() => {
     if (!enabled) return;
     if (!sessionId.current) sessionId.current = crypto.randomUUID();
     let live = true;
     setSuggest("loading");
     api.eventIdeaSuggestions(sessionId.current)
-      .then((s) => { if (live) setSuggest(s); })
+      .then((s) => {
+        if (!live) return;
+        setSuggest(s);
+        const { ctx: latest, setData } = ctxRef.current;
+        if (s.credits && latest) setData({ ...latest, credits: s.credits });
+      })
       .catch(() => { if (live) setSuggest(null); });
     return () => { live = false; };
   }, [api, enabled]);
   const panelRef = useRef<HTMLElement>(null);
+  // "Let Dipbot pick for me" highlights what it selected for a moment.
+  const [flashing, setFlashing] = useState(false);
+  const lastToast = useRef(0);
+  useEffect(() => {
+    if (!flashing) return;
+    const timer = setTimeout(() => setFlashing(false), 1600);
+    return () => clearTimeout(timer);
+  }, [flashing]);
 
   const goStep = useCallback((index: number) => {
     moved.current = true;
+    if (lastToast.current) dismissToast(lastToast.current);
     setStep(index);
     setPhase("edit");
   }, []);
@@ -140,7 +156,7 @@ export function Ideas() {
     const box = card.getBoundingClientRect();
     if (box.top >= 0 && box.bottom <= window.innerHeight) return;
     card.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }, [step, phase, suggest]);
+  }, [step, phase, suggest, flashing]);
 
   const generate = useCallback(async (source: Answers, regenerate: boolean) => {
     const choices = choicesOf(source);
@@ -158,7 +174,7 @@ export function Ideas() {
       const response = await api.generateEventDrafts({ requestId, choices, prompt, count: source.count });
       if (mine !== run.current) return;
       setResult(response);
-      ctxState.setData({ ...(ctx as EventIdeaContext), usage: response.usage });
+      ctxState.setData({ ...(ctx as EventIdeaContext), usage: response.usage, credits: response.credits });
       setPhase("results");
     } catch (error) {
       if (mine !== run.current) return;
@@ -173,7 +189,7 @@ export function Ideas() {
       }
       if (reason === "AI_DISABLED" && ctx) ctxState.setData({ ...ctx, enabled: false });
       // Limits changed on the server: refresh the meter without losing the screen.
-      if (reason && /LIMIT|BUDGET/.test(reason)) ctxState.reload();
+      if (reason && /LIMIT|BUDGET|CREDITS/.test(reason)) ctxState.reload();
       setFailure(error);
       setPhase("error");
     }
@@ -214,7 +230,8 @@ export function Ideas() {
   const lines = summaryLines(answers, tagName);
   const reachable = (index: number) => !busy && STEPS.slice(0, index).every((s) => stepValid(s.id, answers));
   const done = (index: number) => phase === "results" || (index < step && stepValid(STEPS[index].id, answers));
-  const monthlyPct = usage.monthlyGenerationLimit ? Math.min(100, Math.round((usage.monthlyGenerationsUsed / usage.monthlyGenerationLimit) * 100)) : 0;
+  // Out of credits disables the paid actions only; every selection and the note stay as they are.
+  const noCredits = creditsView(ctx.credits).out;
 
   const stepper = (
     <>
@@ -226,45 +243,33 @@ export function Ideas() {
           return (
             <li key={s.id}>
               <button type="button" className="stepper-item" data-state={isCurrent ? "current" : isDone ? "done" : "todo"} aria-current={isCurrent ? "step" : undefined}
-                disabled={!ok || isCurrent} onClick={() => goStep(i)}>
+                disabled={!ok || isCurrent} aria-label={`${t("stepper.item", { n: i + 1, label: s.full })}${isDone && !isCurrent ? t("stepper.done") : ""}`} title={s.full} onClick={() => goStep(i)}>
                 <span className="stepper-n" aria-hidden>{isDone && !isCurrent ? <Check /> : i + 1}</span>
-                <span className="stepper-label">{s.label}</span>
-                {isDone && !isCurrent && <span className="sr-only">{t("stepper.done")}</span>}
+                <span className="stepper-label">{s.id === "note" && <DipbotMark size={14} />}{s.label}</span>
               </button>
             </li>
           );
         })}
       </ol>
       <div className="stepper-compact" aria-hidden={busy ? true : undefined}>
-        <p>{phase === "results" ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.label })}</p>
+        <p>{phase === "results" ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.full })}</p>
         <div className="bar-track"><span style={{ width: `${phase === "results" ? 100 : ((step + 1) / STEPS.length) * 100}%` }} /></div>
       </div>
     </>
   );
 
-  const rail = (
-    <aside className="ideas-rail" aria-label={t("rail.label")}>
-      <section className="rail-card">
-        <h2>{t("rail.choices")}</h2>
-        <dl className="choices">
-          {lines.map((line) => (
-            <div key={line.label}>
-              <dt>{line.label}</dt>
-              <dd><button type="button" className="choice-edit" disabled={busy} onClick={() => goStep(line.step)} data-empty={line.value === NOT_SET || line.value === NONE ? "true" : undefined}>
-                <span>{line.value}</span><span className="sr-only">{t("rail.edit")}</span>
-              </button></dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-      <section className="rail-card">
-        <h2>{t("rail.usage")}</h2>
-        <p className="usage-line"><strong>{dailyLeft} of {usage.dailyGenerationLimit}</strong> {t("rail.left")}</p>
-        <p className="usage-sub">{t("rail.monthly", { used: usage.monthlyGenerationsUsed, limit: usage.monthlyGenerationLimit })}</p>
-        <div className="bar-track" role="img" aria-label={t("rail.monthlyAria", { used: usage.monthlyGenerationsUsed, limit: usage.monthlyGenerationLimit })}><span style={{ width: `${monthlyPct}%` }} /></div>
-      </section>
-      <p className="privacy">{t("privacy")}</p>
-    </aside>
+  // A slim summary of the earlier answers, only from step 2 on (each one edits its step).
+  const summary = phase === "edit" && step > 0 && (
+    <dl className="choices-bar" aria-label={t("rail.label")}>
+      {lines.slice(0, step).map((line) => (
+        <div key={line.label}>
+          <dt>{STEPS[line.step].label}</dt>
+          <dd><button type="button" className="choice-edit" disabled={busy} onClick={() => goStep(line.step)} data-empty={line.value === NOT_SET || line.value === NONE ? "true" : undefined}>
+            <span>{line.value}</span><span className="sr-only">{t("rail.edit")}</span>
+          </button></dd>
+        </div>
+      ))}
+    </dl>
   );
 
   const thin = ctx.interestDataAvailable ? ctx.thinInterestTagIds.map(tagName) : [];
@@ -281,13 +286,22 @@ export function Ideas() {
   const loaded = suggest && suggest !== "loading" ? suggest : null;
   const provider: AiSuggestionProvider = loaded?.provider ?? "none";
   const labeled = loaded ? labeledSuggestions(loaded.suggestions, provider, (q, v) => OPTIONS[q].includes(v)) : {};
-  const labeledCount = Object.keys(labeled).length;
   const shown = (question: AiSuggestionQuestion, value: string): Shown | null => {
     const s = labeled[question];
-    return s && s.value === value ? { level: s.level, reason: s.reason, provider } : null;
+    return s && s.value === value ? { level: s.level, reason: s.reason, provider, flash: flashing } : null;
   };
-  const applied = labeledCount > 0 && suggestionsApplied(answers, labeled);
-  const byJev = provider === "jev";
+  // The banner and the pick button work per step, so what the banner says is always what this step shows.
+  const stepLabeled = suggestionsForStep(labeled, current.id);
+  const stepCount = Object.keys(stepLabeled).length;
+  const applied = stepCount > 0 && suggestionsApplied(answers, stepLabeled);
+  const pickForMe = () => {
+    set(applySuggestions(answers, stepLabeled));
+    setFlashing(true);
+    if (lastToast.current) dismissToast(lastToast.current);
+    const id = toast(tn("suggest.appliedToast", stepCount));
+    lastToast.current = id;
+    setTimeout(() => dismissToast(id), 2500);
+  };
   // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
   const botIcon = <img className="bot-icon" src={DIPBOT_ICON} alt="" width={36} height={36} />;
 
@@ -300,24 +314,22 @@ export function Ideas() {
           <p>{t("suggest.loading")}</p>
         </div>
       )
-      : labeledCount === 0
+      : stepCount === 0
         ? (
           <div className="sg-bar" data-state="none">
             {botIcon}
-            <p className="muted">{t(provider === "none" ? "suggest.noData" : "suggest.noFavorite")}</p>
+            <p className="muted">{t(current.id === "interests" ? "suggest.noInterestData" : provider === "none" ? "suggest.noData" : "suggest.noStepSuggestion")}</p>
           </div>
         )
         : (
-          <div className="sg-bar" role="region" aria-label={t("suggest.feature")}>
+          <div className="sg-bar" role="region" aria-label={t("suggest.feature")} data-state={applied ? "applied" : "ready"}>
             {botIcon}
-            <p>
-              <strong>{applied ? t("suggest.matched") : tn("suggest.count", labeledCount)}</strong>{" "}
-              {!applied && byJev && <><span className="jev-credit">{t("suggest.poweredBy")}</span>{" "}</>}
-              <span className="muted">{t(applied ? "suggest.matchedHint" : "suggest.nothingSelected")}</span>
+            <p role={applied ? "status" : undefined}>
+              <strong>{applied ? tn("suggest.matched", stepCount) : tn("suggest.count", stepCount)}</strong>{" "}
             </p>
-            <button type="button" className="pill-btn gray small" disabled={applied || busy} onClick={() => set(applySuggestions(answers, labeled))}>
-              {t(applied ? "suggest.applied" : "suggest.use")}
-            </button>
+            {!applied && <button type="button" className="pill-btn gray small with-mark" disabled={busy} onClick={pickForMe}>
+              <DipbotMark size={16} />{t("suggest.use")}
+            </button>}
           </div>
         )
   );
@@ -351,12 +363,8 @@ export function Ideas() {
               <span className="muted" aria-live="polite">{t(atMax ? "interests.atMax" : "interests.pick", { n: MAX_FOCUS })}</span>
             </div>
             {ctx.currentTheme && (
-              <p className="callout">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M2.5 8.2V2.5h5.7l5.3 5.3-5.7 5.7z" /><circle cx="5.5" cy="5.5" r=".8" fill="currentColor" /></svg>
-                <span>{t("interests.theme")} <strong>{ctx.currentTheme.title}</strong>. {t("interests.themeFit")}</span>
-              </p>
+              <p className="muted theme-line">{t("interests.theme")} <strong>{ctx.currentTheme.title}</strong>. {t("interests.themeFit")}</p>
             )}
-            {!ctx.interestDataAvailable && <p className="info-note" role="note">{t("interests.noData")}</p>}
             {suggestCaption(["interest"])}
             <div className="opt-grid cols-4">
               {interestCards.map((c) => {
@@ -368,8 +376,8 @@ export function Ideas() {
                   </Option>
                 );
               })}
-              <Option type="checkbox" name="interest" label={t("interests.surprise")} hint={t("interests.surpriseHint")} checked={answers.surprise} onChange={() => set(answers.surprise ? { surprise: false } : chooseSurprise(answers))} art={{ src: DIPBOT_ICON, bg: SPOT_BG, kind: "avatar" }} />
             </div>
+            <p className="muted thin-line">{t(ctx.interestDataAvailable ? "interests.noneHint" : "interests.noData")}</p>
             {thin.length > 0 && <p className="muted thin-line">{t("interests.thin", { names: thin.join(", ") })}</p>}
           </fieldset>
         );
@@ -421,7 +429,7 @@ export function Ideas() {
       case "note":
         return (
           <div className="note-step">
-            <div className="step-head"><h2 ref={heading} tabIndex={-1}>{current.heading}</h2></div>
+            <div className="step-head"><h2 ref={heading} tabIndex={-1}><DipbotMark size={20} className="h-mark" />{current.heading}</h2></div>
             <div className="field">
               <label htmlFor={noteId}>{t("note.label")}</label>
               <textarea id={noteId} ref={noteField} value={answers.prompt} maxLength={MAX_PROMPT} aria-invalid={noteError ? true : undefined}
@@ -461,14 +469,14 @@ export function Ideas() {
     <section className="step-panel" aria-label={current.label} ref={panelRef}>
       {body()}
       <div className="step-actions">
-        {lastStep && (
-          <p className="muted quota-note" role={exhausted ? "alert" : undefined}>
-            {exhausted ? failureMessage(new ApiError("resource-exhausted", "", {}, usage.budgetExhausted ? "AI_BUDGET_EXHAUSTED" : dailyLeft === 0 ? "AI_DAILY_LIMIT" : "AI_MONTHLY_LIMIT"), ctx) : t("note.quota", { n: remaining })}
+        {lastStep && exhausted && !noCredits && (
+          <p className="muted quota-note" role="alert">
+            {failureMessage(new ApiError("resource-exhausted", "", {}, dailyLeft === 0 ? "AI_DAILY_LIMIT" : usage.monthlyGenerationsUsed >= usage.monthlyGenerationLimit ? "AI_MONTHLY_LIMIT" : "AI_BUDGET_EXHAUSTED"), ctx)}
           </p>
         )}
         {step > 0 && <button type="button" className="pill-btn gray" onClick={() => goStep(step - 1)}>{t("action.back")}</button>}
         {lastStep
-          ? <button type="button" className="pill-btn purple" disabled={!readyToGenerate(answers) || exhausted} onClick={() => void generate(answers, false)}>{t("action.generate")}</button>
+          ? <button type="button" className="pill-btn purple with-mark" disabled={!readyToGenerate(answers) || exhausted || noCredits} onClick={() => void generate(answers, false)}><DipbotMark size={16} />{priceLabel("action.generateCost", ctx.credits)}</button>
           : <button type="button" className="pill-btn purple" disabled={!stepValid(current.id, answers)} onClick={() => goStep(step + 1)}>{t("action.next")}</button>}
       </div>
     </section>
@@ -494,7 +502,7 @@ export function Ideas() {
       <div className="banner error" role="alert"><span>{failureMessage(failure, ctx)}</span></div>
       <div className="step-actions">
         <button type="button" className="pill-btn gray" onClick={() => goStep(STEPS.length - 1)}>{t("error.backToChoices")}</button>
-        {readyToGenerate(answers) && remaining > 0 && <button type="button" className="pill-btn purple" onClick={() => void generate(answers, false)}>{t("error.retry")}</button>}
+        {readyToGenerate(answers) && remaining > 0 && !noCredits && <button type="button" className="pill-btn purple" onClick={() => void generate(answers, false)}>{t("error.retry")}</button>}
       </div>
     </section>
   );
@@ -506,8 +514,8 @@ export function Ideas() {
         <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} />
         <p><strong>{t("results.ready", { n: result.drafts.length })}</strong> {t("results.review")}</p>
         <div className="results-actions">
-          <button type="button" className="pill-btn gray" disabled={remaining <= 0} onClick={() => void generate(answers, true)}>
-            {remaining > 0 ? t("results.regenerateLeft", { n: remaining }) : t("results.regenerate")}
+          <button type="button" className="pill-btn gray with-mark" disabled={remaining <= 0 || noCredits} onClick={() => void generate(answers, true)}>
+            <DipbotMark size={16} />{priceLabel("results.regenerateCost", ctx.credits)}
           </button>
           <button type="button" className="pill-btn gray" onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>{t("results.startOver")}</button>
         </div>
@@ -525,13 +533,15 @@ export function Ideas() {
 
   return (
     <div className="ideas">
+      <div className="ideas-head"><PrivacyInfo /><CreditsMeter credits={ctx.credits} daily={{ left: dailyLeft, limit: usage.dailyGenerationLimit }} /></div>
       <div className="ideas-layout">
         <div className="ideas-main">
           {stepper}
+          {phase !== "generating" && <CreditsNotice credits={ctx.credits} />}
+          {summary}
           {suggestBar}
           {phase === "generating" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
         </div>
-        {rail}
       </div>
     </div>
   );

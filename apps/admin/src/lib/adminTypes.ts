@@ -415,7 +415,15 @@ export interface AiUsage {
   dailyGenerationLimit: number;
   dailyGenerationsUsed: number;
   generationsRemaining: number;
-  budgetExhausted: boolean;
+}
+/** Dipbot credits: the only unit the portal shows for AI use (a fixed price per tool, never a currency amount). */
+export interface AiCredits {
+  creditsAllowance: number;
+  creditsUsed: number;
+  creditsRemaining: number;
+  /** ISO instant the allowance resets (start of next month in the company's time zone). */
+  resetsAt: string;
+  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number };
 }
 export interface EventIdeaContext {
   enabled: boolean;
@@ -424,6 +432,7 @@ export interface EventIdeaContext {
   thinInterestTagIds: string[];
   currentTheme?: AiIdeaTheme;
   usage: AiUsage;
+  credits: AiCredits;
 }
 
 export type AiGoal = "team_bonding" | "wellness" | "learning" | "give_back" | "celebrate" | "competition";
@@ -460,7 +469,8 @@ export interface GeneratedEventDraft {
 /** getEventIdeaSuggestionsV1: the option the decision model ranks first for each choice (a hint, never a selection). */
 export type AiSuggestionQuestion = "interest" | "goal" | "groupSize" | "setting" | "budget" | "timing";
 export type AiSuggestionProvider = "jev" | "openai" | "heuristic" | "none";
-export interface AiStepSuggestion { question: AiSuggestionQuestion; value: string; probability: number; reason: string }
-export interface EventIdeaSuggestions { provider: AiSuggestionProvider; suggestions: AiStepSuggestion[] }
+/** `reasonBasis`: "company_data" when the company\u2019s own data drove it; "generic" reasons never imply personalization. */
+export interface AiStepSuggestion { question: AiSuggestionQuestion; value: string; probability: number; reason: string; reasonBasis: "company_data" | "generic" }
+export interface EventIdeaSuggestions { provider: AiSuggestionProvider; suggestions: AiStepSuggestion[]; credits?: AiCredits }
 export interface GenerateDraftsInput { requestId: string; choices: AiEventChoices; prompt: string; count: number }
-export interface GenerateDraftsResult { drafts: GeneratedEventDraft[]; usage: AiUsage; replay: boolean }
+export interface GenerateDraftsResult { drafts: GeneratedEventDraft[]; usage: AiUsage; credits: AiCredits; replay: boolean }

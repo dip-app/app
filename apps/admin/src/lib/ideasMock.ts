@@ -1,5 +1,5 @@
 import type {
-  AiBucket, AiDaypart, AiEventChoices, AiStepSuggestion, AiUsage, AiVenueType, EventIdeaContext, EventIdeaSuggestions, GeneratedEventDraft,
+  AiBucket, AiCredits, AiDaypart, AiEventChoices, AiStepSuggestion, AiUsage, AiVenueType, EventIdeaContext, EventIdeaSuggestions, GeneratedEventDraft,
 } from "./adminTypes";
 import { COVERS, TAGS, tagName } from "./catalog";
 import { bucketText } from "./ideas";
@@ -7,15 +7,31 @@ import { bucketText } from "./ideas";
 // Preview data for Event ideas. The mock follows the server rules: admin only, usage counters, requestId replay
 // and a prompt safety check. `?ai=` picks a scenario for design review: off, nodata, quota, error or slow.
 
-export type AiScenario = "default" | "off" | "nodata" | "quota" | "error" | "slow";
+export type AiScenario = "default" | "off" | "nodata" | "quota" | "error" | "slow" | "lowcredits" | "nocredits";
 
 export function aiScenarioFromSearch(search: string): AiScenario {
   const value = new URLSearchParams(search).get("ai");
-  return value === "off" || value === "nodata" || value === "quota" || value === "error" || value === "slow" ? value : "default";
+  return value === "off" || value === "nodata" || value === "quota" || value === "error" || value === "slow" || value === "lowcredits" || value === "nocredits" ? value : "default";
 }
 
 export const MOCK_MONTHLY_LIMIT = 30;
 export const MOCK_DAILY_LIMIT = 10;
+export const MOCK_CREDIT_ALLOWANCE = 500;
+/** The preview month already has some credits spent (412 of 500 left); `?ai=lowcredits` and `?ai=nocredits` show the other states. */
+export const MOCK_CREDITS_USED = 88;
+export const MOCK_CREDIT_COSTS = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3 };
+
+/** First day of next month at local midnight (the mock's reset date). */
+export function mockResetsAt(now: Date): string {
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+}
+
+export function creditsOf(used: number, now: Date): AiCredits {
+  return {
+    creditsAllowance: MOCK_CREDIT_ALLOWANCE, creditsUsed: used, creditsRemaining: Math.max(0, MOCK_CREDIT_ALLOWANCE - used),
+    resetsAt: mockResetsAt(now), creditCost: { ...MOCK_CREDIT_COSTS },
+  };
+}
 
 const TOP: { tagId: string; bucket: AiBucket }[] = [
   { tagId: "tag-fitness", bucket: "20+" },
@@ -32,11 +48,11 @@ export function usageOf(monthlyUsed: number, dailyUsed: number): AiUsage {
   const remaining = Math.max(0, Math.min(MOCK_MONTHLY_LIMIT - monthlyUsed, MOCK_DAILY_LIMIT - dailyUsed));
   return {
     monthlyGenerationLimit: MOCK_MONTHLY_LIMIT, monthlyGenerationsUsed: monthlyUsed,
-    dailyGenerationLimit: MOCK_DAILY_LIMIT, dailyGenerationsUsed: dailyUsed, generationsRemaining: remaining, budgetExhausted: false,
+    dailyGenerationLimit: MOCK_DAILY_LIMIT, dailyGenerationsUsed: dailyUsed, generationsRemaining: remaining,
   };
 }
 
-export function mockIdeaContext(scenario: AiScenario, monthlyUsed: number, dailyUsed: number): EventIdeaContext {
+export function mockIdeaContext(scenario: AiScenario, monthlyUsed: number, dailyUsed: number, creditsUsed: number, now: Date): EventIdeaContext {
   const usage = scenario === "quota" ? usageOf(monthlyUsed, MOCK_DAILY_LIMIT) : usageOf(monthlyUsed, dailyUsed);
   const known = scenario !== "nodata";
   return {
@@ -46,6 +62,7 @@ export function mockIdeaContext(scenario: AiScenario, monthlyUsed: number, daily
     thinInterestTagIds: known ? THIN : [],
     currentTheme: { title: "Fall Fitness Week", tagIds: ["tag-fitness"] },
     usage,
+    credits: creditsOf(creditsUsed, now),
   };
 }
 
@@ -144,12 +161,12 @@ export function suggestScenarioFromSearch(search: string): SuggestScenario {
 }
 
 const SUGGESTED: AiStepSuggestion[] = [
-  { question: "interest", value: "tag-fitness", probability: 0.88, reason: "20+ members like Fitness, and it fits this week's theme" },
-  { question: "goal", value: "competition", probability: 0.74, reason: "Games and Fitness rank high with your members" },
-  { question: "groupSize", value: "team", probability: 0.81, reason: "7 of your last 10 events had room for 10 to 30 people" },
-  { question: "setting", value: "outdoors", probability: 0.58, reason: "Outdoors is one of your top interests" },
-  { question: "budget", value: "free", probability: 0.91, reason: "8 of your last 10 events were free" },
-  { question: "timing", value: "after_work", probability: 0.63, reason: "5 of your last 10 events were after work" },
+  { question: "interest", value: "tag-fitness", probability: 0.88, reason: "Lines up with this week's Fall Fitness Week", reasonBasis: "company_data" },
+  { question: "goal", value: "competition", probability: 0.74, reason: "Matches your team's top interests", reasonBasis: "company_data" },
+  { question: "groupSize", value: "team", probability: 0.81, reason: "Most of your recent events were this size", reasonBasis: "company_data" },
+  { question: "setting", value: "outdoors", probability: 0.58, reason: "Outdoors is popular with your members", reasonBasis: "company_data" },
+  { question: "budget", value: "free", probability: 0.91, reason: "A range your recent events often used", reasonBasis: "company_data" },
+  { question: "timing", value: "after_work", probability: 0.63, reason: "Easy to join without missing work", reasonBasis: "generic" },
 ];
 
 export function mockSuggestions(scenario: SuggestScenario): EventIdeaSuggestions {

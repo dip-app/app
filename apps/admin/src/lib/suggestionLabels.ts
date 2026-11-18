@@ -74,7 +74,6 @@ export function applySuggestions(answers: Answers, labeled: Partial<Record<AiSug
     const id = labeled.interest.value;
     const mine = answers.focusTagIds;
     next.focusTagIds = mine.includes(id) ? mine : mine.length < MAX_FOCUS ? [...mine, id] : [...mine.slice(0, MAX_FOCUS - 1), id];
-    next.surprise = false;
   }
   if (labeled.goal) next.goal = labeled.goal.value as Answers["goal"];
   if (labeled.groupSize) next.groupSize = labeled.groupSize.value as Answers["groupSize"];
@@ -90,10 +89,21 @@ export function suggestionsApplied(answers: Answers, labeled: Partial<Record<AiS
   return JSON.stringify(applied) === JSON.stringify(answers);
 }
 
-/** Tooltip title: who suggested it. Only Jev is named; the fallbacks read "Suggested". */
+/** Tooltip title: who suggested it. Always Dipbot: provider names never appear in the interface. */
 export const suggestedBy = (provider: AiSuggestionProvider) => t(provider === "jev" ? "suggest.by.jev" : "suggest.by.other");
 
-/** Screen reader text for a labeled option, for example "Jev suggests this: perfect fit". */
+/** Screen reader text for a labeled option, for example "Dipbot suggests this: perfect fit". */
 export function spokenSuggestion(level: SuggestionLevel, provider: AiSuggestionProvider): string {
   return t(provider === "jev" ? "suggest.spoken.jev" : "suggest.spoken.other", { label: labelOf(level).toLowerCase() });
+}
+
+/** The labeled suggestions that belong to one flow step (the banner and the pick button work per step). */
+export function suggestionsForStep(
+  labeled: Partial<Record<AiSuggestionQuestion, LabeledSuggestion>>, step: StepId,
+): Partial<Record<AiSuggestionQuestion, LabeledSuggestion>> {
+  const out: Partial<Record<AiSuggestionQuestion, LabeledSuggestion>> = {};
+  for (const [question, suggestion] of Object.entries(labeled) as [AiSuggestionQuestion, LabeledSuggestion][]) {
+    if (QUESTION_STEP[question] === step) out[question] = suggestion;
+  }
+  return out;
 }

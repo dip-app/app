@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type AiBucket, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type AiBucket, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -63,7 +63,19 @@ function usageFromWire(value: unknown): AiUsage {
   return {
     monthlyGenerationLimit: n(u.monthlyGenerationLimit), monthlyGenerationsUsed: n(u.monthlyGenerationsUsed),
     dailyGenerationLimit: n(u.dailyGenerationLimit), dailyGenerationsUsed: n(u.dailyGenerationsUsed),
-    generationsRemaining: n(u.generationsRemaining), budgetExhausted: u.budgetExhausted === true,
+    generationsRemaining: n(u.generationsRemaining),
+  };
+}
+const DEFAULT_CREDIT_COST = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3 };
+/** The credits block of a response; a missing or malformed one reads as zero credits left (the paid buttons stay off). */
+export function creditsFromWire(value: unknown): AiCredits {
+  const c = obj(value);
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  const cost = obj(c.creditCost);
+  const price = (key: keyof typeof DEFAULT_CREDIT_COST) => (typeof cost[key] === "number" ? n(cost[key]) : DEFAULT_CREDIT_COST[key]);
+  return {
+    creditsAllowance: n(c.creditsAllowance), creditsUsed: n(c.creditsUsed), creditsRemaining: n(c.creditsRemaining), resetsAt: str(c.resetsAt),
+    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail") },
   };
 }
 /** GetEventIdeaContextResponse -> EventIdeaContext. */
@@ -75,6 +87,7 @@ export function ideaContextFromWire(d: DocumentData): EventIdeaContext {
     thinInterestTagIds: strings(d.thinInterestTagIds),
     ...(theme && str(theme.title) ? { currentTheme: { title: str(theme.title), tagIds: strings(theme.tagIds) } } : {}),
     usage: usageFromWire(d.usage),
+    credits: creditsFromWire(d.credits),
   };
 }
 const SUGGEST_QUESTIONS: readonly string[] = ["interest", "goal", "groupSize", "setting", "budget", "timing"];
@@ -84,12 +97,12 @@ export function suggestionsFromWire(d: DocumentData): EventIdeaSuggestions {
   const provider = (SUGGEST_PROVIDERS.includes(str(d.provider)) ? str(d.provider) : "none") as AiSuggestionProvider;
   const suggestions = list(d.suggestions)
     .filter((s) => SUGGEST_QUESTIONS.includes(str(s.question)) && str(s.value) && typeof s.probability === "number" && s.probability >= 0 && s.probability <= 1)
-    .map((s): AiStepSuggestion => ({ question: str(s.question) as AiStepSuggestion["question"], value: str(s.value), probability: s.probability as number, reason: str(s.reason) }));
-  return { provider, suggestions };
+    .map((s): AiStepSuggestion => ({ question: str(s.question) as AiStepSuggestion["question"], value: str(s.value), probability: s.probability as number, reason: str(s.reason), reasonBasis: s.reasonBasis === "company_data" ? "company_data" : "generic" }));
+  return { provider, suggestions, ...(d.credits ? { credits: creditsFromWire(d.credits) } : {}) };
 }
 /** GenerateEventDraftsResponse -> GenerateDraftsResult. */
 export function draftsFromWire(d: DocumentData): GenerateDraftsResult {
-  return { drafts: list(d.drafts).map((x) => x as unknown as GeneratedEventDraft), usage: usageFromWire(d.usage), replay: d.replay === true };
+  return { drafts: list(d.drafts).map((x) => x as unknown as GeneratedEventDraft), usage: usageFromWire(d.usage), credits: creditsFromWire(d.credits), replay: d.replay === true };
 }
 
 export function auditFromDoc(id: string, d: DocumentData): AuditEntry {

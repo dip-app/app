@@ -1,3 +1,5 @@
+import { loadLedger } from "../../ai/application/credits";
+import { chargeCredits, CREDIT_COSTS, creditsRemaining, ledgerDocument } from "../../ai/domain/credits";
 import type { AdminStore, AdminTransaction, Doc } from "../../admin/application/ports";
 import type { AiSettings } from "../../ai/application/ports";
 import { aiPaths, monthKey } from "../../ai/domain/paths";
@@ -14,6 +16,8 @@ export function worstCaseFor(model: string, chunks: number): number {
   const one = costMicros(model, { inputTokens: CHUNK_INPUT_TOKENS, cachedInputTokens: 0, outputTokens: CHUNK_OUTPUT_TOKENS, reasoningTokens: 0 });
   return one * chunks;
 }
+
+const CREDIT_KEY = "email_";
 
 function put(tx: AdminTransaction, path: string, existing: Doc | null, data: Doc): void {
   if (existing) tx.update(path, data);
@@ -35,6 +39,9 @@ export function firestoreBudget(store: AdminStore, settings: AiSettings): Sugges
         const [settingsDoc, monthDoc] = await tx.getMany([aiPaths.settings(companyId), monthPath]);
         const limits = effectiveLimits(settings, settingsDoc ?? null);
         if (!limits.enabled) return false;
+        // Out of Dipbot credits: the ranking falls back to the free heuristic prior (no model call, no charge).
+        const { ledger } = await loadLedger(tx, companyId, settingsDoc ?? null, now);
+        if (!(`${CREDIT_KEY}${key}` in ledger.charges) && creditsRemaining(ledger) < CREDIT_COSTS.weeklyEmail) return false;
         const month = readMonth(monthDoc ?? null, now);
         // A re-run of the same key (an expired lease) replaces its own earlier reservation instead of counting it twice.
         const others = Object.entries(month.pending).filter(([k]) => k !== key).reduce((sum, [, r]) => sum + r.micros, 0);
@@ -47,11 +54,16 @@ export function firestoreBudget(store: AdminStore, settings: AiSettings): Sugges
       });
     },
 
-    async settle(companyId, key, spentMicros, tokensIn, tokensOut, now) {
+    async settle(companyId, key, spentMicros, tokensIn, tokensOut, now, answered = false) {
       await store.runTransaction(async tx => {
         const monthPath = aiPaths.month(companyId, monthKey(now));
-        const [monthDoc] = await tx.getMany([monthPath]);
+        const [monthDoc, settingsDoc] = await tx.getMany([monthPath, aiPaths.settings(companyId)]);
+        const loaded = await loadLedger(tx, companyId, settingsDoc ?? null, now);
         const month = readMonth(monthDoc ?? null, now);
+        // Three credits per company run (not per admin); the key makes a re-run of the same week free.
+        if (answered && chargeCredits(loaded.ledger, `${CREDIT_KEY}${key}`, CREDIT_COSTS.weeklyEmail) === "charged") {
+          put(tx, loaded.path, loaded.doc, ledgerDocument(loaded.ledger));
+        }
         delete month.pending[key];
         addSpend(month, dayOfMonth(now), { spentMicros, inputTokens: tokensIn, outputTokens: tokensOut });
         put(tx, monthPath, monthDoc ?? null, monthDocument(month));

@@ -6098,6 +6098,70 @@
         "tagIds"
       ]
     },
+    "AiCreditCosts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Credits each tool costs per use.",
+      "properties": {
+        "suggest": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "generate": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "regenerate": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weeklyEmail": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "suggest",
+        "generate",
+        "regenerate",
+        "weeklyEmail"
+      ]
+    },
+    "AiCredits": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Dipbot credits: the only unit admins see for AI use. Credits are a fixed per-tool price, never a currency amount. They reset at the start of the calendar month in the company's time zone.",
+      "properties": {
+        "creditsAllowance": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "This month's allowance for the company."
+        },
+        "creditsUsed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "creditsRemaining": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resetsAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the allowance resets (start of the next calendar month in the company's time zone)."
+        },
+        "creditCost": {
+          "$ref": "#/$defs/AiCreditCosts"
+        }
+      },
+      "required": [
+        "creditsAllowance",
+        "creditsUsed",
+        "creditsRemaining",
+        "resetsAt",
+        "creditCost"
+      ]
+    },
     "AiUsageSummary": {
       "type": "object",
       "additionalProperties": false,
@@ -6124,10 +6188,6 @@
           "type": "integer",
           "minimum": 0,
           "description": "What the caller can still run now: the smallest of the monthly, daily and budget headroom."
-        },
-        "budgetExhausted": {
-          "type": "boolean",
-          "description": "The company's monthly AI spending cap is reached."
         }
       },
       "required": [
@@ -6135,8 +6195,7 @@
         "monthlyGenerationsUsed",
         "dailyGenerationLimit",
         "dailyGenerationsUsed",
-        "generationsRemaining",
-        "budgetExhausted"
+        "generationsRemaining"
       ]
     },
     "GetEventIdeaContextRequest": {
@@ -6200,6 +6259,9 @@
         },
         "usage": {
           "$ref": "#/$defs/AiUsageSummary"
+        },
+        "credits": {
+          "$ref": "#/$defs/AiCredits"
         }
       },
       "required": [
@@ -6208,7 +6270,8 @@
         "interestDataAvailable",
         "topInterests",
         "thinInterestTagIds",
-        "usage"
+        "usage",
+        "credits"
       ]
     },
     "GetEventIdeaSuggestionsRequest": {
@@ -6272,13 +6335,22 @@
           "minLength": 1,
           "maxLength": 120,
           "description": "One line built by the server from rounded interest buckets and past-event counts (never model text)."
+        },
+        "reasonBasis": {
+          "type": "string",
+          "enum": [
+            "company_data",
+            "generic"
+          ],
+          "description": "company_data: the company's own data (above the privacy floor) drove this suggestion; generic: a general default, so the reason never implies personalization."
         }
       },
       "required": [
         "question",
         "value",
         "probability",
-        "reason"
+        "reason",
+        "reasonBasis"
       ]
     },
     "GetEventIdeaSuggestionsResponse": {
@@ -6308,13 +6380,17 @@
         },
         "cached": {
           "type": "boolean"
+        },
+        "credits": {
+          "$ref": "#/$defs/AiCredits"
         }
       },
       "required": [
         "contractVersion",
         "provider",
         "suggestions",
-        "cached"
+        "cached",
+        "credits"
       ]
     },
     "AiEventChoices": {
@@ -6557,13 +6633,17 @@
         "replay": {
           "type": "boolean",
           "description": "True when the stored result of an earlier call with this requestId was returned."
+        },
+        "credits": {
+          "$ref": "#/$defs/AiCredits"
         }
       },
       "required": [
         "contractVersion",
         "drafts",
         "usage",
-        "replay"
+        "replay",
+        "credits"
       ]
     },
     "SuggestionsEmailAction": {

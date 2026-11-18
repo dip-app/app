@@ -75,12 +75,15 @@ export interface SuggestionEngines { jev: DecisionPort | null; openai: DecisionP
 /** Model ids used to price the worst case of each engine. */
 export interface EngineModels { jev: string; openai: string }
 
-/** Shares the company's AI budget (monthly and daily) without counting a generation. */
+/**
+ * Shares the company's AI budget (monthly and daily) without counting a generation, and charges the weekly email's
+ * Dipbot credits (once per company run, only when a model answered).
+ */
 export interface SuggestionBudget {
   /** Reserves the worst case; false when the feature is off or the budget cannot cover it (nothing is written then). */
   reserve(companyId: string, key: string, worstMicros: number, now: Date): Promise<boolean>;
   /** Drops the reservation and adds the actual spend and tokens (once, not as a generation). */
-  settle(companyId: string, key: string, spentMicros: number, tokensIn: number, tokensOut: number, now: Date): Promise<void>;
+  settle(companyId: string, key: string, spentMicros: number, tokensIn: number, tokensOut: number, now: Date, answered?: boolean): Promise<void>;
 }
 
 export interface BuildDeps {

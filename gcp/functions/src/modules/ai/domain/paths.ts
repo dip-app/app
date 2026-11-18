@@ -3,6 +3,10 @@ export const aiPaths = {
   settings: (companyId: string) => `companies/${companyId}/aiSettings/current`,
   month: (companyId: string, monthKey: string) => `companies/${companyId}/aiUsage/${monthKey}`,
   day: (companyId: string, dayKey: string, uid: string) => `companies/${companyId}/aiUsageDaily/${dayKey}_${uid}`,
+  /** Dipbot credits of one calendar month in the company's time zone (ledger: used credits and per-request charges). */
+  credits: (companyId: string, period: string) => `companies/${companyId}/aiCredits/${period}`,
+  /** Company time zone lives next to the weekly email settings (read only). */
+  emailSettings: (companyId: string) => `emailSettings/${companyId}`,
   /** Platform-wide spend of one UTC month, shared by every company (top level, server-owned). */
   platform: (monthKey: string) => `aiUsagePlatform/${monthKey}`,
   request: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiRequests/${uid}_${requestId}`,

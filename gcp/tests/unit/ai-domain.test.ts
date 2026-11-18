@@ -723,12 +723,10 @@ describe("quota", () => {
     assert.equal(s.dailyGenerationsUsed, 3);
     // admin daily: 10 - 3 - 1 own pending = 6; monthly: 100 - 5 - 2 = 93; month budget: 19; day budget: (2M - 1M - 200k) / 200k = 4.
     assert.equal(s.generationsRemaining, 4);
-    assert.equal(s.budgetExhausted, false);
   });
   test("budget exhaustion (month)", () => {
     const wide = limits({ dailyBudgetMicros: 99_000_000 });
     const s = summary(month({ spentMicros: 4_900_000 }), day(), wide);
-    assert.equal(s.budgetExhausted, true);
     assert.equal(s.generationsRemaining, 0);
     assert.equal(summary(month({ spentMicros: 4_500_000 }), day(), wide).generationsRemaining, 2);
     fails(() => check(month({ spentMicros: 4_900_000 }), day(), wide), "resource-exhausted", "AI_BUDGET_EXHAUSTED");
@@ -737,7 +735,6 @@ describe("quota", () => {
   test("daily company budget: today's spend, other days ignored, pending counted", () => {
     const spent = (n: number, key = "02") => month({ spentMicros: n, days: { [key]: { ...today, spentMicros: n } } });
     const s = summary(spent(1_900_000), day(), limits());
-    assert.equal(s.budgetExhausted, true);
     assert.equal(s.generationsRemaining, 0);
     assert.equal(summary(spent(1_500_000), day(), limits()).generationsRemaining, 2, "(2M - 1.5M) / 200k");
     try {
@@ -752,7 +749,7 @@ describe("quota", () => {
     check(spent(1_800_000), day(), limits());
     // Spend of another day of the month counts toward the month only.
     check(spent(1_900_000, "01"), day(), limits());
-    assert.equal(summary(spent(1_900_000, "01"), day(), limits()).budgetExhausted, false);
+    assert.ok(summary(spent(1_900_000, "01"), day(), limits()).generationsRemaining > 0);
     // A reservation held by anyone counts against today.
     const pending = { a: { uid: "other", micros: 1_900_000, expiresAt: future } };
     fails(() => check(month({ pending }), day(), limits()), "resource-exhausted", "AI_BUDGET_EXHAUSTED");

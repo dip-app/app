@@ -13,7 +13,7 @@ import { validateRow } from "./importFile";
 import { mockTagStats } from "./tagStatsMock";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
-  MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
+  MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
 } from "./ideasMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
@@ -65,7 +65,7 @@ interface StoredBug extends BugReport {
 const KEY = "dip-admin-mock-ops-v4";
 const AI_KEY = "dip-admin-mock-ai-v1";
 /** Preview usage: some of the quota is already spent so the meter has something to show. */
-interface AiState { usage: Record<string, { monthly: number; daily: number }>; receipts: Record<string, GenerateDraftsResult> }
+interface AiState { usage: Record<string, { monthly: number; daily: number }>; receipts: Record<string, GenerateDraftsResult>; credits?: Record<string, number> }
 const TEAMS = ["Platform", "Mentors", "Wellness", "Events crew", "Design"];
 const LOCATIONS = ["Pittsburgh", "Philadelphia", "New York", "Remote"];
 const DEPARTMENTS = ["Engineering", "People", "Marketing", "Finance", "Operations"];
@@ -233,6 +233,13 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
   }
   const aiSave = (state: AiState) => store.setItem(AI_KEY, JSON.stringify(state));
   const aiUsage = (companyId: string) => aiLoad().usage[companyId] ?? { monthly: 12, daily: 3 };
+  /** Credits spent this month: the scenario can force the low and out states for design review. */
+  const aiCreditsUsed = (companyId: string) => {
+    const scenario = aiScenario();
+    if (scenario === "nocredits") return MOCK_CREDIT_ALLOWANCE;
+    if (scenario === "lowcredits") return MOCK_CREDIT_ALLOWANCE - 60;
+    return aiLoad().credits?.[companyId] ?? MOCK_CREDITS_USED;
+  };
   const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
   /** Latency only in the browser preview; tests run without it. */
   const aiDelay = (ms: number) => (typeof window === "undefined" ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, ms)));
@@ -841,7 +848,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     async eventIdeaContext(): Promise<EventIdeaContext> {
       const session = staff("ai.generate");
       const { monthly, daily } = aiUsage(session.companyId);
-      return mockIdeaContext(aiScenario(), monthly, daily);
+      return mockIdeaContext(aiScenario(), monthly, daily, aiCreditsUsed(session.companyId), now());
     },
     // A fake Jev provider: fixed, typed answers (no model call). `?jev=` picks a scenario, `?ai=nodata` has no suggestions.
     async eventIdeaSuggestions() {
@@ -850,7 +857,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const scenario = typeof window === "undefined" ? "default" as const : suggestScenarioFromSearch(window.location.search);
       await aiDelay(scenario === "slow" ? 6000 : 400);
       if (scenario === "error") throw new ApiError("failed-precondition", "Suggestions are not available right now.", {}, "AI_UNAVAILABLE");
-      return mockSuggestions(aiScenario() === "nodata" ? "none" : scenario);
+      const session = staff("ai.generate");
+      return { ...mockSuggestions(aiScenario() === "nodata" ? "none" : scenario), credits: creditsOf(aiCreditsUsed(session.companyId), now()) };
     },
     async generateEventDrafts(input): Promise<GenerateDraftsResult> {
       const session = staff("ai.generate");
@@ -873,8 +881,15 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const { monthly, daily } = aiUsage(session.companyId);
       if (scenario === "quota" || daily >= MOCK_DAILY_LIMIT) throw new ApiError("resource-exhausted", "You have used today’s AI drafts.", {}, "AI_DAILY_LIMIT");
       if (monthly >= MOCK_MONTHLY_LIMIT) throw new ApiError("resource-exhausted", "You have used this month’s AI drafts.", {}, "AI_MONTHLY_LIMIT");
+      const used = aiCreditsUsed(session.companyId);
+      if (MOCK_CREDIT_ALLOWANCE - used < MOCK_CREDIT_COSTS.generate) {
+        throw new ApiError("resource-exhausted", "You have used this month’s Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
+      }
       ai.usage[session.companyId] = { monthly: monthly + 1, daily: daily + 1 };
-      const result: GenerateDraftsResult = { drafts: buildMockDrafts(input.choices, input.prompt, input.count), usage: usageOf(monthly + 1, daily + 1), replay: false };
+      ai.credits = { ...ai.credits, [session.companyId]: used + MOCK_CREDIT_COSTS.generate };
+      const result: GenerateDraftsResult = {
+        drafts: buildMockDrafts(input.choices, input.prompt, input.count), usage: usageOf(monthly + 1, daily + 1), credits: creditsOf(used + MOCK_CREDIT_COSTS.generate, now()), replay: false,
+      };
       ai.receipts[receiptKey] = result;
       aiSave(ai);
       return result;

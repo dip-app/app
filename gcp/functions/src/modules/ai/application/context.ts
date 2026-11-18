@@ -1,5 +1,7 @@
 import type { GetEventIdeaContextResponse } from "../../../generated/models";
 import { authorize, requireCaller } from "../../admin/application/context";
+import { creditsSummary } from "../domain/credits";
+import { loadLedger } from "./credits";
 import { summarizeInterests } from "../domain/interests";
 import { aiPaths, dayKey, monthKey } from "../domain/paths";
 import { worstCaseMicros } from "../domain/pricing";
@@ -23,7 +25,8 @@ export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null
       aiPaths.settings(companyId), aiPaths.month(companyId, monthKey(now)), aiPaths.day(companyId, dayKey(now), caller.uid),
     ]);
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
-    return { enabled: limits.enabled, summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst, now) };
+    const { ledger } = await loadLedger(tx, companyId, settingsDoc ?? null, now);
+    return { enabled: limits.enabled, credits: creditsSummary(ledger), summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst, now) };
   });
   const [stats, catalog, theme] = await Promise.all([
     bestEffort(deps, "interests", () => deps.interests.countsFor(companyId), null), deps.catalog.list(),
@@ -39,5 +42,6 @@ export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null
     thinInterestTagIds: interests.thinTagIds,
     ...(theme ? { currentTheme: { title: theme.title, tagIds: theme.tagIds.filter(id => known.has(id)) } } : {}),
     usage: usage.summary,
+    credits: usage.credits,
   };
 }

@@ -46,6 +46,27 @@ Runbook for the AI event drafts feature (stretch S2, [design](../design/stretch/
 5. **Data terms.** Read OpenAI's and TypeSafe AI's data retention and training terms for API use before the pilot (UNVERIFIED in the design doc). Drafting calls already send `store: false`.
 6. **Privacy page.** The Service providers section of `apps/landing/privacy/index.html` names OpenAI and TypeSafe AI for AI event ideas. Deploy it before the pilot.
 
+## Dipbot credits (internal)
+
+Admins never see money for AI. The portal shows **credits**: a fixed price per tool, a monthly allowance per company, a meter ("Credits: 412 of 500 this month", reset date in the tooltip), a low state under 20% and an out-of-credits state that disables only the paid actions (choices and note are kept). Dollar figures, models and token counts stay on the server and in this document. The dollar budget guard below is unchanged and still the safety net (platform ceiling, per-company monthly and daily caps); credits sit in front of it and are never derived from it.
+
+**Price table** (`gcp/functions/src/modules/ai/domain/credits.ts`, one row per tool; the contract carries the prices as `creditCost` so the UI never hard-codes them):
+
+| Tool | Credits | Charged | Rationale (internal) |
+| --- | --- | --- | --- |
+| Dipbot Suggest panel visit | 1 | When a model (Jev or OpenAI) answered; cached repeats, heuristic answers and failures are free | One decision call per visit, about $0.0005 with Jev. A token charge so heavy use is visible without feeling metered |
+| Generate drafts (3 drafts with all checks) | 10 | At the start, once the request passed validation and the switches; refunded when no draft is produced (declined note, provider failure, invalid output) | About $0.001 typical, $0.0098 worst case. Priced for the value of a result, not the cost, so a cheap model change does not change what admins see |
+| Regenerate | 10 | Same as generate (it is a fresh generation) | Same work as generate |
+| Weekly suggested-events email | 3 | Once per company run when a model ranked the ideas (not per admin, not for the heuristic fallback, not on a re-run of the same week) | One ranking run, about $0.0005 with Jev; a small flat price |
+
+**Allowance.** Default 500 credits a month (about 50 draft generations, or one a day). Override per company with `monthlyCredits` (a whole number, 0 allowed) in the server-only `companies/{c}/aiSettings/current` document, for example `{ enabled: true, monthlyCredits: 1500 }`. Nothing else changes with it. Do this in the console or an Admin SDK script; clients cannot write it.
+
+**Reset.** The allowance resets at the start of the calendar month in the company's time zone (`emailSettings/{companyId}.timeZone`, UTC when unset or invalid). The ledger is `companies/{c}/aiCredits/{yyyymm}` (`used` and a `charges` map keyed by request, so a repeated request is charged once and a failed run refunded exactly once). It is a separate document from `aiUsage/{yyyymm}` because the credit month follows the company's zone while the cost month is UTC. Charging and refunding are transactions on the ledger, so parallel requests cannot overspend.
+
+**Exhaustion.** `generateEventDraftsV1` fails with `resource-exhausted` and reason `AI_CREDITS_EXHAUSTED` (details: `creditsRemaining`, `resetsAt`), before any model call. Dipbot Suggest does not fail: it answers with the free heuristic suggestions. The weekly email falls back to the heuristic ranking. A run that was charged but crashed before settling is refunded when the same `requestId` is retried (the stale reservation expires after 7 minutes).
+
+**How credits map to internal cost, for budgeting.** At the default models and with Jev answering the decision steps, 500 credits is about 50 generations plus a few hundred panel visits: roughly $0.05 to $0.10 of provider spend per company per month at typical use, and about $0.50 if every credit were spent on generations at the worst-case reservation. The company cost caps (`AI_MONTHLY_BUDGET_CENTS`, default 200) and the platform ceiling therefore bind long before the allowance does. If a model override makes generations 10x more expensive, keep the credit prices and lower `AI_MONTHLY_BUDGET_CENTS` or raise the price of the row, whichever you prefer. Logs (`ai.generate`, `ai.suggest`) carry both the credits and the internal cost for reconciliation; the audit log shown to admins carries credits only.
+
 ## Feature off (clean no-op)
 
 If `AI_EVENTS_ENABLED` is not `true`, or `OPENAI_API_KEY` is missing, blank or `none`, the feature is disabled without errors in the logs: `generateEventDraftsV1` returns `AI_DISABLED`, `getEventIdeaContextV1` returns `enabled: false`, and the portal shows the off state. The same happens when the company document has no `enabled: true`.
@@ -56,7 +77,7 @@ If `AI_EVENTS_ENABLED` is not `true`, or `OPENAI_API_KEY` is missing, blank or `
 - Firestore TTL policies (console or `gcloud firestore fields ttls update`): `expireAt` on collection group `aiRequests` (24 hours) and `aiUsageDaily` (8 days). Without them the documents stay; nothing breaks.
 - No rules or index changes: every AI document is server-only and falls through to the deny-all rule (tested in `gcp/tests/rules/ai.test.ts`).
 - Admin portal: rebuild and deploy hosting as usual; the page reads only the AI callables.
-- Dipbot Suggest: `getEventIdeaSuggestionsV1` (`us-central1`, 60 s) binds both secrets. Provider order: Jev when `JEV_API_KEY` holds a real key, then the OpenAI triage model (`AI_MODEL_TRIAGE`), then a deterministic heuristic, so the portal always gets an answer. At most one decision call per admin visit (cached in `companies/{c}/aiSuggestions/{uid}_{sessionId}` for an hour); its cost is added to the month, day and platform spend (never to the generation counts), and the call is skipped (heuristic) when the budget left cannot cover it. The TTL policy on `expireAt` for collection group `aiSuggestions` (1 hour) is declared in `gcp/firestore.indexes.json`. Logs carry provider, model, tokens and cost only. To check Jev is answering, look for `ai.suggest` log lines with `provider: "jev"` or the "Powered by Jev" credit in the portal banner.
+- Dipbot Suggest: `getEventIdeaSuggestionsV1` (`us-central1`, 60 s) binds both secrets. Provider order: Jev when `JEV_API_KEY` holds a real key, then the OpenAI triage model (`AI_MODEL_TRIAGE`), then a deterministic heuristic, so the portal always gets an answer. At most one decision call per admin visit (cached in `companies/{c}/aiSuggestions/{uid}_{sessionId}` for an hour); its cost is added to the month, day and platform spend (never to the generation counts), and the call is skipped (heuristic) when the budget left cannot cover it. The TTL policy on `expireAt` for collection group `aiSuggestions` (1 hour) is declared in `gcp/firestore.indexes.json`. Logs carry provider, model, tokens and cost only. To check Jev is answering, look for `ai.suggest` log lines with `provider: "jev"` (the portal no longer shows provider names).
 
 ## Pilot
 
@@ -91,5 +112,5 @@ The admin weekly suggested-events email ([design](../design/stretch/admin-sugges
 - Needs: `EMAIL_ENABLED=true` and `emailSettings/{companyId}.enabled`, `AI_EVENTS_ENABLED=true` with `aiSettings/current.enabled`, and at least one admin who turned the email on in the portal (`/admin/suggestions/`). Engine: Jev when `JEV_API_KEY` is real and `SUGGESTIONS_DECISION_PROVIDER` is `jev` (default), else the OpenAI mini model, else the built-in heuristic.
 - Optional env: `SUGGESTIONS_DECISION_PROVIDER` (`jev` or `openai-mini`). Schedule per company in `companies/{c}/suggestionsEmail/settings` (`weekday` 1 to 7, `hour` 0 to 23; default Monday 9, company time zone from `emailSettings/{c}.timeZone`), set by admins in the portal.
 - Firestore TTL policy (optional): `expireAt` on collection group `suggestionDigests` (120 days).
-- Cost: shares the company AI budget (`aiUsage/{yyyymm}`, pending key `suggest_<week>`), not counted as a generation; about $0.0005 a week with Jev.
+- Cost: shares the company AI budget (`aiUsage/{yyyymm}`, pending key `suggest_<week>`), not counted as a generation; about $0.0005 a week with Jev. Also charges 3 Dipbot credits per company run (see Dipbot credits above); with fewer than 3 credits left the ranking uses the free heuristic.
 - Kill switch: any of the switches above off; one admin: their portal switch or the email's unsubscribe link.

@@ -2659,21 +2659,49 @@ public struct AiIdeaTheme: Codable, Equatable, Sendable {
     }
 }
 
+public struct AiCreditCosts: Codable, Equatable, Sendable {
+    public var suggest: Int
+    public var generate: Int
+    public var regenerate: Int
+    public var weeklyEmail: Int
+
+    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int) {
+        self.suggest = suggest
+        self.generate = generate
+        self.regenerate = regenerate
+        self.weeklyEmail = weeklyEmail
+    }
+}
+
+public struct AiCredits: Codable, Equatable, Sendable {
+    public var creditsAllowance: Int
+    public var creditsUsed: Int
+    public var creditsRemaining: Int
+    public var resetsAt: Date
+    public var creditCost: AiCreditCosts
+
+    public init(creditsAllowance: Int, creditsUsed: Int, creditsRemaining: Int, resetsAt: Date, creditCost: AiCreditCosts) {
+        self.creditsAllowance = creditsAllowance
+        self.creditsUsed = creditsUsed
+        self.creditsRemaining = creditsRemaining
+        self.resetsAt = resetsAt
+        self.creditCost = creditCost
+    }
+}
+
 public struct AiUsageSummary: Codable, Equatable, Sendable {
     public var monthlyGenerationLimit: Int
     public var monthlyGenerationsUsed: Int
     public var dailyGenerationLimit: Int
     public var dailyGenerationsUsed: Int
     public var generationsRemaining: Int
-    public var budgetExhausted: Bool
 
-    public init(monthlyGenerationLimit: Int, monthlyGenerationsUsed: Int, dailyGenerationLimit: Int, dailyGenerationsUsed: Int, generationsRemaining: Int, budgetExhausted: Bool) {
+    public init(monthlyGenerationLimit: Int, monthlyGenerationsUsed: Int, dailyGenerationLimit: Int, dailyGenerationsUsed: Int, generationsRemaining: Int) {
         self.monthlyGenerationLimit = monthlyGenerationLimit
         self.monthlyGenerationsUsed = monthlyGenerationsUsed
         self.dailyGenerationLimit = dailyGenerationLimit
         self.dailyGenerationsUsed = dailyGenerationsUsed
         self.generationsRemaining = generationsRemaining
-        self.budgetExhausted = budgetExhausted
     }
 }
 
@@ -2695,8 +2723,9 @@ public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
     public var thinInterestTagIds: [String]
     public var currentTheme: AiIdeaTheme?
     public var usage: AiUsageSummary
+    public var credits: AiCredits
 
-    public init(contractVersion: Int, enabled: Bool, interestDataAvailable: Bool, topInterests: [AiInterestTag], thinInterestTagIds: [String], currentTheme: AiIdeaTheme? = nil, usage: AiUsageSummary) {
+    public init(contractVersion: Int, enabled: Bool, interestDataAvailable: Bool, topInterests: [AiInterestTag], thinInterestTagIds: [String], currentTheme: AiIdeaTheme? = nil, usage: AiUsageSummary, credits: AiCredits) {
         self.contractVersion = contractVersion
         self.enabled = enabled
         self.interestDataAvailable = interestDataAvailable
@@ -2704,6 +2733,7 @@ public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
         self.thinInterestTagIds = thinInterestTagIds
         self.currentTheme = currentTheme
         self.usage = usage
+        self.credits = credits
     }
 }
 
@@ -2724,12 +2754,14 @@ public struct AiStepSuggestion: Codable, Equatable, Sendable {
     public var value: String
     public var probability: Double
     public var reason: String
+    public var reasonBasis: String
 
-    public init(question: String, value: String, probability: Double, reason: String) {
+    public init(question: String, value: String, probability: Double, reason: String, reasonBasis: String) {
         self.question = question
         self.value = value
         self.probability = probability
         self.reason = reason
+        self.reasonBasis = reasonBasis
     }
 }
 
@@ -2738,12 +2770,14 @@ public struct GetEventIdeaSuggestionsResponse: Codable, Equatable, Sendable {
     public var provider: String
     public var suggestions: [AiStepSuggestion]
     public var cached: Bool
+    public var credits: AiCredits
 
-    public init(contractVersion: Int, provider: String, suggestions: [AiStepSuggestion], cached: Bool) {
+    public init(contractVersion: Int, provider: String, suggestions: [AiStepSuggestion], cached: Bool, credits: AiCredits) {
         self.contractVersion = contractVersion
         self.provider = provider
         self.suggestions = suggestions
         self.cached = cached
+        self.credits = credits
     }
 }
 
@@ -2820,12 +2854,14 @@ public struct GenerateEventDraftsResponse: Codable, Equatable, Sendable {
     public var drafts: [GeneratedEventDraft]
     public var usage: AiUsageSummary
     public var replay: Bool
+    public var credits: AiCredits
 
-    public init(contractVersion: Int, drafts: [GeneratedEventDraft], usage: AiUsageSummary, replay: Bool) {
+    public init(contractVersion: Int, drafts: [GeneratedEventDraft], usage: AiUsageSummary, replay: Bool, credits: AiCredits) {
         self.contractVersion = contractVersion
         self.drafts = drafts
         self.usage = usage
         self.replay = replay
+        self.credits = credits
     }
 }
 

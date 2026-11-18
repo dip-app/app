@@ -26,7 +26,7 @@ const GENERIC_INTERNAL_MESSAGE = "Something went wrong. Try again later.";
 /** Maps domain failures to callable errors with `{ reason, fields? }` details and no internals. */
 export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof AdminError) {
-    const details = error.fields.length > 0 ? { reason: error.reason, fields: [...error.fields] } : { reason: error.reason };
+    const details = { reason: error.reason, ...(error.fields.length > 0 ? { fields: [...error.fields] } : {}), ...error.details };
     return new HttpsError(error.code, error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message, details);
   }
   return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);

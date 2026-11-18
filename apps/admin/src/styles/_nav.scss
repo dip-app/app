@@ -11,6 +11,8 @@ $nav-text: #e6e8f0;
 
 .sidebar {
   position: sticky; top: 0; height: 100dvh; align-self: start; z-index: 40; overflow-y: auto; overscroll-behavior: contain;
+  // The sidebar still scrolls (wheel, touch, keyboard); only its scrollbar track is hidden.
+  scrollbar-width: none; -ms-overflow-style: none; &::-webkit-scrollbar { display: none; }
   background: $ink; color: $white; display: flex; flex-direction: column; padding: 14px 12px 12px;
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 14px 8px; min-height: 52px; }
   nav { flex: 1; display: grid; align-content: start; gap: 20px; padding-top: 6px; }

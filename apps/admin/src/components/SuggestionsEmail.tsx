@@ -6,7 +6,10 @@ import {
   manageFailureMessage, nextSendLabel, sameSchedule, statusNotices, testMessage,
 } from "@/lib/suggestions";
 import { suggestionsApiFor } from "@/lib/suggestionsApi";
+import { t } from "@/lib/aiStrings";
+import { creditsText } from "@/lib/credits";
 import { useApp } from "./AppProvider";
+import { CreditsMeter } from "./CreditsMeter";
 import { Loading, Notice } from "./Ui";
 import { Toggle } from "./Toggle";
 import { useLoad } from "./useLoad";
@@ -19,6 +22,9 @@ export function SuggestionsEmail() {
   const sug = useMemo(() => (session ? suggestionsApiFor(api, session) : null), [api, session]);
   const state = useLoad((a) => (session ? suggestionsApiFor(a, session).manage("status") : Promise.reject(new Error("signed out"))), `suggestions-status:${session?.uid ?? ""}`);
   const status = state.data;
+  // Dipbot credits are shared with the idea flow; a failed read just hides the meter.
+  const creditsState = useLoad((a) => a.eventIdeaContext(), "event-idea-context");
+  const credits = creditsState.data?.credits ?? null;
 
   const [weekday, setWeekday] = useState(1);
   const [hour, setHour] = useState(9);
@@ -91,6 +97,11 @@ export function SuggestionsEmail() {
 
   return (
     <div className="suggestions">
+      {credits && (
+        <div className="ideas credits-row">
+          <div className="ideas-head"><CreditsMeter credits={credits} /></div>
+        </div>
+      )}
       {failure && <div className="banner error" role="alert"><span>{failure}</span></div>}
 
       <section className="panel" aria-labelledby="sug-status">
@@ -99,6 +110,7 @@ export function SuggestionsEmail() {
           hint={current.subscribed ? (next ? `Next email: ${next}` : "You are on the list.") : "Turn on to get a short email with event ideas each week."} />
         {notices.map((text) => <Notice key={text}>{text}</Notice>)}
         <p className="muted">This setting is only for you. Other admins choose for themselves.</p>
+        {credits && <p className="muted">{t("credits.email", { cost: creditsText(credits.creditCost.weeklyEmail) })}</p>}
       </section>
 
       <section className="panel" aria-labelledby="sug-schedule">
