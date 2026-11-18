@@ -126,17 +126,19 @@ import SwiftUI
         return DIPCalendarOverlap.merged(dip: dip, device: deviceConflicts)
     }
 
-    /// Home: ids of `candidates` that overlap something, with ONE device read over their whole span.
-    func conflictedEventIDs(_ candidates: [DIPEventDetail], among events: [DIPEventDetail], now: Date = Date()) async -> Set<String> {
-        var ids = Set(candidates.filter { !DIPCalendarOverlap.dipConflicts(for: $0, among: events, now: now).isEmpty }.map(\.id))
-        guard readsCalendar, let device else { return ids }
+    /// Home: which of `candidates` overlap another joined DIP event (amber) or only the member's own calendar
+    /// (grey), with ONE device read over their whole span.
+    func homeOverlaps(_ candidates: [DIPEventDetail], among events: [DIPEventDetail], now: Date = Date()) async -> DIPCalendarOverlaps {
+        let dip = Set(candidates.filter { !DIPCalendarOverlap.dipConflicts(for: $0, among: events, now: now).isEmpty }.map(\.id))
+        var ids = Set<String>()
+        guard readsCalendar, let device else { return DIPCalendarOverlaps(dip: dip) }
         let windows = candidates.compactMap { event -> (String, Date, Date)? in
             guard let fields = event.metadata?.calendarFields(title: event.title, description: "", eventID: event.id) else { return nil }
             return (event.id, fields.startDate, fields.endDate)
         }
-        guard let start = windows.map(\.1).min(), let end = windows.map(\.2).max() else { return ids }
+        guard let start = windows.map(\.1).min(), let end = windows.map(\.2).max() else { return DIPCalendarOverlaps(dip: dip) }
         let index = DIPCalendarIndex(await device.items(start: start, end: end))
-        guard readsCalendar else { return ids }
+        guard readsCalendar else { return DIPCalendarOverlaps(dip: dip) }
         let allIDs = events.filter(\.isJoined).map(\.id) + candidates.map(\.id)
         let own = DIPCalendarOverlap.ownEntryURLs(eventIDs: allIDs)
         let ownIdentifiers = ownEntryIdentifiers(eventIDs: allIDs)
@@ -145,7 +147,7 @@ import SwiftUI
         where !index.conflicts(start: start, end: end, rules: rules, excluding: own, excludingIdentifiers: ownIdentifiers).isEmpty {
             ids.insert(id)
         }
-        return ids
+        return DIPCalendarOverlaps(dip: dip, personal: ids)
     }
 
     // MARK: Entries DIP created
@@ -364,13 +366,40 @@ extension DIPCalendarModel {
     }
 
     #if DEBUG
-    /// `--calendar-fake=<state>` builds an in-memory device calendar (never EventKit) for UI tests and captures.
-    /// States: free, conflict, added, off, denied. Returns nil without the argument.
-    static func fake(uid: String, arguments: [String] = ProcessInfo.processInfo.arguments, now: Date = Date()) -> DIPCalendarModel? {
+    /// The value of `--calendar-fake=<state>`, if present.
+    nonisolated static func fakeState(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> String? {
         let prefix = "--calendar-fake="
-        guard let state = arguments.first(where: { $0.hasPrefix(prefix) }).map({ String($0.dropFirst(prefix.count)) }) else { return nil }
+        return arguments.first(where: { $0.hasPrefix(prefix) }).map { String($0.dropFirst(prefix.count)) }
+    }
+
+    /// For the DIP-overlap states (`conflict`, `both`) the first upcoming event the member has not joined is moved to
+    /// start 30 minutes into the first event the member has joined, so the event page shows another DIP event overlap.
+    /// Other states return the snapshot unchanged.
+    nonisolated static func alignedFixtures(_ snapshot: DIPAppSnapshot, state: String) -> DIPAppSnapshot {
+        guard state == "conflict" || state == "both" else { return snapshot }
+        var snapshot = snapshot
+        let now = Date()
+        let upcoming = snapshot.eventDetails.values
+            .filter { $0.metadata.map { $0.startTime > now } ?? false }
+            .sorted { ($0.metadata?.startTime ?? .distantFuture) < ($1.metadata?.startTime ?? .distantFuture) }
+        guard let joined = upcoming.first(where: \.isJoined)?.metadata,
+              let target = upcoming.first(where: { !$0.isJoined }), var metadata = target.metadata else { return snapshot }
+        metadata.startTime = joined.startTime.addingTimeInterval(1_800)
+        metadata.endTime = metadata.startTime.addingTimeInterval(5_400)
+        var moved = target
+        moved.metadata = metadata
+        moved.timing = metadata.startTime.formatted(date: .abbreviated, time: .shortened)
+        snapshot.eventDetails[target.id] = moved
+        return snapshot
+    }
+
+    /// `--calendar-fake=<state>` builds an in-memory device calendar (never EventKit) for UI tests and captures.
+    /// States: free, busy (personal calendar only, grey), busy-untitled (titles hidden, reads "Busy"), conflict (another
+    /// joined DIP event, amber), both, added, off, denied. Returns nil without the argument.
+    static func fake(uid: String, arguments: [String] = ProcessInfo.processInfo.arguments, now: Date = Date()) -> DIPCalendarModel? {
+        guard let state = fakeState(arguments) else { return nil }
         // Fixture events start whole days from now; the fake entries straddle each upcoming start.
-        let upcoming = DIPMockFixtures.v1Events(now: now).eventDetails.values
+        let upcoming = alignedFixtures(DIPMockFixtures.v1Events(now: now), state: state).eventDetails.values
             .compactMap { event in event.metadata.map { (id: event.id, title: event.title, metadata: $0) } }
             .filter { $0.metadata.startTime > now }
             .sorted { $0.metadata.startTime < $1.metadata.startTime }
@@ -381,14 +410,14 @@ extension DIPCalendarModel {
         var items: [DIPCalendarItem] = []
         var seeded: [(id: String, fields: DIPCalendarEventFields)] = []
         switch state {
-        case "conflict":
+        case "busy", "busy-untitled", "both":
             for (index, entry) in upcoming.enumerated() {
                 let start = entry.metadata.startTime
                 func item(_ title: String, _ availability: DIPCalendarItem.Availability) -> DIPCalendarItem {
-                    DIPCalendarItem(title: title, start: start.addingTimeInterval(-1_800), end: start.addingTimeInterval(1_800), availability: availability)
+                    DIPCalendarItem(title: state == "busy-untitled" ? "" : title, start: start.addingTimeInterval(-1_800),
+                                    end: start.addingTimeInterval(1_800), availability: availability)
                 }
                 items.append(item(index == 0 ? "Team Lunch" : "Focus time", .busy))
-                if index == 1 { items.append(item("Design Review", .tentative)) }
             }
         case "added":
             // Every upcoming fixture event is already in the calendar (dictionary order is not stable).

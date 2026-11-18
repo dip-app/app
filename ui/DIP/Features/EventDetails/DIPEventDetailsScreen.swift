@@ -213,11 +213,11 @@ struct DIPEventDetailsScreen: View {
             timing: Self.dateOnly(event), widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
             calendarLabel: addableMetadata.map(Self.calendarLabel), calendarState: pillState,
             onCalendar: addToCalendar)
-        .alert(DIPCalendarOverlapText.title(conflicts), isPresented: $showsConflictAlert) {
+        .alert(DIPCalendarOverlapText.alertTitle(conflicts), isPresented: $showsConflictAlert) {
             Button("Add anyway") { performAdd() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(DIPCalendarOverlapText.message(conflicts, eventStart: event.metadata?.startTime))
+            Text(DIPCalendarOverlapText.alertMessage(conflicts, eventStart: event.metadata?.startTime))
         }
         .alert("Couldn’t add to calendar", isPresented: Binding(
             get: { if case .failed = calendarResult { return true } else { return false } },
