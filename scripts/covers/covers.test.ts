@@ -7,7 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { before, after, describe, it } from "node:test";
 import { runImport } from "./import";
-import { REPO_ROOT, THEMES, generateIndexSource, readManifest, sharp, slugKey, validateCovers, writeManifest } from "./lib";
+import { PixabayClient, RateLimiter, acceptable, dHash, hamming, pixabayLicense, queryVariants, relevance, type PixabayHit } from "./pixabay";
+import { DEFAULT_COVERS_DIR, DEFAULT_INDEX_PATH, REPO_ROOT, THEMES, generateIndexSource, readManifest, sharp, slugKey, validateCovers, writeManifest } from "./lib";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const quiet = () => {};
@@ -178,5 +179,100 @@ describe("helpers and plan", () => {
     for (const t of plan.themes) {
       assert.equal(plan.shots.filter((s: { theme: string }) => s.theme === t.theme).length, t.target, t.theme);
     }
+  });
+});
+
+describe("the shipped cover library", () => {
+  it("passes validation: 150 to 200 covers, at least 12 per theme, size budget, index in sync", async () => {
+    assert.deepEqual(await validateCovers(DEFAULT_COVERS_DIR, { minPerTheme: 12, indexPath: DEFAULT_INDEX_PATH }), []);
+    const m = readManifest(DEFAULT_COVERS_DIR);
+    assert.ok(m.covers.length >= 150 && m.covers.length <= 200, `${m.covers.length} covers`);
+    assert.equal(new Set(m.covers.map((c) => c.key)).size, m.covers.length);
+  });
+
+  it("has plain-language alt text, a source URL and a creator on every licensed photo", () => {
+    for (const c of readManifest(DEFAULT_COVERS_DIR).covers) {
+      assert.ok(c.alt.length >= 10 && c.alt.length <= 160, c.key);
+      if (c.license.type === "pixabay") {
+        assert.match(c.license.sourceURL, /^https:\/\/pixabay\.com\/photos\//, c.key);
+        assert.ok(c.license.creator && c.license.creatorURL.startsWith("https://pixabay.com/users/"), c.key);
+        assert.match(c.license.notes, /Pixabay Content License/, c.key);
+      }
+    }
+  });
+
+  it("keeps the five original photos active (not flagged out of automatic picks)", () => {
+    const m = readManifest(DEFAULT_COVERS_DIR);
+    for (const key of ["default-cooking", "default-fitness", "default-games", "default-hiking", "default-outdoors"]) {
+      const c = m.covers.find((x) => x.key === key)!;
+      assert.equal(c.license.type, "prototype-unconfirmed");
+      assert.notEqual(c.autoPick, false, key);
+      assert.equal(c.url, `catalog://default/${key.replace("default-", "")}`);
+    }
+  });
+});
+
+describe("pixabay client", () => {
+  const hit = (over: Partial<PixabayHit> = {}): PixabayHit => ({
+    id: 1, pageURL: "https://pixabay.com/photos/x-1/", tags: "yoga, mat, sunrise", user: "Some Body", user_id: 7, imageWidth: 3000, imageHeight: 2000,
+    largeImageURL: "https://cdn.pixabay.com/x_1280.jpg", likes: 10, downloads: 100, views: 1000, ...over,
+  });
+
+  it("limits to the window and honours the server reset", async () => {
+    let t = 0;
+    const waits: number[] = [];
+    const limiter = new RateLimiter(3, 1000, () => t, async (ms) => { waits.push(ms); t += ms; });
+    for (let i = 0; i < 4; i++) await limiter.acquire();
+    assert.equal(waits.length, 1, "the fourth call waits for the window");
+    limiter.observe(0, 5);
+    await limiter.acquire();
+    assert.ok(waits[waits.length - 1] >= 5000);
+  });
+
+  it("retries on 429 after the advertised reset and never leaks the key in errors", async () => {
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls++;
+      if (calls === 1) return new Response("API rate limit exceeded", { status: 429, headers: { "x-ratelimit-reset": "1" } });
+      return new Response(JSON.stringify({ hits: [hit()] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    let t = 0;
+    const limiter = new RateLimiter(100, 60_000, () => t, async (ms) => { t += ms; });
+    const client = new PixabayClient("SECRET-TEST-KEY", limiter, fakeFetch);
+    const hits = await client.search({ q: "yoga" });
+    assert.equal(calls, 2);
+    assert.equal(hits.length, 1);
+    const failing = new PixabayClient("SECRET-TEST-KEY", limiter, (async () => new Response("no", { status: 500 })) as unknown as typeof fetch);
+    await assert.rejects(failing.search({ q: "yoga" }), (e: Error) => !e.message.includes("SECRET-TEST-KEY"));
+  });
+
+  it("sends the filters Pixabay needs for covers", async () => {
+    let seen = "";
+    const fakeFetch = (async (u: URL) => { seen = String(u); return new Response(JSON.stringify({ hits: [] }), { status: 200 }); }) as unknown as typeof fetch;
+    await new PixabayClient("k", new RateLimiter(), fakeFetch).search({ q: "yoga", editorsChoice: true });
+    const p = new URL(seen).searchParams;
+    assert.deepEqual([p.get("image_type"), p.get("orientation"), p.get("safesearch"), p.get("min_width"), p.get("editors_choice"), p.get("q")], ["photo", "horizontal", "true", "1600", "true", "yoga"]);
+  });
+
+  it("filters candidates by size, ratio and blocked tags, and scores relevance", () => {
+    assert.equal(acceptable(hit(), 1600), true);
+    assert.equal(acceptable(hit({ imageWidth: 1200, imageHeight: 800 }), 1600), false);
+    assert.equal(acceptable(hit({ imageWidth: 2000, imageHeight: 2000 }), 1600), false);
+    assert.equal(acceptable(hit({ tags: "yoga, child, mat" }), 1600), false);
+    assert.equal(acceptable(hit({ tags: "yoga, company logo" }), 1600), false);
+    assert.equal(relevance(hit(), "yoga sunrise"), 1);
+    assert.equal(relevance(hit(), "yoga beach"), 0.5);
+    assert.deepEqual(queryVariants("friends hiking forest trail"), ["friends hiking forest trail", "hiking forest trail", "hiking forest", "forest trail"]);
+    const lic = pixabayLicense(hit());
+    assert.equal(lic.type, "pixabay");
+    assert.ok(lic.notes.length <= 300 && lic.creatorURL.endsWith("-7/"));
+  });
+
+  it("detects near-duplicate images with a perceptual hash", async () => {
+    const base = await sharp({ create: { width: 320, height: 200, channels: 3, background: "#336699" } }).composite([{ input: await sharp({ create: { width: 80, height: 80, channels: 3, background: "#ffcc00" } }).png().toBuffer(), left: 40, top: 30 }]).jpeg().toBuffer();
+    const resized = await sharp(base).resize(640, 400).jpeg({ quality: 60 }).toBuffer();
+    const other = await sharp({ create: { width: 320, height: 200, channels: 3, background: "#aa2222" } }).composite([{ input: await sharp({ create: { width: 200, height: 40, channels: 3, background: "#ffffff" } }).png().toBuffer(), left: 100, top: 120 }]).jpeg().toBuffer();
+    assert.ok(hamming(await dHash(base), await dHash(resized)) <= 6);
+    assert.ok(hamming(await dHash(base), await dHash(other)) > 6);
   });
 });

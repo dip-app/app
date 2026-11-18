@@ -19,6 +19,1079 @@ export interface CoverIndexEntry {
 
 export const COVER_INDEX: readonly CoverIndexEntry[] = [
   {
+    "key": "baking-bread-dough-1868396",
+    "url": "catalog://cover/baking-bread-dough-1868396",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "baking",
+      "bread",
+      "dough",
+      "kneading"
+    ],
+    "mood": [
+      "cozy",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Kneading bread dough",
+    "alt": "Hands kneading dough on a floury wooden counter",
+    "hasJpeg": true
+  },
+  {
+    "key": "baking-cookies-6881348",
+    "url": "catalog://cover/baking-cookies-6881348",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "baking",
+      "cookies",
+      "dough",
+      "dessert"
+    ],
+    "mood": [
+      "cozy",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Cookie dough stars",
+    "alt": "Star shaped cookies cut from rolled dough on a floured surface",
+    "hasJpeg": true
+  },
+  {
+    "key": "baking-cupcake-decorating-2749204",
+    "url": "catalog://cover/baking-cupcake-decorating-2749204",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "baking",
+      "cupcakes",
+      "dessert",
+      "decorating"
+    ],
+    "mood": [
+      "cozy",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Frosted cupcakes",
+    "alt": "Cupcakes with white frosting and berries on a cake stand",
+    "hasJpeg": true
+  },
+  {
+    "key": "basketball-court-game-2258650",
+    "url": "catalog://cover/basketball-court-game-2258650",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "basketball",
+      "court",
+      "team sport",
+      "sunset"
+    ],
+    "mood": [
+      "energetic",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Basketball at sunset",
+    "alt": "A player shooting at a hoop in golden light",
+    "hasJpeg": true
+  },
+  {
+    "key": "bbq-grill-friends-417994",
+    "url": "catalog://cover/bbq-grill-friends-417994",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "bbq",
+      "grill",
+      "skewers",
+      "vegetables"
+    ],
+    "mood": [
+      "festive",
+      "social"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Colorful skewers",
+    "alt": "Vegetable skewers with peppers, tomatoes and cucumber on the grill",
+    "hasJpeg": true
+  },
+  {
+    "key": "bbq-skewers-3317060",
+    "url": "catalog://cover/bbq-skewers-3317060",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "grilling",
+      "skewers",
+      "bbq",
+      "vegetables"
+    ],
+    "mood": [
+      "festive",
+      "social"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Grilled veggie skewers",
+    "alt": "Roasted pepper and carrot skewers on a white plate",
+    "hasJpeg": true
+  },
+  {
+    "key": "beach-cleanup-volunteers-388679",
+    "url": "catalog://cover/beach-cleanup-volunteers-388679",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "beach cleanup",
+      "plastic",
+      "litter",
+      "volunteering"
+    ],
+    "mood": [
+      "social",
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Bottles in a net",
+    "alt": "Plastic bottles caught in a fishing net",
+    "hasJpeg": true
+  },
+  {
+    "key": "beach-cleanup-volunteers-7788809",
+    "url": "catalog://cover/beach-cleanup-volunteers-7788809",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "beach cleanup",
+      "volunteering",
+      "cleanup",
+      "litter"
+    ],
+    "mood": [
+      "social",
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Beach cleanup",
+    "alt": "A gloved hand holding a plastic bag at the beach",
+    "hasJpeg": true
+  },
+  {
+    "key": "beach-sunset-walk-7112018",
+    "url": "catalog://cover/beach-sunset-walk-7112018",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "beach",
+      "walk",
+      "dogs",
+      "sunset"
+    ],
+    "mood": [
+      "energetic",
+      "festive"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Beach walk with dogs",
+    "alt": "A person walking dogs along a wide sandy beach at low tide",
+    "hasJpeg": true
+  },
+  {
+    "key": "beach-volleyball-5560658",
+    "url": "catalog://cover/beach-volleyball-5560658",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "beach volleyball",
+      "beach",
+      "sport",
+      "sunset"
+    ],
+    "mood": [
+      "energetic",
+      "festive"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Beach ball at sunset",
+    "alt": "People silhouetted at sunset playing ball on a sandy beach",
+    "hasJpeg": true
+  },
+  {
+    "key": "board-games-shelf-1502706",
+    "url": "catalog://cover/board-games-shelf-1502706",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "dice",
+      "board games",
+      "luck",
+      "game night"
+    ],
+    "mood": [
+      "social",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Rolling dice",
+    "alt": "Two white dice on a checkered board",
+    "hasJpeg": true
+  },
+  {
+    "key": "board-games-strategy-1511866",
+    "url": "catalog://cover/board-games-strategy-1511866",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "chess",
+      "board games",
+      "strategy",
+      "pieces"
+    ],
+    "mood": [
+      "social",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Chess pieces",
+    "alt": "Black and white chess pieces on a wooden board",
+    "hasJpeg": true
+  },
+  {
+    "key": "board-games-table-2730034",
+    "url": "catalog://cover/board-games-table-2730034",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "chess",
+      "board games",
+      "strategy",
+      "pieces"
+    ],
+    "mood": [
+      "social",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Chess in the dark",
+    "alt": "A chessboard in dramatic dark light",
+    "hasJpeg": true
+  },
+  {
+    "key": "book-club-circle-1283865",
+    "url": "catalog://cover/book-club-circle-1283865",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "book club",
+      "books",
+      "reading",
+      "pages"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Open book",
+    "alt": "A book with fanned pages",
+    "hasJpeg": true
+  },
+  {
+    "key": "bootcamp-outdoors-4127336",
+    "url": "catalog://cover/bootcamp-outdoors-4127336",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "bootcamp",
+      "outdoors",
+      "stretching",
+      "fitness"
+    ],
+    "mood": [
+      "energetic",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Stretching outdoors",
+    "alt": "A woman stretching on a sunny city path",
+    "hasJpeg": true
+  },
+  {
+    "key": "breakfast-pancakes-1851249",
+    "url": "catalog://cover/breakfast-pancakes-1851249",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "pancakes",
+      "breakfast",
+      "brunch",
+      "syrup"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Pancakes and syrup",
+    "alt": "A plate of pancakes with a hand pouring syrup",
+    "hasJpeg": true
+  },
+  {
+    "key": "breathwork-outdoors-1822459",
+    "url": "catalog://cover/breathwork-outdoors-1822459",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "running",
+      "jogging",
+      "cardio",
+      "outdoors"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Morning run",
+    "alt": "A woman running outdoors on a trail",
+    "hasJpeg": true
+  },
+  {
+    "key": "brunch-table-spread-4020028",
+    "url": "catalog://cover/brunch-table-spread-4020028",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "brunch",
+      "breakfast",
+      "eggs",
+      "toast"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Eggs and toast",
+    "alt": "A fried egg, toast and orange juice for brunch",
+    "hasJpeg": true
+  },
+  {
+    "key": "calligraphy-pen-4163403",
+    "url": "catalog://cover/calligraphy-pen-4163403",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "calligraphy",
+      "lettering",
+      "ink",
+      "pen"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Fountain pen",
+    "alt": "A fountain pen on handwritten paper",
+    "hasJpeg": true
+  },
+  {
+    "key": "campfire-night-1835829",
+    "url": "catalog://cover/campfire-night-1835829",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "campfire",
+      "camping",
+      "night",
+      "fire"
+    ],
+    "mood": [
+      "cozy",
+      "social"
+    ],
+    "season": [
+      "summer",
+      "autumn"
+    ],
+    "orientation": "landscape",
+    "label": "Campfire glow",
+    "alt": "A bright campfire burning against a dark night",
+    "hasJpeg": true
+  },
+  {
+    "key": "camping-tent-forest-4303357",
+    "url": "catalog://cover/camping-tent-forest-4303357",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "camping",
+      "tent",
+      "forest",
+      "sunset"
+    ],
+    "mood": [
+      "cozy",
+      "social"
+    ],
+    "season": [
+      "summer",
+      "autumn"
+    ],
+    "orientation": "landscape",
+    "label": "Tents at golden hour",
+    "alt": "Tents pitched among tall trees with warm evening light",
+    "hasJpeg": true
+  },
+  {
+    "key": "canoe-river-morning-5370732",
+    "url": "catalog://cover/canoe-river-morning-5370732",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "canoeing",
+      "river",
+      "paddling",
+      "morning"
+    ],
+    "mood": [
+      "energetic",
+      "calm"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Misty river morning",
+    "alt": "A heron standing in a misty river at sunrise with warm orange light",
+    "hasJpeg": true
+  },
+  {
+    "key": "card-game-deck-shuffle-316501",
+    "url": "catalog://cover/card-game-deck-shuffle-316501",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "card games",
+      "cards",
+      "deck",
+      "game night"
+    ],
+    "mood": [
+      "social",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Spread of playing cards",
+    "alt": "A spread of playing cards face up",
+    "hasJpeg": true
+  },
+  {
+    "key": "charity-fundraiser-event-427297",
+    "url": "catalog://cover/charity-fundraiser-event-427297",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "charity",
+      "giving",
+      "helping hands",
+      "fundraiser"
+    ],
+    "mood": [
+      "social",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Helping hand",
+    "alt": "An open hand held out against a white background",
+    "hasJpeg": true
+  },
+  {
+    "key": "charity-run-team-932254",
+    "url": "catalog://cover/charity-run-team-932254",
+    "kind": "photo",
+    "themes": [
+      "volunteering",
+      "fitness"
+    ],
+    "tags": [
+      "charity run",
+      "fundraiser",
+      "running",
+      "race"
+    ],
+    "mood": [
+      "social",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Charity run",
+    "alt": "Runners with race bibs on a city street",
+    "hasJpeg": true
+  },
+  {
+    "key": "chess-match-1080527",
+    "url": "catalog://cover/chess-match-1080527",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "chess",
+      "board games",
+      "match",
+      "strategy"
+    ],
+    "mood": [
+      "social",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Chess move",
+    "alt": "A hand moving a chess piece on a wooden board",
+    "hasJpeg": true
+  },
+  {
+    "key": "choir-rehearsal-5781096",
+    "url": "catalog://cover/choir-rehearsal-5781096",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "choir",
+      "singing",
+      "rehearsal",
+      "harmony"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Choir performance",
+    "alt": "A choir in white singing in a hall",
+    "hasJpeg": true
+  },
+  {
+    "key": "climbing-gym-wall-4000385",
+    "url": "catalog://cover/climbing-gym-wall-4000385",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "climbing",
+      "ice",
+      "adventure",
+      "outdoors"
+    ],
+    "mood": [
+      "energetic",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Ice climbing",
+    "alt": "A climber in a blue jacket scaling an ice wall",
+    "hasJpeg": true
+  },
+  {
+    "key": "climbing-outdoor-rock-2100050",
+    "url": "catalog://cover/climbing-outdoor-rock-2100050",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "rock climbing",
+      "climbing",
+      "outdoors",
+      "dusk"
+    ],
+    "mood": [
+      "energetic",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Rock climbing at dusk",
+    "alt": "A silhouetted climber on rock towers at dusk",
+    "hasJpeg": true
+  },
+  {
+    "key": "coding-hackathon-620822",
+    "url": "catalog://cover/coding-hackathon-620822",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "coding",
+      "hackathon",
+      "laptop",
+      "team"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Typing on a laptop",
+    "alt": "Hands holding a phone over a laptop keyboard",
+    "hasJpeg": true
+  },
+  {
+    "key": "coding-laptops-group-1873854",
+    "url": "catalog://cover/coding-laptops-group-1873854",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "coding",
+      "programming",
+      "code",
+      "screen"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Code on screen",
+    "alt": "Lines of colorful code on a dark screen",
+    "hasJpeg": true
+  },
+  {
+    "key": "coding-screen-code-820272",
+    "url": "catalog://cover/coding-screen-code-820272",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "learning",
+      "tablet",
+      "notes",
+      "study"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Working on a tablet",
+    "alt": "Hands using a tablet at a table",
+    "hasJpeg": true
+  },
+  {
+    "key": "coffee-cafe-chat-2258839",
+    "url": "catalog://cover/coffee-cafe-chat-2258839",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "coffee",
+      "cafe",
+      "beans",
+      "roasting"
+    ],
+    "mood": [
+      "cozy",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Coffee beans",
+    "alt": "Coffee beans spilling from a glass jar",
+    "hasJpeg": true
+  },
+  {
+    "key": "coffee-latte-art-2179028",
+    "url": "catalog://cover/coffee-latte-art-2179028",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "coffee",
+      "latte art",
+      "cafe",
+      "barista"
+    ],
+    "mood": [
+      "cozy",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Latte with heart",
+    "alt": "A latte with heart-shaped foam art on a wooden table",
+    "hasJpeg": true
+  },
+  {
+    "key": "cooking-chopping-veg-417101",
+    "url": "catalog://cover/cooking-chopping-veg-417101",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "cooking",
+      "vegetables",
+      "chopping",
+      "kitchen"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Chopped mushrooms and onion",
+    "alt": "Chopped mushrooms and onions on a wooden cutting board",
+    "hasJpeg": true
+  },
+  {
+    "key": "cooking-class-kitchen-1979272",
+    "url": "catalog://cover/cooking-class-kitchen-1979272",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "cooking class",
+      "cooking",
+      "kitchen",
+      "couple"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Cooking together",
+    "alt": "A man and a woman chopping vegetables together in a bright kitchen",
+    "hasJpeg": true
+  },
+  {
+    "key": "cooking-pasta-handmade-2378758",
+    "url": "catalog://cover/cooking-pasta-handmade-2378758",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "pasta",
+      "cooking",
+      "ingredients",
+      "italian"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Pasta ingredients",
+    "alt": "Dried spaghetti, tomatoes, peppers and herbs spread on a wooden table",
+    "hasJpeg": true
+  },
+  {
+    "key": "cooking-pizza-making-943245",
+    "url": "catalog://cover/cooking-pizza-making-943245",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "pizza",
+      "cooking",
+      "dough",
+      "baking"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Pizza dough balls",
+    "alt": "Balls of pizza dough on a floured surface next to a rolling pin",
+    "hasJpeg": true
+  },
+  {
+    "key": "cooking-wok-stirfry-1835369",
+    "url": "catalog://cover/cooking-wok-stirfry-1835369",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "stir fry",
+      "cooking",
+      "wok",
+      "dinner"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Stir fry in the wok",
+    "alt": "A wok full of sizzling vegetables on the stove",
+    "hasJpeg": true
+  },
+  {
+    "key": "craft-beer-flight-4599048",
+    "url": "catalog://cover/craft-beer-flight-4599048",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "beer tasting",
+      "craft beer",
+      "drinks",
+      "flight"
+    ],
+    "mood": [
+      "festive",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Craft beer flight",
+    "alt": "Four glasses of beer in different shades on a wooden paddle",
+    "hasJpeg": true
+  },
+  {
+    "key": "crafts-table-supplies-2578353",
+    "url": "catalog://cover/crafts-table-supplies-2578353",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "crafts",
+      "paper craft",
+      "diy",
+      "supplies"
+    ],
+    "mood": [
+      "cozy",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Craft supplies",
+    "alt": "Scissors, paper and craft supplies on a bright blue table",
+    "hasJpeg": true
+  },
+  {
+    "key": "cycling-country-road-384566",
+    "url": "catalog://cover/cycling-country-road-384566",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "cycling",
+      "bike ride",
+      "road",
+      "countryside"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Country road ride",
+    "alt": "A cyclist riding along a straight country road through green fields",
+    "hasJpeg": true
+  },
+  {
+    "key": "dance-night-lights-629241",
+    "url": "catalog://cover/dance-night-lights-629241",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "dancing",
+      "dance floor",
+      "party",
+      "lights"
+    ],
+    "mood": [
+      "festive",
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Laser light show",
+    "alt": "Green laser beams over a dance floor",
+    "hasJpeg": true
+  },
+  {
     "key": "default-cooking",
     "url": "catalog://default/cooking",
     "kind": "photo",
@@ -158,6 +1231,1575 @@ export const COVER_INDEX: readonly CoverIndexEntry[] = [
     "orientation": "landscape",
     "label": "Kayaking along the coast",
     "alt": "A paddler in a yellow life vest steers an orange kayak past a forested rocky shoreline",
+    "hasJpeg": true
+  },
+  {
+    "key": "dinner-party-friends-1852926",
+    "url": "catalog://cover/dinner-party-friends-1852926",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "dinner party",
+      "dinner",
+      "evening",
+      "candles"
+    ],
+    "mood": [
+      "social",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Candlelit dinner",
+    "alt": "A candlelit outdoor table at dusk set for dinner",
+    "hasJpeg": true
+  },
+  {
+    "key": "dj-booth-party-1850120",
+    "url": "catalog://cover/dj-booth-party-1850120",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "dj",
+      "party",
+      "dance",
+      "mixing"
+    ],
+    "mood": [
+      "festive",
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "DJ decks",
+    "alt": "Purple-lit DJ decks and a hand mixing",
+    "hasJpeg": true
+  },
+  {
+    "key": "drawing-life-class-5671673",
+    "url": "catalog://cover/drawing-life-class-5671673",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "drawing",
+      "easel",
+      "painting",
+      "studio"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Blank canvas on an easel",
+    "alt": "A small blank canvas on a wooden easel against a pink wall",
+    "hasJpeg": true
+  },
+  {
+    "key": "drum-kit-practice-6869168",
+    "url": "catalog://cover/drum-kit-practice-6869168",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "drums",
+      "drum kit",
+      "practice",
+      "stage"
+    ],
+    "mood": [
+      "energetic",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Drum kit on stage",
+    "alt": "A drum kit and lights on a dark stage in black and white",
+    "hasJpeg": true
+  },
+  {
+    "key": "garden-raised-beds-4392783",
+    "url": "catalog://cover/garden-raised-beds-4392783",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "community garden",
+      "raised beds",
+      "garden",
+      "volunteering"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Raised garden beds",
+    "alt": "Raised wooden garden beds planted with vegetables",
+    "hasJpeg": true
+  },
+  {
+    "key": "gardening-harvest-790022",
+    "url": "catalog://cover/gardening-harvest-790022",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "harvest",
+      "vegetables",
+      "garden",
+      "fresh"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "spring"
+    ],
+    "orientation": "landscape",
+    "label": "Garden harvest",
+    "alt": "A basket of fresh purple cabbage, peppers, aubergine and radishes",
+    "hasJpeg": true
+  },
+  {
+    "key": "gardening-planting-7110591",
+    "url": "catalog://cover/gardening-planting-7110591",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "gardening",
+      "planting",
+      "seedlings",
+      "spring"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "spring"
+    ],
+    "orientation": "landscape",
+    "label": "Young seedlings",
+    "alt": "Rows of small green seedlings growing in dark soil",
+    "hasJpeg": true
+  },
+  {
+    "key": "gratitude-journal-2850091",
+    "url": "catalog://cover/gratitude-journal-2850091",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "gratitude",
+      "journaling",
+      "mindfulness",
+      "notebook"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Notebook on wood",
+    "alt": "A blank notebook and pen on a wooden table",
+    "hasJpeg": true
+  },
+  {
+    "key": "group-fitness-class-828726",
+    "url": "catalog://cover/group-fitness-class-828726",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "group fitness",
+      "workout",
+      "gym",
+      "training"
+    ],
+    "mood": [
+      "energetic",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Gym session",
+    "alt": "Two women lifting weights in a dark gym",
+    "hasJpeg": true
+  },
+  {
+    "key": "guitar-lesson-5043613",
+    "url": "catalog://cover/guitar-lesson-5043613",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "guitar",
+      "lesson",
+      "strings",
+      "acoustic"
+    ],
+    "mood": [
+      "calm",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Guitar close-up",
+    "alt": "A musician's hands on an acoustic guitar",
+    "hasJpeg": true
+  },
+  {
+    "key": "gym-friends-workout-3293475",
+    "url": "catalog://cover/gym-friends-workout-3293475",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "workout buddies",
+      "gym",
+      "training",
+      "mat"
+    ],
+    "mood": [
+      "energetic",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Leg raises on mats",
+    "alt": "Two women doing leg raises on exercise mats",
+    "hasJpeg": true
+  },
+  {
+    "key": "gym-kettlebell-2052765",
+    "url": "catalog://cover/gym-kettlebell-2052765",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "kettlebell",
+      "strength",
+      "workout",
+      "gym"
+    ],
+    "mood": [
+      "energetic",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Kettlebell workout",
+    "alt": "A man stretching on a mat among kettlebells",
+    "hasJpeg": true
+  },
+  {
+    "key": "herbal-tea-cozy-1410565",
+    "url": "catalog://cover/herbal-tea-cozy-1410565",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "herbal tea",
+      "cozy",
+      "relaxing",
+      "tea"
+    ],
+    "mood": [
+      "cozy",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Herbal tea",
+    "alt": "Two glasses of herbal tea with fresh leaves",
+    "hasJpeg": true
+  },
+  {
+    "key": "hiking-autumn-woods-3151869",
+    "url": "catalog://cover/hiking-autumn-woods-3151869",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "hiking",
+      "autumn",
+      "woods",
+      "walking"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "autumn"
+    ],
+    "orientation": "landscape",
+    "label": "Glowing forest path",
+    "alt": "A misty autumn forest with warm light shining down a woodland path",
+    "hasJpeg": true
+  },
+  {
+    "key": "hiking-forest-trail-1932611",
+    "url": "catalog://cover/hiking-forest-trail-1932611",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "hiking",
+      "trail",
+      "forest",
+      "boardwalk"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Boardwalk through the woods",
+    "alt": "A wooden boardwalk winding through tall golden grass toward a forest",
+    "hasJpeg": true
+  },
+  {
+    "key": "hiking-group-walk-455338",
+    "url": "catalog://cover/hiking-group-walk-455338",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "hiking",
+      "walk",
+      "backpack",
+      "trail"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Walking the ridge path",
+    "alt": "A hiker with a backpack walking away along a grassy mountain path",
+    "hasJpeg": true
+  },
+  {
+    "key": "hiking-mountain-summit-1749508",
+    "url": "catalog://cover/hiking-mountain-summit-1749508",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "hiking",
+      "summit",
+      "mountains",
+      "lake"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Mountain lake overlook",
+    "alt": "A hiker's boots at the edge of a turquoise mountain lake ringed by autumn larches",
+    "hasJpeg": true
+  },
+  {
+    "key": "hiking-ridge-sunrise-10400833",
+    "url": "catalog://cover/hiking-ridge-sunrise-10400833",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "hiking",
+      "sunrise",
+      "ridge",
+      "mountains"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Sunrise over the ridge",
+    "alt": "The sun rising behind a rocky mountain ridge above a calm valley",
+    "hasJpeg": true
+  },
+  {
+    "key": "jigsaw-puzzle-table-20333",
+    "url": "catalog://cover/jigsaw-puzzle-table-20333",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "puzzles",
+      "jigsaw",
+      "teamwork",
+      "pieces"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Joining puzzle pieces",
+    "alt": "Two hands fitting jigsaw puzzle pieces together",
+    "hasJpeg": true
+  },
+  {
+    "key": "journaling-notebook-coffee-1276779",
+    "url": "catalog://cover/journaling-notebook-coffee-1276779",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "journaling",
+      "notebook",
+      "reflection",
+      "coffee"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Journal and pen",
+    "alt": "An open notebook with a fountain pen and coffee",
+    "hasJpeg": true
+  },
+  {
+    "key": "karaoke-night-4838064",
+    "url": "catalog://cover/karaoke-night-4838064",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "karaoke",
+      "microphone",
+      "singing",
+      "night out"
+    ],
+    "mood": [
+      "playful",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Microphone on stage",
+    "alt": "A purple-lit microphone on stage with blurred lights",
+    "hasJpeg": true
+  },
+  {
+    "key": "knitting-circle-869221",
+    "url": "catalog://cover/knitting-circle-869221",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "knitting",
+      "yarn",
+      "crafts",
+      "handmade"
+    ],
+    "mood": [
+      "cozy",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Knitting",
+    "alt": "Hands knitting with teal yarn",
+    "hasJpeg": true
+  },
+  {
+    "key": "library-stacks-1147815",
+    "url": "catalog://cover/library-stacks-1147815",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "library",
+      "books",
+      "reading",
+      "shelves"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Library shelves",
+    "alt": "Floor-to-ceiling shelves full of colorful books",
+    "hasJpeg": true
+  },
+  {
+    "key": "live-acoustic-set-10207269",
+    "url": "catalog://cover/live-acoustic-set-10207269",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "acoustic",
+      "live music",
+      "performance",
+      "guitar"
+    ],
+    "mood": [
+      "energetic",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Acoustic set",
+    "alt": "A musician playing an acoustic guitar on a dim stage",
+    "hasJpeg": true
+  },
+  {
+    "key": "live-band-stage-1853662",
+    "url": "catalog://cover/live-band-stage-1853662",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "live band",
+      "concert",
+      "stage",
+      "crowd"
+    ],
+    "mood": [
+      "energetic",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Live concert",
+    "alt": "A crowd with hands up in front of a stage with bright lights",
+    "hasJpeg": true
+  },
+  {
+    "key": "live-crowd-gig-407108",
+    "url": "catalog://cover/live-crowd-gig-407108",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "concert",
+      "crowd",
+      "gig",
+      "live music"
+    ],
+    "mood": [
+      "energetic",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Filming the gig",
+    "alt": "A crowd at a concert with someone holding up a phone",
+    "hasJpeg": true
+  },
+  {
+    "key": "live-open-air-1850022",
+    "url": "catalog://cover/live-open-air-1850022",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "festival",
+      "open air",
+      "concert",
+      "lights"
+    ],
+    "mood": [
+      "energetic",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Festival lights",
+    "alt": "Colorful stage lights above a festival crowd at night",
+    "hasJpeg": true
+  },
+  {
+    "key": "lunch-and-learn-10046033",
+    "url": "catalog://cover/lunch-and-learn-10046033",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "lunch and learn",
+      "presentation",
+      "team",
+      "colleagues"
+    ],
+    "mood": [
+      "focused",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Meeting at the table",
+    "alt": "Colleagues talking around a table in a bright office",
+    "hasJpeg": true
+  },
+  {
+    "key": "lunch-team-table-569156",
+    "url": "catalog://cover/lunch-team-table-569156",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "team lunch",
+      "lunch",
+      "salad",
+      "sharing"
+    ],
+    "mood": [
+      "social",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Sharing a salad",
+    "alt": "Hands sharing a plate of fresh salad at a lunch table",
+    "hasJpeg": true
+  },
+  {
+    "key": "meditation-cushion-candle-3612508",
+    "url": "catalog://cover/meditation-cushion-candle-3612508",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "meditation",
+      "candles",
+      "quiet",
+      "relaxing"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Candlelight",
+    "alt": "Rows of lit candles glowing warm",
+    "hasJpeg": true
+  },
+  {
+    "key": "meditation-nature-7986102",
+    "url": "catalog://cover/meditation-nature-7986102",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "meditation",
+      "nature",
+      "forest",
+      "mindfulness"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Crystal ball in the forest",
+    "alt": "A glass ball reflecting the forest on a mossy trunk",
+    "hasJpeg": true
+  },
+  {
+    "key": "meditation-sitting-group-1287207",
+    "url": "catalog://cover/meditation-sitting-group-1287207",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "meditation",
+      "sunset",
+      "mindfulness",
+      "outdoors"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Meditating at dusk",
+    "alt": "A person meditating on a hill at sunset",
+    "hasJpeg": true
+  },
+  {
+    "key": "mindful-walk-forest-4329183",
+    "url": "catalog://cover/mindful-walk-forest-4329183",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "mindful walk",
+      "walking",
+      "nature",
+      "stream"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Quiet walk by the stream",
+    "alt": "A woman walking along a stream, seen from behind",
+    "hasJpeg": true
+  },
+  {
+    "key": "miniatures-painting-3845305",
+    "url": "catalog://cover/miniatures-painting-3845305",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "miniatures",
+      "painting",
+      "tabletop",
+      "hobby"
+    ],
+    "mood": [
+      "playful",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Tiny painters",
+    "alt": "Small figurines painting under colorful bokeh lights",
+    "hasJpeg": true
+  },
+  {
+    "key": "open-mic-night-1132528",
+    "url": "catalog://cover/open-mic-night-1132528",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "open mic",
+      "performance",
+      "music",
+      "stage"
+    ],
+    "mood": [
+      "playful",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Open mic",
+    "alt": "A microphone in warm stage light",
+    "hasJpeg": true
+  },
+  {
+    "key": "painting-canvas-studio-1683134",
+    "url": "catalog://cover/painting-canvas-studio-1683134",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "painting",
+      "brushes",
+      "studio",
+      "art"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Paint brushes",
+    "alt": "Paint brushes in a jar against a dark slate wall",
+    "hasJpeg": true
+  },
+  {
+    "key": "painting-group-class-2158038",
+    "url": "catalog://cover/painting-group-class-2158038",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "painting class",
+      "painting",
+      "workshop",
+      "easels"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Painting class",
+    "alt": "People working at easels in a bright art class",
+    "hasJpeg": true
+  },
+  {
+    "key": "painting-watercolor-1851483",
+    "url": "catalog://cover/painting-watercolor-1851483",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "watercolor",
+      "painting",
+      "art",
+      "sketchbook"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Watercolor set",
+    "alt": "A watercolor paint set, pencils and a blank notebook on a wooden desk",
+    "hasJpeg": true
+  },
+  {
+    "key": "park-bench-chat-6792528",
+    "url": "catalog://cover/park-bench-chat-6792528",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "park",
+      "bench",
+      "autumn",
+      "chat"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "autumn"
+    ],
+    "orientation": "landscape",
+    "label": "Autumn park bench",
+    "alt": "An empty bench under a big tree with orange leaves in soft morning mist",
+    "hasJpeg": true
+  },
+  {
+    "key": "park-lawn-games-7360499",
+    "url": "catalog://cover/park-lawn-games-7360499",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "frisbee",
+      "park",
+      "lawn games",
+      "disc golf"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Playing on the park lawn",
+    "alt": "A person playing a game on a green park lawn between tall trees",
+    "hasJpeg": true
+  },
+  {
+    "key": "photography-landscape-5344024",
+    "url": "catalog://cover/photography-landscape-5344024",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "photography",
+      "landscape",
+      "tripod",
+      "sunset"
+    ],
+    "mood": [
+      "calm",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Camera at sunset",
+    "alt": "A camera on a tripod pointed at a golden sunset",
+    "hasJpeg": true
+  },
+  {
+    "key": "photography-portrait-fun-6126262",
+    "url": "catalog://cover/photography-portrait-fun-6126262",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "photography",
+      "portrait",
+      "camera",
+      "friends"
+    ],
+    "mood": [
+      "calm",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Photo fun outdoors",
+    "alt": "Two friends in a green field taking photos of each other",
+    "hasJpeg": true
+  },
+  {
+    "key": "photography-walk-2931883",
+    "url": "catalog://cover/photography-walk-2931883",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "photography",
+      "photo walk",
+      "camera",
+      "city"
+    ],
+    "mood": [
+      "calm",
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Photographer over the city",
+    "alt": "A photographer with a camera looking out over a city",
+    "hasJpeg": true
+  },
+  {
+    "key": "picnic-park-blanket-10410610",
+    "url": "catalog://cover/picnic-park-blanket-10410610",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "picnic",
+      "park",
+      "blanket",
+      "friends"
+    ],
+    "mood": [
+      "social",
+      "cozy"
+    ],
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Picnic on the grass",
+    "alt": "A checkered picnic blanket on the grass with apples, flowers and a hand reaching for food",
+    "hasJpeg": true
+  },
+  {
+    "key": "pilates-reformer-1948813",
+    "url": "catalog://cover/pilates-reformer-1948813",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "pilates",
+      "reformer",
+      "core",
+      "class"
+    ],
+    "mood": [
+      "calm",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Pilates class",
+    "alt": "A group doing a pilates class in a bright studio",
+    "hasJpeg": true
+  },
+  {
+    "key": "potluck-table-1926946",
+    "url": "catalog://cover/potluck-table-1926946",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "potluck",
+      "dinner",
+      "table",
+      "autumn"
+    ],
+    "mood": [
+      "social",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Festive dinner table",
+    "alt": "A dinner table set with glasses, candles and a small pumpkin",
+    "hasJpeg": true
+  },
+  {
+    "key": "pottery-studio-shelf-2179091",
+    "url": "catalog://cover/pottery-studio-shelf-2179091",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "ceramics",
+      "studio",
+      "handmade",
+      "pottery"
+    ],
+    "mood": [
+      "calm",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Handmade ceramics",
+    "alt": "Shelves of handmade clay pots and cups",
+    "hasJpeg": true
+  },
+  {
+    "key": "pottery-wheel-throwing-1139098",
+    "url": "catalog://cover/pottery-wheel-throwing-1139098",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "pottery",
+      "clay",
+      "wheel",
+      "ceramics"
+    ],
+    "mood": [
+      "calm",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Hands on the wheel",
+    "alt": "Hands shaping wet clay on a pottery wheel",
+    "hasJpeg": true
+  },
+  {
+    "key": "reading-cozy-corner-3240766",
+    "url": "catalog://cover/reading-cozy-corner-3240766",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "reading",
+      "books",
+      "cozy",
+      "tea"
+    ],
+    "mood": [
+      "calm",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Tea and reading",
+    "alt": "A tea cup and open books on a table",
+    "hasJpeg": true
+  },
+  {
+    "key": "running-trail-run-3024773",
+    "url": "catalog://cover/running-trail-run-3024773",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "trail running",
+      "running",
+      "bridge",
+      "autumn"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "autumn"
+    ],
+    "orientation": "landscape",
+    "label": "Wooden bridge trail",
+    "alt": "A wooden bridge through autumn woods",
+    "hasJpeg": true
+  },
+  {
+    "key": "sailing-day-9060098",
+    "url": "catalog://cover/sailing-day-9060098",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "sailing",
+      "harbor",
+      "sea",
+      "waterfront"
+    ],
+    "mood": [
+      "energetic",
+      "calm"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Harbor afternoon",
+    "alt": "A person sitting by a wooden railing looking over a sunny harbor and waterfront",
+    "hasJpeg": true
+  },
+  {
+    "key": "sewing-fabric-machine-7086689",
+    "url": "catalog://cover/sewing-fabric-machine-7086689",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "sewing",
+      "fabric",
+      "crafts",
+      "handmade"
+    ],
+    "mood": [
+      "cozy",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Sewing by hand",
+    "alt": "Hands sewing pink fabric by hand",
+    "hasJpeg": true
+  },
+  {
+    "key": "singing-microphone-2941753",
+    "url": "catalog://cover/singing-microphone-2941753",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "singing",
+      "microphone",
+      "vocals",
+      "stage"
+    ],
+    "mood": [
+      "playful",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Vintage mic",
+    "alt": "A single microphone on a stand with a warm blurred background",
+    "hasJpeg": true
+  },
+  {
+    "key": "spa-day-relax-1327811",
+    "url": "catalog://cover/spa-day-relax-1327811",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "spa",
+      "relaxing",
+      "self care",
+      "massage"
+    ],
+    "mood": [
+      "calm",
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Hand massage",
+    "alt": "A relaxing hand massage in soft light",
+    "hasJpeg": true
+  },
+  {
+    "key": "spin-class-bikes-771474",
+    "url": "catalog://cover/spin-class-bikes-771474",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "spin class",
+      "cycling",
+      "indoor cycling",
+      "group fitness"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Spin class",
+    "alt": "A row of cyclists on spin bikes",
+    "hasJpeg": true
+  },
+  {
+    "key": "stretching-class-mats-2568410",
+    "url": "catalog://cover/stretching-class-mats-2568410",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "stretching",
+      "mobility",
+      "class",
+      "yoga"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Stretching on mats",
+    "alt": "People stretching on green yoga mats",
+    "hasJpeg": true
+  },
+  {
+    "key": "study-desk-notes-593333",
+    "url": "catalog://cover/study-desk-notes-593333",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "studying",
+      "notes",
+      "desk",
+      "writing"
+    ],
+    "mood": [
+      "focused",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Taking notes",
+    "alt": "A hand writing notes with a pencil",
+    "hasJpeg": true
+  },
+  {
+    "key": "study-group-table-4906312",
+    "url": "catalog://cover/study-group-table-4906312",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "studying",
+      "notebooks",
+      "laptop",
+      "coffee"
+    ],
+    "mood": [
+      "focused",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Study at the table",
+    "alt": "A person typing at a laptop with a cup of coffee and a notebook",
+    "hasJpeg": true
+  },
+  {
+    "key": "swimming-pool-laps-79592",
+    "url": "catalog://cover/swimming-pool-laps-79592",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "swimming",
+      "pool",
+      "laps",
+      "training"
+    ],
+    "mood": [
+      "energetic",
+      "calm"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Swimming laps",
+    "alt": "A swimmer cutting through a pool with lane lines",
+    "hasJpeg": true
+  },
+  {
+    "key": "tabletop-rpg-dice-7634718",
+    "url": "catalog://cover/tabletop-rpg-dice-7634718",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "dice",
+      "tabletop rpg",
+      "game night",
+      "luck"
+    ],
+    "mood": [
+      "playful",
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Dice on white",
+    "alt": "Six white dice on a white surface",
+    "hasJpeg": true
+  },
+  {
+    "key": "talk-speaker-audience-10134495",
+    "url": "catalog://cover/talk-speaker-audience-10134495",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "talk",
+      "lecture",
+      "presentation",
+      "audience"
+    ],
+    "mood": [
+      "focused",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Talk to a full room",
+    "alt": "A speaker presenting to a seated audience",
+    "hasJpeg": true
+  },
+  {
+    "key": "tea-ceremony-calm-6123746",
+    "url": "catalog://cover/tea-ceremony-calm-6123746",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "tea",
+      "ritual",
+      "slow living",
+      "calm"
+    ],
+    "mood": [
+      "cozy",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Tea ritual",
+    "alt": "An iron teapot and cups with rising steam",
+    "hasJpeg": true
+  },
+  {
+    "key": "tea-time-table-2107599",
+    "url": "catalog://cover/tea-time-table-2107599",
+    "kind": "photo",
+    "themes": [
+      "food"
+    ],
+    "tags": [
+      "tea",
+      "afternoon tea",
+      "cafe",
+      "cup"
+    ],
+    "mood": [
+      "cozy",
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Tea cup and flowers",
+    "alt": "A floral tea cup beside spoons and flowers on a white table",
     "hasJpeg": true
   },
   {
@@ -401,6 +3043,1305 @@ export const COVER_INDEX: readonly CoverIndexEntry[] = [
     "orientation": "landscape",
     "label": "Wellness and relaxing",
     "alt": "A cartoon character balances on a yoga mat under a crescent moon next to a water bottle on a coral background",
+    "hasJpeg": true
+  },
+  {
+    "key": "trivia-team-answers-4746035",
+    "url": "catalog://cover/trivia-team-answers-4746035",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "trivia",
+      "crossword",
+      "puzzles",
+      "quiz"
+    ],
+    "mood": [
+      "social",
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Crossword puzzle",
+    "alt": "A hand filling in a crossword puzzle",
+    "hasJpeg": true
+  },
+  {
+    "key": "video-games-arcade-1967833",
+    "url": "catalog://cover/video-games-arcade-1967833",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "arcade",
+      "video games",
+      "retro",
+      "night out"
+    ],
+    "mood": [
+      "playful",
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Arcade night",
+    "alt": "Players at colorful arcade game machines",
+    "hasJpeg": true
+  },
+  {
+    "key": "wellness-lunch-walk-2863541",
+    "url": "catalog://cover/wellness-lunch-walk-2863541",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "lunch walk",
+      "walking",
+      "park",
+      "wellness"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Walk in the park",
+    "alt": "A person walking down a leafy park path",
+    "hasJpeg": true
+  },
+  {
+    "key": "workshop-whiteboard-10171012",
+    "url": "catalog://cover/workshop-whiteboard-10171012",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "workshop",
+      "brainstorm",
+      "sticky notes",
+      "team"
+    ],
+    "mood": [
+      "focused",
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Sticky note workshop",
+    "alt": "A team brainstorming around a table with sticky notes and laptops, seen from above",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-acoustic-guitar-1836655",
+    "url": "catalog://cover/x-acoustic-guitar-1836655",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "guitar",
+      "acoustic",
+      "music",
+      "relaxing"
+    ],
+    "mood": [
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Acoustic guitar",
+    "alt": "An acoustic guitar leaning on a cushion",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-acrylic-painting-911804",
+    "url": "catalog://cover/x-acrylic-painting-911804",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "painting",
+      "acrylic",
+      "art",
+      "supplies"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Acrylic paints",
+    "alt": "Bottles of acrylic paint and brushes on a table",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-brass-band-7774590",
+    "url": "catalog://cover/x-brass-band-7774590",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "trumpet",
+      "brass",
+      "jazz",
+      "band"
+    ],
+    "mood": [
+      "festive"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Trumpet",
+    "alt": "Close-up of a shiny golden trumpet",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-camera-lens-219958",
+    "url": "catalog://cover/x-camera-lens-219958",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "photography",
+      "camera",
+      "vintage",
+      "film"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Vintage camera",
+    "alt": "A vintage camera on a film strip",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-camping-under-stars-1867275",
+    "url": "catalog://cover/x-camping-under-stars-1867275",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "camping",
+      "campfire",
+      "night",
+      "friends"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Friends around a campfire",
+    "alt": "A small group sitting around a campfire at night among tall trees",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-clean-river-4893019",
+    "url": "catalog://cover/x-clean-river-4893019",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "river cleanup",
+      "volunteering",
+      "water",
+      "cleanup"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "River cleanup boat",
+    "alt": "A worker on a barge clearing a river under a bridge",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-community-garden-beds-4529717",
+    "url": "catalog://cover/x-community-garden-beds-4529717",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "teamwork",
+      "community",
+      "volunteering",
+      "together"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Hands in a circle",
+    "alt": "Many hands stacked together in a circle",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-desk-setup-2982270",
+    "url": "catalog://cover/x-desk-setup-2982270",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "laptop",
+      "desk",
+      "studying",
+      "work"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Desk from above",
+    "alt": "A laptop, coffee and camera on a white desk seen from above",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-dictionary-5105878",
+    "url": "catalog://cover/x-dictionary-5105878",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "language",
+      "dictionary",
+      "words",
+      "study"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Dictionary page",
+    "alt": "A daisy lying on an open dictionary page",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-domino-game-665547",
+    "url": "catalog://cover/x-domino-game-665547",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "dominoes",
+      "tabletop",
+      "game night",
+      "play"
+    ],
+    "mood": [
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Domino fall",
+    "alt": "A hand toppling a line of dominoes",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-drawing-pencils-1486278",
+    "url": "catalog://cover/x-drawing-pencils-1486278",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "drawing",
+      "pencils",
+      "sketching",
+      "art"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Colored pencils",
+    "alt": "Colored pencils lying on a dark surface",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-drum-sticks-7751985",
+    "url": "catalog://cover/x-drum-sticks-7751985",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "drums",
+      "percussion",
+      "drumming",
+      "summer"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Drums by the palms",
+    "alt": "A drum kit on a promenade at dusk with palm trees",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-environment-care-3979757",
+    "url": "catalog://cover/x-environment-care-3979757",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "recycling",
+      "bins",
+      "sustainability",
+      "cleanup"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Recycling bins",
+    "alt": "Rows of blue, brown and yellow recycling bins",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-environment-care-683437",
+    "url": "catalog://cover/x-environment-care-683437",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "environment",
+      "sustainability",
+      "trees",
+      "volunteering"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Growing green",
+    "alt": "A small tree growing from soil held in a glass globe",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-football-3471402",
+    "url": "catalog://cover/x-football-3471402",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "football",
+      "soccer",
+      "pitch",
+      "team sport"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Football on the pitch",
+    "alt": "A football resting on a pitch corner line",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-helping-a-neighbor-5618240",
+    "url": "catalog://cover/x-helping-a-neighbor-5618240",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "seedling",
+      "planting",
+      "helping",
+      "volunteering"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Seedling in hands",
+    "alt": "Two pairs of hands holding a young plant in soil",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-helping-hands-2888625",
+    "url": "catalog://cover/x-helping-hands-2888625",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "helping hands",
+      "teamwork",
+      "community",
+      "support"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Hands joined",
+    "alt": "Hands clasped together over a warm sunset",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-helping-hands-4344711",
+    "url": "catalog://cover/x-helping-hands-4344711",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "helping hands",
+      "support",
+      "community",
+      "kindness"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Holding hands",
+    "alt": "Hands gently holding another hand",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-kayak-on-the-water-1836601",
+    "url": "catalog://cover/x-kayak-on-the-water-1836601",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "kayaking",
+      "paddling",
+      "lake",
+      "water"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Kayaking on a turquoise lake",
+    "alt": "A paddler in a kayak on bright turquoise water seen from behind",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-learning-together-1001655",
+    "url": "catalog://cover/x-learning-together-1001655",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "learning",
+      "books",
+      "reading",
+      "study"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Stack of books",
+    "alt": "Books with reading glasses in black and white",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-lecture-hall-3986809",
+    "url": "catalog://cover/x-lecture-hall-3986809",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "lecture",
+      "talk",
+      "presentation",
+      "class"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Lecture hall",
+    "alt": "Students listening to a lecturer in a hall",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-lego-bricks-674828",
+    "url": "catalog://cover/x-lego-bricks-674828",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "building",
+      "bricks",
+      "play",
+      "creative"
+    ],
+    "mood": [
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Toy bricks",
+    "alt": "Colorful stacked plastic toy bricks",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-mahjong-tiles-4946387",
+    "url": "catalog://cover/x-mahjong-tiles-4946387",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "mahjong",
+      "tiles",
+      "tabletop",
+      "friends"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Tile game with friends",
+    "alt": "Older friends playing a tile game around a table",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-mountain-trail-2031539",
+    "url": "catalog://cover/x-mountain-trail-2031539",
+    "kind": "photo",
+    "themes": [
+      "outdoors"
+    ],
+    "tags": [
+      "hiking",
+      "trail",
+      "mountains",
+      "heather"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Stone path in the mountains",
+    "alt": "A stone path winding through purple heather toward snowy mountains",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-music-notes-6305620",
+    "url": "catalog://cover/x-music-notes-6305620",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "sheet music",
+      "notes",
+      "music",
+      "classical"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Rose on sheet music",
+    "alt": "A red rose resting on a page of sheet music",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-notebook-and-pen-593327",
+    "url": "catalog://cover/x-notebook-and-pen-593327",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "notes",
+      "studying",
+      "notebook",
+      "desk"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Notebook and pen",
+    "alt": "A laptop beside a notebook and pen on a wooden desk",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-paint-palette-5821297",
+    "url": "catalog://cover/x-paint-palette-5821297",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "painting",
+      "palette",
+      "colors",
+      "art"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Paint palette",
+    "alt": "A palette of mixed paint colors",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-paper-crafts-1067673",
+    "url": "catalog://cover/x-paper-crafts-1067673",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "origami",
+      "paper craft",
+      "crafts",
+      "diy"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Paper boat",
+    "alt": "An orange origami boat on a white background",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-peaceful-forest-5330961",
+    "url": "catalog://cover/x-peaceful-forest-5330961",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "forest",
+      "calm",
+      "mindfulness",
+      "river"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Forest river",
+    "alt": "A calm river flowing through a green forest",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-piano-keys-1655558",
+    "url": "catalog://cover/x-piano-keys-1655558",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "piano",
+      "keys",
+      "sheet music",
+      "music"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Piano and sheet music",
+    "alt": "Piano keys with sheet music",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-playing-cards-3170055",
+    "url": "catalog://cover/x-playing-cards-3170055",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "card games",
+      "cards",
+      "game night",
+      "poker"
+    ],
+    "mood": [
+      "playful"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Dealing cards",
+    "alt": "A person holding a hand of playing cards",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-pool-table-5489526",
+    "url": "catalog://cover/x-pool-table-5489526",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "billiards",
+      "pool",
+      "night out",
+      "table"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Pool table",
+    "alt": "Colorful billiard balls on a teal pool table",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-puzzle-pieces-1261138",
+    "url": "catalog://cover/x-puzzle-pieces-1261138",
+    "kind": "photo",
+    "themes": [
+      "games"
+    ],
+    "tags": [
+      "puzzles",
+      "jigsaw",
+      "pieces",
+      "teamwork"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Puzzle with a missing piece",
+    "alt": "A jigsaw puzzle with one black piece being placed",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-recycling-day-1853667",
+    "url": "catalog://cover/x-recycling-day-1853667",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "recycling",
+      "paper",
+      "sustainability",
+      "volunteering"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Bundles of paper",
+    "alt": "Tied bundles of old newspapers for recycling",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-recycling-day-5128607",
+    "url": "catalog://cover/x-recycling-day-5128607",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "recycling",
+      "plastic",
+      "sustainability",
+      "cleanup"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Plastic bottles",
+    "alt": "Piles of clear plastic bottles ready for recycling",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-road-cycling-3066167",
+    "url": "catalog://cover/x-road-cycling-3066167",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "cycling",
+      "bike",
+      "winter",
+      "adventure"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Snow cycling",
+    "alt": "Cyclists riding bikes through snowy mountains",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-stack-of-books-2101475",
+    "url": "catalog://cover/x-stack-of-books-2101475",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "books",
+      "reading",
+      "library",
+      "classic"
+    ],
+    "mood": [
+      "cozy"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Books and a rose",
+    "alt": "A stack of old books with a pale rose",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-swimming-103817",
+    "url": "catalog://cover/x-swimming-103817",
+    "kind": "photo",
+    "themes": [
+      "fitness"
+    ],
+    "tags": [
+      "swimming",
+      "pool",
+      "water",
+      "summer"
+    ],
+    "mood": [
+      "energetic"
+    ],
+    "season": [
+      "summer"
+    ],
+    "orientation": "landscape",
+    "label": "Pool water",
+    "alt": "Clear blue pool water with light ripples",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-teamwork-1846428",
+    "url": "catalog://cover/x-teamwork-1846428",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "teamwork",
+      "heart",
+      "community",
+      "giving"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Heart made of hands",
+    "alt": "Many hands forming a red heart",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-tree-seedlings-5803607",
+    "url": "catalog://cover/x-tree-seedlings-5803607",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "tree planting",
+      "seedlings",
+      "trees",
+      "volunteering"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "spring"
+    ],
+    "orientation": "landscape",
+    "label": "Sapling in moss",
+    "alt": "A tiny sapling growing in green moss",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-violin-1906127",
+    "url": "catalog://cover/x-violin-1906127",
+    "kind": "photo",
+    "themes": [
+      "music"
+    ],
+    "tags": [
+      "violin",
+      "strings",
+      "classical",
+      "performance"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Violin",
+    "alt": "A violinist playing in warm golden light",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-volunteer-hands-6772196",
+    "url": "catalog://cover/x-volunteer-hands-6772196",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "volunteering",
+      "community",
+      "neighbors",
+      "helping"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Volunteers chatting",
+    "alt": "A volunteer in a cap talking with an older man outside an apartment block",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-waste-sorting-5527527",
+    "url": "catalog://cover/x-waste-sorting-5527527",
+    "kind": "photo",
+    "themes": [
+      "volunteering"
+    ],
+    "tags": [
+      "recycling",
+      "sorting",
+      "sustainability",
+      "volunteering"
+    ],
+    "mood": [
+      "social"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Sorting recyclables",
+    "alt": "Bowls of colorful plastic bottle caps sorted by color",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-weaving-1839920",
+    "url": "catalog://cover/x-weaving-1839920",
+    "kind": "photo",
+    "themes": [
+      "arts"
+    ],
+    "tags": [
+      "weaving",
+      "textile",
+      "crafts",
+      "handmade"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Weaving",
+    "alt": "Hands weaving colorful textile",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-whiteboard-ideas-3267505",
+    "url": "catalog://cover/x-whiteboard-ideas-3267505",
+    "kind": "photo",
+    "themes": [
+      "learning"
+    ],
+    "tags": [
+      "whiteboard",
+      "brainstorm",
+      "workshop",
+      "planning"
+    ],
+    "mood": [
+      "focused"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Planning on the wall",
+    "alt": "A person looking at a wall of sketches and notes",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-yoga-pose-3134828",
+    "url": "catalog://cover/x-yoga-pose-3134828",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "yoga",
+      "stretching",
+      "balance",
+      "fitness"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Handstand yoga",
+    "alt": "A woman in a handstand pose with water splashing",
+    "hasJpeg": true
+  },
+  {
+    "key": "x-zen-stones-1335737",
+    "url": "catalog://cover/x-zen-stones-1335737",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "zen",
+      "stones",
+      "meditation",
+      "calm"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Stacked stones",
+    "alt": "Balanced stacked stones beside a flowing river",
+    "hasJpeg": true
+  },
+  {
+    "key": "yoga-beach-pose-5380651",
+    "url": "catalog://cover/yoga-beach-pose-5380651",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "yoga",
+      "meditation",
+      "riverbank",
+      "calm"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Lotus by the river",
+    "alt": "A woman meditating in lotus pose on a pebble riverbank",
+    "hasJpeg": true
+  },
+  {
+    "key": "yoga-outdoor-sunrise-6723315",
+    "url": "catalog://cover/yoga-outdoor-sunrise-6723315",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "yoga",
+      "sunrise",
+      "outdoors",
+      "stretching"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Sunrise yoga",
+    "alt": "A person in a yoga pose silhouetted against a pink sunrise",
+    "hasJpeg": true
+  },
+  {
+    "key": "yoga-studio-class-7140566",
+    "url": "catalog://cover/yoga-studio-class-7140566",
+    "kind": "photo",
+    "themes": [
+      "wellness"
+    ],
+    "tags": [
+      "yoga",
+      "meditation",
+      "mat",
+      "outdoors"
+    ],
+    "mood": [
+      "calm"
+    ],
+    "season": [
+      "any"
+    ],
+    "orientation": "landscape",
+    "label": "Seated yoga pose",
+    "alt": "A woman sitting cross-legged in meditation on a mat outdoors",
     "hasJpeg": true
   }
 ];

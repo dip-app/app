@@ -1,43 +1,43 @@
 {
   "version": 1,
-  "note": "Query plan for scripts/covers/fetch-pexels.ts; see docs/design/cover-library.md. Each shot yields candidates for one library image.",
+  "note": "Query plan for scripts/covers/fetch-pixabay.ts (Pexels originals kept in fetch-pexels.ts); see docs/design/cover-library.md. Each shot yields candidates for one library image; shots with id prefix x- were added for Pixabay. pixabayQuery overrides query when Pixabay needs simpler keywords.",
   "perShotCandidates": 2,
   "themes": [
     {
       "theme": "outdoors",
-      "target": 25
+      "target": 29
     },
     {
       "theme": "food",
-      "target": 22
+      "target": 24
     },
     {
       "theme": "arts",
-      "target": 18
+      "target": 26
     },
     {
       "theme": "games",
-      "target": 18
+      "target": 29
     },
     {
       "theme": "music",
-      "target": 16
+      "target": 23
     },
     {
       "theme": "learning",
-      "target": 16
+      "target": 23
     },
     {
       "theme": "volunteering",
-      "target": 16
+      "target": 39
     },
     {
       "theme": "wellness",
-      "target": 18
+      "target": 22
     },
     {
       "theme": "fitness",
-      "target": 22
+      "target": 28
     }
   ],
   "shots": [
@@ -1277,7 +1277,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "printmaking"
     },
     {
       "id": "board-games-table",
@@ -1581,7 +1582,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "escape room"
     },
     {
       "id": "tabletop-rpg-dice",
@@ -1600,7 +1602,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "dice"
     },
     {
       "id": "miniatures-painting",
@@ -1809,7 +1812,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "guitar campfire"
     },
     {
       "id": "choir-rehearsal",
@@ -1942,7 +1946,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "reading book"
     },
     {
       "id": "reading-cozy-corner",
@@ -2037,7 +2042,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "workshop teaching"
     },
     {
       "id": "language-exchange-cafe",
@@ -2262,7 +2268,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "river trash"
     },
     {
       "id": "litter-picking-street",
@@ -2281,7 +2288,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "litter"
     },
     {
       "id": "park-cleanup-team",
@@ -2300,7 +2308,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "volunteers"
     },
     {
       "id": "community-garden-planting",
@@ -2379,7 +2388,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "food donation"
     },
     {
       "id": "community-meal-serving",
@@ -2398,7 +2408,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "soup kitchen"
     },
     {
       "id": "food-drive-boxes",
@@ -2417,7 +2428,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "donation box"
     },
     {
       "id": "tree-planting-group",
@@ -2514,7 +2526,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "charity"
     },
     {
       "id": "charity-run-team",
@@ -2533,7 +2546,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "marathon runners"
     },
     {
       "id": "yoga-studio-class",
@@ -2790,7 +2804,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "walking park"
     },
     {
       "id": "tea-ceremony-calm",
@@ -3033,7 +3048,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "workout"
     },
     {
       "id": "bootcamp-outdoors",
@@ -3145,7 +3161,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "pilates"
     },
     {
       "id": "pilates-mat-class",
@@ -3164,7 +3181,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "pilates"
     },
     {
       "id": "boxing-bag-training",
@@ -3200,7 +3218,8 @@
       ],
       "season": [
         "any"
-      ]
+      ],
+      "pixabayQuery": "kickboxing"
     },
     {
       "id": "climbing-gym-wall",
@@ -3272,6 +3291,1302 @@
       ],
       "mood": [
         "energetic",
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-volunteer-hands",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Volunteer hands",
+      "query": "volunteer",
+      "tags": [
+        "volunteering",
+        "helping hands",
+        "community"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-helping-hands",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Helping hands",
+      "query": "helping hands",
+      "tags": [
+        "volunteering",
+        "teamwork",
+        "helping"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-recycling-day",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Recycling day",
+      "query": "recycling",
+      "tags": [
+        "recycling",
+        "sustainability",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-donation-drive",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Donation drive",
+      "query": "donation",
+      "tags": [
+        "donation",
+        "charity",
+        "giving"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-planting-a-tree",
+      "theme": "volunteering",
+      "sub": "trees",
+      "label": "Planting a tree",
+      "query": "planting tree",
+      "tags": [
+        "tree planting",
+        "trees",
+        "volunteering"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "spring"
+      ]
+    },
+    {
+      "id": "x-community-garden-beds",
+      "theme": "volunteering",
+      "sub": "community-garden",
+      "label": "Community garden beds",
+      "query": "community garden",
+      "tags": [
+        "community garden",
+        "gardening",
+        "volunteering"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "x-clean-beach",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Clean beach",
+      "query": "beach cleanup",
+      "tags": [
+        "beach cleanup",
+        "volunteering",
+        "litter"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-teamwork",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Teamwork",
+      "query": "teamwork hands",
+      "tags": [
+        "teamwork",
+        "community",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-charity",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Charity",
+      "query": "charity",
+      "tags": [
+        "charity",
+        "fundraiser",
+        "giving"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-waste-sorting",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Waste sorting",
+      "query": "waste sorting",
+      "tags": [
+        "recycling",
+        "waste",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-fresh-produce-donation",
+      "theme": "volunteering",
+      "sub": "food-bank",
+      "label": "Fresh produce donation",
+      "query": "vegetables basket",
+      "tags": [
+        "food bank",
+        "produce",
+        "donations"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-board-game-pieces",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Board game pieces",
+      "query": "board game",
+      "tags": [
+        "board games",
+        "game night",
+        "pieces"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-dice-game",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Dice game",
+      "query": "dice game",
+      "tags": [
+        "dice",
+        "board games",
+        "luck"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-playing-cards",
+      "theme": "games",
+      "sub": "cards",
+      "label": "Playing cards",
+      "query": "playing cards",
+      "tags": [
+        "card games",
+        "cards",
+        "game night"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-puzzle-pieces",
+      "theme": "games",
+      "sub": "puzzles",
+      "label": "Puzzle pieces",
+      "query": "puzzle pieces",
+      "tags": [
+        "puzzles",
+        "jigsaw",
+        "teamwork"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-lego-bricks",
+      "theme": "games",
+      "sub": "tabletop",
+      "label": "Lego bricks",
+      "query": "toy bricks",
+      "tags": [
+        "building",
+        "bricks",
+        "play"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-game-controller",
+      "theme": "games",
+      "sub": "video-games",
+      "label": "Game controller",
+      "query": "game controller",
+      "tags": [
+        "video games",
+        "console",
+        "gaming"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-mahjong-tiles",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Mahjong tiles",
+      "query": "mahjong",
+      "tags": [
+        "mahjong",
+        "tiles",
+        "tabletop"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-checkers",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Checkers",
+      "query": "checkers",
+      "tags": [
+        "checkers",
+        "board games",
+        "classic"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-domino-game",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Domino game",
+      "query": "domino",
+      "tags": [
+        "dominoes",
+        "tabletop",
+        "game night"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-bowling-night",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Bowling night",
+      "query": "bowling",
+      "tags": [
+        "bowling",
+        "league",
+        "night out"
+      ],
+      "mood": [
+        "playful"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-pool-table",
+      "theme": "games",
+      "sub": "board-games",
+      "label": "Pool table",
+      "query": "billiards",
+      "tags": [
+        "billiards",
+        "pool",
+        "night out"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-paint-palette",
+      "theme": "arts",
+      "sub": "painting",
+      "label": "Paint palette",
+      "query": "paint palette",
+      "tags": [
+        "painting",
+        "palette",
+        "colors"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-acrylic-painting",
+      "theme": "arts",
+      "sub": "painting",
+      "label": "Acrylic painting",
+      "query": "acrylic painting",
+      "tags": [
+        "painting",
+        "acrylic",
+        "art"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-clay-pottery",
+      "theme": "arts",
+      "sub": "pottery",
+      "label": "Clay pottery",
+      "query": "pottery",
+      "tags": [
+        "pottery",
+        "clay",
+        "ceramics"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-drawing-pencils",
+      "theme": "arts",
+      "sub": "drawing",
+      "label": "Drawing pencils",
+      "query": "drawing pencils",
+      "tags": [
+        "drawing",
+        "pencils",
+        "sketching"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-street-art",
+      "theme": "arts",
+      "sub": "drawing",
+      "label": "Street art",
+      "query": "graffiti",
+      "tags": [
+        "street art",
+        "graffiti",
+        "mural"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-paper-crafts",
+      "theme": "arts",
+      "sub": "crafts",
+      "label": "Paper crafts",
+      "query": "origami",
+      "tags": [
+        "origami",
+        "paper craft",
+        "crafts"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-weaving",
+      "theme": "arts",
+      "sub": "crafts",
+      "label": "Weaving",
+      "query": "weaving",
+      "tags": [
+        "weaving",
+        "textile",
+        "crafts"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-camera-lens",
+      "theme": "arts",
+      "sub": "photography",
+      "label": "Camera lens",
+      "query": "camera lens",
+      "tags": [
+        "photography",
+        "camera",
+        "lens"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-piano-keys",
+      "theme": "music",
+      "sub": "live",
+      "label": "Piano keys",
+      "query": "piano",
+      "tags": [
+        "piano",
+        "keys",
+        "music"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-violin",
+      "theme": "music",
+      "sub": "live",
+      "label": "Violin",
+      "query": "violin",
+      "tags": [
+        "violin",
+        "strings",
+        "classical"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-concert-lights",
+      "theme": "music",
+      "sub": "live",
+      "label": "Concert lights",
+      "query": "concert",
+      "tags": [
+        "concert",
+        "live music",
+        "stage"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-acoustic-guitar",
+      "theme": "music",
+      "sub": "guitar",
+      "label": "Acoustic guitar",
+      "query": "acoustic guitar",
+      "tags": [
+        "guitar",
+        "acoustic",
+        "music"
+      ],
+      "mood": [
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-music-notes",
+      "theme": "music",
+      "sub": "live",
+      "label": "Music notes",
+      "query": "sheet music",
+      "tags": [
+        "sheet music",
+        "notes",
+        "music"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-drum-sticks",
+      "theme": "music",
+      "sub": "drums",
+      "label": "Drum sticks",
+      "query": "drums",
+      "tags": [
+        "drums",
+        "percussion",
+        "drumming"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-brass-band",
+      "theme": "music",
+      "sub": "live",
+      "label": "Brass band",
+      "query": "trumpet",
+      "tags": [
+        "trumpet",
+        "brass",
+        "jazz"
+      ],
+      "mood": [
+        "festive"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-stack-of-books",
+      "theme": "learning",
+      "sub": "book-club",
+      "label": "Stack of books",
+      "query": "books",
+      "tags": [
+        "books",
+        "reading",
+        "library"
+      ],
+      "mood": [
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-notebook-and-pen",
+      "theme": "learning",
+      "sub": "study",
+      "label": "Notebook and pen",
+      "query": "notebook pen",
+      "tags": [
+        "notes",
+        "studying",
+        "notebook"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-lecture-hall",
+      "theme": "learning",
+      "sub": "talks",
+      "label": "Lecture hall",
+      "query": "lecture",
+      "tags": [
+        "lecture",
+        "talk",
+        "presentation"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-whiteboard-ideas",
+      "theme": "learning",
+      "sub": "workshop",
+      "label": "Whiteboard ideas",
+      "query": "whiteboard",
+      "tags": [
+        "whiteboard",
+        "brainstorm",
+        "workshop"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-dictionary",
+      "theme": "learning",
+      "sub": "language",
+      "label": "Dictionary",
+      "query": "dictionary",
+      "tags": [
+        "language",
+        "dictionary",
+        "words"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-desk-setup",
+      "theme": "learning",
+      "sub": "study",
+      "label": "Desk setup",
+      "query": "desk laptop",
+      "tags": [
+        "laptop",
+        "desk",
+        "studying"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-learning-together",
+      "theme": "learning",
+      "sub": "workshop",
+      "label": "Learning together",
+      "query": "learning",
+      "tags": [
+        "learning",
+        "skills",
+        "class"
+      ],
+      "mood": [
+        "focused"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-zen-stones",
+      "theme": "wellness",
+      "sub": "meditation",
+      "label": "Zen stones",
+      "query": "zen stones",
+      "tags": [
+        "zen",
+        "stones",
+        "meditation"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-spa-essentials",
+      "theme": "wellness",
+      "sub": "spa",
+      "label": "Spa essentials",
+      "query": "spa",
+      "tags": [
+        "spa",
+        "relaxing",
+        "self care"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-yoga-pose",
+      "theme": "wellness",
+      "sub": "yoga",
+      "label": "Yoga pose",
+      "query": "yoga",
+      "tags": [
+        "yoga",
+        "stretching",
+        "mindfulness"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-peaceful-forest",
+      "theme": "wellness",
+      "sub": "mindful-walk",
+      "label": "Peaceful forest",
+      "query": "peaceful forest",
+      "tags": [
+        "forest",
+        "calm",
+        "mindfulness"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-runner-at-dawn",
+      "theme": "fitness",
+      "sub": "running",
+      "label": "Runner at dawn",
+      "query": "running",
+      "tags": [
+        "running",
+        "jogging",
+        "cardio"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-gym-workout",
+      "theme": "fitness",
+      "sub": "group-class",
+      "label": "Gym workout",
+      "query": "gym",
+      "tags": [
+        "gym",
+        "training",
+        "workout"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-swimming",
+      "theme": "fitness",
+      "sub": "swimming",
+      "label": "Swimming",
+      "query": "swimming",
+      "tags": [
+        "swimming",
+        "pool",
+        "laps"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "x-football",
+      "theme": "fitness",
+      "sub": "team-sports",
+      "label": "Football",
+      "query": "football",
+      "tags": [
+        "football",
+        "soccer",
+        "team sport"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-tennis",
+      "theme": "fitness",
+      "sub": "team-sports",
+      "label": "Tennis",
+      "query": "tennis",
+      "tags": [
+        "tennis",
+        "racket",
+        "court"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "x-road-cycling",
+      "theme": "fitness",
+      "sub": "cycling",
+      "label": "Road cycling",
+      "query": "cycling",
+      "tags": [
+        "cycling",
+        "bike",
+        "road bike"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-kayak-on-the-water",
+      "theme": "outdoors",
+      "sub": "water",
+      "label": "Kayak on the water",
+      "query": "kayak",
+      "tags": [
+        "kayaking",
+        "paddling",
+        "water"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "x-mountain-trail",
+      "theme": "outdoors",
+      "sub": "hiking",
+      "label": "Mountain trail",
+      "query": "mountain trail",
+      "tags": [
+        "hiking",
+        "trail",
+        "mountains"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-camping-under-stars",
+      "theme": "outdoors",
+      "sub": "camping",
+      "label": "Camping under stars",
+      "query": "camping",
+      "tags": [
+        "camping",
+        "tent",
+        "night"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "x-park-in-bloom",
+      "theme": "outdoors",
+      "sub": "park",
+      "label": "Park in bloom",
+      "query": "park spring",
+      "tags": [
+        "park",
+        "spring",
+        "stroll"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "spring"
+      ]
+    },
+    {
+      "id": "x-grilled-food",
+      "theme": "food",
+      "sub": "grill",
+      "label": "Grilled food",
+      "query": "barbecue",
+      "tags": [
+        "bbq",
+        "grill",
+        "cookout"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "summer"
+      ]
+    },
+    {
+      "id": "x-fresh-baked-bread",
+      "theme": "food",
+      "sub": "baking",
+      "label": "Fresh baked bread",
+      "query": "bread",
+      "tags": [
+        "bread",
+        "baking",
+        "bakery"
+      ],
+      "mood": [
+        "cozy"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-garden-volunteers",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Garden volunteers",
+      "query": "volunteer garden",
+      "tags": [
+        "community garden",
+        "volunteering",
+        "gardening"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-gloves-and-cleanup",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Gloves and cleanup",
+      "query": "gloves trash",
+      "tags": [
+        "cleanup",
+        "litter",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-environment-care",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Environment care",
+      "query": "environmental protection",
+      "tags": [
+        "environment",
+        "sustainability",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-recycling-bins",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Recycling bins",
+      "query": "recycling bin",
+      "tags": [
+        "recycling",
+        "sustainability",
+        "cleanup"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-tree-seedlings",
+      "theme": "volunteering",
+      "sub": "trees",
+      "label": "Tree seedlings",
+      "query": "seedling",
+      "tags": [
+        "tree planting",
+        "seedlings",
+        "volunteering"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "spring"
+      ]
+    },
+    {
+      "id": "x-holding-hands-together",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Holding hands together",
+      "query": "community",
+      "tags": [
+        "community",
+        "together",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-helping-a-neighbor",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Helping a neighbor",
+      "query": "helping",
+      "tags": [
+        "helping",
+        "neighbors",
+        "community"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-charity-run",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Charity run",
+      "query": "charity run",
+      "tags": [
+        "charity run",
+        "fundraiser",
+        "running"
+      ],
+      "mood": [
+        "energetic"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-clean-river",
+      "theme": "volunteering",
+      "sub": "cleanup",
+      "label": "Clean river",
+      "query": "clean river",
+      "tags": [
+        "river cleanup",
+        "nature",
+        "volunteering"
+      ],
+      "mood": [
+        "calm"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-shared-meal",
+      "theme": "volunteering",
+      "sub": "food-bank",
+      "label": "Shared meal",
+      "query": "shared meal",
+      "tags": [
+        "community meal",
+        "food",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-give-back",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Give back",
+      "query": "giving back",
+      "tags": [
+        "giving",
+        "charity",
+        "volunteering"
+      ],
+      "mood": [
+        "social"
+      ],
+      "season": [
+        "any"
+      ]
+    },
+    {
+      "id": "x-team-volunteering",
+      "theme": "volunteering",
+      "sub": "giving",
+      "label": "Team volunteering",
+      "query": "volunteering",
+      "tags": [
+        "volunteering",
+        "community",
+        "team"
+      ],
+      "mood": [
         "social"
       ],
       "season": [

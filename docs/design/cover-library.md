@@ -1,6 +1,6 @@
 # Event cover library
 
-A curated, licensed catalog of event cover images. Organizers choose from it in the admin portal, and Dipbot picks one for AI drafts. Status: seed catalog and tooling in place (14 covers); the licensed photo set (target 15 per theme, about 170 images) is acquired with the workflow below.
+A curated, licensed catalog of event cover images. Organizers choose from it in the admin portal, and Dipbot picks one for AI drafts. Status: 174 covers in the manifest (160 Pixabay photos, 9 illustrations and the 5 original prototype photos), 16 to 22 per theme, acquired with the Pixabay workflow below.
 
 ## Purpose
 
@@ -55,24 +55,33 @@ The server reads a generated, text-only index (`gcp/functions/src/modules/covers
 | Thumb WebP | 30 KB | about 18 KB |
 | JPEG | 100 KB | about 70 KB |
 
-That is roughly 180 KB per image, so 200 images is about 36 MB. The hard cap for the whole covers directory is 40 MB (`covers:validate` fails above it). The import script lowers WebP quality adaptively until each file fits and rejects sources that would need upscaling below 960 px wide.
+That is roughly 180 KB per image at most; the 160 Pixabay photos average 79 KB for the full rendition and the whole directory is about 24 MB. The hard cap for the whole covers directory is 40 MB (`covers:validate` fails above it). The import script lowers WebP quality adaptively until each file fits and rejects sources that would need upscaling below 960 px wide.
 
 ## License rules
 
-- Allowed sources: Pexels, Unsplash and Pixabay, fetched through their official APIs, with photographer, photographer URL and photo URL stored in `license`. These types require `sourceURL` and `creator`; validation fails without them.
+- Allowed sources: Pixabay (current source, official API), Pexels and Unsplash, with creator, creator URL and photo page URL stored in `license`. These types require `sourceURL` and `creator`; validation fails without them. Attribution is not required by the Pixabay Content License, but the fields are stored so we can credit, audit or remove an image later.
 - `dip-original`: art made in this repository (the nine illustrations).
-- `prototype-unconfirmed`: the five legacy photos from the Figma prototype. Their rights are unconfirmed, so they are to be replaced once licensed photos are in; keep them until then so existing events keep working.
+- `prototype-unconfirmed`: the five legacy photos from the Figma prototype. Their rights are unconfirmed; this is a note only. They stay fully active in the manifest, pickers and Dipbot picks, and simply join the larger library.
 - No scraping, no image search engines, no AI-generated photo look-alikes presented as real, no images without a recorded source.
-- Never commit API keys. `PEXELS_API_KEY` lives in the dip-app/secrets repo and is read from the environment only.
+- Never commit API keys. `PIXABAY_API_KEY` lives in the dip-app/secrets repo (`backend/functions.enc.env`) and is read from the environment only (see Workflow).
+
+### Pixabay Content License and API terms (checked)
+
+- Allowed: free use, including commercial use, with no attribution required and modification (we crop to 16:10 and re-encode).
+- Not allowed: selling or distributing the content on a standalone basis without creative effort (do not offer the library as a downloadable stock pack), recognizable trademarks or logos used commercially, immoral or illegal use (especially with recognizable people) and misleading use. Covers are used as event backgrounds inside the product, not resold. Keep recognizable people out of misleading contexts, and drop images with visible brands or logos (the fetch script blocks tags such as logo, brand and text, and curation removes the rest).
+- API: 100 requests per 60 seconds per key (HTTP 429 when exceeded, header `X-RateLimit-Reset` gives the wait), results cacheable for 24 hours, no permanent hotlinking: we download `largeImageURL` (1280 px; `fullHDURL` needs full API access) once and host our own renditions. Automated bulk downloading is not allowed, so the script fetches a few candidates per shot, not the whole result set.
+- Fields stored per image: Pixabay id (in `license.notes`), `sourceURL` (page), `creator`, `creatorURL`, the Pixabay tags (in `license.notes`) and the license name.
 
 ## Workflow to add images
 
-1. Fetch candidates: `PEXELS_API_KEY=... npm run covers:fetch:pexels -- --theme food` (optionally `--shot <id>`, `--candidates 2`, `--dry-run`). It reads `scripts/covers/query-plan.json`, calls `https://api.pexels.com/v1/search` with an Authorization header, paces itself (one call per 20 s, at most 150 per run, stops when X-Ratelimit-Remaining is low), and stages landscape photos plus a `labels.json` in `.covers-staging/` (gitignored, outside `public/`). Progress is saved, so a rerun continues.
-2. Review the staging folder by eye. Delete weak files and their `labels.json` rows; improve `label`, `alt` and `tags`; set `gravity` (attention, entropy, centre, north, south, east, west) for tricky crops. Avoid recognizable faces in close-up, visible brands and text.
-3. Import: `npm run covers:import -- --src .covers-staging/images --labels .covers-staging/labels.json` (add `--dry-run` first). It crops to 16:10, writes the three renditions under `apps/admin/public/img/covers/`, skips duplicate keys and identical images, refuses rows without license or alt, and merges the manifest sorted by key. CSV labels also work (list columns separated by `;` or `|`).
-4. Validate: `npm run covers:validate -- --min-per-theme 15` (default minimum is 1).
+1. Load the key without printing it: `scripts/secrets/pull.sh --only backend --force` writes `.secrets-cache/out/functions.env` (gitignored, mode 600). Run the fetch with `node --env-file=.secrets-cache/out/functions.env --import tsx scripts/covers/fetch-pixabay.ts --out <dir outside the repo>` (also `npm run covers:fetch:pixabay -- ...`; options `--theme`, `--shot <id>`, `--candidates 3`, `--min-width 1600`, `--dry-run`). Delete `.secrets-cache` afterwards. The script reads `scripts/covers/query-plan.json` (use `pixabayQuery` on a shot when Pixabay needs different keywords), asks for photos that are horizontal, safesearch, at least 1600 px wide, editors choice first and then popular, falls back to looser keyword variants, keeps only candidates whose tags cover at least half of the query words, drops blocked tags (children, logos, text, gore), dedupes by Pixabay id and near-duplicates (difference hash), rate limits itself to 90 calls per minute with 429 retry, and stages `images/`, `candidates.json` and `labels.json` outside the repo. A rerun continues from `candidates.json`.
+2. Curate by eye with contact sheets of the staged candidates (for example 40 thumbnails at 200 px per sheet). Drop blurry, off-theme, text-heavy, branded or close-up people images and take the next candidate. Write `label`, `alt` (plain language, what is in the picture), `tags`, themes and optional `gravity` per image (title area is bottom-left, so avoid a dead-centre subject there).
+3. Import: `npm run covers:import -- --src <dir>/images --labels <curated labels.json>` (add `--dry-run` first). It crops to 16:10, writes the three renditions under `apps/admin/public/img/covers/`, skips duplicate keys and identical images, refuses rows without license or alt, and merges the manifest sorted by key. Images that cannot fit the 150 KB budget at quality 40 (very detailed foliage) are rejected and should be replaced.
+4. Validate: `npm run covers:validate -- --min-per-theme 12` (default minimum is 1). `npm run covers:check` runs validation and the index check together.
 5. Regenerate the server index: `npm run covers:index` (`-- --check` in CI).
-6. Open a PR with the new images, manifest and generated index together. Keep PRs large enough to be worth reviewing (see the contributor guidance), for example one theme per PR.
+6. Open a PR with the new images, manifest and generated index together.
+
+The Pixabay client (`scripts/covers/pixabay.ts`: rate limiter, search, download, filters, license mapping) is importable without the CLI, so a server-side runtime fallback can reuse it. Server validation of cover keys is `isApprovedCoverURLFrom(url, sources)` in `coverCatalog.ts`, where `indexKeySource()` is the generated index and further sources (for example a Firestore list of dynamic covers) can be added.
 
 `npm run covers:seed` rebuilds the 14 seed entries (5 legacy photos and 9 theme illustrations on the accent from `apps/admin/public/img/themes/ACCENTS.md`). `npm run test:covers` runs the tooling tests in temporary directories.
 
@@ -96,220 +105,8 @@ New image files only reach users after a hosting deploy of the site (`scripts/bu
 
 ## Query plan
 
-`scripts/covers/query-plan.json` is the machine-readable plan used by `fetch-pexels.ts`. It lists 171 shots with a target of one library image each; the fetch script stages two candidates per shot so a reviewer can choose. Target counts: outdoors 25, food 22, arts 18, games 18, music 16, learning 16, volunteering 16, wellness 18, fitness 22. Each row gives the subcategory, the label shown in the picker, the Pexels query string and the planned tags.
+`scripts/covers/query-plan.json` is the machine-readable plan used by `fetch-pixabay.ts`. It lists 243 shots (the original 171 plus shots with an `x-` id added for Pixabay, which has more scenery and objects than people activities). Each shot gives theme, subcategory, label, query (optionally `pixabayQuery`), planned tags, mood and season. Candidates per shot default to three; the curated library keeps about one image per useful shot.
 
-### Outdoors (25)
+Planned themes and subcategories: outdoors (hiking, water, picnic, beach, camping, park, gardening, cycling), food (cooking, baking, potluck, coffee, brunch, grill, drinks), arts (painting, pottery, crafts, drawing, photography, lettering), games (board games, cards, trivia, video games, puzzles, tabletop), music (live, singing, guitar, choir, drums, dance floor), learning (book club, workshop, language, coding, study, talks), volunteering (cleanup, community garden, food bank, trees, animals, giving), wellness (yoga, meditation, spa, stretching, mindful walk, slow living, journaling), fitness (running, gym, group class, spin, swimming, pilates, boxing, climbing, team sports).
 
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| hiking | Forest trail hike | friends hiking forest trail | hiking, trail, forest |
-| hiking | Mountain summit views | hikers mountain summit view | hiking, summit, mountains |
-| hiking | Group hike | group of friends hiking together | hiking, group walk, friends |
-| hiking | Autumn woods walk | walking autumn forest path | hiking, autumn, woods, walking |
-| hiking | Sunrise on the ridge | sunrise hike mountain ridge | hiking, sunrise, ridge |
-| water | Kayaking on a lake | two people kayaking calm lake | kayaking, paddling, lake |
-| water | Morning canoe trip | canoe river morning mist | canoeing, river, paddling |
-| water | Paddleboarding at sunset | stand up paddle board sunset | paddleboarding, sup, sunset |
-| water | Day out sailing | friends sailing boat sunny day | sailing, boat, sea |
-| picnic | Picnic in the park | friends picnic blanket park | picnic, park, blanket |
-| picnic | Picnic basket spread | picnic basket food on grass | picnic, basket, food |
-| picnic | Lakeside picnic | picnic by the lake | picnic, lake, lunch |
-| beach | Beach day with friends | friends relaxing on beach | beach, friends, sand |
-| beach | Beach volleyball | beach volleyball game | beach volleyball, beach, sport |
-| beach | Sunset beach walk | walking beach sunset | beach, sunset, walk |
-| camping | Tent camping | tent camping forest | camping, tent, forest |
-| camping | Campfire evening | friends around campfire night | campfire, camping, night |
-| camping | Lakeside camp morning | camp by lake morning | camping, lake, morning |
-| park | Park lawn games | friends playing frisbee park | frisbee, park, lawn games |
-| park | Chat on a park bench | people talking park bench | park, bench, chat |
-| park | City park stroll | walking city park trees | park, stroll, walking |
-| gardening | Planting seedlings | planting seedlings garden | gardening, planting, seedlings |
-| gardening | Garden harvest | harvesting vegetables garden | gardening, harvest, vegetables |
-| cycling | Country road ride | cycling country road group | cycling, bike ride, road |
-| cycling | City bike ride | friends riding bikes city | cycling, bikes, city |
-
-### Food (22)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| cooking | Cooking class | cooking class kitchen group | cooking class, cooking, kitchen |
-| cooking | Handmade pasta | making fresh pasta by hand | pasta, cooking, handmade |
-| cooking | Chopping vegetables | chopping vegetables kitchen friends | cooking, vegetables, chopping |
-| cooking | Stir fry night | stir fry wok cooking | stir fry, cooking, wok |
-| cooking | Pizza making | making pizza dough toppings | pizza, cooking, dough |
-| baking | Cookie baking | baking cookies kitchen | baking, cookies, dessert |
-| baking | Bread baking | kneading bread dough | baking, bread, dough |
-| baking | Cupcake decorating | decorating cupcakes | baking, cupcakes, decorating |
-| potluck | Potluck table | potluck dinner table dishes | potluck, dinner, shared meal |
-| potluck | Dinner with friends | friends dinner party table | dinner party, friends, dinner |
-| potluck | Team lunch | team lunch together table | team lunch, lunch, colleagues |
-| coffee | Coffee catch-up | friends coffee cafe | coffee, cafe, catch up |
-| coffee | Latte art | barista latte art | coffee, latte art, barista |
-| coffee | Tea time | afternoon tea table | tea, afternoon tea, cafe |
-| brunch | Brunch spread | brunch table spread friends | brunch, breakfast, spread |
-| brunch | Pancake breakfast | pancakes breakfast table | pancakes, breakfast, brunch |
-| grill | Backyard barbecue | backyard barbecue grill friends | bbq, grill, barbecue |
-| grill | Grilled skewers | grilling skewers outdoor | grilling, skewers, bbq |
-| grill | Summer cookout | summer cookout party | cookout, bbq, party |
-| drinks | Wine tasting | wine tasting glasses friends | wine tasting, wine, drinks |
-| drinks | Craft beer flight | craft beer flight tasting | beer tasting, craft beer, drinks |
-| drinks | Cocktail making | making cocktails bar | cocktails, mixology, drinks |
-
-### Arts (18)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| painting | Painting at the easel | painting canvas easel studio | painting, canvas, easel |
-| painting | Watercolor painting | watercolor painting brushes | watercolor, painting, art |
-| painting | Group painting class | group painting class friends | painting class, painting, workshop |
-| painting | Mural painting | painting wall mural | mural, painting, street art |
-| pottery | Pottery wheel | pottery wheel hands clay | pottery, clay, wheel |
-| pottery | Glazing ceramics | glazing ceramic bowls | ceramics, glazing, pottery |
-| pottery | Ceramics studio | ceramic studio shelves handmade | ceramics, studio, handmade |
-| crafts | Knitting circle | knitting yarn hands | knitting, yarn, crafts |
-| crafts | Craft table | craft table supplies scissors paper | crafts, paper craft, diy |
-| crafts | Sewing session | sewing machine fabric | sewing, fabric, crafts |
-| drawing | Sketchbook drawing | sketching in sketchbook | drawing, sketching, sketchbook |
-| drawing | Urban sketching | urban sketching outdoors | urban sketching, drawing, outdoors |
-| drawing | Life drawing class | drawing class easels | life drawing, drawing, class |
-| photography | Photo walk | photographer camera city walk | photography, photo walk, camera |
-| photography | Landscape photography | photographer landscape tripod | photography, landscape, tripod |
-| photography | Portrait fun | friends taking portraits camera | photography, portrait, camera |
-| lettering | Calligraphy | calligraphy pen ink | calligraphy, lettering, ink |
-| lettering | Printmaking | linocut printmaking studio | printmaking, linocut, print |
-
-### Games (18)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| board-games | Board game night | friends playing board game table | board games, game night, friends |
-| board-games | Strategy board game | strategy board game pieces | board games, strategy, pieces |
-| board-games | Game library shelf | board game shelf collection | board games, game library, shelf |
-| board-games | Chess match | chess game players | chess, board games, match |
-| board-games | Board game cafe | board game cafe | board games, game cafe, cafe |
-| cards | Card game night | friends playing cards table | card games, cards, game night |
-| cards | Casual card game | colorful card game hands | card games, uno, cards |
-| cards | Shuffling the deck | shuffling deck of cards | card games, shuffle, deck |
-| trivia | Pub trivia night | pub quiz night team | trivia, pub quiz, quiz night |
-| trivia | Team trivia | quiz team writing answers | trivia, quiz, team |
-| trivia | Game show quiz | game show buzzers quiz | quiz, game show, buzzers |
-| video-games | Couch video games | friends playing video games couch | video games, console, couch |
-| video-games | LAN party | gaming lan party computers | gaming, lan party, pc games |
-| video-games | Arcade night | arcade machines friends | arcade, video games, retro |
-| puzzles | Jigsaw puzzle | jigsaw puzzle table pieces | puzzles, jigsaw, pieces |
-| puzzles | Escape room | escape room puzzle clues team | escape room, puzzles, team |
-| tabletop | Tabletop RPG night | dungeons and dragons dice miniatures | tabletop rpg, dice, dungeons and dragons |
-| tabletop | Miniature painting | painting miniatures tabletop | miniatures, painting, tabletop |
-
-### Music (16)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| live | Live band on stage | live band stage concert | live band, concert, stage |
-| live | Gig crowd | concert crowd hands up | concert, crowd, gig |
-| live | Open-air festival | outdoor music festival crowd | festival, open air, concert |
-| live | Acoustic set | acoustic live performance small venue | acoustic, live music, performance |
-| singing | Karaoke night | friends singing karaoke | karaoke, singing, night out |
-| singing | Singing on stage | singer microphone stage | singing, microphone, vocals |
-| singing | Open mic night | open mic night performer | open mic, performance, music |
-| guitar | Guitar jam | friends jamming guitars | guitar, jam session, friends |
-| guitar | Guitar lesson | guitar lesson hands strings | guitar, lesson, strings |
-| guitar | Campfire guitar | guitar around campfire | guitar, campfire, singalong |
-| choir | Choir rehearsal | choir singing together | choir, singing, rehearsal |
-| choir | A cappella group | a cappella group singing | a cappella, choir, harmony |
-| drums | Drum circle | drum circle people | drumming, drum circle, percussion |
-| drums | Drum kit practice | drummer drum kit | drums, drum kit, practice |
-| dance-floor | DJ party | dj booth party lights | dj, party, dance |
-| dance-floor | Dance night | people dancing nightclub lights | dancing, dance floor, party |
-
-### Learning (16)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| book-club | Book club | book club discussion friends | book club, books, discussion |
-| book-club | Reading nook | reading book cozy armchair | reading, books, cozy |
-| book-club | Library afternoon | library bookshelves reader | library, books, reading |
-| workshop | Workshop session | workshop whiteboard team sticky notes | workshop, brainstorm, whiteboard |
-| workshop | Hands-on workshop | hands on workshop participants table | workshop, hands-on, learning |
-| workshop | Skill share | person teaching small group | skill share, teaching, class |
-| language | Language exchange | language exchange conversation cafe | language exchange, conversation, languages |
-| language | Language flashcards | language learning flashcards notebook | language learning, flashcards, study |
-| language | Language class | language class classroom | language class, classroom, learning |
-| coding | Coding together | developers coding laptops together | coding, programming, laptops |
-| coding | Hackathon | hackathon team laptops | hackathon, coding, team |
-| coding | Code on screen | code on laptop screen | coding, code, laptop |
-| study | Study group | study group table notebooks | study group, studying, notebooks |
-| study | Focused study | student desk notes coffee | studying, notes, desk |
-| talks | Talk and lecture | speaker presenting audience | talk, lecture, presentation |
-| talks | Lunch and learn | lunch and learn presentation office | lunch and learn, presentation, team |
-
-### Volunteering (16)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| cleanup | Beach cleanup | volunteers beach cleanup | beach cleanup, volunteering, cleanup |
-| cleanup | River cleanup | volunteers cleaning river bank trash | river cleanup, volunteering, litter |
-| cleanup | Neighborhood litter pick | litter picking neighborhood volunteers | litter picking, cleanup, neighborhood |
-| cleanup | Park cleanup | park cleanup volunteers bags | park cleanup, volunteering, community |
-| community-garden | Community garden | community garden volunteers planting | community garden, gardening, volunteering |
-| community-garden | Building raised beds | building raised garden beds volunteers | raised beds, garden, building |
-| community-garden | Garden with kids | children gardening volunteers school | kids, garden, volunteering |
-| food-bank | Food bank sorting | volunteers sorting food donations | food bank, donations, volunteering |
-| food-bank | Serving community meals | volunteers serving meal community kitchen | community meal, serving, volunteering |
-| food-bank | Food drive | food drive boxes volunteers | food drive, donations, community |
-| trees | Tree planting | volunteers planting trees | tree planting, trees, volunteering |
-| trees | Trail maintenance | volunteers trail maintenance forest | trail maintenance, volunteering, forest |
-| animals | Shelter dog walk | volunteer walking shelter dog | animal shelter, dog walking, volunteering |
-| animals | Shelter cuddles | volunteer with shelter cat | animal shelter, cats, volunteering |
-| giving | Charity fundraiser | charity fundraiser event people | fundraiser, charity, community |
-| giving | Charity run | charity run volunteers finish | charity run, fundraiser, running |
-
-### Wellness (18)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| yoga | Yoga class | yoga class studio group | yoga, class, studio |
-| yoga | Sunrise yoga | yoga outdoors sunrise | yoga, sunrise, outdoors |
-| yoga | Yoga on the beach | yoga beach pose | yoga, beach, stretching |
-| yoga | Yoga at home | yoga mat living room | yoga, home, mat |
-| meditation | Group meditation | group meditation sitting circle | meditation, mindfulness, group |
-| meditation | Meditating in nature | meditation in nature forest | meditation, nature, mindfulness |
-| meditation | Quiet meditation | meditation cushion candle | meditation, candle, quiet |
-| spa | Spa day | spa relaxation towels candles | spa, relaxing, self care |
-| spa | Sauna | wooden sauna | sauna, relaxing, wellness |
-| stretching | Stretching class | stretching class mats | stretching, mobility, class |
-| stretching | Recovery session | foam roller recovery | recovery, foam rolling, mobility |
-| mindful-walk | Mindful forest walk | mindful walk forest path | mindful walk, forest, walking |
-| mindful-walk | Breathing break | breathing exercise outdoors | breathwork, breathing, mindfulness |
-| mindful-walk | Lunchtime walk | lunchtime walk park colleagues | lunch walk, walking, wellness |
-| slow-living | Tea ritual | tea ritual teapot cups | tea, ritual, slow living |
-| slow-living | Herbal tea break | herbal tea cozy blanket | herbal tea, cozy, relaxing |
-| journaling | Journaling | journaling notebook pen coffee | journaling, notebook, reflection |
-| journaling | Gratitude journal | gratitude journal writing | gratitude, journaling, mindfulness |
-
-### Fitness (22)
-
-| Subcategory | Shot | Query | Tags |
-| --- | --- | --- | --- |
-| running | Group run | group of runners park | running, group run, park |
-| running | Trail run | trail running forest | trail running, running, forest |
-| running | Morning city run | runner city morning | running, morning, city |
-| running | Race start | race start line runners | race, running, start line |
-| gym | Weight training | gym weights training | weights, gym, strength |
-| gym | Kettlebell workout | kettlebell workout | kettlebell, strength, workout |
-| gym | Workout buddies | friends working out gym | workout buddies, gym, training |
-| group-class | Group fitness class | group fitness class studio | group fitness, class, workout |
-| group-class | HIIT circuit | hiit circuit training | hiit, circuit training, workout |
-| group-class | Outdoor bootcamp | outdoor bootcamp fitness group | bootcamp, outdoors, fitness class |
-| spin | Spin class | spin class cycling studio | spin class, cycling, indoor cycling |
-| spin | Cycling training | cyclists training road | cycling, training, road bike |
-| swimming | Swimming laps | swimmer pool laps | swimming, pool, laps |
-| swimming | Open water swim | open water swimming lake | open water, swimming, lake |
-| pilates | Pilates reformer | pilates reformer studio | pilates, reformer, core |
-| pilates | Pilates mat class | pilates mat class group | pilates, mat, core |
-| boxing | Boxing training | boxing bag training gloves | boxing, gloves, training |
-| boxing | Kickboxing class | kickboxing class pads | kickboxing, martial arts, class |
-| climbing | Climbing gym | indoor climbing wall | climbing, bouldering, climbing gym |
-| climbing | Rock climbing | outdoor rock climbing | rock climbing, climbing, outdoors |
-| team-sports | Pickup football | friends playing football pitch | football, soccer, pickup game |
-| team-sports | Basketball game | basketball game court friends | basketball, court, team sport |
+Result of the Pixabay run: outdoors 19, food 20, arts 19, games 16, music 18, learning 18, volunteering 18, wellness 17, fitness 16 Pixabay photos (plus the illustrations and the five original photos, which also carry themes). Weak spots: Pixabay has few photos of groups doing things, so people-centred subcategories (trivia night, language exchange, food bank, animal shelter, boxing, life drawing) are represented by objects and scenery, and volunteering is mostly recycling, hands and planting imagery.
