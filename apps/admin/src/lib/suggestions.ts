@@ -77,7 +77,8 @@ export function nextSendLabel(iso: string | null | undefined, timeZone: string):
 }
 
 export function engineLabel(engine: SuggestionsEngine): string {
-  return engine === "jev" ? "Ranked with Jev" : engine === "openai" ? "Ranked with OpenAI" : "Ranked with the built-in heuristic";
+  // No provider names in the interface: Dipbot ranked it, or the free fallback used the team's own activity.
+  return engine === "heuristic" ? "Ranked from your team's activity" : "Ranked by Dipbot";
 }
 
 export const PREVIEW_WIDTHS = { desktop: 600, mobile: 390 } as const;

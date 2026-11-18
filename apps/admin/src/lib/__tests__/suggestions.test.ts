@@ -41,9 +41,9 @@ describe("options and labels", () => {
     expect(nextSendLabel("2026-11-30T17:00:00Z", "Not/AZone")).toBe("");
   });
   it("names the engine", () => {
-    expect(engineLabel("jev")).toBe("Ranked with Jev");
-    expect(engineLabel("openai")).toBe("Ranked with OpenAI");
-    expect(engineLabel("heuristic")).toBe("Ranked with the built-in heuristic");
+    expect(engineLabel("jev")).toBe("Ranked by Dipbot");
+    expect(engineLabel("openai")).toBe("Ranked by Dipbot");
+    expect(engineLabel("heuristic")).toBe("Ranked from your team's activity");
   });
 });
 
