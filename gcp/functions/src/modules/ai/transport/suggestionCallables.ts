@@ -59,6 +59,8 @@ function deps(): SuggestionDeps {
     store: new FirestoreAdminStore(db), llm: unavailableLlm, decisions: providers[0]?.port ?? { decide: async () => { throw new LlmUnavailableError(null); } },
     interests: new FirestoreInterestSource(db), catalog, themes: new FirestoreThemeSource(db), pastEvents: new FirestorePastEvents(db), providers,
     settings, limiter: new FirestoreAdminRateLimiter(db), now: () => new Date(),
+    // How long a saved company answer stays fresh (days, default 7).
+    cacheMaxAgeMs: (/^\d{1,3}$/.test(process.env.AI_SUGGESTION_CACHE_DAYS ?? "") && Number(process.env.AI_SUGGESTION_CACHE_DAYS) > 0 ? Number(process.env.AI_SUGGESTION_CACHE_DAYS) : 7) * 24 * 60 * 60_000,
     log: (event, fields) => logger.info(event, fields),
   };
 }

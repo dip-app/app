@@ -472,6 +472,16 @@ export type AiSuggestionQuestion = "interest" | "goal" | "groupSize" | "setting"
 export type AiSuggestionProvider = "jev" | "openai" | "heuristic" | "none";
 /** `reasonBasis`: "company_data" when the company\u2019s own data drove it; "generic" reasons never imply personalization. */
 export interface AiStepSuggestion { question: AiSuggestionQuestion; value: string; probability: number; reason: string; reasonBasis: "company_data" | "generic" }
-export interface EventIdeaSuggestions { provider: AiSuggestionProvider; suggestions: AiStepSuggestion[]; credits?: AiCredits }
-export interface GenerateDraftsInput { requestId: string; choices: AiEventChoices; prompt: string; count: number }
+/** fresh: saved answer, inputs unchanged. stale: saved answer shown as is (nothing recomputed). computed: this call ran the model (or the free heuristic). */
+export type AiCacheStatus = "fresh" | "stale" | "computed";
+/** One consideration chip (catalog id) with its relevance for this company; the list holds every consideration, best first. */
+export interface AiConsiderationRank { id: string; probability: number }
+export interface EventIdeaSuggestions {
+  provider: AiSuggestionProvider; suggestions: AiStepSuggestion[]; credits?: AiCredits;
+  cacheStatus: AiCacheStatus; /** ISO time the saved answer was computed. */ computedAt?: string; staleReason?: "data" | "age";
+  /** Credits this call charged: 0 for every cached load. */ creditsCharged: number; considerations: AiConsiderationRank[];
+}
+/** `refresh` recomputes the saved suggestions (1 credit). Only an explicit button press sends it. */
+export interface EventIdeaSuggestionsInput { refresh?: boolean; requestId?: string }
+export interface GenerateDraftsInput { requestId: string; choices: AiEventChoices; prompt: string; count: number; considerations?: string[] }
 export interface GenerateDraftsResult { drafts: GeneratedEventDraft[]; usage: AiUsage; credits: AiCredits; replay: boolean }

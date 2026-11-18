@@ -86,13 +86,31 @@ export const AI_STRINGS = {
 
   // Note step
   "note.label": "Note for {ai} (optional)",
-  "note.placeholder": "For example: something new, vegetarian food, easy for people who use a wheelchair",
-  "note.chips": "Note ideas",
-  "note.chip.new": "Something new for the team",
-  "note.chip.vegetarian": "Vegetarian food options",
-  "note.chip.wheelchair": "Easy for people who use a wheelchair",
-  "note.chip.quiet": "Quiet and low pressure",
+  "note.placeholder": "For example: a theme to build on, or something to steer clear of",
   "note.count": "Drafts",
+
+  // Considerations: preference chips ({ai} ranks which to show first; every one stays reachable under More options)
+  "consider.title": "Anything to plan around?",
+  "consider.hint": "Pick any that matter. {ai} builds every draft around them.",
+  "consider.hintSuggested": "Pick any that matter. Outlined ones are {ai}’s suggestions.",
+  "consider.group": "Preferences",
+  "consider.suggested": "Suggested by {ai}",
+  "consider.more": "More options",
+  "consider.less": "Fewer options",
+  "consider.search": "Search preferences",
+  "consider.searchPlaceholder": "Search, for example wheelchair or vegan",
+  "consider.none": "Nothing matches that search.",
+  "consider.selected.one": "{n} selected",
+  "consider.selected.other": "{n} selected",
+  "consider.max": "That’s the most {ai} can plan around ({n}). Remove one to add another.",
+  "consider.rail.one": "{n} preference",
+  "consider.rail.other": "{n} preferences",
+  "consider.group.accessibility": "Accessibility",
+  "consider.group.dietary": "Food and drink",
+  "consider.group.vibe": "Vibe",
+  "consider.group.logistics": "Logistics",
+  "consider.group.inclusion": "Inclusion",
+  "consider.group.safety": "Safety",
 
   // Dipbot Suggest
   "suggest.feature": "{ai} Suggest",
@@ -107,6 +125,22 @@ export const AI_STRINGS = {
   "suggest.noStepSuggestion": "No clear favorite for this step, so every option is open.",
   "suggest.loading": "{ai} is looking at your members’ interests and past events…",
   "suggest.noData": "No suggestions yet. {ai} suggests choices once members pick interests or your company has past events.",
+  // Saved suggestions: one company-level answer shared by every admin. Visiting is free; refreshing costs credits.
+  "suggest.updated": "Updated {when}",
+  "suggest.updatedData": "Updated {when}, new data available",
+  "suggest.refresh": "Refresh, {cost}",
+  "suggest.refreshAria": "Refresh {ai} suggestions, {cost}",
+  "suggest.refreshOut": "No credits left this month",
+  "suggest.refreshing": "{ai} is refreshing your suggestions…",
+  "suggest.refreshed": "Suggestions refreshed.",
+  "suggest.refreshFailed": "Couldn’t refresh just now. Showing your saved suggestions.",
+  "suggest.when.now": "just now",
+  "suggest.when.minutes.one": "1 minute ago",
+  "suggest.when.minutes.other": "{n} minutes ago",
+  "suggest.when.hours.one": "1 hour ago",
+  "suggest.when.hours.other": "{n} hours ago",
+  "suggest.when.days.one": "1 day ago",
+  "suggest.when.days.other": "{n} days ago",
   "suggest.by.jev": "Suggested by {ai}",
   "suggest.by.other": "Suggested by {ai}",
   "suggest.spoken.jev": "{ai} suggests this: {label}",
@@ -118,7 +152,9 @@ export const AI_STRINGS = {
   // Credits (the only unit shown for AI use)
   "credits.meter": "Credits: {left} of {total} this month",
   "credits.aria": "{left} of {total} {ai} credits left this month. Resets {date}.",
-  "credits.tip": "Resets {date}. {ai} Suggest uses {suggest} per visit. Drafts use {generate} per run.",
+  "credits.tip": "Resets {date}. Visits are free once suggestions are saved; refreshing them uses {suggest}. Drafts use {generate} per run.",
+  "credits.visit.free": "This visit used 0 credits.",
+  "credits.visit.charged": "This visit used {cost} to set up your suggestions.",
   "credits.daily": "{left} of {limit} draft runs left today.",
   "credits.unit.one": "{n} credit",
   "credits.unit.other": "{n} credits",
@@ -178,7 +214,7 @@ export function t(key: AiStringKey, vars: Vars = {}): string {
 }
 
 /** Plural form: `${base}.one` when n is 1, else `${base}.other`, with `{n}` filled. */
-export function tn(base: "suggest.count" | "suggest.matched" | "suggest.appliedToast" | "generating.status" | "credits.unit", n: number, vars: Vars = {}): string {
+export function tn(base: "suggest.count" | "consider.selected" | "consider.rail" | "suggest.when.minutes" | "suggest.when.hours" | "suggest.when.days" | "suggest.matched" | "suggest.appliedToast" | "generating.status" | "credits.unit", n: number, vars: Vars = {}): string {
   return t(`${base}.${n === 1 ? "one" : "other"}` as AiStringKey, { n, ...vars });
 }
 

@@ -6286,7 +6286,7 @@
     "GetEventIdeaSuggestionsRequest": {
       "type": "object",
       "additionalProperties": false,
-      "description": "getEventIdeaSuggestionsV1: per-step suggestions for the AI idea flow. ai.generate (admin). One decision call at most per session (cached by sessionId for an hour), counted in the AI spend caps but not in the generation limits.",
+      "description": "getEventIdeaSuggestionsV1: per-step suggestions and ranked considerations for the AI idea flow. ai.generate (admin). The answer is saved once per company (companies/{c}/aiCache/suggestions) and shared by every admin: a visit with a valid cache costs 0 credits and makes no model call. A model call (1 credit) runs only for the first-ever visit, or when `refresh` is true.",
       "properties": {
         "contractVersion": {
           "type": "integer",
@@ -6301,13 +6301,21 @@
         "sessionId": {
           "type": "string",
           "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-          "description": "One UUID per visit to the flow; repeated calls with it return the cached answer."
+          "description": "Legacy per-visit UUID; accepted as the requestId when no requestId is sent."
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "description": "Idempotency key of one refresh press: a repeated request is never charged twice."
+        },
+        "refresh": {
+          "type": "boolean",
+          "description": "true recomputes the saved suggestions (1 credit, only when a model answers). Needs a requestId or sessionId."
         }
       },
       "required": [
         "contractVersion",
-        "companyId",
-        "sessionId"
+        "companyId"
       ]
     },
     "AiStepSuggestion": {
@@ -6362,6 +6370,27 @@
         "reasonBasis"
       ]
     },
+    "AiConsiderationRank": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Relevance of one consideration chip (catalog id) for this company, best first. A hint for what to surface first; every consideration stays reachable.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "id",
+        "probability"
+      ]
+    },
     "GetEventIdeaSuggestionsResponse": {
       "type": "object",
       "additionalProperties": false,
@@ -6388,10 +6417,46 @@
           }
         },
         "cached": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "true unless this call computed the answer (cacheStatus computed)."
         },
         "credits": {
           "$ref": "#/$defs/AiCredits"
+        },
+        "cacheStatus": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "stale",
+            "computed"
+          ],
+          "description": "fresh: saved answer, inputs unchanged. stale: saved answer shown as is (inputs changed or older than the max age); nothing was recomputed. computed: this call ran the decision chain (or the free heuristic)."
+        },
+        "computedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the saved answer was computed."
+        },
+        "staleReason": {
+          "type": "string",
+          "enum": [
+            "data",
+            "age"
+          ],
+          "description": "Why a stale answer is stale: the company data changed materially, or it is older than the max age."
+        },
+        "creditsCharged": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Credits this call charged (0 for every cached load)."
+        },
+        "considerations": {
+          "type": "array",
+          "maxItems": 80,
+          "items": {
+            "$ref": "#/$defs/AiConsiderationRank"
+          },
+          "description": "Every consideration chip, most relevant first."
         }
       },
       "required": [
@@ -6399,7 +6464,9 @@
         "provider",
         "suggestions",
         "cached",
-        "credits"
+        "credits",
+        "cacheStatus",
+        "creditsCharged"
       ]
     },
     "AiEventChoices": {
@@ -6506,6 +6573,16 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 3
+        },
+        "considerations": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "description": "Chosen consideration ids from the fixed catalog (accessibility, dietary, vibe, logistics, inclusion, safety). Unknown ids are rejected."
         }
       },
       "required": [

@@ -57,7 +57,8 @@ export class OpenAiDecisions implements DecisionPort {
       input: decisionInput(request),
       schema,
       schemaName: "decision_answers",
-      maxOutputTokens: this.config[request.step].maxOutputTokens,
+      // Many yes/no questions (the consideration ranking) need room for one short answer each.
+      maxOutputTokens: Math.max(this.config[request.step].maxOutputTokens, Object.keys(request.questions).length * 24),
       ...(request.signal ? { signal: request.signal } : {}),
     });
     if (outcome.kind !== "ok") throw new LlmUnavailableError(null);

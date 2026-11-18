@@ -126,18 +126,25 @@ function suggestRig(settings: Record<string, unknown> = {}) {
 const ask = (deps: SuggestionDeps, session = SESSION) => getEventIdeaSuggestions(deps, caller("admin1"), { contractVersion: 1, companyId: "alpha", sessionId: session });
 
 describe("Dipbot Suggest credits", () => {
-  test("a model-answered visit costs 1 credit; the cached repeat is free", async () => {
+  test("the first visit costs 1 credit; every later visit, from any admin and session, is free; a refresh costs 1", async () => {
     const r = suggestRig();
     const first = await ask(r.deps);
     assert.equal(first.provider, "jev");
+    assert.equal(first.cacheStatus, "computed");
+    assert.equal(first.creditsCharged, 1);
     assert.equal(first.credits.creditsUsed, 1);
     assert.equal(r.store.get(CREDITS)!.used, 1);
     const again = await ask(r.deps);
     assert.equal(again.cached, true);
+    assert.equal(again.cacheStatus, "fresh");
+    assert.equal(again.creditsCharged, 0);
     assert.equal(again.credits.creditsUsed, 1);
-    assert.equal(r.store.get(CREDITS)!.used, 1);
-    // A new visit is a new charge.
-    assert.equal((await ask(r.deps, "00000000-0000-4000-8000-0000000000bc")).credits.creditsUsed, 2);
+    // A new visit (another session) is free too: the saved answer belongs to the company.
+    assert.equal((await ask(r.deps, "00000000-0000-4000-8000-0000000000bc")).credits.creditsUsed, 1);
+    assert.equal(r.jev.calls.length, 1);
+    const refreshed = await getEventIdeaSuggestions(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha", requestId: "00000000-0000-4000-8000-0000000000bd", refresh: true });
+    assert.equal(refreshed.creditsCharged, 1);
+    assert.equal(refreshed.credits.creditsUsed, 2);
   });
 
   test("out of credits: free heuristic answer, no model call, no charge, balance reported as zero", async () => {

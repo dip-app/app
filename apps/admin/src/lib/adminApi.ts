@@ -2,7 +2,7 @@ import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
-  EventIdeaContext, EventIdeaSuggestions, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 import type { PickEventCoverInput, PickEventCoverResult } from "./covers";
 import type { TagStat } from "./tagStats";
@@ -91,7 +91,7 @@ export interface AdminOpsApi {
   /** Returns up to `count` drafts for review; nothing is written to events. Retrying with the same `requestId` replays the stored result without spending quota. */
   generateEventDrafts(input: GenerateDraftsInput): Promise<GenerateDraftsResult>;
   /** getEventIdeaSuggestionsV1: per-step suggestions (Jev, then the OpenAI fallback, then a heuristic). One call per `sessionId`, cached by the server. */
-  eventIdeaSuggestions(sessionId: string): Promise<EventIdeaSuggestions>;
+  eventIdeaSuggestions(input?: EventIdeaSuggestionsInput): Promise<EventIdeaSuggestions>;
   /** pickEventCoverV1: Dipbot picks a cover from the library for the event text. Nothing is stored; the form applies the result. */
   pickEventCover(input: PickEventCoverInput): Promise<PickEventCoverResult>;
 

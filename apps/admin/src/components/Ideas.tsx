@@ -9,16 +9,18 @@ import {
   type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied, suggestionsForStep,
 } from "@/lib/suggestionLabels";
 import { coverByURL, coverImage, lexicalPick } from "@/lib/covers";
+import { freshnessLine } from "@/lib/suggestCache";
+import { Considerations } from "./Considerations";
 import { CoverPicker } from "./CoverPicker";
 import { Disclosure } from "./Disclosure";
 import { ApiError } from "@/lib/contract";
 import {
-  type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, NOTE_SUGGESTIONS, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
+  type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
   bucketLevel, bucketText, capacityLabel, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
-  NONE, NOT_SET, presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleInterest, venueLabel,
+  NONE, NOT_SET, presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleConsideration, toggleInterest, venueLabel,
 } from "@/lib/ideas";
 import { t, tMaybe, tn } from "@/lib/aiStrings";
-import { creditsView, priceLabel, resetDate } from "@/lib/credits";
+import { creditsText, creditsView, priceLabel, resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter, CreditsNotice, PrivacyInfo } from "./CreditsMeter";
 import { DipbotMark } from "./DipbotMark";
@@ -110,28 +112,56 @@ export function Ideas() {
   const moved = useRef(false);
   const presetDone = useRef(false);
   const noteId = useId();
-  // Suggestions: one request per visit (the server caches it by sessionId); a failure is simply "no suggestions".
-  const sessionId = useRef<string>("");
+  // Suggestions: ONE fetch per page load. The server answers from the saved company suggestions (free, no model call)
+  // and only computes on the very first visit; nothing here refetches on step changes, back/forward or tab refocus.
+  // The only other request is the explicit "Refresh" button.
   const [suggest, setSuggest] = useState<EventIdeaSuggestions | "loading" | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [slow, setSlow] = useState(false);
   const enabled = ctx?.enabled === true;
-  // The suggestions answer carries the balance (a model-answered visit costs a credit); fold it into the meter.
+  // The suggestions answer carries the balance (a first visit or refresh costs a credit); fold it into the meter.
   const ctxRef = useRef<{ ctx: EventIdeaContext | null; setData: (next: EventIdeaContext) => void }>({ ctx: null, setData: () => undefined });
   ctxRef.current = { ctx, setData: ctxState.setData };
+  const foldCredits = useCallback((s: EventIdeaSuggestions) => {
+    const { ctx: latest, setData } = ctxRef.current;
+    if (s.credits && latest) setData({ ...latest, credits: s.credits });
+  }, []);
   useEffect(() => {
     if (!enabled) return;
-    if (!sessionId.current) sessionId.current = crypto.randomUUID();
     let live = true;
     setSuggest("loading");
-    api.eventIdeaSuggestions(sessionId.current)
+    api.eventIdeaSuggestions()
       .then((s) => {
         if (!live) return;
         setSuggest(s);
-        const { ctx: latest, setData } = ctxRef.current;
-        if (s.credits && latest) setData({ ...latest, credits: s.credits });
+        foldCredits(s);
       })
       .catch(() => { if (live) setSuggest(null); });
     return () => { live = false; };
-  }, [api, enabled]);
+  }, [api, enabled, foldCredits]);
+  // A saved answer loads fast; the loading line shows only when the first visit is really computing.
+  useEffect(() => {
+    if (suggest !== "loading") { setSlow(false); return; }
+    const timer = setTimeout(() => setSlow(true), 700);
+    return () => clearTimeout(timer);
+  }, [suggest]);
+  const refreshSuggestions = useCallback(async () => {
+    if (refreshing || !suggest || suggest === "loading") return;
+    const before = suggest.computedAt;
+    setRefreshing(true);
+    try {
+      const s = await api.eventIdeaSuggestions({ refresh: true, requestId: crypto.randomUUID() });
+      setSuggest(s);
+      foldCredits(s);
+      const id = toast(t(s.computedAt !== before ? "suggest.refreshed" : "suggest.refreshFailed"));
+      setTimeout(() => dismissToast(id), 2500);
+    } catch {
+      const id = toast(t("suggest.refreshFailed"));
+      setTimeout(() => dismissToast(id), 2500);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [api, foldCredits, refreshing, suggest]);
   const panelRef = useRef<HTMLElement>(null);
   // "Let Dipbot pick for me" highlights what it selected for a moment.
   const [flashing, setFlashing] = useState(false);
@@ -168,7 +198,7 @@ export function Ideas() {
     const choices = choicesOf(source);
     if (!choices) return;
     const prompt = source.prompt.trim();
-    const signature = signatureOf(choices, prompt, source.count);
+    const signature = signatureOf(choices, prompt, source.count, source.considerations);
     const requestId = requestIdFor(attempt.current, signature, regenerate, () => crypto.randomUUID());
     attempt.current = { requestId, signature, retryable: false };
     const mine = ++run.current;
@@ -177,7 +207,7 @@ export function Ideas() {
     setFailure(null);
     setNoteError("");
     try {
-      const response = await api.generateEventDrafts({ requestId, choices, prompt, count: source.count });
+      const response = await api.generateEventDrafts({ requestId, choices, prompt, count: source.count, considerations: source.considerations });
       if (mine !== run.current) return;
       setResult(response);
       ctxState.setData({ ...(ctx as EventIdeaContext), usage: response.usage, credits: response.credits });
@@ -312,14 +342,29 @@ export function Ideas() {
   const botIcon = <img className="bot-icon" src={DIPBOT_ICON} alt="" width={36} height={36} draggable={false} />;
 
   // Not on the note step: nothing there can be suggested.
+  const freshness = loaded ? freshnessLine(loaded, new Date()) : null;
+  const cannotRefresh = ctx.credits.creditsRemaining < ctx.credits.creditCost.suggest;
+  const refreshCost = creditsText(ctx.credits.creditCost.suggest);
+  // One quiet line: when the saved suggestions were updated, and the only way to spend credits on them (an explicit press).
+  const metaRow = phase === "edit" && current.id !== "note" && freshness && (
+    <p className="sg-meta" data-stale={freshness.stale ? "true" : undefined}>
+      <DipbotMark size={14} />
+      <span>{freshness.text}</span>
+      <span aria-hidden>·</span>
+      <button type="button" className="link-btn" disabled={refreshing || cannotRefresh || busy} title={cannotRefresh ? t("suggest.refreshOut") : undefined}
+        aria-label={t("suggest.refreshAria", { cost: refreshCost })} onClick={() => void refreshSuggestions()}>
+        {t("suggest.refresh", { cost: refreshCost })}
+      </button>
+    </p>
+  );
   const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
-    suggest === "loading"
-      ? (
+    suggest === "loading" || refreshing
+      ? (suggest === "loading" && !slow ? null : (
         <div className="sg-bar" data-state="loading" role="status">
           {botIcon}
-          <p>{t("suggest.loading")}</p>
+          <p>{t(refreshing ? "suggest.refreshing" : "suggest.loading")}</p>
         </div>
-      )
+      ))
       : stepCount === 0
         ? (
           <div className="sg-bar" data-state="none">
@@ -436,6 +481,7 @@ export function Ideas() {
         return (
           <div className="note-step">
             <div className="step-head"><h2 ref={heading} tabIndex={-1}><DipbotMark size={20} className="h-mark" />{current.heading}</h2></div>
+            <Considerations ranking={loaded?.considerations ?? []} provider={provider} answers={answers} onToggle={(id) => setAnswers((a) => toggleConsideration(a, id))} />
             <div className="field">
               <label htmlFor={noteId}>{t("note.label")}</label>
               <textarea id={noteId} ref={noteField} value={answers.prompt} maxLength={MAX_PROMPT} aria-invalid={noteError ? true : undefined}
@@ -446,15 +492,6 @@ export function Ideas() {
                 <span id={`${noteId}-error`} className="error" role={noteError ? "alert" : undefined}>{noteError}</span>
                 <span id={`${noteId}-count`} className="muted count">{answers.prompt.length} / {MAX_PROMPT}</span>
               </div>
-            </div>
-            <div className="suggest" role="group" aria-label={t("note.chips")}>
-              {NOTE_SUGGESTIONS.map((text) => (
-                <button key={text} type="button" className="suggest-chip" onClick={() => {
-                  const base = answers.prompt.trim();
-                  const next = base ? `${base}${/[.!?]$/.test(base) ? "" : "."} ${text}` : text;
-                  if (next.length <= MAX_PROMPT) set({ prompt: next });
-                }}>+ {text}</button>
-              ))}
             </div>
             <fieldset className="drafts-count">
               <legend>{t("note.count")}</legend>
@@ -539,13 +576,14 @@ export function Ideas() {
 
   return (
     <div className="ideas">
-      <div className="ideas-head"><PrivacyInfo /><CreditsMeter credits={ctx.credits} daily={{ left: dailyLeft, limit: usage.dailyGenerationLimit }} /></div>
+      <div className="ideas-head"><PrivacyInfo /><CreditsMeter credits={ctx.credits} visitCharged={loaded ? loaded.creditsCharged : undefined} daily={{ left: dailyLeft, limit: usage.dailyGenerationLimit }} /></div>
       <div className="ideas-layout">
         <div className="ideas-main">
           {stepper}
           {phase !== "generating" && <CreditsNotice credits={ctx.credits} />}
           {summary}
           {suggestBar}
+          {metaRow}
           {phase === "generating" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
         </div>
       </div>

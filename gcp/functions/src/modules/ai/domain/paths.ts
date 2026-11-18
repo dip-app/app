@@ -9,6 +9,8 @@ export const aiPaths = {
   emailSettings: (companyId: string) => `emailSettings/${companyId}`,
   /** Platform-wide spend of one UTC month, shared by every company (top level, server-owned). */
   platform: (monthKey: string) => `aiUsagePlatform/${monthKey}`,
+  /** The saved Dipbot suggestions of the whole company (one document, server-only, shared by every admin). */
+  suggestionCache: (companyId: string) => `companies/${companyId}/aiCache/suggestions`,
   request: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiRequests/${uid}_${requestId}`,
   /** Content-free record of one cover pick (provider, source, chosen key); never the event text. */
   coverPick: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiCoverPicks/${uid}_${requestId}`,

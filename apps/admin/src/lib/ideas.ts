@@ -5,8 +5,9 @@
 import type {
   AiBudget, AiDaypart, AiEventChoices, AiGoal, AiGroupSize, AiSetting, AiTiming, AiVenueType, GeneratedEventDraft,
 } from "./adminTypes";
-import { type AiStringKey, t } from "./aiStrings";
+import { type AiStringKey, t, tn } from "./aiStrings";
 import { TAG_IDS } from "./catalog";
+import { MAX_CONSIDERATIONS, isConsiderationId } from "./considerations";
 import { coverByURL } from "./covers";
 import type { EventDraft } from "./contract";
 
@@ -30,7 +31,6 @@ export const SETTINGS = options<AiSetting>("setting", ["indoors", "outdoors", "o
 export const BUDGETS = options<AiBudget>("budget", ["free", "under_15", "from_15_to_50", "over_50"]);
 export const TIMINGS = options<AiTiming>("timing", ["weekday_lunch", "after_work", "weekend"]);
 
-export const NOTE_SUGGESTIONS = (["note.chip.new", "note.chip.vegetarian", "note.chip.wheelchair", "note.chip.quiet"] as const).map((key) => t(key));
 
 export interface Answers {
   /** Empty means any interest can fit (the server treats no focus tags that way). */
@@ -41,11 +41,20 @@ export interface Answers {
   budget: AiBudget | null;
   timing: AiTiming | null;
   prompt: string;
+  /** Chosen consideration ids (catalog in considerations.ts). They stay when steps change and when the ranking refreshes. */
+  considerations: string[];
   count: 1 | 2 | 3;
 }
 
 export function emptyAnswers(): Answers {
-  return { focusTagIds: [], goal: null, groupSize: null, setting: null, budget: null, timing: null, prompt: "", count: 3 };
+  return { focusTagIds: [], goal: null, groupSize: null, setting: null, budget: null, timing: null, prompt: "", considerations: [], count: 3 };
+}
+
+/** Toggles one consideration: at most MAX_CONSIDERATIONS, and only catalog ids. Removing is always allowed. */
+export function toggleConsideration(answers: Answers, id: string): Answers {
+  if (answers.considerations.includes(id)) return { ...answers, considerations: answers.considerations.filter((c) => c !== id) };
+  if (!isConsiderationId(id) || answers.considerations.length >= MAX_CONSIDERATIONS) return answers;
+  return { ...answers, considerations: [...answers.considerations, id] };
 }
 
 /** Toggles one interest: at most MAX_FOCUS; extra picks are ignored. */
@@ -92,12 +101,13 @@ export function summaryLines(a: Answers, tagName: (id: string) => string): Summa
   const group = [labelOf(GROUP_SIZES, a.groupSize), labelOf(SETTINGS, a.setting)].filter(Boolean).join(", ");
   const budget = [labelOf(BUDGETS, a.budget), labelOf(TIMINGS, a.timing)].filter(Boolean).join(", ");
   const note = a.prompt.trim();
+  const prefs = a.considerations.length > 0 ? tn("consider.rail", a.considerations.length) : "";
   return [
     { step: 0, label: STEPS[0].full, value: interests },
     { step: 1, label: STEPS[1].full, value: labelOf(GOALS, a.goal) || NOT_SET },
     { step: 2, label: STEPS[2].full, value: group || NOT_SET },
     { step: 3, label: STEPS[3].full, value: budget || NOT_SET },
-    { step: 4, label: STEPS[4].full, value: note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : NONE },
+    { step: 4, label: STEPS[4].full, value: [prefs, note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : ""].filter(Boolean).join(", ") || NONE },
   ];
 }
 
@@ -108,8 +118,8 @@ export const bucketLevel = (bucket: Bucket) => (bucket === "20+" ? 3 : bucket ==
 // ---------- Request ids
 
 /** What a request is: the same choices, note and count produce the same signature. */
-export function signatureOf(choices: AiEventChoices, prompt: string, count: number): string {
-  return JSON.stringify([choices.focusTagIds, choices.goal, choices.groupSize, choices.setting, choices.budget, choices.timing, prompt.trim(), count]);
+export function signatureOf(choices: AiEventChoices, prompt: string, count: number, considerations: readonly string[] = []): string {
+  return JSON.stringify([choices.focusTagIds, choices.goal, choices.groupSize, choices.setting, choices.budget, choices.timing, prompt.trim(), count, [...considerations].sort()]);
 }
 
 /** Failures where the server may or may not have done the work, so retrying the same request is safe and free. */
@@ -212,7 +222,7 @@ export function takeAiDraft(store: Store, now: number = Date.now()): GeneratedEv
 export function presetAnswers(): Answers {
   return {
     focusTagIds: ["tag-fitness", "tag-games"], goal: "team_bonding", groupSize: "team", setting: "indoors",
-    budget: "under_15", timing: "after_work", prompt: "Something new for the team", count: 3,
+    budget: "under_15", timing: "after_work", prompt: "", considerations: ["something_new", "vegetarian"], count: 3,
   };
 }
 /** Answers filled up to (not including) the given 0-based step, so the step shows its own empty state. */

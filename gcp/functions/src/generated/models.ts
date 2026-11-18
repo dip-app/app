@@ -1370,7 +1370,9 @@ export interface GetEventIdeaContextResponse {
 export interface GetEventIdeaSuggestionsRequest {
   contractVersion: number;
   companyId: string;
-  sessionId: string;
+  sessionId?: string;
+  requestId?: string;
+  refresh?: boolean;
 }
 
 export interface AiStepSuggestion {
@@ -1381,12 +1383,22 @@ export interface AiStepSuggestion {
   reasonBasis: "company_data" | "generic";
 }
 
+export interface AiConsiderationRank {
+  id: string;
+  probability: number;
+}
+
 export interface GetEventIdeaSuggestionsResponse {
   contractVersion: number;
   provider: "jev" | "openai" | "heuristic" | "none";
   suggestions: Array<AiStepSuggestion>;
   cached: boolean;
   credits: AiCredits;
+  cacheStatus: "fresh" | "stale" | "computed";
+  computedAt?: string;
+  staleReason?: "data" | "age";
+  creditsCharged: number;
+  considerations?: Array<AiConsiderationRank>;
 }
 
 export interface AiEventChoices {
@@ -1405,6 +1417,7 @@ export interface GenerateEventDraftsRequest {
   choices: AiEventChoices;
   prompt: string;
   count: number;
+  considerations?: Array<string>;
 }
 
 export interface GeneratedEventDraft {

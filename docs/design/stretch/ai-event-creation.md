@@ -105,7 +105,7 @@ The portal never shows percentages. `apps/admin/src/lib/suggestionLabels.ts` map
 
 - `getEventIdeaContextV1`: admin only; returns top and thin tags with suppression applied, the current weekly theme, and the company's remaining AI quota. Read-only.
 - `generateEventDraftsV1`: admin only (new permission `ai.generate`, admin; organizers can be added later). Request: `{contractVersion: 1, companyId, requestId, choices: {focusTagIds, goal, groupSize, setting, budget, timing}, prompt, count (1-3)}`. Response: `{contractVersion: 1, drafts: [GeneratedEventDraft], usage: {remaining}}`. `requestId` makes a retry return the stored result instead of spending again (idempotency receipt, as in other commands). Nothing is written to `events`; drafts are returned and may be stored briefly in `companies/{c}/aiDraftSessions/{id}` with a TTL of 24 hours for refresh and audit.
-- `getEventIdeaSuggestionsV1` (added): admin only, AI on. Request `{contractVersion: 1, companyId, sessionId}`; response `{contractVersion: 1, provider: jev | openai | heuristic | none, suggestions: [AiStepSuggestion], cached}`. Cached per admin and session for an hour; priced into the AI spend caps, not the generation limits.
+- `getEventIdeaSuggestionsV1` (updated): admin only, AI on. Request `{contractVersion: 1, companyId, requestId?, refresh?, sessionId?}`; response adds `cacheStatus` (`fresh`, `stale`, `computed`), `computedAt`, `staleReason`, `creditsCharged` and `considerations` (ranked preference chips). The answer is saved once per company (`companies/{c}/aiCache/suggestions`); visiting is free and makes no model call when it exists, the model runs only on the first visit or `refresh: true` (1 credit).  response `{contractVersion: 1, provider: jev | openai | heuristic | none, suggestions: [AiStepSuggestion], cached}`. Cached per admin and session for an hour; priced into the AI spend caps, not the generation limits.
 - `GeneratedEventDraft` mirrors `EventDraft` except: `startTime` and `endTime` are replaced by `suggestedDaypart` and `durationMinutes` (the admin picks the exact slot), `venue` is replaced by `venueType` and `venueSearchHint` (the admin chooses a real venue), and `coverImageURL` is `coverCategory` (enum) in Phase 1. Extra fields: `rationale` (max 160 characters), `tagIds` (enum limited to catalog ids).
 
 ### Prompt design
@@ -287,3 +287,12 @@ Weaknesses seen and suggested changes (not applied: the eval is not re-run):
 - Openverse: https://docs.openverse.org/api/reference/made_with_ov.html
 - Imagen pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing (figures unconfirmed); Gemini API pricing: https://aistudio.google.com/docs/pricing
 - Not verified: OpenAI and TypeSafe AI data retention and training terms, Jev rate limits for our organization, Pixabay license text, Pexels storage rights, Imagen ownership terms.
+
+
+### Saved suggestions and credits (updated November 18, 2026)
+
+| Tool | Credits |
+| --- | --- |
+| Refresh suggestions (Dipbot Suggest) | 1 (page visits are free when cached; the first-ever visit computes once) |
+
+Visiting the Dipbot page never spends credits when a saved answer exists. A stale answer (new company data, or older than 7 days) is shown immediately with a quiet "Updated 3 days ago, new data available" line and a "Refresh, 1 credit" link; nothing runs on load. Every credit-costing action (first-ever load aside) starts from a deliberate press. The preference chips on the last step are ranked inside the same saved answer (see ops doc).

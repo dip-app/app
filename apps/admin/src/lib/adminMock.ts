@@ -3,7 +3,7 @@ import type { AdminOpsApi } from "./adminApi";
 import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type EventIdeaContext, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
+  type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -13,9 +13,10 @@ import { validateRow } from "./importFile";
 import { mockTagStats } from "./tagStatsMock";
 import { bundledTagId, previewTagId } from "./catalog";
 import { type PickEventCoverResult, lexicalPick } from "./covers";
+import { rankConsiderationsByRules } from "./considerations";
 import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
-  MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
+  MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, cacheScenarioFromSearch, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
 } from "./ideasMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
@@ -244,6 +245,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     if (scenario === "lowcredits") return MOCK_CREDIT_ALLOWANCE - 60;
     return aiLoad().credits?.[companyId] ?? MOCK_CREDITS_USED;
   };
+  /** The mock's saved company suggestions after a first visit or refresh in this page load (a reload starts from `?cache=`). */
+  const savedSuggest: { at: number | null } = { at: null };
   const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
   /** Latency only in the browser preview; tests run without it. */
   const aiDelay = (ms: number) => (typeof window === "undefined" ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, ms)));
@@ -856,18 +859,45 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       return { ...ctx, topInterests: ctx.topInterests.map((i) => ({ ...i, tagId: previewTagId(i.tagId) })), thinInterestTagIds: ctx.thinInterestTagIds.map(previewTagId) };
     },
     // A fake Jev provider: fixed, typed answers (no model call). `?jev=` picks a scenario, `?ai=nodata` has no suggestions.
-    async eventIdeaSuggestions() {
+    // Follows the server policy: a visit with a saved answer is free and makes no "model call"; only the first visit
+    // (`?cache=first`) or a refresh computes and charges 1 credit, and never without credits. `?cache=` picks the saved state.
+    async eventIdeaSuggestions(input) {
       staff("ai.generate");
       if (aiScenario() === "off") throw new ApiError("failed-precondition", `${t("off.title")}.`, {}, "AI_DISABLED");
-      const scenario = typeof window === "undefined" ? "default" as const : suggestScenarioFromSearch(window.location.search);
-      await aiDelay(scenario === "slow" ? 6000 : 400);
+      const search = typeof window === "undefined" ? "" : window.location.search;
+      const scenario = suggestScenarioFromSearch(search);
+      const cache = cacheScenarioFromSearch(search);
+      const refresh = input?.refresh === true;
+      const computing = refresh || (cache === "first" && savedSuggest.at === null);
+      await aiDelay(scenario === "slow" ? 6000 : computing ? 1200 : 400);
       if (scenario === "error") throw new ApiError("failed-precondition", "Suggestions are not available right now.", {}, "AI_UNAVAILABLE");
       const session = staff("ai.generate");
+      const used = aiCreditsUsed(session.companyId);
       const found = mockSuggestions(aiScenario() === "nodata" ? "none" : scenario);
-      return {
-        ...found, credits: creditsOf(aiCreditsUsed(session.companyId), now()),
-        suggestions: found.suggestions.map((s) => (s.question === "interest" ? { ...s, value: previewTagId(s.value) } : s)),
-      };
+      const considerations = rankConsiderationsByRules({ tagIds: ["tag-fitness", "tag-games"], goal: "team_bonding", groupSize: "team", budget: "under_15", timing: "after_work" })
+        .map((r, i) => ({ id: r.id, probability: Math.round(Math.max(0.05, 0.86 - i * 0.04) * 1000) / 1000 }));
+      const shape = (at: number, status: EventIdeaSuggestions["cacheStatus"], charged: number, credits: number, reason?: "data" | "age", answer = found): EventIdeaSuggestions => ({
+        ...answer, considerations, cacheStatus: status, computedAt: new Date(at).toISOString(), creditsCharged: charged, credits: creditsOf(credits, now()),
+        ...(reason ? { staleReason: reason } : {}),
+        suggestions: answer.suggestions.map((s) => (s.question === "interest" ? { ...s, value: previewTagId(s.value) } : s)),
+      });
+      const outOfCredits = MOCK_CREDIT_ALLOWANCE - used < MOCK_CREDIT_COSTS.suggest;
+      if (computing) {
+        if (outOfCredits) {
+          if (refresh) throw new ApiError("resource-exhausted", "You have used this month’s Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
+          return shape(now().getTime(), "computed", 0, used, undefined, mockSuggestions(aiScenario() === "nodata" ? "none" : "heuristic"));
+        }
+        const ai = aiLoad();
+        ai.credits = { ...ai.credits, [session.companyId]: used + MOCK_CREDIT_COSTS.suggest };
+        aiSave(ai);
+        savedSuggest.at = now().getTime();
+        return shape(savedSuggest.at, "computed", MOCK_CREDIT_COSTS.suggest, used + MOCK_CREDIT_COSTS.suggest);
+      }
+      if (savedSuggest.at !== null) return shape(savedSuggest.at, "fresh", 0, used);
+      const hours = 60 * 60_000;
+      if (cache === "stale") return shape(now().getTime() - 72 * hours, "stale", 0, used, "data");
+      if (cache === "age") return shape(now().getTime() - 9 * 24 * hours, "stale", 0, used, "age");
+      return shape(now().getTime() - 2 * hours, "fresh", 0, used);
     },
     // Local stand-in for pickEventCoverV1: the deterministic lexical pick. No model answers, so the 1 credit the server
     // charges is refunded: the mock checks the balance (`?ai=nocredits` shows the exhausted state) and leaves it unchanged.
