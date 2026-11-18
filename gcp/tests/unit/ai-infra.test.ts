@@ -418,6 +418,12 @@ describe("aiConfig", () => {
 
 describe("settings", () => {
   test("enabled needs the flag and a real key", () => {
+    const daily = (v: string | undefined) => settingsFromEnv({ AI_EVENTS_ENABLED: "true", AI_PROVIDER: "openai", AI_DAILY_GENERATIONS_PER_ADMIN: v }, { openai: "sk-1" }).dailyGenerationLimit;
+    assert.equal(daily(undefined), 10);
+    assert.equal(daily("25"), 25);
+    assert.equal(daily("Infinity"), 1_000_000, "Infinity is sent as a JSON-safe large number");
+    assert.equal(daily(" infinity "), 1_000_000);
+    assert.equal(daily("nonsense"), 10);
     assert.equal(settingsFromEnv({ AI_EVENTS_ENABLED: "true", AI_PROVIDER: "openai" }, { openai: "sk-1" }).enabled, true);
     assert.equal(settingsFromEnv({ AI_EVENTS_ENABLED: "true", AI_PROVIDER: "openai" }, { openai: undefined }).enabled, false);
     assert.equal(settingsFromEnv({ AI_EVENTS_ENABLED: "true", AI_PROVIDER: "openai" }, { openai: "none" }).enabled, false);
