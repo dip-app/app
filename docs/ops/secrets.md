@@ -65,6 +65,8 @@ Secrets that Functions bind (`defineSecret`) must exist before a Functions deplo
 
 ## 4. What is NOT secret
 
+Google Places (typeahead, office, venue search) needs no secret and no API key: Cloud Functions call it with the Functions service account ([smart location](../design/smart-location.md)).
+
 Do not put these in `dip-app/secrets` (they are public or in-repo by design): Firebase web API keys and app IDs, the reCAPTCHA / App Check **site** key, bundle ID, Team ID `AX2A775SS6`, the Firebase project ID `team05-dip`, App Store ID, and the iOS client IDs. The plist and `Local.xcconfig` are still kept encrypted because they are gitignored by convention and keep builds reproducible, not because each value is secret. The admin `NEXT_PUBLIC_*` values appear in `apps/admin/public.enc.env` only for reproducible builds. Plain function parameters (`.env` files with non-secret params) stay in the repo. Rule of thumb: if leaking it lets someone act as DIP or read private data, it is a secret.
 
 ## 5. iOS signing

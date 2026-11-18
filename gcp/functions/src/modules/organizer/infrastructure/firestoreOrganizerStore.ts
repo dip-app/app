@@ -14,7 +14,7 @@ function eventFields(draft: ParsedDraft) {
     name: draft.venue.name, address: draft.venue.address, locality: draft.venue.locality,
     latitude: draft.venue.latitude, longitude: draft.venue.longitude,
   };
-  for (const key of ["fsqPlaceId", "phone", "website"] as const) {
+  for (const key of ["fsqPlaceId", "phone", "website", "placeId"] as const) {
     if (draft.venue[key] !== undefined) venue[key] = draft.venue[key];
   }
   return {
@@ -69,7 +69,13 @@ export class FirestoreOrganizerStore implements OrganizerStore {
             throw new OrganizerError("internal", "INVALID_STORED_EVENT", "Stored event is invalid.");
           }
           const cover: unknown = snap.get("coverImageURL");
+          const venue: unknown = snap.get("venue");
+          const venueAt: unknown = snap.get("venueLocationAt");
+          const stored = typeof venue === "object" && venue !== null ? (venue as Record<string, unknown>) : null;
           return {
+            ...(stored && typeof stored.latitude === "number" && typeof stored.longitude === "number"
+              ? { venue: { latitude: stored.latitude, longitude: stored.longitude, ...(typeof stored.placeId === "string" ? { placeId: stored.placeId } : {}) } } : {}),
+            ...(venueAt instanceof Timestamp ? { venueLocationAt: venueAt.toDate() } : {}),
             revision: revision as number, attendeeCount: attendeeCount as number, startTime: startTime.toDate(), endTime: endTime.toDate(), status,
             ...(typeof cover === "string" ? { coverImageURL: cover } : {}),
           };
@@ -93,10 +99,11 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           const snaps = await transaction.getAll(...tagIds.map((id) => db.collection("tags").doc(id)));
           return snaps.filter((snap) => !snap.exists).map((snap) => snap.id);
         },
-        createEvent(companyId, eventId, uid, draft) {
+        createEvent(companyId, eventId, uid, draft, venueLocation) {
           transaction.create(events(companyId).doc(eventId), {
             companyId,
             ...eventFields(draft),
+            ...(venueLocation?.kind === "set" ? { venueLocationAt: Timestamp.fromDate(venueLocation.at) } : {}),
             pointsValue: 0,
             status: "scheduled",
             attendeeCount: 0,
@@ -114,8 +121,10 @@ export class FirestoreOrganizerStore implements OrganizerStore {
             expireAt: new Date(Date.now() + RECEIPT_RETENTION_MS),
           });
         },
-        updateEvent(companyId, eventId, draft, status, nextRevision, updatedBy) {
-          transaction.update(events(companyId).doc(eventId), { ...eventFields(draft), status, revision: nextRevision, updatedBy });
+        updateEvent(companyId, eventId, draft, status, nextRevision, updatedBy, venueLocation) {
+          const stamp = venueLocation?.kind === "set" ? { venueLocationAt: Timestamp.fromDate(venueLocation.at) }
+            : venueLocation?.kind === "clear" ? { venueLocationAt: FieldValue.delete() } : {};
+          transaction.update(events(companyId).doc(eventId), { ...eventFields(draft), ...stamp, status, revision: nextRevision, updatedBy });
         },
       };
       return work(tx);

@@ -9,6 +9,9 @@ export interface Company {
   officeLatitude: number;
   officeLongitude: number;
   createdAt: string;
+  officeAddress?: string;
+  officePlaceId?: string;
+  officeLocationAt?: string;
 }
 
 export interface AppUser {
@@ -84,6 +87,7 @@ export interface Venue {
   fsqPlaceId?: string | null;
   phone?: string | null;
   website?: string | null;
+  placeId?: string | null;
 }
 
 export interface Event {
@@ -108,6 +112,7 @@ export interface Event {
   revision: number;
   updatedBy?: string;
   changeLog?: Array<EventChangeLogEntry>;
+  venueLocationAt?: string;
 }
 
 export interface EventChangeLogEntry {
@@ -1333,6 +1338,7 @@ export interface AiCreditCosts {
   regenerate: number;
   weeklyEmail: number;
   coverPick: number;
+  venueSearch?: number;
 }
 
 export interface AiCredits {
@@ -1550,4 +1556,104 @@ export interface ResolveSuggestedIdeaResponse {
   contractVersion: number;
   ideaId: string;
   draft: GeneratedEventDraft;
+}
+
+export interface CompanyOffice {
+  address: string;
+  locality: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface SetCompanyOfficeRequest {
+  contractVersion: number;
+  companyId: string;
+  placeId: string;
+  sessionToken?: string;
+}
+
+export interface SetCompanyOfficeResponse {
+  contractVersion: number;
+  office: CompanyOffice;
+}
+
+export interface FindVenuesRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  title: string;
+  description?: string;
+  tagIds?: Array<string>;
+  isOutdoor?: boolean;
+  capacity?: number;
+  costCents?: number;
+  radiusMiles?: number;
+}
+
+export interface VenueOption {
+  id: string;
+  name: string;
+  address: string;
+  locality: string;
+  latitude: number;
+  longitude: number;
+  kind: "park" | "garden" | "beach" | "trail" | "playground" | "restaurant" | "cafe" | "bar" | "brewery" | "food_court" | "museum" | "gallery" | "theatre" | "cinema" | "music_venue" | "bowling" | "escape_room" | "arcade" | "mini_golf" | "climbing" | "sports_centre" | "fitness" | "swimming" | "zoo" | "aquarium" | "community_centre" | "event_venue" | "library" | "hotel" | "other";
+  setting: "outdoor" | "indoor" | "unknown";
+  distanceMiles: number;
+  website: string | null;
+  reasons: Array<"theme_match" | "outdoor_fit" | "indoor_fit" | "close" | "group_fit">;
+  placeId: string;
+}
+
+export interface FindVenuesResponse {
+  contractVersion: number;
+  venues: Array<VenueOption>;
+  provider: string | null;
+  cached: boolean;
+  charged: boolean;
+  radiusMiles: number;
+  office: CompanyOffice;
+}
+
+export interface PlaceSuggestion {
+  placeId: string;
+  primary: string;
+  secondary: string;
+  isPlace: boolean;
+}
+
+export interface AutocompletePlacesRequest {
+  contractVersion: number;
+  companyId: string;
+  sessionToken: string;
+  input: string;
+}
+
+export interface AutocompletePlacesResponse {
+  contractVersion: number;
+  suggestions: Array<PlaceSuggestion>;
+}
+
+export interface ResolvedPlace {
+  placeId: string;
+  name: string | null;
+  address: string;
+  locality: string;
+  latitude: number;
+  longitude: number;
+  kind: "park" | "garden" | "beach" | "trail" | "playground" | "restaurant" | "cafe" | "bar" | "brewery" | "food_court" | "museum" | "gallery" | "theatre" | "cinema" | "music_venue" | "bowling" | "escape_room" | "arcade" | "mini_golf" | "climbing" | "sports_centre" | "fitness" | "swimming" | "zoo" | "aquarium" | "community_centre" | "event_venue" | "library" | "hotel" | "other";
+  setting: "outdoor" | "indoor" | "unknown";
+}
+
+export interface ResolvePlaceRequest {
+  contractVersion: number;
+  companyId: string;
+  sessionToken?: string;
+  placeId?: string;
+  query?: string;
+}
+
+export interface ResolvePlaceResponse {
+  contractVersion: number;
+  place?: ResolvedPlace;
 }

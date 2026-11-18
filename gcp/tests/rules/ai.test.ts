@@ -15,6 +15,7 @@ const user = (companyId: string, role: string) => ({
 const fs = (uid: string) => env.authenticatedContext(uid, { email_verified: true }).firestore();
 const PATHS = [
   `companies/${c}/aiUsage/203001`, `companies/${c}/aiUsageDaily/20300102_ai-admin`, `companies/${c}/aiRequests/ai-admin_req-12345678`, `companies/${c}/aiSettings/current`,
+  `companies/${c}/aiVenueSearches/abc123`, `companies/${c}/aiVenueUsage/20300102`, `companies/${c}/placesUsage/20300102`,
 ];
 const COLLECTIONS = PATHS.map(path => path.slice(0, path.lastIndexOf("/")));
 const READERS = ["ai-admin", "ai-org", "ai-member", "ai-other-admin"] as const;

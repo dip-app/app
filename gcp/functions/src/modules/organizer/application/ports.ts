@@ -16,7 +16,16 @@ export interface StoredEvent {
   status: string;
   /** Current cover; absent when a store does not provide it (a dynamic cover is then always re-validated). */
   coverImageURL?: string;
+  /** Stored venue coordinates and place ID, and when the coordinates were last resolved (server-owned `venueLocationAt`). */
+  venue?: { latitude: number; longitude: number; placeId?: string };
+  venueLocationAt?: Date;
 }
+
+/**
+ * What to do with the server-owned `venueLocationAt` when an event is saved: stamp it (a Google place ID with new or changed
+ * coordinates), keep it (nothing about the place changed), or remove it (no place ID any more). Clients can never set it.
+ */
+export type VenueLocationStamp = { kind: "set"; at: Date } | { kind: "keep" } | { kind: "clear" };
 
 export interface CommandReceipt {
   hash: string;
@@ -39,11 +48,11 @@ export interface OrganizerTransaction {
   /** Tag IDs that do not exist in the shared tags catalog. */
   missingTagIds(tagIds: readonly string[]): Promise<string[]>;
   /** Creates the event, revision 1, with server-owned fields; fails if it exists. */
-  createEvent(companyId: string, eventId: string, uid: string, draft: ParsedDraft): void;
+  createEvent(companyId: string, eventId: string, uid: string, draft: ParsedDraft, venueLocation?: VenueLocationStamp): void;
   /** Creates the private deduplication receipt; fails if it exists. */
   createReceipt(companyId: string, uid: string, requestId: string, receipt: CommandReceipt): void;
   /** Full-draft replacement; increments revision to `nextRevision` and records `updatedBy` (the editor UID, for the change log). */
-  updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled" | "completed", nextRevision: number, updatedBy: string): void;
+  updateEvent(companyId: string, eventId: string, draft: ParsedDraft, status: "scheduled" | "cancelled" | "completed", nextRevision: number, updatedBy: string, venueLocation?: VenueLocationStamp): void;
 }
 
 export interface OrganizerStore {

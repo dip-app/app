@@ -64,7 +64,15 @@ export type AdminErrorReason =
   | "AI_UNAVAILABLE"
   | "COVER_SEARCH_UNAVAILABLE"
   | "COVER_CANDIDATE_EXPIRED"
-  | "COVER_IMPORT_FAILED";
+  | "COVER_IMPORT_FAILED"
+  | "AI_VENUES_DISABLED"
+  | "OFFICE_NOT_SET"
+  | "VENUE_SEARCH_LIMIT"
+  | "VENUES_UNAVAILABLE"
+  | "PLACES_DISABLED"
+  | "PLACES_LIMIT"
+  | "PLACES_UNAVAILABLE"
+  | "PLACE_NOT_FOUND";
 
 export class AdminError extends Error {
   constructor(

@@ -31,6 +31,22 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "officeAddress": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Street address of the office, as picked by an admin (setCompanyOfficeV1). Absent until set; officeLatitude/officeLongitude of 0/0 also mean not set."
+        },
+        "officePlaceId": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID of the office (setCompanyOfficeV1)."
+        },
+        "officeLocationAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-owned: when officeLatitude/officeLongitude were last fetched from Google Places (refreshed within 30 days)."
         }
       },
       "required": [
@@ -353,6 +369,15 @@
             "string",
             "null"
           ]
+        },
+        "placeId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID the coordinates were resolved from. Present when the server resolved the location; the daily refresh job keeps coordinates within the 30-day caching limit and retires them (0/0) after the event ends."
         }
       },
       "required": [
@@ -442,6 +467,11 @@
           "items": {
             "$ref": "#/$defs/EventChangeLogEntry"
           }
+        },
+        "venueLocationAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-owned: when venue latitude/longitude were last fetched from Google Places. Absent for manually entered or legacy coordinates."
         }
       },
       "required": [
@@ -6126,6 +6156,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Credits for one \"Let Dipbot choose\" cover pick (pickEventCoverV1); charged only when a model answered."
+        },
+        "venueSearch": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Credits for one Dipbot venue search (findVenuesV1); free when served from the 24 h cache or when no model answered."
         }
       },
       "required": [
@@ -7261,6 +7296,577 @@
         "contractVersion",
         "ideaId",
         "draft"
+      ]
+    },
+    "CompanyOffice": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The company's office location, the center of Dipbot venue searches.",
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "locality": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "City or area; stored as Company.city."
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      },
+      "required": [
+        "address",
+        "locality",
+        "latitude",
+        "longitude"
+      ]
+    },
+    "SetCompanyOfficeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "setCompanyOfficeV1: sets the office location used as the center of Dipbot venue searches. company.manage (admin). The server resolves the picked place (Place Details) and stores the address, city, coordinates and place ID; it rejects 0/0.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "placeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID (storable indefinitely under the Google Maps Platform terms)."
+        },
+        "sessionToken": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "placeId"
+      ]
+    },
+    "SetCompanyOfficeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "office": {
+          "$ref": "#/$defs/CompanyOffice"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "office"
+      ]
+    },
+    "FindVenuesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "findVenuesV1: Dipbot venue finder. Searches places of interest around the company office for the event and ranks the top options. ai.generate (admin). Writes no events. Only place categories, the office coordinates and the radius reach the places provider; event text reaches only the decision provider.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "tagIds": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "isOutdoor": {
+          "type": "boolean"
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "costCents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "radiusMiles": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 25,
+          "description": "Search radius around the office; default 5."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "title"
+      ]
+    },
+    "VenueOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One venue Dipbot suggests. Every field comes from the places provider or from server rules over it; nothing is invented (no ratings, hours or prices).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Opaque option id, unique within the response."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "locality": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "park",
+            "garden",
+            "beach",
+            "trail",
+            "playground",
+            "restaurant",
+            "cafe",
+            "bar",
+            "brewery",
+            "food_court",
+            "museum",
+            "gallery",
+            "theatre",
+            "cinema",
+            "music_venue",
+            "bowling",
+            "escape_room",
+            "arcade",
+            "mini_golf",
+            "climbing",
+            "sports_centre",
+            "fitness",
+            "swimming",
+            "zoo",
+            "aquarium",
+            "community_centre",
+            "event_venue",
+            "library",
+            "hotel",
+            "other"
+          ],
+          "description": "Venue kind from the provider's category; the portal shows its label."
+        },
+        "setting": {
+          "type": "string",
+          "enum": [
+            "outdoor",
+            "indoor",
+            "unknown"
+          ]
+        },
+        "distanceMiles": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Straight-line distance from the office, one decimal."
+        },
+        "website": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300,
+          "description": "Always null for now: websites are an Enterprise-tier Places field we do not request."
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "description": "Grounded reasons, best first: theme_match (the kind matches the event), outdoor_fit / indoor_fit (setting matches the outdoor flag), close (within 1 mile), group_fit (kind suits the group size).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "theme_match",
+              "outdoor_fit",
+              "indoor_fit",
+              "close",
+              "group_fit"
+            ]
+          }
+        },
+        "placeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID (storable indefinitely under the Google Maps Platform terms)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address",
+        "locality",
+        "latitude",
+        "longitude",
+        "kind",
+        "setting",
+        "distanceMiles",
+        "website",
+        "reasons",
+        "placeId"
+      ]
+    },
+    "FindVenuesResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "venues": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/VenueOption"
+          },
+          "description": "Best first; empty when nothing matched in the radius."
+        },
+        "provider": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(jev|openai|heuristic)$",
+          "description": "Which decision provider ranked the venues, or null when none was consulted."
+        },
+        "cached": {
+          "type": "boolean",
+          "description": "true when served from the company's 24 h cache (not charged)."
+        },
+        "charged": {
+          "type": "boolean",
+          "description": "true when this search spent a credit."
+        },
+        "radiusMiles": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 25
+        },
+        "office": {
+          "$ref": "#/$defs/CompanyOffice"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "venues",
+        "provider",
+        "cached",
+        "charged",
+        "radiusMiles",
+        "office"
+      ]
+    },
+    "PlaceSuggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One typeahead suggestion (Google Places Autocomplete). Shown only, never stored.",
+      "properties": {
+        "placeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID (storable indefinitely under the Google Maps Platform terms)."
+        },
+        "primary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "secondary": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "isPlace": {
+          "type": "boolean",
+          "description": "true for a named place (establishment), false for a street address or area."
+        }
+      },
+      "required": [
+        "placeId",
+        "primary",
+        "secondary",
+        "isPlace"
+      ]
+    },
+    "AutocompletePlacesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "autocompletePlacesV1: address and place typeahead for the event editor and the office setting. event.manage (organizer, admin). Biased to the company office when set. Free to admins; capped per company per day. Only the typed text, the session token and the office bias reach Google.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "sessionToken": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "input": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "sessionToken",
+        "input"
+      ]
+    },
+    "AutocompletePlacesResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "suggestions": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/PlaceSuggestion"
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "suggestions"
+      ]
+    },
+    "ResolvedPlace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A place resolved on the server (Place Details): fills the Where fields. Coordinates are kept hidden in the editor and saved with the event together with the place ID.",
+      "properties": {
+        "placeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID (storable indefinitely under the Google Maps Platform terms)."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120,
+          "description": "Place name for establishments; null for a plain street address."
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Street line."
+        },
+        "locality": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "park",
+            "garden",
+            "beach",
+            "trail",
+            "playground",
+            "restaurant",
+            "cafe",
+            "bar",
+            "brewery",
+            "food_court",
+            "museum",
+            "gallery",
+            "theatre",
+            "cinema",
+            "music_venue",
+            "bowling",
+            "escape_room",
+            "arcade",
+            "mini_golf",
+            "climbing",
+            "sports_centre",
+            "fitness",
+            "swimming",
+            "zoo",
+            "aquarium",
+            "community_centre",
+            "event_venue",
+            "library",
+            "hotel",
+            "other"
+          ],
+          "description": "Venue kind from the provider's category; the portal shows its label."
+        },
+        "setting": {
+          "type": "string",
+          "enum": [
+            "outdoor",
+            "indoor",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "placeId",
+        "name",
+        "address",
+        "locality",
+        "latitude",
+        "longitude",
+        "kind",
+        "setting"
+      ]
+    },
+    "ResolvePlaceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "resolvePlaceV1: resolves a picked suggestion (placeId, ending the autocomplete session) or geocodes a typed address (query) before saving. event.manage (organizer, admin). Same daily cap as autocompletePlacesV1.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "sessionToken": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uuid"
+        },
+        "placeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Google Places place ID (storable indefinitely under the Google Maps Platform terms)."
+        },
+        "query": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300,
+          "description": "Typed street address plus city, when no suggestion was picked."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId"
+      ]
+    },
+    "ResolvePlaceResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "place": {
+          "$ref": "#/$defs/ResolvedPlace",
+          "description": "Absent when nothing matched the query."
+        }
+      },
+      "required": [
+        "contractVersion"
       ]
     }
   }

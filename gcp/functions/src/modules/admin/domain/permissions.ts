@@ -19,7 +19,8 @@ export type Permission =
   | "insights.read"
   | "bugreport.manage"
   | "challenge.manage"
-  | "ai.generate";
+  | "ai.generate"
+  | "company.manage";
 
 const ORGANIZER_AND_ADMIN: readonly Role[] = ["organizer", "admin"];
 const ADMIN_ONLY: readonly Role[] = ["admin"];
@@ -41,6 +42,8 @@ export const PERMISSION_MATRIX: Readonly<Record<Permission, readonly Role[]>> = 
   "challenge.manage": ADMIN_ONLY,
   // AI event drafts spend a metered budget: admins only for V2 (owner default; organizers can be added later).
   "ai.generate": ADMIN_ONLY,
+  // Company settings such as the office location (setCompanyOfficeV1).
+  "company.manage": ADMIN_ONLY,
 };
 
 export const ROLES: readonly Role[] = ["member", "organizer", "admin"];

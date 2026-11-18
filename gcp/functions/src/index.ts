@@ -18,3 +18,4 @@ export {
   upsertRosterEntryV1, revokeRosterEntryV1, resendRosterInviteV1, listRosterV1, backfillRosterV1, importEmployeesV1, applyEmployeeImportV1, getEmployeeImportV1,
   listBugReportsV1, getBugReportV1, updateBugReportV1, getCompanyInsightsV1,
 } from "./modules/admin";
+export { autocompletePlacesV1, findVenuesV1, refreshPlaceLocations, resolvePlaceV1, setCompanyOfficeV1 } from "./modules/places";
