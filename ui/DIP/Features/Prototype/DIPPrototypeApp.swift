@@ -939,9 +939,11 @@ struct DIPPrototypeApp: View {
         // Both reads are independent: run them together. The events closure is created and run on the main actor.
         nonisolated(unsafe) let refreshEvents = onRefreshEvents
         return { [challengeFeed] in
-            async let challenge: Void = { @MainActor in await challengeFeed?.load() }()
-            async let events: Void = { @MainActor in await refreshEvents?() }()
-            _ = await (challenge, events)
+            // Unstructured main-actor tasks (not `async let`): Xcode 26's checker rejects sending the closure.
+            let challenge = Task { @MainActor in await challengeFeed?.load() }
+            let events = Task { @MainActor in await refreshEvents?() }
+            await challenge.value
+            await events.value
         }
     }
 
