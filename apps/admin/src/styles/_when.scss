@@ -1,0 +1,84 @@
+@use "@/styles/variables.scss" as *;
+
+// The event "When" picker: month calendar (two-click range) and a 12-hour clock dial. Compact, hairline, small radii.
+$w-line: #e2e4ec;
+$w-ctl: #8a8fa5;
+$w-muted: #646a80;
+$w-tint: #eef0ff;
+$w-track: #e2e5fb;
+$w-rim: #5864dc;
+$w-subtle: #f6f7fa;
+
+.content {
+  .when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1px; background: $w-line; border: 1px solid $w-line; border-radius: 8px; overflow: hidden; font-family: var(--font-figtree), system-ui, sans-serif; font-size: 14px; color: $ink;
+    .when-cal, .when-dial { background: $white; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .when-messages { grid-column: 1 / -1; background: $white; padding: 0 14px; display: grid; gap: 4px; &:not(:has(*)) { display: none; } &:has(*) { padding-block: 10px; } .error, .hint { font-size: 12px; margin: 0; } }
+    &.is-disabled { .when-cal, .when-dial { opacity: .6; } }
+
+    // ---- calendar
+    .when-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .when-month { font-family: inherit; text-transform: none; font-size: 15px; font-weight: 600; margin: 0; }
+    .when-cal-nav { display: inline-flex; align-items: center; gap: 4px; }
+    .when-iconbtn { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; background: $white; color: $ink; box-shadow: inset 0 0 0 1px $w-ctl; &:hover { background: $w-subtle; } &.flip svg { transform: rotate(180deg); } }
+    .when-today { height: 32px; padding: 0 10px; border-radius: 6px; font-size: 13px; font-weight: 500; background: $white; color: $ink; box-shadow: inset 0 0 0 1px $w-ctl; &:hover { background: $w-subtle; } }
+    .when-grid { display: grid; gap: 2px; }
+    .when-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }
+    .when-dow { text-align: center; font-size: 12px; font-weight: 600; color: $w-muted; padding: 4px 0; }
+    .when-day { display: flex; justify-content: center; position: relative; min-width: 0;
+      button { width: 100%; height: 36px; border-radius: 0; font-size: 14px; font-weight: 500; color: $ink; background: transparent; position: relative; font-variant-numeric: tabular-nums;
+        &:hover:not([aria-disabled="true"]) { background: $w-subtle; box-shadow: inset 0 0 0 1px $w-ctl; border-radius: 6px; }
+        &[aria-disabled="true"] { cursor: not-allowed; } }
+      &.outside button { color: $w-muted; font-weight: 400; }
+      &.is-past button { opacity: .45; }
+      &.is-today button { font-weight: 700; &::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; } }
+      &.in-range button { background: $w-tint; border-radius: 0; opacity: 1; color: $ink; }
+      &.in-range.range-start button { border-radius: 6px 0 0 6px; }
+      &.in-range.range-end button { border-radius: 0 6px 6px 0; }
+      &.range-start button, &.range-end button { background: var(--primary); color: $white; opacity: 1; font-weight: 600; &:hover:not([aria-disabled="true"]) { background: var(--primary); box-shadow: none; } }
+      &.range-start.range-end button { border-radius: 6px; } }
+    .when-day button:focus-visible { outline: 2px solid $ink; outline-offset: -2px; box-shadow: inset 0 0 0 4px $white; border-radius: 6px; z-index: 1; }
+    .when-summary { margin: auto 0 0; font-size: 13px; font-weight: 500; }
+    .when-help { margin: 0; font-size: 12px; }
+
+    // ---- dial
+    .when-read { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; position: relative; }
+    .when-time { display: grid; gap: 1px; padding: 6px 8px; border-radius: 6px; box-shadow: inset 0 0 0 1px $w-line; min-width: 0;
+      .when-lbl { font-size: 12px; font-weight: 500; color: $w-muted; }
+      strong { font-size: 22px; line-height: 1.15; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .when-date { font-size: 12px; color: $w-muted; }
+      &.live { background: $w-tint; box-shadow: inset 0 0 0 1px var(--primary); } }
+    .when-tz { position: absolute; right: 10px; top: 6px; font-size: 11px; font-weight: 600; letter-spacing: .04em; color: $w-muted; }
+    .when-clock { width: 100%; max-width: 280px; aspect-ratio: 1; align-self: center; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; overflow: visible; font-family: inherit;
+      &.dragging { cursor: grabbing; }
+      .clock-edge { fill: none; stroke: $w-line; stroke-width: 1; }
+      .clock-track { fill: none; stroke: $w-track; stroke-width: 24; }
+      .clock-arc-rim { fill: none; stroke: $w-rim; stroke-width: 25; stroke-linecap: butt; }
+      .clock-arc { fill: none; stroke: $purple; stroke-width: 24; stroke-linecap: butt; }
+      .tick { stroke: $w-ctl; stroke-width: 1; &.major { stroke: $ink; stroke-width: 1.5; } }
+      .numeral { fill: $ink; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+      .centre { fill: $ink; font-size: 24px; font-weight: 700; pointer-events: none; &.small { font-size: 17px; } }
+      .centre-label { fill: $w-muted; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; pointer-events: none; }
+      .handle { cursor: grab; outline: none;
+        .hit { fill: transparent; }
+        .focus-halo { fill: none; stroke: $white; stroke-width: 5; opacity: 0; }
+        .focus-ring { fill: none; stroke: $ink; stroke-width: 2; opacity: 0; }
+        .knob { fill: $purple; stroke: $white; stroke-width: 3; filter: drop-shadow(0 1px 2px rgba(30, 33, 43, .35)); }
+        .icon { fill: $white; pointer-events: none; }
+        &:focus-visible .focus-ring, &:focus-visible .focus-halo { opacity: 1; }
+        &.active .knob { stroke-width: 4; }
+        &[aria-disabled="true"] { cursor: not-allowed; } } }
+    .when-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .when-field { min-width: 0; }
+    .when-field-row { display: flex; flex-direction: column; gap: 6px; input { width: 100%; font-variant-numeric: tabular-nums; } .segmented { align-self: flex-start; } }
+    .when-presets { gap: 6px; }
+  }
+
+  @media (max-width: 760px) { .when { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 760px), (pointer: coarse) {
+    .when {
+      .when-day button { height: 44px; }
+      .when-iconbtn, .when-today { height: 44px; min-width: 44px; }
+      .when-field-row .seg, .when-presets .chip { min-height: 44px; }
+      .when-field input { height: 44px; } }
+  }
+}

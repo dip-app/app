@@ -39,6 +39,36 @@ export const PickCoverRequestSchema = z.strictObject({
   excludeCoverImageURLs: z.array(z.string().regex(COVER_URL_PATTERN)).max(10).optional(),
 });
 
+const OPTIONAL_STRING_KEYS = ["description", "theme"] as const;
+const OPTIONAL_LIST_KEYS = ["tagIds", "excludeCoverImageURLs"] as const;
+
+/**
+ * Makes the optional hints forgiving before the strict schema runs: they only steer the pick, so a null, an empty string,
+ * a duplicate or malformed tag id, an unknown theme, a malformed excluded cover or an over-long text must never fail
+ * the whole request. Required fields (contract version, company, request id, title) stay strict, and title text over the
+ * limit is cut. Pure; never logs values.
+ */
+export function relaxPickCoverRequest(data: unknown): unknown {
+  if (typeof data !== "object" || data === null || Array.isArray(data)) return data;
+  const raw: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+  for (const key of OPTIONAL_STRING_KEYS) {
+    const value = raw[key];
+    if (typeof value !== "string" || value.trim() === "") delete raw[key];
+  }
+  if (typeof raw.description === "string") raw.description = raw.description.slice(0, 5000);
+  if (typeof raw.theme === "string" && !(COVER_THEMES as readonly string[]).includes(raw.theme)) delete raw.theme;
+  if (typeof raw.title === "string") raw.title = raw.title.trim().slice(0, 120);
+  const clean = (key: (typeof OPTIONAL_LIST_KEYS)[number], keep: (item: string) => boolean, max: number) => {
+    const value = raw[key];
+    if (!Array.isArray(value)) { delete raw[key]; return; }
+    const items = [...new Set(value.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(keep))].slice(0, max);
+    if (items.length === 0) delete raw[key]; else raw[key] = items;
+  };
+  clean("tagIds", item => ID_PATTERN.test(item), 10);
+  clean("excludeCoverImageURLs", item => COVER_URL_PATTERN.test(item), 10);
+  return raw;
+}
+
 export interface PickCoverDeps {
   store: AdminStore;
   decisions: DecisionPort;
@@ -155,8 +185,13 @@ function alternativesFor(candidates: readonly ScoredCover[], chosenKey: string |
  */
 export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | null, data: unknown): Promise<PickEventCoverResponse> {
   const caller = requireCaller(rawCaller);
-  const parsed = PickCoverRequestSchema.safeParse(data);
-  if (!parsed.success) throw invalid(fieldsOf(parsed.error));
+  const parsed = PickCoverRequestSchema.safeParse(relaxPickCoverRequest(data));
+  if (!parsed.success) {
+    const fields = fieldsOf(parsed.error);
+    // Field names only, never values, so a rejected request can be diagnosed from the logs.
+    deps.log?.("ai.cover_pick_invalid", { uid: caller.uid, fields: fields.join(",") }, "warn");
+    throw invalid(fields);
+  }
   const { companyId, requestId, title, description, tagIds, theme, excludeCoverImageURLs } = parsed.data;
   // Authorization first (so a non-member never touches the limiter), then the burst limit.
   await deps.store.runReadOnly(tx => authorize(tx, caller, companyId, "ai.generate"));

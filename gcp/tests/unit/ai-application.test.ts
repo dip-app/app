@@ -479,7 +479,7 @@ describe("model output handling", () => {
     const probe = rig([drafts(3)]);
     await generateEventDrafts(probe.deps, caller("admin1"), request(1));
     const lists = [0, 1, 2].map(i => options(probe, i));
-    for (const list of lists) assert.ok(list.length >= 14 && list.length <= 25, "a shortlist of about 15 to 25 covers");
+    for (const list of lists) assert.ok(list.length >= 14 && list.length <= 60, "every eligible cover up to the per-call limit of 60");
     const urlOf = (key: string) => coverByKey(key)!.url;
     const second = lists[0]![1]!;
 

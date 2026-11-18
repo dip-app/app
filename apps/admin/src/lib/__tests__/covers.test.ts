@@ -1,5 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { COVER_LIBRARY, THEMES, coverByURL, coverImage, coverThumb, lexicalPick, searchCovers } from "../covers";
+import { COVER_LIBRARY, THEMES, buildPickRequest, coverByURL, coverImage, coverThumb, lexicalPick, searchCovers } from "../covers";
 import { COVERS, coverFor } from "../catalog";
 import { buildMockDrafts } from "../ideasMock";
 import { createMockApi } from "../api";
@@ -81,11 +83,39 @@ describe("searchCovers", () => {
   });
 });
 
+describe("real manifest at library scale", () => {
+  const dir = path.resolve(__dirname, "../../../public/img/covers");
+  it("holds 150 to 200 covers with at least 12 per theme and every file on disk", () => {
+    expect(COVER_LIBRARY.length).toBeGreaterThanOrEqual(150);
+    expect(COVER_LIBRARY.length).toBeLessThanOrEqual(200);
+    for (const t of THEMES) expect(searchCovers({ theme: t.key }).length, t.key).toBeGreaterThanOrEqual(12);
+    for (const c of COVER_LIBRARY) {
+      for (const rel of [c.file, c.thumb, ...(c.jpeg ? [c.jpeg] : [])]) expect(fs.existsSync(path.join(dir, rel)), `${c.key} ${rel}`).toBe(true);
+    }
+  });
+  it("keeps the five original photos active and resolvable", () => {
+    for (const key of ["default-cooking", "default-fitness", "default-games", "default-hiking", "default-outdoors"]) {
+      const c = COVER_LIBRARY.find((x) => x.key === key);
+      expect(c, key).toBeTruthy();
+      expect(searchCovers({ query: c!.label.split(" ")[0] }).some((x) => x.key === key), `${key} is searchable`).toBe(true);
+    }
+  });
+  it("searches the whole library quickly, by label, tag and alt text", () => {
+    const start = performance.now();
+    for (let i = 0; i < 50; i++) searchCovers({ query: "yoga" });
+    expect(performance.now() - start).toBeLessThan(500);
+    expect(searchCovers({ query: "yoga" }).length).toBeGreaterThan(2);
+    expect(searchCovers({ query: "guitar", theme: "music" }).length).toBeGreaterThan(1);
+    expect(searchCovers({ query: "recycling" }).every((c) => /recycl/i.test(`${c.label} ${c.tags.join(" ")} ${c.alt}`))).toBe(true);
+  });
+});
+
 describe("lexicalPick", () => {
   it("picks by activity words", () => {
     expect(lexicalPick({ title: "Kayaking on the lake" }).key).toBe("default-outdoors");
     expect(lexicalPick({ title: "Team trivia and board games night" }).themes).toContain("games");
-    expect(lexicalPick({ title: "Sunrise yoga", tagIds: ["tag-wellness"] }).key).toBe("default-fitness");
+    const yoga = lexicalPick({ title: "Sunrise yoga", tagIds: ["tag-wellness"] });
+    expect(yoga.tags.some((t) => t.includes("yoga"))).toBe(true);
     expect(lexicalPick({ title: "Friday jam session", description: "Bring your guitar" }).key).toBe("theme-music");
   });
   it("falls back to the theme default, then the outdoors photo", () => {
@@ -103,5 +133,27 @@ describe("lexicalPick", () => {
     const drafts = buildMockDrafts({ focusTagIds: ["tag-games"], goal: "competition", groupSize: "team", setting: "indoors", budget: "under_15", timing: "weekday_lunch" }, "", 3);
     expect(new Set(drafts.map((d) => d.coverImageURL)).size).toBe(3);
     for (const d of drafts) expect(coverByURL(d.coverImageURL)).toBeDefined();
+  });
+});
+
+describe("buildPickRequest", () => {
+  it("sends only title for a draft opened in the editor with empty optional fields", () => {
+    expect(buildPickRequest({ title: "  Kayak day  ", description: "   ", tagIds: [], theme: "" })).toEqual({ title: "Kayak day" });
+    expect(buildPickRequest({ title: "Kayak day", theme: null, description: undefined })).toEqual({ title: "Kayak day" });
+  });
+  it("needs a title and caps text to the server limits", () => {
+    expect(buildPickRequest({ title: "   " })).toBeNull();
+    const out = buildPickRequest({ title: "t".repeat(300), description: "d".repeat(9000) })!;
+    expect([out.title.length, out.description!.length]).toEqual([120, 5000]);
+  });
+  it("de-duplicates and filters tag ids, caps at 10, and keeps only valid themes and catalog covers", () => {
+    const out = buildPickRequest({
+      title: "x", theme: "music", tagIds: ["a1", "a1", "bad id", "", ...Array.from({ length: 14 }, (_, i) => `t${i}`)],
+    }, ["catalog://default/games", "https://x.test/a.jpg", "catalog://default/games"])!;
+    expect(out.tagIds).toHaveLength(10);
+    expect(out.tagIds).not.toContain("bad id");
+    expect(out).toMatchObject({ theme: "music", excludeCoverImageURLs: ["catalog://default/games"] });
+    expect(buildPickRequest({ title: "x", theme: "sports" as never })).toEqual({ title: "x" });
+    for (const key of Object.keys(out)) expect(out[key as keyof typeof out]).not.toBeUndefined();
   });
 });
