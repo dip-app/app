@@ -46,13 +46,13 @@ public enum DIPChallengeText {
     public static func participation(_ count: Int) -> String {
         switch count {
         case ...0: String(localized: "challenge.participation.none", defaultValue: "Be the first this week", bundle: .module, comment: "Challenge card: nobody has taken part yet")
-        default: String(localized: "challenge.participation.others", defaultValue: "+ \(count) others participating", bundle: .module, comment: "Challenge card; %lld = number of other participants (1 or more)")
+        default: String(localized: "challenge.participation.others", defaultValue: count == 1 ? "+ \(count) other participating" : "+ \(count) others participating", bundle: .module, comment: "Challenge card; %lld = number of other participants (1 or more)")
         }
     }
     public static func participationSpoken(_ count: Int) -> String {
         switch count {
         case ...0: String(localized: "challenge.participation.spoken.none", defaultValue: "be the first this week", bundle: .module, comment: "VoiceOver for the challenge card: nobody has taken part yet")
-        default: String(localized: "challenge.participation.spoken.others", defaultValue: "\(count) others participating", bundle: .module, comment: "VoiceOver for the challenge card; %lld = number of other participants (1 or more)")
+        default: String(localized: "challenge.participation.spoken.others", defaultValue: count == 1 ? "\(count) other participating" : "\(count) others participating", bundle: .module, comment: "VoiceOver for the challenge card; %lld = number of other participants (1 or more)")
         }
     }
     /// How entries work, shown above the entry action (the testing finding: explain before submit).

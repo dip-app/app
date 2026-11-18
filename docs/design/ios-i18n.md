@@ -67,7 +67,9 @@ Every count-dependent string is one key whose English default is the "other" for
 variations: English `one` and `other`, Spanish `one` and `other`. Spanish has a CLDR `many` category for very large round
 numbers; it falls back to `other`. Strings with several arguments vary by one argument through a substitution
 (`%#@count@` with `argNum`), with the whole sentence in each form. English sometimes has the same text for both forms
-(`%lld going`) while Spanish differs (`1 va`, `%lld van`). Points use paired `.one`/`.other` keys in `DIPPointsFormat`
+(`%lld going`) while Spanish differs (`1 va`, `%lld van`). Package plurals whose English singular differs choose the English form by count in `defaultValue` as well
+(`defaultValue: n == 1 ? "\(n) photo" : "\(n) photos"`). Command-line SwiftPM up to Xcode 26 copies `.xcstrings`
+without compiling them, so `swift test` on CI only sees defaults. Points use paired `.one`/`.other` keys in `DIPPointsFormat`
 because the number is shown grouped ("1,234"). Klingon has no number agreement, so it only fills `other`.
 
 The conversion replaced 49 English count ternaries and count-bearing strings with catalog plurals: 25 in the app,
