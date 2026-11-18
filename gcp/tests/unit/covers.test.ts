@@ -4,7 +4,7 @@ import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { LlmUnavailableError, type DecisionRequest, type DecisionResult } from "../../functions/src/modules/ai/application/ports";
 import { CREDIT_COSTS } from "../../functions/src/modules/ai/domain/credits";
 import { ScriptedDecisions, type DecisionStepScript } from "../../functions/src/modules/ai/infrastructure/fakes";
-import { pickCover, pickEventCover, type PickCoverDeps } from "../../functions/src/modules/covers/application/pickCover";
+import { pickCover, pickEventCover, relaxPickCoverRequest, type PickCoverDeps } from "../../functions/src/modules/covers/application/pickCover";
 import { COVER_INDEX, type CoverIndexEntry } from "../../functions/src/modules/covers/domain/catalog.generated";
 import {
   coverByKey, coverJpegURL, coverKeyFromURL, DEFAULT_COVER_URL, indexKeySource, isApprovedCoverURL, isApprovedCoverURLFrom, LEGACY_COVER_URLS, parseCoverKey, themesFromTagIds,
@@ -441,16 +441,39 @@ describe("pickEventCoverV1", () => {
     assert.deepEqual([r.consumed, r.decisions.calls.length, r.store.children("companies/alpha/aiCoverPicks").length, usedCredits(r.store)], [[], 0, 0, 0]);
   });
 
-  test("validation: strict fields and bounds", async () => {
+  test("validation: required fields stay strict", async () => {
     const r = rig();
     const bad: Array<Record<string, unknown>> = [
-      { title: "" }, { title: "   " }, { title: "x".repeat(121) }, { description: "x".repeat(5001) }, { tagIds: Array.from({ length: 11 }, (_, i) => `t${i}`) },
-      { tagIds: ["a", "a"] }, { theme: "sports" }, { excludeCoverImageURLs: Array(11).fill("catalog://default/games") }, { excludeCoverImageURLs: ["https://x.test/a.jpg"] },
-      { extra: 1 }, { requestId: "nope" }, { companyId: "" }, { contractVersion: 2 },
+      { title: "" }, { title: "   " }, { title: null }, { extra: 1 }, { requestId: "nope" }, { companyId: "" }, { contractVersion: 2 },
     ];
     for (const extra of bad) await fails(pickEventCover(r.deps, caller("admin1"), body(1, extra)), "VALIDATION_FAILED");
     assert.equal(r.decisions.calls.length, 0);
     assert.deepEqual(r.consumed, []);
+    const invalid = r.logs.filter(l => l.event === "ai.cover_pick_invalid");
+    assert.equal(invalid.length, bad.length);
+    assert.equal(invalid[0].fields.fields, "title");
+    assert.ok(!JSON.stringify(r.logs).includes("Sunset kayak"), "logs name fields, never values");
+  });
+
+  test("validation: optional hints are forgiving (empty, null, duplicate, malformed or over-long values never fail the pick)", async () => {
+    const draftOpenedEditor: Array<Record<string, unknown>> = [
+      { description: "" }, { description: "   " }, { description: null }, { description: "x".repeat(9000) }, { title: `  ${"y".repeat(300)}  ` },
+      { tagIds: [] }, { tagIds: null }, { tagIds: ["a", "a"] }, { tagIds: ["Outdoors & Social", "tag-outdoors", "", 7] },
+      { tagIds: Array.from({ length: 14 }, (_, i) => `t${i}`) }, { theme: "" }, { theme: null }, { theme: "sports" },
+      { excludeCoverImageURLs: [] }, { excludeCoverImageURLs: Array(14).fill("catalog://default/games") }, { excludeCoverImageURLs: ["https://x.test/a.jpg", "", null] },
+      { description: "", tagIds: [], theme: "", excludeCoverImageURLs: [] },
+    ];
+    for (const [i, extra] of draftOpenedEditor.entries()) {
+      const r = rig([jev(choiceAnswer("hike-ridge", 0.9))]);
+      const response = await pickEventCover(r.deps, caller("admin1"), body(10 + i, extra));
+      assert.ok(response.coverImageURL.startsWith("catalog://"), JSON.stringify(Object.keys(extra)));
+    }
+  });
+
+  test("relaxPickCoverRequest drops unusable hints, truncates text and leaves required fields alone", () => {
+    const out = relaxPickCoverRequest({ ...body(1), description: "d".repeat(6000), theme: "nope", tagIds: ["a", "a", "b c"], excludeCoverImageURLs: ["x"], title: "  hi  " }) as Record<string, unknown>;
+    assert.deepEqual([(out.description as string).length, "theme" in out, out.tagIds, "excludeCoverImageURLs" in out, out.title], [5000, false, ["a"], false, "hi"]);
+    assert.equal(relaxPickCoverRequest("junk"), "junk");
   });
 
   test("the burst limiter is consumed once after authorization, and a limiter refusal stops the pick", async () => {

@@ -111,11 +111,14 @@ describe("CoverPicker", () => {
   });
 
   it("shows an error inline and keeps the current cover when the pick fails", async () => {
-    failWith = new Error("Dipbot is busy right now.");
+    failWith = new ApiError("invalid-argument", "Invalid request. [400]", { title: "Invalid request." }, "VALIDATION_FAILED");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: /^Let Dipbot choose/ }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Dipbot is busy right now.");
+    expect((await screen.findByRole("alert")).textContent).toBe("Dipbot couldn’t pick a cover this time. Try again or choose one yourself.");
+    expect(warn).toHaveBeenCalledWith("pickEventCover failed", { code: "invalid-argument", reason: "VALIDATION_FAILED", fields: ["title"] });
+    warn.mockRestore();
     expect(onChange).not.toHaveBeenCalled();
     expect(checked()).toEqual(["Mountain trail hike"]);
   });
