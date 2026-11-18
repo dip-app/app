@@ -11,6 +11,7 @@ import { useApp } from "./AppProvider";
 import { AddressCombobox } from "./AddressCombobox";
 import { DipbotAction } from "./DipbotAction";
 import { DipbotMark } from "./DipbotMark";
+import { Button, InlineNotice } from "./kit";
 import { useLoad } from "./useLoad";
 
 export interface VenueEvent { title: string; description: string; tagIds: readonly string[]; isOutdoor: boolean; capacity: number; costCents: number }
@@ -33,7 +34,24 @@ type Phase =
   | { kind: "loading" }
   | { kind: "results"; result: FindVenuesResult }
   | { kind: "empty"; radius: number }
-  | { kind: "message"; text: string };
+  | { kind: "message"; text: string }
+  /** A failed search: the block stays; `retry` offers the button again. */
+  | { kind: "error"; text: string; tone: "warn" | "error"; retry: boolean };
+
+/** Plain words for a failed search; never unmounts the block. `reason` is the server's stable code, `code` the transport code. */
+export function venueFailure(error: unknown, resetsAt: string): Extract<Phase, { kind: "error" }> {
+  const reason = error instanceof ApiError ? error.reason : undefined;
+  const code = error instanceof ApiError ? error.code : undefined;
+  if (reason === "AI_VENUES_DISABLED" || reason === "PLACES_DISABLED") return { kind: "error", text: t("venues.disabled"), tone: "warn", retry: true };
+  if (reason === "AI_CREDITS_EXHAUSTED" || reason === "VENUE_SEARCH_LIMIT" || reason === "PLACES_LIMIT") {
+    const known = tMaybe(`limit.${reason}`, { n: "", date: resetDate(resetsAt) }) ?? t("venues.busy");
+    return { kind: "error", text: known, tone: "warn", retry: false };
+  }
+  if (code === "unauthenticated") return { kind: "error", text: t("venues.signedOut"), tone: "error", retry: false };
+  if (code === "permission-denied") return { kind: "error", text: t("venues.denied"), tone: "error", retry: false };
+  if (code === "resource-exhausted") return { kind: "error", text: t("venues.busy"), tone: "warn", retry: true };
+  return { kind: "error", text: t("venues.error"), tone: "error", retry: true };
+}
 
 const metaOf = (v: VenueOption) => [
   tMaybe(`venue.kind.${v.kind}`) ?? t("venue.kind.other"),
@@ -57,13 +75,12 @@ export function DipbotVenues({ event, office, onOffice, provider, onUnavailable,
   const [radius, setRadius] = useState(DEFAULT_RADIUS);
   useEffect(() => { setRadius(readRadius()); }, []);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
-  const [disabled, setDisabled] = useState(false);
   const [officeDraft, setOfficeDraft] = useState("");
   const [officeState, setOfficeState] = useState<"idle" | "saving" | "error">("idle");
   const [editingOffice, setEditingOffice] = useState(false);
   const run = useRef(0);
 
-  if (!can(session?.role, "ai.generate") || !ctx?.enabled || disabled) return null;
+  if (!can(session?.role, "ai.generate") || !ctx?.enabled) return null;
   const credits = ctx.credits;
   const cost = credits.creditCost.venueSearch ?? 1;
   const out = credits.creditsRemaining < cost;
@@ -97,10 +114,8 @@ export function DipbotVenues({ event, office, onOffice, provider, onUnavailable,
     } catch (error) {
       if (mine !== run.current) return;
       const reason = error instanceof ApiError ? error.reason : undefined;
-      if (reason === "AI_VENUES_DISABLED") { setDisabled(true); return; }
       if (reason === "OFFICE_NOT_SET") { onOffice(null); setPhase({ kind: "message", text: t("limit.OFFICE_NOT_SET") }); return; }
-      const known = reason ? tMaybe(`limit.${reason}`, { n: "", date: resetDate(credits.resetsAt) }) : null;
-      setPhase({ kind: "message", text: known ?? t("venues.error") });
+      setPhase(venueFailure(error, credits.resetsAt));
     }
   }
 
@@ -120,7 +135,7 @@ export function DipbotVenues({ event, office, onOffice, provider, onUnavailable,
           {provider ? (
             <div className="field"><AddressCombobox id={`${uid}-office`} label={t("venues.officeLabel")} hideLabel placeholder={t("venues.officePlaceholder")} value={officeDraft} provider={provider}
               onChange={setOfficeDraft} onSelect={(place, token) => void saveOffice(place, token)} onUnavailable={onUnavailable} /></div>
-          ) : null}
+          ) : <p className="venues-note">{t("venues.officeNoSearch")}</p>}
           <p className="venues-note" role={officeState === "error" ? "alert" : "status"}>
             {officeState === "saving" ? t("venues.officeSaving") : officeState === "error" ? t("venues.officeError") : ""}
           </p>
@@ -145,6 +160,10 @@ export function DipbotVenues({ event, office, onOffice, provider, onUnavailable,
         {phase.kind === "loading" && <p className="venues-note">{t("venues.loading")}</p>}
         {phase.kind === "empty" && <p className="venues-note">{t("venues.empty", { n: phase.radius })}</p>}
         {phase.kind === "message" && <p className="venues-note error">{phase.text}</p>}
+        {phase.kind === "error" && (
+          <InlineNotice tone={phase.tone} className="venues-notice"
+            action={phase.retry ? <Button variant="outline" size="sm" onClick={() => void find()}>{t("venues.retry")}</Button> : undefined}>{phase.text}</InlineNotice>
+        )}
         {phase.kind === "results" && <span className="sr-only">{tn("venues.found", phase.result.venues.length, { r: phase.result.radiusMiles })}</span>}
       </div>
 

@@ -36,9 +36,10 @@ interface Props {
 export function WhereSection({ venue, isOutdoor, errors, onVenue, onOutdoor, onResolvedFor, event, provider: given }: Props) {
   const { api } = useApp();
   const callable = useMemo(() => createCallableProvider(api), [api]);
-  // Places off for this company (PLACES_DISABLED): plain fields, saved without a map location.
+  // Places off for this company (PLACES_DISABLED): the combobox stays mounted (focus and typed text kept), acts as a plain field and
+  // shows its own note; the event is saved without a map location.
   const [off, setOff] = useState(false);
-  const provider = off ? null : given === undefined ? callable : given;
+  const provider = given === undefined ? callable : given;
   const search = useRef<AddressComboboxHandle>(null);
   const officeLoad = useLoad(async (a) => ({ office: await a.companyOffice() }), "company-office");
   const office: CompanyOffice | null | undefined = officeLoad.error ? null : officeLoad.data ? officeLoad.data.office : undefined;
@@ -104,7 +105,7 @@ export function WhereSection({ venue, isOutdoor, errors, onVenue, onOutdoor, onR
                 onChange={(e) => onStreet(e.target.value)} />
             </>
           )}
-          {addressError ? <span className="error" id="vaddr-error">{addressError}</span> : <span className="hint">{provider ? t("where.searchHint") : t("where.noMapLocation")}</span>}
+          {addressError ? <span className="error" id="vaddr-error">{addressError}</span> : <span className="hint">{provider ? (off ? null : t("where.searchHint")) : t("where.noMapLocation")}</span>}
         </div>
       )}
 

@@ -68,6 +68,8 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
   const [active, setActive] = useState(-1);
   const [open, setOpen] = useState(false);
   const [resolving, setResolving] = useState(false);
+  // Places is not turned on (PLACES_DISABLED): the input stays and works as a plain field, with a small note under it.
+  const [off, setOff] = useState(false);
 
   // One session token per typing session: results and the resolve that ends it share it; a pick, clearing or leaving starts a new one.
   const tokenRef = useRef<string | null>(null);
@@ -78,7 +80,7 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
 
   const query = term.trim();
   useEffect(() => {
-    if (query.length < MIN_CHARS) { setStatus("idle"); setResults([]); setActive(-1); return; }
+    if (off || query.length < MIN_CHARS) { setStatus("idle"); setResults([]); setActive(-1); return; }
     const controller = new AbortController();
     const mine = ++seq.current; // callables cannot be cancelled: a late answer is ignored by sequence
     const timer = setTimeout(() => {
@@ -96,13 +98,13 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
         (failure: unknown) => {
           if (controller.signal.aborted || mine !== seq.current || isAbort(failure)) return;
           setResults([]);
-          if (failure instanceof LocationError && failure.kind === "disabled") { onUnavailable?.(); return; }
+          if (failure instanceof LocationError && failure.kind === "disabled") { setOff(true); setStatus("idle"); onUnavailable?.(); return; }
           setStatus(failure instanceof LocationError && failure.kind === "limit" ? "limit" : "error");
         },
       );
     }, DEBOUNCE_MS);
     return () => { clearTimeout(timer); controller.abort(); bump(); };
-  }, [query, provider]); // eslint-disable-line react-hooks/exhaustive-deps -- onUnavailable and bump are stable enough
+  }, [query, provider, off]); // eslint-disable-line react-hooks/exhaustive-deps -- onUnavailable and bump are stable enough
 
   const showOptions = open && status === "results";
   const showPopup = open && status !== "idle";
@@ -119,7 +121,7 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
       finish();
       onPick?.(place, suggestion);
     } catch (failure) {
-      if (failure instanceof LocationError && failure.kind === "disabled") { onUnavailable?.(); return; }
+      if (failure instanceof LocationError && failure.kind === "disabled") { setOff(true); onUnavailable?.(); return; }
       setStatus(failure instanceof LocationError ? (failure.kind === "limit" ? "limit" : failure.kind === "notFound" ? "gone" : "error") : "error");
     } finally {
       setResolving(false);
@@ -206,6 +208,7 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
         {/* Google Maps Platform attribution: results are not shown on a Google map. */}
         <p className="ac-credit" translate="no">{t("where.googleMaps")}</p>
       </div>
+      {off && <p className="ac-note" role="status">{t("where.manualNote")}</p>}
       </div>
     </div>
   );

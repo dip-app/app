@@ -136,13 +136,16 @@ describe("WhereSection address search", () => {
     expect(venue()).toMatchObject({ address: "1 Main St", name: "Pub" });
   });
 
-  it("switches to plain fields when the first search finds Places disabled", async () => {
+  it("keeps the address input working, with a small note, when the first search finds Places disabled", async () => {
     render(<Harness provider={createFakeProvider({ fail: "disabled" })} />);
     const box = screen.getByRole("combobox", { name: "Street address" });
     fireEvent.focus(box);
     fireEvent.change(box, { target: { value: "forbes" } });
-    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Street address" })).toBeNull(), { timeout: 2000 });
-    expect(field("Street address").value).toBe("forbes");
+    expect(await screen.findByText(/Address search isn’t turned on yet/, {}, { timeout: 2000 })).toBeTruthy();
+    // The same input stays (typed text kept) and further typing still lands in the draft.
+    expect(screen.getByRole("combobox", { name: "Street address" })).toBe(box);
+    fireEvent.change(box, { target: { value: "forbes ave 5" } });
+    expect(venue().address).toBe("forbes ave 5");
     expect(screen.getByText(/won’t have a map location/)).toBeTruthy();
   });
 });
@@ -259,9 +262,41 @@ describe("DipbotVenues", () => {
     api.findVenues.mockRejectedValueOnce(new Error("offline"));
     fireEvent.click(await find());
     expect(await screen.findByText("Dipbot couldn’t find venues this time. Try again.")).toBeTruthy();
-    api.findVenues.mockRejectedValueOnce(new ApiError("failed-precondition", "x", {}, "AI_VENUES_DISABLED"));
-    fireEvent.click(await find());
-    await waitFor(() => expect(screen.queryByText("Dipbot venues")).toBeNull());
+  });
+
+  describe("failures keep the block and the typed fields", () => {
+    const cases: [string, () => Error, RegExp, boolean][] = [
+      ["AI_VENUES_DISABLED", () => new ApiError("failed-precondition", "x", {}, "AI_VENUES_DISABLED"), /Venue suggestions aren’t turned on yet\. No credit was charged/, true],
+      ["PLACES_DISABLED", () => new ApiError("failed-precondition", "x", {}, "PLACES_DISABLED"), /aren’t turned on yet/, true],
+      ["resource-exhausted", () => new ApiError("resource-exhausted", "x"), /busy right now\. No credit was charged/, true],
+      ["unauthenticated", () => new ApiError("unauthenticated", "x"), /session has ended/, false],
+      ["permission-denied", () => new ApiError("permission-denied", "x"), /don’t have access to venue suggestions/, false],
+      ["network", () => new Error("offline"), /couldn’t find venues this time/, true],
+    ];
+    it.each(cases)("%s: notice shown, block mounted, fields kept, retry %s", async (_name, make, text, retry) => {
+      render(<Harness initial={{ name: "The Pub", address: "1 Main St", locality: "Leeds" }} />);
+      api.findVenues.mockRejectedValueOnce(make());
+      fireEvent.click(await find());
+      expect(await screen.findByText(text)).toBeTruthy();
+      expect(screen.getByText("Dipbot venues")).toBeTruthy();
+      expect(await find()).toBeTruthy();
+      expect(venue()).toMatchObject({ name: "The Pub", address: "1 Main St", locality: "Leeds" });
+      const again = screen.queryByRole("button", { name: "Try again" });
+      expect(!!again).toBe(retry);
+      if (again) {
+        fireEvent.click(again);
+        await waitFor(() => expect(api.findVenues).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.queryByText(text)).toBeNull());
+        expect(screen.getByRole("list", { name: "Venues near your office" })).toBeTruthy();
+      }
+    });
+  });
+
+  it("explains that the office cannot be set while address search is off, and keeps the block", async () => {
+    api.companyOffice.mockResolvedValue(null);
+    render(<Harness provider={null} />);
+    expect(await screen.findByText(/the office can’t be set/)).toBeTruthy();
+    expect(screen.getByText("Dipbot venues")).toBeTruthy();
   });
 
   it("disables the button with the credits message when the allowance is used up", async () => {
