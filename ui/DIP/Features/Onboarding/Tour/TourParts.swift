@@ -359,7 +359,7 @@ struct ArrivalCrew: View {
             .animation(reduceMotion ? nil : OnboardingMotion.hop.speed(speed).delay(0.25 / speed), value: youShown)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("You and four coworkers, celebrating."))
+        .accessibilityLabel(Text("You and four coworkers, celebrating.", comment: "VoiceOver label of the celebrating faces on the first onboarding step"))
         .accessibilityIdentifier("onboarding.arrival.crew")
         .onAppear {
             cheered = true
@@ -402,7 +402,8 @@ struct InterestsStrip: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 WordFlow(spacing: 8, lineSpacing: 8) {
-                    chip("All events", selected: false)
+                    chip(String(localized: "onboarding.interests.allEvents", defaultValue: "All events",
+                                comment: "Onboarding interests preview: the default filter chip that shows every event"), selected: false)
                     ForEach(names, id: \.self) { chip($0, selected: true) }
                 }
                 .padding(16)

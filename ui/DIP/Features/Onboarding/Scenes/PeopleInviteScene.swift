@@ -19,18 +19,22 @@ struct PeopleInviteScene: DemoScene {
 
     var description: String {
         features.contains(.invites)
-            ? "Example: Who's Attending opens a list of coworkers by name and team. Theo invites Priya; on her phone she accepts and the count goes up."
-            : "Example: Who's Attending opens a list of coworkers by name and team."
+            ? String(localized: "onboarding.people.demo.description.invites",
+                     defaultValue: "Example: Who's Attending opens a list of coworkers by name and team. Theo invites Priya; on her phone she accepts and the count goes up.",
+                     comment: "VoiceOver description of the people and invites onboarding demo")
+            : String(localized: "onboarding.people.demo.description",
+                     defaultValue: "Example: Who's Attending opens a list of coworkers by name and team.",
+                     comment: "VoiceOver description of the people onboarding demo when invites are not available")
     }
     let hostFace = CrewMember.yellow
     var stageFill: Color { OnboardingTheme.muted }
     var accessibilityRows: [DemoAccessibilityRow] {
         var rows = [
-            DemoAccessibilityRow(systemImage: "person.2", text: "See who's going before you join"),
-            DemoAccessibilityRow(systemImage: "list.bullet", text: "Open the list for names and teams"),
+            DemoAccessibilityRow(systemImage: "person.2", text: String(localized: "onboarding.people.demo.row1", defaultValue: "See who's going before you join", comment: "Onboarding demo text row shown at accessibility text sizes")),
+            DemoAccessibilityRow(systemImage: "list.bullet", text: String(localized: "onboarding.people.demo.row2", defaultValue: "Open the list for names and teams", comment: "Onboarding demo text row shown at accessibility text sizes")),
         ]
         if features.contains(.invites) {
-            rows.append(DemoAccessibilityRow(systemImage: "envelope", text: "Invite a coworker from your company"))
+            rows.append(DemoAccessibilityRow(systemImage: "envelope", text: String(localized: "onboarding.people.demo.row3", defaultValue: "Invite a coworker from your company", comment: "Onboarding demo text row shown at accessibility text sizes")))
         }
         return rows
     }
@@ -80,7 +84,7 @@ struct PeopleInviteCanvas: View {
                 snapshot: OnboardingDemoFixtures.pastaSnapshot(joined: true), isLoading: false))
             inviteSheet
             if state.toastShown {
-                DemoToast(text: "Invite sent to Priya")
+                DemoToast(text: String(localized: "onboarding.people.demo.toast.sent", defaultValue: "Invite sent to Priya", comment: "Toast in the invites onboarding demo"))
                     .position(x: 195, y: 92)
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
@@ -100,14 +104,16 @@ struct PeopleInviteCanvas: View {
                     .frame(height: 50, alignment: .leading)
                     .padding(.top, 10)
                 DIPDetailPeopleRow(
-                    title: "Who’s Attending", avatars: avatars, total: state.attendees, emptyText: "",
+                    title: String(localized: "onboarding.demo.attending", defaultValue: "Who’s Attending", comment: "Onboarding demo section title above the attendee avatars"), avatars: avatars, total: state.attendees, emptyText: "",
                     capacity: OnboardingDemoFixtures.pastaCapacity, identifierPrefix: "onboarding.demo", onMore: {})
                     .contentTransition(.numericText())
                     .padding(.top, Metrics.peopleTop - (Metrics.heroTop + 264) - 60)
                 DIPDetailActionRow(
                     joinInRow: false, directionsURL: OnboardingDemoFixtures.directionsURL,
-                    isParticipating: true, canChange: true, joinTitle: "Join Activity", leaveTitle: "Leave Activity",
-                    shareItem: OnboardingDemoFixtures.pastaNight.title, shareTitle: "Share Event",
+                    isParticipating: true, canChange: true,
+                    joinTitle: String(localized: "onboarding.demo.join", defaultValue: "Join Activity", comment: "Onboarding demo join button label"),
+                    leaveTitle: String(localized: "onboarding.demo.leave", defaultValue: "Leave Activity", comment: "Onboarding demo leave button label"),
+                    shareItem: OnboardingDemoFixtures.pastaNight.title, shareTitle: String(localized: "onboarding.demo.share", defaultValue: "Share Event", comment: "Onboarding demo share button label"),
                     identifierPrefix: "onboarding.demo", onJoin: {}, onLeave: {})
                     .padding(.top, 20)
             }
@@ -131,7 +137,9 @@ struct PeopleInviteCanvas: View {
 
     /// The F4 placeholder for the invite control (spec: `DemoInviteChip`, until `InviteEntryPoint` ships).
     private var inviteChip: some View {
-        Text(state.inviteSent ? "Invite sent" : "Invite a coworker")
+        Text(state.inviteSent
+             ? String(localized: "onboarding.people.demo.chip.sent", defaultValue: "Invite sent", comment: "Invite chip label after the invite was sent in the onboarding demo")
+             : String(localized: "onboarding.people.demo.chip.invite", defaultValue: "Invite a coworker", comment: "Invite chip label in the onboarding demo"))
             .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
             .foregroundStyle(state.inviteSent ? OnboardingTheme.ink : .white)
             .frame(width: Metrics.chip.width, height: Metrics.chip.height)
@@ -162,7 +170,7 @@ struct PeopleInviteCanvas: View {
                     .foregroundStyle(person.id == "priya" && state.priyaChecked ? OnboardingTheme.accent : OnboardingTheme.ink.opacity(0.3))
                     .scaleEffect(person.id == "priya" && state.priyaChecked ? 1 : 0.9))
             }
-            DIPButton("Send invite") {}
+            DIPButton(String(localized: "onboarding.people.demo.sendInvite", defaultValue: "Send invite", comment: "Send button on the invite sheet in the onboarding demo")) {}
                 .frame(height: 50)
         }
         .padding(16)
@@ -179,7 +187,7 @@ struct PeopleInviteCanvas: View {
 
     private var priyaPhone: some View {
         ZStack(alignment: .topLeading) {
-            Text("PRIYA’S VIEW")
+            Text("PRIYA’S VIEW", comment: "Label above the second phone in the invites onboarding demo")
                 .font(DIPReferenceAssets.font("Inter-Medium", size: 12))
                 .tracking(0.6)
                 .foregroundStyle(OnboardingTheme.ink)
@@ -192,7 +200,7 @@ struct PeopleInviteCanvas: View {
                 .opacity(state.cardCollapsed ? 0 : 1)
                 .position(x: 195, y: 260)
             if state.cardCollapsed {
-                DemoToast(text: "You’re going to Pasta Night")
+                DemoToast(text: String(localized: "onboarding.people.demo.toast.going", defaultValue: "You’re going to Pasta Night", comment: "Toast after accepting the invitation in the onboarding demo"))
                     .position(x: 195, y: 150)
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
@@ -204,20 +212,20 @@ struct PeopleInviteCanvas: View {
     /// The F4 placeholder invitation card.
     private var inviteCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            DemoPlaceholderTag(feature: "Invitations")
+            DemoPlaceholderTag(feature: String(localized: "onboarding.people.demo.placeholder", defaultValue: "Invitations", comment: "Name of the not-yet-shipped feature shown in a PREVIEW tag in the onboarding demo"))
             HStack(spacing: 12) {
                 CrewMember.white.face(size: 44)
-                Text("Theo invited you to Pasta Night")
+                Text("Theo invited you to Pasta Night", comment: "Invitation card text in the onboarding demo")
                     .font(DIPReferenceAssets.font("Figtree-Bold", size: 18))
                     .foregroundStyle(.black)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Label("Thu · 6:30 PM", systemImage: "calendar")
+            Label(String(localized: "onboarding.demo.pasta.timing", defaultValue: "Thu · 6:30 PM", comment: "Sample event day and time in the onboarding demo"), systemImage: "calendar")
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .foregroundStyle(OnboardingTheme.ink)
             HStack(spacing: 10) {
-                DIPButton("Accept") {}
-                DIPButton("Decline", emphasis: .secondary) {}
+                DIPButton(String(localized: "onboarding.people.demo.accept", defaultValue: "Accept", comment: "Accept button on the invitation card in the onboarding demo")) {}
+                DIPButton(String(localized: "onboarding.people.demo.decline", defaultValue: "Decline", comment: "Decline button on the invitation card in the onboarding demo"), emphasis: .secondary) {}
             }
         }
         .padding(18)

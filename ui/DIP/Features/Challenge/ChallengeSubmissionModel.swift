@@ -105,11 +105,11 @@ final class ChallengeSubmissionModel {
     /// The sheet's one action, in the shared bottom bar (same pill as "Activity Chat"): Send, in-flight, or retry.
     var sheetBarAction: DIPBottomBarAction {
         switch phase {
-        case .preparingPhoto: return .init(title: "Getting your photo ready…", identifier: "submission.sending", showsProgress: true)
-        case .uploading(let value): return .init(title: "Uploading photo \(Int((value * 100).rounded()))%", identifier: "submission.sending", showsProgress: true)
-        case .sending: return .init(title: "Sending…", identifier: "submission.sending", showsProgress: true)
+        case .preparingPhoto: return .init(title: String(localized: "challenge.submit.bar.preparing", defaultValue: "Getting your photo ready…", comment: "Bottom bar status while a picked photo is being prepared"), identifier: "submission.sending", showsProgress: true)
+        case .uploading(let value): return .init(title: String(localized: "challenge.submit.bar.uploading", defaultValue: "Uploading photo \(Int((value * 100).rounded()))%", comment: "Bottom bar status while the photo uploads; %lld = percent complete (0-100)"), identifier: "submission.sending", showsProgress: true)
+        case .sending: return .init(title: String(localized: "challenge.submit.bar.sending", defaultValue: "Sending…", comment: "Bottom bar status while the challenge entry is being sent"), identifier: "submission.sending", showsProgress: true)
         case .failed(let failure):
-            if failure.isRetryable { return .init(title: uploadFailed ? "Retry upload" : "Try again", identifier: "submission.send", kind: .commit) }
+            if failure.isRetryable { return .init(title: uploadFailed ? String(localized: "challenge.submit.bar.retryUpload", defaultValue: "Retry upload", comment: "Bottom bar button after a photo upload failed") : String(localized: "challenge.submit.bar.tryAgain", defaultValue: "Try again", comment: "Bottom bar button after sending the challenge entry failed"), identifier: "submission.send", kind: .commit) }
             return .init(title: sendTitle, identifier: "submission.send", kind: .commit)
         case .idle: return .init(title: sendTitle, identifier: "submission.send", icon: "system:paperplane", kind: .commit)
         }
@@ -117,9 +117,9 @@ final class ChallengeSubmissionModel {
 
     var sendTitle: String {
         switch submission?.status {
-        case .rejected?: "Resubmit entry"
-        case .submitted?, .approved?: "Save changes"
-        case nil: "Send entry"
+        case .rejected?: String(localized: "challenge.submit.send.resubmit", defaultValue: "Resubmit entry", comment: "Button to send a challenge entry again after it was rejected")
+        case .submitted?, .approved?: String(localized: "challenge.submit.send.save", defaultValue: "Save changes", comment: "Button to save edits to an already submitted challenge entry")
+        case nil: String(localized: "challenge.submit.send.new", defaultValue: "Send entry", comment: "Button to send a new challenge entry")
         }
     }
 

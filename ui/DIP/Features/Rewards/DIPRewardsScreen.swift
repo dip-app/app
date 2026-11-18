@@ -96,7 +96,7 @@ struct DIPRewardsScreen: View {
                 .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline))
                 .foregroundStyle(ink.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
-            DIPButton("Find an event") { DIPHaptics.select(); onSelectTab(.home) }
+            DIPButton(String(localized: "rewards.zero.action", defaultValue: "Find an event", comment: "Rewards: button under the zero-points nudge that goes to Home")) { DIPHaptics.select(); onSelectTab(.home) }
                 .accessibilityIdentifier("rewards.zero.action")
         }
         .padding(16)
@@ -121,7 +121,7 @@ struct DIPRewardsScreen: View {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
                     DIPTabHeader(
-                        title: "Rewards", unreadCount: unreadCount,
+                        title: String(localized: "rewards.title", defaultValue: "Rewards", comment: "Rewards tab header title"), unreadCount: unreadCount,
                         profileAvatar: { DIPMedia(profileAvatar) },
                         onNotifications: onNotifications, onProfile: onProfile
                     )
@@ -130,9 +130,9 @@ struct DIPRewardsScreen: View {
                             if !(duoOpen && !isEmpty) { balancePill.padding(.bottom, 16) }
                             if isEmpty {
                                 DIPEmptyState(
-                                    screen: "rewards", title: "No rewards yet",
-                                    message: "Rewards and discounts will show up here.",
-                                    actionTitle: "Find an event") { onSelectTab(.home) }
+                                    screen: "rewards", title: String(localized: "rewards.empty.title", defaultValue: "No rewards yet", comment: "Rewards: empty state title"),
+                                    message: String(localized: "rewards.empty.message", defaultValue: "Rewards and discounts will show up here.", comment: "Rewards: empty state message"),
+                                    actionTitle: String(localized: "rewards.empty.action", defaultValue: "Find an event", comment: "Rewards: empty state button that goes to Home")) { onSelectTab(.home) }
                                     .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 360), alignment: .center)
                             } else if duoOpen {
                                 // Open Duo: points and the raffle on the left, the discounts beside them, instead of one
@@ -165,7 +165,7 @@ struct DIPRewardsScreen: View {
         }
         .ignoresSafeArea()
         .preferredColorScheme(.light)
-        .alert(notice?.title ?? "Rewards", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
+        .alert(notice?.title ?? String(localized: "rewards.title", defaultValue: "Rewards", comment: "Rewards tab header title"), isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
             Button("OK") { notice = nil }
         } message: {
             Text("This is a mock preview. Entering and redeeming are not connected yet.")

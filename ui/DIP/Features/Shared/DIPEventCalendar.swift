@@ -23,7 +23,7 @@ extension EnvironmentValues {
 /// the editor could not be presented (for example an alert or another sheet kept the screen busy for too long).
 struct DIPEventKitCalendarAdder: DIPEventCalendarAdding {
     @MainActor func add(_ fields: DIPCalendarEventFields) async -> DIPCalendarAddResult {
-        guard let presenter = await Self.stablePresenter() else { return .failed("Couldn’t open the calendar.") }
+        guard let presenter = await Self.stablePresenter() else { return .failed(String(localized: "calendar.error.openFailed", defaultValue: "Couldn’t open the calendar.", comment: "Error shown in an alert when the system calendar editor could not be opened")) }
         // The same store as the conflict reads and direct saves.
         let store = DIPEventKitStore.shared
         let event = EKEvent(eventStore: store)
@@ -89,7 +89,7 @@ struct DIPEventKitCalendarAdder: DIPEventCalendarAdding {
                 editor.presentationController?.delegate = self
                 presenter.present(editor, animated: true)
                 // UIKit drops a present() it cannot honor without telling anyone: notice and fail instead of hanging.
-                if presenter.presentedViewController !== editor { finish(.failed("Couldn’t open the calendar.")) }
+                if presenter.presentedViewController !== editor { finish(.failed(String(localized: "calendar.error.openFailed", defaultValue: "Couldn’t open the calendar.", comment: "Error shown in an alert when the system calendar editor could not be opened"))) }
             }
         }
 

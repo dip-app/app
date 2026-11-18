@@ -60,7 +60,7 @@ struct DIPMyEventsScreen: View {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
                     DIPTabHeader(
-                        title: "My Events", unreadCount: unreadCount,
+                        title: String(localized: "myEvents.tab.title", defaultValue: "My Events", comment: "Large header title of the My Events tab"), unreadCount: unreadCount,
                         profileAvatar: { DIPMedia(profileAvatar) },
                         onNotifications: onNotifications, onProfile: onProfile
                     )
@@ -101,7 +101,7 @@ struct DIPMyEventsScreen: View {
             // speaks the selected segment, so it does not announce twice.)
             guard let next, next != section else { return }
             section = next
-            AccessibilityNotification.Announcement(next == .active ? "Active Events" : "Memories").post()
+            AccessibilityNotification.Announcement(next == .active ? String(localized: "myEvents.segment.active", defaultValue: "Active Events", comment: "My Events toggle segment and VoiceOver announcement: upcoming events the member joined") : String(localized: "myEvents.segment.memories", defaultValue: "Memories", comment: "My Events toggle segment and VoiceOver announcement: past events with photo albums")).post()
         }
         .scrollIndicators(.hidden)
         .accessibilityIdentifier("events.content")
@@ -125,8 +125,8 @@ struct DIPMyEventsScreen: View {
     private var sectionPicker: some View {
         DIPSegmentedToggle(
             segments: [
-                .init(id: Section.active, title: "Active Events", identifier: "events.segment.active"),
-                .init(id: Section.memories, title: "Memories", identifier: "events.segment.memories"),
+                .init(id: Section.active, title: String(localized: "myEvents.segment.active", defaultValue: "Active Events", comment: "My Events toggle segment and VoiceOver announcement: upcoming events the member joined"), identifier: "events.segment.active"),
+                .init(id: Section.memories, title: String(localized: "myEvents.segment.memories", defaultValue: "Memories", comment: "My Events toggle segment and VoiceOver announcement: past events with photo albums"), identifier: "events.segment.memories"),
             ],
             selection: section, accent: segmentAccent, onSelect: selectSection)
     }
@@ -149,9 +149,9 @@ struct DIPMyEventsScreen: View {
         VStack(spacing: 18) {
             if activeEvents.isEmpty {
                 DIPEmptyState(
-                    screen: "my-events-active", title: "No upcoming events",
-                    message: "Events you join will show up here.",
-                    actionTitle: "Find an event", action: { onSelectTab(.home) })
+                    screen: "my-events-active", title: String(localized: "myEvents.active.empty.title", defaultValue: "No upcoming events", comment: "My Events empty state title when the member has no upcoming events"),
+                    message: String(localized: "myEvents.active.empty.message", defaultValue: "Events you join will show up here.", comment: "My Events empty state message when the member has no upcoming events"),
+                    actionTitle: String(localized: "myEvents.active.empty.action", defaultValue: "Find an event", comment: "My Events empty state button that goes to Home"), action: { onSelectTab(.home) })
             }
             ForEach(activeEvents) { event in
                 Button {
@@ -201,8 +201,8 @@ struct DIPMyEventsScreen: View {
         let relaxed = dynamicTypeSize.isAccessibilitySize
         if memoryAlbums.isEmpty {
             DIPEmptyState(
-                screen: "my-events-memories", title: "No memories yet",
-                message: "Events you’ve attended will show up here.")
+                screen: "my-events-memories", title: String(localized: "myEvents.memories.empty.title", defaultValue: "No memories yet", comment: "My Events empty state title when the member has no past events"),
+                message: String(localized: "myEvents.memories.empty.message", defaultValue: "Events you’ve attended will show up here.", comment: "My Events empty state message when the member has no past events"))
         }
         // One column at accessibility sizes: two 160 pt tiles cannot hold the enlarged title and chip.
         LazyVGrid(

@@ -33,7 +33,7 @@ struct DIPInviteSheet: View {
     }
 
     private var header: some View {
-        InviteSheetHeader(title: "Invite Coworker", subtitle: eventTitle, closeIdentifier: "invite.close", onClose: onClose)
+        InviteSheetHeader(title: String(localized: "invite.title", defaultValue: "Invite Coworker", comment: "Invite sheet title"), subtitle: eventTitle, closeIdentifier: "invite.close", onClose: onClose)
     }
 
     private var searchField: some View {
@@ -80,10 +80,10 @@ struct DIPInviteSheet: View {
         switch model.phase {
         case .idle:
             if model.queryTooShort {
-                DIPEmptyState(screen: "invite-hint", title: "Keep typing", message: "Type at least 2 letters of a name.", faces: 2)
+                DIPEmptyState(screen: "invite-hint", title: String(localized: "invite.hint.title", defaultValue: "Keep typing", comment: "Invite sheet: empty state title while the search is too short"), message: String(localized: "invite.hint.message", defaultValue: "Type at least 2 letters of a name.", comment: "Invite sheet: empty state message while the search is too short"), faces: 2)
             } else {
-                DIPEmptyState(screen: "invite-start", title: "Find a coworker",
-                              message: "Search by name to invite someone from your company. They can accept in one tap.", faces: 3)
+                DIPEmptyState(screen: "invite-start", title: String(localized: "invite.start.title", defaultValue: "Find a coworker", comment: "Invite sheet: initial empty state title"),
+                              message: String(localized: "invite.start.message", defaultValue: "Search by name to invite someone from your company. They can accept in one tap.", comment: "Invite sheet: initial empty state message"), faces: 3)
             }
         case .searching where model.coworkers.isEmpty:
             VStack(spacing: 4) {
@@ -113,11 +113,11 @@ struct DIPInviteSheet: View {
             .opacity(model.phase == .searching ? 0.6 : 1)
             .animation(InviteMotion.spring(reduceMotion: reduceMotion), value: model.phase == .searching)
         case .empty:
-            DIPEmptyState(screen: "invite-none", title: "No coworkers found",
-                          message: "Check the spelling or try part of their first or last name.", faces: 2)
+            DIPEmptyState(screen: "invite-none", title: String(localized: "invite.none.title", defaultValue: "No coworkers found", comment: "Invite sheet: no search results title"),
+                          message: String(localized: "invite.none.message", defaultValue: "Check the spelling or try part of their first or last name.", comment: "Invite sheet: no search results message"), faces: 2)
         case .failed(let failure):
-            DIPEmptyState(screen: "invite-error", title: "Couldn’t search", message: failure.message, faces: 3,
-                          actionTitle: "Try again", action: failure.isRetryable ? { DIPHaptics.commit(); Task { await model.search() } } : nil)
+            DIPEmptyState(screen: "invite-error", title: String(localized: "invite.error.title", defaultValue: "Couldn’t search", comment: "Invite sheet: search error title"), message: failure.message, faces: 3,
+                          actionTitle: String(localized: "invite.error.retry", defaultValue: "Try again", comment: "Invite sheet: retry button after a search error"), action: failure.isRetryable ? { DIPHaptics.commit(); Task { await model.search() } } : nil)
         }
     }
 
@@ -144,9 +144,9 @@ struct DIPInviteSheet: View {
                 trailing(coworker, state: state)
             }
             if model.alreadyInvitedIDs.contains(coworker.id) {
-                InviteNotice(text: "A coworker already invited \(coworker.name).", identifier: "invite.row.already.\(coworker.id)").padding(.leading, 66)
+                InviteNotice(text: String(localized: "invite.row.alreadyInvited", defaultValue: "A coworker already invited \(coworker.name).", comment: "Invite sheet: notice under a person someone else already invited; %@ = person name"), identifier: "invite.row.already.\(coworker.id)").padding(.leading, 66)
             } else if let failure = model.rowErrors[coworker.id] {
-                InviteNotice(text: failure.isRetryable ? "\(failure.message) Tap Invite to try again." : failure.message,
+                InviteNotice(text: failure.isRetryable ? String(localized: "invite.row.retry", defaultValue: "\(failure.message) Tap Invite to try again.", comment: "Invite sheet: error under a person where retrying may work; %@ = reason sentence") : failure.message,
                              identifier: "invite.row.error.\(coworker.id)").padding(.leading, 66)
             }
         }
@@ -158,7 +158,7 @@ struct DIPInviteSheet: View {
             if let new { AccessibilityNotification.Announcement(new.message).post() }
         }
         .onChange(of: model.alreadyInvitedIDs.contains(coworker.id)) { _, already in
-            if already { AccessibilityNotification.Announcement("A coworker already invited \(coworker.name).").post() }
+            if already { AccessibilityNotification.Announcement(String(localized: "invite.row.alreadyInvited", defaultValue: "A coworker already invited \(coworker.name).", comment: "Invite sheet: notice under a person someone else already invited; %@ = person name")).post() }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("invite.row.\(coworker.id)")
@@ -187,7 +187,7 @@ struct DIPInviteSheet: View {
                     let sent = await model.send(coworker)
                     if sent {
                         DIPHaptics.success()
-                        AccessibilityNotification.Announcement("Invitation sent to \(coworker.name)").post()
+                        AccessibilityNotification.Announcement(String(localized: "invite.announce.sent", defaultValue: "Invitation sent to \(coworker.name)", comment: "VoiceOver announcement after sending an invitation; %@ = person name")).post()
                     } else if model.rowErrors[coworker.id] != nil { DIPHaptics.failure() }
                 }
             } label: {
@@ -202,12 +202,12 @@ struct DIPInviteSheet: View {
             .buttonStyle(DIPPressFeedbackStyle())
             .disabled(sending)
             .accessibilityLabel("Invite \(coworker.name)")
-            .accessibilityValue(sending ? "Sending" : "")
+            .accessibilityValue(sending ? String(localized: "invite.sending", defaultValue: "Sending", comment: "VoiceOver value of the Invite button while sending") : "")
             .accessibilityIdentifier("invite.send.\(coworker.id)")
         case .invited:
-            statusPill("Invited", symbol: "checkmark", id: "invite.state.\(coworker.id)")
+            statusPill(String(localized: "invite.chip.invited", defaultValue: "Invited", comment: "Invite sheet: outlined chip for a person already invited"), symbol: "checkmark", id: "invite.state.\(coworker.id)")
         case .going:
-            statusPill("Going", symbol: "person.fill.checkmark", id: "invite.state.\(coworker.id)")
+            statusPill(String(localized: "invite.chip.going", defaultValue: "Going", comment: "Invite sheet: outlined chip for a person already going to this activity"), symbol: "person.fill.checkmark", id: "invite.state.\(coworker.id)")
         }
     }
 

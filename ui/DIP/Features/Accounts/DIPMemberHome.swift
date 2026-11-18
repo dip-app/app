@@ -282,7 +282,8 @@ struct DIPMemberHome: View {
 
     private var catalogError: String? {
         if case .failed = catalog.state {
-            return "Your interests couldn’t be loaded. Please try again."
+            return String(localized: "profile.interests.loadError", defaultValue: "Your interests couldn’t be loaded. Please try again.",
+                          comment: "Error shown in the interest picker when the interest catalog fails to load")
         }
         return nil
     }

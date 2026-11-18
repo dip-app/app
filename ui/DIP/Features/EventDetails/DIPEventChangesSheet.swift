@@ -13,8 +13,8 @@ struct DIPEventChangesSheet: View {
         NavigationStack {
             ScrollView {
                 if log.isEmpty {
-                    DIPEmptyState(screen: "event-changes", title: "No changes since it was posted",
-                                  message: "If the organizer changes the time, place or cost, you’ll see it here.")
+                    DIPEmptyState(screen: "event-changes", title: String(localized: "event.changes.empty.title", defaultValue: "No changes since it was posted", comment: "Empty state title in the What changed sheet"),
+                                  message: String(localized: "event.changes.empty.message", defaultValue: "If the organizer changes the time, place or cost, you’ll see it here.", comment: "Empty state message in the What changed sheet"))
                         .padding(20)
                 } else {
                     LazyVStack(alignment: .leading, spacing: 14) {
@@ -59,10 +59,13 @@ struct DIPEventChangesSheet: View {
 
     private func card(_ entry: DIPChangeLogEntry, isLatest: Bool) -> some View {
         let rows = DIPChangeLogText.rows(entry)
+        let when = entry.at.formatted(date: .abbreviated, time: .shortened)
+        let summary = rows.map { [$0.label, $0.detail].compactMap { $0 }.joined(separator: " ") }.joined(separator: ", ")
         let relative = entry.at.formatted(.relative(presentation: .named))
+        let relativeText: String = relative.prefix(1).uppercased() + relative.dropFirst()
         return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                Text("\(relative.prefix(1).uppercased() + relative.dropFirst()) · Edited by the organizer")
+                Text(String(localized: "event.changes.entry.header", defaultValue: "\(relativeText) · Edited by the organizer", comment: "Header of one change card in the What changed sheet; first argument is the capitalized relative time such as Yesterday or 2 hours ago"))
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .caption))
                     .foregroundStyle(.black.opacity(0.6))
                 Spacer(minLength: 0)
@@ -75,7 +78,7 @@ struct DIPEventChangesSheet: View {
             }
             ForEach(rows) { row in
                 HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: Self.symbol(row.label))
+                    Image(systemName: Self.symbol(row.key))
                         .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
                         .frame(width: 22).padding(.top, 2).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
@@ -100,23 +103,24 @@ struct DIPEventChangesSheet: View {
         // Informational, so outlined rather than filled (pill rule: solid = pressable).
         .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.5), lineWidth: 1.5))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("\(entry.at.formatted(date: .abbreviated, time: .shortened)): \(rows.map { [$0.label, $0.detail].compactMap { $0 }.joined(separator: " ") }.joined(separator: ", "))"))
+        .accessibilityLabel(Text(String(localized: "event.changes.entry.accessibility", defaultValue: "\(when): \(summary)", comment: "VoiceOver label of one change card; first argument is the date and time of the edit, second is the list of changed rows such as Time Mon 6 PM, Cost Free")))
     }
 
     /// Same icon vocabulary as the event info card.
-    private static func symbol(_ label: String) -> String {
-        switch label {
-        case "Description updated": "text.alignleft"
-        case "Time": "calendar"
-        case "Location": "mappin.and.ellipse"
-        case "Cost": "ticket"
-        case "Spots": "person.2"
-        case "Name": "textformat"
-        case "Setting": "sun.max"
-        case "Activity cancelled": "xmark.circle"
-        case "Activity is back on": "arrow.uturn.backward.circle"
-        case "Photo changed": "photo"
-        case "Interests updated": "tag"
+    /// Keyed by `DIPChangeRow.key` (stable), never by the translated label.
+    private static func symbol(_ key: String) -> String {
+        switch key {
+        case "description": "text.alignleft"
+        case "time": "calendar"
+        case "location": "mappin.and.ellipse"
+        case "cost": "ticket"
+        case "spots": "person.2"
+        case "name": "textformat"
+        case "setting": "sun.max"
+        case "cancelled": "xmark.circle"
+        case "backOn": "arrow.uturn.backward.circle"
+        case "photo": "photo"
+        case "interests": "tag"
         default: "pencil"
         }
     }

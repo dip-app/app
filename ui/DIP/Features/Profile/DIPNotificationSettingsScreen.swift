@@ -14,7 +14,7 @@ struct DIPNotificationSettingsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            InviteSheetHeader(title: "Notifications", closeIdentifier: "notificationSettings.close", onClose: onClose)
+            InviteSheetHeader(title: String(localized: "notificationSettings.title", defaultValue: "Notifications", comment: "Notification settings sheet title"), closeIdentifier: "notificationSettings.close", onClose: onClose)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) { content }
                     .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 40)
@@ -45,8 +45,8 @@ struct DIPNotificationSettingsScreen: View {
                 .frame(maxWidth: .infinity).padding(.top, 40)
                 .accessibilityIdentifier("notificationSettings.loading")
         case .failed(let message):
-            DIPEmptyState(screen: "notification-settings-error", title: "Couldn’t load settings", message: message, faces: 3,
-                          actionTitle: "Try again", action: { DIPHaptics.select(); Task { await model.load() } })
+            DIPEmptyState(screen: "notification-settings-error", title: String(localized: "notificationSettings.error.title", defaultValue: "Couldn’t load settings", comment: "Notification settings: error state title"), message: message, faces: 3,
+                          actionTitle: String(localized: "notificationSettings.error.retry", defaultValue: "Try again", comment: "Notification settings: retry button on the error state"), action: { DIPHaptics.select(); Task { await model.load() } })
         case .ready:
             // Without the push client (flag off) only the Email section exists: email does not depend on push.
             if model.isPushAvailable { master }
@@ -147,7 +147,7 @@ struct DIPNotificationSettingsScreen: View {
         .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
                     in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
         .opacity(enabled ? 1 : 0.5)
-        .accessibilityHint(enabled || channel == .email ? "" : "Turn on push notifications first")
+        .accessibilityHint(enabled || channel == .email ? "" : String(localized: "notificationSettings.toggle.hint", defaultValue: "Turn on push notifications first", comment: "VoiceOver hint on a disabled notification switch"))
         .accessibilityIdentifier(channel == .email
             ? "notificationSettings.email.toggle.\(row.category.rawValue)"
             : "notificationSettings.toggle.\(row.category.rawValue)")

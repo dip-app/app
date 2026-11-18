@@ -1,5 +1,6 @@
 import CoreGraphics
 import DIPDesignSystem
+import Foundation
 
 // The sign-in states A0–A4 are one composition: one Stage, one Crew, one Bar whose parameters
 // change per route. This file is the pure mapping (route → scene); `AccountsStageView` renders it.
@@ -155,8 +156,15 @@ enum StageCopy: Equatable, Sendable {
     case welcome(dimmed: Bool)
     case notice(title: String, message: String)
 
-    static let welcomeTitle = "Meet your team outside work"
-    static let welcomeBody = "Board games, cooking nights, hikes and more. See which coworkers are going and join in one tap."
+    static var welcomeTitle: String {
+        String(localized: "accounts.welcome.title", defaultValue: "Meet your team outside work",
+               comment: "Welcome screen headline on the sign-in stage")
+    }
+    static var welcomeBody: String {
+        String(localized: "accounts.welcome.body",
+               defaultValue: "Board games, cooking nights, hikes and more. See which coworkers are going and join in one tap.",
+               comment: "Welcome screen body text under the headline")
+    }
 
     var title: String {
         switch self {
@@ -202,9 +210,23 @@ enum StagePill: Equatable, Sendable {
     /// A2 and the A0 retry look.
     case looking
 
-    static let lookingText = "Looking for your team…"
+    static var lookingText: String {
+        String(localized: "accounts.pill.looking", defaultValue: "Looking for your team…",
+               comment: "Sign-in stage pill shown while the company is being looked up")
+    }
     /// Localizable reel, in order. The reel rests on the first entry.
-    static let entries = ["Board game lunch", "Pasta night", "Trivia after work", "Sunset hike", "Coffee walk"]
+    static var entries: [String] {
+        [String(localized: "accounts.pill.reel.boardGame", defaultValue: "Board game lunch",
+                comment: "Sample activity in the sign-in stage pill reel"),
+         String(localized: "accounts.pill.reel.pasta", defaultValue: "Pasta night",
+                comment: "Sample activity in the sign-in stage pill reel"),
+         String(localized: "accounts.pill.reel.trivia", defaultValue: "Trivia after work",
+                comment: "Sample activity in the sign-in stage pill reel"),
+         String(localized: "accounts.pill.reel.hike", defaultValue: "Sunset hike",
+                comment: "Sample activity in the sign-in stage pill reel"),
+         String(localized: "accounts.pill.reel.coffee", defaultValue: "Coffee walk",
+                comment: "Sample activity in the sign-in stage pill reel")]
+    }
     static let reelInterval = 2.4
     static let reducedReelInterval = 4.0
     static let reelCycles = 3
@@ -241,15 +263,36 @@ struct AccountsStageScene: Equatable {
             && lhs.isSearching == rhs.isSearching && lhs.notice == rhs.notice
     }
 
-    static let footnoteText = "Use your work Google account. We find your company from your email."
-    static let pendingTitle = "Just a moment…"
+    static var footnoteText: String {
+        String(localized: "accounts.footnote", defaultValue: "Use your work Google account. We find your company from your email.",
+               comment: "Sign-in footnote under the welcome copy")
+    }
+    static var pendingTitle: String {
+        String(localized: "accounts.bar.pending", defaultValue: "Just a moment…",
+               comment: "Bottom bar title while sign-in state is pending")
+    }
     /// No dots: the indicator in the Bar's circle shows the work (owner revision, Nov 10).
-    static let resolvingTitle = "Finding your company"
-    static let signInTitle = "Continue with Google"
-    static let connectingTitle = "Connecting…"
-    static let inProgress = "In progress"
+    static var resolvingTitle: String {
+        String(localized: "accounts.bar.resolving", defaultValue: "Finding your company",
+               comment: "Bottom bar title while the company is being looked up")
+    }
+    static var signInTitle: String {
+        String(localized: "accounts.bar.signIn", defaultValue: "Continue with Google",
+               comment: "Bottom bar button that starts Google sign-in")
+    }
+    static var connectingTitle: String {
+        String(localized: "accounts.bar.connecting", defaultValue: "Connecting…",
+               comment: "Bottom bar title while Google sign-in is connecting")
+    }
+    static var inProgress: String {
+        String(localized: "accounts.bar.inProgress", defaultValue: "In progress",
+               comment: "Accessibility value of the bottom bar button while an action is running")
+    }
     /// Spoken when A2 begins.
-    static let resolvingAnnouncement = "Finding your company"
+    static var resolvingAnnouncement: String {
+        String(localized: "accounts.announcement.resolving", defaultValue: "Finding your company",
+               comment: "VoiceOver announcement when the company lookup begins")
+    }
 
     private static func progressBar(_ title: String) -> DIPBottomBarAction {
         DIPBottomBarAction(title: title, identifier: "onboarding.progress", value: inProgress, showsProgress: true)

@@ -105,12 +105,18 @@ struct SignedInPlaceholderView: View {
     var body: some View {
         OnboardingScreen(pill: "DIP") {
             OnboardingStatusView(state: .empty(
-                title: firstName.map { "You're in, \($0)" } ?? "You're in",
-                message: "Your company's events will appear here.",
+                title: firstName.map {
+                    String(localized: "accounts.placeholder.titleNamed", defaultValue: "You're in, \($0)",
+                           comment: "Signed-in placeholder title; %@ = member first name")
+                } ?? String(localized: "accounts.placeholder.title", defaultValue: "You're in",
+                            comment: "Signed-in placeholder title when no first name is known"),
+                message: String(localized: "accounts.placeholder.message", defaultValue: "Your company's events will appear here.",
+                                comment: "Signed-in placeholder body"),
                 face: OnboardingFace(fill: OnboardingTheme.accent, figure: .round, mood: .wink, size: 120),
                 cardFill: OnboardingTheme.notification))
         } actions: {
-            OnboardingButton("Sign out", emphasis: .secondary) { Task { await session.signOut() } }
+            OnboardingButton(String(localized: "accounts.placeholder.signOut", defaultValue: "Sign out",
+                                    comment: "Signed-in placeholder button that signs the member out"), emphasis: .secondary) { Task { await session.signOut() } }
         }
     }
 }

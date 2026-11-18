@@ -108,11 +108,11 @@ struct ProfileHeaderCard: View {
         let free = DIPProfileScreen.availabilityLabels(profile.availability)
         return VStack(alignment: .leading, spacing: 14) {
             row("briefcase", profile.jobTitle.isEmpty ? nil : profile.jobTitle,
-                placeholder: "Add your job title", id: "jobTitle")
+                placeholder: String(localized: "profile.about.jobTitle.add", defaultValue: "Add your job title", comment: "Profile header: prompt when no job title is set"), id: "jobTitle")
             row("calendar", free.isEmpty ? nil : free.joined(separator: ", "),
-                placeholder: "Add when you're free", id: "availability")
+                placeholder: String(localized: "profile.about.availability.add", defaultValue: "Add when you're free", comment: "Profile header: prompt when no availability is set"), id: "availability")
             row("figure.walk", profile.travelRadiusMiles.map { DIPProfileScreen.radiusPhrase($0) },
-                placeholder: "Add how far you'll travel", id: "radius")
+                placeholder: String(localized: "profile.about.radius.add", defaultValue: "Add how far you'll travel", comment: "Profile header: prompt when no travel radius is set"), id: "radius")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -173,7 +173,7 @@ struct ProfileHeaderCard: View {
                         .background(.white, in: Capsule())
                 }
                 Button(action: onAddInterests) {
-                    Label(profile.interestTagIDs.isEmpty ? "Add interests" : "Add", systemImage: "plus")
+                    Label(profile.interestTagIDs.isEmpty ? String(localized: "profile.interests.addFirst", defaultValue: "Add interests", comment: "Profile header: button to add interests when none are chosen") : String(localized: "profile.interests.add", defaultValue: "Add", comment: "Profile header: button to add more interests"), systemImage: "plus")
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 13))
                         .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor)
                         .padding(.horizontal, 14).dipFixedFrame(height: 32)

@@ -162,7 +162,7 @@ struct DIPDuoRail: View {
                     .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(tab.rawValue)
+                .accessibilityLabel(tab.title)
                 .accessibilityIdentifier("home.tab.\(tab.id)")
                 .accessibilityAddTraits(tab == selected ? .isSelected : [])
             }
@@ -184,7 +184,8 @@ struct DIPDuoRail: View {
                 .frame(width: 56, height: 56).contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Notifications, \(unreadCount) unread")
+            .accessibilityLabel(String(localized: "duo.rail.notifications.a11y", defaultValue: "Notifications, \(unreadCount) unread",
+                                         comment: "VoiceOver label of the notifications button in the Duo navigation rail; %lld = unread count"))
             .accessibilityIdentifier("home.notifications")
         }
         .padding(6).padding(.vertical, 4)
@@ -194,7 +195,7 @@ struct DIPDuoRail: View {
         .frame(width: columnWidth, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Main navigation")
+        .accessibilityLabel(Text("Main navigation", comment: "VoiceOver label of the Duo navigation rail"))
         .accessibilityIdentifier("duo.rail")
     }
 }
@@ -202,7 +203,11 @@ struct DIPDuoRail: View {
 /// Detail pane with nothing open (no events yet): a designed empty state, not a blank pane.
 struct DIPDuoDetailPlaceholder: View {
     var body: some View {
-        DIPEmptyState(screen: "duo-detail", title: "Pick an activity", message: "Its details open here.")
+        DIPEmptyState(screen: "duo-detail",
+                      title: String(localized: "duo.detail.empty.title", defaultValue: "Pick an activity",
+                                    comment: "Duo detail pane empty state title when no event is open"),
+                      message: String(localized: "duo.detail.empty.message", defaultValue: "Its details open here.",
+                                      comment: "Duo detail pane empty state message when no event is open"))
             .padding(.horizontal, 40)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.white)

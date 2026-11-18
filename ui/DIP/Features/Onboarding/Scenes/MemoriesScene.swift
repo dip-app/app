@@ -17,14 +17,20 @@ struct MemoriesScene: DemoScene {
         MemoriesTimeline.continuous(&state, at: t)
     }
 
-    let description = "Example: the My Events tab holds your upcoming and past events. A past event opens its photo album, where you can add your own photos."
+    var description: String {
+        String(localized: "onboarding.memories.demo.description",
+               defaultValue: "Example: the My Events tab holds your upcoming and past events. A past event opens its photo album, where you can add your own photos.",
+               comment: "VoiceOver description of the memories onboarding demo")
+    }
     let hostFace = CrewMember.gray
     var stageFill: Color { OnboardingTheme.notification }
-    let accessibilityRows = [
-        DemoAccessibilityRow(systemImage: "square.grid.2x2", text: "My Events holds upcoming and past events"),
-        DemoAccessibilityRow(systemImage: "clock.arrow.circlepath", text: "Past events keep their photo album"),
-        DemoAccessibilityRow(systemImage: "photo.badge.plus", text: "Add your own photos"),
-    ]
+    var accessibilityRows: [DemoAccessibilityRow] {
+        [
+            DemoAccessibilityRow(systemImage: "square.grid.2x2", text: String(localized: "onboarding.memories.demo.row1", defaultValue: "My Events holds upcoming and past events", comment: "Onboarding demo text row shown at accessibility text sizes")),
+            DemoAccessibilityRow(systemImage: "clock.arrow.circlepath", text: String(localized: "onboarding.memories.demo.row2", defaultValue: "Past events keep their photo album", comment: "Onboarding demo text row shown at accessibility text sizes")),
+            DemoAccessibilityRow(systemImage: "photo.badge.plus", text: String(localized: "onboarding.memories.demo.row3", defaultValue: "Add your own photos", comment: "Onboarding demo text row shown at accessibility text sizes")),
+        ]
+    }
 
     var you = OnboardingYou.preview
 
@@ -71,12 +77,12 @@ struct MemoriesCanvas: View {
             DemoMiniBar(selected: state.selectedTab == .events ? .events : .home, action: barAction)
             if state.callout == .myEvents || state.myEventsCallout > 0 {
                 // Aimed at the real My Events tab (3rd of 4), not the bar's centre.
-                DemoCallout(text: "My Events", tail: .bottom, appearance: state.myEventsCallout)
+                DemoCallout(text: String(localized: "onboarding.memories.demo.callout.myEvents", defaultValue: "My Events", comment: "Memories onboarding demo callout pointing at the My Events tab"), tail: .bottom, appearance: state.myEventsCallout)
                     .fixedSize()
                     .position(x: DemoMiniBar.tabCenter(.events).x, y: 418)
             }
             if state.callout == .past || state.pastCallout > 0 {
-                DemoCallout(text: "Past events", tail: .bottom, appearance: state.pastCallout)
+                DemoCallout(text: String(localized: "onboarding.memories.demo.callout.past", defaultValue: "Past events", comment: "Memories onboarding demo callout pointing at the past events section"), tail: .bottom, appearance: state.pastCallout)
                     .fixedSize()
                     .position(x: MemoriesTimeline.Point.pastCard.x, y: MemoriesTimeline.Point.pastCard.y - 70)
             }
@@ -90,7 +96,7 @@ struct MemoriesCanvas: View {
     /// its album. B4 opens on B3's entry action (a placeholder until F3).
     private var barAction: DIPBottomBarAction? {
         switch state.bar {
-        case .entry: DIPBottomBarAction(title: "Add Your Entry", identifier: "onboarding.demo.entry")
+        case .entry: DIPBottomBarAction(title: String(localized: "onboarding.demo.addEntry", defaultValue: "Add Your Entry", comment: "Onboarding demo bottom bar button for adding a challenge entry"), identifier: "onboarding.demo.entry")
         case .tabs: nil
         case .viewAlbum:
             EventBarAction.resolve(route: .event(Fixtures.pastEventID), snapshot: Fixtures.snapshot, isLoading: false)

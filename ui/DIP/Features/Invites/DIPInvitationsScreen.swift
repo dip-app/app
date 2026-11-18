@@ -38,8 +38,8 @@ struct DIPInvitationsScreen: View {
         VStack(spacing: 0) {
             header
             DIPSegmentedToggle(
-                segments: [.init(id: Tab.received, title: model.badgeCount > 0 ? "Received (\(model.badgeCount))" : "Received", identifier: "invitations.segment.received"),
-                           .init(id: Tab.sent, title: "Sent", identifier: "invitations.segment.sent")],
+                segments: [.init(id: Tab.received, title: model.badgeCount > 0 ? String(localized: "invitations.tab.receivedCount", defaultValue: "Received (\(model.badgeCount))", comment: "Invitations tab title with unread count; %lld = number of pending invitations") : String(localized: "invitations.tab.received", defaultValue: "Received", comment: "Invitations tab title for invitations the member received"), identifier: "invitations.segment.received"),
+                           .init(id: Tab.sent, title: String(localized: "invitations.tab.sent", defaultValue: "Sent", comment: "Invitations tab title for invitations the member sent"), identifier: "invitations.segment.sent")],
                 selection: tab, accent: DIPTokens.Color.actionPrimary.swiftUIColor, height: 50, fontSize: 18
             ) { newTab in
                 // Switching tabs is navigation: silent.
@@ -76,7 +76,7 @@ struct DIPInvitationsScreen: View {
     }
 
     private var header: some View {
-        InviteSheetHeader(title: "Invitations", closeIdentifier: "invitations.close", onClose: onClose)
+        InviteSheetHeader(title: String(localized: "invitations.title", defaultValue: "Invitations", comment: "Invitations sheet title"), closeIdentifier: "invitations.close", onClose: onClose)
     }
 
     /// Informational (outlined): the list below is the last one received.
@@ -100,8 +100,8 @@ struct DIPInvitationsScreen: View {
         if model.invites == nil {
             switch model.phase {
             case .failed(let message):
-                DIPEmptyState(screen: "invitations-error", title: "Couldn’t load invitations", message: message, faces: 3,
-                              actionTitle: "Try again", action: { DIPHaptics.commit(); onRetry() })
+                DIPEmptyState(screen: "invitations-error", title: String(localized: "invitations.error.title", defaultValue: "Couldn’t load invitations", comment: "Invitations: error state title"), message: message, faces: 3,
+                              actionTitle: String(localized: "invites.retry", defaultValue: "Try again", comment: "Invitations: retry button on an error state"), action: { DIPHaptics.commit(); onRetry() })
             default: loading
             }
         } else {
@@ -133,8 +133,8 @@ struct DIPInvitationsScreen: View {
 
     @ViewBuilder private func received(_ inbox: DIPInviteInbox) -> some View {
         if inbox.isEmptyReceived {
-            DIPEmptyState(screen: "invitations-received", title: "No invitations yet",
-                          message: "When a coworker invites you to an activity, it shows up here.")
+            DIPEmptyState(screen: "invitations-received", title: String(localized: "invitations.received.empty.title", defaultValue: "No invitations yet", comment: "Invitations received: empty state title"),
+                          message: String(localized: "invitations.received.empty.message", defaultValue: "When a coworker invites you to an activity, it shows up here.", comment: "Invitations received: empty state message"))
                 .transition(.opacity)
         } else {
             VStack(alignment: .leading, spacing: 12) {
@@ -142,7 +142,7 @@ struct DIPInvitationsScreen: View {
                     receivedCard(invite).transition(InviteMotion.exit(reduceMotion: reduceMotion))
                 }
                 if !inbox.accepted.isEmpty {
-                    Text("Going").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.black)
+                    Text("Going", comment: "Invitations received: section header for accepted invitations").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.black)
                         .padding(.top, 8).accessibilityAddTraits(.isHeader)
                         .transition(.opacity)
                     ForEach(inbox.accepted) { invite in
@@ -150,7 +150,7 @@ struct DIPInvitationsScreen: View {
                     }
                 }
                 if !inbox.cancelled.isEmpty {
-                    Text("Cancelled").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.black)
+                    Text("Cancelled", comment: "Invitations received: section header for invitations the member cancelled their RSVP for").font(DIPReferenceAssets.font("Figtree-Regular", size: 18)).foregroundStyle(.black)
                         .padding(.top, 8).accessibilityAddTraits(.isHeader)
                         .accessibilityLabel("Cancelled: you cancelled your RSVP")
                         .transition(.opacity)
@@ -212,15 +212,15 @@ struct DIPInvitationsScreen: View {
             } else {
                 HStack(spacing: 10) {
                     // Accept is the strong action (solid ink); Decline is the lighter secondary.
-                    answerButton("Accept", fill: DIPTokens.Color.navigationBackground.swiftUIColor, text: .white, busy: busy,
+                    answerButton(String(localized: "invitations.accept", defaultValue: "Accept", comment: "Invitations: button to accept an invitation"), fill: DIPTokens.Color.navigationBackground.swiftUIColor, text: .white, busy: busy,
                                  id: "invitations.accept.\(invite.id)") { answer(invite, accept: true) }
                         .disabled(refused).opacity(refused ? 0.4 : 1)
-                    answerButton("Decline", fill: DIPTokens.Color.surfaceMuted.swiftUIColor, text: DIPTokens.Color.textPrimary.swiftUIColor,
+                    answerButton(String(localized: "invitations.decline", defaultValue: "Decline", comment: "Invitations: button to decline an invitation"), fill: DIPTokens.Color.surfaceMuted.swiftUIColor, text: DIPTokens.Color.textPrimary.swiftUIColor,
                                  busy: false, id: "invitations.decline.\(invite.id)") { answer(invite, accept: false) }
                 }
                 .disabled(busy)
                 if let failure {
-                    InviteNotice(text: refused ? "\(failure.message) You can decline this invitation." : "\(failure.message) Tap Accept to try again.",
+                    InviteNotice(text: refused ? String(localized: "invitations.error.refused", defaultValue: "\(failure.message) You can decline this invitation.", comment: "Invitations: error under a card that cannot be accepted; %@ = reason sentence") : String(localized: "invitations.error.retryAccept", defaultValue: "\(failure.message) Tap Accept to try again.", comment: "Invitations: error under a card where accepting may work on retry; %@ = reason sentence"),
                                  identifier: "invitations.error.\(invite.id)")
                 }
             }
@@ -228,7 +228,7 @@ struct DIPInvitationsScreen: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.08), in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card))
         .onChange(of: failure) { _, new in
-            if let new { AccessibilityNotification.Announcement(new == .alreadyAnswered ? "Already answered" : new.message).post() }
+            if let new { AccessibilityNotification.Announcement(new == .alreadyAnswered ? String(localized: "invitations.answered", defaultValue: "Already answered", comment: "Invitations: shown when the invitation was already answered elsewhere") : new.message).post() }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("invitations.card.\(invite.id)")
@@ -245,7 +245,7 @@ struct DIPInvitationsScreen: View {
             .contentShape(Capsule())
         }
         .buttonStyle(DIPPressFeedbackStyle())
-        .accessibilityLabel(busy ? "\(title), in progress" : title)
+        .accessibilityLabel(busy ? String(localized: "invitations.button.inProgress", defaultValue: "\(title), in progress", comment: "VoiceOver label for a button that is working; %@ = button title") : title)
         .accessibilityIdentifier(id)
     }
 
@@ -260,7 +260,7 @@ struct DIPInvitationsScreen: View {
                 return
             }
             DIPHaptics.success()
-            let message = accept ? "You’re going to \(invite.eventTitle)" : "Declined \(invite.personName)’s invitation"
+            let message = accept ? String(localized: "invitations.toast.accepted", defaultValue: "You’re going to \(invite.eventTitle)", comment: "Toast and announcement after accepting an invitation; %@ = activity title") : String(localized: "invitations.toast.declined", defaultValue: "Declined \(invite.personName)’s invitation", comment: "Toast and announcement after declining; %@ = name of the person who invited")
             AccessibilityNotification.Announcement(message).post()
             show(toast: message)
         }
@@ -298,7 +298,7 @@ struct DIPInvitationsScreen: View {
                     nameAndChip {
                         Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         Spacer(minLength: 4)
-                        statusChip("Going", color: DIPTokens.Color.eventsAccent.swiftUIColor)
+                        statusChip(String(localized: "invitations.chip.going", defaultValue: "Going", comment: "Invitations: outlined chip on an accepted invitation"), color: DIPTokens.Color.eventsAccent.swiftUIColor)
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
@@ -320,7 +320,7 @@ struct DIPInvitationsScreen: View {
         let failure = model.rejoinErrors[invite.id]
         // Full may clear when someone leaves, so Rejoin stays on; closed, cancelled or gone will not come back.
         let blocked = failure.map { $0 != .full && !$0.isRetryable } ?? false
-        let reason = failure.map { blocked ? $0.message : $0.isRetryable ? "\($0.message) Tap Rejoin to try again." : "\($0.message) Check back if a spot opens." }
+        let reason = failure.map { blocked ? $0.message : $0.isRetryable ? String(localized: "invitations.rejoin.retry", defaultValue: "\($0.message) Tap Rejoin to try again.", comment: "Invitations: rejoin error that may work on retry; %@ = reason sentence") : String(localized: "invitations.rejoin.checkBack", defaultValue: "\($0.message) Check back if a spot opens.", comment: "Invitations: rejoin error when the activity is full; %@ = reason sentence") }
         return HStack(alignment: .top, spacing: 12) {
             DIPMedia(invite.avatar).resizable().frame(width: 50, height: 50).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
@@ -328,7 +328,7 @@ struct DIPInvitationsScreen: View {
                     nameAndChip {
                         Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         Spacer(minLength: 4)
-                        statusChip("Cancelled", color: Color.black.opacity(0.62), spoken: "You cancelled your RSVP")
+                        statusChip(String(localized: "invitations.chip.cancelled", defaultValue: "Cancelled", comment: "Invitations: outlined chip when the member cancelled their RSVP"), color: Color.black.opacity(0.62), spoken: String(localized: "invitations.chip.cancelled.spoken", defaultValue: "You cancelled your RSVP", comment: "VoiceOver label of the Cancelled chip"))
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
@@ -349,7 +349,7 @@ struct DIPInvitationsScreen: View {
                     }
                     .buttonStyle(DIPPressFeedbackStyle())
                     .disabled(busy || blocked).opacity(blocked ? 0.4 : 1)
-                    .accessibilityLabel(busy ? "Rejoin \(invite.eventTitle), in progress" : "Rejoin \(invite.eventTitle)")
+                    .accessibilityLabel(busy ? String(localized: "invitations.rejoin.a11y.busy", defaultValue: "Rejoin \(invite.eventTitle), in progress", comment: "VoiceOver label of the Rejoin button while working; %@ = activity title") : String(localized: "invitations.rejoin.a11y", defaultValue: "Rejoin \(invite.eventTitle)", comment: "VoiceOver label of the Rejoin button; %@ = activity title"))
                     // VoiceOver reads why Rejoin is off.
                     .accessibilityHint(blocked ? (reason ?? "") : "")
                     .accessibilityIdentifier("invitations.rejoin.\(invite.id)")
@@ -374,7 +374,7 @@ struct DIPInvitationsScreen: View {
                 return
             }
             DIPHaptics.success()
-            let message = "You’re going to \(invite.eventTitle) again"
+            let message = String(localized: "invitations.toast.rejoined", defaultValue: "You’re going to \(invite.eventTitle) again", comment: "Toast and announcement after rejoining an activity; %@ = activity title")
             AccessibilityNotification.Announcement(message).post()
             show(toast: message)
         }
@@ -400,8 +400,8 @@ struct DIPInvitationsScreen: View {
 
     @ViewBuilder private func sent(_ inbox: DIPInviteInbox) -> some View {
         if inbox.sent.isEmpty {
-            DIPEmptyState(screen: "invitations-sent", title: "You haven’t invited anyone",
-                          message: "Open an activity and choose Invite a Coworker.")
+            DIPEmptyState(screen: "invitations-sent", title: String(localized: "invitations.sent.empty.title", defaultValue: "You haven’t invited anyone", comment: "Invitations sent: empty state title"),
+                          message: String(localized: "invitations.sent.empty.message", defaultValue: "Open an activity and choose Invite a Coworker.", comment: "Invitations sent: empty state message"))
         } else {
             VStack(spacing: 0) {
                 ForEach(inbox.sent) { invite in
@@ -422,7 +422,7 @@ struct DIPInvitationsScreen: View {
                     nameAndChip {
                         Text(invite.personName).font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .body)).dipLineLimit(1)
                         Spacer(minLength: 4)
-                        statusChip(label.rawValue, color: color(label))
+                        statusChip(label.localizedTitle, color: color(label))
                     }
                     Text("\(invite.eventTitle) · \(DIPInviteInbox.shortWhenText(invite.eventStart))")
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .callout)).foregroundStyle(.secondary)
@@ -433,7 +433,7 @@ struct DIPInvitationsScreen: View {
             .frame(minHeight: 75).contentShape(Rectangle())
         }
         .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
-        .accessibilityLabel("\(invite.personName), \(invite.eventTitle), \(label.rawValue)")
+        .accessibilityLabel("\(invite.personName), \(invite.eventTitle), \(label.localizedTitle)")
         .accessibilityHint("Open activity")
         .accessibilityIdentifier("invitations.sent.\(invite.id)")
     }

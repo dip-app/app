@@ -67,22 +67,30 @@ struct DemoEvent: Identifiable, Sendable {
 
 enum OnboardingDemoFixtures {
     /// Social activities first; the one fitness cover is fifth (spec §1 principle 4).
-    static let feed: [DemoEvent] = [
-        DemoEvent(id: "board-game-lunch", title: "Board Game Lunch", locality: "4th floor lounge",
+    static var feed: [DemoEvent] { [
+        DemoEvent(id: "board-game-lunch", title: String(localized: "onboarding.demo.event.boardGame.title", defaultValue: "Board Game Lunch", comment: "Sample event title in the onboarding demo feed"),
+                  locality: String(localized: "onboarding.demo.event.boardGame.locality", defaultValue: "4th floor lounge", comment: "Sample event location in the onboarding demo feed"),
                   cover: "cover_games", crew: [.purple, .yellow, .gray], attendeeCount: 5),
-        DemoEvent(id: "pasta-night", title: "Pasta Night", locality: "Office kitchen",
+        DemoEvent(id: "pasta-night", title: String(localized: "onboarding.demo.event.pasta.title", defaultValue: "Pasta Night", comment: "Sample event title in the onboarding demo feed"),
+                  locality: String(localized: "onboarding.demo.event.pasta.locality", defaultValue: "Office kitchen", comment: "Sample event location in the onboarding demo feed"),
                   cover: "cover_cooking", crew: [.purple, .yellow, .gray], attendeeCount: 5),
-        DemoEvent(id: "saturday-hike", title: "Saturday Hike", locality: "Ridge trail",
+        DemoEvent(id: "saturday-hike", title: String(localized: "onboarding.demo.event.hike.title", defaultValue: "Saturday Hike", comment: "Sample event title in the onboarding demo feed"),
+                  locality: String(localized: "onboarding.demo.event.hike.locality", defaultValue: "Ridge trail", comment: "Sample event location in the onboarding demo feed"),
                   cover: "cover_hiking", crew: [.white, .gray], attendeeCount: 4),
-        DemoEvent(id: "kayak-morning", title: "Kayak Morning", locality: "Harbor dock",
+        DemoEvent(id: "kayak-morning", title: String(localized: "onboarding.demo.event.kayak.title", defaultValue: "Kayak Morning", comment: "Sample event title in the onboarding demo feed"),
+                  locality: String(localized: "onboarding.demo.event.kayak.locality", defaultValue: "Harbor dock", comment: "Sample event location in the onboarding demo feed"),
                   cover: "cover_outdoors", crew: [.yellow], attendeeCount: 2),
-        DemoEvent(id: "lunchtime-yoga", title: "Lunchtime Yoga", locality: "Studio B",
+        DemoEvent(id: "lunchtime-yoga", title: String(localized: "onboarding.demo.event.yoga.title", defaultValue: "Lunchtime Yoga", comment: "Sample event title in the onboarding demo feed"),
+                  locality: String(localized: "onboarding.demo.event.yoga.locality", defaultValue: "Studio B", comment: "Sample event location in the onboarding demo feed"),
                   cover: "cover_fitness", crew: [.white, .purple], attendeeCount: 3),
-    ]
+    ] }
 
     static var pastaNight: DemoEvent { feed[1] }
     static let pastaCapacity = 12
-    static let pastaTags = ["Food", "Social"]
+    static var pastaTags: [String] {
+        [String(localized: "onboarding.demo.tag.food", defaultValue: "Food", comment: "Sample event tag in the onboarding demo"),
+         String(localized: "onboarding.demo.tag.social", defaultValue: "Social", comment: "Sample event tag in the onboarding demo")]
+    }
 
 
     /// Fictional venue for the demo's Directions link; the canvas has hit testing off, so it never opens.
@@ -93,7 +101,9 @@ enum OnboardingDemoFixtures {
     static func pastaDetail(joined: Bool, avatars: [MediaReference]) -> DIPEventDetail {
         DIPEventDetail(
             id: pastaNight.id, title: pastaNight.title, image: .asset(pastaNight.cover),
-            timing: "Thu · 6:30 PM", description: "Fresh pasta and a long table.", tags: pastaTags,
+            timing: String(localized: "onboarding.demo.pasta.timing", defaultValue: "Thu · 6:30 PM", comment: "Sample event day and time in the onboarding demo"),
+            description: String(localized: "onboarding.demo.pasta.description", defaultValue: "Fresh pasta and a long table.", comment: "Sample event description in the onboarding demo"),
+            tags: pastaTags,
             isJoined: joined, attendeeCount: joined ? 6 : 5, attendeeAvatars: avatars)
     }
 }

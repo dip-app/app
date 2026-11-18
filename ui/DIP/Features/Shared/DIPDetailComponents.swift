@@ -77,7 +77,7 @@ struct DIPCalendarPill: View {
     var body: some View {
         HStack(spacing: 8) {
             icon
-            Text(state == .added ? "Added" : label)
+            Text(state == .added ? String(localized: "calendar.pill.added", defaultValue: "Added", comment: "Date pill label once the activity is in the calendar") : label)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .multilineTextAlignment(.center)
@@ -177,7 +177,7 @@ struct DIPDetailPeopleRow: View {
     let avatars: [MediaReference]
     let total: Int
     /// Shown, with `emptyText` beneath it, when `total` is 0.
-    var emptyTitle: String = "Be the first"
+    var emptyTitle: String = String(localized: "detail.people.beTheFirst", defaultValue: "Be the first", comment: "Default empty-state title above the attendee list when nobody has joined")
     let emptyText: String
     /// When set, the header shows how full the event is ("2 of 15", or "Full"), so capacity needs no row of its own.
     var capacity: Int? = nil
@@ -205,10 +205,10 @@ struct DIPDetailPeopleRow: View {
                 }
                 if let capacity {
                     Spacer(minLength: 8)
-                    Text(total >= capacity ? "Full" : "\(total) of \(capacity)")
+                    Text(total >= capacity ? String(localized: "detail.capacity.full", defaultValue: "Full", comment: "Header note on the attendee row when the activity has no spots left") : String(localized: "detail.capacity.count", defaultValue: "\(total) of \(capacity)", comment: "Header note on the attendee row; first %lld = people going, second %lld = capacity"))
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                         .foregroundStyle(.secondary)
-                        .accessibilityLabel(total >= capacity ? "Full, \(capacity) places" : "\(total) of \(capacity) places taken")
+                        .accessibilityLabel(total >= capacity ? String(localized: "detail.capacity.full.accessibility", defaultValue: "Full, \(capacity) places", comment: "VoiceOver label of the capacity note when full; %lld = capacity") : String(localized: "detail.capacity.count.accessibility", defaultValue: "\(total) of \(capacity) places taken", comment: "VoiceOver label of the capacity note; first %lld = people going, second %lld = capacity"))
                         .accessibilityIdentifier("\(identifierPrefix).capacity")
                 }
             }
@@ -223,7 +223,7 @@ struct DIPDetailPeopleRow: View {
                             .accessibilityHidden(true)
                     }
                     Button(action: onMore) {
-                        Text(remaining > 0 ? "+ \(remaining) More" : "See all")
+                        Text(remaining > 0 ? String(localized: "detail.people.more", defaultValue: "+ \(remaining) More", comment: "Pill under the attendee avatars; %lld = how many more attendees are not shown") : String(localized: "detail.people.seeAll", defaultValue: "See all", comment: "Pill under the attendee avatars when every attendee is shown"))
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 40)
@@ -233,7 +233,7 @@ struct DIPDetailPeopleRow: View {
                             .dipHitSlop(vertical: 2)
                     }
                     .buttonStyle(DIPPressFeedbackStyle())
-                    .accessibilityLabel("View all \(total) \(total == 1 ? "attendee" : "attendees")")
+                    .accessibilityLabel(String(localized: "detail.people.viewAll.accessibility", defaultValue: "View all \(total) attendees", comment: "VoiceOver label of the attendee pill; %lld = number of attendees"))
                     .accessibilityIdentifier("\(identifierPrefix).attendees")
                 }
             }
@@ -249,7 +249,7 @@ struct DIPDetailActionRow: View {
     /// Directions, so the page always shows exactly two pills (never a lone pill, never a disabled-looking Invite).
     struct InviteAction {
         /// Spoken label, e.g. "Invite a coworker to Puppy Yoga".
-        var accessibilityLabel = "Invite a coworker"
+        var accessibilityLabel = String(localized: "detail.invite.accessibility", defaultValue: "Invite a coworker", comment: "Default VoiceOver label of the invite pill")
         let action: () -> Void
     }
 
@@ -257,7 +257,7 @@ struct DIPDetailActionRow: View {
     var showsParticipation = true
     var joinInRow = true
     var directionsURL: URL? = nil
-    var directionsTitle = "Directions"
+    var directionsTitle = String(localized: "detail.directions", defaultValue: "Directions", comment: "Pill that opens map directions to the activity")
     let isParticipating: Bool
     let canChange: Bool
     let joinTitle: String
@@ -277,7 +277,7 @@ struct DIPDetailActionRow: View {
             if !joinInRow {
                 if showsParticipation, let invite {
                     Button(action: invite.action) {
-                        label("Invite Coworker", background: DIPTokens.Color.actionPrimary.swiftUIColor) {
+                        label(String(localized: "detail.invite.title", defaultValue: "Invite Coworker", comment: "Pill that opens the coworker picker to invite someone to the activity"), background: DIPTokens.Color.actionPrimary.swiftUIColor) {
                             Image(systemName: "person.badge.plus").resizable().scaledToFit()
                                 .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
                         }
@@ -333,7 +333,9 @@ struct DIPDetailActionRow: View {
         .animation(.easeInOut(duration: 0.2), value: invite != nil)
         .onChange(of: invite != nil) { _, available in
             // The first pill swaps in place; tell VoiceOver users, who cannot see the cross-fade.
-            AccessibilityNotification.Announcement(available ? "Invite Coworker is available" : "Invite Coworker is no longer available. Directions is shown instead.").post()
+            AccessibilityNotification.Announcement(available
+                ? String(localized: "detail.invite.announce.available", defaultValue: "Invite Coworker is available", comment: "VoiceOver announcement when the invite pill appears")
+                : String(localized: "detail.invite.announce.unavailable", defaultValue: "Invite Coworker is no longer available. Directions is shown instead.", comment: "VoiceOver announcement when the invite pill is replaced by Directions")).post()
         }
     }
 

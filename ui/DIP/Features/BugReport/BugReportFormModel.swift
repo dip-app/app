@@ -64,29 +64,29 @@ final class BugReportFormModel {
         switch phase {
         case .editing:
             draft.canSend
-                ? .init(title: "Send report", identifier: "report.send", icon: "system:paperplane", kind: .commit)
-                : .init(title: "Send report", style: .complete, identifier: "report.send",
-                        value: "Add a category or a description")
+                ? .init(title: String(localized: "bugreport.bar.send", defaultValue: "Send report", comment: "Report a problem sheet: bottom bar send button"), identifier: "report.send", icon: "system:paperplane", kind: .commit)
+                : .init(title: String(localized: "bugreport.bar.send", defaultValue: "Send report", comment: "Report a problem sheet: bottom bar send button"), style: .complete, identifier: "report.send",
+                        value: String(localized: "bugreport.bar.needsInput", defaultValue: "Add a category or a description", comment: "Report a problem sheet: hint on the disabled send button"))
         case .sending:
-            .init(title: "Sending…", identifier: "report.sending", showsProgress: true)
+            .init(title: String(localized: "bugreport.bar.sending", defaultValue: "Sending…", comment: "Report a problem sheet: bottom bar while sending"), identifier: "report.sending", showsProgress: true)
         case .sent:
-            .init(title: "Thanks! Report sent", style: .accent, identifier: "report.sent", icon: "system:checkmark")
+            .init(title: String(localized: "bugreport.bar.sent", defaultValue: "Thanks! Report sent", comment: "Report a problem sheet: bottom bar after the report was sent"), style: .accent, identifier: "report.sent", icon: "system:checkmark")
         case .queued:
-            .init(title: "Saved. We’ll send it when you’re online", style: .accent, identifier: "report.queued",
+            .init(title: String(localized: "bugreport.bar.queued", defaultValue: "Saved. We’ll send it when you’re online", comment: "Report a problem sheet: bottom bar when the report was queued offline"), style: .accent, identifier: "report.queued",
                   icon: "system:clock")
         case .failed(.rateLimited):
-            .init(title: "Close", identifier: "report.close")
+            .init(title: String(localized: "bugreport.bar.close", defaultValue: "Close", comment: "Report a problem sheet: bottom bar close button after rate limiting"), identifier: "report.close")
         case .failed:
-            .init(title: "Try again", identifier: "report.retry", kind: .commit)
+            .init(title: String(localized: "bugreport.bar.retry", defaultValue: "Try again", comment: "Report a problem sheet: bottom bar retry after a failed send"), identifier: "report.retry", kind: .commit)
         }
     }
 
     var failureMessage: String? {
         switch failure {
         case nil: nil
-        case .rateLimited?: "You’ve sent a lot of reports today. Please try again later."
-        case .rejected?: "We couldn’t accept this report. Check the text and try again."
-        default: "Couldn’t send your report. Your text and screenshot are kept."
+        case .rateLimited?: String(localized: "bugreport.error.rateLimited", defaultValue: "You’ve sent a lot of reports today. Please try again later.", comment: "Report a problem sheet: error when the daily report limit is reached")
+        case .rejected?: String(localized: "bugreport.error.rejected", defaultValue: "We couldn’t accept this report. Check the text and try again.", comment: "Report a problem sheet: error when the server rejected the report")
+        default: String(localized: "bugreport.error.generic", defaultValue: "Couldn’t send your report. Your text and screenshot are kept.", comment: "Report a problem sheet: generic send error")
         }
     }
 

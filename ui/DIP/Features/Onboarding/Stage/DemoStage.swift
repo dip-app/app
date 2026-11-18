@@ -197,7 +197,7 @@ struct DemoStage<Scene: DemoScene>: View {
         // `.contain` (not `.ignore`) so the Replay button stays an accessibility element; the drawing itself is hidden
         // below and described by this container's value.
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Example"))
+        .accessibilityLabel(Text("Example", comment: "VoiceOver label of the onboarding demo stage"))
         .accessibilityValue(Text(scene.description))
         .accessibilityIdentifier("onboarding.stage")
         .onAppear {
@@ -284,7 +284,7 @@ struct DemoStage<Scene: DemoScene>: View {
         }
         .buttonStyle(DIPPressFeedbackStyle())
         // Reachable by Voice Control ("Tap Replay") and VoiceOver: the stage container keeps its children visible for it.
-        .accessibilityLabel(Text("Replay"))
+        .accessibilityLabel(Text("Replay", comment: "VoiceOver label of the button that replays the onboarding demo"))
         .accessibilityIdentifier("onboarding.stage.replay")
     }
 

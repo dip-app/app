@@ -1,0 +1,78 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCalendarsFullAccessUsageDescription" : {
+      "comment" : "Permission prompt: why DIP reads the calendar (overlap warnings).",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DIP checks your calendar on this iPhone to warn you when an activity overlaps something you already have. Your calendar never leaves your phone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DIP revisa tu calendario en este iPhone para avisarte cuando una actividad se superpone con algo que ya tienes. Tu calendario nunca sale de tu teléfono."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "De'wI'vam DIP jajmeylIj legh. Qu'mey ghom ghaj 'ej Qagh yIQoy. jajmeylIj De'wI'lIj vem mej."
+          }
+        }
+      }
+    },
+    "NSCalendarsWriteOnlyAccessUsageDescription" : {
+      "comment" : "Permission prompt: why DIP adds events to the calendar.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DIP adds activities you choose to your calendar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DIP agrega a tu calendario las actividades que elijas."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DIP Qu' DawIvbogh jajmeylIj chelmoH."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Permission prompt: why DIP saves photos to the library.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Save event photos to your library."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda las fotos de los eventos en tu biblioteca."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI' mIllogh mIllogh ghomlIj yIpol."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

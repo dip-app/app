@@ -62,7 +62,7 @@ struct BugReportSheet: View {
 
     private var header: some View {
         HStack(spacing: DIPTokens.Spacing.related) {
-            DIPHeader(title: "Report a problem")
+            DIPHeader(title: String(localized: "bugreport.title", defaultValue: "Report a problem", comment: "Report a problem sheet: title"))
             Button {
                 if model.needsDiscardConfirmation { showsDiscard = true } else { dismiss() }
             } label: {
@@ -137,8 +137,8 @@ struct BugReportSheet: View {
             .accessibilityHint("Optional. Up to 1,000 characters.")
             .accessibilityIdentifier("report.description")
             if model.draft.showsCounter || model.trimmedNotice {
-                Text(model.trimmedNotice ? "Trimmed to 1,000 characters"
-                     : "\(model.draft.characterCount) / \(BugReportDraft.maximumCharacters)")
+                Text(model.trimmedNotice ? String(localized: "bugreport.description.trimmed", defaultValue: "Trimmed to 1,000 characters", comment: "Report sheet: notice when the description was cut at the limit")
+                     : String(localized: "bugreport.description.counter", defaultValue: "\(model.draft.characterCount) / \(BugReportDraft.maximumCharacters)", comment: "Report sheet: character counter; first %lld = characters typed, second %lld = maximum"))
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
                     .foregroundStyle(ink.opacity(model.draft.isNearLimit ? 1 : 0.72))
                     .accessibilityIdentifier("report.counter")
@@ -156,19 +156,19 @@ struct BugReportSheet: View {
                     .opacity(included ? 1 : 0.3)
                     .accessibilityElement()
                     .accessibilityLabel("Screenshot of \(Self.screenName(model.session.screen))")
-                    .accessibilityValue(included ? "Included" : "Not included")
+                    .accessibilityValue(included ? String(localized: "bugreport.screenshot.included", defaultValue: "Included", comment: "Report sheet VoiceOver value: screenshot will be sent") : String(localized: "bugreport.screenshot.notIncluded", defaultValue: "Not included", comment: "Report sheet VoiceOver value: screenshot will not be sent"))
                     .accessibilityIdentifier("report.thumbnail")
                 VStack(alignment: .leading, spacing: DIPTokens.Spacing.related) {
                     Toggle("Include screenshot", isOn: $model.draft.includesScreenshot)
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 17, relativeTo: .body))
                         .tint(accent)
                         .accessibilityIdentifier("report.screenshot.toggle")
-                    Text(included ? "This is the screen you were on. It stays on your phone until you send."
-                         : "Screenshot won’t be sent.")
+                    Text(included ? String(localized: "bugreport.screenshot.note.included", defaultValue: "This is the screen you were on. It stays on your phone until you send.", comment: "Report sheet: caption under the include-screenshot toggle when on")
+                         : String(localized: "bugreport.screenshot.note.excluded", defaultValue: "Screenshot won’t be sent.", comment: "Report sheet: caption under the include-screenshot toggle when off"))
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 13, relativeTo: .footnote))
                         .foregroundStyle(ink.opacity(0.72))
                     if included, let original = model.session.screenshot {
-                        DIPButton(model.annotatedScreenshot == nil ? "Mark up" : "Edit markup", emphasis: .secondary) {
+                        DIPButton(model.annotatedScreenshot == nil ? String(localized: "bugreport.markup.add", defaultValue: "Mark up", comment: "Report sheet: button to draw on the screenshot") : String(localized: "bugreport.markup.edit", defaultValue: "Edit markup", comment: "Report sheet: button to edit the existing drawing on the screenshot"), emphasis: .secondary) {
                             showsMarkup = true
                         }
                         .accessibilityHint("Draw on the screenshot before sending")
@@ -177,7 +177,7 @@ struct BugReportSheet: View {
                             ScreenshotMarkupEditor(screenshot: original, markup: model.markup) { result in
                                 guard let result else { return }
                                 model.applyMarkup(result, rendered: ScreenshotMarkupRenderer.render(base: original, markup: result))
-                                announce(result.isEmpty ? "Markup removed" : "Markup added to the screenshot")
+                                announce(result.isEmpty ? String(localized: "bugreport.markup.announce.removed", defaultValue: "Markup removed", comment: "VoiceOver announcement after the screenshot drawing was removed") : String(localized: "bugreport.markup.announce.added", defaultValue: "Markup added to the screenshot", comment: "VoiceOver announcement after drawing on the screenshot"))
                             }
                         }
                     }
@@ -194,8 +194,8 @@ struct BugReportSheet: View {
             .background(muted, in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
         } else {
             DIPEmptyState(
-                screen: "report-screenshot", title: "No screenshot",
-                message: "We couldn’t capture this screen. You can still send your report.",
+                screen: "report-screenshot", title: String(localized: "bugreport.screenshot.empty.title", defaultValue: "No screenshot", comment: "Report sheet: title when no screenshot could be taken"),
+                message: String(localized: "bugreport.screenshot.empty.message", defaultValue: "We couldn’t capture this screen. You can still send your report.", comment: "Report sheet: message when no screenshot could be taken"),
                 style: .compact, faces: 1)
         }
     }
@@ -221,7 +221,7 @@ struct BugReportSheet: View {
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(.isButton)
-            .accessibilityValue(detailsExpanded ? "Expanded" : "Collapsed")
+            .accessibilityValue(detailsExpanded ? String(localized: "bugreport.included.expanded", defaultValue: "Expanded", comment: "VoiceOver value of the What is included disclosure when open") : String(localized: "bugreport.included.collapsed", defaultValue: "Collapsed", comment: "VoiceOver value of the What is included disclosure when closed"))
             .accessibilityIdentifier("report.included")
             if detailsExpanded {
                 VStack(alignment: .leading, spacing: 8) {
@@ -251,9 +251,9 @@ struct BugReportSheet: View {
     private var detailRows: [(String, String)] {
         let d = model.diagnostics
         return [
-            ("App", "\(d.appVersion) (\(d.appBuild))"), ("iOS", d.osVersion.replacingOccurrences(of: "iOS ", with: "")),
-            ("Device", d.deviceModel), ("Language", d.locale), ("Screen", Self.screenName(d.screen)),
-            ("Install", "Random id, not your account"),
+            (String(localized: "bugreport.detail.app", defaultValue: "App", comment: "Report sheet details list: label for app version"), "\(d.appVersion) (\(d.appBuild))"), ("iOS", d.osVersion.replacingOccurrences(of: "iOS ", with: "")),
+            (String(localized: "bugreport.detail.device", defaultValue: "Device", comment: "Report sheet details list: label for device model"), d.deviceModel), (String(localized: "bugreport.detail.language", defaultValue: "Language", comment: "Report sheet details list: label for app language"), d.locale), (String(localized: "bugreport.detail.screen", defaultValue: "Screen", comment: "Report sheet details list: label for the screen the report was opened from"), Self.screenName(d.screen)),
+            (String(localized: "bugreport.detail.install", defaultValue: "Install", comment: "Report sheet details list: label for the anonymous install id"), String(localized: "bugreport.detail.install.value", defaultValue: "Random id, not your account", comment: "Report sheet details list: explains the anonymous install id")),
         ].filter { !$0.1.contains("unknown") }
     }
 
@@ -316,16 +316,16 @@ struct BugReportSheet: View {
         switch phase {
         case .sent:
             DIPHaptics.success()
-            announce("Report sent. Thank you")
+            announce(String(localized: "bugreport.announce.sent", defaultValue: "Report sent. Thank you", comment: "VoiceOver announcement after the report was sent"))
             dismissAfter(1.6)
         case .queued:
             DIPHaptics.success()
-            announce("Saved. It will send when you’re online")
+            announce(String(localized: "bugreport.announce.queued", defaultValue: "Saved. It will send when you’re online", comment: "VoiceOver announcement when the report was queued offline"))
             dismissAfter(2.0)
         case .failed:
             DIPHaptics.failure()
             if let message = model.failureMessage { announce(message) }
-        case .sending: announce("Sending report")
+        case .sending: announce(String(localized: "bugreport.announce.sending", defaultValue: "Sending report", comment: "VoiceOver announcement while the report is sending"))
         case .editing: break
         }
     }
@@ -349,14 +349,14 @@ struct BugReportSheet: View {
 
     static func screenName(_ screen: BugReportScreen) -> String {
         switch screen {
-        case .home: "Home"
-        case .rewards: "Rewards"
-        case .myEvents: "My Events"
-        case .profile: "Profile"
-        case .event: "Event page"
-        case .participants: "Attendees"
-        case .album: "Album"
-        case .challenge: "Weekly theme"
+        case .home: String(localized: "bugreport.screen.home", defaultValue: "Home", comment: "Screen name shown in the report sheet")
+        case .rewards: String(localized: "bugreport.screen.rewards", defaultValue: "Rewards", comment: "Screen name shown in the report sheet")
+        case .myEvents: String(localized: "bugreport.screen.myEvents", defaultValue: "My Events", comment: "Screen name shown in the report sheet")
+        case .profile: String(localized: "bugreport.screen.profile", defaultValue: "Profile", comment: "Screen name shown in the report sheet")
+        case .event: String(localized: "bugreport.screen.event", defaultValue: "Event page", comment: "Screen name shown in the report sheet")
+        case .participants: String(localized: "bugreport.screen.participants", defaultValue: "Attendees", comment: "Screen name shown in the report sheet")
+        case .album: String(localized: "bugreport.screen.album", defaultValue: "Album", comment: "Screen name shown in the report sheet")
+        case .challenge: String(localized: "bugreport.screen.challenge", defaultValue: "Weekly theme", comment: "Screen name shown in the report sheet")
         case .other: "DIP"
         }
     }

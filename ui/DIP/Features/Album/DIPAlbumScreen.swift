@@ -97,7 +97,7 @@ struct DIPAlbumScreen: View {
                 .padding(.bottom, 22)
                 if showsBottomBar && album.canAddPhotos {
                     PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, selectionLimit), matching: .images) {
-                        Text(selectionLimit > 0 ? "Add Photos" : "Photo limit reached")
+                        Text(selectionLimit > 0 ? String(localized: "event.bar.addPhotos", defaultValue: "Add Photos", comment: "Bottom action bar button on an activity screen: opens the photo picker") : String(localized: "event.bar.photoLimit", defaultValue: "Photo limit reached", comment: "Bottom action bar button on an activity screen: member used all their photo uploads"))
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity).frame(height: 80)
@@ -168,9 +168,9 @@ struct DIPAlbumScreen: View {
     nonisolated static func runAnnouncement(succeeded: Int, failed: Int) -> String? {
         switch (succeeded, failed) {
         case (0, 0): return nil
-        case (let ok, 0): return ok == 1 ? "Photo added" : "\(ok) photos added"
-        case (0, let bad): return bad == 1 ? "1 photo couldn’t be added. Retry is available." : "\(bad) photos couldn’t be added. Retry is available."
-        case (let ok, let bad): return "\(ok) added, \(bad) couldn’t be added. Retry is available."
+        case (let ok, 0): return String(localized: "album.upload.announce.added", defaultValue: "\(ok) photos added", comment: "VoiceOver announcement after photos finished uploading; %lld = photos added")
+        case (0, let bad): return String(localized: "album.upload.announce.failed", defaultValue: "\(bad) photos couldn’t be added. Retry is available.", comment: "VoiceOver announcement when photos failed to upload; %lld = photos that failed")
+        case (let ok, let bad): return String(localized: "album.upload.announce.mixed", defaultValue: "\(ok) added, \(bad) couldn’t be added. Retry is available.", comment: "VoiceOver announcement when some photos uploaded and some failed; first %lld = added, second %lld = failed")
         }
     }
 
@@ -198,12 +198,12 @@ struct DIPAlbumScreen: View {
     /// Shared empty-state format. The invitation to add appears only when this member may upload.
     @ViewBuilder private var emptyState: some View {
         if let error = album.loadError {
-            DIPEmptyState(screen: "album-error", title: "Couldn’t load photos", message: error)
+            DIPEmptyState(screen: "album-error", title: String(localized: "album.error.title", defaultValue: "Couldn’t load photos", comment: "Album error state title when the photos could not be loaded"), message: error)
         } else if album.canAddPhotos && selectionLimit > 0 {
             // The solid Add Photos pill below is the single add action (no second button in the card).
-            DIPEmptyState(screen: "album", title: "No photos yet", message: "Be the first to add one.")
+            DIPEmptyState(screen: "album", title: String(localized: "album.empty.title", defaultValue: "No photos yet", comment: "Album empty state title"), message: String(localized: "album.empty.message.canAdd", defaultValue: "Be the first to add one.", comment: "Album empty state message for a member who can add photos"))
         } else {
-            DIPEmptyState(screen: "album", title: "No photos yet", message: "Photos from this event will show up here.")
+            DIPEmptyState(screen: "album", title: String(localized: "album.empty.title", defaultValue: "No photos yet", comment: "Album empty state title"), message: String(localized: "album.empty.message", defaultValue: "Photos from this event will show up here.", comment: "Album empty state message for a member who cannot add photos"))
         }
     }
 
@@ -320,8 +320,9 @@ struct DIPAlbumScreen: View {
     private func finishSaveAll() {
         if saver.lastRunDenied { DIPHaptics.failure(); showsPermissionAlert = true; saver.clearRunResult(); return }
         guard let summary = saver.lastRunSummary else { return }
+        let succeeded = saver.lastRunSucceeded
         saver.clearRunResult()
-        if summary.hasPrefix("Saved") || summary.hasPrefix("All") { DIPHaptics.success() } else { DIPHaptics.failure() }
+        if succeeded { DIPHaptics.success() } else { DIPHaptics.failure() }
         show(toast: summary)
     }
 
@@ -384,9 +385,9 @@ struct DIPAlbumScreen: View {
         let pending = uploads.pendingCount(for: album.eventID)
         let failed = uploads.failedCount(for: album.eventID)
         var parts: [String] = []
-        if failed > 0 { parts.append(failed == 1 ? "1 couldn’t be added" : "\(failed) couldn’t be added") }
-        if pending > 0 { parts.append(pending == 1 ? "1 uploading" : "\(pending) uploading") }
-        return parts.isEmpty ? "Photos added" : parts.joined(separator: " · ")
+        if failed > 0 { parts.append(String(localized: "album.upload.status.failed", defaultValue: "\(failed) couldn’t be added", comment: "Upload strip status segment; %lld = photos that failed")) }
+        if pending > 0 { parts.append(String(localized: "album.upload.status.pending", defaultValue: "\(pending) uploading", comment: "Upload strip status segment; %lld = photos uploading")) }
+        return parts.isEmpty ? String(localized: "album.upload.status.done", defaultValue: "Photos added", comment: "Upload strip status when every upload finished") : parts.joined(separator: " · ")
     }
 
     /// One draft: thumbnail with a status scrim; a failed draft carries its own Retry and remove controls.
@@ -468,10 +469,10 @@ struct DIPAlbumScreen: View {
 
     private func tileLabel(_ item: AlbumUploadQueue.Item) -> String {
         switch item.state {
-        case .preparing, .waiting: "Photo waiting to upload"
-        case .uploading(let value): "Uploading photo, \(Int(value * 100)) percent"
-        case .failed(let message): "Photo not added. \(message)"
-        case .done: "Photo added"
+        case .preparing, .waiting: String(localized: "album.upload.tile.waiting", defaultValue: "Photo waiting to upload", comment: "VoiceOver label of an upload tile that is waiting")
+        case .uploading(let value): String(localized: "album.upload.tile.uploading", defaultValue: "Uploading photo, \(Int(value * 100)) percent", comment: "VoiceOver label of an upload tile; %lld = percent done")
+        case .failed(let message): String(localized: "album.upload.tile.failed", defaultValue: "Photo not added. \(message)", comment: "VoiceOver label of a failed upload tile; %@ = the reason")
+        case .done: String(localized: "album.upload.tile.done", defaultValue: "Photo added", comment: "VoiceOver label of an upload tile that finished")
         }
     }
 
@@ -573,7 +574,8 @@ struct DIPAlbumScreen: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            photo.attribution.map { "Open photo by \($0.name)" } ?? "Open album photo \(index + 1)"
+            photo.attribution.map { String(localized: "album.photo.accessibility.by", defaultValue: "Open photo by \($0.name)", comment: "VoiceOver label of an album photo; %@ = name of the member who took it") }
+                ?? String(localized: "album.photo.accessibility.index", defaultValue: "Open album photo \(index + 1)", comment: "VoiceOver label of an album photo; %lld = position in the album")
         )
         .accessibilityIdentifier("album.photo.\(index)")
         .id(photo.id)

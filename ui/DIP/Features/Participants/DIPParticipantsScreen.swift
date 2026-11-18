@@ -37,8 +37,8 @@ struct DIPParticipantsScreen: View {
                         VStack(alignment: .leading, spacing: 4) {
                             if people.isEmpty {
                                 DIPEmptyState(
-                                    screen: "participants", title: "No one has joined yet",
-                                    message: "Coworkers who join this event will show up here.")
+                                    screen: "participants", title: String(localized: "participants.empty.title", defaultValue: "No one has joined yet", comment: "Participants list empty state title"),
+                                    message: String(localized: "participants.empty.message", defaultValue: "Coworkers who join this event will show up here.", comment: "Participants list empty state message"))
                                     .padding(.top, 8)
                             }
                             ForEach(Array(people.enumerated()), id: \.element.id) { index, person in

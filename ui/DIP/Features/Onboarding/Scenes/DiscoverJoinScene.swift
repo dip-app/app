@@ -20,14 +20,20 @@ struct DiscoverJoinScene: DemoScene {
         DiscoverJoinTimeline.continuous(&state, at: t)
     }
 
-    let description = "Example: a feed of company events, from board games to a hike. Opening Pasta Night and tapping Join the Activity once adds you to Who's Attending, and the bar changes to show you've joined."
+    var description: String {
+        String(localized: "onboarding.discover.demo.description",
+               defaultValue: "Example: a feed of company events, from board games to a hike. Opening Pasta Night and tapping Join the Activity once adds you to Who's Attending, and the bar changes to show you've joined.",
+               comment: "VoiceOver description of the discover and join onboarding demo")
+    }
     let hostFace = CrewMember.purple
     var stageFill: Color { OnboardingTheme.accent }
-    let accessibilityRows = [
-        DemoAccessibilityRow(systemImage: "calendar", text: "Browse company events"),
-        DemoAccessibilityRow(systemImage: "hand.tap", text: "Join with one tap"),
-        DemoAccessibilityRow(systemImage: "checkmark.circle", text: "Joined events appear in My Events"),
-    ]
+    var accessibilityRows: [DemoAccessibilityRow] {
+        [
+            DemoAccessibilityRow(systemImage: "calendar", text: String(localized: "onboarding.discover.demo.row1", defaultValue: "Browse company events", comment: "Onboarding demo text row shown at accessibility text sizes")),
+            DemoAccessibilityRow(systemImage: "hand.tap", text: String(localized: "onboarding.discover.demo.row2", defaultValue: "Join with one tap", comment: "Onboarding demo text row shown at accessibility text sizes")),
+            DemoAccessibilityRow(systemImage: "checkmark.circle", text: String(localized: "onboarding.discover.demo.row3", defaultValue: "Joined events appear in My Events", comment: "Onboarding demo text row shown at accessibility text sizes")),
+        ]
+    }
 
     func prepare() {
         for member in CrewMember.allCases {
@@ -271,7 +277,7 @@ struct DiscoverJoinCanvas: View {
                     .position(Metrics.fourthSlot)
             }
             if state.calloutShown {
-                DemoCallout(text: "Joined. That's it.", tail: .top, appearance: state.calloutAppearance)
+                DemoCallout(text: String(localized: "onboarding.discover.demo.callout", defaultValue: "Joined. That's it.", comment: "Discover onboarding demo callout after joining an event"), tail: .top, appearance: state.calloutAppearance)
                     .fixedSize()
                     .alignmentGuide(.leading) { $0.width / 2 - Metrics.calloutAnchor.x }
                     .alignmentGuide(.top) { _ in -Metrics.calloutAnchor.y }
@@ -285,7 +291,7 @@ struct DiscoverJoinCanvas: View {
 
     private var feed: some View {
         ZStack(alignment: .topLeading) {
-            Text("Upcoming events")
+            Text("Upcoming events", comment: "Heading above the sample event feed in the discover onboarding demo")
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
                 .foregroundStyle(.black)
                 .offset(x: Metrics.side, y: Metrics.feedTitleY)
@@ -353,7 +359,7 @@ struct DiscoverJoinCanvas: View {
 
     private var peopleRow: some View {
         DIPDetailPeopleRow(
-            title: "Who’s Attending", avatars: people, total: state.attendeeCount, emptyText: "",
+            title: String(localized: "onboarding.demo.attending", defaultValue: "Who’s Attending", comment: "Onboarding demo section title above the attendee avatars"), avatars: people, total: state.attendeeCount, emptyText: "",
             capacity: OnboardingDemoFixtures.pastaCapacity, identifierPrefix: "onboarding.demo", onMore: {})
             .contentTransition(.numericText())
     }
@@ -362,8 +368,9 @@ struct DiscoverJoinCanvas: View {
         DIPDetailActionRow(
             joinInRow: false, directionsURL: OnboardingDemoFixtures.directionsURL,
             isParticipating: state.joined, canChange: true,
-            joinTitle: "Join Activity", leaveTitle: "Leave Activity",
-            shareItem: OnboardingDemoFixtures.pastaNight.title, shareTitle: "Share Event",
+            joinTitle: String(localized: "onboarding.demo.join", defaultValue: "Join Activity", comment: "Onboarding demo join button label"),
+            leaveTitle: String(localized: "onboarding.demo.leave", defaultValue: "Leave Activity", comment: "Onboarding demo leave button label"),
+            shareItem: OnboardingDemoFixtures.pastaNight.title, shareTitle: String(localized: "onboarding.demo.share", defaultValue: "Share Event", comment: "Onboarding demo share button label"),
             identifierPrefix: "onboarding.demo", onJoin: {}, onLeave: {})
     }
 

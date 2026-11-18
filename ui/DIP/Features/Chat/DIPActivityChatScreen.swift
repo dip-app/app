@@ -181,7 +181,7 @@ struct DIPActivityChatScreen: View {
 
     private var composer: some View {
         DIPMessageComposer(
-            text: $draft, placeholder: "Message", isSending: isSending,
+            text: $draft, placeholder: String(localized: "chat.composer.placeholder", defaultValue: "Message", comment: "Placeholder of the activity chat message field"), isSending: isSending,
             errorMessage: sendError, identifierPrefix: "event.chat", maximumLength: Self.maximumLength, onSend: send,
             onFocusChange: { composerFocused = $0 }
         )
@@ -218,7 +218,7 @@ struct DIPActivityChatScreen: View {
                 retryIntent = nil
             } catch {
                 if case DIPRepositoryError.invalidInput(let message) = error { sendError = message }
-                else { sendError = "Your message couldn’t be sent. Try again." }
+                else { sendError = String(localized: "chat.error.sendFailed", defaultValue: "Your message couldn’t be sent. Try again.", comment: "Error under the chat message field when sending failed") }
             }
         }
     }

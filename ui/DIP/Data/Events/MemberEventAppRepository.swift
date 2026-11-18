@@ -121,7 +121,7 @@ import DIPAccounts
         } catch {
             guard generation == token, !stopped else { return }
             if error as? EventReadFailure == .unauthenticated { stop() }
-            else { paginationError = "Couldn’t load more events. Try again." }
+            else { paginationError = String(localized: "events.error.loadMore", defaultValue: "Couldn’t load more events. Try again.", comment: "Error shown under the event feed when loading the next page fails") }
         }
     }
     func selectDetail(_ id: String?) {
@@ -231,7 +231,7 @@ import DIPAccounts
     /// Home cards) and rolls back only if the server rejects or fails. The latest intent wins; the RSVP and event
     /// listeners reconcile once the server state arrives.
     func setRSVP(eventID: String, going: Bool) async throws {
-        guard let participation, !stopped else { throw DIPRepositoryError.invalidInput("RSVP isn’t available yet") }
+        guard let participation, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "event.rsvp.error.notAvailable", defaultValue: "RSVP isn’t available yet", comment: "Error shown when joining an event before RSVP is configured")) }
         let requestID = UUID().uuidString
         if let event = records[eventID] ?? joinedRecords[eventID], let metadata = try? MemberEventsRepository.metadata(event) {
             let state = rsvpStates[eventID] ?? DIPOptimisticRSVP(going: joinedIDs.contains(eventID), attendeeCount: event.attendeeCount)
@@ -284,7 +284,7 @@ import DIPAccounts
             } catch {
                 // My Events/joined state is unavailable; keep showing company events.
                 guard let self, !Task.isCancelled, !self.stopped else { return }
-                self.paginationError = "Couldn’t load your RSVPs. Pull to refresh."
+                self.paginationError = String(localized: "events.error.loadRsvps", defaultValue: "Couldn’t load your RSVPs. Pull to refresh.", comment: "Error shown when the member's joined events fail to load")
             }
         }
     }
@@ -347,9 +347,9 @@ import DIPAccounts
     /// RSVP snapshots carry an avatar ID but no approved avatar catalog exists, so attendees get the
     /// app-assigned avatar derived from their user id (never a fixture person's photo).
     nonisolated static func avatar(userID: String) -> MediaReference { .generatedAvatar(userID: userID) }
-    func updateProfile(_ edit: ProfileEdit) async throws { throw DIPRepositoryError.invalidInput("Use your account profile editor") }
+    func updateProfile(_ edit: ProfileEdit) async throws { throw DIPRepositoryError.invalidInput(String(localized: "error.profile.useEditor", defaultValue: "Use your account profile editor", comment: "Error shown when profile editing is attempted through the events repository")) }
     func sendMessage(eventID: String, messageID: String, text: String) async throws {
-        guard let chat, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput("Chat isn’t available yet") }
+        guard let chat, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "chat.error.notAvailable", defaultValue: "Chat isn’t available yet", comment: "Error shown when sending a chat message before chat is configured")) }
         do {
             try await chat.sendMessage(scope: reads.scope, eventID: eventID, messageID: messageID, text: text, author: chatAuthor)
         } catch { throw DIPRepositoryError.invalidInput((error as? ChatFailure ?? .unknown).message) }
@@ -359,9 +359,9 @@ import DIPAccounts
         return try? await chat.notificationLevel(scope: reads.scope, eventID: eventID)
     }
     func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws {
-        guard let chat, !stopped else { throw DIPRepositoryError.invalidInput("Notification settings aren’t available yet") }
+        guard let chat, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "notifications.error.notAvailable", defaultValue: "Notification settings aren’t available yet", comment: "Error shown when changing activity notification level before it is configured")) }
         do { try await chat.setNotificationLevel(scope: reads.scope, eventID: eventID, level: level) }
-        catch { throw DIPRepositoryError.invalidInput("Couldn’t save your notification setting. Please try again.") }
+        catch { throw DIPRepositoryError.invalidInput(String(localized: "notifications.error.saveFailed", defaultValue: "Couldn’t save your notification setting. Please try again.", comment: "Error shown when saving an activity notification level fails")) }
     }
 
     /// Listens to the messages of the last opened event while the member is going to it; the listener is
@@ -416,6 +416,7 @@ import DIPAccounts
         let key = Locale.current.identifier + "|" + TimeZone.current.identifier
         if let cached = cachedBadgeFormatter, cached.key == key { return cached.formatter }
         let formatter = DateFormatter()
+        formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("MMMdjm")
         cachedBadgeFormatter = (key, formatter)
         return formatter
@@ -460,7 +461,8 @@ import DIPAccounts
 
     /// Shared wording for a failed album listener (same offline text as upload and comment failures).
     nonisolated static func albumLoadMessage(_ error: Error) -> String {
-        (error as? AlbumFailure) == .unavailable ? AlbumFailure.unavailable.message : "This album couldn’t be loaded. Go back and open it again."
+        (error as? AlbumFailure) == .unavailable ? AlbumFailure.unavailable.message
+            : String(localized: "album.error.loadFailed", defaultValue: "This album couldn’t be loaded. Go back and open it again.", comment: "Error shown when an event photo album fails to load")
     }
 
     /// Downloads missing photo bytes through the authenticated SDK, four at a time, newest first.
@@ -525,7 +527,7 @@ import DIPAccounts
     /// upload ID reuses its slot: if the bytes already landed, the create-only write is recognized by checksum and
     /// only the (idempotent) finalize runs again, so a photo is never published twice.
     func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
-        guard let albums, !stopped else { throw DIPRepositoryError.invalidInput("Photo uploads aren’t available yet") }
+        guard let albums, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "album.error.uploadsNotAvailable", defaultValue: "Photo uploads aren’t available yet", comment: "Error shown when adding a photo before uploads are configured")) }
         let scope = reads.scope
         if let denial = uploadDenial(eventID) { throw DIPRepositoryError.invalidInput(denial.message) }
         do {
@@ -590,19 +592,20 @@ import DIPAccounts
     /// The stored object (original resolution) for one album photo, read with the signed-in Storage session.
     func originalPhotoData(eventID: String, photoID: String) async throws -> Data {
         guard let albums, !stopped, albumEventID == eventID, let record = albumRecords.first(where: { $0.id == photoID }) else {
-            throw DIPRepositoryError.notFound("This photo can’t be saved right now")
+            throw DIPRepositoryError.notFound(String(localized: "album.error.saveUnavailable", defaultValue: "This photo can’t be saved right now", comment: "Error shown when saving an album photo to the device is not possible"))
         }
         return try await albums.imageData(path: record.storagePath)
     }
 
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
-        guard let albums, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput("Comments aren’t available yet") }
+        guard let albums, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "album.error.commentsNotAvailable", defaultValue: "Comments aren’t available yet", comment: "Error shown when commenting on a photo before comments are configured")) }
         do {
             try await albums.addComment(scope: reads.scope, eventID: eventID, photoID: photoID, commentID: commentID,
                                         text: text, author: chatAuthor)
         } catch {
             throw DIPRepositoryError.invalidInput((error as? AlbumFailure) == .unavailable
-                ? AlbumFailure.unavailable.message : "Your comment could not be sent. Try again.")
+                ? AlbumFailure.unavailable.message
+                : String(localized: "album.error.commentFailed", defaultValue: "Your comment could not be sent. Try again.", comment: "Error shown when posting a photo comment fails"))
         }
     }
 }

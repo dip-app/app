@@ -47,7 +47,7 @@ struct DIPHomeScreen: View {
         home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
         onChallenge: @escaping (String) -> Void, onSelect: @escaping (String) -> Void,
         onLoadMore: (() -> Void)? = nil, loadingMore: Bool = false, paginationError: String? = nil,
-        eventSectionTitle: String = "This Week’s Events", onRefresh: (() async -> Void)? = nil,
+        eventSectionTitle: String = String(localized: "home.events.title", defaultValue: "This Week’s Events", comment: "Home section heading above the upcoming event cards"), onRefresh: (() async -> Void)? = nil,
         challengeState: DIPChallengeCardState? = nil, onRetryChallenge: (() -> Void)? = nil,
         eventFilter: DIPHomeEventFilter? = nil, onFilterScope: @escaping (DIPHomeEventScope) -> Void = { _ in },
         eventsPhase: DIPHomeEventsPhase = .ready, onRetryEvents: (() -> Void)? = nil,
@@ -74,7 +74,7 @@ struct DIPHomeScreen: View {
                 Color.white
                 VStack(spacing: 0) {
                     DIPTabHeader(
-                        title: "Home", unreadCount: home.unreadCount,
+                        title: String(localized: "home.tab.title", defaultValue: "Home", comment: "Large header title of the Home tab"), unreadCount: home.unreadCount,
                         profileAvatar: { DIPMedia(home.profileAvatar) },
                         onNotifications: { onSelect("Notifications") }, onProfile: { onSelect("Profile") }
                     )
@@ -152,7 +152,7 @@ struct DIPHomeScreen: View {
             if let onLoadMore {
                 // HOME-Q13: the design system's secondary button (44 pt+, capsule). Loading more content is not a
                 // commit, so no haptic (DIPHaptics).
-                DIPButton(loadingMore ? "Loading more…" : "Load more events", emphasis: .secondary,
+                DIPButton(loadingMore ? String(localized: "home.events.loadingMore", defaultValue: "Loading more…", comment: "Home: label of the load-more button while the next page loads") : String(localized: "home.events.loadMore", defaultValue: "Load more events", comment: "Home: button that loads the next page of events"), emphasis: .secondary,
                           isLoading: loadingMore, action: onLoadMore)
                     .padding(.top, 8) // 16 pt below the cards (the column spaces by 8)
                     .accessibilityIdentifier("home.events.more")
@@ -183,14 +183,14 @@ struct DIPHomeScreen: View {
             // More pages may exist: an empty filtered page is not "nothing matches".
             DIPEmptyState(
                 screen: "home-filter",
-                title: canLoadMore ? "No matches in the events loaded so far" : "No events match your interests",
+                title: canLoadMore ? String(localized: "home.filter.empty.title.partial", defaultValue: "No matches in the events loaded so far", comment: "Home empty state title when the interest filter matches nothing in the loaded events but more can be loaded") : String(localized: "home.filter.empty.title", defaultValue: "No events match your interests", comment: "Home empty state title when the interest filter matches no events"),
                 message: canLoadMore
-                    ? "Load more events, or switch to All events." : "Switch to All events to see everything coming up.",
-                actionTitle: "Show all events", action: { DIPHaptics.select(); onFilterScope(.all) })
+                    ? String(localized: "home.filter.empty.message.partial", defaultValue: "Load more events, or switch to All events.", comment: "Home empty state message when the filter matches nothing in the loaded events but more can be loaded") : String(localized: "home.filter.empty.message", defaultValue: "Switch to All events to see everything coming up.", comment: "Home empty state message when the interest filter matches no events"),
+                actionTitle: String(localized: "home.filter.empty.action", defaultValue: "Show all events", comment: "Home empty state button that switches the filter to all events"), action: { DIPHaptics.select(); onFilterScope(.all) })
         case .emptyAll:
             DIPEmptyState(
-                screen: "home-events", title: "Nothing planned yet",
-                message: "New company events will show up here.")
+                screen: "home-events", title: String(localized: "home.events.empty.title", defaultValue: "Nothing planned yet", comment: "Home empty state title when there are no upcoming events"),
+                message: String(localized: "home.events.empty.message", defaultValue: "New company events will show up here.", comment: "Home empty state message when there are no upcoming events"))
         }
     }
 
@@ -258,8 +258,8 @@ struct DIPHomeScreen: View {
     /// Home stays usable. The message is a single line.
     private func eventFailure(_ message: String) -> some View {
         DIPEmptyState(
-            screen: "home-events-error", title: "Couldn’t load events", message: message,
-            actionTitle: onRetryEvents == nil ? nil : "Try again", action: onRetryEvents.map { retry in { DIPHaptics.select(); retry() } })
+            screen: "home-events-error", title: String(localized: "home.events.error.title", defaultValue: "Couldn’t load events", comment: "Home error state title when the events could not be loaded"), message: message,
+            actionTitle: onRetryEvents == nil ? nil : String(localized: "home.events.error.retry", defaultValue: "Try again", comment: "Home error state retry button for events"), action: onRetryEvents.map { retry in { DIPHaptics.select(); retry() } })
     }
 
     /// "Matching your interests" / "All events": the solid thumb is the pressable control (the same toggle as
@@ -268,8 +268,8 @@ struct DIPHomeScreen: View {
         VStack(alignment: .leading, spacing: 12) {
             DIPSegmentedToggle(
                 segments: [
-                    .init(id: DIPHomeEventScope.matching, title: "Your interests", identifier: "home.filter.matching"),
-                    .init(id: DIPHomeEventScope.all, title: "All events", identifier: "home.filter.all"),
+                    .init(id: DIPHomeEventScope.matching, title: String(localized: "home.filter.matching", defaultValue: "Your interests", comment: "Home segmented toggle: show only events matching the interests the member follows"), identifier: "home.filter.matching"),
+                    .init(id: DIPHomeEventScope.all, title: String(localized: "home.filter.all", defaultValue: "All events", comment: "Home segmented toggle: show all events"), identifier: "home.filter.all"),
                 ],
                 selection: filter.scope, accent: DIPTokens.Color.actionPrimary.swiftUIColor, onSelect: onFilterScope)
             if filter.scope == .matching {
@@ -277,7 +277,9 @@ struct DIPHomeScreen: View {
                     HStack(spacing: 8) {
                         // Hidden when nothing matches: the empty state below already says so.
                         if filter.shownCount > 0 {
-                            outlinedChip("Showing \(filter.shownCount) of \(filter.totalCount) events\(onLoadMore == nil ? "" : " loaded")")
+                            outlinedChip(onLoadMore == nil
+                                ? String(localized: "home.filter.count", defaultValue: "Showing \(filter.shownCount) of \(filter.totalCount) events", comment: "Home filter chip; first %lld = events shown, second %lld = all upcoming events")
+                                : String(localized: "home.filter.count.loaded", defaultValue: "Showing \(filter.shownCount) of \(filter.totalCount) events loaded", comment: "Home filter chip while more pages can be loaded; first %lld = events shown, second %lld = events loaded so far"))
                                 .accessibilityIdentifier("home.filter.count")
                         }
                         ForEach(filter.interests) { interest in tintChip(interest.name) }
@@ -311,11 +313,11 @@ struct DIPHomeScreen: View {
 
     private var recentAttendees: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Attended Your Recent Events:")
+            sectionTitle(String(localized: "home.recents.title", defaultValue: "Attended Your Recent Events:", comment: "Home section heading above the avatars of coworkers who attended recent events"))
             if home.recentAttendeeAvatars.isEmpty {
                 DIPEmptyState(
-                    screen: "home-recents", title: "Events you’ve attended will show up here",
-                    message: "Join one this week and your coworkers will appear here.")
+                    screen: "home-recents", title: String(localized: "home.recents.empty.title", defaultValue: "Events you’ve attended will show up here", comment: "Home empty state title for the recent attendees section"),
+                    message: String(localized: "home.recents.empty.message", defaultValue: "Join one this week and your coworkers will appear here.", comment: "Home empty state message for the recent attendees section"))
             } else {
                 HStack(spacing: 10) {
                     ForEach(Array(home.recentAttendeeAvatars.enumerated()), id: \.offset) { _, avatar in
@@ -342,7 +344,8 @@ struct DIPHomeScreen: View {
         return event.id
     }
     private func sectionTitle(_ text: String, size: CGFloat = 17) -> some View {
-        Text(text).font(DIPReferenceAssets.font("Figtree-Regular", size: size))
+        // One line; longer translations shrink a little before truncating (English fits unscaled).
+        Text(text).font(DIPReferenceAssets.font("Figtree-Regular", size: size)).lineLimit(1).minimumScaleFactor(0.75)
             .foregroundStyle(.black).dipFixedFrame(height: 22, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
     }

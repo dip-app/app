@@ -26,17 +26,17 @@ enum EventBarAction {
         case .event(let id):
             if let event = snapshot?.eventDetails[id], event.isPast, event.metadata?.status != .cancelled,
                case .empty(let canAdd) = albumContent(snapshot?.albums[id]) {
-                return canAdd ? DIPBottomBarAction(title: "Add Photos", identifier: "event.primary") : nil
+                return canAdd ? DIPBottomBarAction(title: String(localized: "event.bar.addPhotos", defaultValue: "Add Photos", comment: "Bottom action bar button on an activity screen: opens the photo picker"), identifier: "event.primary") : nil
             }
             return forEvent(snapshot?.eventDetails[id], isLoading: isLoading, now: now)
         case .participants(let id) where snapshot?.eventDetails[id]?.isPast == true:
             if case .empty(let canAdd) = albumContent(snapshot?.albums[id]) {
-                return canAdd ? DIPBottomBarAction(title: "Add Photos", identifier: "participants.album") : nil
+                return canAdd ? DIPBottomBarAction(title: String(localized: "event.bar.addPhotos", defaultValue: "Add Photos", comment: "Bottom action bar button on an activity screen: opens the photo picker"), identifier: "participants.album") : nil
             }
-            return DIPBottomBarAction(title: "View Album", identifier: "participants.album")
+            return DIPBottomBarAction(title: String(localized: "event.bar.viewAlbum", defaultValue: "View Album", comment: "Bottom action bar button on an activity screen: opens the photo album"), identifier: "participants.album")
         case .participants(let id):
             let joined = snapshot?.eventDetails[id]?.isJoined == true
-            return DIPBottomBarAction(title: joined ? "Activity Chat" : "Join the Activity",
+            return DIPBottomBarAction(title: joined ? String(localized: "event.bar.chat", defaultValue: "Activity Chat", comment: "Bottom action bar button on an activity screen: opens the activity chat") : String(localized: "event.bar.join", defaultValue: "Join the Activity", comment: "Bottom action bar button on an activity screen: joins the activity"),
                 style: joined ? .accent : .standard,
                 identifier: joined ? "participants.chat" : "participants.join",
                 icon: joined ? chatIcon : nil, kind: joined ? .navigate : .commit)
@@ -44,9 +44,9 @@ enum EventBarAction {
             // Offered only where this member may upload (live: going to an ended, scheduled event).
             guard let album = snapshot?.albums[id], album.isLoaded, album.canAddPhotos else { return nil }
             if album.remainingUploads == 0 {
-                return DIPBottomBarAction(title: "Photo limit reached", style: .complete, identifier: "album.add-photos")
+                return DIPBottomBarAction(title: String(localized: "event.bar.photoLimit", defaultValue: "Photo limit reached", comment: "Bottom action bar button on an activity screen: member used all their photo uploads"), style: .complete, identifier: "album.add-photos")
             }
-            return DIPBottomBarAction(title: "Add Photos", identifier: "album.add-photos")
+            return DIPBottomBarAction(title: String(localized: "event.bar.addPhotos", defaultValue: "Add Photos", comment: "Bottom action bar button on an activity screen: opens the photo picker"), identifier: "album.add-photos")
         // Read-only until submissions ship (F3/V2): the page has no entry action, so the tabs stay.
         case .challenge, nil:
             return nil
@@ -67,23 +67,23 @@ enum EventBarAction {
     static func forEvent(_ event: DIPEventDetail?, isLoading: Bool, now: Date = Date()) -> DIPBottomBarAction {
         guard let event else {
             return DIPBottomBarAction(
-                title: isLoading ? "Loading…" : "Activity unavailable",
+                title: isLoading ? String(localized: "event.bar.loading", defaultValue: "Loading…", comment: "Bottom action bar button on an activity screen: event still loading") : String(localized: "event.bar.unavailable", defaultValue: "Activity unavailable", comment: "Bottom action bar button on an activity screen: event missing or removed"),
                 style: .complete, identifier: "event.primary")
         }
-        if event.isPast { return DIPBottomBarAction(title: "View Album", identifier: "event.primary") }
+        if event.isPast { return DIPBottomBarAction(title: String(localized: "event.bar.viewAlbum", defaultValue: "View Album", comment: "Bottom action bar button on an activity screen: opens the photo album"), identifier: "event.primary") }
         let joined = event.isJoined
         if let metadata = event.metadata {
             switch metadata.state(now: now, attendeeCount: event.attendeeCount, isJoined: joined) {
-            case .cancelled: return DIPBottomBarAction(title: "Activity cancelled", style: .complete, identifier: "event.primary")
-            case .full: return DIPBottomBarAction(title: "Activity full", style: .complete, identifier: "event.primary")
-            case .started where !joined: return DIPBottomBarAction(title: "Activity started", style: .complete, identifier: "event.primary")
+            case .cancelled: return DIPBottomBarAction(title: String(localized: "event.bar.cancelled", defaultValue: "Activity cancelled", comment: "Bottom action bar button on an activity screen: the activity was cancelled"), style: .complete, identifier: "event.primary")
+            case .full: return DIPBottomBarAction(title: String(localized: "event.bar.full", defaultValue: "Activity full", comment: "Bottom action bar button on an activity screen: no spots left"), style: .complete, identifier: "event.primary")
+            case .started where !joined: return DIPBottomBarAction(title: String(localized: "event.bar.started", defaultValue: "Activity started", comment: "Bottom action bar button on an activity screen: the activity already started so joining is closed"), style: .complete, identifier: "event.primary")
             default: break
             }
         }
         return DIPBottomBarAction(
-            title: joined ? "Activity Chat" : "Join the Activity",
+            title: joined ? String(localized: "event.bar.chat", defaultValue: "Activity Chat", comment: "Bottom action bar button on an activity screen: opens the activity chat") : String(localized: "event.bar.join", defaultValue: "Join the Activity", comment: "Bottom action bar button on an activity screen: joins the activity"),
             style: joined ? .accent : .standard,
-            identifier: "event.primary", value: joined ? "Joined" : "Not joined",
+            identifier: "event.primary", value: joined ? String(localized: "event.bar.joinedValue", defaultValue: "Joined", comment: "VoiceOver value of the join button when the member has joined") : String(localized: "event.bar.notJoinedValue", defaultValue: "Not joined", comment: "VoiceOver value of the join button when the member has not joined"),
             icon: joined ? chatIcon : nil, kind: joined ? .navigate : .commit)
     }
 
@@ -91,8 +91,8 @@ enum EventBarAction {
     /// simply not in this member's company (or was removed).
     static func unavailableReason(updatesPaused: Bool) -> String {
         updatesPaused
-            ? "We couldn’t reach the latest activities, so this one can’t be shown right now. Go back and try again in a moment."
-            : "This activity isn’t in your company’s list. It may belong to another company or may have been removed."
+            ? String(localized: "event.unavailable.paused", defaultValue: "We couldn’t reach the latest activities, so this one can’t be shown right now. Go back and try again in a moment.", comment: "Event page message when the live connection is paused and the event cannot be shown")
+            : String(localized: "event.unavailable.missing", defaultValue: "This activity isn’t in your company’s list. It may belong to another company or may have been removed.", comment: "Event page message when the event is not in the member's company list")
     }
 
     static let chatIcon = "event_HeroiconsOutlineChatBubbleOvalLeft"

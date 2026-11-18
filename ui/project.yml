@@ -1,6 +1,8 @@
 name: DIP
 options:
   bundleIdPrefix: work.letsdip
+  # English is the source language of every String Catalog (docs/design/ios-i18n.md).
+  developmentLanguage: en
   deploymentTarget:
     iOS: "17.0"
 packages:
@@ -26,6 +28,10 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: 0.1.0
+    # Localization (docs/design/ios-i18n.md): String Catalogs, compiler-based extraction of Swift strings.
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZED_STRING_SWIFTUI_SUPPORT: YES
 targets:
   DIP:
     type: application
@@ -41,6 +47,9 @@ targets:
       properties:
         # HTTPS only (Firebase/Google): exempt, so TestFlight does not ask the export-compliance question per build.
         ITSAppUsesNonExemptEncryption: false
+        # Shipped languages (Settings > DIP > Language lists the system-supported ones). tlh is a demo locale.
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, es, tlh]
         NSCalendarsWriteOnlyAccessUsageDescription: DIP adds activities you choose to your calendar.
         NSCalendarsFullAccessUsageDescription: DIP checks your calendar on this iPhone to warn you when an activity overlaps something you already have. Your calendar never leaves your phone.
         NSPhotoLibraryAddUsageDescription: Save event photos to your library.
@@ -122,3 +131,10 @@ schemes:
     test:
       gatherCoverageData: true
       targets: [DIPTests, DIPUITests]
+    run:
+      # Localization testing (docs/design/ios-i18n.md): tick one in Edit Scheme > Run > Arguments. All off by default.
+      commandLineArguments:
+        "-AppleLanguages (es)": false
+        "-AppleLanguages (tlh)": false
+        "-NSDoubleLocalizedStrings YES": false
+        "-NSShowNonLocalizedStrings YES": false

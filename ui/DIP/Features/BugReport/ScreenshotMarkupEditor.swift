@@ -59,26 +59,26 @@ import SwiftUI
 
         var body: some View {
             VStack(spacing: DIPTokens.Spacing.related) {
-                DIPHeader(title: "Mark up screenshot")
+                DIPHeader(title: String(localized: "bugreport.markup.title", defaultValue: "Mark up screenshot", comment: "Screenshot markup editor: title"))
                 Text("Draw on the screenshot to point out the problem. Hide anything private by covering it.")
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
                     .foregroundStyle(ink.opacity(0.72))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 canvas
                 HStack(spacing: DIPTokens.Spacing.related) {
-                    DIPButton("Undo", emphasis: .secondary, isEnabled: markup.canUndo) {
-                        DIPHaptics.select(); markup.undo(); announce("Stroke removed")
+                    DIPButton(String(localized: "bugreport.markup.undo", defaultValue: "Undo", comment: "Screenshot markup editor: undo last stroke"), emphasis: .secondary, isEnabled: markup.canUndo) {
+                        DIPHaptics.select(); markup.undo(); announce(String(localized: "bugreport.markup.announce.strokeRemoved", defaultValue: "Stroke removed", comment: "VoiceOver announcement after undoing a stroke"))
                     }
                     .accessibilityIdentifier("markup.undo")
-                    DIPButton("Clear", emphasis: .secondary, isEnabled: !markup.isEmpty) {
-                        DIPHaptics.select(); markup.clear(); announce("Markup cleared")
+                    DIPButton(String(localized: "bugreport.markup.clear", defaultValue: "Clear", comment: "Screenshot markup editor: remove all strokes"), emphasis: .secondary, isEnabled: !markup.isEmpty) {
+                        DIPHaptics.select(); markup.clear(); announce(String(localized: "bugreport.markup.announce.cleared", defaultValue: "Markup cleared", comment: "VoiceOver announcement after clearing all strokes"))
                     }
                     .accessibilityIdentifier("markup.clear")
                 }
                 HStack(spacing: DIPTokens.Spacing.related) {
-                    DIPButton("Cancel", emphasis: .secondary) { onFinish(nil); dismiss() }
+                    DIPButton(String(localized: "bugreport.markup.cancel", defaultValue: "Cancel", comment: "Screenshot markup editor: cancel drawing"), emphasis: .secondary) { onFinish(nil); dismiss() }
                         .accessibilityIdentifier("markup.cancel")
-                    DIPButton("Done") { onFinish(markup); dismiss() }
+                    DIPButton(String(localized: "bugreport.markup.done", defaultValue: "Done", comment: "Screenshot markup editor: finish drawing")) { onFinish(markup); dismiss() }
                         .accessibilityIdentifier("markup.done")
                 }
             }
