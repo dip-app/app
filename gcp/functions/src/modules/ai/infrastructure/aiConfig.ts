@@ -1,3 +1,4 @@
+import { DEFAULT_LIVE_COVER_CONFIG, type LiveCoverConfig } from "../../covers/application/livePorts";
 import { DEFAULT_MAX_CANDIDATES, DEFAULT_MAX_OPTIONS_PER_CALL, type CoverPickLimits } from "../../covers/domain/shortlist";
 import { outputCeiling } from "../domain/pricing";
 
@@ -30,6 +31,8 @@ export interface AiConfig {
   draftCheck: DecisionStepConfig;
   /** Picks a cover from the cover library shortlist (Choice question); the heuristic answer is the lexical top. */
   coverPick: DecisionStepConfig & CoverPickLimits;
+  /** Live Pixabay cover fallback of "Let Dipbot choose" (AI_COVER_LIVE_*). */
+  coverLive: LiveCoverConfig;
   moderation: { model: string };
 }
 
@@ -62,6 +65,12 @@ const PROVIDERS: readonly DecisionProvider[] = ["jev", "openai-mini"];
 function positive(raw: string | undefined, fallback: number): number {
   const value = Number(raw?.trim());
   return Number.isInteger(value) && value >= 2 ? value : fallback;
+}
+
+/** Integer within [min, max]; anything else (missing, fractional, out of range) falls back to the default. */
+function bounded(raw: string | undefined, fallback: number, min: number, max: number): number {
+  const value = Number(raw?.trim());
+  return raw?.trim() && Number.isInteger(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
 
 function text(raw: string | undefined, fallback: string): string {
@@ -108,6 +117,17 @@ export function aiConfig(env: NodeJS.ProcessEnv): AiConfig {
       ...decision(env.AI_DECISION_PROVIDER_COVER_PICK, env.AI_MODEL_COVER_PICK),
       maxCandidates: positive(env.AI_COVER_MAX_CANDIDATES, DEFAULT_MAX_CANDIDATES),
       maxOptionsPerCall: positive(env.AI_COVER_MAX_OPTIONS, DEFAULT_MAX_OPTIONS_PER_CALL),
+    },
+    // On unless AI_COVER_LIVE_FALLBACK is exactly "false". The per-instance cap stays low: pickEventCoverV1 runs at most 5 instances
+    // and Pixabay allows 100 requests a minute per key.
+    coverLive: {
+      enabled: env.AI_COVER_LIVE_FALLBACK?.trim().toLowerCase() !== "false",
+      minScore: bounded(env.AI_COVER_LIVE_MIN_SCORE, DEFAULT_LIVE_COVER_CONFIG.minScore, 1, 30),
+      minMatches: bounded(env.AI_COVER_LIVE_MIN_MATCHES, DEFAULT_LIVE_COVER_CONFIG.minMatches, 0, 10),
+      maxCandidates: bounded(env.AI_COVER_LIVE_CANDIDATES, DEFAULT_LIVE_COVER_CONFIG.maxCandidates, 1, 12),
+      companyDaily: bounded(env.AI_COVER_LIVE_COMPANY_DAILY, DEFAULT_LIVE_COVER_CONFIG.companyDaily, 1, 1000),
+      platformDaily: bounded(env.AI_COVER_LIVE_PLATFORM_DAILY, DEFAULT_LIVE_COVER_CONFIG.platformDaily, 1, 5000),
+      instancePerMinute: bounded(env.AI_COVER_LIVE_INSTANCE_PER_MINUTE, DEFAULT_LIVE_COVER_CONFIG.instancePerMinute, 1, 20),
     },
     moderation: { model: text(env.AI_MODEL_MODERATION, "omni-moderation-latest") },
   };

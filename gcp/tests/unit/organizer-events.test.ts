@@ -34,9 +34,9 @@ class FakeStore implements OrganizerStore {
       hasAnyRsvp: async (company, id) => this.rsvps.has(`${company}/${id}`),
       hasAnyPhoto: async (company, id) => this.photos.has(`${company}/${id}`),
       missingTagIds: async (ids) => ids.filter((id) => !this.tags.has(id)),
-      createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, startTime: draft.startTime, endTime: draft.endTime, status: "scheduled", draft, createdBy: uid }); }); },
+      createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, startTime: draft.startTime, endTime: draft.endTime, status: "scheduled", coverImageURL: draft.coverImageURL, draft, createdBy: uid }); }); },
       createReceipt: (company, uid, requestId, receipt) => { staged.push(() => this.receipts.set(`${company}/${uid}_${requestId}`, receipt)); },
-      updateEvent: (company, id, draft, status, next) => { staged.push(() => { this.writes.push(`update ${id}`); const cur = this.events.get(`${company}/${id}`)!; this.events.set(`${company}/${id}`, { ...cur, draft, status, revision: next, startTime: draft.startTime, endTime: draft.endTime }); }); },
+      updateEvent: (company, id, draft, status, next) => { staged.push(() => { this.writes.push(`update ${id}`); const cur = this.events.get(`${company}/${id}`)!; this.events.set(`${company}/${id}`, { ...cur, draft, status, revision: next, coverImageURL: draft.coverImageURL, startTime: draft.startTime, endTime: draft.endTime }); }); },
     };
     const result = await work(tx);
     staged.forEach((apply) => apply()); // nothing is applied when work throws
@@ -318,5 +318,63 @@ describe("deactivated accounts", () => {
     store.members.set("organizer", { companyId: "acme", role: "organizer", status: "active" });
     assert.equal((await createEvent(store, { ...admin, uid: "organizer" }, createRequest(), ids("e1"), clock)).eventId, "e1");
     assert.equal((await createEvent(store, admin, createRequest(draftJson(), { requestId: "8d444840-9dc0-41f4-9d0c-4d1f4b3a9f11" }), ids("e2"), clock)).eventId, "e2");
+  });
+});
+
+describe("dynamic (live Pixabay) covers", () => {
+  const DYN = "catalog://cover/pixabay-4242";
+  const keys = (...active: string[]) => ({ has: async (key: string) => active.includes(key) });
+  const fields = async (promise: Promise<unknown>) => (await failure(promise)).fields;
+
+  test("create accepts a dynamic key the source knows and stores it", async () => {
+    const store = new FakeStore();
+    const result = await createEvent(store, admin, createRequest(draftJson({ coverImageURL: DYN })), ids("evt-1"), clock, keys("pixabay-4242"));
+    assert.equal(result.eventId, "evt-1");
+    assert.equal(store.events.get("acme/evt-1")!.draft!.coverImageURL, DYN);
+  });
+
+  test("create rejects a dynamic key that is unknown, removed or has no source, writing nothing", async () => {
+    const store = new FakeStore();
+    assert.deepEqual(await fields(createEvent(store, admin, createRequest(draftJson({ coverImageURL: DYN })), ids("e1"), clock, keys("pixabay-1"))), ["coverImageURL"]);
+    assert.deepEqual(await fields(createEvent(store, admin, createRequest(draftJson({ coverImageURL: DYN })), ids("e1"), clock)), ["coverImageURL"]);
+    assert.equal(store.events.size, 0);
+  });
+
+  test("the syntax check still rejects malformed dynamic keys before any lookup", async () => {
+    let lookups = 0;
+    const source = { has: async () => { lookups += 1; return true; } };
+    for (const bad of ["catalog://cover/pixabay-0", "catalog://cover/pixabay-", "catalog://cover/pixabay-1234567890123", "catalog://cover/Pixabay-5", "catalog://cover/pixabay-5x"]) {
+      assert.deepEqual(await fields(createEvent(new FakeStore(), admin, createRequest(draftJson({ coverImageURL: bad })), ids("e1"), clock, source)), ["coverImageURL"], bad);
+    }
+    assert.equal(lookups, 0);
+  });
+
+  test("the library and legacy covers need no source", async () => {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(draftJson({ coverImageURL: "catalog://cover/theme-arts" })), ids("e1"), clock);
+    assert.equal(store.events.get("acme/e1")!.draft!.coverImageURL, "catalog://cover/theme-arts");
+  });
+
+  test("update may keep the current dynamic cover without a lookup, but a different one must be stored", async () => {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(draftJson({ coverImageURL: DYN })), ids("evt-1"), clock, keys("pixabay-4242"));
+    const request = (event: Record<string, unknown>) => ({ contractVersion: 1, companyId: "acme", eventId: "evt-1", expectedRevision: 1, event, status: "scheduled" });
+    // The cover was removed from the library meanwhile: editing other fields still works.
+    const kept = await updateEvent(store, admin, request(draftJson({ coverImageURL: DYN, title: "Renamed" })), clock, keys());
+    assert.equal(kept.revision, 2);
+    assert.deepEqual(await fields(updateEvent(store, admin, { ...request(draftJson({ coverImageURL: "catalog://cover/pixabay-9" })), expectedRevision: 2 }, clock, keys("pixabay-4242"))), ["coverImageURL"]);
+    assert.deepEqual(await fields(updateEvent(store, admin, { ...request(draftJson({ coverImageURL: "catalog://cover/pixabay-9" })), expectedRevision: 2 }, clock)), ["coverImageURL"]);
+    const switched = await updateEvent(store, admin, { ...request(draftJson({ coverImageURL: "catalog://cover/pixabay-9" })), expectedRevision: 2 }, clock, keys("pixabay-9"));
+    assert.equal(switched.revision, 3);
+    assert.equal(store.events.get("acme/evt-1")!.draft!.coverImageURL, "catalog://cover/pixabay-9");
+  });
+
+  test("the callable handlers thread the key source", async () => {
+    const store = new FakeStore();
+    const auth = { uid: "admin", token: { email_verified: true, firebase: { sign_in_provider: "google.com" } } } as never;
+    const request = { auth, data: createRequest(draftJson({ coverImageURL: DYN })) };
+    await assert.rejects(handleCreateEvent(store, request, ids("e1"), clock), (e: unknown) => (e as { code?: string }).code === "invalid-argument");
+    const ok = await handleCreateEvent(store, request, ids("e2"), clock, keys("pixabay-4242"));
+    assert.equal(ok.eventId, "e2");
   });
 });

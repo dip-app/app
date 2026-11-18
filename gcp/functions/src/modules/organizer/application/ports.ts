@@ -14,6 +14,8 @@ export interface StoredEvent {
   startTime: Date;
   endTime: Date;
   status: string;
+  /** Current cover; absent when a store does not provide it (a dynamic cover is then always re-validated). */
+  coverImageURL?: string;
 }
 
 export interface CommandReceipt {

@@ -2923,13 +2923,17 @@ public struct PickEventCoverResponse: Codable, Equatable, Sendable {
     public var source: String
     public var provider: String?
     public var alternatives: [String]
+    public var newPhoto: Bool?
+    public var coverAlt: String?
 
-    public init(contractVersion: Int, coverImageURL: String, source: String, provider: String? = nil, alternatives: [String]) {
+    public init(contractVersion: Int, coverImageURL: String, source: String, provider: String? = nil, alternatives: [String], newPhoto: Bool? = nil, coverAlt: String? = nil) {
         self.contractVersion = contractVersion
         self.coverImageURL = coverImageURL
         self.source = source
         self.provider = provider
         self.alternatives = alternatives
+        self.newPhoto = newPhoto
+        self.coverAlt = coverAlt
     }
 }
 

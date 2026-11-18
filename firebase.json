@@ -36,6 +36,13 @@
       "trailingSlash": true,
       "rewrites": [
         {
+          "source": "/img/covers-dyn/**",
+          "function": {
+            "functionId": "coverImageV1",
+            "region": "us-central1"
+          }
+        },
+        {
           "source": "/.well-known/apple-app-site-association",
           "destination": "/aasa/apple-app-site-association.json"
         },

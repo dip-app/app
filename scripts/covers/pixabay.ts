@@ -2,7 +2,11 @@
 // Used by fetch-pixabay.ts today; written so a server-side runtime fallback can reuse it (inject `fetchImpl`, `now`, `wait`).
 // Pixabay API: GET https://pixabay.com/api/ ; 100 requests per 60 s per key; 429 means wait X-RateLimit-Reset seconds.
 // Never log the key or a full request URL.
+import { relevance as ruleRelevance } from "../../gcp/functions/src/modules/covers/domain/pixabayRules";
 import { sharp } from "./lib";
+
+// One source for the candidate rules: shared with the server-side live fallback.
+export { BLOCKED_TAGS, acceptable, hitTags, pixabayLicense, popularity } from "../../gcp/functions/src/modules/covers/domain/pixabayRules";
 
 export interface PixabayHit {
   id: number; pageURL: string; tags: string; user: string; user_id: number;
@@ -19,12 +23,6 @@ export interface PixabaySearchOptions {
   category?: string;
 }
 
-/** Tags that rule a candidate out: minors, gore, adult content, obvious logos and signage. */
-export const BLOCKED_TAGS = [
-  "child", "children", "kid", "kids", "baby", "babies", "toddler", "infant", "boy", "girl", "teen", "teenager", "schoolgirl", "schoolboy", "student",
-  "nude", "naked", "bikini", "lingerie", "erotic", "sexy", "blood", "gun", "weapon", "gore", "cigarette", "smoking", "smoke", "drug", "cannabis",
-  "logo", "brand", "advertising", "poster", "billboard", "sign", "text", "typography", "watermark",
-];
 const FILLER = new Set(["friends", "friend", "group", "people", "team", "together", "of", "a", "the", "with", "by", "in", "on", "at"]);
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -107,21 +105,6 @@ export function queryVariants(query: string): string[] {
   return [...new Set([base, content.join(" "), content.slice(0, 2).join(" "), content.slice(-2).join(" ")].filter((v) => v.length >= 3))];
 }
 
-export function popularity(h: PixabayHit): number {
-  return Math.log10(1 + h.likes * 5 + h.downloads / 20 + h.views / 500);
-}
-
-export function hitTags(h: PixabayHit): string[] {
-  return h.tags.toLowerCase().split(",").map((t) => t.trim()).filter(Boolean);
-}
-
-export function acceptable(h: PixabayHit, minWidth: number): boolean {
-  const ratio = h.imageWidth / h.imageHeight;
-  if (h.imageWidth < minWidth || ratio < 1.5 || ratio > 2.1) return false;
-  const words = new Set(hitTags(h).flatMap((t) => t.split(/[\s-]+/)));
-  return !BLOCKED_TAGS.some((b) => words.has(b));
-}
-
 /** 64-bit difference hash of a 9x8 greyscale thumbnail. */
 export async function dHash(buf: Buffer): Promise<bigint> {
   const px = await sharp(buf).rotate().resize(9, 8, { fit: "fill" }).greyscale().raw().toBuffer();
@@ -135,21 +118,7 @@ export function hamming(a: bigint, b: bigint): number {
   return n;
 }
 
-export function pixabayLicense(hit: PixabayHit) {
-  const notes = `Pixabay Content License (free commercial use, no attribution required); pixabay id ${hit.id}; tags: ${hit.tags}`;
-  return {
-    type: "pixabay", source: "Pixabay", sourceURL: hit.pageURL, creator: hit.user,
-    creatorURL: `https://pixabay.com/users/${encodeURIComponent(hit.user)}-${hit.user_id}/`,
-    notes: notes.length <= 300 ? notes : notes.slice(0, 299) + "…",
-  };
-}
-
-const stem4 = (w: string) => w.replace(/(ing|es|s)$/, "").slice(0, 6);
-
 /** Share (0..1) of the query's content words that appear, lightly stemmed, in the hit's tags. */
 export function relevance(h: PixabayHit, query: string): number {
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w && !FILLER.has(w)).map(stem4);
-  if (!words.length) return 0;
-  const tagWords = new Set(hitTags(h).flatMap((t) => t.split(/[\s-]+/)).map(stem4));
-  return words.filter((w) => tagWords.has(w)).length / words.length;
+  return ruleRelevance(h, query.toLowerCase().split(/\s+/));
 }

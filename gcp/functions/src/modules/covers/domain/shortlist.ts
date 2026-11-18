@@ -28,7 +28,7 @@ const THEME_SCORE = 2;
 const ILLUSTRATION_PENALTY = 1;
 const EXCLUDED_PENALTY = 4;
 
-const STOPWORDS: ReadonlySet<string> = new Set([
+export const STOPWORDS: ReadonlySet<string> = new Set([
   "a", "an", "and", "are", "as", "at", "be", "but", "by", "can", "come", "do", "for", "from", "get", "has", "have", "how", "in", "into", "is", "it", "its",
   "join", "let", "make", "more", "new", "of", "on", "or", "our", "out", "so", "that", "the", "their", "them", "then", "there", "this", "to", "together",
   "up", "us", "we", "will", "with", "you", "your", "all", "any", "each", "every", "some", "other", "just", "bring", "day", "time", "week", "team",

@@ -12,12 +12,15 @@ import { block } from "../../ai/domain/prompt";
 import { fieldsOf } from "../../ai/domain/request";
 import type { CoverIndexEntry } from "../domain/catalog.generated";
 import { COVER_INDEX } from "../domain/catalog.generated";
-import { COVER_THEMES, coverByKey, coverByURL, DEFAULT_COVER_URL, themeDefault } from "../domain/coverCatalog";
+import { COVER_THEMES, coverByKey, coverByURL, DEFAULT_COVER_URL, parseCoverKey, themeDefault } from "../domain/coverCatalog";
 import { chosenCoverKey, coverQuestion, groupQuestion, hasClearLexicalWinner } from "../domain/coverQuestion";
+import { isDynamicCoverKey, isDynamicCoverURL } from "../domain/dynamicCovers";
 import {
-  DEFAULT_MAX_CANDIDATES, DEFAULT_MAX_OPTIONS_PER_CALL, DESCRIPTION_CHARS, lexicalRank, lexicalTop, queryThemes, shortlist, themeGroups,
+  DEFAULT_MAX_CANDIDATES, DEFAULT_MAX_OPTIONS_PER_CALL, DESCRIPTION_CHARS, lexicalRank, queryThemes, rankCovers, shortlist, themeGroups,
   type CoverPickLimits, type CoverQuery, type ScoredCover,
 } from "../domain/shortlist";
+import { LIVE_BUDGET_MS, runLiveCover, type LiveContext, type LiveSummary } from "./liveCover";
+import type { DynamicCoverCatalog, LiveCoverDeps } from "./livePorts";
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -81,6 +84,10 @@ export interface PickCoverDeps {
   index?: readonly CoverIndexEntry[];
   /** Candidate and per-call option limits (defaults 60 and 60). */
   limits?: CoverPickLimits;
+  /** The live Pixabay fallback and the dynamic cover library; absent means off (static library only). */
+  live?: LiveCoverDeps;
+  /** Dynamic covers to offer even when the live fallback is off (no Pixabay key); defaults to `live.catalog`. */
+  dynamic?: DynamicCoverCatalog;
 }
 
 export interface PickCoverInput extends CoverQuery {}
@@ -98,6 +105,12 @@ export interface PickCoverResult {
   lexicalRank: number | null;
   /** True when the final cover ranked below the top 5 lexical matches (the model reached past the text match). */
   pickedOutsideTopLexical: boolean;
+  /** True when this request pulled and stored a fresh photo (dynamic covers only). */
+  newPhoto?: boolean;
+  /** Alt text of a dynamic cover. */
+  coverAlt?: string;
+  /** Summary of the live fallback attempt, when it was considered. */
+  live?: LiveSummary;
 }
 
 export const TOP_LEXICAL_RANKS = 5;
@@ -121,20 +134,31 @@ export function coverState(query: CoverQuery): string {
  * never fails the pick.
  */
 export async function pickCover(
-  deps: Pick<PickCoverDeps, "decisions" | "aiEnabled" | "index" | "limits">, query: PickCoverInput, signal?: AbortSignal,
+  deps: Pick<PickCoverDeps, "decisions" | "aiEnabled" | "index" | "limits" | "live" | "dynamic" | "log"> & { now?: () => Date; context?: LiveContext },
+  query: PickCoverInput, signal?: AbortSignal,
 ): Promise<PickCoverResult> {
-  const index = deps.index ?? COVER_INDEX;
+  const staticIndex = deps.index ?? COVER_INDEX;
+  let dynamic: CoverIndexEntry[] = [];
+  const dynamicCatalog = deps.dynamic ?? deps.live?.catalog;
+  if (dynamicCatalog) {
+    try { dynamic = await dynamicCatalog.entries(); } catch { deps.log?.("ai.cover_catalog_failed", { companyId: deps.context?.companyId ?? null }, "warn"); }
+  }
+  const index: readonly CoverIndexEntry[] = dynamic.length > 0 ? [...staticIndex, ...dynamic] : staticIndex;
   const maxCandidates = deps.limits?.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
   const maxOptions = deps.limits?.maxOptionsPerCall ?? DEFAULT_MAX_OPTIONS_PER_CALL;
+  const ranked = rankCovers(query, index);
   const candidates = shortlist(query, index, maxCandidates);
-  const top = lexicalTop(query, index);
+  const top = ranked.find(item => item.matched && item.score > 0) ?? null;
   const fallbackEntry = themeDefault(queryThemes(query)[0], index) ?? coverByURL(DEFAULT_COVER_URL, index);
-  const finish = (entry: CoverIndexEntry | null, source: PickCoverResult["source"], provider: PickCoverResult["provider"], model: string | null, offered: readonly ScoredCover[]): PickCoverResult => {
+  let liveSummary: LiveSummary | undefined;
+  const finish = (entry: CoverIndexEntry | null, source: PickCoverResult["source"], provider: PickCoverResult["provider"], model: string | null, offered: readonly ScoredCover[], newPhoto = false): PickCoverResult => {
     const rank = entry ? lexicalRank(query, entry.key, index) : null;
     return {
       coverImageURL: entry?.url ?? DEFAULT_COVER_URL, source, provider, model,
       alternatives: alternativesFor(offered.length > 0 ? offered : candidates, entry?.key, query, index), shortlistSize: candidates.length,
       lexicalRank: rank, pickedOutsideTopLexical: source === "dipbot" && rank !== null && rank > TOP_LEXICAL_RANKS,
+      ...(entry && isDynamicCoverKey(entry.key) ? { coverAlt: entry.alt.slice(0, 160), ...(newPhoto ? { newPhoto: true } : {}) } : {}),
+      ...(liveSummary ? { live: liveSummary } : {}),
     };
   };
   const lexical = (provider: PickCoverResult["provider"], model: string | null, offered: readonly ScoredCover[] = candidates): PickCoverResult =>
@@ -142,6 +166,18 @@ export async function pickCover(
   if (!deps.aiEnabled || candidates.length === 0) return lexical(null, null);
 
   const state = coverState(query);
+  if (deps.live && deps.live.config.enabled && deps.context) {
+    const outcome = await runLiveCover(
+      { live: deps.live, decisions: deps.decisions, now: deps.now ?? (() => new Date()) },
+      { query, ranked, staticIndex, index, state, context: deps.context }, signal,
+    );
+    liveSummary = outcome.summary;
+    if (outcome.kind === "done") {
+      const { entry, source, provider, model, newPhoto } = outcome.decision;
+      return entry ? finish(entry, source, provider, model, candidates, newPhoto) : lexical(provider, model);
+    }
+  }
+
   const ask = (questions: Parameters<PickCoverDeps["decisions"]["decide"]>[0]["questions"]) =>
     deps.decisions.decide({ step: "coverPick", state, questions, ...(signal ? { signal } : {}) });
   let offered: readonly ScoredCover[] = candidates;
@@ -182,6 +218,8 @@ function alternativesFor(candidates: readonly ScoredCover[], chosenKey: string |
  * model call when the allowance is spent), picks, refunds the credit unless a model (Jev or OpenAI) answered, then records the provider on a content-free request document
  * (companies/{c}/aiCoverPicks/{uid}_{requestId}: provider, source, chosen key, counts; never the event text). Writes no events.
  * A repeated requestId is picked again but never charged twice. With AI off nothing is charged.
+ * With `live` deps and no good library match, the live Pixabay fallback may pull a fresh photo (liveCover.ts); it can only
+ * add to the answer and never fails the pick.
  */
 export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | null, data: unknown): Promise<PickEventCoverResponse> {
   const caller = requireCaller(rawCaller);
@@ -209,10 +247,12 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DECISION_TIMEOUT_MS);
+  const liveOn = deps.aiEnabled && deps.live !== undefined && deps.live.config.enabled;
+  // The live path has its own budget on top of the model call's (liveCover.ts); the callable timeout (90 s) covers both.
+  const timer = setTimeout(() => controller.abort(), liveOn ? DECISION_TIMEOUT_MS + LIVE_BUDGET_MS : DECISION_TIMEOUT_MS);
   let picked: PickCoverResult;
   try {
-    picked = await pickCover(deps, {
+    picked = await pickCover({ ...deps, context: { companyId, uid: caller.uid, requestId } }, {
       title, ...(description !== undefined ? { description } : {}), ...(tagIds ? { tagIds } : {}), ...(theme ? { theme } : {}),
       ...(excludeCoverImageURLs ? { exclude: excludeCoverImageURLs } : {}),
     }, controller.signal);
@@ -226,11 +266,16 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
   if (charged && picked.provider !== "jev" && picked.provider !== "openai") await refund(deps, companyId, chargeKey);
 
   const now = deps.now();
-  const chosenKey = coverByURL(picked.coverImageURL, deps.index ?? COVER_INDEX)?.key ?? null;
+  const chosenKey = isDynamicCoverURL(picked.coverImageURL) ? parseCoverKey(picked.coverImageURL) : coverByURL(picked.coverImageURL, deps.index ?? COVER_INDEX)?.key ?? null;
+  const live = picked.live;
+  const liveRecord = {
+    triggered: live?.triggered ?? false, reason: live?.reason ?? null, outcome: live?.outcome ?? "skipped:off",
+    candidateCount: live?.candidateCount ?? 0, cacheHit: live?.cacheHit ?? null,
+  };
   try {
     await deps.store.setDoc(aiPaths.coverPick(companyId, caller.uid, requestId), {
       uid: caller.uid, source: picked.source, provider: picked.provider, model: picked.model, coverKey: chosenKey,
-      shortlistSize: picked.shortlistSize, lexicalRank: picked.lexicalRank, pickedOutsideTopLexical: picked.pickedOutsideTopLexical, updatedAt: now, expireAt: new Date(now.getTime() + RECORD_RETENTION_MS),
+      shortlistSize: picked.shortlistSize, lexicalRank: picked.lexicalRank, pickedOutsideTopLexical: picked.pickedOutsideTopLexical, live: liveRecord, updatedAt: now, expireAt: new Date(now.getTime() + RECORD_RETENTION_MS),
     });
   } catch (error) {
     deps.log?.("ai.cover_pick_record_failed", { companyId, requestId, error: error instanceof Error ? error.name : "unknown" }, "warn");
@@ -239,7 +284,17 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
     companyId, requestId, source: picked.source, provider: picked.provider, model: picked.model, shortlistSize: picked.shortlistSize,
     lexicalRank: picked.lexicalRank, pickedOutsideTopLexical: picked.pickedOutsideTopLexical,
   });
-  return { contractVersion: 1, coverImageURL: picked.coverImageURL, source: picked.source, provider: picked.provider, alternatives: picked.alternatives };
+  if (live?.triggered) {
+    // Counts and outcome codes only: never the search words, a Pixabay URL or the API key.
+    deps.log?.("ai.coverLive", {
+      companyId, requestId, reason: live.reason, bestScore: live.bestScore, matchedCount: live.matchedCount, cacheHit: live.cacheHit,
+      candidateCount: live.candidateCount, provider: picked.provider, outcome: live.outcome, durationMs: live.durationMs,
+    });
+  }
+  return {
+    contractVersion: 1, coverImageURL: picked.coverImageURL, source: picked.source, provider: picked.provider, alternatives: picked.alternatives,
+    ...(picked.newPhoto ? { newPhoto: true } : {}), ...(picked.coverAlt ? { coverAlt: picked.coverAlt } : {}),
+  };
 }
 
 function put(tx: AdminTransaction, path: string, existing: Doc | null, data: Doc): void {

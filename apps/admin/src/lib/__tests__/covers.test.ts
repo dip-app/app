@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { COVER_LIBRARY, THEMES, buildPickRequest, coverByURL, coverImage, coverThumb, lexicalPick, searchCovers } from "../covers";
+import { COVER_LIBRARY, THEMES, buildPickRequest, coverByURL, coverImage, coverThumb, lexicalPick, rememberCoverAlt, searchCovers } from "../covers";
 import { COVERS, coverFor } from "../catalog";
 import { buildMockDrafts } from "../ideasMock";
 import { createMockApi } from "../api";
@@ -43,6 +43,34 @@ describe("cover library", () => {
     expect(coverFor("catalog://default/games")?.id).toBe("games");
     expect(coverFor("catalog://cover/theme-arts")?.image).toContain("/img/covers/theme-arts.webp");
     expect(coverFor("catalog://default/unknown")).toBeUndefined();
+  });
+
+  it("resolves dynamic pixabay keys statelessly to site-root files, without the /admin prefix", () => {
+    const entry = coverByURL("catalog://cover/pixabay-1234567")!;
+    expect(entry.key).toBe("pixabay-1234567");
+    expect(entry.url).toBe("catalog://cover/pixabay-1234567");
+    expect(entry.label).toBe("Photo");
+    expect(entry.themes).toEqual([]);
+    expect(entry.alt).toBe("Event cover photo");
+    expect(coverImage(entry)).toBe("/img/covers-dyn/pixabay-1234567.webp");
+    expect(coverThumb(entry)).toBe("/img/covers-dyn/pixabay-1234567.webp");
+    expect(coverFor("catalog://cover/pixabay-9")?.image).toBe("/img/covers-dyn/pixabay-9.webp");
+    expect(coverByURL("catalog://cover/pixabay-999999999999")).toBeDefined(); // 12 digits
+  });
+
+  it("uses remembered alt text for a dynamic cover", () => {
+    rememberCoverAlt("catalog://cover/pixabay-4242", "  Photo of a lake at dawn  ");
+    expect(coverByURL("catalog://cover/pixabay-4242")?.alt).toBe("Photo of a lake at dawn");
+    rememberCoverAlt("catalog://cover/theme-music", "ignored");
+    expect(coverByURL("catalog://cover/theme-music")?.alt).not.toBe("ignored");
+  });
+
+  it("rejects malformed dynamic keys and traversal", () => {
+    for (const url of [
+      "catalog://cover/pixabay-01", "catalog://cover/pixabay-0", "catalog://cover/PIXABAY-1", "catalog://cover/pixabay-",
+      "catalog://cover/pixabay-1/../x", "catalog://cover/pixabay-1/x", "catalog://cover/pixabay-1.webp", "catalog://cover/pixabay-1234567890123",
+      "catalog://cover/../pixabay-1", "catalog://default/pixabay-1", "https://example.com/pixabay-1", "catalog://cover/pixabay-1\n", "pixabay-1",
+    ]) expect(coverByURL(url), url).toBeUndefined();
   });
 });
 

@@ -1,4 +1,6 @@
 import { COVER_INDEX, THEME_DEFAULT_KEYS, type CoverIndexEntry } from "./catalog.generated";
+// Circular with dynamicCovers.ts (it needs parseCoverKey); both only call each other inside functions.
+import { dynamicCoverJpegPath, isDynamicCoverKey } from "./dynamicCovers";
 
 /**
  * Cover URL schemes (docs/contracts/callables.md, Event covers):
@@ -126,9 +128,13 @@ export function themeDefault(theme: string | undefined, index: readonly CoverInd
   return coverByKey(THEME_DEFAULT_KEYS[theme]!, index);
 }
 
-/** Hosted JPEG of a library cover (emails and the share page; Outlook has no WebP), or null when the key is unknown. */
+/**
+ * Hosted JPEG of a library cover (emails and the share page; Outlook has no WebP), or null when the key is unknown.
+ * A dynamic Pixabay cover maps statelessly by its key (`/img/covers-dyn/jpg/<key>.jpg`, served by coverImageV1).
+ */
 export function coverJpegURL(origin: string, url: unknown, index: readonly CoverIndexEntry[] = COVER_INDEX): string | null {
   const key = parseCoverKey(url);
+  if (isDynamicCoverKey(key)) return `${origin}${dynamicCoverJpegPath(key)}`;
   const entry = key !== null ? coverByKey(key, index) : null;
   return entry?.hasJpeg ? `${origin}/img/covers/jpg/${entry.key}.jpg` : null;
 }

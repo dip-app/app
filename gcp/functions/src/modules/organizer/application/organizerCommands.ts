@@ -1,5 +1,7 @@
 import type { CreateEventResponse, UpdateEventResponse } from "../../../generated/models";
 import { isDeactivated } from "../../admin/domain/member";
+import { isDynamicCoverURL } from "../../covers/domain/dynamicCovers";
+import { parseCoverKey, type CoverKeySource } from "../../covers/domain/coverCatalog";
 import { draftHash, parseCreateEventRequest, parseUpdateEventRequest } from "../domain/eventDraft";
 import { OrganizerError } from "../domain/errors";
 import type { OrganizerStore, OrganizerTransaction } from "./ports";
@@ -43,6 +45,18 @@ async function requireKnownTags(tx: OrganizerTransaction, tagIds: readonly strin
   if (missing.length > 0) throw new OrganizerError("invalid-argument", "TAG_NOT_FOUND", "Choose tags from the list.", ["tagIds"]);
 }
 
+/**
+ * A dynamic (live Pixabay) cover key must exist as an active stored cover. Without a key source it is rejected. The
+ * generated library and legacy covers were already validated by the parser.
+ */
+async function requireStoredDynamicCover(url: string, coverKeys: CoverKeySource | undefined) {
+  if (!isDynamicCoverURL(url)) return;
+  const key = parseCoverKey(url);
+  if (key === null || !coverKeys || !(await coverKeys.has(key))) {
+    throw new OrganizerError("invalid-argument", "VALIDATION_FAILED", "Choose a cover from the library.", ["coverImageURL"]);
+  }
+}
+
 /** createEventV1: requestId makes retries return the same event; the same key with another payload fails. */
 export async function createEvent(
   store: OrganizerStore,
@@ -50,6 +64,7 @@ export async function createEvent(
   data: unknown,
   ids: IdGenerator,
   clock: Clock = { now: () => new Date() },
+  coverKeys?: CoverKeySource,
 ): Promise<CreateEventResponse> {
   const authenticated = requireCaller(caller);
   const request = parseCreateEventRequest(data);
@@ -67,6 +82,7 @@ export async function createEvent(
       throw new OrganizerError("invalid-argument", "VALIDATION_FAILED", "New events must start in the future.", ["startTime"]);
     }
     await requireKnownTags(tx, request.event.tagIds);
+    await requireStoredDynamicCover(request.event.coverImageURL, coverKeys);
     const eventId = ids.eventId();
     tx.createEvent(request.companyId, eventId, authenticated.uid, request.event);
     tx.createReceipt(request.companyId, authenticated.uid, request.requestId, { hash, eventId, revision: 1 });
@@ -86,6 +102,7 @@ export async function updateEvent(
   caller: Caller | null,
   data: unknown,
   clock: Clock = { now: () => new Date() },
+  coverKeys?: CoverKeySource,
 ): Promise<UpdateEventResponse> {
   const authenticated = requireCaller(caller);
   const request = parseUpdateEventRequest(data);
@@ -108,6 +125,8 @@ export async function updateEvent(
     }
     if (request.status !== current.status) await checkStatusChange(tx, request, current.status, membership.role, clock.now());
     await requireKnownTags(tx, request.event.tagIds);
+    // Keeping the event's current cover needs no lookup (a cover later removed from the library stays on events that already use it).
+    if (request.event.coverImageURL !== current.coverImageURL) await requireStoredDynamicCover(request.event.coverImageURL, coverKeys);
     const nextRevision = current.revision + 1;
     tx.updateEvent(request.companyId, request.eventId, request.event, request.status, nextRevision, authenticated.uid);
     return { contractVersion: 1, eventId: request.eventId, revision: nextRevision };

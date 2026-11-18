@@ -483,6 +483,8 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         source: data.source === "dipbot" || data.source === "match" ? data.source : "default",
         provider: data.provider === "jev" || data.provider === "openai" || data.provider === "heuristic" ? data.provider : null,
         alternatives: Array.isArray(data.alternatives) ? data.alternatives.map(String) : [],
+        ...(data.newPhoto === true ? { newPhoto: true } : {}),
+        ...(typeof data.coverAlt === "string" && data.coverAlt.trim() ? { coverAlt: data.coverAlt.trim().slice(0, 160) } : {}),
       };
     }),
     // The caller owns the requestId (one per attempt), so `call` sends it as given.

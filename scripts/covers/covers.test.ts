@@ -112,6 +112,15 @@ describe("validate", () => {
     assert.ok(errors.some((e) => e.includes("duplicate key")));
   });
 
+  it("rejects manifest keys that start with pixabay- (reserved for dynamic covers)", async () => {
+    const dir = fresh("v-reserved");
+    const m = readManifest(dir);
+    m.covers[0].key = "pixabay-123";
+    writeManifest(dir, m);
+    const errors = await validateCovers(dir);
+    assert.ok(errors.some((e) => e.includes('must not start with "pixabay-"')));
+  });
+
   it("fails on missing alt and missing license", async () => {
     const dir = fresh("v-meta");
     const m = readManifest(dir);

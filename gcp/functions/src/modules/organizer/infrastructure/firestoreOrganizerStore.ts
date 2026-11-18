@@ -68,7 +68,11 @@ export class FirestoreOrganizerStore implements OrganizerStore {
             // Server-side detail stays in logs; the caller sees a generic internal error.
             throw new OrganizerError("internal", "INVALID_STORED_EVENT", "Stored event is invalid.");
           }
-          return { revision: revision as number, attendeeCount: attendeeCount as number, startTime: startTime.toDate(), endTime: endTime.toDate(), status };
+          const cover: unknown = snap.get("coverImageURL");
+          return {
+            revision: revision as number, attendeeCount: attendeeCount as number, startTime: startTime.toDate(), endTime: endTime.toDate(), status,
+            ...(typeof cover === "string" ? { coverImageURL: cover } : {}),
+          };
         },
         async getReceipt(companyId, uid, requestId) {
           const snap = await transaction.get(receipts(companyId).doc(`${uid}_${requestId}`));

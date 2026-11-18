@@ -561,6 +561,22 @@ describe("hosted JPEGs for the share page and emails", () => {
     assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://default/games"), null, "legacy covers keep their own mapping");
     assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://cover/no-jpeg", [entry("no-jpeg", ["arts"], ["x"], "x", { hasJpeg: false })]), null);
   });
+
+  test("dynamic Pixabay covers map statelessly to the hosted JPEG, in the share page too", () => {
+    assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://cover/pixabay-4242"), `${SHARE_ORIGIN}/img/covers-dyn/jpg/pixabay-4242.jpg`);
+    assert.equal(coverJpegURL(SHARE_ORIGIN, "catalog://cover/pixabay-0"), null, "malformed dynamic key");
+    assert.deepEqual(resolveImage("catalog://cover/pixabay-4242"), { url: `${SHARE_ORIGIN}/img/covers-dyn/jpg/pixabay-4242.jpg`, standard: false });
+    assert.equal(resolveImage("catalog://cover/pixabay-0").standard, true, "malformed dynamic key uses the default image");
+  });
+
+  test("parseEventDraft accepts the syntax of a dynamic cover URL (existence is checked by the command)", () => {
+    const draft = (coverImageURL: string) => ({
+      title: "t", description: "d", tagIds: [], coverImageURL, startTime: "2030-01-01T10:00:00Z", endTime: "2030-01-01T11:00:00Z",
+      venue: { name: "v", address: "a", locality: "l", latitude: 1, longitude: 2 }, costCents: 0, costNote: "", capacity: 5, isOutdoor: false,
+    });
+    assert.equal(parseEventDraft(draft("catalog://cover/pixabay-77")).coverImageURL, "catalog://cover/pixabay-77");
+    assert.throws(() => parseEventDraft(draft("catalog://cover/pixabay-")), OrganizerError);
+  });
 });
 
 describe("the real library at 150 to 200 covers", () => {

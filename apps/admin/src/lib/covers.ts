@@ -40,18 +40,46 @@ export const THEMES: readonly { key: CoverThemeKey; label: string }[] = (
 const byURL = new Map(COVER_LIBRARY.map((c) => [c.url, c]));
 const byKey = new Map(COVER_LIBRARY.map((c) => [c.key, c]));
 
-/** Resolves a stored cover URL (legacy `catalog://default/*` or `catalog://cover/<key>`) to its entry. */
+// Dynamic covers (Pixabay photos stored by the server, not in the manifest) are resolved statelessly by key.
+const DYNAMIC_KEY = /^pixabay-[1-9][0-9]{0,11}$/;
+const DYNAMIC_URL = /^catalog:\/\/cover\/(pixabay-[1-9][0-9]{0,11})$/;
+/** Alt text learned from pick results (in memory only); falls back to a generic description. */
+const dynamicAlt = new Map<string, string>();
+
+/** Remembers a pick result's `coverAlt` for a dynamic cover URL. Ignored for anything else or blank text. */
+export function rememberCoverAlt(url: string, alt: string | undefined): void {
+  const key = DYNAMIC_URL.exec(url)?.[1];
+  const text = alt?.trim().slice(0, 160);
+  if (key && text) dynamicAlt.set(key, text);
+}
+
+function dynamicEntry(key: string): CoverEntry {
+  const file = `${key}.webp`;
+  return {
+    key, url: `catalog://cover/${key}`, kind: "photo", file, thumb: file, width: 1200, height: 750,
+    themes: [], tags: [], mood: [], season: [], label: "Photo", alt: dynamicAlt.get(key) ?? "Event cover photo",
+  };
+}
+
+/** Resolves a stored cover URL (legacy `catalog://default/*`, `catalog://cover/<key>` or a dynamic `catalog://cover/pixabay-<id>`) to its entry. */
 export function coverByURL(url: string): CoverEntry | undefined {
   const hit = byURL.get(url);
   if (hit) return hit;
+  const dynamic = DYNAMIC_URL.exec(url)?.[1];
+  if (dynamic) return dynamicEntry(dynamic);
   const key = /^catalog:\/\/cover\/([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(url)?.[1];
   return key ? byKey.get(key) : undefined;
 }
 
-/** Full image (preview, cards). Served from the site root, so it carries the portal's base path. */
-export const coverImage = (entry: CoverEntry): string => asset(`/img/covers/${entry.file}`);
-/** 400 px thumbnail for grids. */
-export const coverThumb = (entry: CoverEntry): string => asset(`/img/covers/${entry.thumb}`);
+// Library files live in the admin's public/ (so they carry the /admin base path); dynamic covers are served by the
+// site-root Hosting rewrite /img/covers-dyn/** and must NOT be prefixed.
+const isDynamic = (entry: CoverEntry): boolean => DYNAMIC_KEY.test(entry.key) && !byKey.has(entry.key);
+const dynamicPath = (entry: CoverEntry): string => `/img/covers-dyn/${entry.file}`;
+
+/** Full image (preview, cards). */
+export const coverImage = (entry: CoverEntry): string => (isDynamic(entry) ? dynamicPath(entry) : asset(`/img/covers/${entry.file}`));
+/** 400 px thumbnail for grids (dynamic covers reuse the full image). */
+export const coverThumb = (entry: CoverEntry): string => (isDynamic(entry) ? dynamicPath(entry) : asset(`/img/covers/${entry.thumb}`));
 
 export function themeLabel(key: string): string {
   return THEMES.find((t) => t.key === key)?.label ?? key;
@@ -127,6 +155,10 @@ export interface PickEventCoverResult {
   source: CoverPickSource;
   provider: "jev" | "openai" | "heuristic" | null;
   alternatives: string[];
+  /** True when the pick is a freshly stored dynamic photo. */
+  newPhoto?: boolean;
+  /** Alt text for a dynamic photo (<= 160 chars). */
+  coverAlt?: string;
 }
 
 export interface CoverEvent { title: string; description?: string; tagIds?: readonly string[]; theme?: CoverThemeKey | "" | null }
