@@ -7,7 +7,8 @@ import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
   emptyDraft, normalizeDraft, validateDraft,
 } from "@/lib/contract";
-import { centsToDollars, dollarsToCents, isoToLocalInput, localInputToIso } from "@/lib/datetime";
+import { centsToDollars, dollarsToCents } from "@/lib/datetime";
+import { defaultWhen } from "@/lib/when";
 import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
@@ -17,6 +18,7 @@ import { EventPreview } from "./EventPreview";
 import { toast } from "./Toast";
 import { useTags } from "./TagCatalog";
 import { Toggle } from "./Toggle";
+import { WhenPicker } from "./WhenPicker";
 import { t } from "@/lib/aiStrings";
 
 interface Props {
@@ -44,7 +46,7 @@ export function EventForm({ event, onReload }: Props) {
   const editing = Boolean(event);
   // Mirrors the server rule: once anyone has responded, start and end are locked.
   const timesLocked = editing && (event?.attendeeCount ?? 0) > 0;
-  const [draft, setDraft] = useState<EventDraft>(() => (event ? structuredClone(event) : emptyDraft()));
+  const [draft, setDraft] = useState<EventDraft>(() => (event ? structuredClone(event) : { ...emptyDraft(), ...defaultWhen() }));
   const [status, setStatus] = useState<EventStatus>(event?.status ?? "scheduled");
   const [price, setPrice] = useState(() => (event ? centsToDollars(event.costCents) : ""));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -201,20 +203,11 @@ export function EventForm({ event, onReload }: Props) {
         </fieldset>
       </div>
 
-      <div className="section">
+      <div className="section wide">
         <h2>When</h2>
-        <div className="row">
-          <div className="field">
-            <label htmlFor="start">Starts</label>
-            <input id="start" aria-describedby={err("startTime") ? "start-error" : undefined} type="datetime-local" disabled={timesLocked} value={isoToLocalInput(draft.startTime)} aria-invalid={invalid("startTime")} onChange={(e) => set("startTime", localInputToIso(e.target.value))} />
-            {err("startTime") && <span className="error" id="start-error">{err("startTime")}</span>}
-          </div>
-          <div className="field">
-            <label htmlFor="end">Ends</label>
-            <input id="end" aria-describedby={err("endTime") ? "end-error" : undefined} type="datetime-local" disabled={timesLocked} value={isoToLocalInput(draft.endTime)} aria-invalid={invalid("endTime")} onChange={(e) => set("endTime", localInputToIso(e.target.value))} />
-            {err("endTime") && <span className="error" id="end-error">{err("endTime")}</span>}
-          </div>
-        </div>
+        <WhenPicker startTime={draft.startTime} endTime={draft.endTime} disabled={timesLocked} allowPast={editing}
+          startError={err("startTime")} endError={err("endTime")}
+          onChange={(startTime, endTime) => setDraft((current) => ({ ...current, startTime, endTime }))} />
         <span className="hint">
           {timesLocked
             ? "Times are locked because people have responded. Cancel and recreate the event to change them."
