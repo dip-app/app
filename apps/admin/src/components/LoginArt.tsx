@@ -36,7 +36,7 @@ export function LoginArt() {
           style={{ left: `${a.x}%`, top: `${a.y}%`, width: `${a.size}%`, "--i": i, "--amp": `${a.amp}px` } as CSSProperties}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/admin/img/avatars/${a.name}.webp`} alt="" width={192} height={192} decoding="async" />
+          <img src={`/admin/img/avatars/${a.name}.webp`} alt="" width={192} height={192} decoding="async" draggable={false} />
         </span>
       ))}
     </div>

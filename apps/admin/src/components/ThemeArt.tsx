@@ -10,7 +10,7 @@ export function ThemeArt({ url, title = "", className = "" }: { url: string; tit
     <div className={`theme-art ${className}`} style={{ background: theme.accent }} aria-hidden>
       {theme.illustration
         // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
-        ? <img src={theme.illustration} alt="" width={600} height={600} />
+        ? <img src={theme.illustration} alt="" width={600} height={600} draggable={false} />
         : <span className="fallback">{theme.displayName}</span>}
     </div>
   );

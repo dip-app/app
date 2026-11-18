@@ -44,7 +44,9 @@ public enum DIPBadgeCount {
         }
         private static var boldTextEnabled: Bool {
             #if canImport(UIKit)
-                return UIAccessibility.isBoldTextEnabled
+                // Newer SDKs isolate this property to the main actor; read it there from any caller.
+                if Thread.isMainThread { return MainActor.assumeIsolated { UIAccessibility.isBoldTextEnabled } }
+                return DispatchQueue.main.sync { UIAccessibility.isBoldTextEnabled }
             #else
                 return false
             #endif

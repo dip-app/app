@@ -26,7 +26,7 @@ function PhotoImage({ photo, large }: { photo: AlbumPhoto; large?: boolean }) {
   if (failed) return <div className={`photo-frame missing${large ? " large" : ""}`}>Photo unavailable</div>;
   if (!url) return <div className={`photo-frame loading${large ? " large" : ""}`} aria-hidden />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img className={`photo-frame${large ? " large" : ""}`} src={url} alt={photo.caption || `Photo by ${photo.uploaderName}`} />;
+  return <img className={`photo-frame${large ? " large" : ""}`} src={url} alt={photo.caption || `Photo by ${photo.uploaderName}`} draggable={false} />;
 }
 
 type Pending =
