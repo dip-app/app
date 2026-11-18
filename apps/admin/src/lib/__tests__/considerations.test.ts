@@ -94,7 +94,7 @@ describe("saved suggestions line", () => {
 
   it("says new data is available only for data-stale answers, and nothing for a free heuristic answer", () => {
     expect(freshnessLine(answer({ computedAt: ago(7_200_000) }), NOW)).toEqual({ text: "Updated 2 hours ago", stale: false });
-    expect(freshnessLine(answer({ cacheStatus: "stale", staleReason: "data", computedAt: ago(3 * 86_400_000) }), NOW)).toEqual({ text: "Updated 3 days ago, new data available", stale: true });
+    expect(freshnessLine(answer({ cacheStatus: "stale", staleReason: "data", computedAt: ago(3 * 86_400_000) }), NOW)).toEqual({ text: "Updated 3 days ago", stale: true, hint: "New data available" });
     expect(freshnessLine(answer({ cacheStatus: "stale", staleReason: "age", computedAt: ago(9 * 86_400_000) }), NOW)).toEqual({ text: "Updated 9 days ago", stale: true });
     expect(freshnessLine(answer({ provider: "heuristic", cacheStatus: "computed", computedAt: NOW.toISOString() }), NOW)).toBeNull();
     expect(freshnessLine(answer({ cacheStatus: "computed", computedAt: NOW.toISOString() }), NOW)?.stale).toBe(false);

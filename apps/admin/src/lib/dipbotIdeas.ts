@@ -39,10 +39,12 @@ export interface RefreshState {
   disabled: boolean;
   /** Why it is off, as one plain sentence (title and screen reader text); null when it can be pressed. */
   reason: string | null;
+  /** True when the reason is the monthly credits being spent: the page's credits notice already says it, so no visible hint repeats it. */
+  outOfCredits?: boolean;
 }
 export function refreshState(data: DipbotIdeas, running: boolean): RefreshState {
   if (running) return { disabled: true, reason: null };
-  if (data.credits.creditsRemaining < ideasCost(data.credits)) return { disabled: true, reason: t("ideasForYou.hintOut", { date: resetDate(data.credits.resetsAt) }) };
+  if (data.credits.creditsRemaining < ideasCost(data.credits)) return { disabled: true, reason: t("ideasForYou.hintOut", { date: resetDate(data.credits.resetsAt) }), outOfCredits: true };
   if (data.refreshesLeftToday <= 0) return { disabled: true, reason: t("ideasForYou.hintLimit") };
   return { disabled: false, reason: null };
 }

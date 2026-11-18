@@ -16,16 +16,18 @@ export interface SectionToggle {
 /**
  * The header row of a Dipbot section: [Dipbot mark] **Title**  muted "Updated 3 hours ago"  [collapse toggle]  ... [actions].
  * Shared by "Ideas for you" and the wizard's per-step suggestions, so they look the same. The toggle is optional
- * (leave `toggle` out for a section that is not collapsible). `end` holds the actions; `hint` is a muted line before them.
+ * (leave `toggle` out for a section that is not collapsible). `end` holds the actions; `hint` is a muted line before them; `staleHint` is a short inline note beside `updated`, shown only when stale.
  * Narrow containers wrap the actions under the title. The wrapper is a size container named `sh`.
  */
-export function SectionHeader({ id, title, headingLevel = 2, updated, toggle, hint, end, stackActions = false, className }: {
+export function SectionHeader({ id, title, headingLevel = 2, updated, staleHint, toggle, hint, end, stackActions = false, className }: {
   /** Names the heading (for `aria-labelledby` on the section). */
   id?: string;
   title: ReactNode;
   headingLevel?: 2 | 3;
   /** The muted "Updated ..." text, or any short status node. */
   updated?: ReactNode;
+  /** Compact inline hint after `updated`, only when the saved answer is stale ("New data available"). Leave out when fresh. */
+  staleHint?: ReactNode;
   toggle?: SectionToggle;
   hint?: ReactNode;
   end?: ReactNode;
@@ -39,7 +41,12 @@ export function SectionHeader({ id, title, headingLevel = 2, updated, toggle, hi
       <div className="sh-head">
         <DipbotMark size={16} className="sh-mark" />
         <Heading id={id}>{title}</Heading>
-        {updated && <span className="sh-when">{updated}</span>}
+        {(updated || staleHint) && (
+          <span className="sh-when">
+            {updated}
+            {staleHint && <span className="sh-stale" data-stale="true">{updated ? " " : ""}<span className="sh-stale-dot" aria-hidden>{"\u00b7"}</span> {staleHint}</span>}
+          </span>
+        )}
         {toggle && (
           <button type="button" className="sh-toggle" aria-expanded={!toggle.collapsed} aria-controls={toggle.controls} aria-label={toggle.label} title={toggle.label} onClick={toggle.onToggle}>
             <Chevron className="sh-chevron" />

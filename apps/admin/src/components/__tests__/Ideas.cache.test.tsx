@@ -64,7 +64,8 @@ describe("saved suggestions: visiting is free", () => {
 
   it("stale data shows the hint and a Refresh button but does not run anything on load", async () => {
     const { suggestions } = await open("?cache=stale&step=2");
-    await screen.findByText("Updated 3 days ago, new data available", {}, wait);
+    await screen.findByText("Updated 3 days ago", {}, wait);
+    expect(screen.getByText("New data available")).toBeTruthy();
     expect(screen.getByText(/Dipbot suggests 1 choice/)).toBeTruthy();
     expect(suggestions).toHaveBeenCalledTimes(1);
     expect(document.querySelector(".credits-meter")?.textContent).toContain("Credits: 412 of 500");
@@ -72,7 +73,8 @@ describe("saved suggestions: visiting is free", () => {
 
   it("refresh is an explicit press: one request with refresh, then 1 credit is spent and the line is current", async () => {
     const { suggestions } = await open("?cache=stale&step=2");
-    await screen.findByText("Updated 3 days ago, new data available", {}, wait);
+    await screen.findByText("Updated 3 days ago", {}, wait);
+    expect(screen.getByText("New data available")).toBeTruthy();
     fireEvent.click(refreshButton()!);
     await screen.findByText("Updated just now", {}, wait);
     expect(suggestions).toHaveBeenCalledTimes(2);
@@ -84,7 +86,8 @@ describe("saved suggestions: visiting is free", () => {
   it("an older-than-a-week answer says when it was updated, without claiming new data", async () => {
     await open("?cache=age&step=2");
     await screen.findByText("Updated 9 days ago", {}, wait);
-    expect(screen.queryByText(/new data available/)).toBeNull();
+    expect(screen.queryByText(/new data available/i)).toBeNull();
+    expect(document.querySelector(".sh-stale")).toBeNull();
   });
 
   it("the very first visit computes once, shows a loading state, and charges 1 credit", async () => {
@@ -106,7 +109,8 @@ describe("saved suggestions: visiting is free", () => {
 
   it("out of credits with a stale answer: shown as saved, Refresh is disabled and never auto-runs", async () => {
     const { suggestions } = await open("?cache=stale&ai=nocredits&step=2");
-    await screen.findByText("Updated 3 days ago, new data available", {}, wait);
+    await screen.findByText("Updated 3 days ago", {}, wait);
+    expect(screen.getByText("New data available")).toBeTruthy();
     expect(refreshButton()?.disabled).toBe(true);
     fireEvent.click(refreshButton()!);
     await new Promise((resolve) => setTimeout(resolve, 100));
