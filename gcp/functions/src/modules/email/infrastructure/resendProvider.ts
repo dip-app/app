@@ -54,9 +54,9 @@ export class ResendProvider implements EmailProviderPort {
     const outboxId = message.metadata.outboxId;
     if (outboxId.length === 0 || outboxId.length > MAX_IDEMPOTENCY_KEY) return { kind: "rejected", code: "resend_bad_idempotency_key" };
     const body = {
-      from: this.from,
+      from: message.from ?? this.from,
       to: [message.to],
-      reply_to: REPLY_TO,
+      reply_to: message.replyTo ?? REPLY_TO,
       subject: message.subject,
       html: message.html,
       text: message.text,

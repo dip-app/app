@@ -5,20 +5,20 @@ import Testing
 @Suite struct DIPNotificationCategoryTests {
     @Test func idsMatchServerRegistryInOrder() {
         #expect(DIPNotificationCategory.allCases.map(\.rawValue)
-            == ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery"])
+            == ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "calendar_invites"])
         #expect(DIPNotificationChannel.allCases.map(\.rawValue) == ["push", "email"])
     }
 
     @Test func offeredLists() {
-        #expect(DIPNotificationCategory.offered(on: .push) == DIPNotificationCategory.allCases)
-        #expect(DIPNotificationCategory.offered(on: .email) == [.invites, .eventUpdates, .reminders, .challenges, .discovery])
+        #expect(DIPNotificationCategory.offered(on: .push) == DIPNotificationCategory.allCases.filter { $0 != .calendarInvites })
+        #expect(DIPNotificationCategory.offered(on: .email) == [.invites, .eventUpdates, .reminders, .challenges, .discovery, .calendarInvites])
     }
 
     @Test func defaultsArePinned() {
         let push = DIPNotificationCategory.allCases.filter { DIPNotificationCategory.defaultEnabled($0, channel: .push) }
         #expect(push == [.invites, .eventUpdates, .reminders, .chat, .challenges])
         let email = DIPNotificationCategory.allCases.filter { DIPNotificationCategory.defaultEnabled($0, channel: .email) }
-        #expect(email == [.invites, .eventUpdates, .challenges])
+        #expect(email == [.invites, .eventUpdates, .challenges, .calendarInvites])
         #expect(!DIPNotificationCategory.defaultEnabled(.chat, channel: .email))
     }
 
@@ -74,7 +74,7 @@ import Testing
         let fields = prefs.firestoreFields()
         #expect(fields["contractVersion"] as? Int == 1)
         #expect((fields["push"] as? [String: Bool])?.count == 7)
-        #expect((fields["email"] as? [String: Bool])?.count == 5)
+        #expect((fields["email"] as? [String: Bool])?.count == 6)
         let parsed = DIPNotificationPreferences(firestore: fields)
         for channel in DIPNotificationChannel.allCases {
             for category in DIPNotificationCategory.allCases {

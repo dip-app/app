@@ -39,8 +39,8 @@ export class PostmarkProvider implements EmailProviderPort {
 
   async send(message: OutgoingEmail): Promise<SendOutcome> {
     const body = {
-      From: this.from,
-      ReplyTo: REPLY_TO,
+      From: message.from ?? this.from,
+      ReplyTo: message.replyTo ?? REPLY_TO,
       To: message.to,
       Subject: message.subject,
       HtmlBody: message.html,

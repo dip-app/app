@@ -49,7 +49,7 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
     @Test func loadsDefaultsInRegistryOrder() async {
         let (model, _, _) = await loaded()
         #expect(model.phase == .ready)
-        #expect(model.pushRows.map(\.category) == DIPNotificationCategory.allCases)
+        #expect(model.pushRows.map(\.category) == DIPNotificationCategory.allCases.filter { $0 != .calendarInvites })
         #expect(model.pushRows.map(\.isOn) == [true, true, true, true, true, false, false])
         #expect(model.pushRows.first?.title == "Invites")
         #expect(model.pushRows.allSatisfy { !$0.summary.isEmpty })
@@ -181,8 +181,8 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
 
     @Test func emailRowsExcludeChatSocialAndDiscovery() async {
         let (model, _, _) = await loaded()
-        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges])
-        #expect(model.emailRows.map(\.isOn) == [true, true, false, true])
+        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges, .calendarInvites])
+        #expect(model.emailRows.map(\.isOn) == [true, true, false, true, true])
     }
 
     @Test func emailToggleWritesOnlyTheEmailChannel() async {

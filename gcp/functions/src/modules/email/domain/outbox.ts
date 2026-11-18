@@ -45,7 +45,8 @@ export type OutboxStatus = "queued" | "sending" | "sent" | "failed" | "skipped" 
 
 export type SkipReason =
   | "disabled" | "company_disabled" | "config_incomplete" | "no_member" | "tenant_mismatch" | "inactive_member" | "no_email"
-  | "preference_off" | "not_admin" | "suppressed" | "member_cap" | "company_cap" | "invalid_variables";
+  | "preference_off" | "not_admin" | "suppressed" | "member_cap" | "company_cap" | "invalid_variables"
+  | "not_going" | "event_canceled" | "never_invited" | "rejoined" | "event_ended";
 
 export interface OutboxDocument<T extends TemplateId = TemplateId> {
   id: string;

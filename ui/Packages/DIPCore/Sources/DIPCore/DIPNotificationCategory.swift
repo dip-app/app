@@ -11,6 +11,8 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
     case invites
     case eventUpdates = "event_updates"
     case reminders, chat, challenges, social, discovery
+    /// Email only: calendar invite emails (`.ics` that add the activity to the member's calendar).
+    case calendarInvites = "calendar_invites"
 
     public var title: String {
         switch self {
@@ -21,6 +23,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .challenges: "Challenges"
         case .social: "Comments and photos"
         case .discovery: "Suggestions"
+        case .calendarInvites: "Calendar invites"
         }
     }
 
@@ -33,6 +36,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .challenges: "Submission reviews and new weekly themes"
         case .social: "Comments and photos on your posts"
         case .discovery: "New activities that match your interests"
+        case .calendarInvites: "An email that adds activities you join to your calendar, and keeps it up to date"
         }
     }
 
@@ -47,8 +51,8 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
     /// Categories a channel offers, in registry order. Chat and social are never emailed.
     public static func offered(on channel: DIPNotificationChannel) -> [DIPNotificationCategory] {
         switch channel {
-        case .push: allCases
-        case .email: [.invites, .eventUpdates, .reminders, .challenges, .discovery]
+        case .push: allCases.filter { $0 != .calendarInvites }
+        case .email: [.invites, .eventUpdates, .reminders, .challenges, .discovery, .calendarInvites]
         }
     }
 
@@ -57,7 +61,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         guard offered(on: channel).contains(category) else { return false }
         switch channel {
         case .push: return category != .social && category != .discovery
-        case .email: return category == .invites || category == .eventUpdates || category == .challenges
+        case .email: return category == .invites || category == .eventUpdates || category == .challenges || category == .calendarInvites
         }
     }
 }

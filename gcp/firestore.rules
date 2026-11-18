@@ -326,9 +326,9 @@ service cloud.firestore {
           && boolOrAbsent(m, 'chat') && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'social') && boolOrAbsent(m, 'discovery');
       }
       function validEmail(m) {
-        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery', 'admin_suggestions'])
+        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery', 'calendar_invites', 'admin_suggestions'])
           && boolOrAbsent(m, 'invites') && boolOrAbsent(m, 'event_updates') && boolOrAbsent(m, 'reminders')
-          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery') && boolOrAbsent(m, 'admin_suggestions');
+          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery') && boolOrAbsent(m, 'calendar_invites') && boolOrAbsent(m, 'admin_suggestions');
       }
       function validPreferences(data) {
         return data.keys().hasOnly(['contractVersion', 'push', 'email', 'updatedAt'])
@@ -343,7 +343,7 @@ service cloud.firestore {
     // inviteRateLimits is server-only and falls through to the deny-all rule below.
     // users/{uid}/devices (registerDeviceV1/unregisterDeviceV1), events/{e}/pushReceipts and
     // emulatorPushOutbox are server-only and fall through to the deny-all rule below.
-    // emailOutbox, emailSuppressions, emailCaps, emailSettings and emulatorEmailOutbox (email module) are server-only too.
+    // emailOutbox, emailInviteState, emailSuppressions, emailCaps, emailSettings and emulatorEmailOutbox (email module) are server-only too.
     match /{document=**} {
       allow read, write: if false;
     }

@@ -1,6 +1,6 @@
 # Calendar conflicts and one-tap add (stretch S1)
 
-Status: CAL-1 to CAL-7 built (November 17, 2026; see [Decisions](#decisions-november-17-2026)); CAL-8 waits on the email workstream. Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Extends the shipped "add to calendar" flow.
+Status: CAL-1 to CAL-7 built (November 17, 2026; see [Decisions](#decisions-november-17-2026)); CAL-8 built (emailed calendar invites, see [Emailed invites](#emailed-invites-cal-8-november-17-2026)). Part of the [V2 stretch goals](../../milestones/v2/STRETCH_GOALS.md). Extends the shipped "add to calendar" flow.
 
 ## Goal and user stories
 
@@ -126,7 +126,7 @@ The owner had not answered the open questions when this was built; each default 
 1. **Opt-in full access is adopted (Q1).** Phase A (DIP-to-DIP conflicts, no permission) is always on. Phase B (device calendar read, direct save) needs the build flag `DIP_CALENDAR_CONFLICTS_ENABLED` (Info.plist `DIPCalendarConflictsEnabled`: YES in Debug, NO in Release), the per-uid Profile toggle "Show calendar conflicts" (default off) and iOS full access. Without all three, the pill keeps the permissionless system editor.
 2. **"Add anyway" is allowed (Q2).** A conflict opens the "Overlaps with" alert (up to two names, then "and N more"; "May overlap with" when all are tentative) with Add anyway and Cancel.
 3. **No conflict-aware reminders (Q3)** and **no Google or Microsoft freebusy (Q4)**: out of scope.
-4. **No emailed invites from `events@letsdip.work` (Q5)**: CAL-8 (#185) stays open for the email workstream (EML-5); no ICS link was added.
+4. **Emailed invites from `events@letsdip.work` (Q5)**: reversed on the owner's request, built as CAL-8 (#185) with EML-5 (#219); see [Emailed invites](#emailed-invites-cal-8-november-17-2026).
 5. **Conflict pill is a solid amber fill** (new token `warningAmber` #FF9F43 behind semantic `calendarConflict`, ink text `textOnCalendarConflict`, warning triangle) rather than the amber outline sketched above, because the owner's design language reserves outlines for informational states and the pill stays pressable. Brand yellow was tried first and rejected in design crit (it read as a second back button). `calendarFree` aliases purple. The added state is an outlined, disabled capsule with a checkmark.
 6. **Free state:** without opt-in it looks exactly as before (solid purple, calendar icon, date). With opt-in it shows a calendar-plus icon and saves directly, then a toast "Added to your calendar" with Undo (5 s).
 7. **Entry tracking:** the entry URL is now the share link `https://letsdip.work/e/<id>` (the venue stays in the location field), so DIP excludes its own entries from conflicts and re-finds them. Records (`dip.calendar.v1.<uid>`: identifiers and times only, never titles) are cleared on sign-out. Times within a minute count as unchanged. Update and remove are offered only for entries DIP created: "This activity moved. Update your calendar entry." under the When row, and "Leave and remove from calendar" in the leave dialog. The adapter refuses to update or delete any entry whose URL is not a DIP share link.
@@ -135,13 +135,38 @@ The owner had not answered the open questions when this was built; each default 
 10. **All-day entries** are ignored unless "Count all-day events as busy" is on; free, declined and canceled entries are ignored; tentative is a soft conflict.
 11. **Privacy:** the policy page and the TestFlight checklist ([ops](../../ops/testflight-universal-links.md#calendar-conflicts-stretch-s1-app-store-privacy-and-review)) were updated in the same change. The App Store privacy label is unchanged because calendar data never leaves the device. `NSCalendarsFullAccessUsageDescription` was added next to the write-only string.
 
+## Emailed invites (CAL-8, November 17, 2026)
+
+Status: done in code and tests; nothing sends until the owner turns email on (`EMAIL_ENABLED`, `emailSettings/{companyId}.enabled`) and runs the [manual client checklist](../../ops/email-runbook.md#11-calendar-invites-manual-test-checklist).
+
+Joining an event (RSVP `going`) emails the member a real calendar invite, so Gmail, Outlook, Apple Mail and iOS Mail show their native "Add to calendar" or "Yes" card. The date button in the app is unchanged; the email is the second, no-permission route to the same result.
+
+| Moment | Trigger | iCalendar | Email |
+| --- | --- | --- | --- |
+| Member joins | RSVP becomes `going` | `METHOD:REQUEST`, SEQUENCE n | "Calendar invite: title" |
+| Time, place or title changes | event update (same field set as the changelog) | `METHOD:REQUEST`, same UID, SEQUENCE n+1 | "Updated invite: title" |
+| Member leaves or is removed | RSVP leaves `going` or is deleted | `METHOD:CANCEL`, same UID, SEQUENCE n+1 | "Removed from your calendar: title" |
+| Event canceled | event status becomes `cancelled` | `METHOD:CANCEL`, same UID, SEQUENCE n+1 | "Canceled: title" |
+
+- **Sender:** `DIP Events <events@letsdip.work>`, Reply-To `support@letsdip.work`. The domain `letsdip.work` is already verified for sending; the `events@` mailbox does not need to exist (nobody answers iTIP replies). ORGANIZER is `events@letsdip.work`.
+- **ATTENDEE:** the member, `PARTSTAT=ACCEPTED;RSVP=FALSE`. They already said yes in DIP, so clients show an add-to-calendar card and never ask for a reply or send one.
+- **UID:** `dip-<eventId>-<first 16 hex of sha256(memberUid)>@letsdip.work`, per (event, member), so every update and the cancel modify the same entry and the member id never appears in the file. SEQUENCE comes from a server-only counter `emailInviteState` per (company, event, member): first invite 0, then +1 for every REQUEST or CANCEL. It only grows; a rejoin after a leave continues the count.
+- **Times:** UTC instants (`DTSTART:20301105T233000Z`), as in `ics.ts`. Daylight saving cannot move an entry and no VTIMEZONE is needed. DTSTAMP is the send time.
+- **Content:** SUMMARY title, LOCATION `venue name, street address`, DESCRIPTION and URL the share link `https://letsdip.work/e/<id>`, `TRANSP:OPAQUE`, a `VALARM` 30 minutes before the start on REQUEST (none on CANCEL).
+- **Body:** the standard email layout (admin-site look, logo header art, footer last): title, when, where, one sentence "Open the attached invite (invite.ics) and choose Add to calendar", and the Open in DIP button.
+- **Delivery format and provider limits:** the calendar travels as one attachment `invite.ics` with content type `text/calendar; charset=UTF-8; method=REQUEST` (or `CANCEL`). Neither Resend (`attachments[].content_type`) nor Postmark (`Attachments[].ContentType`) offers a raw MIME body or an inline `text/calendar` alternative part: their JSON APIs only take html, text and attachments (checked against the provider docs on November 17, 2026). Clients that need the inline `multipart/alternative` calendar part to render the card from the body may show the attachment instead of the card; Gmail, Apple Mail and iOS Mail read `method=` from an attached `.ics`. If the manual checklist shows a client that does not, the fallback is the provider's SMTP relay with a hand-built `multipart/alternative` message; that is not built.
+- **Preferences:** new email-only category `calendar_invites`, default on, because the member just asked to join and the invite is the transactional confirmation. Profile > Notifications > Email shows "Calendar invites"; every email has the one-click unsubscribe, which turns only this category off. Turning it off stops the whole sequence (invites, updates, cancels).
+- **Safety:** outbox id `calendar_invites_<eventId>_<uid>_<r|c><trigger write time>` is created once, so a redelivered trigger cannot send twice; sends are at most once. At send time the sender re-reads the RSVP and event: no invite when the member left or the event was canceled or ended (`not_going`, `event_canceled`, `event_ended`); no cancel unless an invite was actually delivered (`never_invited`) or when the member rejoined meanwhile (`rejoined`). Tenant, `EMAIL_ENABLED`, company `emailSettings`, suppression, member cap (20 per day) and company cap apply. Updates fan out to at most 500 going members per event change.
+- **Known limit:** reminder and change emails still attach the informational `event.ics` (`METHOD:PUBLISH`, UID `<eventId>@letsdip.work`). A member who also holds an invite can end up with two entries for one event if they add that file too. Recommended follow-up once invites are verified: drop `event.ics` from the emails a member with an invite receives.
+- **Not built:** the optional per-user `webcal://` feed from the CAL-8 scope (needs a revocable token; not part of this request).
+
 ## Open questions for the owner
 
 1. Is the opt-in full-access prompt acceptable, or should V2 stay with Phase A (DIP-only conflicts) plus the editor?
 2. Should "Add anyway" be allowed, or should conflicting adds be blocked entirely? Recommended: allowed, because a conflict can be stale or soft.
 3. Do you want conflict-aware reminders (local notification) even though they are best effort?
 4. Which calendars matter most to your customers (Google Workspace, Microsoft 365, Apple)? Decides whether Phase C Google or Microsoft freebusy is worth the verification work.
-5. Is the `events@letsdip.work` sender wanted for calendar invites (needs the email setup in [email](email.md))?
+5. Answered: yes, `events@letsdip.work` sends the invites ([Emailed invites](#emailed-invites-cal-8-november-17-2026)).
 
 ## Work breakdown
 
@@ -155,6 +180,8 @@ The owner had not answered the open questions when this was built; each default 
 | CAL-6 | Home "Fits your calendar" | Chip and sort over cached conflicts in the pure presentation layer | Presentation tests keep order stable and never hide events; first paint not delayed | M | ios | CAL-2 |
 | CAL-7 | Privacy policy and store disclosures | Update letsdip.work/privacy, App Privacy answers, review notes | Policy text merged and deployed before the feature flag turns on; checklist in the ops doc | S | infra | none |
 | CAL-8 | Email ICS and optional feed | Add-to-calendar ICS in event emails and an optional per-user `webcal://` feed endpoint | ICS validates in Gmail, Outlook and Apple Mail; feed token can be revoked; no calendar data read | M | backend | EML-5 |
+
+CAL-8 status: invite emails done (REQUEST, update, CANCEL); the `webcal://` feed is not built. Manual client validation is pending (owner, see the runbook checklist).
 
 ## Sources
 

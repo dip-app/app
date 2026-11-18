@@ -1,4 +1,5 @@
 import * as logger from "firebase-functions/logger";
+import { INVITE_FROM, INVITE_REPLY_TO, type InviteContext } from "../domain/ics";
 import { resolveEmailPreferences } from "../domain/categories";
 import {
   MAX_ATTEMPTS, MEMBER_DAILY_CAP, SEND_LEASE_MS, capDay, emailHash, type OutboxDocument, type OutboxStatus, type SkipReason,
@@ -8,14 +9,14 @@ import type { RenderContext, RenderedEmail, TemplateId, TemplateVariables } from
 import { MIN_KEY_BYTES, signUnsubscribeToken } from "../domain/unsubscribeToken";
 import type {
   Clock, CompanySettingsReader, CapStore, EmailAttachment, EmailConfig, EmailPreferencesStore, EmailProviderPort,
-  OutboxStore, RecipientDirectory, SuppressionStore,
+  InviteEligibility, InviteSequenceStore, OutboxStore, RecipientDirectory, SuppressionStore,
 } from "./ports";
 
 /** Rendering functions, injected so unit tests use fakes (the real ones are `renderEmail`, `validateVariables`, `icsAttachmentFor`). */
 export interface EmailRenderer {
   render(template: TemplateId, variables: TemplateVariables[TemplateId], ctx: RenderContext): RenderedEmail;
   validate(template: TemplateId, value: unknown): TemplateVariables[TemplateId] | null;
-  attachment(template: TemplateId, variables: TemplateVariables[TemplateId], revision: number): EmailAttachment | null;
+  attachment(template: TemplateId, variables: TemplateVariables[TemplateId], revision: number, invite?: InviteContext): EmailAttachment | null;
 }
 
 /** Thrown after a definite, retryable rejection so the Functions runtime redelivers the event (trigger uses retry:true). */
@@ -38,6 +39,9 @@ export interface SendDeps {
   clock: Clock;
   config: EmailConfig;
   tokenSigner?: typeof signUnsubscribeToken;
+  /** Calendar invites only: per-member SEQUENCE/delivery state and the fresh going/status read. Without them invites are skipped. */
+  inviteSequences?: InviteSequenceStore;
+  inviteEligibility?: InviteEligibility;
   /** Structured log sink; fields never contain addresses, names, subjects or bodies. */
   log?: (event: string, fields: Record<string, string | number>) => void;
 }
@@ -49,6 +53,10 @@ const MAX_FIRST_NAME = 80;
 function firstName(displayName: string | null): string | null {
   const token = displayName?.trim().split(/\s+/)[0] ?? "";
   return token.length > 0 ? token.slice(0, MAX_FIRST_NAME) : null;
+}
+
+function eventIdOf(variables: TemplateVariables[TemplateId]): string {
+  return (variables as { eventId: string }).eventId;
 }
 
 /** Runs one outbox email through every send-time gate. At most once: a lost lease or ambiguous outcome is never resent. */
@@ -137,6 +145,22 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
   const hash = emailHash(to);
   if (await deps.suppressions.isSuppressed(hash)) return skip("suppressed");
 
+  const isInvite = doc.template === "calendar_invite" || doc.template === "calendar_cancel";
+  if (isInvite) {
+    // Send-time truth: a member who left, an event that was canceled or ended, or a cancel for a calendar entry that never
+    // reached the member must not produce an email, whatever was true when the outbox entry was queued.
+    if (!deps.inviteEligibility || !deps.inviteSequences) return skip("config_incomplete");
+    const state = await deps.inviteEligibility.state(doc.companyId, eventIdOf(variables), doc.uid);
+    if (doc.template === "calendar_invite") {
+      if (!state.going) return skip("not_going");
+      if (state.eventStatus !== "scheduled") return skip("event_canceled");
+      if (state.endTime !== null && state.endTime.getTime() <= now.getTime()) return skip("event_ended");
+    } else {
+      if ((variables as TemplateVariables["calendar_cancel"]).reason === "left" && state.going && state.eventStatus === "scheduled") return skip("rejoined");
+      if (!(await deps.inviteSequences.isDelivered(doc.companyId, eventIdOf(variables), doc.uid))) return skip("never_invited");
+    }
+  }
+
   const cap = await deps.caps.consume(doc.uid, doc.companyId, capDay(now), MEMBER_DAILY_CAP, company.dailyCap, now, doc.id);
   if (cap !== "ok") return skip(cap);
 
@@ -152,7 +176,10 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
       : null,
   });
   const attachment = deps.renderer.attachment(doc.template, variables,
-    "revision" in variables && typeof variables.revision === "number" ? variables.revision : 0);
+    "revision" in variables && typeof variables.revision === "number" ? variables.revision : 0,
+    isInvite ? { attendeeEmail: to, attendeeName: recipient.displayName?.trim() || null, memberUid: doc.uid, now } : undefined);
+  // An invite without its calendar part would be a plain "you joined" email with a promise it cannot keep.
+  if (isInvite && attachment === null) return skip("invalid_variables");
 
   state.providerCalled = true;
   const outcome = await deps.provider.send({
@@ -162,6 +189,7 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
     text: rendered.text,
     headers: { "List-Unsubscribe": `<${unsubscribeURL}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
     attachments: attachment === null ? [] : [attachment],
+    ...(isInvite ? { from: INVITE_FROM, replyTo: INVITE_REPLY_TO } : {}),
     stream: "notifications",
     metadata: { outboxId: doc.id },
     tag: doc.template,
@@ -169,6 +197,10 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
 
   switch (outcome.kind) {
     case "sent":
+      if (isInvite && deps.inviteSequences) {
+        // Best effort: the email is already accepted, so a failed bookkeeping write must not turn `sent` into `unknown`.
+        try { await deps.inviteSequences.setDelivered(doc.companyId, eventIdOf(variables), doc.uid, doc.template === "calendar_invite", deps.clock.now()); } catch { /* cancel is then skipped as never_invited */ }
+      }
       return finish("sent", { providerMessageId: outcome.providerMessageId, toHash: hash });
     case "retryable": {
       if (doc.attempts < MAX_ATTEMPTS) {

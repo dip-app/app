@@ -84,6 +84,14 @@ test("email.admin_suggestions accepts a boolean only and is never a push categor
   await assertFails(setDoc(doc(client, path), prefs({ push: { admin_suggestions: true } })));
 });
 
+test("email.calendar_invites accepts a boolean only and is never a push category", async () => {
+  const client = db("alice");
+  await assertSucceeds(setDoc(doc(client, path), prefs({ email: { calendar_invites: false } })));
+  await assertSucceeds(updateDoc(doc(client, path), { "email.calendar_invites": true, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(client, path), prefs({ email: { calendar_invites: "yes" } })));
+  await assertFails(setDoc(doc(client, path), prefs({ push: { calendar_invites: true } })));
+});
+
 test("other settings documents, delete and list are denied", async () => {
   const client = db("alice");
   await assertFails(getDoc(doc(client, "users/alice/settings/other")));

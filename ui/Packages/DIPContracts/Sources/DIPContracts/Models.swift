@@ -359,14 +359,16 @@ public struct EmailCategoryPreferences: Codable, Equatable, Sendable {
     public var reminders: Bool?
     public var challenges: Bool?
     public var discovery: Bool?
+    public var calendar_invites: Bool?
     public var admin_suggestions: Bool?
 
-    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil, admin_suggestions: Bool? = nil) {
+    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil, calendar_invites: Bool? = nil, admin_suggestions: Bool? = nil) {
         self.invites = invites
         self.event_updates = event_updates
         self.reminders = reminders
         self.challenges = challenges
         self.discovery = discovery
+        self.calendar_invites = calendar_invites
         self.admin_suggestions = admin_suggestions
     }
 }

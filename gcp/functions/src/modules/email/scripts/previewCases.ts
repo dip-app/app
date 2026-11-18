@@ -37,6 +37,10 @@ export const PREVIEW_CASES: PreviewCase[] = [
   make("attendee_added", "attendee_added", EVENT),
   make("event_reminder_24h", "event_reminder", { ...EVENT, window: "24h" }),
   make("event_reminder_1h", "event_reminder", { ...EVENT, window: "1h" }),
+  make("calendar_invite_joined", "calendar_invite", { ...EVENT, sequence: 0, reason: "joined" }),
+  make("calendar_invite_updated", "calendar_invite", { ...EVENT, sequence: 2, reason: "updated" }),
+  make("calendar_cancel_left", "calendar_cancel", { ...EVENT, sequence: 3, reason: "left" }),
+  make("calendar_cancel_canceled", "calendar_cancel", { ...EVENT, sequence: 3, reason: "canceled" }),
   make("challenge_approved", "challenge_reviewed", {
     challengeId: "chal_step_week",
     challengeTitle: "10,000 steps for a week",

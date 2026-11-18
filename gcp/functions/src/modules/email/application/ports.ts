@@ -13,6 +13,10 @@ export interface EmailAttachment { filename: string; contentType: string; conten
 export interface OutgoingEmail {
   /** Recipient address, read from `users/{uid}` at send time. Adapters must never log it. */
   to: string;
+  /** Sender override, `Name <address>`; adapters fall back to their default notify@ sender. Calendar invites use events@letsdip.work. */
+  from?: string;
+  /** Reply-To override; adapters fall back to support@letsdip.work. */
+  replyTo?: string;
   subject: string;
   html: string;
   text: string;
@@ -99,6 +103,56 @@ export interface OutboxStore {
    * Counters only; no per-open event log (no IP, user agent or timestamps list is stored).
    */
   recordOpen(id: string, now: Date): Promise<boolean>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Calendar invites (CAL-8 / EML-5): per (event, member) iCalendar SEQUENCE state and send-time eligibility.
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type InviteIntent = "join" | "update" | "cancel";
+
+export interface InviteSequenceStore {
+  /**
+   * One transaction per (company, event, member) state document `emailInviteState/{hash}`. Assigns the next SEQUENCE:
+   * `join` always (marks the entry active), `update` only when active, `cancel` only when active (then marks it
+   * inactive). Returns null when the intent does not apply. Re-calling with the same `key` returns the first result, so
+   * a redelivered trigger never burns a number or loses a cancel. Gaps in SEQUENCE are harmless; it only has to grow.
+   */
+  assign(companyId: string, eventId: string, uid: string, intent: InviteIntent, key: string, retainUntil: Date, now: Date): Promise<number | null>;
+  /** True once a REQUEST for this member and event was accepted by the provider and no CANCEL followed. */
+  isDelivered(companyId: string, eventId: string, uid: string): Promise<boolean>;
+  setDelivered(companyId: string, eventId: string, uid: string, delivered: boolean, now: Date): Promise<void>;
+}
+
+export interface InviteEventState {
+  /** Member has a `going` RSVP in the same company. */
+  going: boolean;
+  /** Event status, or null when the event is missing. */
+  eventStatus: string | null;
+  endTime: Date | null;
+}
+
+export interface InviteEligibility {
+  /** Fresh read at send time (tenant checked: the RSVP and the event live under `companyId`). */
+  state(companyId: string, eventId: string, uid: string): Promise<InviteEventState>;
+}
+
+/** Event as the invite triggers need it. Times and ids are already plain values; no coordinates. */
+export interface InviteEvent {
+  eventId: string;
+  title: string;
+  status: string;
+  startTime: Date;
+  endTime: Date;
+  revision: number;
+  venueName?: string;
+  venueAddress?: string;
+}
+
+export interface InviteEventReader {
+  get(companyId: string, eventId: string): Promise<InviteEvent | null>;
+  /** UIDs with a `going` RSVP in `companyId` (bounded, newest first not required). */
+  goingUids(companyId: string, eventId: string, limit: number): Promise<string[]>;
 }
 
 /** Maintenance port for the scheduled reaper. Kept apart from `OutboxStore` so the send path's fakes stay small. */
