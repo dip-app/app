@@ -60,18 +60,18 @@ public enum DIPInviteFailure: Error, Equatable, Sendable {
 
     public var message: String {
         switch self {
-        case .alreadyInvited: "Someone already invited this coworker to this activity."
-        case .alreadyGoing: "This coworker is already going."
-        case .alreadyAnswered: "You already answered this invitation."
-        case .full: "This activity is full."
-        case .closed: "This activity has already started."
-        case .cancelled: "This activity was cancelled."
-        case .notFound: "This invitation or activity is no longer available."
-        case .rateLimited: "You’ve sent a lot of invitations. Try again a little later."
-        case .notMember: "You can only invite coworkers from your company."
-        case .unauthenticated: "Please sign in again."
-        case .offline: "You’re offline. Check your connection and try again."
-        case .unknown: "Something went wrong. Please try again."
+        case .alreadyInvited: String(localized: "invites.error.alreadyInvited", defaultValue: "Someone already invited this coworker to this activity.", bundle: .module, comment: "Invite error: another member already invited this coworker")
+        case .alreadyGoing: String(localized: "invites.error.alreadyGoing", defaultValue: "This coworker is already going.", bundle: .module, comment: "Invite error: the coworker is already going")
+        case .alreadyAnswered: String(localized: "invites.error.alreadyAnswered", defaultValue: "You already answered this invitation.", bundle: .module, comment: "Invite error: the invitation was already answered")
+        case .full: String(localized: "invites.error.full", defaultValue: "This activity is full.", bundle: .module, comment: "Invite error: no places left")
+        case .closed: String(localized: "invites.error.closed", defaultValue: "This activity has already started.", bundle: .module, comment: "Invite error: activity already started")
+        case .cancelled: String(localized: "invites.error.cancelled", defaultValue: "This activity was cancelled.", bundle: .module, comment: "Invite error: activity cancelled")
+        case .notFound: String(localized: "invites.error.notFound", defaultValue: "This invitation or activity is no longer available.", bundle: .module, comment: "Invite error: invitation or activity missing")
+        case .rateLimited: String(localized: "invites.error.rateLimited", defaultValue: "You’ve sent a lot of invitations. Try again a little later.", bundle: .module, comment: "Invite error: rate limited")
+        case .notMember: String(localized: "invites.error.notMember", defaultValue: "You can only invite coworkers from your company.", bundle: .module, comment: "Invite error: recipient is not in the same company")
+        case .unauthenticated: String(localized: "invites.error.unauthenticated", defaultValue: "Please sign in again.", bundle: .module, comment: "Invite error: session expired")
+        case .offline: String(localized: "invites.error.offline", defaultValue: "You’re offline. Check your connection and try again.", bundle: .module, comment: "Invite error: no network")
+        case .unknown: String(localized: "invites.error.unknown", defaultValue: "Something went wrong. Please try again.", bundle: .module, comment: "Invite error: generic failure")
         }
     }
 
@@ -96,10 +96,10 @@ public enum DIPInviteDenial: Equatable, Sendable {
     case cancelled, started, ended, full
     public var message: String {
         switch self {
-        case .cancelled: "This activity was cancelled."
-        case .started: "This activity has already started."
-        case .ended: "This activity has ended."
-        case .full: "This activity is full, so there is no space to invite someone."
+        case .cancelled: String(localized: "invites.denial.cancelled", defaultValue: "This activity was cancelled.", bundle: .module, comment: "Cannot invite: activity cancelled")
+        case .started: String(localized: "invites.denial.started", defaultValue: "This activity has already started.", bundle: .module, comment: "Cannot invite: activity already started")
+        case .ended: String(localized: "invites.denial.ended", defaultValue: "This activity has ended.", bundle: .module, comment: "Cannot invite: activity ended")
+        case .full: String(localized: "invites.denial.full", defaultValue: "This activity is full, so there is no space to invite someone.", bundle: .module, comment: "Cannot invite: activity full")
         }
     }
 }
@@ -137,6 +137,16 @@ public enum DIPInviteRules {
 /// How the sent list labels an invitation. A pending invite for an event that already started is "Expired".
 public enum DIPInviteStatusLabel: String, Equatable, Sendable {
     case pending = "Pending", accepted = "Accepted", declined = "Declined", expired = "Expired"
+
+    /// Localized label for display; `rawValue` stays the English identifier.
+    public var localizedTitle: String {
+        switch self {
+        case .pending: String(localized: "invites.status.pending", defaultValue: "Pending", bundle: .module, comment: "Sent invitation status: waiting for an answer")
+        case .accepted: String(localized: "invites.status.accepted", defaultValue: "Accepted", bundle: .module, comment: "Sent invitation status: accepted")
+        case .declined: String(localized: "invites.status.declined", defaultValue: "Declined", bundle: .module, comment: "Sent invitation status: declined")
+        case .expired: String(localized: "invites.status.expired", defaultValue: "Expired", bundle: .module, comment: "Sent invitation status: event started before an answer")
+        }
+    }
 }
 
 /// Pure projection of the repository state for the Invitations screen.

@@ -133,14 +133,19 @@ public enum DIPBadgeCount {
                         // Hit area grows to the 44 pt minimum; layout is unchanged.
                         .dipHitSlop(vertical: 2)
                     }
-                    .accessibilityLabel("Notifications, \(unreadCount) unread").accessibilityIdentifier(
+                    .accessibilityLabel(
+                        String(
+                            localized: "ds.home.notifications.label", defaultValue: "Notifications, \(unreadCount) unread",
+                            bundle: .module,
+                            comment: "Accessibility label of the Home bell; %lld = unread notification count")
+                    ).accessibilityIdentifier(
                         "home.notifications")
                     Rectangle().fill(Color.black.opacity(0.2)).frame(width: 1, height: 14).frame(width: 0)
                     Button(action: onProfile) {
                         profileAvatar.frame(width: 40, height: 40)
                             .dipHitSlop(horizontal: 2, vertical: 2)
                     }
-                    .accessibilityLabel("Open profile").accessibilityIdentifier("home.profile")
+                    .accessibilityLabel(Text("Open profile", bundle: .module)).accessibilityIdentifier("home.profile")
                 }
                 .padding(5).frame(height: 50)
                 .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
@@ -166,8 +171,8 @@ public enum DIPBadgeCount {
         @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
         public init(category: String, participantCount: Int, avatars: [String], onSelect: @escaping () -> Void) {
-            self.init(category: category, participationText: "+ \(participantCount) others participating",
-                      accessibilityLabel: "This week’s challenge: \(category), \(participantCount) others participating",
+            self.init(category: category, participationText: Self.participationText(participantCount),
+                      accessibilityLabel: Self.accessibilityText(category: category, participantCount: participantCount),
                       accent: DIPTokens.Color.challengeAccent.swiftUIColor, titleColor: .white,
                       artwork: DIPReferenceAssets.image("Mascot").resizable(),
                       avatarStack: avatars.isEmpty ? nil : AnyView(DIPReferenceAvatarStack(names: avatars)), onSelect: onSelect)
@@ -176,8 +181,8 @@ public enum DIPBadgeCount {
             category: String, participantCount: Int, artwork: () -> Artwork, avatarStack: () -> Avatars,
             onSelect: @escaping () -> Void
         ) {
-            self.init(category: category, participationText: "+ \(participantCount) others participating",
-                      accessibilityLabel: "This week’s challenge: \(category), \(participantCount) others participating",
+            self.init(category: category, participationText: Self.participationText(participantCount),
+                      accessibilityLabel: Self.accessibilityText(category: category, participantCount: participantCount),
                       accent: DIPTokens.Color.challengeAccent.swiftUIColor, titleColor: .white,
                       artwork: artwork(), avatarStack: AnyView(avatarStack()), onSelect: onSelect)
         }
@@ -195,6 +200,18 @@ public enum DIPBadgeCount {
             self.artwork = artwork.map { AnyView($0) }
             self.avatarStack = avatarStack
             self.onSelect = onSelect
+        }
+        private static func participationText(_ count: Int) -> String {
+            String(
+                localized: "ds.challenge.participation", defaultValue: "+ \(count) others participating", bundle: .module,
+                comment: "Home challenge card pill; %lld = number of other members participating")
+        }
+        private static func accessibilityText(category: String, participantCount: Int) -> String {
+            String(
+                localized: "ds.challenge.accessibility",
+                defaultValue: "This week’s challenge: \(category), \(participantCount) others participating",
+                bundle: .module,
+                comment: "Accessibility label of the Home challenge card; %1$@ = challenge category, %2$lld = number of other members participating")
         }
         public var body: some View {
             let large = dynamicTypeSize.isAccessibilitySize
@@ -250,7 +267,7 @@ public enum DIPBadgeCount {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(accessibilityText)
-            .accessibilityHint("Opens the challenge details")
+            .accessibilityHint(Text("Opens the challenge details", bundle: .module))
             .accessibilityIdentifier("home.challenge")
         }
     }
@@ -333,9 +350,27 @@ public enum DIPBadgeCount {
         /// Title, date and place (the card shows them on two lines; spoken with a comma), attendance and reward.
         private var spokenLabel: String {
             var parts = [title, locality.replacingOccurrences(of: "\n", with: ", ")]
-            if attendeeCount > 0 { parts.append("\(attendeeCount) attending") }
+            if attendeeCount > 0 {
+                parts.append(
+                    String(
+                        localized: "ds.eventCard.attending", defaultValue: "\(attendeeCount) attending", bundle: .module,
+                        comment: "Event card attendance line; %lld = number of people attending"))
+            }
             if let reward = rewardAccessibility ?? rewardText { parts.append(reward) }
             return parts.joined(separator: ", ")
+        }
+        private var calendarValue: String {
+            switch calendarBadge {
+            case .conflict:
+                return String(
+                    localized: "ds.eventCard.calendarConflict", defaultValue: "Overlaps another activity you joined",
+                    bundle: .module, comment: "Accessibility value on an event card that overlaps another joined event")
+            case .busy:
+                return String(
+                    localized: "ds.eventCard.calendarBusy", defaultValue: "Busy at this time", bundle: .module,
+                    comment: "Accessibility value on an event card that overlaps the member's own calendar")
+            case .none: return ""
+            }
         }
         public var body: some View {
             Button(action: onSelect) {
@@ -344,7 +379,7 @@ public enum DIPBadgeCount {
                     if attendeeCount > 0 {
                         HStack(spacing: -4) {
                             avatarStack
-                            Text("\(attendeeCount) going")
+                            Text("\(attendeeCount) going", bundle: .module)
                                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                                 .foregroundStyle(.black).dipFixedFrame(height: 22).padding(.horizontal, 7)
                                 .background(.white, in: Capsule())
@@ -415,9 +450,8 @@ public enum DIPBadgeCount {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(spokenLabel)
-            .accessibilityValue(calendarBadge == .conflict ? "Overlaps another activity you joined"
-                                : calendarBadge == .busy ? "Busy at this time" : "")
-            .accessibilityHint("Opens the event page")
+            .accessibilityValue(calendarValue)
+            .accessibilityHint(Text("Opens the event page", bundle: .module))
             .accessibilityIdentifier("home.event.\(identifier)")
         }
     }
@@ -428,6 +462,18 @@ public enum DIPBadgeCount {
         case events = "My Events"
         case profile = "Profile"
         public var id: String { rawValue }
+        /// Localized display name; `rawValue` stays the stable identifier.
+        public var title: String {
+            switch self {
+            case .home: String(localized: "ds.tab.home", defaultValue: "Home", bundle: .module, comment: "Tab bar item: home")
+            case .rewards:
+                String(localized: "ds.tab.rewards", defaultValue: "Rewards", bundle: .module, comment: "Tab bar item: rewards")
+            case .events:
+                String(localized: "ds.tab.myEvents", defaultValue: "My Events", bundle: .module, comment: "Tab bar item: the member's events")
+            case .profile:
+                String(localized: "ds.tab.profile", defaultValue: "Profile", bundle: .module, comment: "Tab bar item: profile")
+            }
+        }
         var asset: String {
             switch self {
             case .home: "HeroiconsSolidHome"
@@ -595,7 +641,7 @@ public enum DIPBadgeCount {
                         .frame(width: 80, height: 80)
                         .contentShape(Rectangle())
                     }
-                    .accessibilityLabel(tab.rawValue)
+                    .accessibilityLabel(tab.title)
                     .accessibilityIdentifier("home.tab.\(tab.id)")
                     .accessibilityAddTraits(tab == selected ? .isSelected : [])
                     .accessibilityHidden(action != nil)

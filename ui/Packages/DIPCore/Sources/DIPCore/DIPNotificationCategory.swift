@@ -16,27 +16,27 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
 
     public var title: String {
         switch self {
-        case .invites: "Invites"
-        case .eventUpdates: "Activity updates"
-        case .reminders: "Reminders"
-        case .chat: "Chat"
-        case .challenges: "Challenges"
-        case .social: "Comments and photos"
-        case .discovery: "Suggestions"
-        case .calendarInvites: "Calendar invites"
+        case .invites: String(localized: "notif.category.invites.title", defaultValue: "Invites", bundle: .module, comment: "Notification preference category title")
+        case .eventUpdates: String(localized: "notif.category.eventUpdates.title", defaultValue: "Activity updates", bundle: .module, comment: "Notification preference category title")
+        case .reminders: String(localized: "notif.category.reminders.title", defaultValue: "Reminders", bundle: .module, comment: "Notification preference category title")
+        case .chat: String(localized: "notif.category.chat.title", defaultValue: "Chat", bundle: .module, comment: "Notification preference category title")
+        case .challenges: String(localized: "notif.category.challenges.title", defaultValue: "Challenges", bundle: .module, comment: "Notification preference category title")
+        case .social: String(localized: "notif.category.social.title", defaultValue: "Comments and photos", bundle: .module, comment: "Notification preference category title")
+        case .discovery: String(localized: "notif.category.discovery.title", defaultValue: "Suggestions", bundle: .module, comment: "Notification preference category title")
+        case .calendarInvites: String(localized: "notif.category.calendarInvites.title", defaultValue: "Calendar invites", bundle: .module, comment: "Notification preference category title (email only)")
         }
     }
 
     public var summary: String {
         switch self {
-        case .invites: "When a coworker invites you to an activity"
-        case .eventUpdates: "Time or place changes, cancellations, and when an organizer adds you"
-        case .reminders: "About a day and an hour before activities you joined"
-        case .chat: "New messages in activity chats"
-        case .challenges: "Submission reviews and new weekly themes"
-        case .social: "Comments and photos on your posts"
-        case .discovery: "New activities that match your interests"
-        case .calendarInvites: "An email that adds activities you join to your calendar, and keeps it up to date"
+        case .invites: String(localized: "notif.category.invites.summary", defaultValue: "When a coworker invites you to an activity", bundle: .module, comment: "Notification preference category description")
+        case .eventUpdates: String(localized: "notif.category.eventUpdates.summary", defaultValue: "Time or place changes, cancellations, and when an organizer adds you", bundle: .module, comment: "Notification preference category description")
+        case .reminders: String(localized: "notif.category.reminders.summary", defaultValue: "About a day and an hour before activities you joined", bundle: .module, comment: "Notification preference category description")
+        case .chat: String(localized: "notif.category.chat.summary", defaultValue: "New messages in activity chats", bundle: .module, comment: "Notification preference category description")
+        case .challenges: String(localized: "notif.category.challenges.summary", defaultValue: "Submission reviews and new weekly themes", bundle: .module, comment: "Notification preference category description")
+        case .social: String(localized: "notif.category.social.summary", defaultValue: "Comments and photos on your posts", bundle: .module, comment: "Notification preference category description")
+        case .discovery: String(localized: "notif.category.discovery.summary", defaultValue: "New activities that match your interests", bundle: .module, comment: "Notification preference category description")
+        case .calendarInvites: String(localized: "notif.category.calendarInvites.summary", defaultValue: "An email that adds activities you join to your calendar, and keeps it up to date", bundle: .module, comment: "Notification preference category description (email only)")
         }
     }
 

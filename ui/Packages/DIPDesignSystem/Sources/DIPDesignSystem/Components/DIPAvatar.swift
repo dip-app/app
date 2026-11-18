@@ -49,12 +49,12 @@
                         .overlay(Circle().stroke(DIPComponentTheme.surface, lineWidth: 2))
                 }
                 if summary.overflowCount > 0 {
-                    Text("+\(summary.overflowCount)").font(.caption.weight(.semibold))
+                    Text("+\(summary.overflowCount)", bundle: .module).font(.caption.weight(.semibold))
                         .padding(.horizontal, DIPTokens.Spacing.related)
                         .frame(minHeight: 28).background(DIPComponentTheme.surface, in: Capsule())
                         .foregroundStyle(DIPComponentTheme.ink)
                 }
-                if summary.totalCount == 0 { Text("No attendees yet").font(.caption) }
+                if summary.totalCount == 0 { Text(summary.accessibilityLabel).font(.caption) }
             }
             .accessibilityElement(children: .ignore).accessibilityLabel(Text(summary.accessibilityLabel))
         }

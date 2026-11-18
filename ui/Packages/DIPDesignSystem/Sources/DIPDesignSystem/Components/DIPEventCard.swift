@@ -61,7 +61,7 @@
             .buttonStyle(CardStyle())
             .accessibilityLabel(Text(content.accessibilityLabel))
             .accessibilityValue(Text(content.registrationText))
-            .accessibilityHint("Opens event details")
+            .accessibilityHint(Text("Opens event details", bundle: .module))
         }
         private var imageSlot: some View {
             GeometryReader { geometry in
@@ -72,7 +72,11 @@
                     case .loading: ProgressView().tint(DIPComponentTheme.ink)
                     case .missing: Image(systemName: "photo").font(.largeTitle).foregroundStyle(DIPComponentTheme.ink)
                     case .failed:
-                        Label("Image unavailable", systemImage: "photo.badge.exclamationmark").font(.caption)
+                        Label {
+                            Text("Image unavailable", bundle: .module)
+                        } icon: {
+                            Image(systemName: "photo.badge.exclamationmark")
+                        }.font(.caption)
                             .foregroundStyle(DIPComponentTheme.ink)
                     }
                 }

@@ -37,7 +37,20 @@
             .opacity(effectiveEnabled ? 1 : 0.55)
             .disabled(!isEnabled || isLoading)
             .accessibilityLabel(Text(title))
-            .accessibilityValue(Text(isLoading ? "In progress" : (!effectiveEnabled ? "Unavailable" : "")))
+            .accessibilityValue(Text(stateDescription))
+        }
+        private var stateDescription: String {
+            if isLoading {
+                return String(
+                    localized: "ds.button.inProgress", defaultValue: "In progress", bundle: .module,
+                    comment: "Accessibility value of a button that is busy")
+            }
+            if !effectiveEnabled {
+                return String(
+                    localized: "ds.button.unavailable", defaultValue: "Unavailable", bundle: .module,
+                    comment: "Accessibility value of a button that is disabled")
+            }
+            return ""
         }
         private var effectiveEnabled: Bool { inheritedEnabled && isEnabled && !isLoading }
 

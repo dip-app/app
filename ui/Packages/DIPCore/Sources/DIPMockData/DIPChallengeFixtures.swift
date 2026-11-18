@@ -29,7 +29,7 @@ public enum DIPChallengeFixtures {
     }
 
     public static var referenceDetail: DIPChallengeDetail {
-        var detail = DIPChallengeProjection.detail(fitness(), locale: Locale(identifier: "en_US"))
+        var detail = DIPChallengeProjection.detail(fitness(), locale: .current)
         detail.id = referenceID
         return detail
     }

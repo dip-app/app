@@ -10,9 +10,13 @@
         private let state: State
         private let retryTitle: String
         private let retry: (() -> Void)?
-        public init(_ state: State, retryTitle: String = "Try again", retry: (() -> Void)? = nil) {
+        public init(_ state: State, retryTitle: String? = nil, retry: (() -> Void)? = nil) {
             self.state = state
-            self.retryTitle = retryTitle
+            self.retryTitle =
+                retryTitle
+                ?? String(
+                    localized: "ds.state.retry", defaultValue: "Try again", bundle: .module,
+                    comment: "Default retry button title on a failed state")
             self.retry = retry
         }
         public var body: some View {

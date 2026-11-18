@@ -16,7 +16,7 @@ public enum DIPPhotoCount {
 
     public static func spoken(index: Int, count: Int) -> String {
         let total = max(1, count)
-        return "Photo \(min(max(1, index), total)) of \(total)"
+        return String(localized: "album.photo.spoken", defaultValue: "Photo \(min(max(1, index), total)) of \(total)", bundle: .module, comment: "VoiceOver position in the album viewer; first %lld = photo number, second %lld = total photos")
     }
 }
 
@@ -45,7 +45,7 @@ public struct DIPAlbumSaveProgress: Equatable, Sendable {
     public var fraction: Double { total == 0 ? 1 : Double(processed) / Double(total) }
 
     /// "Saving 4 of 12": the photo being saved now, never past the total.
-    public var label: String { "Saving \(min(processed + 1, max(total, 1))) of \(total)" }
+    public var label: String { String(localized: "album.save.progress", defaultValue: "Saving \(min(processed + 1, max(total, 1))) of \(total)", bundle: .module, comment: "Progress while saving all album photos; first %lld = photo being saved, second %lld = total") }
     public var spokenLabel: String { label }
 
     public mutating func recordSaved() { saved += 1 }
@@ -54,12 +54,19 @@ public struct DIPAlbumSaveProgress: Equatable, Sendable {
 
     /// The toast shown when the run ends.
     public var summary: String {
-        func photos(_ n: Int) -> String { n == 1 ? "1 photo" : "\(n) photos" }
-        if cancelled { return saved == 0 ? "Stopped" : "Stopped after saving \(photos(saved))" }
-        if total == 0 { return "All photos are already saved" }
-        if !failed.isEmpty {
-            return saved == 0 ? "Couldn’t save \(photos(failed.count)). Try again." : "Saved \(photos(saved)). Couldn’t save \(failed.count)."
+        if cancelled {
+            return saved == 0
+                ? String(localized: "album.save.stopped", defaultValue: "Stopped", bundle: .module, comment: "Toast when saving all photos was cancelled before any was saved")
+                : String(localized: "album.save.stoppedAfter", defaultValue: "Stopped after saving \(saved) photos", bundle: .module, comment: "Toast when saving was cancelled; %lld = photos saved so far")
         }
-        return skipped > 0 ? "Saved \(photos(saved)) · \(skipped) already saved" : "Saved \(photos(saved)) to Photos"
+        if total == 0 { return String(localized: "album.save.allSaved", defaultValue: "All photos are already saved", bundle: .module, comment: "Toast when every photo was saved earlier") }
+        if !failed.isEmpty {
+            return saved == 0
+                ? String(localized: "album.save.failedAll", defaultValue: "Couldn’t save \(failed.count) photos. Try again.", bundle: .module, comment: "Toast when no photo could be saved; %lld = photos that failed")
+                : String(localized: "album.save.partial", defaultValue: "Saved \(saved) photos. Couldn’t save \(failed.count).", bundle: .module, comment: "Toast when some photos failed; first %lld = photos saved, second %lld = photos that failed")
+        }
+        return skipped > 0
+            ? String(localized: "album.save.doneSkipped", defaultValue: "Saved \(saved) photos · \(skipped) already saved", bundle: .module, comment: "Toast after saving; first %lld = photos saved now, second %lld = photos already saved before")
+            : String(localized: "album.save.done", defaultValue: "Saved \(saved) photos to Photos", bundle: .module, comment: "Toast after saving all photos; %lld = photos saved")
     }
 }

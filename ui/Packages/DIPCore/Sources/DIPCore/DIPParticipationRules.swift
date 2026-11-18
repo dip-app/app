@@ -8,12 +8,12 @@ public enum DIPRsvpDenial: Equatable, Sendable {
 
     public var message: String {
         switch self {
-        case .alreadyGoing: "You’re already going to this activity."
-        case .notGoing: "You’re not going to this activity."
-        case .full: "Couldn’t join: the event is full."
-        case .started: "This activity has already started."
-        case .ended: "This activity has ended."
-        case .cancelled: "This activity was cancelled."
+        case .alreadyGoing: String(localized: "rsvp.denial.alreadyGoing", defaultValue: "You’re already going to this activity.", bundle: .module, comment: "RSVP refused: already going")
+        case .notGoing: String(localized: "rsvp.denial.notGoing", defaultValue: "You’re not going to this activity.", bundle: .module, comment: "RSVP refused: not going")
+        case .full: String(localized: "rsvp.denial.full", defaultValue: "Couldn’t join: the event is full.", bundle: .module, comment: "RSVP refused: event full")
+        case .started: String(localized: "rsvp.denial.started", defaultValue: "This activity has already started.", bundle: .module, comment: "RSVP refused: already started")
+        case .ended: String(localized: "rsvp.denial.ended", defaultValue: "This activity has ended.", bundle: .module, comment: "RSVP refused: ended")
+        case .cancelled: String(localized: "rsvp.denial.cancelled", defaultValue: "This activity was cancelled.", bundle: .module, comment: "RSVP refused: cancelled")
         }
     }
 }

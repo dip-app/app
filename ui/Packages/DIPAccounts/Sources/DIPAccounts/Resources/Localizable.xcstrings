@@ -1,0 +1,102 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "profile.availability.evenings" : {
+      "comment" : "Profile availability choice",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekday evenings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noches entre semana"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jaj ram"
+          }
+        }
+      }
+    },
+    "profile.availability.lunch" : {
+      "comment" : "Profile availability choice",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekday lunch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Almuerzo entre semana"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jaj Soj"
+          }
+        }
+      }
+    },
+    "profile.availability.mornings" : {
+      "comment" : "Profile availability choice",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekday mornings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mañanas entre semana"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jaj po"
+          }
+        }
+      }
+    },
+    "profile.availability.weekends" : {
+      "comment" : "Profile availability choice",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekends"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fines de semana"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh Qav"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

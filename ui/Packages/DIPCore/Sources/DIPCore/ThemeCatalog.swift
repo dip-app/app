@@ -74,37 +74,37 @@ public enum DIPThemeCatalog {
     public static let catalogPrefix = "catalog://theme/"
 
     /// Reuses the existing Home `Mascot` artwork (blue character lifting a barbell).
-    public static let fitness = DIPTheme(
-        key: "fitness", displayName: "Fitness", illustration: .asset("Mascot"), accent: .challenge,
-        goalUnitSuggestions: ["workouts", "classes", "walks", "active minutes"], isKnown: true)
+    public static var fitness: DIPTheme { DIPTheme(
+        key: "fitness", displayName: String(localized: "theme.fitness.name", defaultValue: "Fitness", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("Mascot"), accent: .challenge,
+        goalUnitSuggestions: ["workouts", "classes", "walks", "active minutes"], isKnown: true) }
 
-    public static let outdoors = DIPTheme(
-        key: "outdoors", displayName: "Outdoors", illustration: .asset("MascotOutdoors"), accent: .themed(hex: "#6BE5D0"),
-        goalUnitSuggestions: ["outings", "hours"], isKnown: true)
-    public static let food = DIPTheme(
-        key: "food", displayName: "Food & Drink", illustration: .asset("MascotFood"), accent: .themed(hex: "#FF7C73"),
-        goalUnitSuggestions: ["gatherings", "meals", "tastings"], isKnown: true)
-    public static let arts = DIPTheme(
-        key: "arts", displayName: "Arts & Crafts", illustration: .asset("MascotArts"), accent: .themed(hex: "#7B88FA"),
-        goalUnitSuggestions: ["creations", "projects", "sessions"], isKnown: true)
-    public static let games = DIPTheme(
-        key: "games", displayName: "Games", illustration: .asset("MascotGames"), accent: .themed(hex: "#FFCC3E"),
-        goalUnitSuggestions: ["games", "sessions", "rounds"], isKnown: true)
-    public static let music = DIPTheme(
-        key: "music", displayName: "Music", illustration: .asset("MascotMusic"), accent: .themed(hex: "#66D9FF"),
-        goalUnitSuggestions: ["songs", "events", "sessions"], isKnown: true)
-    public static let learning = DIPTheme(
-        key: "learning", displayName: "Learning", illustration: .asset("MascotLearning"), accent: .themed(hex: "#6BFF9B"),
-        goalUnitSuggestions: ["lessons", "sessions", "chapters"], isKnown: true)
-    public static let volunteering = DIPTheme(
-        key: "volunteering", displayName: "Volunteering", illustration: .asset("MascotVolunteering"), accent: .themed(hex: "#1E212B"),
-        goalUnitSuggestions: ["shifts", "hours", "events"], isKnown: true)
-    public static let wellness = DIPTheme(
-        key: "wellness", displayName: "Wellness", illustration: .asset("MascotWellness"), accent: .themed(hex: "#FF7C73"),
-        goalUnitSuggestions: ["sessions", "minutes", "breaks"], isKnown: true)
+    public static var outdoors: DIPTheme { DIPTheme(
+        key: "outdoors", displayName: String(localized: "theme.outdoors.name", defaultValue: "Outdoors", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotOutdoors"), accent: .themed(hex: "#6BE5D0"),
+        goalUnitSuggestions: ["outings", "hours"], isKnown: true) }
+    public static var food: DIPTheme { DIPTheme(
+        key: "food", displayName: String(localized: "theme.food.name", defaultValue: "Food & Drink", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotFood"), accent: .themed(hex: "#FF7C73"),
+        goalUnitSuggestions: ["gatherings", "meals", "tastings"], isKnown: true) }
+    public static var arts: DIPTheme { DIPTheme(
+        key: "arts", displayName: String(localized: "theme.arts.name", defaultValue: "Arts & Crafts", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotArts"), accent: .themed(hex: "#7B88FA"),
+        goalUnitSuggestions: ["creations", "projects", "sessions"], isKnown: true) }
+    public static var games: DIPTheme { DIPTheme(
+        key: "games", displayName: String(localized: "theme.games.name", defaultValue: "Games", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotGames"), accent: .themed(hex: "#FFCC3E"),
+        goalUnitSuggestions: ["games", "sessions", "rounds"], isKnown: true) }
+    public static var music: DIPTheme { DIPTheme(
+        key: "music", displayName: String(localized: "theme.music.name", defaultValue: "Music", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotMusic"), accent: .themed(hex: "#66D9FF"),
+        goalUnitSuggestions: ["songs", "events", "sessions"], isKnown: true) }
+    public static var learning: DIPTheme { DIPTheme(
+        key: "learning", displayName: String(localized: "theme.learning.name", defaultValue: "Learning", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotLearning"), accent: .themed(hex: "#6BFF9B"),
+        goalUnitSuggestions: ["lessons", "sessions", "chapters"], isKnown: true) }
+    public static var volunteering: DIPTheme { DIPTheme(
+        key: "volunteering", displayName: String(localized: "theme.volunteering.name", defaultValue: "Volunteering", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotVolunteering"), accent: .themed(hex: "#1E212B"),
+        goalUnitSuggestions: ["shifts", "hours", "events"], isKnown: true) }
+    public static var wellness: DIPTheme { DIPTheme(
+        key: "wellness", displayName: String(localized: "theme.wellness.name", defaultValue: "Wellness", bundle: .module, comment: "Weekly theme name shown on the challenge card and details"), illustration: .asset("MascotWellness"), accent: .themed(hex: "#FF7C73"),
+        goalUnitSuggestions: ["sessions", "minutes", "breaks"], isKnown: true) }
 
     /// Approved themes, in organizer picker order. Copy and defaults: docs/design/theme-catalog.md.
-    public static let themes: [DIPTheme] = [fitness, outdoors, food, arts, games, music, learning, volunteering, wellness]
+    public static var themes: [DIPTheme] { [fitness, outdoors, food, arts, games, music, learning, volunteering, wellness] }
 
     public static func catalogURL(for key: String) -> String { catalogPrefix + key }
 
@@ -128,7 +128,7 @@ public enum DIPThemeCatalog {
     }
 
     public static func fallback(key: String) -> DIPTheme {
-        DIPTheme(key: key, displayName: "Weekly theme", illustration: nil, accent: .neutral,
+        DIPTheme(key: key, displayName: String(localized: "theme.fallback.name", defaultValue: "Weekly theme", bundle: .module, comment: "Name of a weekly theme this app version does not know"), illustration: nil, accent: .neutral,
                  goalUnitSuggestions: [], isKnown: false)
     }
 }

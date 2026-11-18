@@ -63,13 +63,19 @@
                             minHeight: DIPTokens.Spacing.minimumTouchTarget)
                     }
                     .buttonStyle(.bordered).buttonBorderShape(.capsule)
-                    .accessibilityLabel("Notifications")
-                    .accessibilityValue(Text(unreadCount.map { "\(max(0, $0)) unread" } ?? ""))
+                    .accessibilityLabel(Text("Notifications", bundle: .module))
+                    .accessibilityValue(
+                        Text(
+                            unreadCount.map {
+                                String(
+                                    localized: "ds.header.unread", defaultValue: "\(max(0, $0)) unread", bundle: .module,
+                                    comment: "Accessibility value of the notifications button; %lld = unread count")
+                            } ?? ""))
                 }
                 if let person, let onProfile {
                     Button(action: onProfile) { DIPAvatar(person: person, image: avatar, isDecorative: true) }
                         .buttonStyle(.bordered).buttonBorderShape(.circle)
-                        .accessibilityLabel(Text("Open profile for \(person.displayName)"))
+                        .accessibilityLabel(Text("Open profile for \(person.displayName)", bundle: .module))
                 }
             }.tint(DIPComponentTheme.ink)
         }

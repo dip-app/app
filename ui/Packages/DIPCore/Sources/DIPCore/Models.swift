@@ -49,7 +49,7 @@ public struct DIPChallengeSummary: Equatable, Sendable {
     public var participationText: String { DIPChallengeText.participation(participantCount) }
     /// VoiceOver label for the whole card.
     public var accessibilityLabel: String {
-        "This week’s challenge: \(category), \(DIPChallengeText.participationSpoken(participantCount))"
+        String(localized: "challenge.accessibility.card", defaultValue: "This week’s challenge: \(category), \(DIPChallengeText.participationSpoken(participantCount))", bundle: .module, comment: "VoiceOver label of the Home challenge card; first %@ = theme title, second %@ = participation phrase")
     }
 }
 
@@ -144,7 +144,7 @@ public struct DIPProfile: Identifiable, Equatable, Sendable {
     public var selectedInterests: [DIPInterest] {
         var seen = Set<String>()
         return interestTagIDs.filter { seen.insert($0).inserted }.map { id in
-            interestCatalog.first { $0.id == id } ?? DIPInterest(id: id, name: "Unavailable interest", sortOrder: Int.max)
+            interestCatalog.first { $0.id == id } ?? DIPInterest(id: id, name: String(localized: "interest.unavailable", defaultValue: "Unavailable interest", bundle: .module, comment: "Placeholder name for a profile interest tag no longer in the catalog"), sortOrder: Int.max)
         }
     }
     public var interests: [String] { selectedInterests.map(\.name) }

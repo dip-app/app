@@ -61,10 +61,10 @@ public enum DIPHomeFilterAnnouncement {
     public static func text(scope: DIPHomeEventScope, shown: Int, total: Int) -> String {
         switch scope {
         case .all:
-            return total == 1 ? "All events. 1 event." : "All events. \(total) events."
+            return String(localized: "home.filter.announce.all", defaultValue: "All events. \(total) events.", bundle: .module, comment: "VoiceOver when the Home filter shows all events; %lld = number of events")
         case .matching:
-            if shown == 0 { return "Matching your interests. No events match." }
-            return "Matching your interests. Showing \(shown) of \(total) events."
+            if shown == 0 { return String(localized: "home.filter.announce.matchingNone", defaultValue: "Matching your interests. No events match.", bundle: .module, comment: "VoiceOver when the interest filter matches no events") }
+            return String(localized: "home.filter.announce.matching", defaultValue: "Matching your interests. Showing \(shown) of \(total) events.", bundle: .module, comment: "VoiceOver when the interest filter is on; first %lld = events shown, second %lld = total events")
         }
     }
 }
@@ -80,11 +80,11 @@ public enum DIPPointsDisplay: Equatable, Sendable {
 
     public func accessibilityLabel(locale: Locale = .current) -> String {
         switch self {
-        case .loading: "Loading your points"
-        case .unavailable: "Your points are unavailable right now"
-        case .balance(let value): "Your balance: \(DIPPointsFormat.balance(value, locale: locale))"
+        case .loading: String(localized: "points.display.loading", defaultValue: "Loading your points", bundle: .module, comment: "VoiceOver for the points pill while loading")
+        case .unavailable: String(localized: "points.display.unavailable", defaultValue: "Your points are unavailable right now", bundle: .module, comment: "VoiceOver for the points pill when no value could be read")
+        case .balance(let value): String(localized: "points.display.balance", defaultValue: "Your balance: \(DIPPointsFormat.balance(value, locale: locale))", bundle: .module, comment: "VoiceOver for the points pill; %@ = points such as 1,234 points")
         case .stale(let value):
-            "Your balance: \(DIPPointsFormat.balance(value, locale: locale)). Offline, this may be out of date."
+            String(localized: "points.display.stale", defaultValue: "Your balance: \(DIPPointsFormat.balance(value, locale: locale)). Offline, this may be out of date.", bundle: .module, comment: "VoiceOver for the points pill when showing a cached value offline; %@ = points such as 1,234 points")
         }
     }
 

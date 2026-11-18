@@ -21,20 +21,22 @@ public struct DIPFieldChange: Equatable, Sendable {
 
 /// One human-readable line of a change: a stable label plus an optional "from -> to" description.
 public struct DIPChangeRow: Equatable, Identifiable, Sendable {
-    public var id: String { label }
+    public var id: String { key }
+    /// Stable identity of the row kind (`time`, `location`, ...); never shown, never localized.
+    public var key: String
     public var label: String
     /// Previous and new values; both nil when the value is not useful to show (long text, photo, interests),
     /// so the label alone says what changed.
     public var old: String?
     public var new: String?
-    public init(label: String, old: String? = nil, new: String? = nil) { self.label = label; self.old = old; self.new = new }
+    public init(label: String, old: String? = nil, new: String? = nil, key: String? = nil) { self.label = label; self.old = old; self.new = new; self.key = key ?? label }
 
     /// One-line text: "a → b", "Now b" or "Was a".
     public var detail: String? {
         switch (old, new) {
-        case let (old?, new?): "\(old) → \(new)"
-        case let (nil, new?): "Now \(new)"
-        case let (old?, nil): "Was \(old)"
+        case let (old?, new?): String(localized: "changelog.detail.change", defaultValue: "\(old) → \(new)", bundle: .module, comment: "Change row; first %@ = previous value, second %@ = new value")
+        case let (nil, new?): String(localized: "changelog.detail.now", defaultValue: "Now \(new)", bundle: .module, comment: "Change row when there was no previous value; %@ = new value")
+        case let (old?, nil): String(localized: "changelog.detail.was", defaultValue: "Was \(old)", bundle: .module, comment: "Change row when the value was removed; %@ = previous value")
         default: nil
         }
     }
@@ -51,7 +53,7 @@ public enum DIPChangeLogText {
 
     public static func rows(_ entry: DIPChangeLogEntry, locale: Locale = .current, timeZone: TimeZone = .current) -> [DIPChangeRow] {
         var rows: [DIPChangeRow] = []
-        func add(_ row: DIPChangeRow) { if !rows.contains(where: { $0.label == row.label }) { rows.append(row) } }
+        func add(_ row: DIPChangeRow) { if !rows.contains(where: { $0.key == row.key }) { rows.append(row) } }
         let byField = Dictionary(entry.changes.map { ($0.field, $0) }, uniquingKeysWith: { first, _ in first })
         let order = ["status", "title", "startTime", "endTime", "venue.name", "venue.address", "venue.locality",
                      "costCents", "costNote", "capacity", "isOutdoor", "description", "tagIds", "coverImageURL"]
@@ -60,26 +62,26 @@ public enum DIPChangeLogText {
             switch field {
             case "status":
                 // Only the two known statuses produce a row; an unknown future status is skipped, not mislabelled.
-                if change.to == "cancelled" { add(DIPChangeRow(label: "Activity cancelled")) }
-                else if change.to == "scheduled" { add(DIPChangeRow(label: "Activity is back on")) }
+                if change.to == "cancelled" { add(DIPChangeRow(label: String(localized: "changelog.row.cancelled", defaultValue: "Activity cancelled", bundle: .module, comment: "Change log row: the organizer cancelled the activity"), key: "cancelled")) }
+                else if change.to == "scheduled" { add(DIPChangeRow(label: String(localized: "changelog.row.backOn", defaultValue: "Activity is back on", bundle: .module, comment: "Change log row: a cancelled activity was reinstated"), key: "backOn")) }
             case "title":
-                add(row("Name", arrow(change.from, change.to)))
+                add(row("name", String(localized: "changelog.row.name", defaultValue: "Name", bundle: .module, comment: "Change log row label: activity name changed"), arrow(change.from, change.to)))
             case "startTime", "endTime":
-                guard !rows.contains(where: { $0.label == "Time" }) else { continue }
-                add(row("Time", timeDetail(byField, locale: locale, timeZone: timeZone)))
+                guard !rows.contains(where: { $0.key == "time" }) else { continue }
+                add(row("time", String(localized: "changelog.row.time", defaultValue: "Time", bundle: .module, comment: "Change log row label: start or end time changed"), timeDetail(byField, locale: locale, timeZone: timeZone)))
             case "venue.name", "venue.address", "venue.locality":
-                guard !rows.contains(where: { $0.label == "Location" }) else { continue }
-                add(row("Location", locationDetail(byField)))
+                guard !rows.contains(where: { $0.key == "location" }) else { continue }
+                add(row("location", String(localized: "changelog.row.location", defaultValue: "Location", bundle: .module, comment: "Change log row label: venue changed"), locationDetail(byField)))
             case "costCents", "costNote":
-                guard !rows.contains(where: { $0.label == "Cost" }) else { continue }
-                add(row("Cost", costDetail(byField, locale: locale)))
+                guard !rows.contains(where: { $0.key == "cost" }) else { continue }
+                add(row("cost", String(localized: "changelog.row.cost", defaultValue: "Cost", bundle: .module, comment: "Change log row label: price changed"), costDetail(byField, locale: locale)))
             case "capacity":
-                add(row("Spots", arrow(change.from, change.to)))
+                add(row("spots", String(localized: "changelog.row.spots", defaultValue: "Spots", bundle: .module, comment: "Change log row label: capacity changed"), arrow(change.from, change.to)))
             case "isOutdoor":
-                add(DIPChangeRow(label: "Setting", new: change.to == "true" ? "Outdoors" : "Indoors"))
-            case "description": add(DIPChangeRow(label: "Description updated"))
-            case "tagIds": add(DIPChangeRow(label: "Interests updated"))
-            case "coverImageURL": add(DIPChangeRow(label: "Photo changed"))
+                add(DIPChangeRow(label: String(localized: "changelog.row.setting", defaultValue: "Setting", bundle: .module, comment: "Change log row label: indoor/outdoor setting changed"), new: change.to == "true" ? String(localized: "changelog.setting.outdoors", defaultValue: "Outdoors", bundle: .module, comment: "Change log value: activity is outdoors") : String(localized: "changelog.setting.indoors", defaultValue: "Indoors", bundle: .module, comment: "Change log value: activity is indoors"), key: "setting"))
+            case "description": add(DIPChangeRow(label: String(localized: "changelog.row.description", defaultValue: "Description updated", bundle: .module, comment: "Change log row: the description changed"), key: "description"))
+            case "tagIds": add(DIPChangeRow(label: String(localized: "changelog.row.interests", defaultValue: "Interests updated", bundle: .module, comment: "Change log row: the interest tags changed"), key: "interests"))
+            case "coverImageURL": add(DIPChangeRow(label: String(localized: "changelog.row.photo", defaultValue: "Photo changed", bundle: .module, comment: "Change log row: the cover photo changed"), key: "photo"))
             default: break
             }
         }
@@ -88,8 +90,8 @@ public enum DIPChangeLogText {
 
     // MARK: Formatting
 
-    private static func row(_ label: String, _ pair: Pair?) -> DIPChangeRow {
-        DIPChangeRow(label: label, old: pair?.old, new: pair?.new)
+    private static func row(_ key: String, _ label: String, _ pair: Pair?) -> DIPChangeRow {
+        DIPChangeRow(label: label, old: pair?.old, new: pair?.new, key: key)
     }
 
     private static func arrow(_ from: String?, _ to: String?) -> Pair? {
@@ -131,7 +133,10 @@ public enum DIPChangeLogText {
             let time = DateFormatter(); time.locale = locale; time.timeZone = timeZone
             time.dateStyle = .none; time.timeStyle = .short
             let from = date(end.from).map(time.string(from:)), to = date(end.to).map(time.string(from:))
-            return arrowText(from.map { "Ends \($0)" }, to.map { "Ends \($0)" })
+            func ends(_ time: String) -> String {
+                String(localized: "changelog.time.ends", defaultValue: "Ends \(time)", bundle: .module, comment: "Change log time value when only the end time changed; %@ = clock time")
+            }
+            return arrowText(from.map(ends), to.map(ends))
         }
         return nil
     }
@@ -155,7 +160,7 @@ public enum DIPChangeLogText {
         guard let cents = fields["costCents"] else { return fields["costNote"].flatMap { arrow($0.from, $0.to) } }
         func price(_ text: String?) -> String? {
             guard let text, let value = Int(text) else { return nil }
-            if value == 0 { return "Free" }
+            if value == 0 { return String(localized: "changelog.cost.free", defaultValue: "Free", bundle: .module, comment: "Change log price value: no cost") }
             let formatter = NumberFormatter(); formatter.locale = locale
             formatter.numberStyle = .currency; formatter.currencyCode = "USD"
             return formatter.string(from: NSDecimalNumber(value: value).dividing(by: 100))

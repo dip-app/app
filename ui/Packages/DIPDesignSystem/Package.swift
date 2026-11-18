@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "DIPDesignSystem",
+    defaultLocalization: "en",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [.library(name: "DIPDesignSystem", targets: ["DIPDesignSystem"])],
     targets: [

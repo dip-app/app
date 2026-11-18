@@ -1,0 +1,6255 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "album.photo.spoken" : {
+      "comment" : "VoiceOver position in the album viewer; first %lld = photo number, second %lld = total photos",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Photo %1$lld of %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foto %1$lld de %2$lld"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh %1$lld %2$lld vo'"
+          }
+        }
+      }
+    },
+    "album.save.allSaved" : {
+      "comment" : "Toast when every photo was saved earlier",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "All photos are already saved"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas las fotos ya están guardadas"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh Hoch pollu'ta'"
+          }
+        }
+      }
+    },
+    "album.save.done" : {
+      "comment" : "Toast after saving all photos; %lld = photos saved",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Saved %lld photo to Photos"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Saved %lld photos to Photos"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se guardó %lld foto en Fotos"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se guardaron %lld fotos en Fotos"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld mIllogh pollu'"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "album.save.doneSkipped" : {
+      "comment" : "Toast after saving; first %lld = photos saved now, second %lld = photos already saved before",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Saved %1$lld photo · %2$lld already saved"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Saved %1$lld photos · %2$lld already saved"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Se guardó %1$lld foto · ya guardadas: %2$lld"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Se guardaron %1$lld fotos · ya guardadas: %2$lld"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%1$lld mIllogh pollu' · %2$lld pollu'ta'"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "album.save.failedAll" : {
+      "comment" : "Toast when no photo could be saved; %lld = photos that failed",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t save %lld photo. Try again."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t save %lld photos. Try again."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No se pudo guardar %lld foto. Inténtalo de nuevo."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No se pudieron guardar %lld fotos. Inténtalo de nuevo."
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld mIllogh pollu'be'. yInIDqa'."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "album.save.partial" : {
+      "comment" : "Toast when some photos failed; first %lld = photos saved, second %lld = photos that failed",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Saved %1$lld photo. Couldn’t save %2$lld."
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Saved %1$lld photos. Couldn’t save %2$lld."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Se guardó %1$lld foto. No se pudo guardar %2$lld."
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Se guardaron %1$lld fotos. No se pudo guardar %2$lld."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%1$lld mIllogh pollu'. %2$lld pollu'be'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "album.save.progress" : {
+      "comment" : "Progress while saving all album photos; first %lld = photo being saved, second %lld = total",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Saving %1$lld of %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardando %1$lld de %2$lld"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "pol %1$lld %2$lld vo'"
+          }
+        }
+      }
+    },
+    "album.save.stopped" : {
+      "comment" : "Toast when saving all photos was cancelled before any was saved",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Stopped"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detenido"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mev"
+          }
+        }
+      }
+    },
+    "album.save.stoppedAfter" : {
+      "comment" : "Toast when saving was cancelled; %lld = photos saved so far",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stopped after saving %lld photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stopped after saving %lld photos"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se detuvo tras guardar %lld foto"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se detuvo tras guardar %lld fotos"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld mIllogh pollu'DI' mev"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bugreport.category.bug" : {
+      "comment" : "Bug report category chip",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bug"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qagh"
+          }
+        }
+      }
+    },
+    "bugreport.category.confusing" : {
+      "comment" : "Bug report category chip",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Confusing"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confuso"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QopmoH"
+          }
+        }
+      }
+    },
+    "bugreport.category.idea" : {
+      "comment" : "Bug report category chip",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Idea"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idea"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qub"
+          }
+        }
+      }
+    },
+    "bugreport.category.looksWrong" : {
+      "comment" : "Bug report category chip",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Looks wrong"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se ve mal"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qab Daj"
+          }
+        }
+      }
+    },
+    "bugreport.category.other" : {
+      "comment" : "Bug report category when no chip is selected",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Other"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otro"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "latlh"
+          }
+        }
+      }
+    },
+    "calendar.overlap.allDay" : {
+      "comment" : "Time of an all-day calendar entry in the overlap alert",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "All day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo el día"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jaj Hoch"
+          }
+        }
+      }
+    },
+    "calendar.overlap.andMore" : {
+      "comment" : "Last line of the overlap alert when more than 3 entries overlap; %lld = how many are not listed",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "and %lld more"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "and %lld more"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "y %lld más"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "y %lld más"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "'ej %lld latlh"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "calendar.overlap.busy" : {
+      "comment" : "Label for a personal calendar entry whose title is empty or hidden",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Busy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocupado"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu'"
+          }
+        }
+      }
+    },
+    "calendar.overlap.daysAllDay" : {
+      "comment" : "All-day entry on another day in the overlap alert; %@ = date or date range",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@, all day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, todo el día"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@, jaj Hoch"
+          }
+        }
+      }
+    },
+    "calendar.overlap.line" : {
+      "comment" : "One line of the overlap alert; first %@ = entry title, second %@ = its time",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "calendar.overlap.listMore" : {
+      "comment" : "Two names then a count; first two %@ = entry titles, %lld = how many more entries",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 3,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$@, %2$@ and %3$lld more"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$@, %2$@ and %3$lld more"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 3,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$@, %2$@ y %3$lld más"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%1$@, %2$@ y %3$lld más"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 3,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%1$@, %2$@ 'ej %3$lld latlh"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "calendar.overlap.somethingElse" : {
+      "comment" : "First line of the calendar overlap alert for personal-calendar-only overlaps",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You have something else then."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para esa hora ya tienes otro plan."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "latlh Dochvetlh poH."
+          }
+        }
+      }
+    },
+    "calendar.overlap.tentative" : {
+      "comment" : "Time of a tentative calendar entry in the overlap alert; %@ = time or time range",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ (tentative)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (provisional)"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ (chaq)"
+          }
+        }
+      }
+    },
+    "calendar.overlap.title" : {
+      "comment" : "Calendar overlap title; %@ = names of the overlapping entries",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Overlaps with %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se superpone con %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ tlhej tay"
+          }
+        }
+      }
+    },
+    "calendar.overlap.title.soft" : {
+      "comment" : "Calendar overlap title when every overlap is tentative; %@ = names of the overlapping entries",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "May overlap with %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podría superponerse con %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ tlhej chaq tay"
+          }
+        }
+      }
+    },
+    "calendar.overlap.two" : {
+      "comment" : "Two names joined; each %@ = a calendar entry title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ and %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ y %2$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$@ 'ej %2$@"
+          }
+        }
+      }
+    },
+    "calendar.overlap.untitled" : {
+      "comment" : "Name used inside a sentence for one calendar entry with no title, e.g. Overlaps with a busy time",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "a busy time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "un horario ocupado"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "poH Qu'"
+          }
+        }
+      }
+    },
+    "calendar.overlap.untitledMany" : {
+      "comment" : "Name for several untitled calendar entries; %lld = how many",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld busy time"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld busy times"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld horario ocupado"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld horarios ocupados"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld poH Qu'"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "calendar.pill.added" : {
+      "comment" : "VoiceOver label once the event is in the calendar",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Added to your calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregado a tu calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmeylIj Daq chelta'"
+          }
+        }
+      }
+    },
+    "calendar.pill.adding" : {
+      "comment" : "VoiceOver label while the event is being saved to the calendar",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Adding to calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregando al calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmey Daq chel"
+          }
+        }
+      }
+    },
+    "calendar.pill.busy" : {
+      "comment" : "VoiceOver label of the add-to-calendar pill when the personal calendar is busy",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add to calendar. Busy at this time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar al calendario. Ocupado a esta hora"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmey Daq yIchel. poH Qu'"
+          }
+        }
+      }
+    },
+    "calendar.pill.conflict" : {
+      "comment" : "VoiceOver label of the add-to-calendar pill when events overlap; %@ = overlap title such as Overlaps with Team Lunch",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add to calendar. %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar al calendario. %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmey Daq yIchel. %@"
+          }
+        }
+      }
+    },
+    "calendar.pill.free" : {
+      "comment" : "VoiceOver label of the add-to-calendar pill",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add to calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar al calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmey Daq yIchel"
+          }
+        }
+      }
+    },
+    "calendar.pill.hint.confirmDirect" : {
+      "comment" : "VoiceOver hint of the add-to-calendar pill when there is an overlap",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Asks you to confirm, then saves it to your calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te pide confirmar y luego lo guarda en tu calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yIlaj, 'ej jajmeylIj Daq pol"
+          }
+        }
+      }
+    },
+    "calendar.pill.hint.confirmEditor" : {
+      "comment" : "VoiceOver hint of the add-to-calendar pill when there is an overlap",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Asks you to confirm, then opens the calendar editor"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te pide confirmar y luego abre el editor del calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yIlaj, 'ej jajmey choHwI' poSmoH"
+          }
+        }
+      }
+    },
+    "calendar.pill.hint.freeDirect" : {
+      "comment" : "VoiceOver hint of the add-to-calendar pill",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Saves it to your calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lo guarda en tu calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmeylIj Daq pol"
+          }
+        }
+      }
+    },
+    "calendar.pill.hint.freeEditor" : {
+      "comment" : "VoiceOver hint of the add-to-calendar pill",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Opens the calendar editor to review before saving"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre el editor del calendario para revisarlo antes de guardar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmey choHwI' poSmoH, yIlaD 'ej yIpol"
+          }
+        }
+      }
+    },
+    "calendar.pill.withDate" : {
+      "comment" : "VoiceOver for the date pill; first %@ = the visible date, second %@ = the action such as Add to calendar",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "challenge.accessibility.card" : {
+      "comment" : "VoiceOver label of the Home challenge card; first %@ = theme title, second %@ = participation phrase",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This week’s challenge: %1$@, %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reto de esta semana: %1$@, %2$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaD Hoghvam: %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "challenge.calendar.goal" : {
+      "comment" : "Calendar entry note line; %@ = goal such as 10 miles",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Goal: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meta: %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qap: %@"
+          }
+        }
+      }
+    },
+    "challenge.calendar.reward" : {
+      "comment" : "Calendar entry note line; %@ = reward such as +50 points",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reward: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recompensa: %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "pop: %@"
+          }
+        }
+      }
+    },
+    "challenge.calendar.title" : {
+      "comment" : "Calendar entry title for a weekly theme; %@ = theme title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekly theme: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema semanal: %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD: %@"
+          }
+        }
+      }
+    },
+    "challenge.goal.format" : {
+      "comment" : "Goal text; first %@ = number, second %@ = unit such as miles",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "challenge.participation.none" : {
+      "comment" : "Challenge card: nobody has taken part yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Be the first this week"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sé el primero esta semana"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh wa'DIch yIjaH"
+          }
+        }
+      }
+    },
+    "challenge.participation.others" : {
+      "comment" : "Challenge card; %lld = number of other participants (1 or more)",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld other participating"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld others participating"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld más participa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+ %lld más participan"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "+ %lld pIj ghoS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "challenge.participation.spoken.none" : {
+      "comment" : "VoiceOver for the challenge card: nobody has taken part yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "be the first this week"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sé el primero esta semana"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh wa'DIch yIjaH"
+          }
+        }
+      }
+    },
+    "challenge.participation.spoken.others" : {
+      "comment" : "VoiceOver for the challenge card; %lld = number of other participants (1 or more)",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld other participating"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld others participating"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld persona más participa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld personas más participan"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld pIj ghoS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "challenge.reward.points" : {
+      "comment" : "Reward text; %lld = points",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld points"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld points"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld punto"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld puntos"
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "+%lld Quv"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "challenge.text.failure" : {
+      "comment" : "Home error: challenge failed to load",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load this week’s challenge."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar el reto de esta semana."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaD Hoghvam lan Qagh!"
+          }
+        }
+      }
+    },
+    "challenge.text.howItWorks" : {
+      "comment" : "Challenge details: explains how entries work",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Do the activity with coworkers during this week, then add how much you did, a short note and optionally a photo as your entry. Entries are reviewed before points are awarded."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz la actividad con tus colegas durante la semana y luego agrega cuánto hiciste, una nota breve y, si quieres, una foto como tu participación. Las participaciones se revisan antes de otorgar los puntos."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jup tlhej Qu' yIpe' Hoghvam, 'ej mI' Dape', mu' mach, mIllogh je yIchel ta'lIj. Quv chel 'e' vIlegh ta'mey laD DevwI'."
+          }
+        }
+      }
+    },
+    "challenge.text.noneBody" : {
+      "comment" : "Home empty state body: no weekly theme",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "A new one starts Monday."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uno nuevo empieza el lunes."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "chu' wa'leS Hogh QapDI'."
+          }
+        }
+      }
+    },
+    "challenge.text.noneTitle" : {
+      "comment" : "Home empty state title: no weekly theme",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No weekly theme right now."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay tema semanal por ahora."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD pagh DaH."
+          }
+        }
+      }
+    },
+    "challenge.text.stale" : {
+      "comment" : "Badge shown when the challenge comes from the offline cache",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Offline · last update"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin conexión · última actualización"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jIDoSbe' · latlh chu'"
+          }
+        }
+      }
+    },
+    "challenge.text.submissionsSoon" : {
+      "comment" : "Challenge note: entries are not open yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Submissions open soon"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los envíos abrirán pronto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta' poSmoH ngaj"
+          }
+        }
+      }
+    },
+    "challenge.window.ended" : {
+      "comment" : "Challenge note: the theme window is over",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This weekly theme has ended"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este tema semanal ya terminó"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD natlhta'"
+          }
+        }
+      }
+    },
+    "challenge.window.range" : {
+      "comment" : "Date range of a weekly theme; first %@ = first day, second %@ = last day, e.g. Nov 9 - Nov 15",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ - %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "challenge.window.starts" : {
+      "comment" : "Challenge note: theme starts on a date; %@ = short weekday and date, e.g. Mon, Nov 9",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Starts %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empieza el %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Qap"
+          }
+        }
+      }
+    },
+    "changelog.cost.free" : {
+      "comment" : "Change log price value: no cost",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Free"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gratis"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch Qo'"
+          }
+        }
+      }
+    },
+    "changelog.detail.change" : {
+      "comment" : "Change row; first %@ = previous value, second %@ = new value",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "changelog.detail.now" : {
+      "comment" : "Change row when there was no previous value; %@ = new value",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Now %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DaH %@"
+          }
+        }
+      }
+    },
+    "changelog.detail.was" : {
+      "comment" : "Change row when the value was removed; %@ = previous value",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Was %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hu' %@"
+          }
+        }
+      }
+    },
+    "changelog.row.backOn" : {
+      "comment" : "Change log row: a cancelled activity was reinstated",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Activity is back on"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La actividad se retomó"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' cheghta'"
+          }
+        }
+      }
+    },
+    "changelog.row.cancelled" : {
+      "comment" : "Change log row: the organizer cancelled the activity",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Activity cancelled"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actividad cancelada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' mevta'"
+          }
+        }
+      }
+    },
+    "changelog.row.cost" : {
+      "comment" : "Change log row label: price changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cost"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costo"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch"
+          }
+        }
+      }
+    },
+    "changelog.row.description" : {
+      "comment" : "Change log row: the description changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Description updated"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descripción actualizada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mu'mey chu'"
+          }
+        }
+      }
+    },
+    "changelog.row.interests" : {
+      "comment" : "Change log row: the interest tags changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Interests updated"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intereses actualizados"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wIvmey chu'"
+          }
+        }
+      }
+    },
+    "changelog.row.location" : {
+      "comment" : "Change log row label: venue changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Location"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lugar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Daq"
+          }
+        }
+      }
+    },
+    "changelog.row.name" : {
+      "comment" : "Change log row label: activity name changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Name"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "pong"
+          }
+        }
+      }
+    },
+    "changelog.row.photo" : {
+      "comment" : "Change log row: the cover photo changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Photo changed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foto cambiada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh choHta'"
+          }
+        }
+      }
+    },
+    "changelog.row.setting" : {
+      "comment" : "Change log row label: indoor/outdoor setting changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Setting"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambiente"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Daq"
+          }
+        }
+      }
+    },
+    "changelog.row.spots" : {
+      "comment" : "Change log row label: capacity changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spots"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cupos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Daqmey"
+          }
+        }
+      }
+    },
+    "changelog.row.time" : {
+      "comment" : "Change log row label: start or end time changed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "poH"
+          }
+        }
+      }
+    },
+    "changelog.setting.indoors" : {
+      "comment" : "Change log value: activity is indoors",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Indoors"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interior"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yoD"
+          }
+        }
+      }
+    },
+    "changelog.setting.outdoors" : {
+      "comment" : "Change log value: activity is outdoors",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Outdoors"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exterior"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Do'"
+          }
+        }
+      }
+    },
+    "changelog.time.ends" : {
+      "comment" : "Change log time value when only the end time changed; %@ = clock time",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ends %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termina %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ natlh"
+          }
+        }
+      }
+    },
+    "event.dateTimeRange" : {
+      "comment" : "Event date and time range; first %@ = start, second %@ = end",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "event.price.free" : {
+      "comment" : "Event price when the activity costs nothing",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Free"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gratis"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch Qo'"
+          }
+        }
+      }
+    },
+    "event.share.cancelled" : {
+      "comment" : "Share text for a cancelled activity; %@ = activity title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Heads up: %@ has been cancelled. Hopefully we can find another time to get together."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aviso: %@ se canceló. Ojalá podamos encontrar otro momento para reunirnos."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yIQoy: %@ mevta'. chaq poH latlh tu'lu' 'ej wIghom."
+          }
+        }
+      }
+    },
+    "event.share.closing" : {
+      "comment" : "Share text closing line",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hope to see you there!"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Espero verte ahí!"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qapla'! SoH Daq maqIm!"
+          }
+        }
+      }
+    },
+    "event.share.cost" : {
+      "comment" : "Share text sentence; %@ = price such as $5.00",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "It costs %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuesta %@."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch %@."
+          }
+        }
+      }
+    },
+    "event.share.costNote" : {
+      "comment" : "Share text sentence; first %@ = price such as $5.00, second %@ = organizer's cost note",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "It costs %1$@ (%2$@)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuesta %1$@ (%2$@)."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch %1$@ (%2$@)."
+          }
+        }
+      }
+    },
+    "event.share.free" : {
+      "comment" : "Share text sentence for a free activity",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "It’s free to join."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gratis participar."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch Qo' muv."
+          }
+        }
+      }
+    },
+    "event.share.freeNote" : {
+      "comment" : "Share text sentence for a free activity; %@ = organizer's cost note",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "It’s free to join (%@)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gratis participar (%@)."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Huch Qo' muv (%@)."
+          }
+        }
+      }
+    },
+    "event.share.intro" : {
+      "comment" : "Share text opening line; %@ = activity title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Join me for %@!"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Acompáñame en %@!"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ vaD jIlIj yIjaH!"
+          }
+        }
+      }
+    },
+    "event.share.introWithDescription" : {
+      "comment" : "Share text opening line followed by the first sentence of the description; first %@ = activity title, second %@ = description sentence",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Join me for %1$@! %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Acompáñame en %1$@! %2$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$@ vaD jIlIj yIjaH! %2$@"
+          }
+        }
+      }
+    },
+    "event.share.phrase.multiDay" : {
+      "comment" : "Time phrase in share text for a multi-day event; %@ = start date, start time, end date, end time in order",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "from %1$@ at %2$@ to %3$@ at %4$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "del %1$@ a las %2$@ al %3$@ a las %4$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$@ %2$@ vo' %3$@ %4$@ Dat"
+          }
+        }
+      }
+    },
+    "event.share.phrase.sameDay" : {
+      "comment" : "Time phrase in share text for a same-day event; %@ = date, start time, end time in order",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "on %1$@ from %2$@ to %3$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el %1$@ de %2$@ a %3$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$@ %2$@ vo' %3$@ Dat"
+          }
+        }
+      }
+    },
+    "event.share.phrase.start" : {
+      "comment" : "Time phrase in share text, no end; first %@ = date, second %@ = time",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "on %1$@ at %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el %1$@ a las %2$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "event.share.thisActivity" : {
+      "comment" : "Share text fallback when the activity has no title; used inside a sentence",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "this activity"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "esta actividad"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu'vam"
+          }
+        }
+      }
+    },
+    "event.share.when" : {
+      "comment" : "Share text sentence; %@ = time phrase such as on Monday, Nov 9 from 6:00 PM to 7:00 PM",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "It’s %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es %@."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@."
+          }
+        }
+      }
+    },
+    "event.share.whenAt" : {
+      "comment" : "Share text sentence; first %@ = time phrase such as on Monday, Nov 9 from 6:00 PM to 7:00 PM, second %@ = venue and address",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "It’s %1$@ at %2$@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es %1$@ en %2$@."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$@ %2$@."
+          }
+        }
+      }
+    },
+    "home.filter.announce.all" : {
+      "comment" : "VoiceOver when the Home filter shows all events; %lld = number of events",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "All events. %lld event."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "All events. %lld events."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Todos los eventos. %lld evento."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Todos los eventos. %lld eventos."
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "wanI'mey Hoch. %lld wanI'mey."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "home.filter.announce.matching" : {
+      "comment" : "VoiceOver when the interest filter is on; first %lld = events shown, second %lld = total events",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Matching your interests. Showing %1$lld of %2$lld events."
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Matching your interests. Showing %1$lld of %2$lld events."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Coinciden con tus intereses. Se muestran %1$lld de %2$lld evento."
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Coinciden con tus intereses. Se muestran %1$lld de %2$lld eventos."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@count@"
+          },
+          "substitutions" : {
+            "count" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "wIvmeylIj rap. %2$lld wanI'mey vo' %1$lld 'ang."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "home.filter.announce.matchingNone" : {
+      "comment" : "VoiceOver when the interest filter matches no events",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Matching your interests. No events match."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coinciden con tus intereses. Ningún evento coincide."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wIvmeylIj rap. wanI' rap pagh."
+          }
+        }
+      }
+    },
+    "interest.unavailable" : {
+      "comment" : "Placeholder name for a profile interest tag no longer in the catalog",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unavailable interest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interés no disponible"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wIv tu'lu'be'"
+          }
+        }
+      }
+    },
+    "invites.denial.cancelled" : {
+      "comment" : "Cannot invite: activity cancelled",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity was cancelled."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad se canceló."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' mevta'."
+          }
+        }
+      }
+    },
+    "invites.denial.ended" : {
+      "comment" : "Cannot invite: activity ended",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity has ended."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad ya terminó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' natlhta'."
+          }
+        }
+      }
+    },
+    "invites.denial.full" : {
+      "comment" : "Cannot invite: activity full",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity is full, so there is no space to invite someone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad está llena, así que no hay lugar para invitar a alguien."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' molta', vaj vay' rIt laHbe'."
+          }
+        }
+      }
+    },
+    "invites.denial.started" : {
+      "comment" : "Cannot invite: activity already started",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity has already started."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad ya empezó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' Qapta'."
+          }
+        }
+      }
+    },
+    "invites.error.alreadyAnswered" : {
+      "comment" : "Invite error: the invitation was already answered",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You already answered this invitation."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya respondiste esta invitación."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rIt jangta'."
+          }
+        }
+      }
+    },
+    "invites.error.alreadyGoing" : {
+      "comment" : "Invite error: the coworker is already going",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This coworker is already going."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este colega ya va."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jup jaH."
+          }
+        }
+      }
+    },
+    "invites.error.alreadyInvited" : {
+      "comment" : "Invite error: another member already invited this coworker",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Someone already invited this coworker to this activity."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alguien ya invitó a este colega a esta actividad."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "vay' jup rIt Qu'vamvaD."
+          }
+        }
+      }
+    },
+    "invites.error.cancelled" : {
+      "comment" : "Invite error: activity cancelled",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity was cancelled."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad se canceló."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' mevta'."
+          }
+        }
+      }
+    },
+    "invites.error.closed" : {
+      "comment" : "Invite error: activity already started",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity has already started."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad ya empezó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' Qapta'."
+          }
+        }
+      }
+    },
+    "invites.error.full" : {
+      "comment" : "Invite error: no places left",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity is full."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad está llena."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' molta'."
+          }
+        }
+      }
+    },
+    "invites.error.notFound" : {
+      "comment" : "Invite error: invitation or activity missing",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This invitation or activity is no longer available."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta invitación o actividad ya no está disponible."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rIt pagh Qu' tu'lu'be'."
+          }
+        }
+      }
+    },
+    "invites.error.notMember" : {
+      "comment" : "Invite error: recipient is not in the same company",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You can only invite coworkers from your company."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo puedes invitar a colegas de tu empresa."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yaSpu'lIj neH rItlaH."
+          }
+        }
+      }
+    },
+    "invites.error.offline" : {
+      "comment" : "Invite error: no network",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re offline. Check your connection and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estás sin conexión. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jIDoSbe'. De' ghom yIpoj 'ej yInIDqa'."
+          }
+        }
+      }
+    },
+    "invites.error.rateLimited" : {
+      "comment" : "Invite error: rate limited",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’ve sent a lot of invitations. Try again a little later."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviaste muchas invitaciones. Inténtalo de nuevo un poco más tarde."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rItmey law' Daruchpu'. puS yInIDqa'."
+          }
+        }
+      }
+    },
+    "invites.error.unauthenticated" : {
+      "comment" : "Invite error: session expired",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Please sign in again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a iniciar sesión."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yI'elqa'."
+          }
+        }
+      }
+    },
+    "invites.error.unknown" : {
+      "comment" : "Invite error: generic failure",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Something went wrong. Please try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algo salió mal. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qagh! yInIDqa'."
+          }
+        }
+      }
+    },
+    "invites.status.accepted" : {
+      "comment" : "Sent invitation status: accepted",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Accepted"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "lajlu'ta'"
+          }
+        }
+      }
+    },
+    "invites.status.declined" : {
+      "comment" : "Sent invitation status: declined",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Declined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechazada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "lajlu'be'"
+          }
+        }
+      }
+    },
+    "invites.status.expired" : {
+      "comment" : "Sent invitation status: event started before an answer",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Expired"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vencida"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "natlhta'"
+          }
+        }
+      }
+    },
+    "invites.status.pending" : {
+      "comment" : "Sent invitation status: waiting for an answer",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pending"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendiente"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "loStaH"
+          }
+        }
+      }
+    },
+    "notif.category.calendarInvites.summary" : {
+      "comment" : "Notification preference category description (email only)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "An email that adds activities you join to your calendar, and keeps it up to date"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un correo que agrega a tu calendario las actividades a las que te unes y lo mantiene al día"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn jajmeylIj Daq Qu'mey muvbogh chel 'ej chu' vegh"
+          }
+        }
+      }
+    },
+    "notif.category.calendarInvites.title" : {
+      "comment" : "Notification preference category title (email only)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Calendar invites"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitaciones de calendario"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jajmey rItmey"
+          }
+        }
+      }
+    },
+    "notif.category.challenges.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Submission reviews and new weekly themes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisiones de envíos y nuevos temas semanales"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'mey legh Hogh qaDmey je"
+          }
+        }
+      }
+    },
+    "notif.category.challenges.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Challenges"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaDmey"
+          }
+        }
+      }
+    },
+    "notif.category.chat.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "New messages in activity chats"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mensajes nuevos en los chats de las actividades"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn chu' Qu' ja'chuq Daq"
+          }
+        }
+      }
+    },
+    "notif.category.chat.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chat"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ja'chuq"
+          }
+        }
+      }
+    },
+    "notif.category.discovery.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "New activities that match your interests"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actividades nuevas que coinciden con tus intereses"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu'mey chu' wIvmeylIj rapbogh"
+          }
+        }
+      }
+    },
+    "notif.category.discovery.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Suggestions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sugerencias"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qeS"
+          }
+        }
+      }
+    },
+    "notif.category.eventUpdates.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Time or place changes, cancellations, and when an organizer adds you"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambios de horario o lugar, cancelaciones y cuando un organizador te agrega"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "poH Daq je choH, mev, DevwI' SoH chel je"
+          }
+        }
+      }
+    },
+    "notif.category.eventUpdates.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Activity updates"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novedades de actividades"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' chu'"
+          }
+        }
+      }
+    },
+    "notif.category.invites.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "When a coworker invites you to an activity"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando un colega te invita a una actividad"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jup SoH rItDI' Qu'vaD"
+          }
+        }
+      }
+    },
+    "notif.category.invites.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Invites"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitaciones"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rItmey"
+          }
+        }
+      }
+    },
+    "notif.category.reminders.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "About a day and an hour before activities you joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aproximadamente un día y una hora antes de las actividades a las que te uniste"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wa' jaj wa' rep je Qu'mey muvta' Hu'"
+          }
+        }
+      }
+    },
+    "notif.category.reminders.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reminders"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordatorios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaw'moHwI'mey"
+          }
+        }
+      }
+    },
+    "notif.category.social.summary" : {
+      "comment" : "Notification preference category description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comments and photos on your posts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentarios y fotos en tus publicaciones"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey mIlloghmey je De'lIj Daq"
+          }
+        }
+      }
+    },
+    "notif.category.social.title" : {
+      "comment" : "Notification preference category title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comments and photos"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentarios y fotos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey mIlloghmey je"
+          }
+        }
+      }
+    },
+    "notif.level.all.summary" : {
+      "comment" : "Per-activity notification level description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chat messages, event changes and reminders"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mensajes del chat, cambios en el evento y recordatorios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ja'chuq QInmey, wanI' choHmey, qaw'moHwI'mey je"
+          }
+        }
+      }
+    },
+    "notif.level.all.title" : {
+      "comment" : "Per-activity notification level title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "All"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hoch"
+          }
+        }
+      }
+    },
+    "notif.level.changes.summary" : {
+      "comment" : "Per-activity notification level description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Event changes and reminders"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambios en el evento y recordatorios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI' choHmey qaw'moHwI'mey je"
+          }
+        }
+      }
+    },
+    "notif.level.changes.title" : {
+      "comment" : "Per-activity notification level title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Changes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "choHmey"
+          }
+        }
+      }
+    },
+    "notif.level.none.summary" : {
+      "comment" : "Per-activity notification level description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No notifications for this activity"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin notificaciones para esta actividad"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QIn pagh Qu'vam vaD"
+          }
+        }
+      }
+    },
+    "notif.level.none.title" : {
+      "comment" : "Per-activity notification level title: no notifications",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "None"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "pagh"
+          }
+        }
+      }
+    },
+    "notif.level.reminders.summary" : {
+      "comment" : "Per-activity notification level description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reminders only"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo recordatorios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaw'moHwI'mey neH"
+          }
+        }
+      }
+    },
+    "notif.level.reminders.title" : {
+      "comment" : "Per-activity notification level title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reminders"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordatorios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaw'moHwI'mey"
+          }
+        }
+      }
+    },
+    "notif.level.unavailable" : {
+      "comment" : "Error when the repository has no per-activity notification settings",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Notification settings aren’t available yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los ajustes de notificaciones aún no están disponibles"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "SeHlaw QInmey tu'lu'be' DaH"
+          }
+        }
+      }
+    },
+    "notifications.error.denied" : {
+      "comment" : "Notifications error: access denied",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Notifications aren’t available for this account."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las notificaciones no están disponibles para esta cuenta."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey tu'lu'be' De'lIj vaD."
+          }
+        }
+      }
+    },
+    "notifications.error.offline" : {
+      "comment" : "Notifications error: no network",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re offline. Check your connection and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estás sin conexión. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jIDoSbe'. yInIDqa' DaH."
+          }
+        }
+      }
+    },
+    "notifications.error.unauthenticated" : {
+      "comment" : "Notifications error: session expired",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Please sign in again to see your notifications."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a iniciar sesión para ver tus notificaciones."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmey Dalegh. yI'elqa'."
+          }
+        }
+      }
+    },
+    "notifications.error.unknown" : {
+      "comment" : "Notifications error: generic failure",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load your notifications. Please try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron cargar tus notificaciones. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QInmeylIj lan Qagh! yInIDqa'."
+          }
+        }
+      }
+    },
+    "notifications.group.earlier" : {
+      "comment" : "Notifications list section header: older than yesterday",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Earlier"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anteriores"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hu'"
+          }
+        }
+      }
+    },
+    "notifications.group.today" : {
+      "comment" : "Notifications list section header: today",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Today"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoy"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DaHjaj"
+          }
+        }
+      }
+    },
+    "notifications.group.yesterday" : {
+      "comment" : "Notifications list section header: yesterday",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Yesterday"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayer"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wa'Hu'"
+          }
+        }
+      }
+    },
+    "notifications.time.hoursAgo" : {
+      "comment" : "Relative time on a notification row; %lld = hours ago",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lldh ago"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hace %lld h"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld rep ret"
+          }
+        }
+      }
+    },
+    "notifications.time.justNow" : {
+      "comment" : "Relative time on a notification row: less than a minute ago",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Just now"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora mismo"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DaH"
+          }
+        }
+      }
+    },
+    "notifications.time.minutesAgo" : {
+      "comment" : "Relative time on a notification row; %lld = minutes ago (1 to 59)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lldm ago"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hace %lld min"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld tup ret"
+          }
+        }
+      }
+    },
+    "onboarding.announcement.step" : {
+      "comment" : "VoiceOver announcement when the onboarding tour arrives on a step; first %lld = step number, second %lld = total steps, %@ = step title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$lld of %2$lld, %3$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paso %1$lld de %2$lld, %3$@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hoch %2$lld, %1$lld, %3$@"
+          }
+        }
+      }
+    },
+    "onboarding.challenge.caption" : {
+      "comment" : "Demo challenge entry caption typed in the onboarding tour",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Met Jun from Design"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conocí a Jun de Diseño"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Jun Design vo' wIghom"
+          }
+        }
+      }
+    },
+    "onboarding.challenge.status.approved" : {
+      "comment" : "Demo challenge status pill when approved, points shown separately",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Approved"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "lajta'"
+          }
+        }
+      }
+    },
+    "onboarding.challenge.status.approvedPoints" : {
+      "comment" : "Demo challenge status pill when approved; %lld = points awarded",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Approved · +%lld points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobada · +%lld puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "lajta' · +%lld Quv"
+          }
+        }
+      }
+    },
+    "onboarding.challenge.status.waiting" : {
+      "comment" : "Demo challenge status pill in the onboarding tour",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Waiting for approval"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando aprobación"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "laj loStaH"
+          }
+        }
+      }
+    },
+    "onboarding.pill.arrival" : {
+      "comment" : "Onboarding header pill, first step",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You're in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya estás dentro"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "bI'elta'"
+          }
+        }
+      }
+    },
+    "onboarding.pill.challenges" : {
+      "comment" : "Onboarding header pill, challenges step",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Challenges"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaDmey"
+          }
+        }
+      }
+    },
+    "onboarding.pill.discover" : {
+      "comment" : "Onboarding header pill, discover step",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Find events"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar eventos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wanI'mey yInej"
+          }
+        }
+      }
+    },
+    "onboarding.pill.interests" : {
+      "comment" : "Onboarding header pill, interests step",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Interests"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intereses"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "wIvmey"
+          }
+        }
+      }
+    },
+    "onboarding.pill.memories" : {
+      "comment" : "Onboarding header pill, memories step",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Memories"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recuerdos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qawmey"
+          }
+        }
+      }
+    },
+    "onboarding.pill.people" : {
+      "comment" : "Onboarding header pill, people step",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Who's going"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quién va"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "'Iv jaH?"
+          }
+        }
+      }
+    },
+    "onboarding.skip" : {
+      "comment" : "Onboarding header button that skips the tour",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Skip"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yIjuS"
+          }
+        }
+      }
+    },
+    "onboarding.skip.replay" : {
+      "comment" : "Onboarding header button that closes a replayed tour",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Done"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rInta'"
+          }
+        }
+      }
+    },
+    "points.balance.one" : {
+      "comment" : "Points balance for exactly 1 point; %@ = formatted number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ point"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ punto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv"
+          }
+        }
+      }
+    },
+    "points.balance.other" : {
+      "comment" : "Points balance for 0 or several points; %@ = formatted number such as 1,234",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv"
+          }
+        }
+      }
+    },
+    "points.display.balance" : {
+      "comment" : "VoiceOver for the points pill; %@ = points such as 1,234 points",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your balance: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu saldo: %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QuvlIj: %@"
+          }
+        }
+      }
+    },
+    "points.display.loading" : {
+      "comment" : "VoiceOver for the points pill while loading",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Loading your points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando tus puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QuvlIj loStaH"
+          }
+        }
+      }
+    },
+    "points.display.stale" : {
+      "comment" : "VoiceOver for the points pill when showing a cached value offline; %@ = points such as 1,234 points",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your balance: %@. Offline, this may be out of date."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu saldo: %@. Sin conexión, puede estar desactualizado."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QuvlIj: %@. jIDoSbe', chaq Hu'."
+          }
+        }
+      }
+    },
+    "points.display.unavailable" : {
+      "comment" : "VoiceOver for the points pill when no value could be read",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your points are unavailable right now"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus puntos no están disponibles ahora"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QuvlIj tu'lu'be' DaH"
+          }
+        }
+      }
+    },
+    "points.earn.one" : {
+      "comment" : "Event page points row before the event, 1 point; %@ = formatted number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Earn +%@ point"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gana +%@ punto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+%@ Quv yIqon"
+          }
+        }
+      }
+    },
+    "points.earn.other" : {
+      "comment" : "Event page points row before the event; %@ = formatted number such as 50",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Earn +%@ points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gana +%@ puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+%@ Quv yIqon"
+          }
+        }
+      }
+    },
+    "points.earned.one" : {
+      "comment" : "Event page points row once attended, 1 point; %@ = formatted number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Earned %@ point"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganaste %@ punto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv Daqonta'"
+          }
+        }
+      }
+    },
+    "points.earned.other" : {
+      "comment" : "Event page points row once attended; %@ = formatted number such as 50",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Earned %@ points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganaste %@ puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv Daqonta'"
+          }
+        }
+      }
+    },
+    "points.reward.one" : {
+      "comment" : "Event reward for exactly 1 point; %@ = formatted number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+%@ point"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%@ punto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+%@ Quv"
+          }
+        }
+      }
+    },
+    "points.reward.other" : {
+      "comment" : "Event reward for several points; %@ = formatted number such as 50",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+%@ points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%@ puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+%@ Quv"
+          }
+        }
+      }
+    },
+    "points.rewardShort" : {
+      "comment" : "Compact reward on an event card; %@ = formatted number such as 50",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+%@ pts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%@ pts"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+%@ Quv"
+          }
+        }
+      }
+    },
+    "points.worth.one" : {
+      "comment" : "VoiceOver for the reward pill, 1 point; %@ = formatted number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Worth %@ point"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vale %@ punto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv Dun"
+          }
+        }
+      }
+    },
+    "points.worth.other" : {
+      "comment" : "VoiceOver for the reward pill, several points; %@ = formatted number such as 50",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Worth %@ points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vale %@ puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv Dun"
+          }
+        }
+      }
+    },
+    "points.worthPast.one" : {
+      "comment" : "Event page points row for a past event the member did not join, 1 point; %@ = formatted number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Worth %@ point"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valía %@ punto"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv Dun"
+          }
+        }
+      }
+    },
+    "points.worthPast.other" : {
+      "comment" : "Event page points row for a past event the member did not join; %@ = formatted number such as 50",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Worth %@ points"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valía %@ puntos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ Quv Dun"
+          }
+        }
+      }
+    },
+    "repository.error.challengesUnavailable" : {
+      "comment" : "Error when the data source has no challenge support",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Challenges aren’t available yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los retos aún no están disponibles"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "qaDmey tu'lu'be' DaH"
+          }
+        }
+      }
+    },
+    "repository.error.photoUnavailable" : {
+      "comment" : "Error when the original photo cannot be fetched for saving",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This photo can’t be saved right now"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta foto no se puede guardar ahora"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh pollaHbe' DaH"
+          }
+        }
+      }
+    },
+    "rsvp.denial.alreadyGoing" : {
+      "comment" : "RSVP refused: already going",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re already going to this activity."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya vas a esta actividad."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu'vam bIjaH."
+          }
+        }
+      }
+    },
+    "rsvp.denial.cancelled" : {
+      "comment" : "RSVP refused: cancelled",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity was cancelled."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad se canceló."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' mevta'."
+          }
+        }
+      }
+    },
+    "rsvp.denial.ended" : {
+      "comment" : "RSVP refused: ended",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity has ended."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad ya terminó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' natlhta'."
+          }
+        }
+      }
+    },
+    "rsvp.denial.full" : {
+      "comment" : "RSVP refused: event full",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t join: the event is full."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No pudiste unirte: el evento está lleno."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "muvlaHbe': wanI' molta'."
+          }
+        }
+      }
+    },
+    "rsvp.denial.notGoing" : {
+      "comment" : "RSVP refused: not going",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re not going to this activity."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No vas a esta actividad."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu'vam bIjaHbe'."
+          }
+        }
+      }
+    },
+    "rsvp.denial.started" : {
+      "comment" : "RSVP refused: already started",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity has already started."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad ya empezó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' Qapta'."
+          }
+        }
+      }
+    },
+    "submission.action.add" : {
+      "comment" : "Button to add a challenge entry",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add your entry"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega tu participación"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'lIj yIchel"
+          }
+        }
+      }
+    },
+    "submission.action.edit" : {
+      "comment" : "Button to edit a pending challenge entry",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Edit entry"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar participación"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta' yIchoH"
+          }
+        }
+      }
+    },
+    "submission.action.resubmit" : {
+      "comment" : "Button to resubmit a challenge entry after changes were requested",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Update and resubmit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizar y reenviar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yIchoH 'ej yIngeHqa'"
+          }
+        }
+      }
+    },
+    "submission.copy.explain" : {
+      "comment" : "Entry sheet explanation",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tell us how much you did, add a short note and optionally a photo. An organizer reviews every entry before points are awarded."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuéntanos cuánto hiciste, agrega una nota breve y, si quieres, una foto. Un organizador revisa cada participación antes de otorgar los puntos."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mI' Dape', mu' mach, mIllogh je yIngeH. DevwI' ta' Hoch laD Quv chelDI'."
+          }
+        }
+      }
+    },
+    "submission.copy.loadFailure" : {
+      "comment" : "Error loading the member entry",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t load your entry."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar tu participación."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'lIj lan Qagh!"
+          }
+        }
+      }
+    },
+    "submission.copy.opensUntil" : {
+      "comment" : "Challenge note; %@ = last day entries are accepted, e.g. Sun, Nov 15",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Entries close %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los envíos cierran el %@"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta' natlh %@"
+          }
+        }
+      }
+    },
+    "submission.copy.photoRules" : {
+      "comment" : "Entry sheet photo hint",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "JPEG, PNG or HEIC. We resize it to fit."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JPEG, PNG o HEIC. La ajustamos de tamaño."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "JPEG, PNG pagh HEIC. Dun choH."
+          }
+        }
+      }
+    },
+    "submission.copy.sectionTitle" : {
+      "comment" : "Challenge details section title",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your entry"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu participación"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'lIj"
+          }
+        }
+      }
+    },
+    "submission.copy.sheetIntro" : {
+      "comment" : "Entry sheet intro",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "How much did you do? A note and a photo are optional."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Cuánto hiciste? La nota y la foto son opcionales."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mI' Dape'? mu' mIllogh je Dachaw'laH."
+          }
+        }
+      }
+    },
+    "submission.copy.sheetTitle" : {
+      "comment" : "Entry sheet title (uppercase eyebrow)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ADD YOUR ENTRY"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AGREGA TU PARTICIPACIÓN"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "TA'LIJ YICHEL"
+          }
+        }
+      }
+    },
+    "submission.detail.approved" : {
+      "comment" : "Challenge entry detail: approved without points",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Approved. Thanks for taking part."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobada. Gracias por participar."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "lajta'. qatlho' Daghoch."
+          }
+        }
+      }
+    },
+    "submission.detail.approvedPoints" : {
+      "comment" : "Challenge entry detail: approved; %lld = points earned",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "You earned +%lld points."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "You earned +%lld points."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ganaste +%lld punto."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ganaste +%lld puntos."
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "+%lld Quv Daqonta'."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "submission.detail.missed" : {
+      "comment" : "Challenge entry detail: missed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This theme has ended, so entries are closed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este tema ya terminó, así que los envíos están cerrados."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD natlhta', vaj ta' mevta'."
+          }
+        }
+      }
+    },
+    "submission.detail.notStarted" : {
+      "comment" : "Challenge entry detail: no entry yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add a number, a short note and optionally a photo."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega un número, una nota breve y, si quieres, una foto."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mI', mu' mach, mIllogh je yIchel."
+          }
+        }
+      }
+    },
+    "submission.detail.pending" : {
+      "comment" : "Challenge entry detail: pending, locked",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "An organizer will review it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un organizador la revisará."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DevwI' laD."
+          }
+        }
+      }
+    },
+    "submission.detail.pendingEditable" : {
+      "comment" : "Challenge entry detail: pending, still editable",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "An organizer will review it. You can still change it until the week ends."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un organizador la revisará. Todavía puedes cambiarla hasta que termine la semana."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DevwI' laD. Hogh natlhDI' Datlhoy choHlaH."
+          }
+        }
+      }
+    },
+    "submission.detail.rejected.ended" : {
+      "comment" : "Challenge entry detail: changes requested but the theme ended",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This theme has ended."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este tema ya terminó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD natlhta'."
+          }
+        }
+      }
+    },
+    "submission.detail.rejected.noteEnded" : {
+      "comment" : "Challenge entry detail: changes requested but the theme ended; %@ = the organizer's note",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Organizer note: %@ This theme has ended."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nota del organizador: %@ Este tema ya terminó."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DevwI' mu': %@ Hogh qaD natlhta'."
+          }
+        }
+      }
+    },
+    "submission.detail.rejected.noteResubmit" : {
+      "comment" : "Challenge entry detail: changes requested; %@ = the organizer's note",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Organizer note: %@ Update your entry and send it again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nota del organizador: %@ Actualiza tu participación y envíala de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "DevwI' mu': %@ ta'lIj yIchoH 'ej yIngeHqa'."
+          }
+        }
+      }
+    },
+    "submission.detail.rejected.resubmit" : {
+      "comment" : "Challenge entry detail: changes requested",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Update your entry and send it again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiza tu participación y envíala de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'lIj yIchoH 'ej yIngeHqa'."
+          }
+        }
+      }
+    },
+    "submission.detail.upcoming" : {
+      "comment" : "Challenge entry detail: theme not started",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You can add your entry once this theme starts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podrás agregar tu participación cuando empiece este tema."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD QapDI' ta'lIj Dachellaj."
+          }
+        }
+      }
+    },
+    "submission.error.closed" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This theme has ended, so entries are closed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este tema ya terminó, así que los envíos están cerrados."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD natlhta', vaj ta' mevta'."
+          }
+        }
+      }
+    },
+    "submission.error.invalidImage" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This photo couldn’t be used. Choose another one."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo usar esta foto. Elige otra."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh lo'laHbe'. latlh yIwIv."
+          }
+        }
+      }
+    },
+    "submission.error.invalidInput" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Check your entry and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa tu participación e inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'lIj yIpoj 'ej yInIDqa'."
+          }
+        }
+      }
+    },
+    "submission.error.locked" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This entry was already approved, so it can’t be changed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta participación ya fue aprobada, así que no se puede cambiar."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta' lajta', vaj choHlaHbe'."
+          }
+        }
+      }
+    },
+    "submission.error.noSlotsLeft" : {
+      "comment" : "Entry error; %lld = number of allowed photo uploads",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "You’ve used all %lld photo uploads for this theme. Remove the photo and send a note only."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "You’ve used all %lld photo uploads for this theme. Remove the photo and send a note only."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ya usaste la %lld subida de fotos de este tema. Quita la foto y envía solo una nota."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ya usaste las %lld subidas de fotos de este tema. Quita la foto y envía solo una nota."
+                }
+              }
+            }
+          }
+        },
+        "tlh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld mIllogh ngeHta'pu'. mIllogh yIteq 'ej mu' neH yIngeH."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "submission.error.notMember" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Only members of this company can add an entry."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo los miembros de esta empresa pueden agregar una participación."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yaSpu' ghom neH ta' chellaH."
+          }
+        }
+      }
+    },
+    "submission.error.notStarted" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This theme hasn’t started yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este tema aún no ha empezado."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD Qapbe' ghap."
+          }
+        }
+      }
+    },
+    "submission.error.offline" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re offline. Check your connection and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estás sin conexión. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "jIDoSbe'. De' ghom yIpoj 'ej yInIDqa'."
+          }
+        }
+      }
+    },
+    "submission.error.tooLarge" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This photo is too large to upload."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta foto es demasiado grande para subirla."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh 'IH ngeHlaHbe'."
+          }
+        }
+      }
+    },
+    "submission.error.unauthenticated" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Please sign in again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a iniciar sesión."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "yI'elqa'."
+          }
+        }
+      }
+    },
+    "submission.error.unknown" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your entry couldn’t be sent. Try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo enviar tu participación. Inténtalo de nuevo."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ta'lIj ngeHlu'be'. yInIDqa'."
+          }
+        }
+      }
+    },
+    "submission.error.uploadDenied" : {
+      "comment" : "Entry error",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your photo couldn’t be uploaded. Try again later, or send your entry without it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo subir tu foto. Inténtalo más tarde o envía tu participación sin ella."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mIllogh ngeHlu'be'. puS yInIDqa', pagh ta'lIj yIngeH mIllogh Hutlh."
+          }
+        }
+      }
+    },
+    "submission.issue.captionTooLong" : {
+      "comment" : "Entry form validation; %lld = maximum note length",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Keep your note to %lld characters."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limita tu nota a %lld caracteres."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mu'lIj %lld mu' neH yIghaj."
+          }
+        }
+      }
+    },
+    "submission.issue.progressInvalid" : {
+      "comment" : "Entry form validation: amount not a positive number",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enter a number greater than 0."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingresa un número mayor que 0."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mI' 0 law' yIchel."
+          }
+        }
+      }
+    },
+    "submission.issue.progressMissing" : {
+      "comment" : "Entry form validation: amount empty",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enter how much you did."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingresa cuánto hiciste."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mI' Dapa'be' yIchel."
+          }
+        }
+      }
+    },
+    "submission.issue.progressTooHigh" : {
+      "comment" : "Entry form validation; %@ = goal text such as 10 miles",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "That’s more than this week’s goal (%@)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es más que la meta de esta semana (%@)."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh Qap law' (%@)."
+          }
+        }
+      }
+    },
+    "submission.status.approved" : {
+      "comment" : "Challenge entry status pill: approved",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Approved"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "lajta'"
+          }
+        }
+      }
+    },
+    "submission.status.missed" : {
+      "comment" : "Challenge entry status pill: entries closed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Closed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrada"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "mevta'"
+          }
+        }
+      }
+    },
+    "submission.status.notStarted" : {
+      "comment" : "Challenge entry status pill: no entry yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not started"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin empezar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qapbe'"
+          }
+        }
+      }
+    },
+    "submission.status.pending" : {
+      "comment" : "Challenge entry status pill: awaiting organizer review",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Waiting for review"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En revisión"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "laj loStaH"
+          }
+        }
+      }
+    },
+    "submission.status.rejected" : {
+      "comment" : "Challenge entry status pill: organizer asked for changes",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Needs changes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere cambios"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "choH Dar"
+          }
+        }
+      }
+    },
+    "submission.status.upcoming" : {
+      "comment" : "Challenge entry status pill: theme has not started",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not open yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no abierta"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "poSbe' ghap"
+          }
+        }
+      }
+    },
+    "theme.arts.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Arts & Crafts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arte y manualidades"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qelmey chenmoH"
+          }
+        }
+      }
+    },
+    "theme.fallback.name" : {
+      "comment" : "Name of a weekly theme this app version does not know",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekly theme"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema semanal"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hogh qaD"
+          }
+        }
+      }
+    },
+    "theme.fitness.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Fitness"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fitness"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "HoS"
+          }
+        }
+      }
+    },
+    "theme.food.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Food & Drink"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comida y bebida"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Soj bIQ je"
+          }
+        }
+      }
+    },
+    "theme.games.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Games"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Juegos"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qujmey"
+          }
+        }
+      }
+    },
+    "theme.learning.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Learning"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprendizaje"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ghov"
+          }
+        }
+      }
+    },
+    "theme.music.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Music"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Música"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "bom"
+          }
+        }
+      }
+    },
+    "theme.outdoors.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Outdoors"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aire libre"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Do'"
+          }
+        }
+      }
+    },
+    "theme.volunteering.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Volunteering"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voluntariado"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QaH"
+          }
+        }
+      }
+    },
+    "theme.wellness.name" : {
+      "comment" : "Weekly theme name shown on the challenge card and details",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wellness"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bienestar"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "QaQ yIn"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

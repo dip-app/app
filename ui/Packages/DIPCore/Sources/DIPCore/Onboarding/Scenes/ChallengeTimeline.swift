@@ -38,7 +38,7 @@ public enum ChallengeTimeline {
         public static let pointsPill = DemoCoordinate(290, 44)
     }
 
-    public static let caption = "Met Jun from Design"
+    public static var caption: String { String(localized: "onboarding.challenge.caption", defaultValue: "Met Jun from Design", bundle: .module, comment: "Demo challenge entry caption typed in the onboarding tour") }
     public static let startingBalance = 120
     public static let reward = 50
     public static let endWithPoints = Duration.milliseconds(9_800)
@@ -210,8 +210,10 @@ public struct ChallengeState: Equatable, Sendable {
     public var statusTitle: String? {
         switch status {
         case .none: nil
-        case .waiting: "Waiting for approval"
-        case .approved: pointsEnabled ? "Approved" : "Approved · +\(ChallengeTimeline.reward) points"
+        case .waiting: String(localized: "onboarding.challenge.status.waiting", defaultValue: "Waiting for approval", bundle: .module, comment: "Demo challenge status pill in the onboarding tour")
+        case .approved: pointsEnabled
+            ? String(localized: "onboarding.challenge.status.approved", defaultValue: "Approved", bundle: .module, comment: "Demo challenge status pill when approved, points shown separately")
+            : String(localized: "onboarding.challenge.status.approvedPoints", defaultValue: "Approved · +\(ChallengeTimeline.reward) points", bundle: .module, comment: "Demo challenge status pill when approved; %lld = points awarded")
         }
     }
 }
