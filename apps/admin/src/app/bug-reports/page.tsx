@@ -16,6 +16,7 @@ import { setBugBadge } from "@/lib/bugBadge";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { BUG_CATEGORIES, BUG_CATEGORY_LABEL, BUG_STATUSES, BUG_STATUS_LABEL, diagnosticRows, issueText, screenLabel } from "@/lib/bugReports";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 type StatusFilter = BugStatus | "all";
 const number = (n: number) => n.toLocaleString("en-US");
@@ -153,7 +154,7 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
       <p className="muted">Sent {formatDateTime(report.createdAt)} from {screenLabel(report.screen)} {report.source === "shake" ? "by shaking the phone" : "in Profile"}.</p>
 
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
-        : !detail ? <Loading label="Loading report" />
+        : !detail ? <Loading label="Loading report" layout="list" />
         : (
           <>
             <div>
@@ -273,6 +274,7 @@ function BugReports() {
 
   const total = counts ? counts[status] : null;
   const empty = list.items.length === 0;
+  const holdList = useSkeletonGate(list.loading && empty);
   const tabCount = (id: StatusFilter) => `${number(counts?.[id] ?? 0)}${counts?.capped ? "+" : ""}`;
 
   return (
@@ -300,7 +302,7 @@ function BugReports() {
       {counts?.capped && <Notice>Counts cover the newest 1,000 reports. Older ones are still listed as you load more.</Notice>}
 
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
-        : list.loading && empty ? <Loading label="Loading bug reports" />
+        : (list.loading && empty) || holdList ? <Loading label="Loading bug reports" layout="bugs" />
         : empty ? (
           filtered
             ? <Empty title="No matches" body="Try a different search, category or date range." action={<button type="button" className="pill-btn dark" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>Clear filters</button>} />
@@ -350,5 +352,5 @@ function BugReports() {
 }
 
 export default function BugReportsPage() {
-  return <Suspense fallback={<Loading label="Loading bug reports" />}><BugReports /></Suspense>;
+  return <Suspense fallback={<Loading label="Loading bug reports" layout="bugs" />}><BugReports /></Suspense>;
 }

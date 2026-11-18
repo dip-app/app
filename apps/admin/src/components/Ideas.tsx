@@ -29,6 +29,7 @@ import { dismissToast, toast } from "./Toast";
 import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
 import { useTags } from "./TagCatalog";
+import { useSkeletonGate } from "./useDelayedShow";
 
 type Phase = "edit" | "generating" | "results" | "error";
 /** Quick mode ("Generate suggestions" in the New event header): armed by the button's one-time token, then running. */
@@ -106,6 +107,7 @@ export function Ideas() {
   const router = useRouter();
   const ctxState = useLoad((a) => a.eventIdeaContext(), "event-idea-context");
   const ctx = ctxState.data;
+  const holdIdeas = useSkeletonGate(!ctx && !ctxState.error);
   const catalog = useTags();
   const tagName = catalog.nameFor;
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
@@ -306,7 +308,7 @@ export function Ideas() {
   }, [quick, ctx, settled, suggest, catalog.status, catalog.tags, generate]);
 
   if (ctxState.error) return <LoadError error={ctxState.error} onRetry={ctxState.reload} />;
-  if (!ctx) return <Loading label={t("page.loading")} />;
+  if (!ctx || holdIdeas) return <Loading label={t("page.loading")} layout="ideas" />;
   if (!ctx.enabled) {
     return <Empty art={stateArt("empty")} title={t("off.title")} body={t("off.body")} action={<a className="pill-btn gray" href="/events/new/">{t("off.action")}</a>} />;
   }

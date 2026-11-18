@@ -9,6 +9,7 @@ import { Shell } from "@/components/Shell";
 import { Empty, Info, LoadError, Loading, Notice, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import type { AlbumComment, AlbumPhoto } from "@/lib/adminTypes";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 function PhotoImage({ photo, large }: { photo: AlbumPhoto; large?: boolean }) {
   const { api } = useApp();
@@ -118,8 +119,9 @@ function Album() {
   const [open, setOpen] = useState<AlbumPhoto | null>(null);
   const [message, setMessage] = useState("");
 
+  const hold = useSkeletonGate(!photos.data && !photos.error);
   if (photos.error) return <LoadError error={photos.error} onRetry={photos.reload} backHref="/events/" backLabel="Back to events" />;
-  if (!photos.data) return <Loading label="Loading album" />;
+  if (!photos.data || hold) return <Loading label="Loading album" layout="album" />;
   return (
     <>
       <div className="toolbar">
@@ -161,7 +163,7 @@ function Album() {
 export default function AlbumPage() {
   return (
     <Shell title="Event album" subtitle="Photos members shared after the event. Remove anything that doesn’t belong." requires="albums.moderate">
-      <Suspense fallback={<Loading label="Loading album" />}><Album /></Suspense>
+      <Suspense fallback={<Loading label="Loading album" layout="album" />}><Album /></Suspense>
     </Shell>
   );
 }

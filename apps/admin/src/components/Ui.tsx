@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import type { ApiError } from "@/lib/contract";
+import { PageSkeleton, type SkeletonLayout } from "./PageSkeletons";
 
 export function LoadError({ error, onRetry, backHref, backLabel }: { error: ApiError; onRetry: () => void; backHref?: string; backLabel?: string }) {
   // Retrying a missing item never helps: offer the way back instead.
@@ -14,13 +15,12 @@ export function LoadError({ error, onRetry, backHref, backLabel }: { error: ApiE
   );
 }
 
-export function Loading({ label }: { label: string }) {
-  return (
-    <div className="skeleton-list" role="status">
-      <span className="sr-only">{label}</span>
-      <div className="skeleton short" aria-hidden /><div className="skeleton short" aria-hidden /><div className="skeleton short" aria-hidden />
-    </div>
-  );
+/**
+ * A page's loading state. `layout` picks a skeleton that mirrors that page (see PageSkeletons.tsx); without one it is a
+ * short generic list. Either way: `aria-busy`, one screen reader status, and no paint for the first 150 ms.
+ */
+export function Loading({ label, layout }: { label: string; layout?: SkeletonLayout }) {
+  return <PageSkeleton layout={layout} label={label} />;
 }
 
 /** "Showing 25 of 140": announced politely when it changes. */

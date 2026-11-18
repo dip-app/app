@@ -11,6 +11,7 @@ import { Empty, LoadError, Loading } from "@/components/Ui";
 import { type ThemePhase, type WeeklyTheme, sortThemes, themePhase } from "@/lib/challenge";
 import { ApiError } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 const PHASES: { id: ThemePhase; label: string }[] = [
   { id: "current", label: "Current" },
@@ -45,6 +46,7 @@ function Themes() {
     return () => { cancelled = true; };
   }, [api, session, attempt]);
 
+  const hold = useSkeletonGate(themes === null && !error);
   const now = new Date();
   const shown = themes ? sortThemes(themes.filter((theme) => themePhase(theme, now) === phase), phase) : [];
 
@@ -52,7 +54,7 @@ function Themes() {
     <Shell title="Weekly themes" subtitle="The “This Week’s Challenge” card on the app’s Home screen."
       action={canManage ? <Link className="pill-btn purple" href="/themes/new/">New theme</Link> : undefined}>
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
-        : themes === null ? <Loading label="Loading weekly themes" />
+        : themes === null || hold ? <Loading label="Loading weekly themes" layout="themes" />
         : (
           <>
             <Tabs idBase="themes" label="Filter weekly themes" value={phase} onChange={(id) => setQuery({ phase: id })}
@@ -71,5 +73,5 @@ function Themes() {
 }
 
 export default function ThemesPage() {
-  return <Suspense fallback={<Loading label="Loading weekly themes" />}><Themes /></Suspense>;
+  return <Suspense fallback={<Loading label="Loading weekly themes" layout="themes" />}><Themes /></Suspense>;
 }

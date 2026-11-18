@@ -13,6 +13,7 @@ import { CreditsMeter } from "./CreditsMeter";
 import { Loading, Notice } from "./Ui";
 import { Toggle } from "./Toggle";
 import { useLoad } from "./useLoad";
+import { useSkeletonGate } from "./useDelayedShow";
 
 type Busy = null | "switch" | "schedule" | "preview" | "test";
 type Message = { tone: "ok" | "info"; text: string } | null;
@@ -47,6 +48,7 @@ export function SuggestionsEmail() {
     setHour(status.schedule.hour);
   }, [status]);
 
+  const hold = useSkeletonGate((!status || !sug) && !state.error);
   if (state.error) {
     return (
       <div className="banner error" role="alert">
@@ -55,7 +57,7 @@ export function SuggestionsEmail() {
       </div>
     );
   }
-  if (!status || !sug) return <Loading label="Loading weekly ideas email" />;
+  if (!status || !sug || hold) return <Loading label="Loading weekly ideas email" layout="suggestions" />;
 
   const current: ManageSuggestionsResponse = status;
   const api2 = sug;

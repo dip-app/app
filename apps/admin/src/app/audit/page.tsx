@@ -12,6 +12,7 @@ import { downloadText } from "@/lib/csv";
 import { auditCsv } from "@/lib/exports";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 const PAGE = 40;
 const DEFAULTS = { q: "", category: "all" };
@@ -35,6 +36,8 @@ function Audit() {
     });
   }, [audit.data, search, category]);
 
+  const hold = useSkeletonGate(!audit.data && !audit.error);
+
   function exportCsv() {
     try {
       downloadText("audit-log.csv", auditCsv(filtered));
@@ -48,7 +51,7 @@ function Audit() {
     <Shell title="Audit log" subtitle="Every admin change: who did it, to what, and why. Read-only; the latest 100 entries." requires="audit.view"
       action={filtered.length > 0 ? <button type="button" className="pill-btn gray" onClick={() => exportCsv()}>Export CSV</button> : undefined}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
-        : !audit.data ? <Loading label="Loading audit log" />
+        : !audit.data || hold ? <Loading label="Loading audit log" layout="audit" />
         : audit.data.length === 0 ? <Empty title="No entries yet" body="Changes made with the admin tools appear here, newest first." />
         : (
           <>
@@ -113,5 +116,5 @@ function Audit() {
 }
 
 export default function AuditPage() {
-  return <Suspense fallback={<Loading label="Loading audit log" />}><Audit /></Suspense>;
+  return <Suspense fallback={<Loading label="Loading audit log" layout="audit" />}><Audit /></Suspense>;
 }

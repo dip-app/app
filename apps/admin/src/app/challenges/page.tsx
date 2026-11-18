@@ -8,6 +8,7 @@ import { Shell } from "@/components/Shell";
 import { Empty, LoadError, Loading } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import { themePhase } from "@/lib/challenge";
+import { useSkeletonGate } from "@/components/useDelayedShow";
 
 export default function ChallengesPage() {
   const { api } = useApp();
@@ -31,10 +32,12 @@ export default function ChallengesPage() {
     return () => { cancelled = true; };
   }, [api, ids]);
 
+  const hold = useSkeletonGate(!themes.data && !themes.error);
+
   return (
     <Shell title="Challenges" subtitle="Review what people submitted for each weekly theme: approve it to award the points, or ask for changes." requires="challenges.review">
       {themes.error ? <LoadError error={themes.error} onRetry={themes.reload} />
-        : !themes.data ? <Loading label="Loading weekly themes" />
+        : !themes.data || hold ? <Loading label="Loading weekly themes" layout="challenges" />
         : sorted.length === 0 ? (
           <Empty title="Nothing to review yet" body="Submissions appear here once a weekly theme has started." action={<Link className="pill-btn dark" href="/themes/">Weekly themes</Link>} />
         ) : (

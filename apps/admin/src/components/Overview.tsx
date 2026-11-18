@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { type CompanyInsights, type InsightsSection, type Role, can } from "@/lib/adminTypes";
 import {
-  chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, placeTooltip, shortDay, stepDay, tooltipDay,
+  chartModel, completionRate, formatCount, formatPercent, isQuiet, pendingActions, placeTooltip, shortcutsFor, shortDay, stepDay, tooltipDay, weekProgress,
 } from "@/lib/insights";
 import type { Tag } from "@/lib/catalog";
 import { type TagStat, hasStats, interestLabel, interestRows } from "@/lib/tagStats";
+import { type InterestsView, useInterestsView } from "@/lib/interestsView";
+import { tagArt, tagBlurb } from "@/lib/tagArt";
 import { Disclosure } from "./Disclosure";
+import { ThemeArt } from "./ThemeArt";
 import { TableRegion } from "./TableRegion";
 import { Avatar, formatDate } from "./Ui";
 
@@ -63,18 +66,7 @@ export function StatTiles({ insights, role }: { insights: CompanyInsights; role:
   );
 }
 
-/** The loading page: skeleton tiles and whatever else is ready (the Interests card), stacked in the same `.overview` grid as the loaded page so every section keeps one gap. */
-export function OverviewLoading({ children }: { children?: ReactNode }) {
-  return <div className="overview"><StatTilesSkeleton />{children}</div>;
-}
-
-export function StatTilesSkeleton() {
-  return (
-    <div className="stat-grid" role="status" aria-label="Loading overview">
-      {Array.from({ length: 8 }, (_, i) => <div key={i} className="stat-tile skeleton-tile" aria-hidden />)}
-    </div>
-  );
-}
+export { OverviewLoading } from "./OverviewSkeleton";
 
 export function ActivityChart({ insights }: { insights: CompanyInsights }) {
   const id = useId();
@@ -203,28 +195,39 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
   );
 }
 
-export function PendingActions({ insights, role }: { insights: CompanyInsights; role: Role }) {
-  const items = pendingActions(insights, role);
+const Chevron = () => <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>;
+
+export function PendingActions({ insights, role, now }: { insights: CompanyInsights; role: Role; now?: Date }) {
+  const items = pendingActions(insights, role, now);
+  const shortcuts = shortcutsFor(role);
   // Both sources down: nothing to show. One down: show what is known, never "all caught up".
   const partial = off(insights, "challenges") || off(insights, "members");
   return (
     <section className="panel" aria-labelledby="pending-h">
       <h2 id="pending-h">Needs attention</h2>
       {partial && items.length === 0 ? <SectionUnavailable /> : items.length === 0 ? (
-        <p className="muted">You’re all caught up. Reviews and unanswered invites appear here.</p>
+        <p className="muted fill">You’re all caught up. Reviews and unanswered invites appear here.</p>
       ) : (
         <ul className="action-list">
           {items.map((item) => {
             const body = (<>
               <span className="action-count">{formatCount(item.count)}</span>
-              <span className="action-text"><strong>{item.label}</strong><span className="muted">{item.detail}</span></span>
-              {item.href && <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>}
+              <span className="action-text"><strong>{item.label}</strong>{item.lines.map((line) => <span key={line} className="muted">{line}</span>)}</span>
+              {item.href && <Chevron />}
             </>);
             return <li key={item.id}>{item.href ? <Link href={item.href} className="action-row">{body}</Link> : <div className="action-row static">{body}</div>}</li>;
           })}
         </ul>
       )}
       {partial && items.length > 0 && <p className="muted">Some items couldn’t be checked right now.</p>}
+      {shortcuts.length > 0 && (
+        <div className="shortcuts">
+          <h3 id="shortcuts-h">Shortcuts</h3>
+          <ul className="shortcut-list" aria-labelledby="shortcuts-h">
+            {shortcuts.map((s) => <li key={s.id}><Link href={s.href} className="shortcut"><span>{s.label}</span><Chevron /></Link></li>)}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
@@ -235,7 +238,7 @@ export function TopEvents({ insights }: { insights: CompanyInsights }) {
     <section className="panel" aria-labelledby="top-events-h">
       <h2 id="top-events-h">Top events by attendees</h2>
       {off(insights, "participation") ? <SectionUnavailable /> : events.length === 0 ? (
-        <p className="muted">No events with attendees yet.</p>
+        <p className="muted fill">No events with attendees yet.</p>
       ) : (
         <ol className="rank-list">
           {events.map((event, index) => {
@@ -258,25 +261,36 @@ export function TopEvents({ insights }: { insights: CompanyInsights }) {
   );
 }
 
-export function ThemeCard({ insights, role }: { insights: CompanyInsights; role: Role }) {
+export function ThemeCard({ insights, role, now = new Date() }: { insights: CompanyInsights; role: Role; now?: Date }) {
   const theme = insights.challenges.current;
   const done = theme ? completionRate(theme.participantCount, theme.completedCount) : 0;
+  const week = theme ? weekProgress(theme.startDate, theme.endDate, now) : null;
   return (
-    <section className="panel" aria-labelledby="theme-h">
+    <section className="panel theme-panel" aria-labelledby="theme-h">
       <h2 id="theme-h">This week’s theme</h2>
-      {off(insights, "challenges") ? <SectionUnavailable /> : !theme ? (
-        <p className="muted">No weekly theme is running right now.{can(role, "themes.manage") && <> <Link href="/themes/" className="inline-link">Plan the next one</Link>.</>}</p>
+      {off(insights, "challenges") ? <SectionUnavailable /> : !theme || !week ? (
+        <p className="muted fill">No weekly theme is running right now.{can(role, "themes.manage") && <> <Link href="/themes/" className="inline-link">Plan the next one</Link>.</>}</p>
       ) : (
         <>
-          <p className="theme-title">{theme.title}</p>
-          <p className="muted">{formatDate(theme.startDate)} to {formatDate(theme.endDate)}</p>
+          <div className="theme-hero">
+            {theme.coverImageURL && <ThemeArt url={theme.coverImageURL} title={theme.title} className="theme-hero-art" />}
+            <div className="theme-hero-text">
+              <p className="theme-title">{theme.title}</p>
+              <p className="muted">{formatDate(theme.startDate)} to {formatDate(theme.endDate)}</p>
+            </div>
+          </div>
           <dl className="mini-stats">
             <div><dt>Participants</dt><dd>{formatCount(theme.participantCount)}</dd></div>
             <div><dt>Completed</dt><dd>{formatCount(theme.completedCount)}</dd></div>
             <div><dt>To review</dt><dd>{formatCount(theme.pendingReviews)}</dd></div>
           </dl>
-          <div className="meter" role="img" aria-label={`${Math.round(done * 100)} percent of participants completed`}><span style={{ width: `${Math.round(done * 100)}%` }} /></div>
-          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Link href="/challenges/" className="pill-btn purple small self-start">Review submissions</Link>}
+          <div className="theme-meters">
+            <div className="theme-meter"><p className="muted"><span>Completed</span><span>{Math.round(done * 100)}%</span></p>
+              <div className="meter" role="img" aria-label={`${Math.round(done * 100)} percent of participants completed`}><span style={{ width: `${Math.round(done * 100)}%` }} /></div></div>
+            <div className="theme-meter"><p className="muted"><span>This week</span><span>Day {week.day} of {week.days}</span></p>
+              <div className="meter" role="img" aria-label={`Day ${week.day} of ${week.days}`}><span style={{ width: `${Math.round(week.fraction * 100)}%` }} /></div></div>
+          </div>
+          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Link href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} className="pill-btn purple small self-start theme-cta">Review submissions</Link>}
         </>
       )}
     </section>
@@ -285,15 +299,21 @@ export function ThemeCard({ insights, role }: { insights: CompanyInsights; role:
 
 export function PeopleCard({ insights }: { insights: CompanyInsights }) {
   const { members } = insights;
-  const rows: [string, number][] = [["Active accounts", members.active], ["Invited, not joined", members.invited], ["Deactivated", members.deactivated]];
+  const rows: [string, number, string][] = [["Active accounts", members.active, "active"], ["Invited, not joined", members.invited, "invited"], ["Deactivated", members.deactivated, "off"]];
+  const sum = rows.reduce((n, row) => n + row[1], 0);
   return (
     <section className="panel" aria-labelledby="people-h">
       <h2 id="people-h">People</h2>
       {off(insights, "members") ? <SectionUnavailable /> : (
-        <dl className="breakdown">
-          {rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatCount(value)}</dd></div>)}
-          <div className="total"><dt>Total members</dt><dd>{formatCount(members.total)}</dd></div>
-        </dl>
+        <>
+          <div className="stack-bar" role="img" aria-label={rows.map(([label, value]) => `${label}: ${value}`).join(", ")}>
+            {sum > 0 ? rows.map(([label, value, tone]) => value > 0 && <span key={label} className={`seg-${tone}`} style={{ flexGrow: value }} />) : <span className="seg-empty" style={{ flexGrow: 1 }} />}
+          </div>
+          <dl className="breakdown">
+            {rows.map(([label, value, tone]) => <div key={label}><dt><span className={`dot seg-${tone}`} aria-hidden />{label}</dt><dd>{formatCount(value)}</dd></div>)}
+            <div className="total"><dt>Total members</dt><dd>{formatCount(members.total)}</dd></div>
+          </dl>
+        </>
       )}
     </section>
   );
@@ -306,7 +326,7 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
     <section className="panel" aria-labelledby="top-members-h">
       <h2 id="top-members-h">Top members by points</h2>
       {off(insights, "points") ? <SectionUnavailable /> : members.length === 0 ? (
-        <p className="muted">No points earned yet.</p>
+        <p className="muted fill">No points earned yet.</p>
       ) : (
         <ol className="rank-list">
           {members.map((member, index) => (
@@ -322,6 +342,23 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
   );
 }
 
+/** Grid / List switch for the Interests card: a two-button segmented control with icon-only buttons (tooltip and accessible name). */
+export function InterestsViewToggle({ view, onChange }: { view: InterestsView; onChange: (next: InterestsView) => void }) {
+  const items: { id: InterestsView; label: string; d: string }[] = [
+    { id: "grid", label: "Grid view", d: "M4 4h6.5v6.5H4zM13.5 4H20v6.5h-6.5zM4 13.5h6.5V20H4zM13.5 13.5H20V20h-6.5z" },
+    { id: "list", label: "List view", d: "M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" },
+  ];
+  return (
+    <div className="view-toggle" role="group" aria-label="Interests layout">
+      {items.map((item) => (
+        <button key={item.id} type="button" className="view-toggle-btn" aria-pressed={view === item.id} aria-label={item.label} title={item.label} onClick={() => onChange(item.id)}>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Members per interest tag (companies/{c}/tagStats). The page hides the card when the role can't read the stats.
  * `activeMembers` comes from the insights call and is null when that call failed: bars are then relative to the
@@ -330,11 +367,40 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
 export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]; tags: Tag[]; activeMembers: number | null }) {
   const rows = hasStats(stats) ? interestRows(stats, tags, activeMembers) : [];
   const showShare = rows.some((row) => row.share !== null);
+  const [view, setView] = useInterestsView();
+  const byId = new Map(tags.map((tag) => [tag.id, tag]));
   return (
     <section className="panel interests-panel" aria-labelledby="interests-h">
-      <h2 id="interests-h">Interests</h2>
+      <div className="panel-head">
+        <h2 id="interests-h">Interests</h2>
+        {rows.length > 0 && <InterestsViewToggle view={view} onChange={setView} />}
+      </div>
       {rows.length === 0 ? (
         <p className="muted">Interest counts appear once members pick interests.</p>
+      ) : view === "grid" ? (
+        <>
+          <p className="muted">Members who picked each interest</p>
+          <ul className="tag-grid" aria-label="Members per interest">
+            {rows.map((row) => {
+              const tag = byId.get(row.tagId) ?? { id: row.tagId, name: row.name };
+              const art = tagArt(tag);
+              return (
+                <li key={row.tagId} className="tag-card" title={interestLabel(row.count)}>
+                  <span className="tag-card-art" data-kind={art.kind} style={{ background: art.bg }} aria-hidden>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images */}
+                    <img src={art.src} alt="" loading="lazy" draggable={false} />
+                  </span>
+                  <span className="tag-card-text">
+                    <span className="tag-card-name">{row.name}</span>
+                    <span className="tag-card-blurb">{tagBlurb(tag)}</span>
+                    <span className="tag-card-meta"><strong>{row.count}</strong> {row.count === 1 ? "member" : "members"}{row.share !== null && <> · {row.share}%</>}</span>
+                  </span>
+                  <span className="tag-card-bar meter" aria-hidden><span style={{ width: `${row.percent}%` }} /></span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       ) : (
         <>
           <p className="muted">Members who picked each interest</p>

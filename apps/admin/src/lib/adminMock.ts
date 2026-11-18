@@ -31,7 +31,7 @@ export interface MockOpsDeps {
   /** Changes the going count; `minCapacity` grows the capacity (the capacity-override rule). */
   bumpAttendees: (companyId: string, eventId: string, delta: number, minCapacity?: number) => { attendeeCount: number; capacity: number };
   /** The company's weekly themes (challenges) the review queue belongs to. */
-  themes: (companyId: string) => { id: string; title: string; pointsReward: number; startDate: string; endDate: string; participantCount: number; completedCount: number }[];
+  themes: (companyId: string) => { id: string; title: string; coverImageURL?: string; pointsReward: number; startDate: string; endDate: string; participantCount: number; completedCount: number }[];
   /** The company's events (Overview numbers). */
   events: (companyId: string) => MockEventView[];
 }
@@ -995,7 +995,14 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const state = load();
       const nowDate = now();
       const theme = deps.themes(session.companyId).find((t) => Date.parse(t.startDate) <= nowDate.getTime() && Date.parse(t.endDate) >= nowDate.getTime()) ?? null;
-      const queue = (state.submissions ?? []).filter((s) => s.companyId === session.companyId && theme && s.challengeId === theme.id);
+      // Reviews stay open after a week ends, so the total spans this week and past weeks. Without a stored queue the demo has
+      // 3 on this week's theme and 1 on the most recent past theme.
+      const started = deps.themes(session.companyId).filter((t) => Date.parse(t.startDate) <= nowDate.getTime()).sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate));
+      const latestPast = started.find((t) => t.id !== theme?.id);
+      const openReviews = started.map((t) => ({
+        challengeId: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate,
+        count: state.submissions ? state.submissions.filter((s) => s.companyId === session.companyId && s.challengeId === t.id && s.status === "submitted").length : t.id === theme?.id ? 3 : t.id === latestPast?.id ? 1 : 0,
+      })).filter((r) => r.count > 0);
       return buildMockInsights({
         members: state.members.filter((m) => m.companyId === session.companyId),
         invited: state.roster.filter((r) => r.companyId === session.companyId && r.state === "invited").length,
@@ -1003,7 +1010,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         photos: state.photos.filter((p) => p.companyId === session.companyId).length,
         comments: state.comments.filter((c) => c.companyId === session.companyId).length,
         theme,
-        pendingReviews: state.submissions ? queue.filter((s) => s.status === "submitted").length : 3,
+        pendingReviews: openReviews.find((r) => r.challengeId === theme?.id)?.count ?? 0,
+        openReviews,
       }, scenario, session.role, nowDate);
     },
 
