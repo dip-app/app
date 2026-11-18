@@ -253,6 +253,9 @@ $ctl-h: 36px;
   .legend { font-size: 12px; }
   .chart { max-height: 220px; .grid { stroke: $line; stroke-width: 1; } .series { stroke-width: 2; } .axis { font-size: 11px; } }
   .chart-empty, .section-unavailable { background: $subtle; border-radius: $r-ctl; padding: 24px 16px; }
+  .chart-frame .bar.on { fill: #6573f0; } .chart-frame:focus-visible { outline: 2px solid var(--primary); }
+  .chart-tooltip { font-size: 12px; padding: 6px 8px; border-color: $line-strong; border-radius: $r-ctl; .swatch.line { border-top-width: 2px; } }
+  .disclosure .disclosure-trigger { font-size: 13px; font-weight: 500; border-radius: $r-ctl; &:focus-visible { outline: 2px solid var(--primary); outline-offset: 0; } }
   .data-table .table-scroll { background: $white; border: 1px solid $line; border-radius: $r-ctl; padding: 0 8px; }
   .data-table .table thead th { background: $subtle; }
   .action-list, .rank-list { gap: 0; }

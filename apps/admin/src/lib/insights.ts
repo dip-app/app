@@ -44,6 +44,36 @@ export interface ChartModel {
 const shortDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 export { shortDay };
 
+/** "Tue, Nov 11": the tooltip's date line (UTC, like the data). */
+export const tooltipDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+
+export interface TooltipPlacement { left: number; top: number; flipped: boolean }
+
+/**
+ * Where a tooltip goes: beside the anchor (right of it by default), flipped to the left when it would pass the right edge,
+ * then clamped so it never leaves the chart on either side or vertically.
+ */
+export function placeTooltip(a: { anchorX: number; anchorY: number; width: number; height: number; boundsWidth: number; boundsHeight: number; gap?: number }): TooltipPlacement {
+  const gap = a.gap ?? 12;
+  let left = a.anchorX + gap;
+  let flipped = false;
+  if (left + a.width > a.boundsWidth) { left = a.anchorX - gap - a.width; flipped = true; }
+  left = Math.max(0, Math.min(left, Math.max(0, a.boundsWidth - a.width)));
+  const top = Math.max(0, Math.min(a.anchorY, Math.max(0, a.boundsHeight - a.height)));
+  return { left, top, flipped };
+}
+
+/** Arrow-key movement between days: Left/Right step (clamped), Home/End jump, Escape (null) dismisses; undefined = not our key. From nothing, an arrow lands on the latest day. */
+export function stepDay(current: number | null, key: string, count: number): number | null | undefined {
+  if (count <= 0) return undefined;
+  if (key === "Escape") return null;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  if (key !== "ArrowLeft" && key !== "ArrowRight") return undefined;
+  if (current === null) return count - 1;
+  return Math.max(0, Math.min(count - 1, current + (key === "ArrowRight" ? 1 : -1)));
+}
+
 /** Geometry for the 30-day chart: RSVP bars with a photo line on one shared axis. */
 export function chartModel(days: InsightsDay[], width = 720, height = 260): ChartModel {
   const plotLeft = 44, plotRight = width - 8, plotTop = 12, plotBottom = height - 32;
