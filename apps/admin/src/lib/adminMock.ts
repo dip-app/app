@@ -3,7 +3,7 @@ import type { AdminOpsApi } from "./adminApi";
 import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
+  type DipbotIdeas, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -21,6 +21,7 @@ import { buildMockInsights, scenarioFromSearch } from "./insightsMock";
 import {
   MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, cacheScenarioFromSearch, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
 } from "./ideasMock";
+import { buildMockIdeas, ideasScenarioFromSearch } from "./ideasForYouMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
 export interface MockEventView {
@@ -263,12 +264,14 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
   /** Credits spent this month: the scenario can force the low and out states for design review. */
   const aiCreditsUsed = (companyId: string) => {
     const scenario = aiScenario();
-    if (scenario === "nocredits") return MOCK_CREDIT_ALLOWANCE;
+    if (scenario === "nocredits" || (typeof window !== "undefined" && ideasScenarioFromSearch(window.location.search) === "exhausted")) return MOCK_CREDIT_ALLOWANCE;
     if (scenario === "lowcredits") return MOCK_CREDIT_ALLOWANCE - 60;
     return aiLoad().credits?.[companyId] ?? MOCK_CREDITS_USED;
   };
   /** The mock's saved company suggestions after a first visit or refresh in this page load (a reload starts from `?cache=`). */
   const savedSuggest: { at: number | null } = { at: null };
+  /** "Ideas for you" in this page load: runs so far, refreshes used today and the stored answers by requestId. */
+  const ideasRun: { at: number | null; generation: number; refreshes: number; autoDone: boolean; receipts: Map<string, DipbotIdeas> } = { at: null, generation: 0, refreshes: 0, autoDone: false, receipts: new Map() };
   const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
   /** `?places=disabled|limit|notfound` preview scenarios: disabled and limit make every Places call fail like the server does. */
   const placesScenario = (): string | null => {
@@ -931,6 +934,64 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (cache === "stale") return shape(now().getTime() - 72 * hours, "stale", 0, used, "data");
       if (cache === "age") return shape(now().getTime() - 9 * 24 * hours, "stale", 0, used, "age");
       return shape(now().getTime() - 2 * hours, "fresh", 0, used);
+    },
+    // Local stand-in for getDipbotIdeasV1 (`?ideas=` picks a scenario). Same policy as the server: `load` is free and instant,
+    // `auto` is the one background run (only when due), `refresh` costs 3 credits, needs a requestId and replays by it.
+    async dipbotIdeas(input): Promise<DipbotIdeas> {
+      const session = staff("ai.generate");
+      const scenario = ideasScenarioFromSearch(typeof window === "undefined" ? "" : window.location.search);
+      const cost = MOCK_CREDIT_COSTS.ideas;
+      const used = () => (scenario === "exhausted" ? MOCK_CREDIT_ALLOWANCE : aiCreditsUsed(session.companyId));
+      const ran = () => ideasRun.at !== null;
+      const shape = (over: Partial<DipbotIdeas> = {}, charged = 0): DipbotIdeas => {
+        const ideas = buildMockIdeas(!ran() && (scenario === "computing" || scenario === "empty") ? "starter" : "stored", ideasRun.generation, now())
+          .map((i) => ({ ...i, tagIds: i.tagIds.map(previewTagId), choices: { ...i.choices, focusTagIds: i.choices.focusTagIds.map(previewTagId) } }));
+        const hours = 60 * 60_000;
+        const generatedAt = ran() ? new Date(ideasRun.at!).toISOString() : ideas[0]?.source === "catalog" ? undefined : new Date(now().getTime() - (scenario === "fresh" ? 2 : 26) * hours).toISOString();
+        return {
+          enabled: scenario !== "off" && aiScenario() !== "off", ideas,
+          status: ideas[0]?.source === "catalog" ? "fallback" : ran() || scenario === "fresh" ? "fresh" : "stale",
+          ...(generatedAt ? { generatedAt } : {}),
+          dataLevel: scenario === "empty" ? "none" : scenario === "computing" ? "some" : "rich",
+          autoRefreshDue: scenario === "computing" && !ideasRun.autoDone,
+          refreshesLeftToday: scenario === "limit" ? 0 : Math.max(0, 3 - ideasRun.refreshes),
+          credits: creditsOf(used(), now()), creditsCharged: charged, ...over,
+        };
+      };
+      if (scenario === "off" || aiScenario() === "off") return { ...shape(), enabled: false, ideas: [] };
+      if (input.mode === "load") {
+        await aiDelay(450);
+        if (scenario === "error") throw new ApiError("failed-precondition", "Ideas are not available right now.", {}, "AI_UNAVAILABLE");
+        return shape();
+      }
+      if (input.mode === "auto") {
+        await aiDelay(1200);
+        if (!shape().autoRefreshDue || MOCK_CREDIT_ALLOWANCE - used() < cost) return shape({ outcome: "skipped" });
+        return runIdeas(session.companyId, used(), 0, "updated");
+      }
+      if (!input.requestId) throw new ApiError("invalid-argument", "Refresh needs a request id.", { requestId: "Required." });
+      const replay = ideasRun.receipts.get(input.requestId);
+      await aiDelay(replay ? 300 : 1400);
+      if (replay) return { ...replay, outcome: "unchanged", creditsCharged: 0 };
+      if (scenario === "limit" || ideasRun.refreshes >= 3) throw new ApiError("resource-exhausted", "You have used today’s idea refreshes.", {}, "AI_IDEAS_REFRESH_LIMIT");
+      if (MOCK_CREDIT_ALLOWANCE - used() < cost) throw new ApiError("resource-exhausted", "You have used this month’s Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
+      if (scenario === "error") throw new ApiError("failed-precondition", "Ideas are not available right now.", {}, "AI_UNAVAILABLE");
+      const result = runIdeas(session.companyId, used(), 1, "updated", input.requestId);
+      return result;
+
+      /** Spends the credits, stores the next set and answers with it (the fresh set is what the server stored). */
+      function runIdeas(companyId: string, before: number, refreshes: 0 | 1, outcome: "updated", requestId?: string): DipbotIdeas {
+        const ai = aiLoad();
+        ai.credits = { ...ai.credits, [companyId]: before + cost };
+        aiSave(ai);
+        ideasRun.generation += 1;
+        ideasRun.at = now().getTime();
+        ideasRun.refreshes += refreshes;
+        ideasRun.autoDone = true;
+        const out: DipbotIdeas = { ...shape({ outcome }, cost), credits: creditsOf(before + cost, now()) };
+        if (requestId) ideasRun.receipts.set(requestId, out);
+        return out;
+      }
     },
     // Local stand-in for pickEventCoverV1: the deterministic lexical pick. No model answers, so the 1 credit the server
     // charges is refunded: the mock checks the balance (`?ai=nocredits` shows the exhausted state) and leaves it unchanged.

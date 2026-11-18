@@ -68,6 +68,7 @@ export const ADMIN_CALLABLES = {
   autocompletePlaces: "autocompletePlacesV1",
   resolvePlace: "resolvePlaceV1",
   setCompanyOffice: "setCompanyOfficeV1",
+  dipbotIdeas: "getDipbotIdeasV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -413,7 +414,7 @@ export interface AiCredits {
   creditsRemaining: number;
   /** ISO instant the allowance resets (start of next month in the company's time zone). */
   resetsAt: string;
-  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number; venueSearch?: number };
+  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number; venueSearch?: number; ideas?: number };
 }
 export interface EventIdeaContext {
   enabled: boolean;
@@ -474,3 +475,47 @@ export interface EventIdeaSuggestions {
 export interface EventIdeaSuggestionsInput { refresh?: boolean; requestId?: string }
 export interface GenerateDraftsInput { requestId: string; choices: AiEventChoices; prompt: string; count: number; considerations?: string[] }
 export interface GenerateDraftsResult { drafts: GeneratedEventDraft[]; usage: AiUsage; credits: AiCredits; replay: boolean }
+
+// ---------- Ideas for you (docs/design/stretch/dipbot-daily-ideas.md). Mirrors GetDipbotIdeasRequest/Response and DipbotIdea.
+
+export type DipbotIdeaMode = "load" | "auto" | "refresh";
+export type DipbotTheme = "fitness" | "outdoors" | "food" | "arts" | "games" | "music" | "learning" | "volunteering" | "wellness";
+export type DipbotFitLabel = "perfect" | "great" | "good";
+export interface DipbotIdea {
+  id: string;
+  title: string;
+  description: string;
+  theme: DipbotTheme;
+  tagIds: string[];
+  /** One line grounded in the company's own numbers (or generic when `reasonBasis` is "generic"). */
+  why: string;
+  reasonBasis: "company_data" | "generic";
+  fitLabel?: DipbotFitLabel;
+  /** 0 to 6 (Sunday = 0). */
+  weekday: number;
+  daypart: AiDaypart;
+  startsAt: string;
+  durationMinutes: number;
+  costBucket: AiBudget;
+  groupSize: AiGroupSize;
+  considerationIds: string[];
+  coverImageURL: string;
+  choices: AiEventChoices;
+  draft: GeneratedEventDraft;
+  source: "agent" | "catalog";
+}
+export type DipbotIdeasStatus = "fresh" | "stale" | "computed" | "fallback";
+export interface DipbotIdeas {
+  enabled: boolean;
+  ideas: DipbotIdea[];
+  status: DipbotIdeasStatus;
+  generatedAt?: string;
+  dataLevel: "none" | "some" | "rich";
+  autoRefreshDue: boolean;
+  refreshesLeftToday: number;
+  outcome?: "updated" | "unchanged" | "extended" | "skipped" | "failed";
+  credits: AiCredits;
+  creditsCharged: number;
+}
+/** `load` never spends credits; `auto` is the one background call per page load; `refresh` is the button (needs a requestId). */
+export interface DipbotIdeasInput { mode: DipbotIdeaMode; requestId?: string }

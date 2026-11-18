@@ -1,4 +1,5 @@
 import type {
+  AgentModelPort, AgentTurnOutcome, AgentTurnRequest,
   DecisionPort, DecisionRequest, DecisionResult, LlmOutcome, LlmPort, LlmRequest, LlmUsage, ModerationResult,
 } from "../application/ports";
 
@@ -69,5 +70,23 @@ export class ScriptedDecisions implements DecisionPort {
     if (step === undefined) return benignDecision(request);
     if (step instanceof Error) throw step;
     return typeof step === "function" ? step(request) : step;
+  }
+}
+
+export type AgentStep = AgentTurnOutcome<unknown> | Error | ((request: AgentTurnRequest<unknown>) => AgentTurnOutcome<unknown> | Promise<AgentTurnOutcome<unknown>>);
+
+/** Scripted tool-using model: one scripted outcome (or function of the request) per turn, requests recorded. */
+export class ScriptedAgentModel implements AgentModelPort {
+  readonly requests: AgentTurnRequest<unknown>[] = [];
+  private index = 0;
+
+  constructor(private readonly script: AgentStep[]) {}
+
+  async turn<T>(request: AgentTurnRequest<T>): Promise<AgentTurnOutcome<T>> {
+    this.requests.push(request as AgentTurnRequest<unknown>);
+    const step = this.script[this.index++];
+    if (step === undefined) throw new Error(`ScriptedAgentModel: no scripted outcome for turn ${this.index}`);
+    if (step instanceof Error) throw step;
+    return (typeof step === "function" ? await step(request as AgentTurnRequest<unknown>) : step) as AgentTurnOutcome<T>;
   }
 }

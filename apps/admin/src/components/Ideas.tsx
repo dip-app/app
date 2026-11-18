@@ -27,6 +27,7 @@ import { CreditsMeter, CreditsNotice, PrivacyInfo } from "./CreditsMeter";
 import { DipbotAction } from "./DipbotAction";
 import { DipbotMark } from "./DipbotMark";
 import { dismissToast, toast } from "./Toast";
+import { IdeasForYou } from "./IdeasForYou";
 import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
 import { useTags } from "./TagCatalog";
@@ -138,9 +139,26 @@ export function Ideas() {
   // The suggestions answer carries the balance (a first visit or refresh costs a credit); fold it into the meter.
   const ctxRef = useRef<{ ctx: EventIdeaContext | null; setData: (next: EventIdeaContext) => void }>({ ctx: null, setData: () => undefined });
   ctxRef.current = { ctx, setData: ctxState.setData };
-  const foldCredits = useCallback((s: EventIdeaSuggestions) => {
+  const applyCredits = useCallback((credits: AiCredits) => {
     const { ctx: latest, setData } = ctxRef.current;
-    if (s.credits && latest) setData({ ...latest, credits: s.credits });
+    if (latest) setData({ ...latest, credits });
+  }, []);
+  const foldCredits = useCallback((s: EventIdeaSuggestions) => {
+    if (s.credits) applyCredits(s.credits);
+  }, [applyCredits]);
+  // "Customize with Dipbot" (Ideas for you): the idea's choices become the answers and the wizard opens on its last step.
+  const customize = useCallback((next: Answers) => {
+    attempt.current = null;
+    run.current += 1;
+    moved.current = true;
+    setAnswers(next);
+    setResult(null);
+    setFailure(null);
+    setNoteError("");
+    setStep(STEPS.length - 1);
+    setPhase("edit");
+    // Already on that step: the step effect does not fire, so move focus to its heading directly.
+    requestAnimationFrame(() => heading.current?.focus());
   }, []);
   useEffect(() => {
     if (!enabled) return;
@@ -628,6 +646,7 @@ export function Ideas() {
   return (
     <div className="ideas">
       <div className="ideas-head"><PrivacyInfo /><CreditsMeter credits={ctx.credits} visitCharged={loaded ? loaded.creditsCharged : undefined} daily={{ left: dailyLeft, limit: usage.dailyGenerationLimit }} /></div>
+      <IdeasForYou onCredits={applyCredits} onCustomize={customize} />
       <div className="ideas-layout">
         <div className="ideas-main">
           {stepper}

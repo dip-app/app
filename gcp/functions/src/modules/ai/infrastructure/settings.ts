@@ -33,8 +33,9 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: strin
   const jevOn = (step: "triage" | "draftCheck") => config[step].provider === "jev" && secretPresent(secrets.jev);
   const decisionModel = (step: "triage" | "draftCheck") => (jevOn(step) ? config[step].jevModel : config[step].openaiModel);
   const fallbackModel = (step: "triage" | "draftCheck") => (jevOn(step) ? config[step].openaiModel : null);
+  const enabled = flag && (provider === "demo" || (provider === "openai" && secretPresent(secrets.openai)));
   return {
-    enabled: flag && (provider === "demo" || (provider === "openai" && secretPresent(secrets.openai))),
+    enabled,
     models: {
       generate: config.generate.model,
       triage: decisionModel("triage"),
@@ -50,5 +51,11 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: strin
     dailyFlagLimit: int(env.AI_DAILY_FLAG_LIMIT, 3),
     dailyAttemptLimit: int(env.AI_DAILY_ATTEMPTS_PER_ADMIN, 20),
     platformMonthlyBudgetMicros: int(env.AI_PLATFORM_MONTHLY_BUDGET_CENTS, 20000) * 10_000,
+    ideas: {
+      enabled: enabled && env.AI_IDEAS_ENABLED !== "false",
+      maxAgeHours: Math.max(1, int(env.AI_IDEAS_MAX_AGE_HOURS, 24)),
+      manualPerDay: int(env.AI_IDEAS_MANUAL_PER_DAY, 3),
+      model: config.ideas.model,
+    },
   };
 }

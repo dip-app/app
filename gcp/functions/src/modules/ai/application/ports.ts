@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { IdeaToolDefinition } from "../domain/ideaTypes";
 import type { CoverPickLimits } from "../../covers/domain/shortlist";
 import type { AdminStore, Caller, RateLimiter } from "../../admin/application/ports";
 
@@ -104,6 +105,40 @@ export interface DecisionPort {
   decide(request: DecisionRequest): Promise<DecisionResult>;
 }
 
+/** One item of an agent conversation, provider neutral. */
+export type AgentItem =
+  | { type: "call"; id: string; name: string; arguments: string }
+  | { type: "result"; id: string; output: string }
+  | { type: "user"; text: string }
+  /** Opaque provider items (for example encrypted reasoning) that the adapter needs back on the next turn. */
+  | { type: "opaque"; item: unknown };
+
+/** One model turn of a tool-using agent: it either calls tools or returns the final structured answer. */
+export interface AgentTurnRequest<T> {
+  instructions: string;
+  input: string;
+  /** Everything after `input` so far: earlier tool calls, their results and extra user turns. */
+  items: readonly AgentItem[];
+  tools: readonly IdeaToolDefinition[];
+  /** "none" forces the final answer. */
+  toolChoice: "auto" | "none";
+  schema: z.ZodType<T>;
+  schemaName: string;
+  maxOutputTokens: number;
+  /** Aborts the call when the run deadline passes. */
+  signal?: AbortSignal;
+}
+
+export type AgentTurnOutcome<T> =
+  | { kind: "calls"; calls: Array<{ id: string; name: string; arguments: string }>; usage: LlmUsage; model: string; opaque?: unknown[] }
+  | { kind: "final"; value: T; usage: LlmUsage; model: string }
+  | { kind: "refusal" | "truncated" | "malformed"; usage: LlmUsage; model: string };
+
+/** A tool-using model, one turn at a time. Throws LlmUnavailableError on transport, auth, rate-limit or server errors. */
+export interface AgentModelPort {
+  turn<T>(request: AgentTurnRequest<T>): Promise<AgentTurnOutcome<T>>;
+}
+
 /** Per-company interest counts (companies/{c}/tagStats, built by the tag-counts module). */
 export interface InterestStat { tagId: string; memberCount: number }
 
@@ -149,6 +184,20 @@ export interface AiSettings {
   platformMonthlyBudgetMicros: number;
   /** Declined notes per admin per UTC day before generation is blocked for the day. */
   dailyFlagLimit: number;
+  /** Dipbot daily ideas switches and limits. Absent means the defaults (on, 24 hours, 3 manual refreshes a day). */
+  ideas?: IdeasSettings;
+}
+
+/** Deployment settings of Dipbot daily ideas (AI_IDEAS_*, AI_MODEL_IDEAS). */
+export interface IdeasSettings {
+  /** AI_IDEAS_ENABLED is not "false" and AI events are enabled. */
+  enabled: boolean;
+  /** Stored ideas older than this are stale and due for an automatic refresh. */
+  maxAgeHours: number;
+  /** Manual refreshes per company per local day. */
+  manualPerDay: number;
+  /** Model id of the tool-using agent, used for pricing; the adapter reads the same config. */
+  model: string;
 }
 
 /** Content-free operational log line (ids, counts, model, outcome); never prompts, notes or drafts. */

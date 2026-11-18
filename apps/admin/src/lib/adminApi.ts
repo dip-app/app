@@ -2,7 +2,7 @@ import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
-  EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  DipbotIdeas, DipbotIdeasInput, EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 import type { ImportCoverPhotoResult, PickEventCoverInput, PickEventCoverResult, SearchCoverPhotosResult } from "./covers";
 import type { TagStat } from "./tagStats";
@@ -112,6 +112,9 @@ export interface AdminOpsApi {
   resolvePlace(request: ResolveRequest): Promise<ResolvedPlace | null>;
   /** findVenuesV1: Dipbot finds venues near the office for the event. 1 credit unless saved results are reused. Nothing is stored on the event. */
   findVenues(input: FindVenuesInput): Promise<FindVenuesResult>;
+
+  /** getDipbotIdeasV1: "Ideas for you". `load` returns the stored ideas (free), `auto` the one background refresh, `refresh` the button (3 credits). */
+  dipbotIdeas(input: DipbotIdeasInput): Promise<DipbotIdeas>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;

@@ -9,7 +9,8 @@ export const LEASE_MS = 5 * 60_000;
 export const DIGEST_TTL_DAYS = 120;
 const DAY_MS = 86_400_000;
 
-async function gatherSignals(deps: BuildDeps, companyId: string, now: Date, timeZone: string, weekKey: string): Promise<CompanySignals> {
+/** Loads the raw company signals (shared with Dipbot daily ideas). */
+export async function gatherSignals(deps: Pick<BuildDeps, "store" | "interests" | "catalog">, companyId: string, now: Date, timeZone: string, weekKey: string): Promise<CompanySignals> {
   const { store } = deps;
   const [memberCount, pastEvents, upcomingEvents, weeklyThemes, recentlySuggested, monthAgo, stats, tags] = await Promise.all([
     store.memberCount(companyId), store.pastEvents(companyId, now), store.upcomingEvents(companyId, now), store.weeklyThemes(companyId, now),

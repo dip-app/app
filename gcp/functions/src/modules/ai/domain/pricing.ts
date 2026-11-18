@@ -1,4 +1,5 @@
 import type { AiSettings, LlmUsage } from "../application/ports";
+import { IDEA_LIMITS } from "./ideaTypes";
 
 /** Output ceilings for reasoning models (gpt-5 and later, o-series), whose hidden reasoning counts as output. */
 export const GENERATE_MAX_TOKENS = 12_000;
@@ -105,4 +106,17 @@ export function callWorstCaseMicros(settings: Pick<AiSettings, "models">, step: 
 export function worstCaseMicros(settings: Pick<AiSettings, "models">, drafts: number = MAX_DRAFTS): number {
   return callWorstCaseMicros(settings, "triage")
     + GENERATE_ATTEMPTS * (callWorstCaseMicros(settings, "generate") + drafts * callWorstCaseMicros(settings, "draftCheck"));
+}
+
+/** Output ceiling of one ideas turn: reasoning models need room for hidden reasoning on top of the ideas. */
+export function ideaOutputCeiling(model: string): number {
+  return isReasoningModel(model) ? 3 * IDEA_LIMITS.maxOutputTokens : IDEA_LIMITS.maxOutputTokens;
+}
+
+/**
+ * Upper bound of one Dipbot ideas run on `model`: every turn (maxTurns plus the one bounded retry) at the input and
+ * output ceilings. The ranking decision call is priced separately by the caller (it depends on the provider chain).
+ */
+export function ideasWorstCaseMicros(model: string): number {
+  return (IDEA_LIMITS.maxTurns + 1) * callCost(model, IDEA_LIMITS.maxInputTokensPerTurn, ideaOutputCeiling(model));
 }

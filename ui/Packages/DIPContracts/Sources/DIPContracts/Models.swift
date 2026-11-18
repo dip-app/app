@@ -2678,14 +2678,16 @@ public struct AiCreditCosts: Codable, Equatable, Sendable {
     public var weeklyEmail: Int
     public var coverPick: Int
     public var venueSearch: Int?
+    public var ideas: Int?
 
-    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int, venueSearch: Int? = nil) {
+    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int, venueSearch: Int? = nil, ideas: Int? = nil) {
         self.suggest = suggest
         self.generate = generate
         self.regenerate = regenerate
         self.weeklyEmail = weeklyEmail
         self.coverPick = coverPick
         self.venueSearch = venueSearch
+        self.ideas = ideas
     }
 }
 
@@ -2818,6 +2820,92 @@ public struct GetEventIdeaSuggestionsResponse: Codable, Equatable, Sendable {
         self.staleReason = staleReason
         self.creditsCharged = creditsCharged
         self.considerations = considerations
+    }
+}
+
+public struct GetDipbotIdeasRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var mode: String
+    public var requestId: String?
+
+    public init(contractVersion: Int, companyId: String, mode: String, requestId: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.mode = mode
+        self.requestId = requestId
+    }
+}
+
+public struct DipbotIdea: Codable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var description: String
+    public var theme: String
+    public var tagIds: [String]
+    public var why: String
+    public var reasonBasis: String
+    public var fitLabel: String?
+    public var weekday: Int
+    public var daypart: String
+    public var startsAt: Date
+    public var durationMinutes: Int
+    public var costBucket: String
+    public var groupSize: String
+    public var considerationIds: [String]
+    public var coverImageURL: String
+    public var choices: AiEventChoices
+    public var draft: GeneratedEventDraft
+    public var source: String
+
+    public init(id: String, title: String, description: String, theme: String, tagIds: [String], why: String, reasonBasis: String, fitLabel: String? = nil, weekday: Int, daypart: String, startsAt: Date, durationMinutes: Int, costBucket: String, groupSize: String, considerationIds: [String], coverImageURL: String, choices: AiEventChoices, draft: GeneratedEventDraft, source: String) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.theme = theme
+        self.tagIds = tagIds
+        self.why = why
+        self.reasonBasis = reasonBasis
+        self.fitLabel = fitLabel
+        self.weekday = weekday
+        self.daypart = daypart
+        self.startsAt = startsAt
+        self.durationMinutes = durationMinutes
+        self.costBucket = costBucket
+        self.groupSize = groupSize
+        self.considerationIds = considerationIds
+        self.coverImageURL = coverImageURL
+        self.choices = choices
+        self.draft = draft
+        self.source = source
+    }
+}
+
+public struct GetDipbotIdeasResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var enabled: Bool
+    public var ideas: [DipbotIdea]
+    public var status: String
+    public var generatedAt: Date?
+    public var dataLevel: String
+    public var autoRefreshDue: Bool
+    public var refreshesLeftToday: Int
+    public var outcome: String?
+    public var credits: AiCredits
+    public var creditsCharged: Int
+
+    public init(contractVersion: Int, enabled: Bool, ideas: [DipbotIdea], status: String, generatedAt: Date? = nil, dataLevel: String, autoRefreshDue: Bool, refreshesLeftToday: Int, outcome: String? = nil, credits: AiCredits, creditsCharged: Int) {
+        self.contractVersion = contractVersion
+        self.enabled = enabled
+        self.ideas = ideas
+        self.status = status
+        self.generatedAt = generatedAt
+        self.dataLevel = dataLevel
+        self.autoRefreshDue = autoRefreshDue
+        self.refreshesLeftToday = refreshesLeftToday
+        self.outcome = outcome
+        self.credits = credits
+        self.creditsCharged = creditsCharged
     }
 }
 

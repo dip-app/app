@@ -36,6 +36,8 @@ export interface AiConfig {
   /** Live Pixabay cover fallback of "Let Dipbot choose" (AI_COVER_LIVE_*). */
   coverLive: LiveCoverConfig;
   moderation: { model: string };
+  /** Dipbot daily ideas: the tool-using agent (OpenAI Responses API, function calling and strict structured output). */
+  ideas: { model: string; effort: Effort; temperature: number };
 }
 
 /**
@@ -49,6 +51,8 @@ export const DEFAULT_JEV_MODEL = "jev-latest";
 /** Low temperatures: a little variety for drafting, none for typed decisions. */
 export const GENERATE_TEMPERATURE = 0.3;
 export const DECISION_TEMPERATURE = 0;
+/** Some variety for daily ideas (non-reasoning models only). */
+export const IDEAS_TEMPERATURE = 0.4;
 
 /** Model ids verified on November 17, 2026 (documentation only; nothing validates against this list). */
 export const KNOWN_MODELS = {
@@ -133,6 +137,7 @@ export function aiConfig(env: NodeJS.ProcessEnv): AiConfig {
       instancePerMinute: bounded(env.AI_COVER_LIVE_INSTANCE_PER_MINUTE, DEFAULT_LIVE_COVER_CONFIG.instancePerMinute, 1, 20),
     },
     moderation: { model: text(env.AI_MODEL_MODERATION, "omni-moderation-latest") },
+    ideas: { model: text(env.AI_MODEL_IDEAS, DEFAULT_DECISION_MODEL), effort: effort(env.AI_EFFORT_IDEAS, "low"), temperature: IDEAS_TEMPERATURE },
   };
 }
 

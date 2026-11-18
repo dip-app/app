@@ -11,7 +11,7 @@ import { AdminError, stored } from "../../admin/domain/errors";
  * To add a tool: add a row here, charge it with `chargeCredits` where the action starts, refund it when no result is
  * produced, and add a price to `creditCost` in the contract only if the UI shows one.
  */
-export type CreditTool = "suggestPanel" | "generateDrafts" | "regenerateDrafts" | "weeklyEmail" | "coverPick" | "venueSearch";
+export type CreditTool = "suggestPanel" | "generateDrafts" | "regenerateDrafts" | "weeklyEmail" | "coverPick" | "venueSearch" | "ideas";
 
 export const CREDIT_COSTS: Readonly<Record<CreditTool, number>> = {
   /** One Dipbot Suggest panel visit: the per-step decision calls for the visit (free when cached). */
@@ -34,6 +34,13 @@ export const CREDIT_COSTS: Readonly<Record<CreditTool, number>> = {
    * charged before the search and refunded unless a model (Jev or OpenAI) ranked the results or the search failed.
    */
   venueSearch: 1,
+  /**
+   * One Dipbot daily ideas run (getDipbotIdeasV1, an automatic daily refresh or the Refresh button): a few cheap model
+   * turns over the company's own data tools plus one ranking call. Reserved when the run starts and refunded exactly once
+   * when no model idea survives validation (outage, deadline, malformed twice). Loading the page, a replay and an
+   * unchanged-inputs check are free.
+   */
+  ideas: 3,
 };
 
 /** About 50 draft generations a month. A company can override it with `monthlyCredits` in its aiSettings document. */
@@ -157,6 +164,7 @@ export function creditsSummary(ledger: CreditLedger): AiCredits {
       weeklyEmail: CREDIT_COSTS.weeklyEmail,
       coverPick: CREDIT_COSTS.coverPick,
       venueSearch: CREDIT_COSTS.venueSearch,
+      ideas: CREDIT_COSTS.ideas,
     },
   };
 }
