@@ -1339,6 +1339,7 @@ export interface AiCreditCosts {
   weeklyEmail: number;
   coverPick: number;
   venueSearch?: number;
+  ideas?: number;
 }
 
 export interface AiCredits {
@@ -1405,6 +1406,49 @@ export interface GetEventIdeaSuggestionsResponse {
   staleReason?: "data" | "age";
   creditsCharged: number;
   considerations?: Array<AiConsiderationRank>;
+}
+
+export interface GetDipbotIdeasRequest {
+  contractVersion: number;
+  companyId: string;
+  mode: "load" | "auto" | "refresh";
+  requestId?: string;
+}
+
+export interface DipbotIdea {
+  id: string;
+  title: string;
+  description: string;
+  theme: "fitness" | "outdoors" | "food" | "arts" | "games" | "music" | "learning" | "volunteering" | "wellness";
+  tagIds: Array<string>;
+  why: string;
+  reasonBasis: "company_data" | "generic";
+  fitLabel?: "perfect" | "great" | "good";
+  weekday: number;
+  daypart: "weekday_morning" | "weekday_lunch" | "weekday_afternoon" | "after_work" | "weekend_daytime" | "weekend_evening";
+  startsAt: string;
+  durationMinutes: number;
+  costBucket: "free" | "under_15" | "from_15_to_50" | "over_50";
+  groupSize: "small" | "team" | "company";
+  considerationIds: Array<string>;
+  coverImageURL: string;
+  choices: AiEventChoices;
+  draft: GeneratedEventDraft;
+  source: "agent" | "catalog";
+}
+
+export interface GetDipbotIdeasResponse {
+  contractVersion: number;
+  enabled: boolean;
+  ideas: Array<DipbotIdea>;
+  status: "fresh" | "stale" | "computed" | "fallback";
+  generatedAt?: string;
+  dataLevel: "none" | "some" | "rich";
+  autoRefreshDue: boolean;
+  refreshesLeftToday: number;
+  outcome?: "updated" | "unchanged" | "extended" | "skipped" | "failed";
+  credits: AiCredits;
+  creditsCharged: number;
 }
 
 export interface AiEventChoices {

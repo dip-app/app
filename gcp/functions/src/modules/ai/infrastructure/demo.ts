@@ -1,4 +1,4 @@
-import type { DecisionPort, DecisionRequest, DecisionResult, LlmOutcome, LlmPort, LlmRequest, LlmUsage, ModerationResult } from "../application/ports";
+import type { AgentModelPort, AgentTurnOutcome, AgentTurnRequest, DecisionPort, DecisionRequest, DecisionResult, LlmOutcome, LlmPort, LlmRequest, LlmUsage, ModerationResult } from "../application/ports";
 import { benignDecision } from "./fakes";
 
 const DEMO_USAGE: LlmUsage = { inputTokens: 1200, cachedInputTokens: 0, outputTokens: 900, reasoningTokens: 0 };
@@ -104,5 +104,31 @@ export class DemoDecisions implements DecisionPort {
       result.answers.injection = { type: "noul", noul: 0.95 };
     }
     return { ...result, usage: { inputTokens: 300, cachedInputTokens: 0, outputTokens: 20, reasoningTokens: 0 }, model: DEMO_MODEL };
+  }
+}
+
+const DEMO_IDEAS = [
+  { title: "Lunch walk and talk", description: "A relaxed 30 minute loop around the block with a coworker you do not work with every day. Wear comfortable shoes.", theme: "fitness", tagIds: ["tag-fitness", "tag-outdoors"], goal: "wellness", weekday: 3, daypart: "weekday_lunch", durationMinutes: 45, costBucket: "free", groupSize: "team", isOutdoor: true, venueType: "park_or_outdoors", venueSearchHint: "city park with a loop path", why: "Easy to join and a good fit for a lunch hour.", considerationIds: [], catalogIdeaId: null },
+  { title: "Potluck lunch and recipe swap", description: "Everyone brings a dish and the recipe. Share a long table and leave with new favorites.", theme: "food", tagIds: ["tag-food", "tag-cooking"], goal: "team_bonding", weekday: 4, daypart: "weekday_lunch", durationMinutes: 60, costBucket: "free", groupSize: "team", isOutdoor: false, venueType: "office", venueSearchHint: "shared kitchen", why: "Food events bring people together across teams.", considerationIds: [], catalogIdeaId: null },
+  { title: "Board game afternoon", description: "Pick a table and play a few rounds. No experience needed, we teach as we go.", theme: "games", tagIds: ["tag-games", "tag-social"], goal: "team_bonding", weekday: 5, daypart: "weekday_afternoon", durationMinutes: 90, costBucket: "free", groupSize: "small", isOutdoor: false, venueType: "office", venueSearchHint: "quiet meeting room", why: "Games are an easy way to meet new people.", considerationIds: [], catalogIdeaId: null },
+  { title: "Paint and sip evening", description: "A guided painting session with snacks. Every canvas comes out different.", theme: "arts", tagIds: ["tag-arts", "tag-chill"], goal: "celebrate", weekday: 2, daypart: "after_work", durationMinutes: 120, costBucket: "under_15", groupSize: "small", isOutdoor: false, venueType: "activity_venue", venueSearchHint: "art studio with group classes", why: "A creative break that needs no skills.", considerationIds: [], catalogIdeaId: null },
+  { title: "Community cleanup morning", description: "Spend a weekend morning picking up litter in a local park, then share coffee.", theme: "volunteering", tagIds: ["tag-volunteering", "tag-outdoors"], goal: "give_back", weekday: 6, daypart: "weekend_daytime", durationMinutes: 120, costBucket: "free", groupSize: "company", isOutdoor: true, venueType: "community_site", venueSearchHint: "park cleanup day", why: "Giving back together builds team spirit.", considerationIds: [], catalogIdeaId: null },
+];
+
+/**
+ * Deterministic offline tool-using model for the Firebase emulator: the first turn calls getTagUsage and getPastEvents, the
+ * second answers with five canned ideas (the server still validates, schedules, covers and ranks them).
+ */
+export class DemoAgentModel implements AgentModelPort {
+  async turn<T>(request: AgentTurnRequest<T>): Promise<AgentTurnOutcome<T>> {
+    if (request.items.length === 0 && request.toolChoice === "auto") {
+      return {
+        kind: "calls", usage: { inputTokens: 800, cachedInputTokens: 0, outputTokens: 60, reasoningTokens: 0 }, model: DEMO_MODEL,
+        calls: [{ id: "demo-1", name: "getTagUsage", arguments: "{}" }, { id: "demo-2", name: "getPastEvents", arguments: "{}" }],
+      };
+    }
+    const usage = { inputTokens: 2400, cachedInputTokens: 0, outputTokens: 900, reasoningTokens: 0 };
+    const parsed = request.schema.safeParse({ ideas: DEMO_IDEAS });
+    return parsed.success ? { kind: "final", value: parsed.data, usage, model: DEMO_MODEL } : { kind: "malformed", usage, model: DEMO_MODEL };
   }
 }

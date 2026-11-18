@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type AiBucket, type AiConsiderationRank, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type AiBucket, type AiConsiderationRank, type AiEventChoices, type DipbotIdea, type DipbotIdeas, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -77,7 +77,7 @@ export function creditsFromWire(value: unknown): AiCredits {
   const price = (key: keyof typeof DEFAULT_CREDIT_COST) => (typeof cost[key] === "number" ? n(cost[key]) : DEFAULT_CREDIT_COST[key]);
   return {
     creditsAllowance: n(c.creditsAllowance), creditsUsed: n(c.creditsUsed), creditsRemaining: n(c.creditsRemaining), resetsAt: str(c.resetsAt),
-    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick"), venueSearch: price("venueSearch") },
+    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick"), venueSearch: price("venueSearch"), ...(typeof cost.ideas === "number" ? { ideas: n(cost.ideas) } : {}) },
   };
 }
 /** GetEventIdeaContextResponse -> EventIdeaContext. */
@@ -109,6 +109,54 @@ export function suggestionsFromWire(d: DocumentData): EventIdeaSuggestions {
     ...(typeof d.computedAt === "string" ? { computedAt: d.computedAt } : {}),
     ...(d.staleReason === "data" || d.staleReason === "age" ? { staleReason: d.staleReason } : {}),
     ...(d.credits ? { credits: creditsFromWire(d.credits) } : {}),
+  };
+}
+const IDEA_THEMES: readonly string[] = ["fitness", "outdoors", "food", "arts", "games", "music", "learning", "volunteering", "wellness"];
+const IDEA_DAYPARTS: readonly string[] = ["weekday_morning", "weekday_lunch", "weekday_afternoon", "after_work", "weekend_daytime", "weekend_evening"];
+const IDEA_COSTS: readonly string[] = ["free", "under_15", "from_15_to_50", "over_50"];
+const IDEA_SIZES: readonly string[] = ["small", "team", "company"];
+const IDEA_GOALS: readonly string[] = ["team_bonding", "wellness", "learning", "give_back", "celebrate", "competition"];
+const IDEA_SETTINGS: readonly string[] = ["indoors", "outdoors", "offsite"];
+const IDEA_TIMINGS: readonly string[] = ["weekday_lunch", "after_work", "weekend"];
+/** One DipbotIdea; null when anything the card needs is missing or malformed (that idea is dropped, the rest still show). */
+export function dipbotIdeaFromWire(value: unknown): DipbotIdea | null {
+  const d = obj(value);
+  const c = obj(d.choices);
+  const draft = obj(d.draft);
+  const ok = str(d.id) && str(d.title) && IDEA_THEMES.includes(str(d.theme)) && IDEA_DAYPARTS.includes(str(d.daypart)) && IDEA_COSTS.includes(str(d.costBucket))
+    && IDEA_SIZES.includes(str(d.groupSize)) && typeof d.durationMinutes === "number" && d.durationMinutes > 0
+    && IDEA_GOALS.includes(str(c.goal)) && IDEA_SIZES.includes(str(c.groupSize)) && IDEA_SETTINGS.includes(str(c.setting)) && IDEA_COSTS.includes(str(c.budget)) && IDEA_TIMINGS.includes(str(c.timing))
+    && str(draft.title) && Array.isArray(d.tagIds);
+  if (!ok) return null;
+  return {
+    id: str(d.id), title: str(d.title), description: str(d.description), theme: str(d.theme) as DipbotIdea["theme"], tagIds: strings(d.tagIds), why: str(d.why),
+    reasonBasis: d.reasonBasis === "company_data" ? "company_data" : "generic",
+    ...(d.fitLabel === "perfect" || d.fitLabel === "great" || d.fitLabel === "good" ? { fitLabel: d.fitLabel } : {}),
+    weekday: typeof d.weekday === "number" ? d.weekday : 0, daypart: str(d.daypart) as DipbotIdea["daypart"], startsAt: str(d.startsAt),
+    durationMinutes: d.durationMinutes as number, costBucket: str(d.costBucket) as DipbotIdea["costBucket"], groupSize: str(d.groupSize) as DipbotIdea["groupSize"],
+    considerationIds: strings(d.considerationIds), coverImageURL: str(d.coverImageURL),
+    choices: {
+      focusTagIds: strings(c.focusTagIds), goal: str(c.goal) as AiEventChoices["goal"], groupSize: str(c.groupSize) as AiEventChoices["groupSize"],
+      setting: str(c.setting) as AiEventChoices["setting"], budget: str(c.budget) as AiEventChoices["budget"], timing: str(c.timing) as AiEventChoices["timing"],
+    },
+    draft: draft as unknown as GeneratedEventDraft,
+    source: d.source === "agent" ? "agent" : "catalog",
+  };
+}
+/** GetDipbotIdeasResponse -> DipbotIdeas; malformed ideas are dropped. */
+export function dipbotIdeasFromWire(d: DocumentData): DipbotIdeas {
+  const status = d.status === "fresh" || d.status === "stale" || d.status === "computed" ? d.status : "fallback";
+  return {
+    enabled: d.enabled === true,
+    ideas: list(d.ideas).map(dipbotIdeaFromWire).filter((i): i is DipbotIdea => i !== null),
+    status,
+    ...(typeof d.generatedAt === "string" ? { generatedAt: d.generatedAt } : {}),
+    dataLevel: d.dataLevel === "rich" || d.dataLevel === "some" ? d.dataLevel : "none",
+    autoRefreshDue: d.autoRefreshDue === true,
+    refreshesLeftToday: typeof d.refreshesLeftToday === "number" && d.refreshesLeftToday > 0 ? Math.floor(d.refreshesLeftToday) : 0,
+    ...(d.outcome === "updated" || d.outcome === "unchanged" || d.outcome === "extended" || d.outcome === "skipped" || d.outcome === "failed" ? { outcome: d.outcome } : {}),
+    credits: creditsFromWire(d.credits),
+    creditsCharged: typeof d.creditsCharged === "number" ? d.creditsCharged : 0,
   };
 }
 /** GenerateEventDraftsResponse -> GenerateDraftsResult. */
@@ -506,6 +554,12 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       // A plain visit sends no model-spending flag: the server answers from the saved company suggestions.
       const payload = input?.refresh ? { requestId: input.requestId ?? crypto.randomUUID(), refresh: true } : {};
       return suggestionsFromWire(await call<DocumentData>(ADMIN_CALLABLES.eventIdeaSuggestions, session, payload, false));
+    }),
+    dipbotIdeas: (input) => run(async () => {
+      const session = await organizer();
+      // Only `refresh` carries a requestId (the caller's); load and auto are not commands the server replays.
+      const payload = { mode: input.mode, ...(input.mode === "refresh" ? { requestId: input.requestId ?? crypto.randomUUID() } : {}) };
+      return dipbotIdeasFromWire(await call<DocumentData>(ADMIN_CALLABLES.dipbotIdeas, session, payload, false));
     }),
     pickEventCover: (input) => run(async () => {
       const session = await organizer();
