@@ -79,12 +79,12 @@ struct DIPApp: App {
                 if phase == .active { Task { await push?.refresh() } }
             }
             // The buttons drive the coordinator; the setter is a no-op so a dismissal never double-fires.
-            .alert("Get updates for activities you join?", isPresented: Binding(
+            .alert(Text("Get updates for activities you join?", comment: "Notification priming alert title"), isPresented: Binding(
                 get: { push?.isPrimingVisible == true }, set: { _ in })) {
-                Button("Turn on notifications") { Task { await push?.primingAccepted() } }
-                Button("Not now", role: .cancel) { push?.primingDeclined() }
+                Button(String(localized: "push.priming.accept", defaultValue: "Turn on notifications", comment: "Notification priming alert button that continues to the system permission prompt")) { Task { await push?.primingAccepted() } }
+                Button(String(localized: "push.priming.decline", defaultValue: "Not now", comment: "Notification priming alert button that postpones the permission prompt"), role: .cancel) { push?.primingDeclined() }
             } message: {
-                Text("We’ll tell you if an organizer changes or cancels an activity, and send reminders. You can change this for each activity in its chat.")
+                Text("We’ll tell you if an organizer changes or cancels an activity, and send reminders. You can change this for each activity in its chat.", comment: "Notification priming alert message")
             }
             .onOpenURL { url in
                 // Google sign-in redirects first; anything else may be an event share link or `dip://events/<id>`.

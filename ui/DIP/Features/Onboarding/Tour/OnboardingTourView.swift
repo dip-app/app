@@ -334,7 +334,7 @@ struct OnboardingTourView: View {
             }
             return DIPBottomBarAction(title: bar.title, style: bar.isAccent ? .accent : .standard,
                                       identifier: OnboardingInterestsModel.Bar.identifier,
-                                      value: bar.showsProgress ? "In progress" : nil, showsProgress: bar.showsProgress,
+                                      value: bar.showsProgress ? AccountsStageScene.inProgress : nil, showsProgress: bar.showsProgress,
                                       kind: [.saveAndStart, .retry].contains(bar.action) ? .commit : .navigate)
         }
         return DIPBottomBarAction(title: OnboardingCopy.cta(for: step, next: model.nextStep, features: features),

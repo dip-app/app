@@ -150,7 +150,7 @@ struct DIPEventDetailsScreen: View {
                     .buttonStyle(.plain)
                     .disabled(!primaryEnabled || (participationPending && !joined))
                     .accessibilityIdentifier("event.primary")
-                    .accessibilityValue(joined ? "Joined" : "Not joined")
+                    .accessibilityValue(joined ? String(localized: "event.bar.joinedValue", defaultValue: "Joined", comment: "VoiceOver value of the join button when the member has joined") : String(localized: "event.bar.notJoinedValue", defaultValue: "Not joined", comment: "VoiceOver value of the join button when the member has not joined"))
                     .padding(.horizontal, 20)
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
                 }
@@ -197,7 +197,7 @@ struct DIPEventDetailsScreen: View {
                         entryRemovable = false
                         if removal == .failed {
                             DIPHaptics.failure()
-                            show(toast: CalendarToast(text: "You left. Delete the entry in Calendar.", canUndo: false), seconds: 5)
+                            show(toast: CalendarToast(text: String(localized: "event.toast.leftDeleteEntry", defaultValue: "You left. Delete the entry in Calendar.", comment: "Toast after leaving an activity when its calendar entry could not be removed automatically"), canUndo: false), seconds: 5)
                         }
                     }
                 }
@@ -287,8 +287,8 @@ struct DIPEventDetailsScreen: View {
                 switch result {
                 case .added:
                     DIPHaptics.success()
-                    show(toast: CalendarToast(text: "Added to your calendar", canUndo: true), seconds: 5,
-                         announcement: "Added to your calendar. Undo available.")
+                    show(toast: CalendarToast(text: String(localized: "event.toast.added", defaultValue: "Added to your calendar", comment: "Toast after the activity was saved to the calendar"), canUndo: true), seconds: 5,
+                         announcement: String(localized: "event.toast.added.announcement", defaultValue: "Added to your calendar. Undo available.", comment: "VoiceOver announcement after the activity was saved to the calendar"))
                 case .failed: DIPHaptics.failure()
                 case .cancelled: break
                 }
@@ -307,11 +307,11 @@ struct DIPEventDetailsScreen: View {
             switch await calendar.removeEntry(eventID: event.id, fields: fields) {
             case .removed, .alreadyGone:
                 calendarResult = nil
-                show(toast: CalendarToast(text: "Removed from your calendar", canUndo: false), seconds: 2.5)
+                show(toast: CalendarToast(text: String(localized: "event.toast.removed", defaultValue: "Removed from your calendar", comment: "Toast after the calendar entry was removed"), canUndo: false), seconds: 2.5)
             case .failed:
                 // The entry is still there: keep "Added" and say how to finish the job.
                 DIPHaptics.failure()
-                show(toast: CalendarToast(text: "Couldn’t remove it. Delete it in Calendar.", canUndo: false), seconds: 5)
+                show(toast: CalendarToast(text: String(localized: "event.toast.removeFailed", defaultValue: "Couldn’t remove it. Delete it in Calendar.", comment: "Toast when the calendar entry could not be removed automatically"), canUndo: false), seconds: 5)
             }
         }
     }
@@ -369,7 +369,7 @@ struct DIPEventDetailsScreen: View {
                 .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
-                DIPButton("Turn on") {
+                DIPButton(String(localized: "event.calendarTeaser.turnOn", defaultValue: "Turn on", comment: "Button on the calendar overlap teaser card that turns the feature on")) {
                     Task {
                         await calendar.setShowsConflicts(true)
                         if calendar.accessDeniedNotice {
@@ -378,7 +378,7 @@ struct DIPEventDetailsScreen: View {
                         }
                     }
                 }
-                DIPButton("Not now", emphasis: .secondary) { calendar.dismissTeaser() }
+                DIPButton(String(localized: "event.calendarTeaser.notNow", defaultValue: "Not now", comment: "Button on the calendar overlap teaser card that dismisses it"), emphasis: .secondary) { calendar.dismissTeaser() }
             }
         }
         .padding(18)
@@ -400,7 +400,7 @@ struct DIPEventDetailsScreen: View {
                 guard let fields = calendarFields else { return }
                 Task {
                     if await calendar.updateEntry(eventID: event.id, fields: fields) {
-                        show(toast: CalendarToast(text: "Calendar entry updated", canUndo: false), seconds: 2.5)
+                        show(toast: CalendarToast(text: String(localized: "event.toast.updated", defaultValue: "Calendar entry updated", comment: "Toast after the calendar entry was moved to the new time of the activity"), canUndo: false), seconds: 2.5)
                     }
                 }
             } label: {
@@ -443,12 +443,12 @@ struct DIPEventDetailsScreen: View {
     private var attendeeDetails: some View {
         VStack(alignment: .leading, spacing: 10) {
             DIPDetailPeopleRow(
-                title: event.isPast ? "Who Attended" : "Who’s Attending",
+                title: event.isPast ? String(localized: "event.people.title.past", defaultValue: "Who Attended", comment: "Heading above the attendee avatars of a past activity") : String(localized: "event.people.title.upcoming", defaultValue: "Who’s Attending", comment: "Heading above the attendee avatars of an upcoming activity"),
                 avatars: event.attendeeAvatars, total: event.attendeeCount,
-                emptyTitle: event.isPast ? "No attendance recorded" : "Be the first to join",
-                emptyText: event.isPast ? "No one checked in to this event." : "Coworkers who join will show up here.",
+                emptyTitle: event.isPast ? String(localized: "event.people.empty.title.past", defaultValue: "No attendance recorded", comment: "Empty state title for a past activity with no attendees") : String(localized: "event.people.empty.title.upcoming", defaultValue: "Be the first to join", comment: "Empty state title for an upcoming activity with no attendees"),
+                emptyText: event.isPast ? String(localized: "event.people.empty.message.past", defaultValue: "No one checked in to this event.", comment: "Empty state message for a past activity with no attendees") : String(localized: "event.people.empty.message.upcoming", defaultValue: "Coworkers who join will show up here.", comment: "Empty state message for an upcoming activity with no attendees"),
                 capacity: event.isPast || event.metadata?.status == .cancelled ? nil : event.metadata?.capacity,
-                trailingNote: event.metadata?.status == .cancelled ? "Cancelled" : event.isPast && event.attendeeCount > 0 ? "\(event.attendeeCount) went" : nil,
+                trailingNote: event.metadata?.status == .cancelled ? String(localized: "event.people.cancelled", defaultValue: "Cancelled", comment: "Note next to the attendee heading when the activity was cancelled") : event.isPast && event.attendeeCount > 0 ? String(localized: "event.people.went", defaultValue: "\(event.attendeeCount) went", comment: "Note next to the attendee heading of a past activity; %lld = number of people who attended") : nil,
                 identifierPrefix: "event", onMore: onAttendees)
             DIPDetailActionRow(
                 invite: invitePill,
@@ -456,10 +456,10 @@ struct DIPEventDetailsScreen: View {
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions (always, when there is a location); Leave sits at the bottom of the page.
                 joinInRow: false, directionsURL: event.metadata?.directionsURL(fallbackTitle: event.title),
                 isParticipating: joined, canChange: canChangeParticipation,
-                joinTitle: "Join Activity", leaveTitle: "Leave Activity",
+                joinTitle: String(localized: "event.action.join", defaultValue: "Join Activity", comment: "Pill that joins the activity"), leaveTitle: String(localized: "event.action.leave", defaultValue: "Leave Activity", comment: "Pill that leaves the activity"),
                 shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title) — \(event.timing)",
                 shareLink: event.metadata?.status == .cancelled ? nil : DIPShareLink.url(forEventID: event.id),
-                shareTitle: "Share Event", identifierPrefix: "event",
+                shareTitle: String(localized: "event.action.share", defaultValue: "Share Event", comment: "Pill that opens the share sheet for the activity"), identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
     }
@@ -473,14 +473,14 @@ struct DIPEventDetailsScreen: View {
     /// not full, and an invitations adapter exists); otherwise the slot is Directions again.
     private var invitePill: DIPDetailActionRow.InviteAction? {
         guard let onInvite, !event.isPast, inviteDenial == nil else { return nil }
-        return .init(accessibilityLabel: "Invite a coworker to \(event.title)", action: onInvite)
+        return .init(accessibilityLabel: String(localized: "event.invite.accessibility", defaultValue: "Invite a coworker to \(event.title)", comment: "VoiceOver label of the invite pill; %@ = activity title"), action: onInvite)
     }
 
     /// Solid (pressable) pill, shown only when the organizer has edited the event.
     private func changesButton(_ log: [DIPChangeLogEntry]) -> some View {
         Button { showingChanges = true } label: {
             // Dark solid like the other quiet actions ("+ N More", "See All"), so it does not compete with Directions/Share.
-            DIPActionPill(title: DIPChangeLogText.visibleCount(log) == 1 ? "See what changed" : "See what changed (\(DIPChangeLogText.visibleCount(log)))",
+            DIPActionPill(title: DIPChangeLogText.visibleCount(log) == 1 ? String(localized: "event.changes.button", defaultValue: "See what changed", comment: "Pill that opens the list of organizer edits when there is one edit") : String(localized: "event.changes.button.count", defaultValue: "See what changed (\(DIPChangeLogText.visibleCount(log)))", comment: "Pill that opens the list of organizer edits; %lld = number of edits"),
                           color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
                 Image(systemName: "clock.arrow.circlepath").resizable().scaledToFit()
             }
@@ -536,8 +536,8 @@ struct DIPEventDetailsScreen: View {
                         .frame(width: 34, height: 34)
                         .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Circle())
                         .accessibilityHidden(true)
-                    DIPEmptyState(screen: "event-album", title: "No photos yet",
-                                  message: "Photos from this activity will show up here.", style: .compact, faces: 0)
+                    DIPEmptyState(screen: "event-album", title: String(localized: "event.album.empty.title", defaultValue: "No photos yet", comment: "Empty state title for the photo album preview of a past activity"),
+                                  message: String(localized: "event.album.empty.message", defaultValue: "Photos from this activity will show up here.", comment: "Empty state message for the photo album preview of a past activity"), style: .compact, faces: 0)
                 }
             }
             if !photos.isEmpty {
@@ -575,7 +575,7 @@ struct DIPEventDetailsScreen: View {
             if let fields = calendarFields, calendar.needsUpdate(eventID: event.id, fields: fields) { calendarUpdateRow }
             whereRow(metadata)
             metadataRow("ticket", title: "Price") {
-                Text(metadata.costCents == 0 ? "Free" : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
+                Text(metadata.costCents == 0 ? String(localized: "event.cost.free", defaultValue: "Free", comment: "Event price when the activity costs nothing") : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD")))
                 if !metadata.costNote.isEmpty { Text(metadata.costNote).foregroundStyle(.secondary) }
             }
             .accessibilityIdentifier("event.price")
@@ -604,7 +604,11 @@ struct DIPEventDetailsScreen: View {
                 // The same end the calendar entry gets (an absent end defaults to one hour), so row and entry agree.
                 let calendarEnd = metadata.calendarEnd
                 let multiDay = !Calendar.current.isDate(metadata.startTime, inSameDayAs: calendarEnd)
-                Text("\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(calendarEnd.formatted(date: .omitted, time: .shortened))\(multiDay ? " (\(calendarEnd.formatted(.dateTime.month(.abbreviated).day())))" : "")")
+                let startText = metadata.startTime.formatted(date: .omitted, time: .shortened)
+                let endText = calendarEnd.formatted(date: .omitted, time: .shortened)
+                Text(multiDay
+                    ? String(localized: "event.when.rangeMultiDay", defaultValue: "\(startText) – \(endText) (\(calendarEnd.formatted(.dateTime.month(.abbreviated).day())))", comment: "When row time range for an activity that ends on another day; first %@ = start time, second %@ = end time, third %@ = end date such as Nov 24")
+                    : String(localized: "event.when.range", defaultValue: "\(startText) – \(endText)", comment: "When row time range; first %@ = start time, second %@ = end time"))
                 Text(durationLabel(metadata))
                     .foregroundStyle(.secondary)
             }
@@ -694,19 +698,19 @@ struct DIPEventDetailsScreen: View {
         let minutes = max(0, Int(metadata.calendarEnd.timeIntervalSince(metadata.startTime) / 60))
         let hours = minutes / 60
         let remainder = minutes % 60
-        if hours == 0 { return "\(minutes) min" }
-        return remainder == 0 ? "\(hours) hr" : "\(hours) hr \(remainder) min"
+        if hours == 0 { return String(localized: "event.duration.minutes", defaultValue: "\(minutes) min", comment: "Duration under an hour in the When row; %lld = minutes") }
+        return remainder == 0 ? String(localized: "event.duration.hours", defaultValue: "\(hours) hr", comment: "Duration of whole hours in the When row; %lld = hours") : String(localized: "event.duration.hoursMinutes", defaultValue: "\(hours) hr \(remainder) min", comment: "Duration in the When row; first %lld = hours, second %lld = minutes")
     }
 
     private var primaryTitle: String {
-        if event.metadata?.status == .cancelled { return "Activity cancelled" }
-        if event.isPast { return "View Album" }
-        if joined { return "Activity Chat" }
+        if event.metadata?.status == .cancelled { return String(localized: "event.bar.cancelled", defaultValue: "Activity cancelled", comment: "Bottom action bar button on an activity screen: the activity was cancelled") }
+        if event.isPast { return String(localized: "event.bar.viewAlbum", defaultValue: "View Album", comment: "Bottom action bar button on an activity screen: opens the photo album") }
+        if joined { return String(localized: "event.bar.chat", defaultValue: "Activity Chat", comment: "Bottom action bar button on an activity screen: opens the activity chat") }
         if let metadata = event.metadata {
-            if metadata.startTime <= Date() { return "Activity started" }
-            if event.attendeeCount >= metadata.capacity { return "Activity full" }
+            if metadata.startTime <= Date() { return String(localized: "event.bar.started", defaultValue: "Activity started", comment: "Bottom action bar button on an activity screen: the activity already started so joining is closed") }
+            if event.attendeeCount >= metadata.capacity { return String(localized: "event.bar.full", defaultValue: "Activity full", comment: "Bottom action bar button on an activity screen: no spots left") }
         }
-        return "Join the Activity"
+        return String(localized: "event.bar.join", defaultValue: "Join the Activity", comment: "Bottom action bar button on an activity screen: joins the activity")
     }
 
     private var showsChatAffordance: Bool { joined && !event.isPast && event.metadata?.status != .cancelled }

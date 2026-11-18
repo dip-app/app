@@ -112,7 +112,7 @@ struct DIPPhotoCommentsScreen: View {
     private var controlBar: some View {
         HStack(spacing: 0) {
             if let position, let onStep {
-                barButton("chevron.left", label: "Previous photo", id: "album.photo.previous", enabled: position.index > 1) { onStep(-1) }
+                barButton("chevron.left", label: String(localized: "photoViewer.previous", defaultValue: "Previous photo", comment: "VoiceOver label of the previous-photo button in the photo viewer"), id: "album.photo.previous", enabled: position.index > 1) { onStep(-1) }
                 Text(DIPPhotoCount.text(index: position.index, count: position.count))
                     .font(DIPReferenceAssets.font("Figtree-Regular", size: 16, relativeTo: .body).weight(.medium))
                     .monospacedDigit()
@@ -121,7 +121,7 @@ struct DIPPhotoCommentsScreen: View {
                     .frame(width: DIPPhotoCount.labelWidth(count: position.count))
                     .accessibilityLabel(DIPPhotoCount.spoken(index: position.index, count: position.count))
                     .accessibilityIdentifier("album.photo.position")
-                barButton("chevron.right", label: "Next photo", id: "album.photo.next", enabled: position.index < position.count) { onStep(1) }
+                barButton("chevron.right", label: String(localized: "photoViewer.next", defaultValue: "Next photo", comment: "VoiceOver label of the next-photo button in the photo viewer"), id: "album.photo.next", enabled: position.index < position.count) { onStep(1) }
             }
             if saver != nil {
                 if position != nil { Rectangle().fill(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.15)).frame(width: 1, height: 22) }
@@ -159,8 +159,8 @@ struct DIPPhotoCommentsScreen: View {
         }
         .buttonStyle(BarPressStyle())
         .disabled(saving)
-        .accessibilityLabel(saved ? "Saved to Photos" : "Save photo")
-        .accessibilityHint(saved ? "" : "Saves this photo to your Photos library")
+        .accessibilityLabel(saved ? String(localized: "photoViewer.save.saved", defaultValue: "Saved to Photos", comment: "VoiceOver label of the save button once the photo was saved; also the toast after saving") : String(localized: "photoViewer.save", defaultValue: "Save photo", comment: "VoiceOver label of the button that saves this photo to the Photos library"))
+        .accessibilityHint(saved ? "" : String(localized: "photoViewer.save.hint", defaultValue: "Saves this photo to your Photos library", comment: "VoiceOver hint of the save photo button"))
         .accessibilityIdentifier("album.photo.save")
     }
 
@@ -213,8 +213,8 @@ struct DIPPhotoCommentsScreen: View {
                 return try await AlbumPhotoSaver.fallbackData(for: photo)
             }
             switch outcome {
-            case .saved: DIPHaptics.success(); show(toast: "Saved to Photos")
-            case .alreadySaved: show(toast: "Already saved to Photos")
+            case .saved: DIPHaptics.success(); show(toast: String(localized: "photoViewer.save.saved", defaultValue: "Saved to Photos", comment: "VoiceOver label of the save button once the photo was saved; also the toast after saving"))
+            case .alreadySaved: show(toast: String(localized: "photoViewer.save.already", defaultValue: "Already saved to Photos", comment: "Toast when the photo had already been saved to the Photos library"))
             case .denied: DIPHaptics.failure(); showsPermissionAlert = true
             case .failed(let message): DIPHaptics.failure(); show(toast: message)
             }
@@ -359,7 +359,7 @@ struct DIPPhotoCommentsScreen: View {
 
     private func composer(width: CGFloat) -> some View {
         DIPMessageComposer(
-            text: $draft, placeholder: "Add your thoughts in a comment",
+            text: $draft, placeholder: String(localized: "photoViewer.comment.placeholder", defaultValue: "Add your thoughts in a comment", comment: "Placeholder of the comment field under a photo"),
             isSending: isSending, errorMessage: sendError,
             identifierPrefix: "photo.comments", style: .photoOverlay,
             maximumLength: DIPMessageComposer.maximumLength,
@@ -400,8 +400,8 @@ struct DIPPhotoCommentsScreen: View {
 
     /// Comment failures say what to do: offline/unavailable keeps the draft, and an unchanged retry reuses its id.
     nonisolated static func sendErrorMessage(for error: Error) -> String {
-        if (error as? URLError)?.code == .notConnectedToInternet { return "You’re offline. Your comment is kept; try again when you’re back online." }
+        if (error as? URLError)?.code == .notConnectedToInternet { return String(localized: "photoViewer.comment.error.offline", defaultValue: "You’re offline. Your comment is kept; try again when you’re back online.", comment: "Error under the comment field when the device is offline") }
         if let failure = error as? DIPRepositoryError, case .invalidInput(let message) = failure, !message.isEmpty { return message }
-        return "Your comment could not be sent. Try again."
+        return String(localized: "photoViewer.comment.error.generic", defaultValue: "Your comment could not be sent. Try again.", comment: "Error under the comment field when sending failed")
     }
 }

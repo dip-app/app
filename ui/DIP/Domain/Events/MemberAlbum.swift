@@ -63,15 +63,15 @@ enum AlbumFailure: Error, Equatable {
 
     var message: String {
         switch self {
-        case .notAttendee: "Only people who went to this event can add photos."
-        case .notEnded: "You can add photos after the event ends."
-        case .cancelled: "This event was cancelled."
-        case .limitReached: "You’ve added the most photos allowed for this event (\(AlbumPolicy.slotsPerMember))."
-        case .invalidImage: "This photo couldn’t be read. Choose another one."
-        case .tooLarge: "This photo is too large to upload."
-        case .unauthenticated: "Please sign in again."
-        case .unavailable: "You’re offline. Check your connection and try again."
-        case .unknown: "This photo couldn’t be added. Try again."
+        case .notAttendee: String(localized: "album.error.notAttendee", defaultValue: "Only people who went to this event can add photos.", comment: "Photo upload error: only attendees can add photos")
+        case .notEnded: String(localized: "album.error.notEnded", defaultValue: "You can add photos after the event ends.", comment: "Photo upload error: event not over yet")
+        case .cancelled: String(localized: "album.error.cancelled", defaultValue: "This event was cancelled.", comment: "Photo upload error: event cancelled")
+        case .limitReached: String(localized: "album.error.limitReached", defaultValue: "You’ve added the most photos allowed for this event (\(AlbumPolicy.slotsPerMember)).", comment: "Photo upload error: per-member photo limit reached; %lld = maximum number of photos")
+        case .invalidImage: String(localized: "album.error.invalidImage", defaultValue: "This photo couldn’t be read. Choose another one.", comment: "Photo upload error: image could not be decoded")
+        case .tooLarge: String(localized: "album.error.tooLarge", defaultValue: "This photo is too large to upload.", comment: "Photo upload error: image exceeds the size limit")
+        case .unauthenticated: String(localized: "error.signInAgain", defaultValue: "Please sign in again.", comment: "User-facing error: the session expired, shown near the action that failed")
+        case .unavailable: String(localized: "album.error.unavailable", defaultValue: "You’re offline. Check your connection and try again.", comment: "Photo upload error: no connection")
+        case .unknown: String(localized: "album.error.unknown", defaultValue: "This photo couldn’t be added. Try again.", comment: "Photo upload error: unexpected failure")
         }
     }
 }

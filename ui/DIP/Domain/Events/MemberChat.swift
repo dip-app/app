@@ -22,12 +22,12 @@ enum ChatFailure: Error, Equatable {
 
     var message: String {
         switch self {
-        case .invalidText: "Messages must be 1 to 1000 characters."
-        case .notGoing: "Join this activity to chat."
-        case .closed: "This chat is closed. It stays open until 24 hours after the activity ends."
-        case .unauthenticated: "Please sign in again."
-        case .unavailable: "You’re offline. Your message wasn’t sent; try again."
-        case .unknown: "Couldn’t send your message. Please try again."
+        case .invalidText: String(localized: "chat.error.invalidText", defaultValue: "Messages must be 1 to 1000 characters.", comment: "Chat error: message length out of range")
+        case .notGoing: String(localized: "chat.error.notGoing", defaultValue: "Join this activity to chat.", comment: "Chat error: member has not joined the activity")
+        case .closed: String(localized: "chat.error.closed", defaultValue: "This chat is closed. It stays open until 24 hours after the activity ends.", comment: "Chat error: chat window has closed")
+        case .unauthenticated: String(localized: "error.signInAgain", defaultValue: "Please sign in again.", comment: "User-facing error: the session expired, shown near the action that failed")
+        case .unavailable: String(localized: "chat.error.unavailable", defaultValue: "You’re offline. Your message wasn’t sent; try again.", comment: "Chat error: no connection, message not sent")
+        case .unknown: String(localized: "chat.error.unknown", defaultValue: "Couldn’t send your message. Please try again.", comment: "Chat error: unexpected send failure")
         }
     }
 

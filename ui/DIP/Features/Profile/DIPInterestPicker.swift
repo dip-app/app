@@ -115,7 +115,7 @@ struct DIPInterestPicker: View {
                         .accessibilityIdentifier("profile.interests.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
+                    Button(isSaving ? String(localized: "profile.interests.saving", defaultValue: "Saving…", comment: "Interest picker: save button while saving") : String(localized: "profile.interests.save", defaultValue: "Save", comment: "Interest picker: save button")) { Task { await save() } }
                         .disabled(isSaving)
                         .accessibilityIdentifier("profile.interests.save")
                 }
@@ -136,7 +136,7 @@ struct DIPInterestPicker: View {
             try await onSave(InterestSelectionRules.ordered(ownedSelection, options: options))
             dismiss()
         } catch {
-            saveError = "Couldn’t save your interests. Your choices are kept. Try again."
+            saveError = String(localized: "profile.interests.saveError", defaultValue: "Couldn’t save your interests. Your choices are kept. Try again.", comment: "Interest picker: error after saving failed")
         }
     }
 
@@ -226,9 +226,9 @@ private struct InterestEmptyState: View {
     var body: some View {
         let blank = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         VStack(alignment: .leading, spacing: 8) {
-            Text(blank ? "No interests yet" : "No matching interests")
+            Text(blank ? String(localized: "profile.interests.empty.none", defaultValue: "No interests yet", comment: "Interest picker: empty title when the company has no interests") : String(localized: "profile.interests.empty.noMatch", defaultValue: "No matching interests", comment: "Interest picker: empty title when the search matches nothing"))
                 .font(DIPReferenceAssets.font("Figtree-Regular", size: 20, relativeTo: .headline))
-            Text(blank ? "Your company's interests will appear here." : "Try a different search.")
+            Text(blank ? String(localized: "profile.interests.empty.noneMessage", defaultValue: "Your company's interests will appear here.", comment: "Interest picker: empty message when the company has no interests") : String(localized: "profile.interests.empty.noMatchMessage", defaultValue: "Try a different search.", comment: "Interest picker: empty message when the search matches nothing"))
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
                 .foregroundStyle(.secondary)
         }
@@ -277,9 +277,9 @@ private struct InterestRows: View {
             .buttonStyle(.plain)
             .disabled(isSaving || atMaximum)
             .accessibilityLabel(interest.name)
-            .accessibilityValue(isSelected ? "Selected" : "Not selected")
+            .accessibilityValue(isSelected ? String(localized: "profile.interests.selected", defaultValue: "Selected", comment: "VoiceOver value of a chosen interest") : String(localized: "profile.interests.notSelected", defaultValue: "Not selected", comment: "VoiceOver value of an interest that is not chosen"))
             .accessibilityAddTraits(isSelected ? .isSelected : [])
-            .accessibilityHint(atMaximum ? "Remove an interest to select another" : "Toggle interest")
+            .accessibilityHint(atMaximum ? String(localized: "profile.interests.hint.max", defaultValue: "Remove an interest to select another", comment: "VoiceOver hint when the maximum number of interests is chosen") : String(localized: "profile.interests.hint.toggle", defaultValue: "Toggle interest", comment: "VoiceOver hint on an interest row"))
             .accessibilityIdentifier("profile.interests.option.\(interest.id)")
         }
     }

@@ -26,8 +26,8 @@ struct DIPChallengeSubmissionSection: View {
             }
         case .failed(let message):
             card {
-                DIPEmptyState(screen: "submission-load", title: message, message: "Check your connection and try again.",
-                              actionTitle: "Try again", action: { DIPHaptics.select(); model.retryLoad() })
+                DIPEmptyState(screen: "submission-load", title: message, message: String(localized: "challenge.entry.loadFailed.message", defaultValue: "Check your connection and try again.", comment: "Challenge entry load error: hint under the error title"),
+                              actionTitle: String(localized: "challenge.entry.loadFailed.retry", defaultValue: "Try again", comment: "Challenge entry load error: retry button"), action: { DIPHaptics.select(); model.retryLoad() })
             }
         case .ready:
             if let entry = model.state.submission { card { content(entry) } }
@@ -54,7 +54,7 @@ struct DIPChallengeSubmissionSection: View {
         statusPill(state)
         if case .rejected(_, let canResubmit) = state, let note = entry.reviewNote {
             organizerNote(note)
-            Text(canResubmit ? "Update your entry and send it again." : "This theme has ended.")
+            Text(canResubmit ? String(localized: "challenge.entry.rejected.resubmit", defaultValue: "Update your entry and send it again.", comment: "Challenge entry rejected, resubmission still possible") : String(localized: "challenge.entry.rejected.ended", defaultValue: "This theme has ended.", comment: "Challenge entry rejected and the weekly theme is over"))
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body)).foregroundStyle(ink)
                 .accessibilityIdentifier("submission.detail")
         } else {
@@ -65,8 +65,8 @@ struct DIPChallengeSubmissionSection: View {
                 .accessibilityIdentifier("submission.detail")
         }
         VStack(alignment: .leading, spacing: 6) {
-            row("Progress", "\(DIPSubmissionDraft.format(entry.progress)) of \(model.goalText)")
-            if !entry.caption.isEmpty { row("Note", entry.caption) }
+            row(String(localized: "challenge.entry.row.progress", defaultValue: "Progress", comment: "Your entry card: label of the progress row"), String(localized: "challenge.entry.progressOfGoal", defaultValue: "\(DIPSubmissionDraft.format(entry.progress)) of \(model.goalText)", comment: "Your entry card: progress value; first %@ = amount done, second %@ = the goal text e.g. 3 workouts"))
+            if !entry.caption.isEmpty { row(String(localized: "challenge.entry.row.note", defaultValue: "Note", comment: "Your entry card: label of the member note row"), entry.caption) }
         }
         .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
         .accessibilityElement(children: .contain)
@@ -126,7 +126,7 @@ struct DIPChallengeSubmissionSection: View {
                 case .failed:
                     VStack(spacing: 10) {
                         Text("Couldn’t load your photo.").font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline)).foregroundStyle(ink)
-                        DIPButton("Try again", emphasis: .secondary) { DIPHaptics.select(); Task { await model.loadEvidence(force: true) } }
+                        DIPButton(String(localized: "challenge.entry.photo.retry", defaultValue: "Try again", comment: "Your entry card: retry loading the submitted photo"), emphasis: .secondary) { DIPHaptics.select(); Task { await model.loadEvidence(force: true) } }
                             .accessibilityIdentifier("submission.photo.retry")
                     }
                     .frame(maxWidth: .infinity).padding(16)

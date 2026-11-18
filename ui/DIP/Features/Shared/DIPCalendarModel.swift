@@ -206,7 +206,7 @@ import SwiftUI
     /// call `markAddedThroughEditor`. An entry that already carries this event's share link (added before, then the
     /// app was reinstalled or the member signed out and in) is adopted instead of duplicated.
     func addDirectly(_ fields: DIPCalendarEventFields, eventID: String, now: Date = Date()) async -> DIPCalendarAddResult {
-        guard savesDirectly, let device else { return .failed("Calendar access is off.") }
+        guard savesDirectly, let device else { return .failed(String(localized: "calendar.error.accessOff", defaultValue: "Calendar access is off.", comment: "Error shown in an alert when adding an activity to the calendar but calendar access is off")) }
         func entry(_ identifier: String) -> DIPCalendarEntryRecord {
             DIPCalendarEntryRecord(eventID: eventID, itemIdentifier: identifier, startDate: fields.startDate, endDate: fields.endDate, savedAt: now)
         }
@@ -225,9 +225,9 @@ import SwiftUI
             remember(entry(identifier))
             return .added
         } catch DIPCalendarWriteError.noDefaultCalendar {
-            return .failed("No calendar is set up for new events. Choose a default calendar in Settings > Calendar.")
+            return .failed(String(localized: "calendar.error.noDefault", defaultValue: "No calendar is set up for new events. Choose a default calendar in Settings > Calendar.", comment: "Error shown in an alert when the device has no default calendar for new events"))
         } catch {
-            return .failed("Couldn’t save to your calendar. Try again, or check calendar access in Settings.")
+            return .failed(String(localized: "calendar.error.saveFailed", defaultValue: "Couldn’t save to your calendar. Try again, or check calendar access in Settings.", comment: "Error shown in an alert when saving an activity to the calendar failed"))
         }
     }
 

@@ -18,7 +18,7 @@ enum EventDocumentMapper {
         let title = text(f["title"], maximum: 120)
         let status = statusValue(f["status"])
         return DIPContracts.Event(id: id, companyId: companyID,
-            title: title.isEmpty ? "Untitled activity" : title,
+            title: title.isEmpty ? String(localized: "event.untitled", defaultValue: "Untitled activity", comment: "Fallback title for an event that has no title") : title,
             description: text(f["description"], maximum: 5000),
             tagIds: (f["tagIds"] as? [Any] ?? []).compactMap { $0 as? String }.filter(MemberEventsRepository.validID),
             coverImageURL: f["coverImageURL"] as? String ?? "", startTime: start, endTime: end,

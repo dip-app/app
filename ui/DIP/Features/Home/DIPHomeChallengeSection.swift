@@ -38,8 +38,10 @@ struct DIPHomeChallengeSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 8) {
+                // The card's mascot rises into this row on the trailing side: longer translations shrink to stay clear of it.
                 Text("This Week’s Challenge").font(DIPReferenceAssets.font("Figtree-Regular", size: 18))
-                    .foregroundStyle(.black).frame(height: 22, alignment: .leading)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .foregroundStyle(.black).frame(maxWidth: 270, minHeight: 22, maxHeight: 22, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
                 if state.isStale {
                     Spacer(minLength: 4)

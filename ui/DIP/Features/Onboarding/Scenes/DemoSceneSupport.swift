@@ -70,20 +70,20 @@ struct DemoMiniBar: View {
 enum DemoPeople {
     @MainActor static func attendees(you: OnboardingYou) -> [DIPParticipant] {
         [
-            DIPParticipant(id: "maya", name: "Maya", department: "Design", avatar: CrewAvatarImages.reference(.purple, size: 50)),
-            DIPParticipant(id: "theo", name: "Theo", department: "Engineering", avatar: CrewAvatarImages.reference(.white, size: 50)),
-            DIPParticipant(id: "jun", name: "Jun", department: "Finance", avatar: CrewAvatarImages.reference(.yellow, size: 50)),
-            DIPParticipant(id: "lena", name: "Lena", department: "Sales", avatar: CrewAvatarImages.reference(.gray, size: 50)),
-            DIPParticipant(id: "omar", name: "Omar", department: "Product", avatar: CrewAvatarImages.reference(.purple, size: 50)),
-            DIPParticipant(id: "you", name: "You", department: "Going", avatar: you.photo),
+            DIPParticipant(id: "maya", name: "Maya", department: String(localized: "onboarding.demo.dept.design", defaultValue: "Design", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.purple, size: 50)),
+            DIPParticipant(id: "theo", name: "Theo", department: String(localized: "onboarding.demo.dept.engineering", defaultValue: "Engineering", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.white, size: 50)),
+            DIPParticipant(id: "jun", name: "Jun", department: String(localized: "onboarding.demo.dept.finance", defaultValue: "Finance", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.yellow, size: 50)),
+            DIPParticipant(id: "lena", name: "Lena", department: String(localized: "onboarding.demo.dept.sales", defaultValue: "Sales", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.gray, size: 50)),
+            DIPParticipant(id: "omar", name: "Omar", department: String(localized: "onboarding.demo.dept.product", defaultValue: "Product", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.purple, size: 50)),
+            DIPParticipant(id: "you", name: String(localized: "onboarding.demo.you", defaultValue: "You", comment: "Name of the member in the sample attendee list of the onboarding demo"), department: String(localized: "onboarding.demo.dept.going", defaultValue: "Going", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: you.photo),
         ]
     }
 
     @MainActor static var coworkers: [DIPParticipant] {
         [
-            DIPParticipant(id: "priya", name: "Priya", department: "Design", avatar: CrewAvatarImages.reference(.gray, size: 50)),
-            DIPParticipant(id: "alex", name: "Alex", department: "Sales", avatar: CrewAvatarImages.reference(.purple, size: 50)),
-            DIPParticipant(id: "noor", name: "Noor", department: "Marketing", avatar: CrewAvatarImages.reference(.yellow, size: 50)),
+            DIPParticipant(id: "priya", name: "Priya", department: String(localized: "onboarding.demo.dept.design", defaultValue: "Design", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.gray, size: 50)),
+            DIPParticipant(id: "alex", name: "Alex", department: String(localized: "onboarding.demo.dept.sales", defaultValue: "Sales", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.purple, size: 50)),
+            DIPParticipant(id: "noor", name: "Noor", department: String(localized: "onboarding.demo.dept.marketing", defaultValue: "Marketing", comment: "Sample department or status under a coworker's name in the onboarding demo"), avatar: CrewAvatarImages.reference(.yellow, size: 50)),
         ]
     }
 
@@ -133,7 +133,7 @@ struct DemoToast: View {
 struct DemoPlaceholderTag: View {
     let feature: String
     var body: some View {
-        Text("PREVIEW · \(feature)")
+        Text("PREVIEW · \(feature)", comment: "Tag marking a not-yet-shipped feature in an onboarding demo; %@ = feature name")
             .font(DIPReferenceAssets.font("Inter-Medium", size: 10))
             .tracking(0.6)
             .foregroundStyle(OnboardingTheme.ink.opacity(0.6))

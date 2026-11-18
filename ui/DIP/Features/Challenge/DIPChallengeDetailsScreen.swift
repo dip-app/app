@@ -160,8 +160,8 @@ struct DIPChallengeDetailsScreen: View {
     }
 
     @ViewBuilder private var facts: some View {
-        let items = [("Goal", challenge.goalText, "challenge.goal", "target"),
-                     ("Reward", challenge.rewardText, "challenge.reward", "gift")]
+        let items = [(String(localized: "challenge.fact.goal", defaultValue: "Goal", comment: "Challenge page: label for the goal pill (VoiceOver reads Goal: value)"), challenge.goalText, "challenge.goal", "target"),
+                     (String(localized: "challenge.fact.reward", defaultValue: "Reward", comment: "Challenge page: label for the reward pill (VoiceOver reads Reward: value)"), challenge.rewardText, "challenge.reward", "gift")]
             .compactMap { item in item.1.map { (item.0, $0, item.2, item.3) } }
         if !items.isEmpty {
             ViewThatFits(in: .horizontal) {

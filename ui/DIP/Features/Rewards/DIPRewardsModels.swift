@@ -19,22 +19,22 @@ enum DIPRewardsMock {
     static let raffleNeeded = 3
     static var raffleRemainingText: String {
         let left = raffleNeeded - raffleAttended
-        return left == 1 ? "1 more event to enter" : "\(left) more events to enter"
+        return String(localized: "rewards.raffle.remaining", defaultValue: "\(left) more events to enter", comment: "Rewards raffle card: events still needed to enter the raffle; %lld = number of events left")
     }
 
     static let raffle = DIPRewardEntry(
-        id: "raffle", title: "Enter the Raffle", subtitle: "Attend events to win",
-        body: "Mini projector, Squishmallow, and Owala water bottles are up for the taking",
+        id: "raffle", title: String(localized: "rewards.raffle.title", defaultValue: "Enter the Raffle", comment: "Rewards raffle card title"), subtitle: String(localized: "rewards.raffle.subtitle", defaultValue: "Attend events to win", comment: "Rewards raffle card subtitle"),
+        body: String(localized: "rewards.raffle.body", defaultValue: "Mini projector, Squishmallow, and Owala water bottles are up for the taking", comment: "Rewards raffle card: prizes (mock content)"),
         badge: nil, style: .raffle)
 
     static let discounts: [DIPRewardEntry] = [
         DIPRewardEntry(
-            id: "strava", title: "Strava Premium", subtitle: "Exclusive Offer!",
-            body: "20% off Strava’s premium plans within the US, available until March 31st",
-            badge: "20% off", style: .orangeBox),
+            id: "strava", title: "Strava Premium", subtitle: String(localized: "rewards.strava.subtitle", defaultValue: "Exclusive Offer!", comment: "Rewards discount card subtitle (mock content)"),
+            body: String(localized: "rewards.strava.body", defaultValue: "20% off Strava’s premium plans within the US, available until March 31st", comment: "Rewards discount card description (mock content)"),
+            badge: String(localized: "rewards.strava.badge", defaultValue: "20% off", comment: "Rewards discount card tag (mock content)"), style: .orangeBox),
         DIPRewardEntry(
-            id: "nike", title: "Nike Athleisure", subtitle: "Limited Time Only!",
-            body: "15% off all Nike branded activewear except shoes, available until March 25th",
-            badge: "15% off", style: .blueBox),
+            id: "nike", title: "Nike Athleisure", subtitle: String(localized: "rewards.nike.subtitle", defaultValue: "Limited Time Only!", comment: "Rewards discount card subtitle (mock content)"),
+            body: String(localized: "rewards.nike.body", defaultValue: "15% off all Nike branded activewear except shoes, available until March 25th", comment: "Rewards discount card description (mock content)"),
+            badge: String(localized: "rewards.nike.badge", defaultValue: "15% off", comment: "Rewards discount card tag (mock content)"), style: .blueBox),
     ]
 }

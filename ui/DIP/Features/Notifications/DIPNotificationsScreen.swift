@@ -33,7 +33,7 @@ struct DIPNotificationsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            InviteSheetHeader(title: "Notifications", closeIdentifier: "notifications.close", onClose: onClose)
+            InviteSheetHeader(title: String(localized: "notifications.title", defaultValue: "Notifications", comment: "Notifications sheet title"), closeIdentifier: "notifications.close", onClose: onClose)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if model.isStale { offlineBanner }
@@ -84,16 +84,16 @@ struct DIPNotificationsScreen: View {
 
     @ViewBuilder private func buttons(showInvites: Bool, showMarkAll: Bool) -> some View {
         if showInvites {
-            pill(invitesWaiting.map { $0 > 0 ? "Invitations (\($0))" : "Invitations" } ?? "Invitations",
+            pill(invitesWaiting.map { $0 > 0 ? String(localized: "notifications.invitations.count", defaultValue: "Invitations (\($0))", comment: "Notifications: invitations button with a count; %lld = invitations waiting for an answer") : String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list") } ?? String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list"),
                  identifier: "notifications.invitations", chevron: true) { DIPHaptics.navigate(); onOpenInvitations() }
-                .accessibilityLabel(invitesWaiting.map { $0 > 0 ? "Invitations, \($0) waiting for an answer" : "Invitations" } ?? "Invitations")
+                .accessibilityLabel(invitesWaiting.map { $0 > 0 ? String(localized: "notifications.invitations.a11y", defaultValue: "Invitations, \($0) waiting for an answer", comment: "VoiceOver label of the invitations button; %lld = invitations waiting for an answer") : String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list") } ?? String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list"))
         }
         if showMarkAll {
-            pill(model.isMarkingAll ? "Marking…" : "Mark all as read", identifier: "notifications.markall") {
+            pill(model.isMarkingAll ? String(localized: "notifications.markAll.working", defaultValue: "Marking…", comment: "Notifications: mark-all button while working") : String(localized: "notifications.markAll", defaultValue: "Mark all as read", comment: "Notifications: button that marks every notification as read"), identifier: "notifications.markall") {
                 DIPHaptics.commit()
                 Task {
                     let done = await model.markAllRead()
-                    if done { DIPHaptics.success(); AccessibilityNotification.Announcement("All notifications marked as read").post() }
+                    if done { DIPHaptics.success(); AccessibilityNotification.Announcement(String(localized: "notifications.markAll.announce", defaultValue: "All notifications marked as read", comment: "VoiceOver announcement after marking all notifications read")).post() }
                     else { DIPHaptics.failure() }
                 }
             }
@@ -123,7 +123,7 @@ struct DIPNotificationsScreen: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
                 Label {
-                    Text(prompt == .turnOn ? "Get updates when plans change" : "Notifications are turned off")
+                    Text(prompt == .turnOn ? String(localized: "notifications.permission.turnOn.title", defaultValue: "Get updates when plans change", comment: "Notifications: permission banner title when permission was never asked") : String(localized: "notifications.permission.denied.title", defaultValue: "Notifications are turned off", comment: "Notifications: permission banner title when notifications are denied in iOS"))
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
                 } icon: { Image(systemName: "bell.slash").accessibilityHidden(true) }
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
@@ -135,12 +135,12 @@ struct DIPNotificationsScreen: View {
                 .accessibilityLabel("Dismiss").accessibilityIdentifier("notifications.permission.dismiss")
             }
             Text(prompt == .turnOn
-                 ? "Turn on notifications and we’ll tell you when an activity changes or is about to start."
-                 : "You’ll still see updates here. To get them on your phone too, allow notifications in Settings.")
+                 ? String(localized: "notifications.permission.turnOn.message", defaultValue: "Turn on notifications and we’ll tell you when an activity changes or is about to start.", comment: "Notifications: permission banner message when permission was never asked")
+                 : String(localized: "notifications.permission.denied.message", defaultValue: "You’ll still see updates here. To get them on your phone too, allow notifications in Settings.", comment: "Notifications: permission banner message when notifications are denied in iOS"))
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
                 .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                 .fixedSize(horizontal: false, vertical: true)
-            pill(prompt == .turnOn ? "Turn on" : "Open Settings", identifier: "notifications.permission.action") {
+            pill(prompt == .turnOn ? String(localized: "notifications.permission.turnOn.button", defaultValue: "Turn on", comment: "Notifications: permission banner button that asks for permission") : String(localized: "notifications.permission.openSettings", defaultValue: "Open Settings", comment: "Notifications: permission banner button that opens iOS Settings"), identifier: "notifications.permission.action") {
                 DIPHaptics.select(); onPermission()
             }
             if let onOpenSettings {
@@ -176,12 +176,12 @@ struct DIPNotificationsScreen: View {
         switch model.phase {
         case .loading: loading
         case .failed(let message):
-            DIPEmptyState(screen: "notifications-error", title: "Couldn’t load notifications", message: message, faces: 3,
-                          actionTitle: "Try again", action: { DIPHaptics.commit(); onRetry() })
+            DIPEmptyState(screen: "notifications-error", title: String(localized: "notifications.error.title", defaultValue: "Couldn’t load notifications", comment: "Notifications: error state title"), message: message, faces: 3,
+                          actionTitle: String(localized: "notifications.error.retry", defaultValue: "Try again", comment: "Notifications: retry button on the error state"), action: { DIPHaptics.commit(); onRetry() })
         case .ready:
             if model.isEmpty {
-                DIPEmptyState(screen: "notifications", title: "No notifications yet",
-                              message: "Updates about your activities, invitations and challenges show up here.", faces: 3)
+                DIPEmptyState(screen: "notifications", title: String(localized: "notifications.empty.title", defaultValue: "No notifications yet", comment: "Notifications: empty state title"),
+                              message: String(localized: "notifications.empty.message", defaultValue: "Updates about your activities, invitations and challenges show up here.", comment: "Notifications: empty state message"), faces: 3)
             } else { list }
         }
     }
@@ -212,7 +212,7 @@ struct DIPNotificationsScreen: View {
         return VStack(alignment: .leading, spacing: 18) {
             ForEach(sections, id: \.group) { section in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(section.group.rawValue)
+                    Text(section.group.localizedTitle)
                         .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
                         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
                         .accessibilityAddTraits(.isHeader)
@@ -233,7 +233,7 @@ struct DIPNotificationsScreen: View {
         if model.canLoadMore {
             VStack(spacing: 8) {
                 if let error = model.loadMoreError { InviteNotice(text: error, identifier: "notifications.more.error") }
-                pill(model.loadingMore ? "Loading…" : model.loadMoreError == nil ? "Load more" : "Try again",
+                pill(model.loadingMore ? String(localized: "notifications.more.loading", defaultValue: "Loading…", comment: "Notifications: load-more button while loading") : model.loadMoreError == nil ? String(localized: "notifications.more", defaultValue: "Load more", comment: "Notifications: button to load older notifications") : String(localized: "notifications.more.retry", defaultValue: "Try again", comment: "Notifications: load-more retry after a failure"),
                      identifier: "notifications.more") { DIPHaptics.select(); Task { await model.loadMore() } }
                     .disabled(model.loadingMore)
             }
@@ -279,7 +279,7 @@ struct DIPNotificationsScreen: View {
         }
         .buttonStyle(DIPPressFeedbackStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.isRead ? "" : "Unread: ")\(item.title). \(item.body) \(time)")
+        .accessibilityLabel(item.isRead ? "\(item.title). \(item.body) \(time)" : String(localized: "notifications.row.a11y.unread", defaultValue: "Unread: \(item.title). \(item.body) \(time)", comment: "VoiceOver label of an unread notification row; %1$@ = title, %2$@ = body, %3$@ = relative time"))
         .accessibilityHint(Self.hint(item.destination))
         .accessibilityAddTraits(.isButton)
         .accessibilityActions {
@@ -318,10 +318,10 @@ struct DIPNotificationsScreen: View {
 
     static func hint(_ destination: DIPNotificationDestination) -> String {
         switch destination {
-        case .event: "Opens the activity"
-        case .invitations: "Opens your invitations"
-        case .challenge: "Opens the challenge"
-        case .album: "Opens the photo album"
+        case .event: String(localized: "notifications.hint.event", defaultValue: "Opens the activity", comment: "VoiceOver hint on a notification that opens an activity")
+        case .invitations: String(localized: "notifications.hint.invitations", defaultValue: "Opens your invitations", comment: "VoiceOver hint on a notification that opens invitations")
+        case .challenge: String(localized: "notifications.hint.challenge", defaultValue: "Opens the challenge", comment: "VoiceOver hint on a notification that opens the weekly challenge")
+        case .album: String(localized: "notifications.hint.album", defaultValue: "Opens the photo album", comment: "VoiceOver hint on a notification that opens a photo album")
         case .none: ""
         }
     }

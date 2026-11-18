@@ -147,10 +147,10 @@ struct DIPProfileScreen: View {
 
     @ViewBuilder private var profileActions: some View {
         if let onOpenNotificationSettings {
-            actionRow("Notifications", symbol: "bell", identifier: "profile.notifications", action: onOpenNotificationSettings)
+            actionRow(String(localized: "profile.notifications.row", defaultValue: "Notifications", comment: "Profile: row that opens notification settings"), symbol: "bell", identifier: "profile.notifications", action: onOpenNotificationSettings)
         }
         if let onReplayTour {
-            actionRow("How DIP works", symbol: "sparkles", identifier: "profile.howDIPWorks", action: onReplayTour)
+            actionRow(String(localized: "profile.howDIPWorks.row", defaultValue: "How DIP works", comment: "Profile: row that replays the onboarding tour"), symbol: "sparkles", identifier: "profile.howDIPWorks", action: onReplayTour)
         }
         if calendar.featureEnabled, calendar.device != nil {
             calendarSection
@@ -159,7 +159,7 @@ struct DIPProfileScreen: View {
             reportProblem(presentBugReport)
         }
         if let onSignOut {
-            DIPButton(isSigningOut ? "Signing out…" : "Sign out", emphasis: .secondary,
+            DIPButton(isSigningOut ? String(localized: "profile.signOut.working", defaultValue: "Signing out…", comment: "Profile: sign out button while signing out") : String(localized: "profile.signOut", defaultValue: "Sign out", comment: "Profile: sign out button"), emphasis: .secondary,
                 isLoading: isSigningOut) {
                 guard !isSigningOut else { return }
                 DIPHaptics.commit()
@@ -176,10 +176,10 @@ struct DIPProfileScreen: View {
     /// Why conflicts cannot work right now, in the words of the iOS state; nil when there is nothing to fix in Settings.
     private var calendarAccessCopy: String? {
         switch calendar.access {
-        case .denied: "Calendar access is off for DIP in iOS Settings."
-        case .restricted: "Calendar access is restricted on this iPhone (for example by Screen Time or a device profile), so DIP can’t check for conflicts."
-        case .writeOnly: "DIP can add events to your calendar, but checking for conflicts needs full access. Allow full access in iOS Settings."
-        case .notDetermined, .fullAccess: calendar.accessDeniedNotice ? "Calendar access is off for DIP in iOS Settings." : nil
+        case .denied: String(localized: "profile.calendar.accessOff", defaultValue: "Calendar access is off for DIP in iOS Settings.", comment: "Profile calendar section: calendar permission denied in iOS")
+        case .restricted: String(localized: "profile.calendar.restricted", defaultValue: "Calendar access is restricted on this iPhone (for example by Screen Time or a device profile), so DIP can’t check for conflicts.", comment: "Profile calendar section: calendar permission restricted by the device")
+        case .writeOnly: String(localized: "profile.calendar.writeOnly", defaultValue: "DIP can add events to your calendar, but checking for conflicts needs full access. Allow full access in iOS Settings.", comment: "Profile calendar section: only write access to the calendar was granted")
+        case .notDetermined, .fullAccess: calendar.accessDeniedNotice ? String(localized: "profile.calendar.accessOff", defaultValue: "Calendar access is off for DIP in iOS Settings.", comment: "Profile calendar section: calendar permission denied in iOS") : nil
         }
     }
 
@@ -232,7 +232,7 @@ struct DIPProfileScreen: View {
                     .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.72))
                     .accessibilityIdentifier("profile.calendarAccessCopy")
-                DIPButton("Open Settings", emphasis: .secondary) {
+                DIPButton(String(localized: "profile.calendar.openSettings", defaultValue: "Open Settings", comment: "Profile calendar section: button that opens iOS Settings"), emphasis: .secondary) {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
                 .accessibilityIdentifier("profile.calendarSettings")
@@ -298,7 +298,7 @@ struct DIPProfileScreen: View {
                             in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
                 .accessibilityIdentifier("profile.shakeAskFirst")
             }
-            DIPButton("Report a problem", emphasis: .secondary) { present(.profile) }
+            DIPButton(String(localized: "profile.report.button", defaultValue: "Report a problem", comment: "Profile: button that opens the report a problem sheet"), emphasis: .secondary) { present(.profile) }
                 .accessibilityIdentifier("profile.reportProblem")
         }
     }
@@ -329,12 +329,14 @@ struct DIPProfileScreen: View {
                     .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 24, relativeTo: .title2))
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                     .accessibilityAddTraits(.isHeader)
+                    // Hidden demo language switch (long press 2 s; docs/design/ios-i18n.md). Adds no pixels.
+                    .demoLanguageTrigger()
                 Spacer(minLength: 8)
             }
             if profile.favoriteMemories.isEmpty {
                 DIPEmptyState(
-                    screen: "profile-memories", title: "No favorite memories yet",
-                    message: "Favorite a photo from a past event and it will show up here.")
+                    screen: "profile-memories", title: String(localized: "profile.memories.empty.title", defaultValue: "No favorite memories yet", comment: "Profile: empty state title for favorite memories"),
+                    message: String(localized: "profile.memories.empty.message", defaultValue: "Favorite a photo from a past event and it will show up here.", comment: "Profile: empty state message for favorite memories"))
             } else {
                 LazyVGrid(
                     columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
@@ -397,17 +399,17 @@ struct DIPProfileScreen: View {
 
     /// Icon-row wording on the profile: "Events within 20 miles".
     nonisolated static func radiusPhrase(_ miles: Int) -> String {
-        miles == 1 ? "Events within 1 mile" : "Events within \(miles) miles"
+        String(localized: "profile.radius.phrase", defaultValue: "Events within \(miles) miles", comment: "Profile details row: travel radius; %lld = miles")
     }
 
     nonisolated static func radiusLabel(_ miles: Int) -> String {
-        miles == 1 ? "Within 1 mile" : "Within \(miles) miles"
+        String(localized: "profile.radius.label", defaultValue: "Within \(miles) miles", comment: "Profile edit form: travel radius choice; %lld = miles")
     }
 
     private var interestOptions: [DIPInterest] {
         let known = Set(profile.interestCatalog.map(\.id))
         let missing = profile.interestTagIDs.filter { !known.contains($0) }.map {
-            DIPInterest(id: $0, name: "Unavailable interest", sortOrder: Int.max)
+            DIPInterest(id: $0, name: String(localized: "profile.interest.unavailable", defaultValue: "Unavailable interest", comment: "Profile: name shown for a saved interest that no longer exists in the catalog"), sortOrder: Int.max)
         }
         return profile.interestCatalog.sorted {
             $0.sortOrder == $1.sortOrder ? $0.id < $1.id : $0.sortOrder < $1.sortOrder
@@ -459,11 +461,11 @@ struct DIPProfileScreen: View {
                     // Visible labels: a filled field otherwise loses its placeholder, and
                     // "Cool cat" vs "SWE" can't be told apart.
                     if profile.hasAccountDetails {
-                        labeledField("Job title", text: $draftJobTitle, id: "profile.edit.jobTitle")
+                        labeledField(String(localized: "profile.edit.jobTitle", defaultValue: "Job title", comment: "Profile edit form: field label"), text: $draftJobTitle, id: "profile.edit.jobTitle")
                             .textContentType(.jobTitle)
                     }
-                    labeledField("Department", text: $draftDepartment, id: "profile.edit.department")
-                    labeledField("City", text: $draftCity, id: "profile.edit.city")
+                    labeledField(String(localized: "profile.edit.department", defaultValue: "Department", comment: "Profile edit form: field label"), text: $draftDepartment, id: "profile.edit.department")
+                    labeledField(String(localized: "profile.edit.city", defaultValue: "City", comment: "Profile edit form: field label"), text: $draftCity, id: "profile.edit.city")
                         .textContentType(.addressCity)
                 }
                 Section("Interests") {
@@ -518,7 +520,7 @@ struct DIPProfileScreen: View {
                     .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving…" : "Save") {
+                    Button(isSaving ? String(localized: "profile.edit.saving", defaultValue: "Saving…", comment: "Profile edit form: save button while saving") : String(localized: "profile.edit.save", defaultValue: "Save", comment: "Profile edit form: save button")) {
                         Task { await saveProfile() }
                     }
                     .disabled(isSaving)
@@ -562,8 +564,8 @@ struct DIPProfileScreen: View {
             isEditing = false
         } catch {
             DIPHaptics.failure()
-            saveError = "Your profile could not be saved. Try again."
-            AccessibilityNotification.Announcement("Your profile could not be saved. Try again.").post()
+            saveError = String(localized: "profile.edit.error", defaultValue: "Your profile could not be saved. Try again.", comment: "Profile edit form: error after saving failed")
+            AccessibilityNotification.Announcement(saveError ?? "").post()
         }
     }
 }
@@ -576,7 +578,7 @@ private struct DraftInterestsRow: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            LabeledContent("Choose interests", value: "\(selection.count) selected")
+            LabeledContent("Choose interests", value: String(localized: "profile.edit.interests.selected", defaultValue: "\(selection.count) selected", comment: "Profile edit form: number of interests chosen; %lld = count"))
         }
     }
 }

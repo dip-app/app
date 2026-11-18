@@ -16,13 +16,13 @@ enum RsvpFailure: Error, Equatable {
 
     var message: String {
         switch self {
-        case .full: "This event is full."
-        case .closed: "This event has already started or was cancelled."
-        case .notFound: "This event no longer exists."
-        case .notMember: "You can only join events at your company."
-        case .unauthenticated: "Please sign in again."
-        case .unavailable: "You're offline. Check your connection and try again."
-        case .unknown: "Couldn’t change your RSVP. Please try again."
+        case .full: String(localized: "event.rsvp.error.full", defaultValue: "This event is full.", comment: "Join/leave error: event is full")
+        case .closed: String(localized: "event.rsvp.error.closed", defaultValue: "This event has already started or was cancelled.", comment: "Join/leave error: event already started or cancelled")
+        case .notFound: String(localized: "event.rsvp.error.notFound", defaultValue: "This event no longer exists.", comment: "Join/leave error: event deleted")
+        case .notMember: String(localized: "event.rsvp.error.notMember", defaultValue: "You can only join events at your company.", comment: "Join/leave error: event belongs to another company")
+        case .unauthenticated: String(localized: "error.signInAgain", defaultValue: "Please sign in again.", comment: "User-facing error: the session expired, shown near the action that failed")
+        case .unavailable: String(localized: "event.rsvp.error.unavailable", defaultValue: "You're offline. Check your connection and try again.", comment: "Join/leave error: no connection")
+        case .unknown: String(localized: "event.rsvp.error.unknown", defaultValue: "Couldn’t change your RSVP. Please try again.", comment: "Join/leave error: unexpected failure")
         }
     }
 }

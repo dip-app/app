@@ -44,8 +44,16 @@ final class OnboardingInterestsModel {
         case skipped
     }
 
-    static let catalogFailedMessage = "Your interests couldn’t load. You can add them in Profile anytime."
-    static let saveFailedMessage = "Couldn’t save your interests. Your choices are kept."
+    static var catalogFailedMessage: String {
+        String(localized: "onboarding.interests.catalogFailed",
+               defaultValue: "Your interests couldn’t load. You can add them in Profile anytime.",
+               comment: "Onboarding interests step: shown when the interest list fails to load")
+    }
+    static var saveFailedMessage: String {
+        String(localized: "onboarding.interests.saveFailed",
+               defaultValue: "Couldn’t save your interests. Your choices are kept.",
+               comment: "Onboarding interests step: shown when saving the selected interests fails")
+    }
     static let maximumSelection = InterestSelectionRules.maximumSelection
 
     private(set) var catalogState: InterestCatalog.State
@@ -107,7 +115,8 @@ final class OnboardingInterestsModel {
         })
         let known = Set(catalog.map(\.id))
         let missing = storedIDs.filter { !known.contains($0) }.map {
-            DIPInterest(id: $0, name: "Unavailable interest", sortOrder: Int.max)
+            DIPInterest(id: $0, name: String(localized: "onboarding.interests.unavailable", defaultValue: "Unavailable interest",
+                         comment: "Name shown for a stored interest that is no longer in the catalog"), sortOrder: Int.max)
         }
         return catalog + missing
     }
@@ -122,16 +131,23 @@ final class OnboardingInterestsModel {
 
     var bar: Bar {
         if isSaving {
-            return Bar(action: .saving, title: "Saving…", isAccent: true, isEnabled: false, showsProgress: true)
+            return Bar(action: .saving, title: String(localized: "onboarding.interests.bar.saving", defaultValue: "Saving…",
+                                                      comment: "Onboarding interests bottom bar while saving"),
+                       isAccent: true, isEnabled: false, showsProgress: true)
         }
         if saveErrorMessage != nil {
-            return Bar(action: .retry, title: "Try again", isAccent: false, isEnabled: outcome == nil, showsProgress: false)
+            return Bar(action: .retry, title: String(localized: "onboarding.interests.bar.retry", defaultValue: "Try again",
+                                                     comment: "Onboarding interests bottom bar after a failed save"),
+                       isAccent: false, isEnabled: outcome == nil, showsProgress: false)
         }
         if catalog == .ready, !selection.isEmpty {
-            return Bar(action: .saveAndStart, title: "Save and start", isAccent: true,
-                       isEnabled: outcome == nil, showsProgress: false)
+            return Bar(action: .saveAndStart, title: String(localized: "onboarding.interests.bar.saveAndStart", defaultValue: "Save and start",
+                                                            comment: "Onboarding interests bottom bar when interests are selected"),
+                       isAccent: true, isEnabled: outcome == nil, showsProgress: false)
         }
-        return Bar(action: .startExploring, title: "Start exploring", isAccent: false,
+        return Bar(action: .startExploring, title: String(localized: "onboarding.interests.bar.startExploring", defaultValue: "Start exploring",
+                                                          comment: "Onboarding interests bottom bar when nothing is selected"),
+                   isAccent: false,
                    isEnabled: outcome == nil, showsProgress: false)
     }
 
@@ -160,7 +176,8 @@ final class OnboardingInterestsModel {
         guard canEdit, newValue != selection, newValue.count <= Self.maximumSelection else { return }
         selection = newValue
         saveErrorMessage = nil
-        announcement = newValue.count == 1 ? "1 interest selected" : "\(newValue.count) interests selected"
+        announcement = String(localized: "onboarding.interests.selectedCount", defaultValue: "\(newValue.count) interests selected",
+                              comment: "VoiceOver announcement after toggling an interest; %lld = number of selected interests")
     }
 
     /// The bar's one action: save (or retry the save) when there is a change, otherwise finish.

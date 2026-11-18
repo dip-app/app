@@ -69,7 +69,7 @@ struct DIPChallengeSubmissionSheet: View {
         .onChange(of: pickerItem) { _, item in importPhoto(item) }
         .onChange(of: model.submittedCount) { _, _ in
             DIPHaptics.success()
-            announce("Entry sent")
+            announce(String(localized: "challenge.submit.announce.sent", defaultValue: "Entry sent", comment: "VoiceOver announcement after a challenge entry was sent"))
             dismiss()
         }
         .onChange(of: model.failure) { _, failure in
@@ -78,13 +78,13 @@ struct DIPChallengeSubmissionSheet: View {
         }
     }
 
-    static let uploadFailedMessage = "Your photo didn’t upload. Try again, or send without it."
+    static var uploadFailedMessage: String { String(localized: "challenge.submit.error.uploadFailed", defaultValue: "Your photo didn’t upload. Try again, or send without it.", comment: "Challenge entry sheet: error banner after the photo upload failed") }
 
     // MARK: Sections
 
     private var header: some View {
         HStack(spacing: DIPTokens.Spacing.related) {
-            DIPHeader(title: model.submission == nil ? "Add your entry" : "Update your entry")
+            DIPHeader(title: model.submission == nil ? String(localized: "challenge.submit.title.add", defaultValue: "Add your entry", comment: "Challenge entry sheet title for a new entry") : String(localized: "challenge.submit.title.update", defaultValue: "Update your entry", comment: "Challenge entry sheet title when editing an existing entry"))
             Button {
                 if model.needsDiscardConfirmation { showsDiscard = true } else { dismiss() }
             } label: {
@@ -135,9 +135,9 @@ struct DIPChallengeSubmissionSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("submission.explain")
             VStack(alignment: .leading, spacing: 8) {
-                fact("target", "Goal", model.goalText)
-                fact("calendar", "Window", model.challenge.timing)
-                if let reward = model.challenge.rewardText { fact("gift", "Reward", reward) }
+                fact("target", String(localized: "challenge.fact.goal", defaultValue: "Goal", comment: "Challenge page: label for the goal pill (VoiceOver reads Goal: value)"), model.goalText)
+                fact("calendar", String(localized: "challenge.fact.window", defaultValue: "Window", comment: "Challenge entry sheet: label for the date window of the challenge"), model.challenge.timing)
+                if let reward = model.challenge.rewardText { fact("gift", String(localized: "challenge.fact.reward", defaultValue: "Reward", comment: "Challenge page: label for the reward pill (VoiceOver reads Reward: value)"), reward) }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -162,19 +162,19 @@ struct DIPChallengeSubmissionSheet: View {
     /// -/+ buttons for exact values. No keyboard. VoiceOver adjusts it like any slider; the buttons are labelled.
     private var progressControl: some View {
         VStack(alignment: .leading, spacing: 10) {
-            label("How much did you do?", hint: "Goal: \(model.goalText)")
+            label(String(localized: "challenge.submit.progress.title", defaultValue: "How much did you do?", comment: "Challenge entry sheet: heading above the progress control"), hint: String(localized: "challenge.submit.progress.goalHint", defaultValue: "Goal: \(model.goalText)", comment: "Challenge entry sheet: goal reminder; %@ = goal text e.g. 3 workouts"))
             VStack(spacing: 14) {
                 VStack(spacing: 2) {
                     Text(DIPSubmissionDraft.format(model.progressValue))
                         .font(DIPReferenceAssets.font("FjallaOne-Regular", size: 56, relativeTo: .largeTitle))
                         .foregroundStyle(ink).minimumScaleFactor(0.5).lineLimit(1)
                         .contentTransition(.numericText())
-                    Text(model.canIncrease ? unitText : "\(unitText) · goal reached").font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
+                    Text(model.canIncrease ? unitText : String(localized: "challenge.submit.progress.goalReached", defaultValue: "\(unitText) · goal reached", comment: "Challenge entry sheet: unit line when the goal is reached; %@ = unit text like of 3 workouts")).font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .body))
                         .foregroundStyle(ink.opacity(0.72)).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(DIPSubmissionDraft.format(model.progressValue)) of \(model.goalText)")
+                .accessibilityLabel(unitSummary)
                 .accessibilityIdentifier("submission.progress.value")
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) { stepButton(-1); slider; stepButton(1) }
@@ -207,7 +207,7 @@ struct DIPChallengeSubmissionSheet: View {
                 .tint(accent)
                 .frame(minHeight: DIPTokens.Spacing.minimumTouchTarget)
                 .accessibilityLabel("How much did you do")
-                .accessibilityValue("\(DIPSubmissionDraft.format(model.progressValue)) of \(model.goalText)")
+                .accessibilityValue(unitSummary)
                 .accessibilityIdentifier("submission.progress.slider")
         }
     }
@@ -223,16 +223,20 @@ struct DIPChallengeSubmissionSheet: View {
         }
         .buttonStyle(DIPPressFeedbackStyle())
         .disabled(!enabled)
-        .accessibilityLabel(direction < 0 ? "Decrease" : "Increase")
+        .accessibilityLabel(direction < 0 ? String(localized: "challenge.submit.progress.decrease", defaultValue: "Decrease", comment: "VoiceOver label of the minus button on the progress control") : String(localized: "challenge.submit.progress.increase", defaultValue: "Increase", comment: "VoiceOver label of the plus button on the progress control"))
         .accessibilityValue(DIPSubmissionDraft.format(model.progressValue))
         .accessibilityIdentifier(direction < 0 ? "submission.progress.decrease" : "submission.progress.increase")
     }
 
-    private var unitText: String { "of \(model.goalText)" }
+    private var unitText: String { String(localized: "challenge.submit.progress.unit", defaultValue: "of \(model.goalText)", comment: "Challenge entry sheet: unit line under the big number; %@ = goal text e.g. 3 workouts") }
+
+    private var unitSummary: String {
+        String(localized: "challenge.progressOfGoal", defaultValue: "\(DIPSubmissionDraft.format(model.progressValue)) of \(model.goalText)", comment: "Progress summary; first %@ = amount done, second %@ = goal text e.g. 3 workouts")
+    }
 
     private func noteField(_ text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            label("Add a note", hint: "Optional")
+            label(String(localized: "challenge.submit.note.title", defaultValue: "Add a note", comment: "Challenge entry sheet: heading of the note field"), hint: String(localized: "challenge.submit.optional", defaultValue: "Optional", comment: "Challenge entry sheet: hint next to optional fields"))
             TextField("", text: text, prompt: Text("What did you do, and who joined you?"), axis: .vertical)
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 16, relativeTo: .body))
                 .foregroundStyle(ink)
@@ -257,13 +261,13 @@ struct DIPChallengeSubmissionSheet: View {
 
     private var photoSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            label("Add a photo", hint: "Optional")
+            label(String(localized: "challenge.submit.photo.title", defaultValue: "Add a photo", comment: "Challenge entry sheet: heading of the photo section"), hint: String(localized: "challenge.submit.optional", defaultValue: "Optional", comment: "Challenge entry sheet: hint next to optional fields"))
             if let thumbnail = model.photo?.thumbnail, let image = Self.image(from: thumbnail) {
-                photoRow(Image(uiImage: image), title: "Photo ready to send")
+                photoRow(Image(uiImage: image), title: String(localized: "challenge.submit.photo.ready", defaultValue: "Photo ready to send", comment: "Challenge entry sheet: row shown once a photo was picked"))
             } else if model.keepsExistingPhoto {
                 existingPhoto
             } else {
-                DIPButton("Choose a photo", emphasis: .secondary, isLoading: model.phase == .preparingPhoto) {
+                DIPButton(String(localized: "challenge.submit.photo.choose", defaultValue: "Choose a photo", comment: "Challenge entry sheet: button to pick a photo"), emphasis: .secondary, isLoading: model.phase == .preparingPhoto) {
                     focus = nil; showsPicker = true
                 }
                 .accessibilityHint(DIPSubmissionCopy.photoRules)
@@ -293,7 +297,7 @@ struct DIPChallengeSubmissionSheet: View {
                 case .failed:
                     VStack(spacing: 10) {
                         Text("Couldn’t load your photo.").font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline)).foregroundStyle(ink)
-                        DIPButton("Try again", emphasis: .secondary) { DIPHaptics.select(); Task { await model.loadEvidence(force: true) } }
+                        DIPButton(String(localized: "challenge.entry.photo.retry", defaultValue: "Try again", comment: "Your entry card: retry loading the submitted photo"), emphasis: .secondary) { DIPHaptics.select(); Task { await model.loadEvidence(force: true) } }
                             .accessibilityIdentifier("submission.existing.retry")
                     }
                     .frame(maxWidth: .infinity).padding(16)
@@ -305,7 +309,7 @@ struct DIPChallengeSubmissionSheet: View {
             }
             .accessibilityIdentifier("submission.existing.preview")
             HStack(spacing: 12) {
-                DIPButton("Replace photo", emphasis: .secondary, isLoading: model.phase == .preparingPhoto) {
+                DIPButton(String(localized: "challenge.submit.photo.replace", defaultValue: "Replace photo", comment: "Challenge entry sheet: button to replace the existing photo"), emphasis: .secondary, isLoading: model.phase == .preparingPhoto) {
                     focus = nil; showsPicker = true
                 }
                 .accessibilityIdentifier("submission.existing.replace")
@@ -366,9 +370,9 @@ struct DIPChallengeSubmissionSheet: View {
     private var review: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Review").font(DIPReferenceAssets.font("Figtree-Bold", size: 16, relativeTo: .headline)).accessibilityAddTraits(.isHeader)
-            summaryRow("Progress", model.draft.progress.map { "\(DIPSubmissionDraft.format($0)) of \(model.goalText)" } ?? "Not entered")
-            summaryRow("Note", model.draft.trimmedCaption.isEmpty ? "None" : model.draft.trimmedCaption)
-            summaryRow("Photo", model.hasPhoto ? "Attached" : "None")
+            summaryRow(String(localized: "challenge.review.progress", defaultValue: "Progress", comment: "Challenge entry review: label of the progress row"), model.draft.progress.map { String(localized: "challenge.progressOfGoal", defaultValue: "\(DIPSubmissionDraft.format($0)) of \(model.goalText)", comment: "Progress summary; first %@ = amount done, second %@ = goal text e.g. 3 workouts") } ?? String(localized: "challenge.review.notEntered", defaultValue: "Not entered", comment: "Challenge entry review: progress value when nothing was entered"))
+            summaryRow(String(localized: "challenge.review.note", defaultValue: "Note", comment: "Challenge entry review: label of the note row"), model.draft.trimmedCaption.isEmpty ? String(localized: "challenge.review.none", defaultValue: "None", comment: "Challenge entry review: value when there is no note or photo") : model.draft.trimmedCaption)
+            summaryRow(String(localized: "challenge.review.photo", defaultValue: "Photo", comment: "Challenge entry review: label of the photo row"), model.hasPhoto ? String(localized: "challenge.review.attached", defaultValue: "Attached", comment: "Challenge entry review: photo value when a photo is attached") : String(localized: "challenge.review.none", defaultValue: "None", comment: "Challenge entry review: value when there is no note or photo"))
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -416,7 +420,7 @@ struct DIPChallengeSubmissionSheet: View {
                     Text(message).font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
                 }
                 if failed, model.uploadFailed, model.hasPhoto {
-                    DIPButton("Send without photo", emphasis: .secondary) {
+                    DIPButton(String(localized: "challenge.submit.sendWithoutPhoto", defaultValue: "Send without photo", comment: "Challenge entry sheet: button after upload failure to send the entry without the photo"), emphasis: .secondary) {
                         DIPHaptics.commit(); Task { await model.sendWithoutPhoto() }
                     }
                     .accessibilityIdentifier("submission.send-without-photo")
@@ -434,9 +438,9 @@ struct DIPChallengeSubmissionSheet: View {
 
     private var barMessage: String? {
         switch model.phase {
-        case .preparingPhoto: "Getting your photo ready"
-        case .uploading(let value): "Uploading photo \(Int((value * 100).rounded()))%"
-        case .sending: "Sending your entry"
+        case .preparingPhoto: String(localized: "challenge.submit.status.preparing", defaultValue: "Getting your photo ready", comment: "Challenge entry sheet: status message while preparing a photo")
+        case .uploading(let value): String(localized: "challenge.submit.bar.uploading", defaultValue: "Uploading photo \(Int((value * 100).rounded()))%", comment: "Bottom bar status while the photo uploads; %lld = percent complete (0-100)")
+        case .sending: String(localized: "challenge.submit.status.sending", defaultValue: "Sending your entry", comment: "Challenge entry sheet: status message while sending the entry")
         case .failed(let failure): model.uploadFailed ? Self.uploadFailedMessage : failure.message
         case .idle: nil
         }

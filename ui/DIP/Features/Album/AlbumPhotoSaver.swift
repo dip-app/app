@@ -49,6 +49,8 @@ enum PhotoSaveOutcome: Equatable {
     /// Finished-run summary and whether the run stopped because access was denied (the screen reacts once).
     private(set) var lastRunSummary: String?
     private(set) var lastRunDenied = false
+    /// Whether the finished run counts as a success for haptics (not stopped and not a total failure).
+    private(set) var lastRunSucceeded = false
     @ObservationIgnored private let library: PhotoLibraryWriting
     @ObservationIgnored private var run: Task<Void, Never>?
 
@@ -57,13 +59,13 @@ enum PhotoSaveOutcome: Equatable {
     static func key(eventID: String, photoID: String) -> String { "\(eventID)/\(photoID)" }
     func isSaved(eventID: String, photoID: String) -> Bool { savedKeys.contains(Self.key(eventID: eventID, photoID: photoID)) }
     func isSaving(eventID: String, photoID: String) -> Bool { savingKey == Self.key(eventID: eventID, photoID: photoID) }
-    func clearRunResult() { lastRunSummary = nil; lastRunDenied = false }
+    func clearRunResult() { lastRunSummary = nil; lastRunDenied = false; lastRunSucceeded = false }
 
     /// One photo. A photo already saved in this session is not written twice.
     func save(eventID: String, photoID: String, load: Loader) async -> PhotoSaveOutcome {
         let key = Self.key(eventID: eventID, photoID: photoID)
         if savedKeys.contains(key) { return .alreadySaved }
-        guard savingKey == nil, !isSavingAll else { return .failed("Another save is in progress") }
+        guard savingKey == nil, !isSavingAll else { return .failed(String(localized: "album.save.error.busy", defaultValue: "Another save is in progress", comment: "Error when a photo save is requested while another save is running")) }
         savingKey = key
         defer { savingKey = nil }
         guard await library.requestAddAccess() else { return .denied }
@@ -73,7 +75,7 @@ enum PhotoSaveOutcome: Equatable {
             savedKeys.insert(key)
             return .saved
         } catch is CancellationError {
-            return .failed("Stopped")
+            return .failed(String(localized: "album.save.error.stopped", defaultValue: "Stopped", comment: "Shown when saving a photo to the Photos library was cancelled"))
         } catch {
             return .failed(Self.message(for: error))
         }
@@ -87,7 +89,7 @@ enum PhotoSaveOutcome: Equatable {
             photoIDs: photoIDs,
             alreadySaved: Set(photoIDs.filter { savedKeys.contains(Self.key(eventID: eventID, photoID: $0)) }))
         var state = DIPAlbumSaveProgress(total: plan.toSave.count, skipped: plan.skipped)
-        guard !plan.toSave.isEmpty else { lastRunSummary = state.summary; return }
+        guard !plan.toSave.isEmpty else { lastRunSummary = state.summary; lastRunSucceeded = true; return }
         isSavingAll = true
         progress = state
         run = Task { [weak self] in
@@ -121,11 +123,12 @@ enum PhotoSaveOutcome: Equatable {
         run = nil
         lastRunDenied = denied
         lastRunSummary = denied ? nil : state.summary
+        lastRunSucceeded = !denied && !state.cancelled && !(!state.failed.isEmpty && state.saved == 0)
     }
 
     nonisolated static func message(for error: Error) -> String {
-        if (error as? URLError)?.code == .notConnectedToInternet { return "You’re offline. Try again when you’re back online." }
-        return "Couldn’t save this photo. Try again."
+        if (error as? URLError)?.code == .notConnectedToInternet { return String(localized: "album.save.error.offline", defaultValue: "You’re offline. Try again when you’re back online.", comment: "Error when saving an album photo failed because the device is offline") }
+        return String(localized: "album.save.error.generic", defaultValue: "Couldn’t save this photo. Try again.", comment: "Error when saving an album photo to the Photos library failed")
     }
 
     /// Bytes for hosts without a Storage-backed loader (previews and fixtures): the photo as shown.
@@ -138,6 +141,6 @@ enum PhotoSaveOutcome: Equatable {
             if let data = renderer.uiImage?.jpegData(compressionQuality: 0.9) { return data }
         default: break
         }
-        throw DIPRepositoryError.notFound("This photo can’t be saved right now")
+        throw DIPRepositoryError.notFound(String(localized: "album.save.error.unavailable", defaultValue: "This photo can’t be saved right now", comment: "Error when an album photo has no image data to save"))
     }
 }

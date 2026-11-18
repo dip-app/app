@@ -379,7 +379,7 @@ struct DIPPrototypeApp: View {
         }
         .sheet(isPresented: $showChat) {
             DIPActivityChatScreen(
-                eventTitle: model.snapshot?.eventDetails[chatEventID]?.title ?? "Activity Chat",
+                eventTitle: model.snapshot?.eventDetails[chatEventID]?.title ?? String(localized: "event.bar.chat", defaultValue: "Activity Chat", comment: "Bottom action bar button on an activity screen: opens the activity chat"),
                 messages: model.snapshot?.messages[chatEventID] ?? [],
                 currentUserID: model.snapshot?.profile.id ?? "",
                 onSend: { try await model.sendMessage(eventID: chatEventID, messageID: $0, text: $1) },
@@ -457,7 +457,7 @@ struct DIPPrototypeApp: View {
             ContentUnavailableView {
                 Label("Couldn’t load your activities", systemImage: "wifi.exclamationmark")
             } description: {
-                Text(model.loadError ?? "Please try again.")
+                Text(model.loadError ?? String(localized: "shell.loadFailed.fallback", defaultValue: "Please try again.", comment: "Fallback message under the Couldn’t load your activities error when no reason is known"))
             } actions: {
                 Button("Retry") { observationID = UUID() }.accessibilityIdentifier("data.retry")
             }
@@ -500,7 +500,7 @@ struct DIPPrototypeApp: View {
                     onChallenge: { openRoute(.challenge($0)) }, onSelect: homeSelection,
                     onLoadMore: onLoadMoreEvents ?? Self.previewLoadMore, loadingMore: loadingMoreEvents || Self.previewLoadingMore,
                     paginationError: eventPaginationError,
-                    eventSectionTitle: eventReadsOnly ? "Upcoming events" : "This Week’s Events",
+                    eventSectionTitle: eventReadsOnly ? String(localized: "home.events.title.upcoming", defaultValue: "Upcoming events", comment: "Home section heading above the event cards when events are read only") : String(localized: "home.events.title", defaultValue: "This Week’s Events", comment: "Home section heading above the upcoming event cards"),
                     onRefresh: homeRefresh, challengeState: challengeFeed?.state,
                     onRetryChallenge: challengeFeed.map { feed in { Task { await feed.load() } } },
                     eventFilter: eventFilter, onFilterScope: { setHomeScope($0, uid: member.id, shown: matchingCount, total: eventFilter?.totalCount) },
@@ -564,7 +564,7 @@ struct DIPPrototypeApp: View {
     private func eventsPhase(_ snapshot: DIPAppSnapshot, hasEvents: Bool) -> DIPHomeEventsPhase {
         if let forced = Self.previewEventsPhase { return forced }
         if model.loadError != nil {
-            return hasEvents ? .offline : .failed("Check your connection and try again.")
+            return hasEvents ? .offline : .failed(String(localized: "home.events.error.message", defaultValue: "Check your connection and try again.", comment: "Home error state message when the events could not be loaded and nothing is cached"))
         }
         return model.isLoading && !hasEvents ? .loading : .ready
     }
@@ -711,7 +711,7 @@ struct DIPPrototypeApp: View {
     private func fixedHeader(_ snapshot: DIPAppSnapshot) -> some View {
         let away = selectedTab == .profile
         return DIPHomeHeader(
-            title: headerTab.rawValue, unreadCount: bellCount(snapshot),
+            title: headerTab.title, unreadCount: bellCount(snapshot),
             profileAvatar: {
                 // Hidden instantly while the flyer carries the avatar (no cross-fade ghost).
                 DIPMedia(snapshot.home.profileAvatar).opacity(isAvatarFlying ? 0 : 1)
@@ -799,7 +799,7 @@ struct DIPPrototypeApp: View {
     private func openNotifications() {
         if notifications != nil { showNotifications = true }
         else if invites != nil { showInvitations = true }
-        else { notice = "Notifications" }
+        else { notice = String(localized: "shell.notice.notifications", defaultValue: "Notifications", comment: "Feature name shown in the Not available yet alert: %@ is not connected yet") }
     }
 
     /// The bell's badge: unread notifications (live); without a notifications adapter, invitations waiting for an answer.
@@ -891,7 +891,7 @@ struct DIPPrototypeApp: View {
 
     private func openInvite(_ eventID: String) {
         guard let invites, inviteSession == nil else { return }
-        let title = model.snapshot?.eventDetails[eventID]?.title ?? "This activity"
+        let title = model.snapshot?.eventDetails[eventID]?.title ?? String(localized: "shell.invite.fallbackTitle", defaultValue: "This activity", comment: "Title used in the invite sheet when the activity name is not known")
         inviteSession = InviteSession(id: eventID, title: title, model: invites.makePicker(eventID: eventID))
     }
 
@@ -906,7 +906,7 @@ struct DIPPrototypeApp: View {
     private var bottomAction: DIPBottomBarAction? {
         if case .challenge? = routes.last { return challengeBar.action }
         if case .album(let id)? = routes.last, uploads.pendingCount(for: id) > 0 {
-            return DIPBottomBarAction(title: "Adding photos…", identifier: "album.add-photos", showsProgress: true)
+            return DIPBottomBarAction(title: String(localized: "album.bar.adding", defaultValue: "Adding photos…", comment: "Bottom action bar label on the album while photos are uploading"), identifier: "album.add-photos", showsProgress: true)
         }
         return EventBarAction.resolve(route: routes.last, snapshot: model.snapshot, isLoading: model.isLoading)
     }
@@ -948,7 +948,7 @@ struct DIPPrototypeApp: View {
     }
 
     private func join(_ eventID: String) {
-        guard !participationUnavailable else { notice = "RSVP"; return }
+        guard !participationUnavailable else { notice = String(localized: "shell.notice.rsvp", defaultValue: "RSVP", comment: "Feature name shown in the Not available yet alert: %@ is not connected yet"); return }
         changeRSVP(eventID, going: true)
     }
 
@@ -956,8 +956,8 @@ struct DIPPrototypeApp: View {
     nonisolated static func rsvpMessage(_ error: Error) -> String {
         switch error as? DIPRepositoryError {
         case .invalidInput(let message)?, .injectedFailure(let message)?: message
-        case .notFound?: "This event no longer exists."
-        case nil: "Couldn’t change your RSVP. Please try again."
+        case .notFound?: String(localized: "event.rsvp.error.notFound", defaultValue: "This event no longer exists.", comment: "Error when joining or leaving an event that was removed")
+        case nil: String(localized: "event.rsvp.error.generic", defaultValue: "Couldn’t change your RSVP. Please try again.", comment: "Error when joining or leaving an event failed")
         }
     }
 
@@ -975,7 +975,7 @@ struct DIPPrototypeApp: View {
 
     /// Synchronous gate before the optimistic flip; false means nothing was started.
     private func beginRSVP(_ eventID: String, going: Bool) -> Bool {
-        guard !participationUnavailable else { notice = "RSVP"; return false }
+        guard !participationUnavailable else { notice = String(localized: "shell.notice.rsvp", defaultValue: "RSVP", comment: "Feature name shown in the Not available yet alert: %@ is not connected yet"); return false }
         guard !model.pendingCommands.contains("rsvp:\(eventID)") else { return false }
         // Local reasonableness check before the optimistic flip: a refused change gets the failure haptic and
         // a clear message, and the state never changes.
@@ -1005,8 +1005,10 @@ struct DIPPrototypeApp: View {
 
     /// Spoken confirmation of a Join or Leave (the bar and Leave button change silently for VoiceOver users).
     nonisolated static func rsvpAnnouncement(title: String?, going: Bool) -> String {
-        let name = title.map { " \($0)" } ?? ""
-        return going ? "You joined\(name)" : "You left\(name)"
+        guard let title else {
+            return going ? String(localized: "event.rsvp.announce.joined", defaultValue: "You joined", comment: "VoiceOver announcement after joining an activity") : String(localized: "event.rsvp.announce.left", defaultValue: "You left", comment: "VoiceOver announcement after leaving an activity")
+        }
+        return going ? String(localized: "event.rsvp.announce.joinedTitled", defaultValue: "You joined \(title)", comment: "VoiceOver announcement after joining an activity; %@ = activity title") : String(localized: "event.rsvp.announce.leftTitled", defaultValue: "You left \(title)", comment: "VoiceOver announcement after leaving an activity; %@ = activity title")
     }
 
     @ViewBuilder private func destination(_ route: Route) -> some View {
@@ -1017,7 +1019,7 @@ struct DIPPrototypeApp: View {
                     DIPEventDetailsScreen(
                         event: event, joined: event.isJoined, showsBottomBar: false,
                         onJoin: { join(id) }, onBack: pop,
-                        onAttendees: { if participationUnavailable { notice = "Attendee lists" } else { pushRoute(.participants(id)) } }, onChat: { openChat(id) },
+                        onAttendees: { if participationUnavailable { notice = String(localized: "shell.notice.attendeeLists", defaultValue: "Attendee lists", comment: "Feature name shown in the Not available yet alert: %@ is not connected yet") } else { pushRoute(.participants(id)) } }, onChat: { openChat(id) },
                         photos: snapshot.albums[id]?.photos ?? [], onAlbum: { pushRoute(.album(id)) },
                         albumLoading: snapshot.albums[id].map { !$0.isLoaded && $0.loadError == nil } ?? false,
                         onLeave: { changeRSVP(id, going: false) },
@@ -1244,7 +1246,7 @@ struct DIPPrototypeApp: View {
         case "Profile": selectTab(.profile)
         case "My Events": selectTab(.events)
         case "Home": selectTab(.home)
-        case "Recent attendees": if eventReadsOnly { notice = "Attendee lists" } else { openRoute(.participants("puppy-yoga")) }
+        case "Recent attendees": if eventReadsOnly { notice = String(localized: "shell.notice.attendeeLists", defaultValue: "Attendee lists", comment: "Feature name shown in the Not available yet alert: %@ is not connected yet") } else { openRoute(.participants("puppy-yoga")) }
         default: notice = selection
         }
     }
