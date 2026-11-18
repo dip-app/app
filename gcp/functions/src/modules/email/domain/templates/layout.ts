@@ -128,11 +128,11 @@ ${MSO_STYLE}
 <style>${STYLE}${input.extraStyle ?? ""}
 </style>
 </head>
-<body class="bg-outer" style="margin:0;padding:0;background-color:#F6F7F9;">
+<body class="bg-outer" style="margin:0;padding:0;background-color:#F2F3FC;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${e(input.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#F6F7F9;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#F2F3FC;">
 ${header}
-<tr><td align="center" class="bg-outer" style="padding:24px 12px;background-color:#F6F7F9;">
+<tr><td align="center" class="bg-outer" style="padding:24px 12px;background-color:#F2F3FC;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container bg-card border" style="${input.fluid ? "width:100%;max-width:600px;" : "width:600px;max-width:600px;"}background-color:#FFFFFF;border:1px solid ${HAIRLINE};border-radius:8px;border-collapse:separate;overflow:hidden;">
 <tr><td class="px" style="padding:28px 28px 20px 28px;">
 ${input.main}
