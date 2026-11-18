@@ -6,8 +6,10 @@ import SwiftUI
 /// `\.dipDuoOpen` is true, which needs a hinge-reporting window at least `DIPDuoLayout.openMinWidth` wide; every other
 /// device keeps its existing layouts untouched.
 
-/// Pane geometry of the open shell: a navigation rail, a list pane and a detail pane that takes what is left.
+/// Pane geometry of the open shell: a list pane and a detail pane that takes what is left. The navigation rail sits in
+/// the sensor column (`DIPDuoSensor`), outside the content width.
 enum DIPDuoPaneLayout {
+    /// Rail column width when the window reports no sensor inset (never on a real Duo); normally the sensor's width.
     static let railWidth: CGFloat = 88
     /// A phone's width, so the list renders the phone cards at their designed 353 pt content width.
     static let listWidth: CGFloat = 393
@@ -16,7 +18,8 @@ enum DIPDuoPaneLayout {
     static let topInset: CGFloat = 20
     static let phoneTopInset: CGFloat = 60
 
-    static func detailWidth(total: CGFloat) -> CGFloat { max(0, total - railWidth - listWidth - dividerWidth) }
+    /// `total` is the content width beside the sensor column.
+    static func detailWidth(total: CGFloat) -> CGFloat { max(0, total - listWidth - dividerWidth) }
     static func topInset(open: Bool) -> CGFloat { open ? topInset : phoneTopInset }
     /// Space kept clear under scrolling content: the phone's floating bar needs 120 pt, the rail does not.
     static func bottomClearance(open: Bool, phone: CGFloat = 120) -> CGFloat { open ? 28 : phone }
@@ -124,9 +127,12 @@ struct DIPTabHeader<Avatar: View>: View {
     }
 }
 
-/// The left navigation rail: the four tabs in a floating ink capsule (white disc marks the selected tab) and the bell
-/// beneath them. Solid = pressable. Every target is at least 44 pt.
+/// The navigation rail, in the sensor column beside the status pill: the four tabs in a floating ink capsule (white disc
+/// marks the selected tab) and the bell beneath them. Solid = pressable. Every target is at least 44 pt.
 struct DIPDuoRail: View {
+    /// Column the rail is centred in; the capsule starts below the status pill.
+    var columnWidth: CGFloat = DIPDuoPaneLayout.railWidth
+    var topInset: CGFloat = DIPDuoPaneLayout.topInset
     let selected: DIPHomeTab
     let unreadCount: Int
     let onSelect: (DIPHomeTab) -> Void
@@ -184,8 +190,8 @@ struct DIPDuoRail: View {
         .padding(6).padding(.vertical, 4)
         .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
         .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: selected)
-        .padding(.leading, 14).padding(.trailing, 6).padding(.top, DIPDuoPaneLayout.topInset)
-        .frame(width: DIPDuoPaneLayout.railWidth, alignment: .top)
+        .padding(.top, topInset)
+        .frame(width: columnWidth, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Main navigation")

@@ -297,6 +297,9 @@ struct DIPPrototypeApp: View {
     @Environment(\.scenePhase) private var scenePhase
     /// True only on the iPhone Duo's open inner display (see DuoLayout.swift): the shell is then a rail plus panes.
     @Environment(\.dipDuoOpen) private var duoOpen
+    /// The sensor column the rail lives in (side from the safe area, so it follows rotation); nil outside the open Duo.
+    @Environment(\.dipDuoSensor) private var duoSensor
+    @Environment(\.dipDuoRailSlot) private var railSlot
     /// The route the shell itself put in the detail pane (the first event listed), not one the member or a link chose.
     /// Folding the Duo clears it, and only it, so a deliberate selection or deep link survives.
     @State private var duoAutoRoute: Route?
@@ -1130,12 +1133,21 @@ struct DIPPrototypeApp: View {
         return nil
     }
 
+    /// What the rail shows; the rail is republished to the sensor column whenever this changes.
+    private struct DuoRailState: Equatable { var selected: DIPHomeTab; var unread: Int; var disabled: Bool }
+
     private var duoShell: some View {
-        HStack(spacing: 0) {
-            DIPDuoRail(
-                selected: selectedTab, unreadCount: model.snapshot.map(bellCount) ?? 0,
-                onSelect: selectTab, onNotifications: openNotifications)
-                .disabled(isRSVPPending)
+        let rail = DIPDuoRail(
+            columnWidth: duoSensor?.width ?? DIPDuoPaneLayout.railWidth,
+            topInset: duoSensor == nil ? DIPDuoPaneLayout.topInset : DIPDuoSensor.pillClearance,
+            selected: selectedTab, unreadCount: model.snapshot.map(bellCount) ?? 0,
+            onSelect: selectTab, onNotifications: openNotifications)
+            .disabled(isRSVPPending)
+        let state = DuoRailState(selected: selectedTab, unread: model.snapshot.map(bellCount) ?? 0, disabled: isRSVPPending)
+        return HStack(spacing: 0) {
+            // Without a sensor inset the rail stays at the leading edge of the shell; on a Duo it is drawn in the sensor
+            // column, below the status pill, by the window (`DIPDuoRailSlot`), so the panes use the whole free width.
+            if railSlot == nil { rail }
             if let snapshot = model.snapshot {
                 duoPages(snapshot)
             } else {
@@ -1143,6 +1155,8 @@ struct DIPPrototypeApp: View {
             }
         }
         .background(Color.white)
+        .onChange(of: state, initial: true) { _, _ in railSlot?.rail = AnyView(rail) }
+        .onDisappear { railSlot?.rail = nil }
     }
 
     private func duoPage(_ tab: DIPHomeTab, _ pages: (DIPHomeTab) -> AnyView) -> some View {
