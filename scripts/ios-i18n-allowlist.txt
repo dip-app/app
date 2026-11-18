@@ -1,0 +1,20 @@
+# Reviewed exceptions for scripts/ios-i18n-check.py (file<TAB>trimmed line). Not user-facing or intentionally verbatim.
+ui/DIP/Features/EventDetails/DIPEventDetailsScreen.swift	metadataRow("calendar", title: "When", trailing: trailing) {
+ui/DIP/Features/EventDetails/DIPEventDetailsScreen.swift	metadataRow("mappin.and.ellipse", title: "Where", trailing: trailing) {
+ui/DIP/Features/EventDetails/DIPEventDetailsScreen.swift	metadataRow("star.fill", title: "Points", tint: DIPTokens.Color.notificationAccent.swiftUIColor) {
+ui/DIP/Features/EventDetails/DIPEventDetailsScreen.swift	metadataRow("ticket", title: "Price") {
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	DIPStateView(.empty(title: "No upcoming events", message: "Try another date or check back later."))
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	DIPStateView(.loading(message: "Loading upcoming events"))
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	message: "Account and profile workflows are owned by the accounts workstream.")
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	message: "Check your connection, then try loading the event list again."),
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	retryTitle: "Reload events"
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	title: "A very long coworker activity title that must wrap rather than be clipped",
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	title: "Components", person: person, avatar: avatarImage,
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	title: "Couldn't load events",
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	title: "No joined events",
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	title: "Profile preview",
+ui/DIP/Features/Foundation/DIPFoundationGallery.swift	title: "Puppy Yoga", dateText: "Thu, Nov 5 · 6:30–7:30 PM", locality: "Lawrenceville, PA",
+ui/DIP/Features/Rewards/DIPRewardsModels.swift	id: "nike", title: "Nike Athleisure", subtitle: String(localized: "rewards.nike.subtitle", defaultValue: "Limited Time Only!", comment: "Rewards discount card subtitle (mock content)"),
+ui/DIP/Features/Rewards/DIPRewardsModels.swift	id: "strava", title: "Strava Premium", subtitle: String(localized: "rewards.strava.subtitle", defaultValue: "Exclusive Offer!", comment: "Rewards discount card subtitle (mock content)"),
+ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Components/DIPConversationComponents.swift	Text("\(text.count)/\(limit)")
+ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Components/DIPHomeComponents.swift	Text("→").font(DIPReferenceAssets.font("Inter-Medium", size: 20))
