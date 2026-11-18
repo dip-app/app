@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { COVER_LIBRARY, THEMES, coverByURL, coverImage, coverThumb, lexicalPick, searchCovers } from "../covers";
+import { COVER_LIBRARY, THEMES, buildPickRequest, coverByURL, coverImage, coverThumb, lexicalPick, searchCovers } from "../covers";
 import { COVERS, coverFor } from "../catalog";
 import { buildMockDrafts } from "../ideasMock";
 import { createMockApi } from "../api";
@@ -133,5 +133,27 @@ describe("lexicalPick", () => {
     const drafts = buildMockDrafts({ focusTagIds: ["tag-games"], goal: "competition", groupSize: "team", setting: "indoors", budget: "under_15", timing: "weekday_lunch" }, "", 3);
     expect(new Set(drafts.map((d) => d.coverImageURL)).size).toBe(3);
     for (const d of drafts) expect(coverByURL(d.coverImageURL)).toBeDefined();
+  });
+});
+
+describe("buildPickRequest", () => {
+  it("sends only title for a draft opened in the editor with empty optional fields", () => {
+    expect(buildPickRequest({ title: "  Kayak day  ", description: "   ", tagIds: [], theme: "" })).toEqual({ title: "Kayak day" });
+    expect(buildPickRequest({ title: "Kayak day", theme: null, description: undefined })).toEqual({ title: "Kayak day" });
+  });
+  it("needs a title and caps text to the server limits", () => {
+    expect(buildPickRequest({ title: "   " })).toBeNull();
+    const out = buildPickRequest({ title: "t".repeat(300), description: "d".repeat(9000) })!;
+    expect([out.title.length, out.description!.length]).toEqual([120, 5000]);
+  });
+  it("de-duplicates and filters tag ids, caps at 10, and keeps only valid themes and catalog covers", () => {
+    const out = buildPickRequest({
+      title: "x", theme: "music", tagIds: ["a1", "a1", "bad id", "", ...Array.from({ length: 14 }, (_, i) => `t${i}`)],
+    }, ["catalog://default/games", "https://x.test/a.jpg", "catalog://default/games"])!;
+    expect(out.tagIds).toHaveLength(10);
+    expect(out.tagIds).not.toContain("bad id");
+    expect(out).toMatchObject({ theme: "music", excludeCoverImageURLs: ["catalog://default/games"] });
+    expect(buildPickRequest({ title: "x", theme: "sports" as never })).toEqual({ title: "x" });
+    for (const key of Object.keys(out)) expect(out[key as keyof typeof out]).not.toBeUndefined();
   });
 });

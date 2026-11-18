@@ -97,6 +97,30 @@ export interface PickEventCoverInput {
   theme?: CoverThemeKey;
   excludeCoverImageURLs?: string[];
 }
+const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+const COVER_URL_RE = /^catalog:\/\/(?:default\/[a-z]+|cover\/[a-z0-9]+(?:-[a-z0-9]+)*)$/;
+
+/**
+ * Builds a pickEventCoverV1 request that always satisfies the server's schema: trimmed and capped text, optional hints
+ * omitted when empty, tag ids de-duplicated and kept only when they look like ids, excluded covers only when they are
+ * `catalog://` URLs, and the theme only when it is one of the nine. Returns null when there is no title to go on.
+ */
+export function buildPickRequest(event: CoverEvent, exclude: readonly string[] = []): PickEventCoverInput | null {
+  const title = (event.title ?? "").trim().slice(0, 120).trim();
+  if (!title) return null;
+  const description = (event.description ?? "").trim().slice(0, 5000);
+  const tagIds = [...new Set((event.tagIds ?? []).filter((id): id is string => typeof id === "string" && ID_RE.test(id)))].slice(0, 10);
+  const excludeCoverImageURLs = [...new Set(exclude.filter((url) => COVER_URL_RE.test(url)))].slice(0, 10);
+  const theme = THEMES.find((t) => t.key === event.theme)?.key;
+  return {
+    title,
+    ...(description ? { description } : {}),
+    ...(tagIds.length ? { tagIds } : {}),
+    ...(theme ? { theme } : {}),
+    ...(excludeCoverImageURLs.length ? { excludeCoverImageURLs } : {}),
+  };
+}
+
 export type CoverPickSource = "dipbot" | "match" | "default";
 export interface PickEventCoverResult {
   coverImageURL: string;
