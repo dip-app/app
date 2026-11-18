@@ -280,8 +280,8 @@ $r-box: 8px;
   .ifu-content { display: grid; gap: 8px; min-width: 0; &[hidden] { display: none; } }
   .ifu-note { margin: 0; padding: 6px 12px; border-radius: $r-ctl; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .ifu-list { list-style: none; margin: 0; padding: 0 0 6px; display: flex; align-items: stretch; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: $line-strong transparent; }
-  .ifu-card { flex: 0 0 min(440px, 88%); scroll-snap-align: start; display: grid; grid-template-columns: clamp(120px, 42%, 188px) minmax(0, 1fr); min-height: 188px; box-sizing: border-box; background: $white; border: 1px solid $line-strong; border-radius: $r-ctl; overflow: hidden; }
-  .ifu-thumb { display: block; width: 100%; height: 100%; min-height: 0; align-self: stretch; object-fit: cover; background: $subtle; }
+  .ifu-card { flex: 0 0 min(440px, 88%); scroll-snap-align: start; display: grid; grid-template-columns: clamp(120px, 46%, 220px) minmax(0, 1fr); min-height: 188px; box-sizing: border-box; background: $white; border: 1px solid $line-strong; border-radius: $r-ctl; overflow: hidden; }
+  .ifu-thumb { display: block; width: 100%; height: 0; min-height: 100%; align-self: stretch; object-fit: cover; background: $subtle; }
   .ifu-body { display: grid; align-content: center; gap: 2px; min-width: 0; padding: 8px 10px; }
   .ifu-title { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ifu-why { margin: 0; font-size: 12.5px; line-height: 1.3; color: var(--muted); white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -312,10 +312,14 @@ $r-box: 8px;
     .ifu-refresh .dip-action-icon { display: none; }
     .ifu-when { white-space: normal; min-width: 0; line-height: 1.3; }
   }
-  // Phones: a narrower picture and a wider card, so the title can take two lines and the why line more room.
+  // Phones: a side-by-side picture can never be as wide as the card is tall, so the picture goes on top, full width and
+  // shorter than it is wide, and the text gets the whole card width (titles stay on one line, the why line takes two).
   @container ifu (max-width: 479px) {
-    .ifu-card { flex-basis: 88%; grid-template-columns: clamp(112px, 40%, 150px) minmax(0, 1fr); min-height: 190px; }
-    .ifu-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .ifu-card { flex-basis: 88%; grid-template-columns: minmax(0, 1fr); grid-template-rows: 124px auto; min-height: 0; }
+    .ifu-thumb { height: 124px; min-height: 0; }
+    .ifu-skeleton .ifu-thumb { height: 124px; }
+    .ifu-lines { min-height: 166px; box-sizing: border-box; align-content: start; }
+    .ifu-body { align-content: start; padding: 10px 12px; }
   }
   @media (max-width: 479px) { .ideas-head .credits-meter .credits-bar { display: none; } }
 
