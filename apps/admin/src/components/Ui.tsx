@@ -42,7 +42,7 @@ export function Empty({ title, body, action, art }: { title: string; body: strin
   return (
     <div className="empty">
       {/* eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images */}
-      {art && <img className="empty-art" src={art} alt="" width={120} height={90} />}
+      {art && <img className="empty-art" src={art} alt="" width={120} height={90} draggable={false} />}
       <h2>{title}</h2>
       <p>{body}</p>
       {action && <div className="empty-action">{action}</div>}

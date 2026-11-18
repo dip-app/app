@@ -52,12 +52,12 @@ function Screenshot({ url, who, onExpired }: { url: string; who: string; onExpir
     <>
       <button className="evidence shot" onClick={() => setOpen(true)} aria-label={`View full size: screenshot from ${who}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={`Screenshot from ${who}`} onError={() => setBroken(true)} />
+        <img src={url} alt={`Screenshot from ${who}`} draggable={false} onError={() => setBroken(true)} />
         <span className="view-full">View full size</span>
       </button>
       <dialog ref={dialog} className="dialog viewer" aria-label={`${who}’s screenshot`} onClose={() => setOpen(false)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="photo-frame large" src={url} alt={`Screenshot from ${who}`} onError={() => setBroken(true)} />
+        <img className="photo-frame large" src={url} alt={`Screenshot from ${who}`} draggable={false} onError={() => setBroken(true)} />
         <div className="actions"><button className="pill-btn gray" onClick={() => setOpen(false)}>Close</button></div>
       </dialog>
     </>

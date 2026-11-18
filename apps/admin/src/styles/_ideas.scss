@@ -81,42 +81,38 @@ $r-box: 8px;
   // step panel (a container query), not the window: 4 across when there is room, then 3, 2 and 1, never overflowing.
   .step-panel { container: step / inline-size; }
   .opt-grid { display: grid; align-items: stretch; gap: 8px; grid-template-columns: minmax(0, 1fr); }
-  // Interests: 4 across on wide desktops, 3 around 1100 px, 2 on tablets, 1 on phones. Goals: 3, 2, 1.
-  @media (min-width: 600px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (min-width: 1000px) { .opt-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (min-width: 1360px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); } }
+  // Interests: 4 across when the step panel is wide (>= 760 px), 3 from 660, 2 from 400, 1 below; goals: 3, 2, 1.
+  // Image-led cards need about 200 px each, so the columns follow the panel's own width, not the window.
   .opt-grid.cols-3 { --cols: 3; }
   .opt-grid.cols-4 { --cols: 4; }
-  // A narrow panel (rail beside it, small window) never squeezes cards below about 170 px.
-  @container step (max-width: 520px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); } }
+  @container step (min-width: 400px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @container step (min-width: 660px) { .opt-grid.cols-3, .opt-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @container step (min-width: 760px) { .opt-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .opt { position: relative; display: block; height: 100%; cursor: pointer; min-width: 0; }
   .opt-input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: inherit; }
   .opt-body { position: relative; box-sizing: border-box; height: 100%; display: grid; align-content: center; gap: 2px; min-height: 56px; padding: 8px 28px 8px 12px; background: $white; border: 1px solid $line-strong; border-radius: $r-ctl; color: $ink; }
   .opt:hover .opt-body { border-color: #8a8fa5; }
-  .opt-name { font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+  .opt-name { font-size: 14px; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
   .opt-meta { font-size: 12px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
   // The check sits in the top-right corner; the name keeps that corner free so nothing collides with it.
-  .opt-check { position: absolute; top: 8px; right: 8px; opacity: 0; color: $purple; }
+  .opt-check { position: absolute; top: 10px; right: 10px; opacity: 0; color: $purple; }
   .opt-input:checked + .opt-body { border-color: $purple; box-shadow: inset 0 0 0 1px $purple; background: $tint; .opt-check { opacity: 1; } }
   .opt-input:focus-visible + .opt-body { outline: 2px solid $purple; outline-offset: 2px; }
   .opt[data-disabled="true"] { cursor: not-allowed; .opt-body { border-style: dashed; .opt-name, .opt-meta { color: #646a80; } } }
 
-  // Cards with an illustration: a stable two-column layout. Art left (shrinks with the card, 4:3), text block right
-  // (min-width 0, wraps), the suggestion tag on its own row below, the check in the reserved top-right corner.
+  // Image-led cards: the art fills the LEFT 40% flush (full height, top/left/bottom edges, corners follow the card's own
+  // radius), the accent tile behind transparent art. Text sits on the right with generous padding: name, a short
+  // blurb, then the suggestion chip. The check is pinned in a reserved top-right corner so nothing collides with it.
   .opt[data-art] .opt-body {
-    grid-template-columns: clamp(36px, 26%, 52px) minmax(0, 1fr);
-    grid-template-areas: "art text" "sg sg";
-    align-items: start; align-content: start; column-gap: 10px; row-gap: 6px; padding: 8px;
-    .opt-name { padding-right: 18px; }
+    display: grid; grid-template-columns: minmax(64px, 40%) minmax(0, 1fr); align-items: stretch; padding: 0; min-height: 96px; gap: 0;
   }
-  .opt-grid.cols-1 .opt[data-art] .opt-body { grid-template-areas: "art text" "art sg"; padding-right: 28px; .opt-name { padding-right: 0; } }
-  .opt-text { grid-area: text; display: grid; gap: 2px; min-width: 0; align-content: start; }
-  .opt-art { grid-area: art; width: 100%; aspect-ratio: 4 / 3; border-radius: 4px; overflow: hidden; display: block; box-shadow: inset 0 0 0 1px rgba(30, 33, 43, .06);
-    img { display: block; width: 100%; height: 100%; object-fit: contain; }
-    &[data-kind="theme"] img { object-fit: cover; }
-    &[data-kind="avatar"] img { padding: 12%; box-sizing: border-box; } }
-  .opt-sg { grid-area: sg; display: flex; min-width: 0; }
-  .opt-grid.cols-1 .opt-sg { align-self: start; }
+  .opt-art { position: relative; display: block; min-height: 96px; border-radius: ($r-ctl - 1px) 0 0 ($r-ctl - 1px); overflow: hidden; box-shadow: none;
+    img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; padding: 8%; box-sizing: border-box; }
+    &[data-kind="theme"] img { object-fit: cover; padding: 0; object-position: 60% 50%; }
+    &[data-kind="mascot"] img { padding: 12%; } }
+  .opt-text { display: grid; gap: 3px; min-width: 0; align-content: center; justify-items: start; padding: 12px 10px 12px 12px; .opt-name { padding-right: 16px; } }
+  .opt:not([data-art]) .opt-text { padding: 0; }
+  .opt-sg { display: flex; min-width: 0; max-width: 100%; margin-top: 5px; }
 
   // ---------- Suggestions: informational only. The suggested card gets a lighter purple hairline and an outline tag;
   // selection (tint + 2px purple) stays the only filled state, and nothing is selected for the admin.
@@ -138,7 +134,9 @@ $r-box: 8px;
   .opt-input:focus-visible + .opt-body .sg-tip { opacity: 1; visibility: visible; }
 
   .sg-bar { display: flex; align-items: center; gap: 12px; padding: 0; background: transparent; border: 0; font-size: 13px;
-    p { flex: 1; min-width: 0; text-wrap: pretty; strong { font-weight: 600; } }
+    // Icon and text share one centre line: the text block is centred on the 36 px avatar whether it wraps to one line or two.
+    p { flex: 1; min-width: 0; margin: 0; padding-top: 1px; align-self: center; line-height: 1.45; text-wrap: pretty; strong { font-weight: 600; } }
+    .bot-icon { align-self: center; }
     .pill-btn { flex: none; } }
   .bot-icon { width: 36px; height: 36px; border-radius: 50%; flex: none; display: block; }
   .sg-bar[data-state="loading"] p { color: var(--muted); }

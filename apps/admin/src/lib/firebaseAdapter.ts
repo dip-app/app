@@ -237,9 +237,9 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
     listTags: () => run(async () => {
       const snap = await getDocs(collection(db, "tags"));
       return snap.docs
-        .map((d): Tag & { order: number } => ({ id: d.id, name: String(d.get("name") ?? d.id), order: Number(d.get("sortOrder") ?? 0) }))
+        .map((d): Tag & { order: number } => ({ id: d.id, name: String(d.get("name") ?? d.id), order: Number(d.get("sortOrder") ?? 0), ...(typeof d.get("description") === "string" && d.get("description") ? { description: String(d.get("description")) } : {}) }))
         .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
-        .map(({ id, name }) => ({ id, name }));
+        .map(({ order: _order, ...tag }) => tag);
     }),
     listEvents: () => run(async () => {
       const session = await organizer();

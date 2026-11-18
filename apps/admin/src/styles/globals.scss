@@ -171,3 +171,9 @@ button { cursor: pointer; border: 0; background: none; }
 
 // Explicit keyboard focus ring on form controls (ink on the gray fields, offset so it never touches the fill)
 .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 3px solid $ink; outline-offset: 3px; }
+
+// ---------- Images are artwork, not content to grab: never draggable or selectable (text, links, buttons and chart hover are untouched).
+img, svg, .theme-art, .opt-art, .tile, .thumb {
+  -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+// Purely decorative images (empty alt) outside links and buttons, and without a tooltip of their own, ignore the pointer too.
+img[alt=""]:not([title]):not(a img):not(button img) { pointer-events: none; }

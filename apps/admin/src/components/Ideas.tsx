@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { AiSuggestionProvider, AiSuggestionQuestion, EventIdeaContext, EventIdeaSuggestions, GenerateDraftsResult, GeneratedEventDraft } from "@/lib/adminTypes";
-import { type Art, DIPBOT_ICON, interestArt, spotArt, stateArt } from "@/lib/ideaArt";
+import { type Art, DIPBOT_ICON, spotArt, stateArt } from "@/lib/ideaArt";
+import { tagArt, tagBlurb } from "@/lib/tagArt";
 import {
   type LabeledSuggestion, type SuggestionLevel, applySuggestions, labelOf, labeledSuggestions, spokenSuggestion, suggestedBy, suggestionsApplied, suggestionsForStep,
 } from "@/lib/suggestionLabels";
@@ -60,7 +61,7 @@ function OptArt({ art }: { art: Art }) {
   return (
     <span className="opt-art" data-kind={art.kind} style={{ background: art.bg }} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images */}
-      <img src={art.src} alt="" loading="lazy" />
+      <img src={art.src} alt="" loading="lazy" draggable={false} />
     </span>
   );
 }
@@ -79,8 +80,8 @@ function Option({ type, name, label, hint, checked, disabled, onChange, children
           <span className="opt-name">{label}</span>
           {hint && <span className="opt-meta">{hint}</span>}
           {children}
+          {suggestion && <span className="opt-sg"><SuggestTag s={suggestion} /></span>}
         </span>
-        {suggestion && <span className="opt-sg"><SuggestTag s={suggestion} /></span>}
         <Check />
       </span>
     </label>
@@ -277,8 +278,8 @@ export function Ideas() {
 
   const thin = ctx.interestDataAvailable ? ctx.thinInterestTagIds.map(tagName) : [];
   const interestCards = ctx.interestDataAvailable
-    ? ctx.topInterests.map((t) => ({ id: t.tagId, name: tagName(t.tagId), bucket: t.bucket as "5-9" | "10-19" | "20+" | null }))
-    : catalog.tags.map((t) => ({ id: t.id, name: t.name, bucket: null as null }));
+    ? ctx.topInterests.map((t) => ({ id: t.tagId, name: tagName(t.tagId), description: catalog.byId.get(t.tagId)?.description, bucket: t.bucket as "5-9" | "10-19" | "20+" | null }))
+    : catalog.tags.map((t) => ({ id: t.id, name: t.name, description: t.description, bucket: null as null }));
   const atMax = answers.focusTagIds.length >= MAX_FOCUS;
 
   // ---------- Suggestions: at most one labeled option per question; nothing is ever selected for the admin.
@@ -306,7 +307,7 @@ export function Ideas() {
     setTimeout(() => dismissToast(id), 2500);
   };
   // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
-  const botIcon = <img className="bot-icon" src={DIPBOT_ICON} alt="" width={36} height={36} />;
+  const botIcon = <img className="bot-icon" src={DIPBOT_ICON} alt="" width={36} height={36} draggable={false} />;
 
   // Not on the note step: nothing there can be suggested.
   const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
@@ -373,9 +374,9 @@ export function Ideas() {
               {interestCards.map((c) => {
                 const checked = answers.focusTagIds.includes(c.id);
                 return (
-                  <Option key={c.id} type="checkbox" name="interest" label={c.name} hint={c.bucket ? bucketText(c.bucket) : undefined} checked={checked}
-                    disabled={!checked && atMax} onChange={() => set(toggleInterest(answers, c.id))} art={interestArt(c.id)} suggestion={shown("interest", c.id)}>
-                    {c.bucket && <span className="level" data-level={bucketLevel(c.bucket)} aria-hidden><i /><i /><i /></span>}
+                  <Option key={c.id} type="checkbox" name="interest" label={c.name} hint={tagBlurb(c)} checked={checked}
+                    disabled={!checked && atMax} onChange={() => set(toggleInterest(answers, c.id))} art={tagArt(c)} suggestion={shown("interest", c.id)}>
+                    {c.bucket && <span className="level" data-level={bucketLevel(c.bucket)} title={bucketText(c.bucket)}><i aria-hidden /><i aria-hidden /><i aria-hidden /><span className="sr-only">{bucketText(c.bucket)}</span></span>}
                   </Option>
                 );
               })}
@@ -489,7 +490,7 @@ export function Ideas() {
     <section className="step-panel" aria-label={t("generating.label")} aria-busy="true">
       <div className="status-row">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="state-art" src={stateArt("thinking")} alt="" width={64} height={48} />
+        <img className="state-art" src={stateArt("thinking")} alt="" width={64} height={48} draggable={false} />
         <p className="status-line" role="status" aria-live="polite">{tn("generating.status", answers.count)}</p>
       </div>
       <div className="draft-skeletons" aria-hidden>
@@ -514,7 +515,7 @@ export function Ideas() {
     <section className="results" aria-label={t("results.label")}>
       <div className="results-bar">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} />
+        <img className="state-art" src={stateArt("results")} alt="" width={48} height={36} draggable={false} />
         <p><strong>{t("results.ready", { n: result.drafts.length })}</strong> {t("results.review")}</p>
         <div className="results-actions">
           <button type="button" className="pill-btn gray with-mark" disabled={remaining <= 0 || noCredits} onClick={() => void generate(answers, true)}>
@@ -566,7 +567,7 @@ export function DraftCard({ draft, onOpen }: { draft: GeneratedEventDraft; onOpe
   return (
     <li className="draft-card">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="draft-thumb" src={cover.image} alt="" width={120} height={80} />
+      <img className="draft-thumb" src={cover.image} alt="" width={120} height={80} draggable={false} />
       <div className="draft-main">
         <h3>{draft.title}</h3>
         <p className="rationale">{draft.rationale}</p>

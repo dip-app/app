@@ -34,6 +34,7 @@ SOURCES = {
     "lime": "CoworkerProfilePicture",
 }
 SIZE = 192
+INK_RGB = (0x1E, 0x21, 0x2B)
 
 
 def clean(src: Path, out: Path) -> None:
@@ -42,6 +43,8 @@ def clean(src: Path, out: Path) -> None:
     px = np.array(im).reshape(-1, 4)
     counts = Counter(map(tuple, px[px[:, 3] == 255])).most_common(12)
     pal = [np.array(c[:3]) for c, n in counts if n > w * w * 0.004][:3]
+    # The sources use pure black for the disc and features; the brand ink (textPrimary) replaces it.
+    pal = [np.array(INK_RGB) if p.max() < 40 else p for p in pal]
     big = im.resize((SIZE * 4, SIZE * 4), Image.BICUBIC).filter(ImageFilter.GaussianBlur(SIZE * 4 / w * 0.55))
     a = np.array(big).astype(float)
     dist = np.stack([((a[..., :3] - p) ** 2).sum(-1) for p in pal], -1)

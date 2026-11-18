@@ -83,12 +83,12 @@ function Evidence({ submission }: { submission: Submission }) {
     <>
       <button className="evidence" onClick={() => setOpen(true)} aria-label={`View full size: photo from ${submission.userName}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={`Evidence from ${submission.userName}`} />
+        <img src={url} alt={`Evidence from ${submission.userName}`} draggable={false} />
         <span className="view-full">View full size</span>
       </button>
       <dialog ref={dialog} className="dialog viewer" aria-label={`${submission.userName}’s photo`} onClose={() => setOpen(false)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="photo-frame large" src={url} alt={`Evidence from ${submission.userName}`} />
+        <img className="photo-frame large" src={url} alt={`Evidence from ${submission.userName}`} draggable={false} />
         <div className="actions"><button className="pill-btn gray" onClick={() => setOpen(false)}>Close</button></div>
       </dialog>
     </>
