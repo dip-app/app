@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { buildEventIcs, escapeIcsText, foldLine, icsAttachmentFor } from "../../functions/src/modules/email/domain/ics";
+import { renderEmail } from "../../functions/src/modules/email/domain/templates/render";
 import { PREVIEW_CASES } from "../../functions/src/modules/email/scripts/previewCases";
 
 const NOW = new Date("2026-11-17T12:00:00Z");
@@ -93,36 +94,21 @@ describe("ics builder", () => {
 describe("icsAttachmentFor", () => {
   const pick = (name: string) => PREVIEW_CASES.find((c) => c.name === name)!;
 
-  test("attaches calendar data for event templates only", () => {
-    for (const [name, expected] of [
-      ["invite_received", true],
-      ["event_reminder_24h", true],
-      ["event_changed", true],
-      ["attendee_added", true],
-      ["event_canceled", true],
-      ["invite_answered_accepted", false],
-      ["challenge_approved", false],
-    ] as const) {
-      const c = pick(name);
+  test("only calendar invite and cancel emails carry a calendar file; no informational event.ics anywhere", () => {
+    for (const c of PREVIEW_CASES) {
       const att = icsAttachmentFor(c.template, c.variables, 3, NOW);
-      assert.equal(att !== null, expected, name);
-      if (att) {
-        assert.equal(att.filename, "event.ics");
-        assert.equal(att.contentType, "text/calendar; charset=utf-8; method=PUBLISH");
-        assert.ok(att.content.includes("SEQUENCE:3"));
-      }
+      assert.equal(att, null, `${c.name} must not attach a calendar file without an invite context`);
+    }
+    for (const name of ["invite_received", "event_reminder_24h", "event_changed", "attendee_added", "event_canceled"]) {
+      const c = pick(name);
+      const withCtx = icsAttachmentFor(c.template, c.variables, 3, NOW, { attendeeEmail: "a@b.co", attendeeName: null, memberUid: "u", now: NOW });
+      assert.equal(withCtx, null, name);
     }
   });
 
-  test("event_canceled is CANCELLED, others CONFIRMED", () => {
-    const canceled = pick("event_canceled");
-    assert.ok(icsAttachmentFor(canceled.template, canceled.variables, 0, NOW)!.content.includes("STATUS:CANCELLED"));
-    const changed = pick("event_changed");
-    assert.ok(icsAttachmentFor(changed.template, changed.variables, 0, NOW)!.content.includes("STATUS:CONFIRMED"));
-  });
-
-  test("returns null instead of throwing on unusable times", () => {
-    const c = pick("invite_received");
-    assert.equal(icsAttachmentFor(c.template, { ...(c.variables as object), startTime: "nope" } as never, 0, NOW), null);
+  test("reminder and changed emails point to the event page for Add to calendar", () => {
+    const text = renderEmail("event_reminder", pick("event_reminder_24h").variables as never, pick("event_reminder_24h").ctx).text;
+    assert.ok(text.includes("add it to your calendar, open the event in DIP"));
+    assert.ok(text.includes("https://letsdip.work/e/"));
   });
 });

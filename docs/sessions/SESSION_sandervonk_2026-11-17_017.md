@@ -36,7 +36,7 @@ Emailed calendar invites (CAL-8 #185, EML-5 #219): joining an event emails the m
 - Default on for `calendar_invites` (transactional confirmation of the member's own join); one switch controls invites, updates and cancels.
 - Attendee is ACCEPTED with RSVP=FALSE, times in UTC, 30 minute alarm on REQUEST.
 - Provider APIs take no inline text/calendar part, so the invite is one attachment with `method=` in the content type (documented limit; SMTP relay fallback not built).
-- Existing PUBLISH `event.ics` attachments left untouched (possible duplicate entry; recommended follow-up).
+- The informational PUBLISH `event.ics` attachment was removed from all other emails (no duplicate calendar entries); reminder and changed emails get a note pointing to the event page.
 - The optional `webcal://` feed from the CAL-8 scope is not built.
 
 ## Handoff

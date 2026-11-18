@@ -48,7 +48,7 @@ function utc(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
 
-/** RFC 5545 VCALENDAR with one VEVENT. METHOD:PUBLISH because DIP has no organizer mailbox to receive iTIP replies. */
+/** Informational RFC 5545 file (METHOD:PUBLISH). No longer attached to any email (it would duplicate the invite's entry); kept for a future feed. METHOD:PUBLISH because DIP has no organizer mailbox to receive iTIP replies. */
 export function buildEventIcs(facts: IcsFacts, now: Date): string {
   const start = new Date(facts.startTime);
   const end = new Date(facts.endTime);
@@ -179,20 +179,12 @@ export function inviteContentType(method: InviteMethod): string {
   return `text/calendar; charset=UTF-8; method=${method}`;
 }
 
-const ICS_TEMPLATES: ReadonlySet<TemplateId> = new Set<TemplateId>([
-  "invite_received",
-  "event_reminder",
-  "event_changed",
-  "attendee_added",
-  "event_canceled",
-]);
-
-/** The calendar attachment for a template, or null when the template carries none. The caller passes 0 when the revision is unknown. */
+/** The calendar attachment for a template: only the calendar invite and cancel emails carry one (`invite.ics`); every other template returns null. */
 export function icsAttachmentFor(
   template: TemplateId,
   variables: TemplateVariables[TemplateId],
-  revision: number,
-  now: Date = new Date(),
+  _revision: number,
+  _now: Date = new Date(),
   invite?: InviteContext,
 ): IcsAttachment | null {
   if (template === "calendar_invite" || template === "calendar_cancel") {
@@ -210,23 +202,7 @@ export function icsAttachmentFor(
       return null;
     }
   }
-  if (!ICS_TEMPLATES.has(template)) return null;
-  const v = variables as EventFacts;
-  try {
-    const content = buildEventIcs(
-      {
-        eventId: v.eventId,
-        eventTitle: v.eventTitle,
-        startTime: v.startTime,
-        endTime: v.endTime,
-        ...(v.venueName !== undefined ? { venueName: v.venueName } : {}),
-        revision,
-        ...(template === "event_canceled" ? { canceled: true } : {}),
-      },
-      now,
-    );
-    return { filename: "event.ics", contentType: "text/calendar; charset=utf-8; method=PUBLISH", content };
-  } catch {
-    return null;
-  }
+  // Reminder, change, cancel, invite-received and attendee-added emails carry no calendar file: the invite, update and
+  // cancel emails own the member's calendar entry, and a second file with another UID would create a duplicate.
+  return null;
 }

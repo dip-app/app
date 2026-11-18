@@ -161,7 +161,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         subject: fitSubject("Updated: ", clean(e.eventTitle), ` (${subjectWhat} changed)`),
         preheader: `The ${what} changed for ${clean(e.eventTitle)}.`,
         lead: `the ${what} changed for this event.`,
-        note: null,
+        note: "To add it to your calendar, open the event in DIP.",
         badge: "Updated",
       });
     }
@@ -193,7 +193,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         subject: fitSubject(day ? "Tomorrow: " : "Starting in about an hour: ", clean(e.eventTitle)),
         preheader: day ? `${clean(e.eventTitle)} is tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
         lead: day ? `${clean(e.eventTitle)} starts tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
-        note: null,
+        note: "To add it to your calendar, open the event in DIP.",
       });
     }
     case "calendar_invite": {
