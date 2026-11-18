@@ -23,6 +23,7 @@ import { parseCreateEventRequest } from "../../functions/src/modules/organizer/d
 import { venueLocationStamp } from "../../functions/src/modules/organizer/application/organizerCommands";
 import { FakeAdminStore, caller, seedCompany } from "./helpers/adminFakes";
 import { choiceAnswer, decision, uuid } from "./helpers/aiFakes";
+import { keepAliveUntilAbort } from "./helpers/keepAlive";
 
 const TOKEN = "ya29.SECRET-TOKEN";
 const CENTER = { latitude: 40.4406, longitude: -79.9959 };
@@ -146,7 +147,7 @@ describe("GooglePlaces adapter", () => {
         return true;
       });
     }
-    const hang = ((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal!.addEventListener("abort", () => reject(new Error(`aborted ${TOKEN}`))))) as unknown as typeof fetch;
+    const hang = ((_url: string, init: RequestInit) => new Promise((_, reject) => { keepAliveUntilAbort(init.signal); init.signal!.addEventListener("abort", () => reject(new Error(`aborted ${TOKEN}`))); })) as unknown as typeof fetch;
     await assert.rejects(make(hang).searchTextIds("x", null), (e: unknown) => e instanceof PlacesUnavailableError && e.code === "timeout" && !e.message.includes(TOKEN));
     const noToken = new GooglePlaces({ tokens: { getToken: async () => { throw new PlacesUnavailableError("auth"); } }, projectId: "p", fetch: fakeFetch(() => json({})).fn });
     await assert.rejects(noToken.searchTextIds("x", null), (e: unknown) => e instanceof PlacesUnavailableError && e.code === "auth");

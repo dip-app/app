@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import type { OutgoingEmail } from "../../functions/src/modules/email/application/ports";
 import { MAX_WEBHOOK_BYTES, PostmarkProvider, PostmarkWebhookVerifier } from "../../functions/src/modules/email/infrastructure/postmarkProvider";
+import { keepAliveUntilAbort } from "./helpers/keepAlive";
 
 const TOKEN = "secret-server-token-123";
 const message: OutgoingEmail = {
@@ -89,6 +90,7 @@ describe("PostmarkProvider response mapping", () => {
 
   test("real timeout aborts a hanging request", async () => {
     const hang = ((_u: string, init: RequestInit) => new Promise((_res, rej) => {
+      keepAliveUntilAbort(init.signal);
       init.signal!.addEventListener("abort", () => rej(init.signal!.reason));
     })) as unknown as typeof fetch;
     assert.deepEqual(await provider(hang, { timeoutMs: 20 }).send(message), { kind: "unknown", code: "timeout" });
