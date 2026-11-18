@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -18,6 +17,7 @@ import { ApiError } from "@/lib/contract";
 import { formatWindow } from "@/lib/weeks";
 import { isTypingTarget } from "@/lib/useSlashFocus";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
+import { Button } from "@/components/kit";
 
 const TABS: SubmissionStatus[] = ["submitted", "rejected", "approved"];
 const STATUS_LABEL: Record<SubmissionStatus, string> = { submitted: "Pending", rejected: "Changes requested", approved: "Approved" };
@@ -89,7 +89,7 @@ function Evidence({ submission }: { submission: Submission }) {
       <dialog ref={dialog} className="dialog viewer" aria-label={`${submission.userName}’s photo`} onClose={() => setOpen(false)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="photo-frame large" src={url} alt={`Evidence from ${submission.userName}`} draggable={false} />
-        <div className="actions"><button className="pill-btn gray" onClick={() => setOpen(false)}>Close</button></div>
+        <div className="actions"><Button onClick={() => setOpen(false)}>Close</Button></div>
       </dialog>
     </>
   );
@@ -254,11 +254,11 @@ function Review() {
   return (
     <>
       <div className="toolbar">
-        <Link className="pill-btn gray" href="/challenges/">All themes</Link>
+        <Button href="/challenges/">All themes</Button>
         {theme && <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" /><strong className="theme-name">{theme.title}</strong><span className="muted">{formatWindow(theme.startDate, theme.endDate)} · {formatGoal(theme.goal, theme.goalUnit)}</span></>}
       </div>
       <Tabs idBase="review" label="Filter submissions" value={status} onChange={(id) => chooseStatus(id as SubmissionStatus)} items={TABS.map((tab) => ({ id: tab, label: STATUS_LABEL[tab] }))} />
-      {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><button type="button" className="pill-btn gray small" onClick={() => setBanner(null)}>Dismiss</button></div>}
+      {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><Button size="sm" onClick={() => setBanner(null)}>Dismiss</Button></div>}
 
       {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/" backLabel="Back to challenges" />
         : !items ? <Loading label="Loading submissions" layout="review" />
@@ -297,15 +297,15 @@ function Review() {
                 <div className="review-actions">
                   {selected.status === "submitted" && (
                     <div className="actions">
-                      <button type="button" className="pill-btn dark" onClick={() => setDialog("approve")}>Approve · {points} points</button>
-                      <button className="pill-btn gray" onClick={() => setDialog("reject")}>Request changes</button>
+                      <Button variant="primary" onClick={() => setDialog("approve")}>Approve · {points} points</Button>
+                      <Button onClick={() => setDialog("reject")}>Request changes</Button>
                     </div>
                   )}
                   <div className="review-nav">
-                    <button className="pill-btn gray small" onClick={() => go(-1)} disabled={index <= 0}>Previous</button>
+                    <Button size="sm" onClick={() => go(-1)} disabled={index <= 0}>Previous</Button>
                     <span className="muted" aria-live="polite">{index + 1} of {items.length}{cursor ? "+" : ""}</span>
-                    <button className="pill-btn gray small" onClick={() => go(1)} disabled={index >= items.length - 1}>Next</button>
-                    <button className="pill-btn gray small to-list" onClick={() => queueTop.current?.scrollIntoView?.({ block: "start" })}>Back to list</button>
+                    <Button size="sm" onClick={() => go(1)} disabled={index >= items.length - 1}>Next</Button>
+                    <Button size="sm" className="to-list" onClick={() => queueTop.current?.scrollIntoView?.({ block: "start" })}>Back to list</Button>
                   </div>
                   <div className="keys-toggle">
                     {shortcuts && (

@@ -11,6 +11,7 @@ import {
 import { TableRegion } from "./TableRegion";
 import { Info } from "./Ui";
 import { Toggle } from "./Toggle";
+import { Button } from "@/components/kit";
 
 interface Props {
   raw: RawFile;
@@ -95,8 +96,8 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
       {saved && (
         <p className="notice" role="status">
           Using the mapping you saved for this company.{" "}
-          <button className="pill-btn gray small" onClick={() => setState({ mapping: suggestMapping(headers), saved: false })}>Start from suggestions</button>{" "}
-          <button className="pill-btn gray small" onClick={() => { forgetMapping(store, companyId); setState({ mapping: suggestMapping(headers), saved: false }); }}>Forget it</button>
+          <Button size="sm" onClick={() => setState({ mapping: suggestMapping(headers), saved: false })}>Start from suggestions</Button>{" "}
+          <Button size="sm" onClick={() => { forgetMapping(store, companyId); setState({ mapping: suggestMapping(headers), saved: false }); }}>Forget it</Button>
         </p>
       )}
 
@@ -147,8 +148,8 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
       <Toggle checked={remember} onChange={setRemember} label="Remember this mapping" hint="Used next time a file has the same column names. Saved in this browser for your company." />
 
       <div className="actions">
-        <button className="pill-btn purple" disabled={issues.errors.length > 0 || data.length === 0} onClick={next}>Check the rows</button>
-        <button className="pill-btn gray" onClick={onBack}>Choose a different file</button>
+        <Button variant="primary" disabled={issues.errors.length > 0 || data.length === 0} onClick={next}>Check the rows</Button>
+        <Button onClick={onBack}>Choose a different file</Button>
       </div>
     </section>
   );

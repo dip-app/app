@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { EventCard, EventTable } from "@/components/EventCard";
@@ -10,6 +9,7 @@ import { Empty, LoadError, Loading } from "@/components/Ui";
 import { ApiError, type AdminEvent, classify } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button } from "@/components/kit";
 
 type Filter = "upcoming" | "past" | "cancelled";
 const FILTERS: { id: Filter; label: string }[] = [
@@ -50,7 +50,7 @@ function Events() {
   const label = FILTERS.find((item) => item.id === filter)!.label;
 
   return (
-    <Shell title="Events" subtitle="Everything your company can see in the DIP app." requires="events.manage" action={<Link className="pill-btn purple" href="/events/new/">New event</Link>}>
+    <Shell title="Events" subtitle="Everything your company can see in the DIP app." requires="events.manage" action={<Button variant="primary" href="/events/new/">New event</Button>}>
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
         : events === null || hold ? <Loading label="Loading events" layout="events" />
         : (

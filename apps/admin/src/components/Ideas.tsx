@@ -31,6 +31,7 @@ import { Empty, LoadError, Loading } from "./Ui";
 import { useLoad } from "./useLoad";
 import { useTags } from "./TagCatalog";
 import { useSkeletonGate } from "./useDelayedShow";
+import { Button, InlineNotice } from "@/components/kit";
 
 type Phase = "edit" | "generating" | "results" | "error";
 /** Quick mode ("Generate suggestions" in the New event header): armed by the button's one-time token, then running. */
@@ -311,7 +312,7 @@ export function Ideas() {
   if (ctxState.error) return <LoadError error={ctxState.error} onRetry={ctxState.reload} />;
   if (!ctx || holdIdeas) return <Loading label={t("page.loading")} layout="ideas" />;
   if (!ctx.enabled) {
-    return <Empty art={stateArt("empty")} title={t("off.title")} body={t("off.body")} action={<a className="pill-btn gray" href="/events/new/">{t("off.action")}</a>} />;
+    return <Empty art={stateArt("empty")} title={t("off.title")} body={t("off.body")} action={<Button href="/events/new/">{t("off.action")}</Button>} />;
   }
 
   const usage = ctx.usage;
@@ -569,10 +570,10 @@ export function Ideas() {
             {failureMessage(new ApiError("resource-exhausted", "", {}, dailyLeft === 0 ? "AI_DAILY_LIMIT" : usage.monthlyGenerationsUsed >= usage.monthlyGenerationLimit ? "AI_MONTHLY_LIMIT" : "AI_BUDGET_EXHAUSTED"), ctx)}
           </p>
         )}
-        {step > 0 && <button type="button" className="pill-btn gray" onClick={() => goStep(step - 1)}>{t("action.back")}</button>}
+        {step > 0 && <Button onClick={() => goStep(step - 1)}>{t("action.back")}</Button>}
         {lastStep
           ? <DipbotAction variant="solid" label={t("action.generate")} credits={ctx.credits.creditCost.generate} disabled={!readyToGenerate(answers) || exhausted || noCredits} disabledReason={noCredits ? t("credits.not") : undefined} onClick={() => void generate(answers, false)} />
-          : <button type="button" className="pill-btn purple" disabled={!stepValid(current.id, answers)} onClick={() => goStep(step + 1)}>{t("action.next")}</button>}
+          : <Button variant="primary" disabled={!stepValid(current.id, answers)} onClick={() => goStep(step + 1)}>{t("action.next")}</Button>}
       </div>
     </section>
   );
@@ -594,10 +595,10 @@ export function Ideas() {
 
   const errorPanel = (
     <section className="step-panel" aria-label={t("error.label")}>
-      <div className="banner error" role="alert"><span>{failureMessage(failure, ctx)}</span></div>
+      <InlineNotice tone="error">{failureMessage(failure, ctx)}</InlineNotice>
       <div className="step-actions">
-        <button type="button" className="pill-btn gray" onClick={() => goStep(quick === "none" ? STEPS.length - 1 : 0)}>{t(quick === "none" ? "error.backToChoices" : "quick.manual")}</button>
-        {readyToGenerate(answers) && remaining > 0 && !noCredits && <button type="button" className="pill-btn purple" onClick={() => void generate(answers, false)}>{t("error.retry")}</button>}
+        <Button onClick={() => goStep(quick === "none" ? STEPS.length - 1 : 0)}>{t(quick === "none" ? "error.backToChoices" : "quick.manual")}</Button>
+        {readyToGenerate(answers) && remaining > 0 && !noCredits && <Button variant="primary" onClick={() => void generate(answers, false)}>{t("error.retry")}</Button>}
       </div>
     </section>
   );
@@ -610,7 +611,7 @@ export function Ideas() {
         <p><strong>{t("results.ready", { n: result.drafts.length })}</strong> {t("results.review")}</p>
         <div className="results-actions">
           <DipbotAction label={t("results.regenerate")} credits={ctx.credits.creditCost.regenerate} disabled={remaining <= 0 || noCredits} disabledReason={noCredits ? t("credits.not") : undefined} onClick={() => void generate(answers, true)} />
-          <button type="button" className="pill-btn gray" onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>{t("results.startOver")}</button>
+          <Button onClick={() => { attempt.current = null; setAnswers(emptyAnswers()); setResult(null); goStep(0); }}>{t("results.startOver")}</Button>
         </div>
       </div>
       <ul className="draft-list">
@@ -678,8 +679,8 @@ export function DraftCard({ draft, onOpen, siblingCovers = [], credits }: { draf
             event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds }} />
         </Disclosure>
         <div className="draft-actions">
-          <button type="button" className="pill-btn gray" onClick={() => void copy()}>{t(copied ? "draft.copied" : "draft.copy")}</button>
-          <button type="button" className="pill-btn purple" onClick={() => onOpen(coverURL)}>{t("draft.open")}</button>
+          <Button onClick={() => void copy()}>{t(copied ? "draft.copied" : "draft.copy")}</Button>
+          <Button variant="primary" onClick={() => onOpen(coverURL)}>{t("draft.open")}</Button>
         </div>
       </div>
     </li>

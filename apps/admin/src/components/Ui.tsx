@@ -2,16 +2,16 @@
 
 import { useId } from "react";
 import type { ApiError } from "@/lib/contract";
+import { Button, Chip, InlineNotice } from "./kit";
 import { PageSkeleton, type SkeletonLayout } from "./PageSkeletons";
 
 export function LoadError({ error, onRetry, backHref, backLabel }: { error: ApiError; onRetry: () => void; backHref?: string; backLabel?: string }) {
   // Retrying a missing item never helps: offer the way back instead.
   const missing = error.code === "not-found" && backHref;
   return (
-    <div className="banner error" role="alert">
-      <span>{error.message}</span>
-      {missing ? <a className="pill-btn" href={backHref}>{backLabel ?? "Go back"}</a> : <button type="button" className="pill-btn" onClick={onRetry}>Try again</button>}
-    </div>
+    <InlineNotice tone="error" action={missing ? <Button variant="plain" href={backHref}>{backLabel ?? "Go back"}</Button> : <Button variant="plain" onClick={onRetry}>Try again</Button>}>
+      {error.message}
+    </InlineNotice>
   );
 }
 
@@ -32,23 +32,14 @@ export function ResultCount({ children }: { children: React.ReactNode }) {
 export function LoadMore({ shown, total, loading, onClick, label = "Load more" }: { shown: number; total?: number; loading: boolean; onClick: () => void; label?: string }) {
   return (
     <div className="load-more">
-      <button type="button" className="pill-btn gray small" disabled={loading} onClick={onClick}>{loading ? "Loading more…" : label}</button>
+      <Button size="sm" disabled={loading} onClick={onClick}>{loading ? "Loading more…" : label}</Button>
       <span className="muted" role="status" aria-live="polite">{total !== undefined ? `Showing ${shown} of ${total}` : `Showing ${shown}`}</span>
     </div>
   );
 }
 
-export function Empty({ title, body, action, art }: { title: string; body: string; action?: React.ReactNode; /** Optional decorative illustration URL. */ art?: string }) {
-  return (
-    <div className="empty">
-      {/* eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images */}
-      {art && <img className="empty-art" src={art} alt="" width={120} height={90} draggable={false} />}
-      <h2>{title}</h2>
-      <p>{body}</p>
-      {action && <div className="empty-action">{action}</div>}
-    </div>
-  );
-}
+/** The shared empty state (components/kit/EmptyState). */
+export { EmptyState as Empty } from "./kit";
 
 export function SearchBox({ value, onChange, label, placeholder, id }: { value: string; onChange: (v: string) => void; label: string; placeholder?: string; id?: string }) {
   const generated = useId();
@@ -61,14 +52,8 @@ export function SearchBox({ value, onChange, label, placeholder, id }: { value: 
   );
 }
 
-/** Informational pill: outline only, never pressable. */
-export function Info({ children, tone }: { children: React.ReactNode; tone?: "warn" | "ok" }) {
-  return <span className={`info-pill${tone ? ` ${tone}` : ""}`}>{children}</span>;
-}
-
-export function Notice({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "success" }) {
-  return <p className={`notice${tone === "success" ? " success" : ""}`} role="status">{children}</p>;
-}
+/** Informational chip (components/kit/Chip): outline only, never pressable. */
+export const Info = Chip;
 
 export { Avatar, initials } from "./Avatar";
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { can } from "@/lib/adminTypes";
@@ -12,6 +11,7 @@ import { type ThemePhase, type WeeklyTheme, sortThemes, themePhase } from "@/lib
 import { ApiError } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button } from "@/components/kit";
 
 const PHASES: { id: ThemePhase; label: string }[] = [
   { id: "current", label: "Current" },
@@ -52,7 +52,7 @@ function Themes() {
 
   return (
     <Shell title="Weekly themes" subtitle="The “This Week’s Challenge” card on the app’s Home screen."
-      action={canManage ? <Link className="pill-btn purple" href="/themes/new/">New theme</Link> : undefined}>
+      action={canManage ? <Button variant="primary" href="/themes/new/">New theme</Button> : undefined}>
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
         : themes === null || hold ? <Loading label="Loading weekly themes" layout="themes" />
         : (

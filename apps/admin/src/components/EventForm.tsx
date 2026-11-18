@@ -21,6 +21,7 @@ import { useTags } from "./TagCatalog";
 import { Toggle } from "./Toggle";
 import { WhenPicker } from "./WhenPicker";
 import { t } from "@/lib/aiStrings";
+import { Button, ChipToggle } from "@/components/kit";
 
 interface Props {
   /** Present when editing. */
@@ -194,7 +195,7 @@ export function EventForm({ event, onReload }: Props) {
         <div className="banner error" role="alert">
           <span>{failure.message}</span>
           {failure.code === "aborted" && onReload && (
-            <button type="button" className="pill-btn gray" onClick={onReload}>Reload latest</button>
+            <Button onClick={onReload}>Reload latest</Button>
           )}
         </div>
       )}
@@ -215,12 +216,12 @@ export function EventForm({ event, onReload }: Props) {
             {catalog.status === "loading" && <span className="hint">Loading tags…</span>}
             {catalog.status === "error" && <span className="hint">Couldn’t load tags. <button type="button" className="link-btn" onClick={catalog.reload}>Try again</button></span>}
             {tags.map((tag) => (
-              <button key={tag.id} type="button" className="chip" aria-pressed={draft.tagIds.includes(tag.id)}
+              <ChipToggle key={tag.id} pressed={draft.tagIds.includes(tag.id)}
                 aria-label={tagCounts ? `${tag.name}, ${interestLabel(tagCounts.get(tag.id) ?? 0)}` : undefined}
+                count={tagCounts ? (tagCounts.get(tag.id) ?? 0) : undefined} countTitle={tagCounts ? interestLabel(tagCounts.get(tag.id) ?? 0) : undefined}
                 onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((t) => t !== tag.id) : [...draft.tagIds, tag.id])}>
                 {tag.name}
-                {tagCounts && <span className="chip-count" title={interestLabel(tagCounts.get(tag.id) ?? 0)} aria-hidden>{tagCounts.get(tag.id) ?? 0}</span>}
-              </button>
+              </ChipToggle>
             ))}
           </div>
           {err("tagIds") && <span className="error" id="tags-error">{err("tagIds")}</span>}

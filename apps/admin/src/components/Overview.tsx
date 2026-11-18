@@ -14,6 +14,7 @@ import { Disclosure } from "./Disclosure";
 import { ThemeArt } from "./ThemeArt";
 import { TableRegion } from "./TableRegion";
 import { Avatar, formatDate } from "./Ui";
+import { Button, Chip, InlineNotice, Panel, SegmentedControl } from "@/components/kit";
 
 // The Overview page's building blocks. Everything is presentational: numbers come from getCompanyInsightsV1
 // (cached on the server), so nothing here fetches or computes company data.
@@ -203,8 +204,7 @@ export function PendingActions({ insights, role, now }: { insights: CompanyInsig
   // Both sources down: nothing to show. One down: show what is known, never "all caught up".
   const partial = off(insights, "challenges") || off(insights, "members");
   return (
-    <section className="panel" aria-labelledby="pending-h">
-      <h2 id="pending-h">Needs attention</h2>
+    <Panel id="pending-h" title="Needs attention">
       {partial && items.length === 0 ? <SectionUnavailable /> : items.length === 0 ? (
         <p className="muted fill">You’re all caught up. Reviews and unanswered invites appear here.</p>
       ) : (
@@ -228,15 +228,14 @@ export function PendingActions({ insights, role, now }: { insights: CompanyInsig
           </ul>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }
 
 export function TopEvents({ insights }: { insights: CompanyInsights }) {
   const events = insights.participation.topEvents;
   return (
-    <section className="panel" aria-labelledby="top-events-h">
-      <h2 id="top-events-h">Top events by attendees</h2>
+    <Panel id="top-events-h" title="Top events by attendees">
       {off(insights, "participation") ? <SectionUnavailable /> : events.length === 0 ? (
         <p className="muted fill">No events with attendees yet.</p>
       ) : (
@@ -251,13 +250,13 @@ export function TopEvents({ insights }: { insights: CompanyInsights }) {
                   <p className="muted">{formatDate(event.startTime)} · {event.status === "completed" ? "Completed" : "Upcoming"}</p>
                   <div className="meter" role="img" aria-label={`${event.attendeeCount} of ${event.capacity} spots`}><span style={{ width: `${Math.round(fill * 100)}%` }} /></div>
                 </div>
-                <span className="rank-value"><strong>{formatCount(event.attendeeCount)}</strong><span className="muted"> / {formatCount(event.capacity)}</span>{event.capacity > 0 && event.attendeeCount >= event.capacity && <span className="info-pill full">Full</span>}</span>
+                <span className="rank-value"><strong>{formatCount(event.attendeeCount)}</strong><span className="muted"> / {formatCount(event.capacity)}</span>{event.capacity > 0 && event.attendeeCount >= event.capacity && <Chip full>Full</Chip>}</span>
               </li>
             );
           })}
         </ol>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -290,7 +289,7 @@ export function ThemeCard({ insights, role, now = new Date() }: { insights: Comp
             <div className="theme-meter"><p className="muted"><span>This week</span><span>Day {week.day} of {week.days}</span></p>
               <div className="meter" role="img" aria-label={`Day ${week.day} of ${week.days}`}><span style={{ width: `${Math.round(week.fraction * 100)}%` }} /></div></div>
           </div>
-          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Link href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} className="pill-btn purple small self-start theme-cta">Review submissions</Link>}
+          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Button href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} variant="primary" size="sm" className="self-start theme-cta">Review submissions</Button>}
         </>
       )}
     </section>
@@ -302,8 +301,7 @@ export function PeopleCard({ insights }: { insights: CompanyInsights }) {
   const rows: [string, number, string][] = [["Active accounts", members.active, "active"], ["Invited, not joined", members.invited, "invited"], ["Deactivated", members.deactivated, "off"]];
   const sum = rows.reduce((n, row) => n + row[1], 0);
   return (
-    <section className="panel" aria-labelledby="people-h">
-      <h2 id="people-h">People</h2>
+    <Panel id="people-h" title="People">
       {off(insights, "members") ? <SectionUnavailable /> : (
         <>
           <div className="stack-bar" role="img" aria-label={rows.map(([label, value]) => `${label}: ${value}`).join(", ")}>
@@ -315,7 +313,7 @@ export function PeopleCard({ insights }: { insights: CompanyInsights }) {
           </dl>
         </>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -323,8 +321,7 @@ export function PeopleCard({ insights }: { insights: CompanyInsights }) {
 export function TopMembers({ insights }: { insights: CompanyInsights }) {
   const members = insights.points?.topMembers ?? [];
   return (
-    <section className="panel" aria-labelledby="top-members-h">
-      <h2 id="top-members-h">Top members by points</h2>
+    <Panel id="top-members-h" title="Top members by points">
       {off(insights, "points") ? <SectionUnavailable /> : members.length === 0 ? (
         <p className="muted fill">No points earned yet.</p>
       ) : (
@@ -338,7 +335,7 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
           ))}
         </ol>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -349,13 +346,7 @@ export function InterestsViewToggle({ view, onChange }: { view: InterestsView; o
     { id: "list", label: "List view", d: "M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" },
   ];
   return (
-    <div className="view-toggle" role="group" aria-label="Interests layout">
-      {items.map((item) => (
-        <button key={item.id} type="button" className="view-toggle-btn" aria-pressed={view === item.id} aria-label={item.label} title={item.label} onClick={() => onChange(item.id)}>
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
-        </button>
-      ))}
-    </div>
+    <SegmentedControl variant="icon" label="Interests layout" value={view} onChange={onChange} options={items.map((item) => ({ value: item.id, label: item.label, iconPath: item.d }))} />
   );
 }
 
@@ -436,7 +427,7 @@ export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]
 /** Shown above the page when any section failed, so placeholder sections are never read as real numbers. */
 export function UnavailableNotice({ insights }: { insights: CompanyInsights }) {
   if (insights.unavailable.length === 0) return null;
-  return <p className="notice" role="status">Some sections couldn’t be loaded. Everything else is up to date; try Refresh in a few minutes.</p>;
+  return <InlineNotice>Some sections couldn’t be loaded. Everything else is up to date; try Refresh in a few minutes.</InlineNotice>;
 }
 
 export function QuietNotice({ insights }: { insights: CompanyInsights }) {

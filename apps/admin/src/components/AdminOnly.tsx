@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { type Capability, ROLE_LABEL, type Role, can } from "@/lib/adminTypes";
 import { t } from "@/lib/aiStrings";
 import { Avatar } from "./Ui";
 import { useLoad } from "./useLoad";
+import { Button } from "@/components/kit";
 
 /** What to ask an admin for, by the capability the page needs. */
 const ASK: Partial<Record<Capability, string>> = {
@@ -41,8 +41,8 @@ export function AdminOnly({ page, capability, role }: { page: string; capability
         </div>
       )}
       <div className="actions">
-        <Link className="pill-btn dark" href="/events/">Back to events</Link>
-        {can(role, "members.view") && <Link className="pill-btn gray" href="/members/">Open members</Link>}
+        <Button variant="primary" href="/events/">Back to events</Button>
+        {can(role, "members.view") && <Button href="/members/">Open members</Button>}
       </div>
     </div>
   );

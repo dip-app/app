@@ -10,6 +10,7 @@ import { t } from "@/lib/aiStrings";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 import { Toaster } from "./Toast";
+import { EmptyState, PageHeader } from "@/components/kit";
 
 interface Props {
   title: string;
@@ -181,20 +182,11 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
       </aside>
       <main id="main" tabIndex={-1} className="content" inert={open}>
         {!isStaff(session.role) ? (
-          <div className="empty">
-            <h2>No organizer access</h2>
-            <p>Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again.</p>
-          </div>
+          <EmptyState title="No organizer access" body="Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again." />
         ) : requires && !can(session.role, requires) ? (
           <AdminOnly page={title} capability={requires} role={session.role} />
         ) : (<>
-        <header className="page-header">
-          <div className="titles">
-            <h1 className="page-title">{title}</h1>
-            {subtitle && <p className="subtitle">{subtitle}</p>}
-          </div>
-          {action && <div className="header-action">{action}</div>}
-        </header>
+        <PageHeader title={title} description={subtitle} actions={action} />
         {children}
         </>)}
       </main>

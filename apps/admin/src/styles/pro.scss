@@ -56,9 +56,9 @@ $ctl-h: 36px;
   .pill-btn, .big-pill { border-radius: $r-ctl; min-height: $ctl-h; padding: 0 14px; font-size: 14px; font-weight: 500; font-family: var(--font-figtree), sans-serif; &:active { transform: none; } }
   .pill-btn.small { min-height: 28px; padding: 0 10px; font-size: 13px; }
   .pill-btn.purple { background: var(--primary); color: $white; &:hover:not([disabled]) { background: var(--primary-hover); } }
-  // Primary actions are purple with white text everywhere (the older "dark" variant is the same primary).
-  .pill-btn.dark, .big-pill.dark { background: var(--primary); color: $white; &:hover:not([disabled]) { background: var(--primary-hover); } }
-  .pill-btn.purple, .pill-btn.dark, .big-pill.dark { font-weight: 600; }
+  // Primary actions are purple with white text everywhere (Button variant "primary"; .big-pill.dark is the form submit).
+  .big-pill.dark { background: var(--primary); color: $white; &:hover:not([disabled]) { background: var(--primary-hover); } }
+  .pill-btn.purple, .big-pill.dark { font-weight: 600; }
   .pill-btn.gray, .big-pill.gray { background: $white; color: $ink; box-shadow: inset 0 0 0 1px $ctl-border; &:hover:not([disabled]) { background: $subtle; } }
   .table-wrap .pill-btn.gray, .panel .pill-btn.gray, .audit-row .pill-btn.gray, .comment-list .pill-btn.gray, .viewer .pill-btn.gray { background: $white; }
   // Destructive buttons are outlined; only the confirm dialog gets the solid fill.
@@ -140,7 +140,7 @@ $ctl-h: 36px;
   // ---------- Surfaces: white, hairline, small radius
   .panel { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 14px 16px; gap: 10px; margin-bottom: 14px;
     h2 { font-size: 15px; font-weight: 600; } }
-  .notice { background: #f3f4ff; color: $ink; border: 1px solid #c9cff9; border-radius: $r-ctl; padding: 8px 12px; margin-bottom: 12px; &.success { background: #f1faf5; border-color: #b5e0c9; } }
+  .notice { background: #f3f4ff; color: $ink; border: 1px solid #c9cff9; border-radius: $r-ctl; padding: 8px 12px; margin-bottom: 12px; &.success { background: #f1faf5; border-color: #b5e0c9; } &.warn { background: #fff9eb; border-color: #f0dca0; } }
   .banner { border-radius: $r-ctl; padding: 10px 14px; gap: 10px;
     &.error { background: #fff4f9; color: $ink; border: 1px solid #f0a8c9; .pill-btn, a.pill-btn { background: $white; color: $ink; min-height: $ctl-h; font-size: 14px; box-shadow: inset 0 0 0 1px $ctl-border; } } }
   .empty { background: $white; border: 1px dashed $line-strong; border-radius: $r-box; padding: 40px 20px;

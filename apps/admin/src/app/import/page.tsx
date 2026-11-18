@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { ImportMapping } from "@/components/ImportMapping";
 import { Shell } from "@/components/Shell";
 import { TableRegion } from "@/components/TableRegion";
-import { Empty, Info, LoadMore, Loading, Notice } from "@/components/Ui";
+import { Empty, Info, LoadMore, Loading } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanRow } from "@/lib/adminTypes";
 import { browserStore } from "@/lib/api";
@@ -16,6 +15,7 @@ import { downloadText } from "@/lib/csv";
 import { FIELD_LABEL, type ParsedImport, type RawFile, errorCsv, planCounts, readRawFile, templateCsv, validRows } from "@/lib/importFile";
 import { applyAll, planAll } from "@/lib/importRun";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
+import { Button, InlineNotice, Panel } from "@/components/kit";
 
 type Phase = "choose" | "map" | "checking" | "preview" | "applying" | "done";
 const STEPS: { id: string; label: string; phases: Phase[] }[] = [
@@ -177,7 +177,7 @@ export default function ImportPage() {
 
   return (
     <Shell title="Import people" subtitle="Add or update many people from a spreadsheet. You see exactly what changes before anything is saved." requires="import.run"
-      action={<Link className="pill-btn gray" href="/roster/">Roster</Link>}>
+      action={<Button href="/roster/">Roster</Button>}>
       <ol className="steps" aria-label="Import steps">
         {STEPS.map((step, i) => (
           <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>
@@ -187,22 +187,20 @@ export default function ImportPage() {
       </ol>
       {phase === "choose" && (
         <>
-          {resumeNote && <Notice>{resumeNote}</Notice>}
+          {resumeNote && <InlineNotice>{resumeNote}</InlineNotice>}
           {unfinished && (
-            <section className="panel" aria-labelledby="resume-h">
-              <h2 id="resume-h">Unfinished import</h2>
+            <Panel id="resume-h" title="Unfinished import">
               <p className="muted">
                 {unfinished.fileName || "An import"} was being applied when this page closed.
                 {unfinished.info && <> {unfinished.info.progress.processed.toLocaleString("en-US")} of {unfinished.info.progress.total.toLocaleString("en-US")} rows are done ({unfinished.info.nextChunk} of {unfinished.info.chunkCount} batches).</>}
                 {" "}DIP remembers how far it got, so continuing won’t repeat finished rows or change the counts.
               </p>
-              <div className="actions"><button type="button" className="pill-btn dark" onClick={() => resumeSaved(unfinished)}>Continue import</button><button type="button" className="pill-btn gray" onClick={() => setDismissing(true)}>Dismiss</button></div>
-            </section>
+              <div className="actions"><Button variant="primary" onClick={() => resumeSaved(unfinished)}>Continue import</Button><Button onClick={() => setDismissing(true)}>Dismiss</Button></div>
+</Panel>
           )}
-          {error && <div className="banner error" role="alert"><span>{error}</span></div>}
+          {error && <InlineNotice tone="error">{error}</InlineNotice>}
           <div className="detail-layout">
-            <section className="panel" aria-labelledby="up">
-              <h2 id="up">1. Choose a file</h2>
+            <Panel id="up" title="1. Choose a file">
               <div
                 className={`dropzone${dragging ? " over" : ""}`}
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
@@ -215,15 +213,13 @@ export default function ImportPage() {
                 </label>
                 <p className="hint">Up to {IMPORT_LIMITS.maxRows.toLocaleString()} rows and {IMPORT_LIMITS.maxBytes / 1024 / 1024} MB. The file is read in your browser; only the checked rows are sent.</p>
               </div>
-            </section>
+</Panel>
             <aside className="stack">
-              <section className="panel" aria-labelledby="tpl">
-                <h2 id="tpl">Need the format?</h2>
+              <Panel id="tpl" title="Need the format?">
                 <p className="muted">The template has every column with one example row.</p>
-                <button className="pill-btn dark" onClick={() => downloadText("dip-people-template.csv", templateCsv(domain))}>Download template</button>
-              </section>
-              <section className="panel" aria-labelledby="rules">
-                <h2 id="rules">How it works</h2>
+                <Button variant="primary" onClick={() => downloadText("dip-people-template.csv", templateCsv(domain))}>Download template</Button>
+</Panel>
+              <Panel id="rules" title="How it works">
                 <ul className="plain">
                   <li>You match your columns to ours next, so any header names work. Email is the key: people are matched by lowercase email{domain && <> and must end in <strong>@{domain}</strong></>}.</li>
                   <li>Teams are separated by semicolons. Unknown teams are flagged.</li>
@@ -231,7 +227,7 @@ export default function ImportPage() {
                   <li>People who haven’t signed in yet appear on the roster as Invited and get these details when they join.</li>
                   <li>Running the same file twice changes nothing the second time.</li>
                 </ul>
-              </section>
+</Panel>
             </aside>
           </div>
         </>
@@ -239,7 +235,7 @@ export default function ImportPage() {
 
       {phase === "map" && raw && store && (
         <>
-          {error && <div className="banner error" role="alert"><span>{error}</span></div>}
+          {error && <InlineNotice tone="error">{error}</InlineNotice>}
           <ImportMapping raw={raw} domain={domain} companyId={companyId} store={store} onBack={startOver} onContinue={(result) => void plan(result)} />
         </>
       )}
@@ -259,11 +255,11 @@ export default function ImportPage() {
             <Info>{fileName}</Info>
             <span className="muted">Preview only. Nothing has been saved.</span>
             <span className="spacer" />
-            <button className="pill-btn gray" onClick={() => setPhase("map")}>Back to columns</button>
-            {counts.invalid > 0 && <button className="pill-btn gray" onClick={() => downloadText("import-errors.csv", errorCsv(rows.filter((r) => r.action === "invalid")))}>Download error CSV</button>}
-            <button className="pill-btn purple" disabled={changes === 0} onClick={() => setConfirming(true)}>Apply {changes} {changes === 1 ? "change" : "changes"}</button>
+            <Button onClick={() => setPhase("map")}>Back to columns</Button>
+            {counts.invalid > 0 && <Button onClick={() => downloadText("import-errors.csv", errorCsv(rows.filter((r) => r.action === "invalid")))}>Download error CSV</Button>}
+            <Button variant="primary" disabled={changes === 0} onClick={() => setConfirming(true)}>Apply {changes} {changes === 1 ? "change" : "changes"}</Button>
           </div>
-          {parsed.unknownColumns.length > 0 && <Notice>Ignored columns: {parsed.unknownColumns.join(", ")}.</Notice>}
+          {parsed.unknownColumns.length > 0 && <InlineNotice>Ignored columns: {parsed.unknownColumns.join(", ")}.</InlineNotice>}
           <div className="stats" role="group" aria-label="Preview summary">
             {(["create", "update", "unchanged", "invalid"] as const).map((a) => (
               <button key={a} className="stat" aria-pressed={filter === a} onClick={() => { setFilter(filter === a ? "all" : a); setShown(PREVIEW_PAGE); }}>
@@ -271,7 +267,7 @@ export default function ImportPage() {
               </button>
             ))}
           </div>
-          {visible.length === 0 ? <Empty title="Nothing in this group" body="Pick another group above or show all rows." action={<button className="pill-btn dark" onClick={() => setFilter("all")}>Show all</button>} /> : (
+          {visible.length === 0 ? <Empty title="Nothing in this group" body="Pick another group above or show all rows." action={<Button variant="primary" onClick={() => setFilter("all")}>Show all</Button>} /> : (
             <>
               <TableRegion label="Import preview">
                 <table className="table responsive">
@@ -312,10 +308,10 @@ export default function ImportPage() {
           <p className="muted">{progress.done} of {progress.total} rows processed. Keep this page open.</p>
           {error && (
             <>
-              <div className="banner error" role="alert"><span>{error}</span></div>
+              <InlineNotice tone="error">{error}</InlineNotice>
               <div className="actions">
-                <button className="pill-btn dark" onClick={() => void apply(true)}>Continue</button>
-                <button type="button" className="pill-btn gray" onClick={() => setStopping(true)}>Stop here</button>
+                <Button variant="primary" onClick={() => void apply(true)}>Continue</Button>
+                <Button onClick={() => setStopping(true)}>Stop here</Button>
               </div>
             </>
           )}
@@ -323,25 +319,24 @@ export default function ImportPage() {
       )}
 
       {phase === "done" && (
-        <section className="panel" aria-labelledby="done">
-          <h2 id="done">{failed.length || !finished ? "Import finished with problems" : "Import complete"}</h2>
+        <Panel id="done" title={<>{failed.length || !finished ? "Import finished with problems" : "Import complete"}</>}>
           <div className="stats" role="group" aria-label="Import result">
             <div className="stat"><span className="stat-n">{serverCounts?.created ?? outcome("created")}</span><span>Added to roster</span></div>
             <div className="stat"><span className="stat-n">{serverCounts?.updated ?? outcome("updated")}</span><span>Updated</span></div>
             <div className="stat"><span className="stat-n">{serverCounts?.unchanged ?? outcome("unchanged")}</span><span>Unchanged</span></div>
             <div className="stat"><span className="stat-n">{failed.length + previewInvalid.size}</span><span>Skipped</span></div>
           </div>
-          {!finished && <p className="notice">The import stopped early. Choose the same file again to run it once more: finished rows won’t change.</p>}
+          {!finished && <InlineNotice>The import stopped early. Choose the same file again to run it once more: finished rows won’t change.</InlineNotice>}
           <div className="actions">
-            <Link className="pill-btn dark" href="/roster/">See the roster</Link>
+            <Button variant="primary" href="/roster/">See the roster</Button>
             {(failed.length > 0 || counts.invalid > 0) && (
-              <button className="pill-btn gray" onClick={() => downloadText("import-errors.csv", errorCsv([
-                ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.message ?? "Failed"] })),
-              ]))}>Download error CSV</button>
+              <Button onClick={() => downloadText("import-errors.csv", errorCsv([
+        ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.message ?? "Failed"] })),
+       ]))}>Download error CSV</Button>
             )}
-            <button className="pill-btn gray" onClick={startOver}>Import another file</button>
+            <Button onClick={startOver}>Import another file</Button>
           </div>
-        </section>
+</Panel>
       )}
 
       {stopping && (

@@ -13,6 +13,7 @@ import { auditCsv } from "@/lib/exports";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { Button } from "@/components/kit";
 
 const PAGE = 40;
 const DEFAULTS = { q: "", category: "all" };
@@ -49,7 +50,7 @@ function Audit() {
 
   return (
     <Shell title="Audit log" subtitle="Every admin change: who did it, to what, and why. Read-only; the latest 100 entries." requires="audit.view"
-      action={filtered.length > 0 ? <button type="button" className="pill-btn gray" onClick={() => exportCsv()}>Export CSV</button> : undefined}>
+      action={filtered.length > 0 ? <Button onClick={() => exportCsv()}>Export CSV</Button> : undefined}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
         : !audit.data || hold ? <Loading label="Loading audit log" layout="audit" />
         : audit.data.length === 0 ? <Empty title="No entries yet" body="Changes made with the admin tools appear here, newest first." />
@@ -83,7 +84,7 @@ function Audit() {
                               <td data-label="What happened"><span className="audit-what"><span className="audit-label" title={`Action key: ${e.action}`}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{a.category}</span></span></td>
                               <td data-label="Who"><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
                               <td data-label="Target"><p>{e.summary}</p><p className="muted">{e.targetType} {e.targetId}</p></td>
-                              <td className="right"><button className="pill-btn gray small" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${a.label}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</button></td>
+                              <td className="right"><Button size="sm" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${a.label}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</Button></td>
                             </tr>
                             {open === e.id && (
                               <tr className="audit-detail-row" id={`audit-detail-${e.id}`}><td colSpan={5}>

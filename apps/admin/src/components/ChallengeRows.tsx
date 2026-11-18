@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { type ThemePhase, type WeeklyTheme, formatGoal, formatReward } from "@/lib/challenge";
 import { formatWindow } from "@/lib/weeks";
 import { TableRegion } from "./TableRegion";
 import { ThemeArt } from "./ThemeArt";
 import { Info } from "./Ui";
+import { Button } from "@/components/kit";
 
 const PHASE_LABEL: Record<ThemePhase, string> = { current: "This week", upcoming: "Upcoming", past: "Past" };
 const PHASE_ORDER: Record<ThemePhase, number> = { current: 0, upcoming: 1, past: 2 };
@@ -48,7 +48,7 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
       </td>
       <td className="right">
         {reviewable
-          ? <Link className="pill-btn dark" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={`Review submissions for ${theme.title}, ${window}`}>Review submissions</Link>
+          ? <Button variant="primary" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={`Review submissions for ${theme.title}, ${window}`}>Review submissions</Button>
           : <span className="muted">Not open yet</span>}
       </td>
     </tr>

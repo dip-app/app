@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { Button } from "@/components/kit";
 
 interface Props {
   title: string;
@@ -73,10 +74,10 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
       )}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="actions">
-        <button type="button" className={`pill-btn ${danger ? "danger" : "dark"}`} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
+        <Button variant={danger ? "danger" : "primary"} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
           {busy ? busyLabel : confirmLabel}
-        </button>
-        <button type="button" ref={cancel} className="pill-btn gray" disabled={busy} onClick={onClose}>Cancel</button>
+        </Button>
+        <Button ref={cancel} disabled={busy} onClick={onClose}>Cancel</Button>
       </div>
     </dialog>
   );

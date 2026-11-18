@@ -9,6 +9,7 @@ import { resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { DipbotCoverTag } from "./DipbotCoverTag";
 import { DipbotAction } from "./DipbotAction";
+import { Button } from "@/components/kit";
 
 export interface CoverPickerEvent { title: string; description?: string; tagIds?: readonly string[]; theme?: CoverThemeKey }
 
@@ -206,7 +207,7 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
         {shown.length === 0 ? (
           <div className="cp-no-results">
             <p>No covers match {query.trim() ? <>“{query.trim()}”</> : "these filters"}{theme ? <> in {themeLabel(theme)}</> : null}.</p>
-            <button type="button" className="pill-btn gray small" onClick={clear}>Clear search</button>
+            <Button size="sm" onClick={clear}>Clear search</Button>
           </div>
         ) : (
           <div className="cp-grid" role="radiogroup" aria-label={label} aria-describedby={describedBy} aria-invalid={invalid || undefined} onKeyDown={move}>
@@ -244,9 +245,9 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
 
       {query.trim() && (
         <div className="cp-more">
-          <button type="button" className="pill-btn gray small cp-more-btn" onClick={() => void searchMore()} aria-busy={more.kind === "loading" || undefined} disabled={more.kind === "loading" || importing !== null}>
+          <Button size="sm" className="cp-more-btn" onClick={() => void searchMore()} aria-busy={more.kind === "loading" || undefined} disabled={more.kind === "loading" || importing !== null}>
             {more.kind === "loading" ? "Searching…" : "Search more photos"}
-          </button>
+          </Button>
           <div className="cp-more-status" role="status" aria-live="polite">
             {more.kind === "message" ? more.text : more.kind === "loading" ? "Searching for more photos…" : ""}
           </div>

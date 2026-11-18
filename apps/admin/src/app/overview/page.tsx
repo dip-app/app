@@ -11,6 +11,7 @@ import { useLoad } from "@/components/useLoad";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { can } from "@/lib/adminTypes";
 import { refreshFailureMessage, updatedLabel } from "@/lib/insights";
+import { Button, InlineNotice } from "@/components/kit";
 
 export default function OverviewPage() {
   const { api, session } = useApp();
@@ -52,7 +53,7 @@ export default function OverviewPage() {
   const action = data ? (
     <div className="refresh">
       <span className="muted" role="status">{refreshing ? "Refreshing…" : updatedLabel(data.generatedAt, now)}</span>
-      <button className="pill-btn gray small" onClick={() => void refresh()} disabled={refreshing} aria-busy={refreshing || undefined}>{refreshing ? "Refreshing" : "Refresh"}</button>
+      <Button size="sm" onClick={() => void refresh()} disabled={refreshing} aria-busy={refreshing || undefined}>{refreshing ? "Refreshing" : "Refresh"}</Button>
     </div>
   ) : insights.error ? undefined : (
     // Same footprint as the loaded hint and button, so the header does not change height when the data arrives.
@@ -73,7 +74,7 @@ export default function OverviewPage() {
         : !data || holdSkeleton ? <OverviewLoading role={role} interestCount={tagCatalog.status === "ready" ? tagCatalog.tags.length : undefined}>{interests}</OverviewLoading>
         : (
           <div className="overview" aria-busy={refreshing || undefined}>
-            {refreshError && <p className="banner error" role="alert">{refreshError}</p>}
+            {refreshError && <InlineNotice tone="error">{refreshError}</InlineNotice>}
             <UnavailableNotice insights={data} />
             <QuietNotice insights={data} />
             <StatTiles insights={data} role={role} />
