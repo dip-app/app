@@ -29,10 +29,10 @@ Event cover library: a labeled manifest of hosted covers (`catalog://cover/<key>
 - WebP for app/admin; a 960 px JPEG per cover for email and og:image (Outlook and some unfurlers lack WebP).
 - Owner decisions: Jev Choice over a broad, non-eager candidate set (all eligible covers up to 60, two-call theme-group split above the per-call limit), deterministic fallback; request doc logs provider, shortlist size and whether the pick was outside the top lexical ranks.
 - Seed limited to images already public on the site plus repo theme art; prototype photos are flagged `prototype-unconfirmed` for replacement.
-- Credits are not on main: `pickCover` exposes an optional `credits.charge(caller, "coverPick")` hook, not wired.
+- Credits (rebased on #277): `coverPick` costs 1 credit (`CREDIT_COSTS`, `creditCost.coverPick`), charged before the model call per `requestId`, refunded when no model answered; no credits means `AI_CREDITS_EXHAUSTED`. Dipbot draft covers are free (inside the per-draft draftCheck).
 
 ## Handoff
 
 - Owner: add `PEXELS_API_KEY` to the dip-app/secrets repo, then run the workflow in docs/design/cover-library.md to import ~170 covers.
 - Deploy: hosting (new image files) and functions (index, `pickEventCoverV1`); optional TTL policy on `aiCoverPicks.expireAt`.
-- Credits workstream: wire the `credits` hook when it lands.
+- Admin UI may show `creditCost.coverPick` on "Let Dipbot choose" and handle `AI_CREDITS_EXHAUSTED`; hand-written admin types do not yet list `coverPick`.

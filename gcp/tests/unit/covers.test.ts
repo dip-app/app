@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { LlmUnavailableError, type DecisionRequest, type DecisionResult } from "../../functions/src/modules/ai/application/ports";
+import { CREDIT_COSTS } from "../../functions/src/modules/ai/domain/credits";
 import { ScriptedDecisions, type DecisionStepScript } from "../../functions/src/modules/ai/infrastructure/fakes";
 import { pickCover, pickEventCover, type PickCoverDeps } from "../../functions/src/modules/covers/application/pickCover";
 import { COVER_INDEX, type CoverIndexEntry } from "../../functions/src/modules/covers/domain/catalog.generated";
@@ -428,9 +429,8 @@ describe("pickEventCoverV1", () => {
     assert.equal((await r.store.getDoc(`companies/alpha/aiCoverPicks/admin1_${uuid(2)}`))?.provider, null);
   });
 
-  test("auth: signed out, wrong sign-in, plain member, organizer, another company and deactivated callers are refused before the limiter, the credits hook or the model", async () => {
-    const charged: string[] = [];
-    const r = rig(undefined, { credits: { charge: async who => { charged.push(who.uid); } } });
+  test("auth: signed out, wrong sign-in, plain member, organizer, another company and deactivated callers are refused before the limiter, the credits or the model", async () => {
+    const r = rig();
     await fails(pickEventCover(r.deps, null, body(1)), "UNAUTHENTICATED");
     await fails(pickEventCover(r.deps, caller("admin1", { emailVerified: false }), body(1)), "EMAIL_NOT_VERIFIED");
     await fails(pickEventCover(r.deps, caller("admin1", { signInProvider: "password" }), body(1)), "PROVIDER_NOT_ALLOWED");
@@ -438,7 +438,7 @@ describe("pickEventCoverV1", () => {
     await fails(pickEventCover(r.deps, caller("org1"), body(1)), "INSUFFICIENT_ROLE");
     await fails(pickEventCover(r.deps, caller("bo"), body(1)), "COMPANY_MISMATCH");
     await fails(pickEventCover(r.deps, caller("nobody"), body(1)), "MEMBERSHIP_CONFLICT");
-    assert.deepEqual([r.consumed, charged, r.decisions.calls.length, r.store.children("companies/alpha/aiCoverPicks").length], [[], [], 0, 0]);
+    assert.deepEqual([r.consumed, r.decisions.calls.length, r.store.children("companies/alpha/aiCoverPicks").length, usedCredits(r.store)], [[], 0, 0, 0]);
   });
 
   test("validation: strict fields and bounds", async () => {
@@ -459,17 +459,51 @@ describe("pickEventCoverV1", () => {
     assert.equal(r.decisions.calls.length, 0);
   });
 
-  test("the optional credits hook runs after the limiter and before the model, and can refuse", async () => {
+  const CREDITS = "companies/alpha/aiCredits/203001";
+  const usedCredits = (store: FakeAdminStore) => Number(store.get(CREDITS)?.used ?? 0);
+
+  test("credits: a Dipbot pick is charged 1 credit once, after the limiter; a repeated requestId is not charged twice", async () => {
     const order: string[] = [];
-    const r = rig(undefined, {
-      limiter: { consume: async () => { order.push("limiter"); } },
-      credits: { charge: async (who, action) => { order.push(`${who.uid}:${action}`); } },
-    });
+    const r = rig([jev(choiceAnswer("hike-ridge", 0.9)), jev(choiceAnswer("hike-ridge", 0.9))], { limiter: { consume: async () => { order.push("limiter"); } } });
+    const response = await pickEventCover(r.deps, caller("admin1"), body(1));
+    assert.deepEqual([response.source, response.provider, usedCredits(r.store), CREDIT_COSTS.coverPick], ["dipbot", "jev", 1, 1]);
+    assert.deepEqual(order, ["limiter"]);
     await pickEventCover(r.deps, caller("admin1"), body(1));
-    assert.deepEqual(order, ["limiter", "admin1:coverPick"]);
-    const refusing = rig(undefined, { credits: { charge: async () => { throw new AdminError("resource-exhausted", "AI_BUDGET_EXHAUSTED", "No credits."); } } });
-    await fails(pickEventCover(refusing.deps, caller("admin1"), body(1)), "AI_BUDGET_EXHAUSTED");
-    assert.equal(refusing.decisions.calls.length, 0);
+    assert.equal(usedCredits(r.store), 1, "same requestId: not charged again");
+    await pickEventCover(r.deps, caller("admin1"), body(2));
+    assert.equal(usedCredits(r.store), 2, "a new requestId is a new charge");
+  });
+
+  test("credits: refunded when no model answered (outage, heuristic provider, AI off) so admins pay only for Dipbot's choice", async () => {
+    const outage = rig([new LlmUnavailableError(null)]);
+    assert.equal((await pickEventCover(outage.deps, caller("admin1"), body(1))).provider, null);
+    assert.equal(usedCredits(outage.store), 0);
+    assert.deepEqual(outage.store.get(CREDITS)?.charges, {});
+    const heuristic = rig([asProvider("heuristic", choiceAnswer("hike-ridge", 0.99))]);
+    assert.equal((await pickEventCover(heuristic.deps, caller("admin1"), body(1))).provider, "heuristic");
+    assert.equal(usedCredits(heuristic.store), 0);
+    const off = rig(undefined, { aiEnabled: false });
+    assert.equal((await pickEventCover(off.deps, caller("admin1"), body(1))).provider, null);
+    assert.deepEqual([usedCredits(off.store), off.decisions.calls.length], [0, 0]);
+  });
+
+  test("credits: a model answer that falls back to the text match still counts as Dipbot answering", async () => {
+    const r = rig([jev(choiceAnswer("hike-ridge", 0.1))]);
+    const response = await pickEventCover(r.deps, caller("admin1"), body(1));
+    assert.equal(response.source, "match");
+    assert.equal(response.provider, "jev");
+    assert.equal(usedCredits(r.store), 1);
+  });
+
+  test("credits: out of credits fails with AI_CREDITS_EXHAUSTED before any model call and records nothing", async () => {
+    const r = rig();
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyCredits: 0 });
+    await fails(pickEventCover(r.deps, caller("admin1"), body(1)), "AI_CREDITS_EXHAUSTED");
+    assert.deepEqual([r.decisions.calls.length, r.store.children("companies/alpha/aiCoverPicks").length, usedCredits(r.store)], [0, 0, 0]);
+    // AI off never needs credits: the free text match still answers.
+    const off = rig(undefined, { aiEnabled: false });
+    off.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyCredits: 0 });
+    assert.equal((await pickEventCover(off.deps, caller("admin1"), body(1))).source, "match");
   });
 
   test("excludeCoverImageURLs steers the answer and a failed request-document write does not fail the pick", async () => {

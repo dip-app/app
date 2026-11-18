@@ -2664,12 +2664,14 @@ public struct AiCreditCosts: Codable, Equatable, Sendable {
     public var generate: Int
     public var regenerate: Int
     public var weeklyEmail: Int
+    public var coverPick: Int
 
-    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int) {
+    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int) {
         self.suggest = suggest
         self.generate = generate
         self.regenerate = regenerate
         self.weeklyEmail = weeklyEmail
+        self.coverPick = coverPick
     }
 }
 

@@ -11,7 +11,7 @@ import { AdminError, stored } from "../../admin/domain/errors";
  * To add a tool: add a row here, charge it with `chargeCredits` where the action starts, refund it when no result is
  * produced, and add a price to `creditCost` in the contract only if the UI shows one.
  */
-export type CreditTool = "suggestPanel" | "generateDrafts" | "regenerateDrafts" | "weeklyEmail";
+export type CreditTool = "suggestPanel" | "generateDrafts" | "regenerateDrafts" | "weeklyEmail" | "coverPick";
 
 export const CREDIT_COSTS: Readonly<Record<CreditTool, number>> = {
   /** One Dipbot Suggest panel visit: the per-step decision calls for the visit (free when cached). */
@@ -22,6 +22,13 @@ export const CREDIT_COSTS: Readonly<Record<CreditTool, number>> = {
   regenerateDrafts: 10,
   /** The weekly suggested-events email: once per company run, not per admin. */
   weeklyEmail: 3,
+  /**
+   * "Let Dipbot choose" in the cover picker (pickEventCoverV1): one decision call (two above the per-call option limit),
+   * about the size of a Suggest visit. Charged only when a model (Jev or OpenAI) answered; refunded when AI is off or no
+   * model answered (provider failure or timeout, lexical fallback, heuristic provider). The covers Dipbot picks for
+   * generated drafts are NOT priced here: they ride on the per-draft draftCheck call already covered by generateDrafts.
+   */
+  coverPick: 1,
 };
 
 /** About 50 draft generations a month. A company can override it with `monthlyCredits` in its aiSettings document. */
@@ -143,6 +150,7 @@ export function creditsSummary(ledger: CreditLedger): AiCredits {
       generate: CREDIT_COSTS.generateDrafts,
       regenerate: CREDIT_COSTS.regenerateDrafts,
       weeklyEmail: CREDIT_COSTS.weeklyEmail,
+      coverPick: CREDIT_COSTS.coverPick,
     },
   };
 }

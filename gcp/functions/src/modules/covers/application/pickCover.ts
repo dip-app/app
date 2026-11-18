@@ -1,10 +1,12 @@
 import { z } from "zod";
 import type { PickEventCoverResponse } from "../../../generated/models";
 import { authorize, requireCaller } from "../../admin/application/context";
-import type { AdminStore, Caller, RateLimiter } from "../../admin/application/ports";
+import type { AdminStore, AdminTransaction, Caller, Doc, RateLimiter } from "../../admin/application/ports";
 import { invalid } from "../../admin/domain/errors";
 import type { AiLog, DecisionPort } from "../../ai/application/ports";
 import { CHOICE_MIN_PROBABILITY } from "../../ai/domain/decisions";
+import { loadLedger } from "../../ai/application/credits";
+import { chargeCredits, CREDIT_COSTS, creditsExhausted, ledgerDocument, refundCredits } from "../../ai/domain/credits";
 import { aiPaths } from "../../ai/domain/paths";
 import { block } from "../../ai/domain/prompt";
 import { fieldsOf } from "../../ai/domain/request";
@@ -37,21 +39,12 @@ export const PickCoverRequestSchema = z.strictObject({
   excludeCoverImageURLs: z.array(z.string().regex(COVER_URL_PATTERN)).max(10).optional(),
 });
 
-/**
- * Optional per-action charging hook for a future credits system. Nothing is charged by default; when a deployment
- * supplies one, it runs after authorization and rate limiting and before any provider call, and may throw to refuse.
- */
-export interface CoverCredits {
-  charge(caller: Caller, action: "coverPick"): Promise<void>;
-}
-
 export interface PickCoverDeps {
   store: AdminStore;
   decisions: DecisionPort;
   /** False turns the model off: the deterministic lexical match answers alone. */
   aiEnabled: boolean;
   limiter?: RateLimiter;
-  credits?: CoverCredits;
   log?: AiLog;
   now: () => Date;
   /** Cover index to pick from (tests inject a fixture; defaults to the generated library index). */
@@ -155,9 +148,10 @@ function alternativesFor(candidates: readonly ScoredCover[], chosenKey: string |
 
 /**
  * pickEventCoverV1: ai.generate (admin). Authorizes against the caller's own membership, applies the shared burst
- * limiter, runs the optional credits hook, picks, then records the provider on a content-free request document
+ * limiter, charges 1 Dipbot credit (CREDIT_COSTS.coverPick; idempotent per requestId, AI_CREDITS_EXHAUSTED before any
+ * model call when the allowance is spent), picks, refunds the credit unless a model (Jev or OpenAI) answered, then records the provider on a content-free request document
  * (companies/{c}/aiCoverPicks/{uid}_{requestId}: provider, source, chosen key, counts; never the event text). Writes no events.
- * A repeated requestId is simply picked again (nothing is charged or reserved).
+ * A repeated requestId is picked again but never charged twice. With AI off nothing is charged.
  */
 export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | null, data: unknown): Promise<PickEventCoverResponse> {
   const caller = requireCaller(rawCaller);
@@ -167,7 +161,17 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
   // Authorization first (so a non-member never touches the limiter), then the burst limit.
   await deps.store.runReadOnly(tx => authorize(tx, caller, companyId, "ai.generate"));
   await deps.limiter?.consume(caller.uid);
-  await deps.credits?.charge(caller, "coverPick");
+  const chargeKey = `coverPick_${caller.uid}_${requestId.toLowerCase()}`;
+  const charged = deps.aiEnabled;
+  if (charged) {
+    await deps.store.runTransaction(async tx => {
+      const at = deps.now();
+      const loaded = await loadLedger(tx, companyId, await tx.get(aiPaths.settings(companyId)) ?? null, at);
+      const outcome = chargeCredits(loaded.ledger, chargeKey, CREDIT_COSTS.coverPick);
+      if (outcome === "insufficient") throw creditsExhausted(loaded.ledger);
+      if (outcome === "charged") put(tx, loaded.path, loaded.doc, ledgerDocument(loaded.ledger));
+    });
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DECISION_TIMEOUT_MS);
@@ -177,9 +181,14 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
       title, ...(description !== undefined ? { description } : {}), ...(tagIds ? { tagIds } : {}), ...(theme ? { theme } : {}),
       ...(excludeCoverImageURLs ? { exclude: excludeCoverImageURLs } : {}),
     }, controller.signal);
+  } catch (error) {
+    if (charged) await refund(deps, companyId, chargeKey);
+    throw error;
   } finally {
     clearTimeout(timer);
   }
+  // Pay only when Dipbot actually chose: no model answered (outage, timeout, heuristic provider) is free.
+  if (charged && picked.provider !== "jev" && picked.provider !== "openai") await refund(deps, companyId, chargeKey);
 
   const now = deps.now();
   const chosenKey = coverByURL(picked.coverImageURL, deps.index ?? COVER_INDEX)?.key ?? null;
@@ -196,4 +205,21 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
     lexicalRank: picked.lexicalRank, pickedOutsideTopLexical: picked.pickedOutsideTopLexical,
   });
   return { contractVersion: 1, coverImageURL: picked.coverImageURL, source: picked.source, provider: picked.provider, alternatives: picked.alternatives };
+}
+
+function put(tx: AdminTransaction, path: string, existing: Doc | null, data: Doc): void {
+  if (existing) tx.update(path, data);
+  else tx.create(path, data);
+}
+
+/** Gives the cover-pick charge back exactly once. A failed refund is logged, never surfaced: the pick itself succeeded. */
+async function refund(deps: PickCoverDeps, companyId: string, key: string): Promise<void> {
+  try {
+    await deps.store.runTransaction(async tx => {
+      const loaded = await loadLedger(tx, companyId, await tx.get(aiPaths.settings(companyId)) ?? null, deps.now());
+      if (refundCredits(loaded.ledger, key)) put(tx, loaded.path, loaded.doc, ledgerDocument(loaded.ledger));
+    });
+  } catch (error) {
+    deps.log?.("ai.cover_pick_refund_failed", { companyId, error: error instanceof Error ? error.name : "unknown" }, "warn");
+  }
 }

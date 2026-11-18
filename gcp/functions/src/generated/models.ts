@@ -1331,6 +1331,7 @@ export interface AiCreditCosts {
   generate: number;
   regenerate: number;
   weeklyEmail: number;
+  coverPick: number;
 }
 
 export interface AiCredits {

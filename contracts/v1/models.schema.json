@@ -6118,13 +6118,19 @@
         "weeklyEmail": {
           "type": "integer",
           "minimum": 0
+        },
+        "coverPick": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Credits for one \"Let Dipbot choose\" cover pick (pickEventCoverV1); charged only when a model answered."
         }
       },
       "required": [
         "suggest",
         "generate",
         "regenerate",
-        "weeklyEmail"
+        "weeklyEmail",
+        "coverPick"
       ]
     },
     "AiCredits": {

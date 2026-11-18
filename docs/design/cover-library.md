@@ -84,6 +84,10 @@ That is roughly 180 KB per image, so 200 images is about 36 MB. The hard cap for
 
 The server does not narrow eagerly. With fewer than about 60 eligible covers (config `maxCandidates`) all of them are sent to Jev as one-line text labels (`key: theme | tags | short alt`). Larger libraries keep a broad ranked set plus a generous tail and diverse picks, and split into at most two Jev Choice calls (theme group, then cover) when over the per-call option limit. The only hard exclusions are orientation and `autoPick: false`; fallbacks are unchanged.
 
+## Credits
+
+"Let Dipbot choose" (`pickEventCoverV1`) costs 1 Dipbot credit (`CREDIT_COSTS.coverPick`, `creditCost.coverPick` in the contract). It is charged before the model call, idempotent per `requestId`, and refunded when no model answered (AI off, provider failure or timeout, heuristic provider), so admins pay only when Dipbot actually chose. With no credits left it fails with `AI_CREDITS_EXHAUSTED` before any model call; the manual search and filters stay free. Covers Dipbot picks for generated drafts add nothing: they ride on the per-draft draftCheck call already inside the 10-credit generation.
+
 Server details live with the covers module; this document only records the contract with the catalog.
 
 ## Deploy note

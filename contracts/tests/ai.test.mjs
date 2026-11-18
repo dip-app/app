@@ -29,7 +29,7 @@ const request = {contractVersion: 1, companyId: 'acme', requestId: uuid, choices
 const draft = {title: 'Lunch walk', description: 'A relaxed walk.', tagIds: ['hiking'], coverImageURL: 'catalog://default/outdoors', suggestedDaypart: 'weekday_lunch',
   durationMinutes: 60, venueType: 'park_or_outdoors', venueSearchHint: 'park near office', costCents: 0, costNote: 'Free', capacity: 20, isOutdoor: true, rationale: 'Many hikers.'};
 const usage = {monthlyGenerationLimit: 30, monthlyGenerationsUsed: 1, dailyGenerationLimit: 10, dailyGenerationsUsed: 1, generationsRemaining: 9};
-const credits = {creditsAllowance: 500, creditsUsed: 88, creditsRemaining: 412, resetsAt: '2026-12-01T08:00:00.000Z', creditCost: {suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3}};
+const credits = {creditsAllowance: 500, creditsUsed: 88, creditsRemaining: 412, resetsAt: '2026-12-01T08:00:00.000Z', creditCost: {suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1}};
 const context = {contractVersion: 1, enabled: true, interestDataAvailable: true, topInterests: [{tagId: 'hiking', bucket: '10-19'}], thinInterestTagIds: ['chess'], usage, credits};
 
 test('AiInterestTag uses suppressed buckets only', () => {
@@ -159,6 +159,7 @@ test('AiCredits carries credits and prices only, never money', () => {
   rejects('AiCredits', {...credits, costUsd: 0.12}, 'no money fields');
   rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, generate: 0.5}});
   rejects('AiCredits', {...credits, creditCost: {...credits.creditCost, extra: 1}});
+  rejects('AiCredits', {...credits, creditCost: without(credits.creditCost, 'coverPick')}, 'missing coverPick');
   accepts('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], credits, cached: false});
   rejects('GetEventIdeaSuggestionsResponse', {contractVersion: 1, provider: 'jev', suggestions: [], cached: false}, 'missing credits');
 });
