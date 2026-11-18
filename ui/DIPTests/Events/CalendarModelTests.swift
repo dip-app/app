@@ -99,6 +99,23 @@ final class CalendarModelTests: XCTestCase {
         XCTAssertEqual(fake.readWindows.count, readsBefore, "no read after the revoke")
     }
 
+    func testHomeOverlapsSplitPersonalFromDIPAndDIPWins() async {
+        let (model, _, _) = await makeModel(items: [foreign()])
+        let target = detail("e1")
+        var other = detail("e2")
+        other.isJoined = true
+        other.title = "Yoga"
+        // Personal only: the device entry overlaps, no other joined DIP event does.
+        let personal = await model.homeOverlaps([target], among: [target])
+        XCTAssertEqual(personal, DIPCalendarOverlaps(dip: [], personal: ["e1"]))
+        // A joined DIP event at the same time as well: DIP wins and the event is not listed as personal.
+        let both = await model.homeOverlaps([target], among: [target, other])
+        XCTAssertEqual(both, DIPCalendarOverlaps(dip: ["e1"], personal: []))
+        // Neither: free.
+        let free = await model.homeOverlaps([], among: [])
+        XCTAssertTrue(free.isEmpty)
+    }
+
     func testOwnEntryIsExcludedByIdentifierWhenItsURLWasEdited() async {
         let (model, fake, store) = await makeModel()
         var edited = fields()

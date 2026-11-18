@@ -95,6 +95,9 @@ struct DIPCalendarPill: View {
         case .conflict:
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 18, weight: .semibold))
                 .frame(width: 22, height: 22).accessibilityHidden(true)
+        case .busy:
+            Image(systemName: "calendar.badge.clock").font(.system(size: 18, weight: .regular))
+                .frame(width: 22, height: 22).accessibilityHidden(true)
         case .free(direct: true):
             Image(systemName: "calendar.badge.plus").font(.system(size: 18, weight: .regular))
                 .frame(width: 22, height: 22).accessibilityHidden(true)
@@ -112,6 +115,7 @@ struct DIPCalendarPill: View {
     private var foreground: Color {
         switch state {
         case .conflict: DIPTokens.Color.textOnCalendarConflict.swiftUIColor
+        case .busy: DIPTokens.Color.textOnCalendarBusy.swiftUIColor
         case .added: DIPTokens.Color.textPrimary.swiftUIColor
         default: .white
         }
@@ -120,6 +124,7 @@ struct DIPCalendarPill: View {
     private var fill: Color {
         switch state {
         case .conflict: DIPTokens.Color.calendarConflict.swiftUIColor
+        case .busy: DIPTokens.Color.calendarBusy.swiftUIColor
         case .added: .white
         case .free, .adding: DIPTokens.Color.calendarFree.swiftUIColor
         case .hidden: .clear

@@ -63,6 +63,7 @@ enum MockLaunch {
         if arguments.contains("--album-readonly") {
             for id in snapshot.albums.keys { snapshot.albums[id]?.canAddPhotos = false }
         }
+        if let state = DIPCalendarModel.fakeState(arguments) { snapshot = DIPCalendarModel.alignedFixtures(snapshot, state: state) }
         return snapshot
     }
     #else

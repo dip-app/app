@@ -29,8 +29,8 @@ enum DIPDuoPaneLayout {
 
     /// The default event in the order the Home grid shows: events that fit the member's calendar first, conflicting
     /// ones after (the same `DIPCalendarFit` rule `DIPHomeScreen` applies), so the detail pane opens the first card.
-    static func defaultSelection(in ids: [String], conflicted: Set<String>) -> String? {
-        defaultSelection(in: DIPCalendarFit.prioritized(ids, id: { $0 }, conflicted: conflicted))
+    static func defaultSelection(in ids: [String], conflicted: Set<String>, busy: Set<String> = []) -> String? {
+        defaultSelection(in: DIPCalendarFit.prioritized(ids, id: { $0 }, conflicted: conflicted, busy: busy))
     }
 
     /// Pushes `route` unless it is already the top page, so a rapid double tap cannot stack the same page twice.

@@ -314,7 +314,7 @@ struct DIPPrototypeApp: View {
     @State private var homeScope: DIPHomeEventScope = .all
     @Environment(\.dipCalendar) private var calendar
     /// Upcoming Home events that overlap the member's calendar; filled after the feed renders.
-    @State private var calendarConflictIDs: Set<String> = []
+    @State private var calendarOverlaps: DIPCalendarOverlaps = .none
     // Avatar flight between the header capsule and the Profile badge (see `avatarFlyer`).
     @State private var flightFrame = CGRect.zero
     @State private var flightRing: CGFloat = 0
@@ -506,7 +506,7 @@ struct DIPPrototypeApp: View {
                     eventFilter: eventFilter, onFilterScope: { setHomeScope($0, uid: member.id, shown: matchingCount, total: eventFilter?.totalCount) },
                     eventsPhase: eventsPhase(snapshot, hasEvents: !lists.discovery.isEmpty),
                     onRetryEvents: { observationID = UUID() },
-                    calendarConflictIDs: calendarConflictIDs))
+                    calendarOverlaps: calendarOverlaps))
             case .events:
                 if participationUnavailable {
                     AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
@@ -549,14 +549,14 @@ struct DIPPrototypeApp: View {
 
     /// Runs after the feed has rendered, so first paint is unchanged.
     private func refreshCalendarConflicts() async {
-        guard let snapshot = model.snapshot else { calendarConflictIDs = []; return }
+        guard let snapshot = model.snapshot else { calendarOverlaps = .none; return }
         let all = Array(snapshot.eventDetails.values)
         let candidates = DIPEventLists(snapshot: snapshot, now: Date()).discovery.compactMap { summary -> DIPEventDetail? in
             guard let detail = snapshot.eventDetails[summary.id], detail.metadata != nil, !detail.isPast else { return nil }
             return detail
         }
-        let result = await calendar.conflictedEventIDs(candidates, among: all)
-        if result != calendarConflictIDs { calendarConflictIDs = result }
+        let result = await calendar.homeOverlaps(candidates, among: all)
+        if result != calendarOverlaps { calendarOverlaps = result }
     }
 
     /// Freshness of Home's events. The snapshot only exists after a successful read, so a load error with a
@@ -1109,7 +1109,7 @@ struct DIPPrototypeApp: View {
         // Home lists calendar-friendly events first (`DIPHomeScreen.orderedEvents`); the default is that first card.
         if selectedTab == .home {
             return DIPDuoPaneLayout.defaultSelection(
-                in: visibleHomeEvents(snapshot, lists: lists).map(\.id), conflicted: calendarConflictIDs)
+                in: visibleHomeEvents(snapshot, lists: lists).map(\.id), conflicted: calendarOverlaps.dip, busy: calendarOverlaps.personal)
         }
         return DIPDuoPaneLayout.defaultSelection(in: lists.upcoming.map(\.id))
     }

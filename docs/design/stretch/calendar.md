@@ -160,6 +160,18 @@ Joining an event (RSVP `going`) emails the member a real calendar invite, so Gma
 - **One owner of the entry:** the informational `event.ics` (`METHOD:PUBLISH`, UID `<eventId>@letsdip.work`) is no longer attached to any email, so a member can never end up with two entries for one event. Reminder and changed emails say "To add it to your calendar, open the event in DIP" and link to the event page; the invite, update and cancel emails are the only ones with a calendar file.
 - **Not built:** the optional per-user `webcal://` feed from the CAL-8 scope (needs a revocable token; not part of this request).
 
+### Decision: grey busy state for personal-calendar overlaps (November 17, 2026)
+
+Owner decision, supersedes the single amber state of 2 and 5 above for device entries.
+
+1. **Amber is for DIP, grey is for everything else.** An overlap with another DIP event the member joined keeps the amber conflict pill ("Overlaps with X", Add anyway / Cancel). An overlap with a non-DIP entry in the member's own device calendar (the opt-in read) shows a **neutral gray pill** instead: solid `calendarBusy` fill (token alias of `completeGray` #CCCCCC, ink text about 10:1), calendar-clock icon, same date label. It means "you have something else then", is informational rather than a warning, and stays tappable.
+2. **Tapping the grey pill** opens an alert titled with the busy entry ("Team Lunch", "Team Lunch and Standup", "A, B and 2 more") or "Busy" when the entry has no title, with the time(s), "You have something else then." and Add anyway / Cancel. DIP only ever reads what the full-access grant already exposes; titles are shown on the device only, never logged or uploaded. Untitled or hidden titles read "Busy" everywhere (alert, list, VoiceOver); nothing is invented.
+3. **Both kinds overlap:** DIP wins (amber). The alert reads "Overlaps with Yoga and Dentist" (personal entries by title, or "Busy"), one line per entry in the body.
+4. **Resolution order:** hidden, then added, then adding, then DIP overlap (amber), then personal overlap (grey), then free. Pure and unit tested (`DIPCalendarPillState.resolve`).
+5. **VoiceOver:** amber reads "Add to calendar. Overlaps with <titles>"; grey reads "Add to calendar. Busy at this time" and never speaks the entry title (the alert shows it). Home cards say "Overlaps another activity you joined" or "Busy at this time".
+6. **Home:** a card overlapping a joined DIP event keeps the amber warning badge; a card overlapping only the member's calendar gets a small neutral gray circle with the calendar-clock icon (same size and place). Order is fits first, then personal-calendar overlaps, then DIP overlaps; nothing is hidden. The Duo list and its default detail selection use the same rule, and the Duo detail pane shares the event page, so its pill follows the same states.
+7. **Fixtures (Debug only):** `--calendar-fake=<free|busy|busy-untitled|conflict|both|added|off|denied>`. `conflict` and `both` move the first upcoming event the member has not joined to overlap the first one they have joined.
+
 ## Open questions for the owner
 
 1. Is the opt-in full-access prompt acceptable, or should V2 stay with Phase A (DIP-only conflicts) plus the editor?
