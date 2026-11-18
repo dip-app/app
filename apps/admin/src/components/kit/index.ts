@@ -6,4 +6,5 @@ export { EmptyState } from "./EmptyState";
 export { InlineNotice, type NoticeTone } from "./InlineNotice";
 export { PageHeader } from "./PageHeader";
 export { Panel } from "./Panel";
+export { SectionHeader, type SectionToggle } from "./SectionHeader";
 export { SegmentedControl, type SegmentOption, type SegmentedVariant } from "./SegmentedControl";

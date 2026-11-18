@@ -19,6 +19,7 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | A titled section card | `Panel` | `title`, `description`, `actions`, `loading`, `empty`, `error`, `headingLevel`. |
 | Nothing here yet | `EmptyState` | `title`, `body`, one `action`, optional `art`. `Empty` in `Ui.tsx` is the same component. |
 | The page title row | `PageHeader` | `title`, `description`, `actions`. `Shell` renders it. |
+| The header row of a Dipbot section | `SectionHeader` | `title`, `headingLevel`, `updated` (muted "Updated 3 hours ago"), optional `toggle` (collapse), `hint`, `end` (actions). Used by "Ideas for you" and the wizard's per-step suggestions. |
 | One choice out of a few, always visible | `SegmentedControl` | `tabs` (underlined views), `pill` (compact, AM/PM), `icon` (grid or list). |
 
 `Tabs` (a real tablist with arrow keys) stays for switching whole pages of content; `SegmentedControl` is for switching how the same data is shown.
@@ -36,6 +37,7 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | `loading`, `loadingLabel` | Spinner replaces the mark, `aria-busy`, presses ignored, width kept. |
 | `disabled`, `disabledReason` | The reason is a tooltip and is read by screen readers ("Not enough credits"). |
 | `icon`, `iconOnly`, `shortLabel` | Replace or remove the mark; collapse to the icon (`true`, or `"narrow"` on phones); show a shorter label on phones ("Suggest"). |
+| `hint` | Extra context, for example the tooltip and screen reader text of "Use suggestions". The disabled reason wins while disabled. |
 | `href` | Renders a link with the same look. Forwards a ref. |
 
 The accessible name is "Label, N credits", also when collapsed. Do not add a second price to the page next to it.

@@ -166,7 +166,7 @@ describe("Ideas for you: refresh", () => {
     await screen.findByRole("list", { name: "Event ideas" }, wait);
     expect(refreshButton().disabled).toBe(true);
     expect(refreshButton().title).toMatch(/^Out of credits until /);
-    expect(document.querySelector(".ifu-hint")?.textContent).toMatch(/^Out of credits until /);
+    expect(document.querySelector(".sh-hint")?.textContent).toMatch(/^Out of credits until /);
     // The stored ideas stay.
     expect(screen.getAllByRole("button", { name: /^Use this idea:/ })).toHaveLength(5);
     cleanup();
@@ -298,11 +298,11 @@ describe("Ideas for you with the preview mock", () => {
 
   it("exhausted, limit, off and empty each show their state", async () => {
     await previewPage("?ideas=exhausted");
-    await waitFor(() => expect(document.querySelector(".ifu-hint")?.textContent).toMatch(/^Out of credits until /), wait);
+    await waitFor(() => expect(document.querySelector(".sh-hint")?.textContent).toMatch(/^Out of credits until /), wait);
     expect((screen.getByRole("button", { name: /^Refresh ideas/ }) as HTMLButtonElement).disabled).toBe(true);
     cleanup();
     await previewPage("?ideas=limit");
-    await waitFor(() => expect(document.querySelector(".ifu-hint")?.textContent).toBe("No more refreshes today. Try again tomorrow."), wait);
+    await waitFor(() => expect(document.querySelector(".sh-hint")?.textContent).toBe("No more refreshes today. Try again tomorrow."), wait);
     cleanup();
     await previewPage("?ideas=empty");
     await screen.findByText("Starter ideas · not enough activity yet", {}, wait);

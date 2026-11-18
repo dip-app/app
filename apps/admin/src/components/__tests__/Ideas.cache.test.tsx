@@ -53,7 +53,9 @@ describe("saved suggestions: visiting is free", () => {
 
   it("a fresh saved answer shows a quiet 'Updated' line and says this visit used 0 credits", async () => {
     await open("?step=2");
-    expect((await screen.findByText(/Updated 2 hours ago/, {}, wait)).closest(".sg-meta")?.getAttribute("data-stale")).toBeNull();
+    const when = await screen.findByText(/Updated 2 hours ago/, {}, wait);
+    expect(when.closest(".sh-head")).toBeTruthy(); // inline in the header, not a second row
+    expect(document.querySelector(".sg-meta")).toBeNull();
     expect(document.querySelector(".credits-tip")?.textContent).toContain("This visit used 0 credits.");
     expect(document.querySelector(".credits-meter")?.textContent).toContain("Credits: 412 of 500");
     expect(refreshButton()?.disabled).toBe(false);

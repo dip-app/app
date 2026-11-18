@@ -13,10 +13,9 @@ import {
 import { type Answers, BUDGETS, durationLabel, saveAiDraft } from "@/lib/ideas";
 import { labelOf } from "@/lib/suggestionLabels";
 import { useApp } from "./AppProvider";
-import { Chevron } from "./Chevron";
 import { DipbotAction } from "./DipbotAction";
 import { DipbotMark } from "./DipbotMark";
-import { Button, Chip, InlineNotice } from "./kit";
+import { Button, Chip, InlineNotice, SectionHeader } from "./kit";
 import { dismissToast, toast } from "./Toast";
 
 interface Props {
@@ -153,21 +152,14 @@ export function IdeasForYou({ onCredits, onCustomize }: Props) {
 
   return (
     <section className="ifu" aria-labelledby={headId} data-collapsed={collapsed ? "true" : "false"} data-state={failed ? "error" : data ? "ready" : "loading"}>
-      <div className="ifu-head">
-        <DipbotMark size={16} className="ifu-mark" />
-        <h2 id={headId}>{t("ideasForYou.title")}</h2>
-        {data && !failed && <span className="ifu-when">{updating ? <span role="status"><span className="ifu-dots" aria-hidden><i /><i /><i /></span>{t("ideasForYou.updating")}</span> : updatedLine(data, new Date())}</span>}
-        <button type="button" className="ifu-toggle" aria-expanded={!collapsed} aria-controls={bodyId} aria-label={t(collapsed ? "ideasForYou.expand" : "ideasForYou.collapse")} title={t(collapsed ? "ideasForYou.expand" : "ideasForYou.collapse")} onClick={toggle}>
-          <Chevron className="ifu-chevron" />
-        </button>
-        {showRefresh && state?.reason && <span className="ifu-hint" aria-hidden>{state.reason}</span>}
-        {showRefresh && state && (
-          <div className="ifu-end">
-            <DipbotAction size="sm" className="ifu-refresh" label={t("ideasForYou.refresh")} credits={ideasCost(data.credits)} loading={running}
-              disabled={state.disabled && !running} disabledReason={state.reason ?? undefined} onClick={() => void refresh()} />
-          </div>
-        )}
-      </div>
+      <SectionHeader id={headId} title={t("ideasForYou.title")}
+        updated={data && !failed ? (updating ? <span role="status"><span className="ifu-dots" aria-hidden><i /><i /><i /></span>{t("ideasForYou.updating")}</span> : updatedLine(data, new Date())) : undefined}
+        toggle={{ collapsed, controls: bodyId, label: t(collapsed ? "ideasForYou.expand" : "ideasForYou.collapse"), onToggle: toggle }}
+        hint={showRefresh && state?.reason ? state.reason : undefined}
+        end={showRefresh && state ? (
+          <DipbotAction size="sm" className="ifu-refresh" label={t("ideasForYou.refresh")} credits={ideasCost(data.credits)} loading={running}
+            disabled={state.disabled && !running} disabledReason={state.reason ?? undefined} onClick={() => void refresh()} />
+        ) : undefined} />
       <div id={bodyId} className="ifu-content" hidden={collapsed}>
         {failed ? (
           <InlineNotice tone="warn" className="ifu-note" action={<Button size="sm" onClick={retry}>{t("ideasForYou.retry")}</Button>}>{t("ideasForYou.error")}</InlineNotice>

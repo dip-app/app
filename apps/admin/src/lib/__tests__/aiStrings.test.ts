@@ -10,7 +10,7 @@ describe("AI strings", () => {
     expect(t("suggest.feature")).toBe("Dipbot Suggest");
     expect(t("step.note.full")).toBe("Ask Dipbot");
     expect(t("results.label")).toBe("Dipbot’s drafts");
-    expect(t("suggest.use")).toBe("Let Dipbot pick for me");
+    expect(t("suggest.use")).toBe("Use suggestions");
     // One line per stepper label, full wording kept for names and tooltips.
     expect(STEPS.map((s) => s.label)).toEqual(["Interests", "Goal", "Group", "Budget", "Ask"]);
     expect(STEPS.map((s) => s.full)).toEqual(["Interests", "Goal", "Group and setting", "Budget and timing", "Ask Dipbot"]);
@@ -18,8 +18,8 @@ describe("AI strings", () => {
   });
 
   it("fills slots and plurals, and leaves unknown slots as written", () => {
-    expect(tn("suggest.count", 6)).toBe("Dipbot suggests 6 choices.");
-    expect(tn("suggest.count", 1)).toBe("Dipbot suggests 1 choice.");
+    expect(tn("suggest.count", 6)).toBe("Dipbot suggests 6 choices");
+    expect(tn("suggest.count", 1)).toBe("Dipbot suggests 1 choice");
     expect(t("credits.meter", { left: 412, total: 500 })).toBe("Credits: 412 of 500 this month");
     expect(tn("credits.unit", 1)).toBe("1 credit");
     expect(tn("credits.unit", 10)).toBe("10 credits");
