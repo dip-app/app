@@ -1,5 +1,19 @@
 import XCTest
 
+/// The Profile header lists chosen interests as chips (no "N selected" text any more); count them by identifier.
+@MainActor func interestChipCount(_ app: XCUIApplication) -> Int {
+    app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "profile.interests.chip.")).count
+}
+
+@MainActor func waitForInterestChips(_ app: XCUIApplication, _ count: Int, timeout: TimeInterval = 5) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+        if interestChipCount(app) == count { return true }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+    }
+    return interestChipCount(app) == count
+}
+
 final class ProfileInterestTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
@@ -32,7 +46,7 @@ final class ProfileInterestTests: XCTestCase {
         app.buttons["profile.interests.option.tag-photography"].tap()
         app.buttons["profile.interests.save"].tap()
         XCTAssertTrue(app.buttons["profile.edit"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["5 selected"].exists)
+        XCTAssertEqual(interestChipCount(app), 5)
         app.buttons["home.tab.Home"].tap()
         let homeVisible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: app.buttons["home.challenge"])
         XCTAssertEqual(XCTWaiter.wait(for: [homeVisible], timeout: 5), .completed)
@@ -56,7 +70,7 @@ final class ProfileInterestTests: XCTestCase {
         capture(app, "profile-interest-retry")
         app.buttons["profile.interests.retry"].tap()
         XCTAssertTrue(app.buttons["profile.edit"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["5 selected"].exists)
+        XCTAssertEqual(interestChipCount(app), 5)
     }
 
     @MainActor func testSearchEmptyAndCancelPreserveProfileAndEditDraft() {
@@ -69,7 +83,7 @@ final class ProfileInterestTests: XCTestCase {
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "profile.interests.option.")).count, 0)
         capture(app, "profile-interest-no-results")
         app.buttons["profile.interests.cancel"].tap()
-        XCTAssertTrue(app.staticTexts["4 selected"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForInterestChips(app, 4))
         app.buttons["profile.edit"].tap()
         let department = app.textFields["profile.edit.department"]
         department.tap()
@@ -86,7 +100,7 @@ final class ProfileInterestTests: XCTestCase {
         app.buttons["profile.interests.cancel"].tap()
         XCTAssertEqual(department.value as? String, "Design")
         app.buttons["Cancel"].tap()
-        XCTAssertTrue(app.staticTexts["4 selected"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForInterestChips(app, 4))
     }
 
     @MainActor func testLargeTextProfileAndPickerRemainUsable() {

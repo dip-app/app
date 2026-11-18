@@ -27,7 +27,7 @@ final class ChallengePhaseTests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "challenge-active"; shot.lifetime = .keepAlways; add(shot)
         button.tap()
-        XCTAssertTrue(app.buttons["Added to calendar"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added to your calendar")).firstMatch.waitForExistence(timeout: 3))
         let recorded = app.staticTexts["calendar.fake.last"].label
         XCTAssertTrue(recorded.hasPrefix("Weekly theme: Fitness|"), recorded)
         XCTAssertTrue(recorded.hasSuffix("|true"), recorded)

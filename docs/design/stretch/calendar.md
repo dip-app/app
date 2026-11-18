@@ -123,7 +123,7 @@ Full-access prompt wording discourages opt-in (measure; Phase A still helps); st
 
 The owner had not answered the open questions when this was built; each default below follows this doc's recommendation and is recorded in the PR.
 
-1. **Opt-in full access is adopted (Q1).** Phase A (DIP-to-DIP conflicts, no permission) is always on. Phase B (device calendar read, direct save) needs the build flag `DIP_CALENDAR_CONFLICTS_ENABLED` (Info.plist `DIPCalendarConflictsEnabled`: YES in Debug, NO in Release), the per-uid Profile toggle "Show calendar conflicts" (default off) and iOS full access. Without all three, the pill keeps the permissionless system editor.
+1. **Opt-in full access is adopted (Q1).** Phase A (DIP-to-DIP conflicts, no permission) is always on. Phase B (device calendar read, direct save) needs the build flag `DIP_CALENDAR_CONFLICTS_ENABLED` (Info.plist `DIPCalendarConflictsEnabled`: YES in Debug and Release since the owner approved release on November 18, 2026), the per-uid Profile toggle "Show calendar conflicts" (default off) and iOS full access. Without all three, the pill keeps the permissionless system editor.
 2. **"Add anyway" is allowed (Q2).** A conflict opens the "Overlaps with" alert (up to two names, then "and N more"; "May overlap with" when all are tentative) with Add anyway and Cancel.
 3. **No conflict-aware reminders (Q3)** and **no Google or Microsoft freebusy (Q4)**: out of scope.
 4. **Emailed invites from `events@letsdip.work` (Q5)**: reversed on the owner's request, built as CAL-8 (#185) with EML-5 (#219); see [Emailed invites](#emailed-invites-cal-8-november-17-2026).

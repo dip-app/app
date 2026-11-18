@@ -113,7 +113,7 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertTrue(fitness.waitForExistence(timeout: 5))
         XCTAssertEqual(fitness.value as? String, "Not selected")
         fitness.tap(); app.buttons["profile.interests.save"].tap()
-        XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForInterestChips(app, 1))
         XCTAssertEqual(app.staticTexts["profile.name"].label, name)
         let capture = XCTAttachment(screenshot: app.screenshot())
         capture.name = "profile-account-backed"; capture.lifetime = .keepAlways; add(capture)
@@ -124,7 +124,7 @@ final class OnboardingFlowTests: XCTestCase {
         app.buttons["onboarding.google"].tap()
         XCTAssertTrue(app.buttons["home.tab.Profile"].waitForExistence(timeout: 10))
         app.buttons["home.tab.Profile"].tap()
-        XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForInterestChips(app, 1))
     }
 
     @MainActor func testLargestTextKeepsSharedLoginActionReadable() {
