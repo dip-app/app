@@ -156,7 +156,8 @@ export function IdeasForYou({ onCredits, onCustomize }: Props) {
       <SectionHeader id={headId} title={t("ideasForYou.title")}
         updated={data && !failed ? (updating ? <span role="status"><span className="ifu-dots" aria-hidden><i /><i /><i /></span>{t("ideasForYou.updating")}</span> : updatedLine(data, new Date())) : undefined}
         toggle={{ collapsed, controls: bodyId, label: t(collapsed ? "ideasForYou.expand" : "ideasForYou.collapse"), onToggle: toggle }}
-        hint={showRefresh && state?.reason ? state.reason : undefined}
+        // Out of credits is said once, by the page's credits notice; the button keeps the reason as its tooltip.
+        hint={showRefresh && state?.reason && !state.outOfCredits ? state.reason : undefined}
         end={showRefresh && state ? (
           <DipbotAction size="sm" className="ifu-refresh" label={t("ideasForYou.refresh")} credits={ideasCost(data.credits)} loading={running}
             disabled={state.disabled && !running} disabledReason={state.reason ?? undefined} onClick={() => void refresh()} />

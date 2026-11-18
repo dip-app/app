@@ -132,7 +132,7 @@ export const ai: Record<keyof typeof source, string> = {
   "suggest.noData": "Aún no hay sugerencias. {ai} sugiere opciones cuando los miembros eligen intereses o tu empresa tiene eventos pasados.",
   // Saved suggestions: one company-level answer shared by every admin. Visiting is free; refreshing costs credits.
   "suggest.updated": "Actualizado {when}",
-  "suggest.updatedData": "Actualizado {when}, hay datos nuevos",
+  "suggest.newData": "Hay datos nuevos",
   "suggest.refresh": "Actualizar sugerencias",
   "suggest.refreshAria": "Actualizar sugerencias de {ai}",
   "suggest.refreshOut": "No quedan créditos este mes",
