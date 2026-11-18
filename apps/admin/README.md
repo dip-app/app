@@ -54,6 +54,7 @@ The portal calls its AI features **Dipbot**. All user-facing AI copy lives in on
 
 Findings and remaining work: [`docs/quality/admin-audit-2026-11.md`](../../docs/quality/admin-audit-2026-11.md).
 
+- **Shared kit** (`components/kit`, docs in [`docs/design/admin-components.md`](../../docs/design/admin-components.md)): `Button`, `Chip` / `ChipToggle`, `InlineNotice`, `Panel`, `EmptyState`, `PageHeader`, `SegmentedControl`, plus `DipbotAction`. Use them instead of writing `pill-btn`, `info-pill`, `banner` or `chip` markup; a guard test fails on new hand-written ones.
 - **Shared building blocks:**
   - `Tabs` is a tablist with arrow keys.
   - `RadioGrid` is used by the cover and theme pickers.
