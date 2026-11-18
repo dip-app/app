@@ -1,3 +1,4 @@
+import type { AuditEntry } from "../../admin/domain/audit";
 import type { StoredSubmission, SubmissionStatus } from "../domain/submissionPolicy";
 
 export type Document = Record<string, unknown>;
@@ -83,6 +84,8 @@ export interface SubmissionTransaction {
   /** Creates the deterministic ledger entry (fails if it exists) with a server `createdAt`. */
   createAward(companyId: string, awardId: string, entry: LedgerEntry): void;
   incrementBalance(uid: string, amount: number): void;
+  /** Appends one audit entry (`companies/{c}/auditLog/{id}`, create-only) in the review transaction. */
+  writeAudit(companyId: string, id: string, entry: AuditEntry): void;
 }
 
 export interface SubmissionPage {

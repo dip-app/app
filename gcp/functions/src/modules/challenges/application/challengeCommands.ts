@@ -3,6 +3,7 @@ import {
   CHALLENGE_LIMITS, WEEKLY, challengeDraftHash, parseCreateChallengeRequest, parseUpdateChallengeRequest, rfc3339,
   toChallengeDto, windowChangeBlocked, windowsOverlap, type ParsedChallengeDraft, type StoredChallenge,
 } from "../domain/challengeDraft";
+import { auditEntry, change, diffFields, type AuditChange } from "../../admin/domain/audit";
 import { isDeactivated } from "../../admin/domain/member";
 import { ChallengeError } from "../domain/errors";
 import type { ChallengeTransaction, ChallengeStore } from "./ports";
@@ -45,6 +46,20 @@ async function requireOrganizer(tx: ChallengeTransaction, caller: Caller, compan
   if (membership.companyId !== companyId) {
     throw new ChallengeError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's weekly themes.");
   }
+  return membership;
+}
+
+const iso = (date: Date) => date.toISOString();
+
+/** The changed fields of a theme update. The description is only flagged as edited, never copied into the entry. */
+export function challengeChanges(current: StoredChallenge, next: ParsedChallengeDraft): AuditChange[] {
+  const pick = (c: { title: string; type: string; goal: number; goalUnit: string; tagIds: readonly string[]; coverImageURL: string; startDate: Date; endDate: Date; pointsReward: number }) => ({
+    title: c.title, type: c.type, goal: c.goal, goalUnit: c.goalUnit, tagIds: [...c.tagIds], coverImageURL: c.coverImageURL,
+    startDate: iso(c.startDate), endDate: iso(c.endDate), pointsReward: c.pointsReward,
+  });
+  const out = diffFields(pick(current), pick(next));
+  if (current.description !== next.description) out.push(change("description", null, "edited"));
+  return out;
 }
 
 async function requireKnownTags(tx: ChallengeTransaction, tagIds: readonly string[]) {
@@ -82,7 +97,7 @@ export async function createChallenge(
   const request = parseCreateChallengeRequest(data);
   const hash = challengeDraftHash(request.draft);
   return store.runTransaction(async (tx) => {
-    await requireOrganizer(tx, authenticated, request.companyId);
+    const membership = await requireOrganizer(tx, authenticated, request.companyId);
     const receipt = await tx.getReceipt(request.companyId, authenticated.uid, request.requestId);
     if (receipt) {
       if (receipt.kind !== "challenge" || !("hash" in receipt) || receipt.hash !== hash) {
@@ -113,6 +128,13 @@ export async function createChallenge(
     };
     tx.createChallenge(request.companyId, challengeId, stored);
     tx.createReceipt(request.companyId, authenticated.uid, request.requestId, { kind: "challenge", hash, challengeId });
+    // Derived from the request; the receipt branch above returns first on a replay, so a retry never adds a second entry.
+    const auditId = `challenge_create_${authenticated.uid}_${request.requestId}`;
+    tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
+      id: auditId, action: "challenge.create", targetType: "challenge", targetId: challengeId, requestId: request.requestId,
+      summary: `Created the weekly theme "${request.draft.title}"`,
+      changes: [change("title", null, request.draft.title), change("startDate", null, iso(request.draft.startDate)), change("endDate", null, iso(request.draft.endDate)), change("pointsReward", null, request.draft.pointsReward)],
+    }));
     return { contractVersion: 1, challengeId, revision: 1, challenge: toChallengeDto(challengeId, stored), replayed: false };
   });
 }
@@ -131,7 +153,7 @@ export async function updateChallenge(
   const authenticated = requireCaller(caller);
   const request = parseUpdateChallengeRequest(data);
   return store.runTransaction(async (tx) => {
-    await requireOrganizer(tx, authenticated, request.companyId);
+    const membership = await requireOrganizer(tx, authenticated, request.companyId);
     const current = await tx.getChallenge(request.companyId, request.challengeId);
     if (!current) throw new ChallengeError("not-found", "CHALLENGE_NOT_FOUND", "That weekly theme doesn't exist.");
     if (current.revision !== request.expectedRevision) {
@@ -148,6 +170,12 @@ export async function updateChallenge(
     const nextRevision = current.revision + 1;
     const updatedAt = wholeSeconds(now);
     tx.updateChallenge(request.companyId, request.challengeId, request.draft, nextRevision, updatedAt);
+    // expectedRevision makes this the only writer of revision N+1: one entry per saved change.
+    const auditId = `challenge_update_${request.challengeId}_r${nextRevision}`;
+    tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
+      id: auditId, action: "challenge.update", targetType: "challenge", targetId: request.challengeId,
+      summary: `Edited the weekly theme "${request.draft.title}"`, changes: challengeChanges(current, request.draft),
+    }));
     const next: StoredChallenge = { ...current, ...request.draft, tagIds: [...request.draft.tagIds], revision: nextRevision, updatedAt };
     return { contractVersion: 1, challengeId: request.challengeId, revision: nextRevision, challenge: toChallengeDto(request.challengeId, next) };
   });

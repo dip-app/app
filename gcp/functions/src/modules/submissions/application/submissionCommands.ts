@@ -2,6 +2,7 @@ import type {
   ApproveChallengeResponse, ListChallengeSubmissionsResponse, RejectChallengeResponse, SubmitChallengeResponse,
 } from "../../../generated/models";
 import type { PhotoObjects } from "../../photos/application/ports";
+import { auditEntry, change } from "../../admin/domain/audit";
 import { validWireId, validateUpload, type PhotoContentType } from "../../photos/domain/photoPolicy";
 import { SubmissionError } from "../domain/errors";
 import {
@@ -102,17 +103,18 @@ async function requireOrganizer(getMember: (uid: string) => Promise<Record<strin
   if (!member || member.role !== "admin") throw new SubmissionError("permission-denied", "NOT_ORGANIZER", "Only organizers can review submissions.");
   if (deactivated(member)) throw new SubmissionError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
   if (member.companyId !== companyId) throw new SubmissionError("permission-denied", "COMPANY_MISMATCH", "You can only review your own company's submissions.");
+  return member;
 }
 
 async function loadForReview(tx: SubmissionTransaction, caller: SubmissionCaller, companyId: string, challengeId: string, userId: string) {
-  await requireOrganizer(uid => tx.getMember(uid), caller.uid, companyId);
+  const member = await requireOrganizer(uid => tx.getMember(uid), caller.uid, companyId);
   if (userId === caller.uid) throw new SubmissionError("permission-denied", "SELF_REVIEW", "You cannot review your own submission.");
   const challenge = await tx.getChallenge(companyId, challengeId);
   if (!challenge) throw new SubmissionError("not-found", "CHALLENGE_NOT_FOUND", "Weekly theme not found.");
   const id = submissionId(challengeId, userId);
   const submission = await tx.getSubmission(companyId, challengeId, id);
   if (!submission) throw new SubmissionError("not-found", "SUBMISSION_NOT_FOUND", "Submission not found.");
-  return { challenge, id, submission };
+  return { challenge, id, submission, member };
 }
 
 /** The organizer decides on what they saw: a pending entry the member edited since (updatedAt differs) is refused. */
@@ -134,7 +136,7 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
   let push = null as ChallengeReviewPush | null;
   const result = await store.runTransaction(async tx => {
     push = null;
-    const { challenge, id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
+    const { challenge, id, submission, member } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
     if (submission.status === "approved") return { contractVersion: 1, submissionId: id, pointsAwarded: 0, replayed: true } satisfies ApproveChallengeResponse;
     if (submission.status !== "submitted") throw new SubmissionError("failed-precondition", "SUBMISSION_NOT_PENDING", "Only pending submissions can be approved.");
     requireUnchanged(submission, expectedUpdatedAt);
@@ -153,6 +155,12 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
       tx.createAward(companyId, awardId(challengeId, userId), { companyId, userId, amount: points, reason: "challenge_approved", sourceId: challengeId });
       tx.incrementBalance(userId, points);
     }
+    // A repeat approval returned above, and an approved entry is final: this id exists at most once per member and theme.
+    const auditId = `submission_approve_${challengeId}_${userId}`;
+    tx.writeAudit(companyId, auditId, auditEntry(companyId, { uid: reviewer.uid, displayName: member.displayName, role: text(member.role) }, {
+      id: auditId, action: "submission.approve", targetType: "submission", targetId: `${challengeId}/${userId}`,
+      summary: `Approved an entry for "${challenge.title}"`, changes: [change("status", submission.status, "approved"), change("pointsAwarded", 0, points)],
+    }));
     push = { companyId, challengeId, submissionId: id, userId, challengeTitle: challenge.title, notificationId: `challenge_approved_${challengeId}` };
     return { contractVersion: 1, submissionId: id, pointsAwarded: points, replayed: false } satisfies ApproveChallengeResponse;
   });
@@ -171,7 +179,7 @@ export async function rejectChallenge(store: SubmissionStore, caller: Submission
   let push = null as ChallengeReviewPush | null;
   const result = await store.runTransaction(async tx => {
     push = null;
-    const { challenge, id, submission } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
+    const { challenge, id, submission, member } = await loadForReview(tx, reviewer, companyId, challengeId, userId);
     if (submission.status === "rejected") return { contractVersion: 1, submissionId: id, status: "rejected", replayed: true } satisfies RejectChallengeResponse;
     if (submission.status === "approved") throw new SubmissionError("failed-precondition", "SUBMISSION_LOCKED", "This entry was already approved.");
     requireUnchanged(submission, expectedUpdatedAt);
@@ -181,6 +189,12 @@ export async function rejectChallenge(store: SubmissionStore, caller: Submission
       companyId, type: "challenge_changes_requested", title: "Changes needed",
       body: [...reason].slice(0, 200).join("") || "Your reviewer asked for changes.", targetType: "challenge", targetId: challengeId,
     });
+    // One entry per attempt (the reason text stays on the submission, not in the audit log).
+    const auditId = `submission_reject_${challengeId}_${userId}_a${submission.attempt}`;
+    tx.writeAudit(companyId, auditId, auditEntry(companyId, { uid: reviewer.uid, displayName: member.displayName, role: text(member.role) }, {
+      id: auditId, action: "submission.reject", targetType: "submission", targetId: `${challengeId}/${userId}`,
+      summary: `Asked for changes on an entry for "${challenge.title}"`, changes: [change("status", submission.status, "rejected")],
+    }));
     push = { companyId, challengeId, submissionId: id, userId, challengeTitle: challenge.title, notificationId: `challenge_changes_${challengeId}_${submission.attempt}` };
     return { contractVersion: 1, submissionId: id, status: "rejected", replayed: false } satisfies RejectChallengeResponse;
   });

@@ -54,7 +54,11 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           const companyId: unknown = snap.get("companyId");
           const role: unknown = snap.get("role");
           const status: unknown = snap.get("status");
-          return { companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "", ...(typeof status === "string" ? { status } : {}) };
+          const displayName: unknown = snap.get("displayName");
+          return {
+            companyId: typeof companyId === "string" ? companyId : "", role: typeof role === "string" ? role : "",
+            ...(typeof status === "string" ? { status } : {}), ...(typeof displayName === "string" ? { displayName } : {}),
+          };
         },
         async getEvent(companyId, eventId) {
           const snap = await transaction.get(events(companyId).doc(eventId));
@@ -72,7 +76,18 @@ export class FirestoreOrganizerStore implements OrganizerStore {
           const venue: unknown = snap.get("venue");
           const venueAt: unknown = snap.get("venueLocationAt");
           const stored = typeof venue === "object" && venue !== null ? (venue as Record<string, unknown>) : null;
+          const title: unknown = snap.get("title");
+          const description: unknown = snap.get("description");
+          const capacity: unknown = snap.get("capacity");
+          const costCents: unknown = snap.get("costCents");
+          const isOutdoor: unknown = snap.get("isOutdoor");
+          const tagIds: unknown = snap.get("tagIds");
           return {
+            ...(typeof title === "string" ? { title } : {}), ...(typeof description === "string" ? { description } : {}),
+            ...(typeof capacity === "number" ? { capacity } : {}), ...(typeof costCents === "number" ? { costCents } : {}),
+            ...(typeof isOutdoor === "boolean" ? { isOutdoor } : {}),
+            ...(Array.isArray(tagIds) ? { tagIds: tagIds.filter((id): id is string => typeof id === "string") } : {}),
+            ...(stored && typeof stored.name === "string" ? { venueName: stored.name } : {}),
             ...(stored && typeof stored.latitude === "number" && typeof stored.longitude === "number"
               ? { venue: { latitude: stored.latitude, longitude: stored.longitude, ...(typeof stored.placeId === "string" ? { placeId: stored.placeId } : {}) } } : {}),
             ...(venueAt instanceof Timestamp ? { venueLocationAt: venueAt.toDate() } : {}),
@@ -120,6 +135,9 @@ export class FirestoreOrganizerStore implements OrganizerStore {
             createdAt: FieldValue.serverTimestamp(),
             expireAt: new Date(Date.now() + RECEIPT_RETENTION_MS),
           });
+        },
+        writeAudit(companyId, id, entry) {
+          transaction.create(db.collection("companies").doc(companyId).collection("auditLog").doc(id), { ...entry, createdAt: FieldValue.serverTimestamp() });
         },
         updateEvent(companyId, eventId, draft, status, nextRevision, updatedBy, venueLocation) {
           const stamp = venueLocation?.kind === "set" ? { venueLocationAt: Timestamp.fromDate(venueLocation.at) }

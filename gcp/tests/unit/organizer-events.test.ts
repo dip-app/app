@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { createEvent, updateEvent, type Caller } from "../../functions/src/modules/organizer/application/organizerCommands";
+import type { AuditEntry } from "../../functions/src/modules/admin/domain/audit";
 import type { CommandReceipt, OrganizerStore, OrganizerTransaction, StoredEvent, StoredOrganizer } from "../../functions/src/modules/organizer/application/ports";
 import { draftHash, parseCreateEventRequest, parseUpdateEventRequest, type ParsedDraft } from "../../functions/src/modules/organizer/domain/eventDraft";
 import { OrganizerError } from "../../functions/src/modules/organizer/domain/errors";
@@ -12,7 +13,7 @@ const REQUEST_ID = "7d444840-9dc0-41f4-9d0c-4d1f4b3a9f10";
 
 class FakeStore implements OrganizerStore {
   members = new Map<string, StoredOrganizer>([
-    ["admin", { companyId: "acme", role: "admin" }],
+    ["admin", { companyId: "acme", role: "admin", displayName: "Alex Admin" }],
     ["member", { companyId: "acme", role: "member" }],
     ["organizer", { companyId: "acme", role: "organizer" }],
     ["other-admin", { companyId: "globex", role: "admin" }],
@@ -25,6 +26,7 @@ class FakeStore implements OrganizerStore {
   /** Event paths with at least one album photo. */
   photos = new Set<string>();
   writes: string[] = [];
+  audit = new Map<string, AuditEntry>();
   async runTransaction<T>(work: (tx: OrganizerTransaction) => Promise<T>): Promise<T> {
     const staged: Array<() => void> = [];
     const tx: OrganizerTransaction = {
@@ -34,9 +36,10 @@ class FakeStore implements OrganizerStore {
       hasAnyRsvp: async (company, id) => this.rsvps.has(`${company}/${id}`),
       hasAnyPhoto: async (company, id) => this.photos.has(`${company}/${id}`),
       missingTagIds: async (ids) => ids.filter((id) => !this.tags.has(id)),
-      createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, startTime: draft.startTime, endTime: draft.endTime, status: "scheduled", coverImageURL: draft.coverImageURL, draft, createdBy: uid }); }); },
+      writeAudit: (company, id, entry) => { staged.push(() => { if (this.audit.has(`${company}/${id}`)) throw new Error("ALREADY_EXISTS"); this.audit.set(`${company}/${id}`, entry); }); },
+      createEvent: (company, id, uid, draft) => { staged.push(() => { this.writes.push(`create ${id}`); this.events.set(`${company}/${id}`, { revision: 1, attendeeCount: 0, title: draft.title, capacity: draft.capacity, costCents: draft.costCents, isOutdoor: draft.isOutdoor, tagIds: draft.tagIds, venueName: draft.venue.name, description: draft.description, startTime: draft.startTime, endTime: draft.endTime, status: "scheduled", coverImageURL: draft.coverImageURL, draft, createdBy: uid }); }); },
       createReceipt: (company, uid, requestId, receipt) => { staged.push(() => this.receipts.set(`${company}/${uid}_${requestId}`, receipt)); },
-      updateEvent: (company, id, draft, status, next) => { staged.push(() => { this.writes.push(`update ${id}`); const cur = this.events.get(`${company}/${id}`)!; this.events.set(`${company}/${id}`, { ...cur, draft, status, revision: next, coverImageURL: draft.coverImageURL, startTime: draft.startTime, endTime: draft.endTime }); }); },
+      updateEvent: (company, id, draft, status, next) => { staged.push(() => { this.writes.push(`update ${id}`); const cur = this.events.get(`${company}/${id}`)!; this.events.set(`${company}/${id}`, { ...cur, draft, status, revision: next, title: draft.title, capacity: draft.capacity, costCents: draft.costCents, isOutdoor: draft.isOutdoor, tagIds: draft.tagIds, venueName: draft.venue.name, description: draft.description, coverImageURL: draft.coverImageURL, startTime: draft.startTime, endTime: draft.endTime }); }); },
     };
     const result = await work(tx);
     staged.forEach((apply) => apply()); // nothing is applied when work throws
@@ -376,5 +379,75 @@ describe("dynamic (live Pixabay) covers", () => {
     await assert.rejects(handleCreateEvent(store, request, ids("e1"), clock), (e: unknown) => (e as { code?: string }).code === "invalid-argument");
     const ok = await handleCreateEvent(store, request, ids("e2"), clock, keys("pixabay-4242"));
     assert.equal(ok.eventId, "e2");
+  });
+});
+
+describe("event audit entries", () => {
+  const updateRequest = (overrides: Record<string, unknown> = {}, event: Record<string, unknown> = draftJson()) =>
+    ({ contractVersion: 1, companyId: "acme", eventId: "evt-1", expectedRevision: 1, event, status: "scheduled", ...overrides });
+  const entries = (store: FakeStore) => [...store.audit.entries()];
+
+  test("creating an event writes one entry, and a retry with the same requestId writes none", async () => {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(), ids("evt-1"), clock);
+    await createEvent(store, admin, createRequest(), ids("evt-2"), clock);
+    assert.equal(store.audit.size, 1);
+    const [key, entry] = entries(store)[0];
+    assert.equal(key, `acme/event_create_admin_${REQUEST_ID}`);
+    assert.equal(entry.action, "event.create");
+    assert.equal(entry.targetType, "event");
+    assert.equal(entry.targetId, "evt-1");
+    assert.equal(entry.companyId, "acme");
+    assert.equal(entry.actorId, "admin");
+    assert.equal(entry.actorName, "Alex Admin");
+    assert.equal(entry.actorRole, "admin");
+    assert.equal(entry.requestId, REQUEST_ID);
+  });
+
+  test("a rejected command writes no entry (authorization, tenant, validation, revision)", async () => {
+    const store = new FakeStore();
+    await failure(createEvent(store, null, createRequest(), ids("e1"), clock));
+    await failure(createEvent(store, { ...admin, uid: "member" }, createRequest(), ids("e1"), clock));
+    await failure(createEvent(store, { ...admin, uid: "other-admin" }, createRequest(), ids("e1"), clock));
+    await failure(createEvent(store, admin, createRequest(draftJson({ tagIds: ["tag-nope"] })), ids("e1"), clock));
+    assert.equal(store.audit.size, 0);
+    await createEvent(store, admin, createRequest(), ids("evt-1"), clock);
+    const before = store.audit.size;
+    await failure(updateEvent(store, { ...admin, uid: "other-admin" }, updateRequest(), clock));
+    await failure(updateEvent(store, admin, updateRequest({ expectedRevision: 7 }), clock));
+    assert.equal(store.audit.size, before);
+  });
+
+  test("entries are tenant scoped: they land in the actor's own company only", async () => {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(), ids("evt-1"), clock);
+    assert.ok([...store.audit.keys()].every((key) => key.startsWith("acme/")));
+    assert.ok([...store.audit.values()].every((entry) => entry.companyId === "acme"));
+  });
+
+  test("an update records the changed fields once per revision and never the free text", async () => {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(), ids("evt-1"), clock);
+    await updateEvent(store, admin, updateRequest({}, draftJson({ title: "Trivia night!", capacity: 20, description: "Secret agenda for the quarter." })), clock);
+    const entry = store.audit.get("acme/event_update_evt-1_r2")!;
+    assert.equal(entry.action, "event.update");
+    assert.deepEqual(entry.changes.map((c) => c.field).sort(), ["capacity", "description", "title"]);
+    assert.deepEqual(entry.changes.find((c) => c.field === "capacity"), { field: "capacity", before: "10", after: "20" });
+    assert.ok(!JSON.stringify(entry).includes("Secret agenda"));
+    assert.ok(!JSON.stringify(entry).includes("1 Main St"));
+    // The same revision cannot be saved twice, so a stale repeat adds nothing.
+    await failure(updateEvent(store, admin, updateRequest({}, draftJson({ capacity: 30 })), clock));
+    assert.equal([...store.audit.keys()].filter((key) => key.includes("event_update")).length, 1);
+  });
+
+  test("cancelling and reopening are recorded as their own actions", async () => {
+    const store = new FakeStore();
+    await createEvent(store, admin, createRequest(), ids("evt-1"), clock);
+    await updateEvent(store, admin, updateRequest({ status: "cancelled" }), clock);
+    const cancelled = store.audit.get("acme/event_update_evt-1_r2")!;
+    assert.equal(cancelled.action, "event.cancel");
+    assert.deepEqual(cancelled.changes, [{ field: "status", before: "scheduled", after: "cancelled" }]);
+    await updateEvent(store, admin, updateRequest({ expectedRevision: 2, status: "scheduled" }), clock);
+    assert.equal(store.audit.get("acme/event_update_evt-1_r3")!.action, "event.status");
   });
 });

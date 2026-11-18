@@ -4,7 +4,7 @@ import { authorize, requireCaller, writeAudit, type Actor } from "../../admin/ap
 import type { AdminStore, AdminTransaction, Caller, Doc, RateLimiter } from "../../admin/application/ports";
 import { change } from "../../admin/domain/audit";
 import { AdminError, invalid } from "../../admin/domain/errors";
-import { SERVER_TIME } from "../../admin/domain/ops";
+import { paths, SERVER_TIME } from "../../admin/domain/ops";
 import type { AiLog, AiSettings } from "../../ai/application/ports";
 import { effectiveLimits } from "../../ai/domain/quota";
 import { enqueueEmail, type EnqueueDeps } from "../../email/application/enqueueEmail";
@@ -220,7 +220,18 @@ async function sendTest(deps: ManageDeps, actor: Actor, now: Date): Promise<Mana
     objectId: `${actor.companyId}-${weekKeyOf(now, snap.timeZone)}-test`, revisionOrWindow: `test-${hour}`,
     notAfter: new Date(now.getTime() + 2 * 3_600_000),
   });
-  if (result.enqueued) return { ...snap.response, testQueued: true };
+  if (result.enqueued) {
+    // Only the call that actually queued the test records it (a duplicate is refused above), so there is one entry per queued test.
+    // Nobody's address goes in the entry: the recipient is always the caller.
+    const auditId = `suggest_test_${actor.uid}_${hour}`;
+    await deps.admin.runTransaction(async tx => {
+      if (await tx.get(paths.audit(actor.companyId, auditId))) return;
+      writeAudit(tx, actor, {
+        id: auditId, action: "suggestions.sendTest", targetType: "company", targetId: actor.companyId, summary: "Sent a test of the weekly ideas email to themselves",
+      });
+    });
+    return { ...snap.response, testQueued: true };
+  }
   if (result.reason === "duplicate") return refuse("TEST_LIMIT");
   throw new AdminError("internal", "INVALID_STORED_DATA", "Invalid stored digest.");
 }
