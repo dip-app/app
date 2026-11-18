@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- static export: next/image has no optimizer; Google photos need referrerPolicy and a plain <img> */
 "use client";
 
+// @i18n-migrated
+
 import { useState } from "react";
 import { asset } from "@/lib/asset";
 import { CREW_INK, PALETTE_FILL, generatedAvatarFor, type GeneratedAvatar } from "@/lib/generatedAvatar";

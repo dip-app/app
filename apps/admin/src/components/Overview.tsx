@@ -1,5 +1,7 @@
 "use client";
 
+// @i18n-migrated
+
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { type CompanyInsights, type InsightsSection, type Role, can } from "@/lib/adminTypes";
@@ -13,8 +15,15 @@ import { tagArt, tagBlurb } from "@/lib/tagArt";
 import { Disclosure } from "./Disclosure";
 import { ThemeArt } from "./ThemeArt";
 import { TableRegion } from "./TableRegion";
-import { Avatar, formatDate } from "./Ui";
+import { Avatar } from "./Ui";
+import { formatDate as formatDateWith, t } from "@/lib/i18n";
 import { Button, Chip, InlineNotice, Panel, SegmentedControl } from "@/components/kit";
+
+/** "Nov 9, 2026" in the current language (Ui's helper is English only). */
+const formatDate = (iso: string): string => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : formatDateWith(d, { month: "short", day: "numeric", year: "numeric" });
+};
 
 // The Overview page's building blocks. Everything is presentational: numbers come from getCompanyInsightsV1
 // (cached on the server), so nothing here fetches or computes company data.
@@ -25,7 +34,7 @@ const off = (insights: CompanyInsights, section: InsightsSection) => insights.un
 
 /** A section whose numbers the server could not compute this time: never show its placeholder zeros. */
 export function SectionUnavailable() {
-  return <p className="section-unavailable" role="status">This section is unavailable right now. Try Refresh in a few minutes.</p>;
+  return <p className="section-unavailable" role="status">{t("overview.unavailable.section")}</p>;
 }
 
 export function StatTile({ label, value, note, accent, unavailable }: TileProps) {
@@ -35,7 +44,7 @@ export function StatTile({ label, value, note, accent, unavailable }: TileProps)
       {unavailable ? (
         <>
           <p className="stat-value" aria-hidden>–</p>
-          <p className="stat-note">Unavailable right now</p>
+          <p className="stat-note">{t("overview.unavailable.tile")}</p>
         </>
       ) : (
         <>
@@ -51,18 +60,18 @@ export function StatTiles({ insights, role }: { insights: CompanyInsights; role:
   const { members, events, participation, content, points } = insights;
   const m = off(insights, "members"), e = off(insights, "events"), p = off(insights, "participation");
   return (
-    <section className="stat-grid" aria-label="Key numbers">
-      <StatTile accent unavailable={m} label="Members" value={formatCount(members.total)} note={`${formatCount(members.active)} active accounts`} />
-      <StatTile unavailable={m} label="Active, last 30 days" value={formatCount(members.activeLast30Days)} note={members.activeCapped ? "At least this many" : "Members who joined an event"} />
-      <StatTile unavailable={m} label="Invited, not joined" value={formatCount(members.invited)} note={members.invited === 1 ? "Person yet to sign in" : "People yet to sign in"} />
-      <StatTile unavailable={e} label="Upcoming events" value={formatCount(events.upcoming)} note={`${formatCount(events.thisMonth)} this month`} />
-      <StatTile unavailable={p} label="RSVPs, last 30 days" value={formatCount(participation.rsvpsLast30Days)} note="Going, across all events" />
-      <StatTile unavailable={p} label="Average attendance" value={formatPercent(participation.attendanceRate)}
-        note={participation.attendanceSample > 0 ? `Latest ${participation.attendanceSample} completed ${participation.attendanceSample === 1 ? "event" : "events"}` : "After the first completed event"} />
-      <StatTile unavailable={off(insights, "content")} label="Photos, last 30 days" value={formatCount(content.photosLast30Days)} note={`${formatCount(content.commentsLast30Days)} ${content.commentsLast30Days === 1 ? "comment" : "comments"}`} />
+    <section className="stat-grid" aria-label={t("overview.stats.label")}>
+      <StatTile accent unavailable={m} label={t("overview.stats.members.label")} value={formatCount(members.total)} note={t("overview.stats.members.note", { count: formatCount(members.active) })} />
+      <StatTile unavailable={m} label={t("overview.stats.active.label")} value={formatCount(members.activeLast30Days)} note={members.activeCapped ? t("overview.stats.active.capped") : t("overview.stats.active.note")} />
+      <StatTile unavailable={m} label={t("overview.stats.invited.label")} value={formatCount(members.invited)} note={t("overview.stats.invited.note", { count: members.invited })} />
+      <StatTile unavailable={e} label={t("overview.stats.upcoming.label")} value={formatCount(events.upcoming)} note={t("overview.stats.upcoming.note", { count: formatCount(events.thisMonth) })} />
+      <StatTile unavailable={p} label={t("overview.stats.rsvps.label")} value={formatCount(participation.rsvpsLast30Days)} note={t("overview.stats.rsvps.note")} />
+      <StatTile unavailable={p} label={t("overview.stats.attendance.label")} value={formatPercent(participation.attendanceRate)}
+        note={participation.attendanceSample > 0 ? t("overview.stats.attendance.note", { count: participation.attendanceSample }) : t("overview.stats.attendance.none")} />
+      <StatTile unavailable={off(insights, "content")} label={t("overview.stats.photos.label")} value={formatCount(content.photosLast30Days)} note={t("overview.stats.photos.note", { formatted: formatCount(content.commentsLast30Days), count: content.commentsLast30Days })} />
       {can(role, "insights.points") && points
-        ? <StatTile unavailable={off(insights, "points")} label="Points issued, 30 days" value={formatCount(points.issuedLast30Days)} note="New points awarded" />
-        : <StatTile unavailable={e} label="Events completed" value={formatCount(events.completed)} note={`${formatCount(events.cancelled)} canceled`} />}
+        ? <StatTile unavailable={off(insights, "points")} label={t("overview.stats.points.label")} value={formatCount(points.issuedLast30Days)} note={t("overview.stats.points.note")} />
+        : <StatTile unavailable={e} label={t("overview.stats.completed.label")} value={formatCount(events.completed)} note={t("overview.stats.completed.note", { count: formatCount(events.cancelled) })} />}
     </section>
   );
 }
@@ -121,20 +130,20 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
   const unavailable = off(insights, "activity");
   const quiet = model.total.rsvps === 0 && model.total.photos === 0;
   const first = insights.activity[0]?.date, last = insights.activity[insights.activity.length - 1]?.date;
-  const summary = `RSVPs and photos per day, ${first ? shortDay(first) : ""} to ${last ? shortDay(last) : ""}. ${formatCount(model.total.rsvps)} RSVPs and ${formatCount(model.total.photos)} photos in total.`;
+  const summary = t("overview.activity.summary", { from: first ? shortDay(first) : "", to: last ? shortDay(last) : "", rsvps: formatCount(model.total.rsvps), photos: formatCount(model.total.photos) });
   return (
     <section className="panel chart-panel" aria-labelledby={`${id}-h`}>
       <div className="panel-head">
-        <h2 id={`${id}-h`}>Activity, last 30 days</h2>
-        {!unavailable && <ul className="legend" aria-label="Legend">
-          <li><span className="swatch bar" aria-hidden />RSVPs <strong>{formatCount(model.total.rsvps)}</strong></li>
-          <li><span className="swatch line" aria-hidden />Photos <strong>{formatCount(model.total.photos)}</strong></li>
+        <h2 id={`${id}-h`}>{t("overview.activity.title")}</h2>
+        {!unavailable && <ul className="legend" aria-label={t("overview.activity.legend")}>
+          <li><span className="swatch bar" aria-hidden />{t("overview.activity.rsvps")} <strong>{formatCount(model.total.rsvps)}</strong></li>
+          <li><span className="swatch line" aria-hidden />{t("overview.activity.photos")} <strong>{formatCount(model.total.photos)}</strong></li>
         </ul>}
       </div>
       {unavailable ? <SectionUnavailable /> : quiet ? (
-        <p className="chart-empty">No RSVPs or photos in the last 30 days. Activity shows up here as soon as people join events.</p>
+        <p className="chart-empty">{t("overview.activity.empty")}</p>
       ) : (
-        <div ref={frame} className="chart-frame" tabIndex={0} role="group" aria-roledescription="chart" aria-label="Activity chart. Use the left and right arrow keys to move between days."
+        <div ref={frame} className="chart-frame" tabIndex={0} role="group" aria-roledescription={t("overview.activity.chartRole")} aria-label={t("overview.activity.chartLabel")}
           onKeyDown={onKeyDown}
           onFocus={(event) => {
             let visible = true;
@@ -144,7 +153,7 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(null); }}
           onPointerLeave={(event) => { if (event.pointerType === "mouse") setActive(null); }}>
           <svg className="chart" viewBox={`0 0 ${model.width} ${model.height}`} role="img" aria-labelledby={`${id}-t ${id}-d`} preserveAspectRatio="xMidYMid meet">
-            <title id={`${id}-t`}>Activity in the last 30 days</title>
+            <title id={`${id}-t`}>{t("overview.activity.svgTitle")}</title>
             <desc id={`${id}-d`}>{summary}</desc>
             {model.ticks.map((tick) => (
               <g key={tick.value}>
@@ -172,18 +181,18 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
           {activeDay && (
             <div ref={tip} className={`chart-tooltip${place.flipped ? " flipped" : ""}`} style={{ left: place.left, top: place.top }} aria-hidden data-testid="chart-tooltip">
               <p className="tip-date">{tooltipDay(activeDay.date)}</p>
-              <p className="tip-row"><span className="swatch bar" />RSVPs <strong>{formatCount(activeDay.rsvps)}</strong></p>
-              <p className="tip-row"><span className="swatch line" />Photos <strong>{formatCount(activeDay.photos)}</strong></p>
+              <p className="tip-row"><span className="swatch bar" />{t("overview.activity.rsvps")} <strong>{formatCount(activeDay.rsvps)}</strong></p>
+              <p className="tip-row"><span className="swatch line" />{t("overview.activity.photos")} <strong>{formatCount(activeDay.photos)}</strong></p>
             </div>
           )}
-          <p className="sr-only" aria-live="polite" role="status">{activeDay && via === "keyboard" ? `${tooltipDay(activeDay.date)}: ${formatCount(activeDay.rsvps)} RSVPs, ${formatCount(activeDay.photos)} photos` : ""}</p>
+          <p className="sr-only" aria-live="polite" role="status">{activeDay && via === "keyboard" ? t("overview.activity.live", { day: tooltipDay(activeDay.date), rsvps: formatCount(activeDay.rsvps), photos: formatCount(activeDay.photos) }) : ""}</p>
         </div>
       )}
-      {!unavailable && <Disclosure className="data-table" summary="View as table">
+      {!unavailable && <Disclosure className="data-table" summary={t("overview.activity.viewTable")}>
         <div className="table-scroll">
           <table className="table compact">
-            <caption className="sr-only">RSVPs and photos per day, last 30 days</caption>
-            <thead><tr><th scope="col">Day (UTC)</th><th scope="col" className="right">RSVPs</th><th scope="col" className="right">Photos</th></tr></thead>
+            <caption className="sr-only">{t("overview.activity.caption")}</caption>
+            <thead><tr><th scope="col">{t("overview.activity.col.day")}</th><th scope="col" className="right">{t("overview.activity.rsvps")}</th><th scope="col" className="right">{t("overview.activity.photos")}</th></tr></thead>
             <tbody>
               {[...insights.activity].reverse().map((d) => (
                 <tr key={d.date}><th scope="row">{shortDay(d.date)}</th><td className="right">{formatCount(d.rsvps)}</td><td className="right">{formatCount(d.photos)}</td></tr>
@@ -204,9 +213,9 @@ export function PendingActions({ insights, role, now }: { insights: CompanyInsig
   // Both sources down: nothing to show. One down: show what is known, never "all caught up".
   const partial = off(insights, "challenges") || off(insights, "members");
   return (
-    <Panel id="pending-h" title="Needs attention">
+    <Panel id="pending-h" title={t("overview.pending.title")}>
       {partial && items.length === 0 ? <SectionUnavailable /> : items.length === 0 ? (
-        <p className="muted fill">You’re all caught up. Reviews and unanswered invites appear here.</p>
+        <p className="muted fill">{t("overview.pending.empty")}</p>
       ) : (
         <ul className="action-list">
           {items.map((item) => {
@@ -219,10 +228,10 @@ export function PendingActions({ insights, role, now }: { insights: CompanyInsig
           })}
         </ul>
       )}
-      {partial && items.length > 0 && <p className="muted">Some items couldn’t be checked right now.</p>}
+      {partial && items.length > 0 && <p className="muted">{t("overview.pending.partial")}</p>}
       {shortcuts.length > 0 && (
         <div className="shortcuts">
-          <h3 id="shortcuts-h">Shortcuts</h3>
+          <h3 id="shortcuts-h">{t("overview.shortcuts.title")}</h3>
           <ul className="shortcut-list" aria-labelledby="shortcuts-h">
             {shortcuts.map((s) => <li key={s.id}><Link href={s.href} className="shortcut"><span>{s.label}</span><Chevron /></Link></li>)}
           </ul>
@@ -235,9 +244,9 @@ export function PendingActions({ insights, role, now }: { insights: CompanyInsig
 export function TopEvents({ insights }: { insights: CompanyInsights }) {
   const events = insights.participation.topEvents;
   return (
-    <Panel id="top-events-h" title="Top events by attendees">
+    <Panel id="top-events-h" title={t("overview.topEvents.title")}>
       {off(insights, "participation") ? <SectionUnavailable /> : events.length === 0 ? (
-        <p className="muted fill">No events with attendees yet.</p>
+        <p className="muted fill">{t("overview.topEvents.empty")}</p>
       ) : (
         <ol className="rank-list">
           {events.map((event, index) => {
@@ -247,10 +256,10 @@ export function TopEvents({ insights }: { insights: CompanyInsights }) {
                 <span className="rank" aria-hidden>{index + 1}</span>
                 <div className="rank-main">
                   <Link href={`/events/attendees/?id=${encodeURIComponent(event.eventId)}`} className="rank-title">{event.title}</Link>
-                  <p className="muted">{formatDate(event.startTime)} · {event.status === "completed" ? "Completed" : "Upcoming"}</p>
-                  <div className="meter" role="img" aria-label={`${event.attendeeCount} of ${event.capacity} spots`}><span style={{ width: `${Math.round(fill * 100)}%` }} /></div>
+                  <p className="muted">{formatDate(event.startTime)} · {event.status === "completed" ? t("overview.topEvents.completed") : t("overview.topEvents.upcoming")}</p>
+                  <div className="meter" role="img" aria-label={t("overview.topEvents.spots", { count: event.attendeeCount, capacity: event.capacity })}><span style={{ width: `${Math.round(fill * 100)}%` }} /></div>
                 </div>
-                <span className="rank-value"><strong>{formatCount(event.attendeeCount)}</strong><span className="muted"> / {formatCount(event.capacity)}</span>{event.capacity > 0 && event.attendeeCount >= event.capacity && <Chip full>Full</Chip>}</span>
+                <span className="rank-value"><strong>{formatCount(event.attendeeCount)}</strong><span className="muted"> / {formatCount(event.capacity)}</span>{event.capacity > 0 && event.attendeeCount >= event.capacity && <Chip full>{t("overview.topEvents.full")}</Chip>}</span>
               </li>
             );
           })}
@@ -266,30 +275,30 @@ export function ThemeCard({ insights, role, now = new Date() }: { insights: Comp
   const week = theme ? weekProgress(theme.startDate, theme.endDate, now) : null;
   return (
     <section className="panel theme-panel" aria-labelledby="theme-h">
-      <h2 id="theme-h">This week’s theme</h2>
+      <h2 id="theme-h">{t("overview.theme.title")}</h2>
       {off(insights, "challenges") ? <SectionUnavailable /> : !theme || !week ? (
-        <p className="muted fill">No weekly theme is running right now.{can(role, "themes.manage") && <> <Link href="/themes/" className="inline-link">Plan the next one</Link>.</>}</p>
+        <p className="muted fill">{t("overview.theme.none")}{can(role, "themes.manage") && <> <Link href="/themes/" className="inline-link">{t("overview.theme.plan")}</Link>.</>}</p>
       ) : (
         <>
           <div className="theme-hero">
             {theme.coverImageURL && <ThemeArt url={theme.coverImageURL} title={theme.title} className="theme-hero-art" />}
             <div className="theme-hero-text">
               <p className="theme-title">{theme.title}</p>
-              <p className="muted">{formatDate(theme.startDate)} to {formatDate(theme.endDate)}</p>
+              <p className="muted">{t("overview.theme.dates", { start: formatDate(theme.startDate), end: formatDate(theme.endDate) })}</p>
             </div>
           </div>
           <dl className="mini-stats">
-            <div><dt>Participants</dt><dd>{formatCount(theme.participantCount)}</dd></div>
-            <div><dt>Completed</dt><dd>{formatCount(theme.completedCount)}</dd></div>
-            <div><dt>To review</dt><dd>{formatCount(theme.pendingReviews)}</dd></div>
+            <div><dt>{t("overview.theme.participants")}</dt><dd>{formatCount(theme.participantCount)}</dd></div>
+            <div><dt>{t("overview.theme.completed")}</dt><dd>{formatCount(theme.completedCount)}</dd></div>
+            <div><dt>{t("overview.theme.toReview")}</dt><dd>{formatCount(theme.pendingReviews)}</dd></div>
           </dl>
           <div className="theme-meters">
-            <div className="theme-meter"><p className="muted"><span>Completed</span><span>{Math.round(done * 100)}%</span></p>
-              <div className="meter" role="img" aria-label={`${Math.round(done * 100)} percent of participants completed`}><span style={{ width: `${Math.round(done * 100)}%` }} /></div></div>
-            <div className="theme-meter"><p className="muted"><span>This week</span><span>Day {week.day} of {week.days}</span></p>
-              <div className="meter" role="img" aria-label={`Day ${week.day} of ${week.days}`}><span style={{ width: `${Math.round(week.fraction * 100)}%` }} /></div></div>
+            <div className="theme-meter"><p className="muted"><span>{t("overview.theme.completed")}</span><span>{Math.round(done * 100)}%</span></p>
+              <div className="meter" role="img" aria-label={t("overview.theme.completedPercent", { percent: Math.round(done * 100) })}><span style={{ width: `${Math.round(done * 100)}%` }} /></div></div>
+            <div className="theme-meter"><p className="muted"><span>{t("overview.theme.thisWeek")}</span><span>{t("overview.theme.day", { day: week.day, days: week.days })}</span></p>
+              <div className="meter" role="img" aria-label={t("overview.theme.day", { day: week.day, days: week.days })}><span style={{ width: `${Math.round(week.fraction * 100)}%` }} /></div></div>
           </div>
-          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Button href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} variant="primary" size="sm" className="self-start theme-cta">Review submissions</Button>}
+          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Button href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} variant="primary" size="sm" className="self-start theme-cta">{t("overview.theme.review")}</Button>}
         </>
       )}
     </section>
@@ -298,18 +307,18 @@ export function ThemeCard({ insights, role, now = new Date() }: { insights: Comp
 
 export function PeopleCard({ insights }: { insights: CompanyInsights }) {
   const { members } = insights;
-  const rows: [string, number, string][] = [["Active accounts", members.active, "active"], ["Invited, not joined", members.invited, "invited"], ["Deactivated", members.deactivated, "off"]];
+  const rows: [string, number, string][] = [[t("overview.people.active"), members.active, "active"], [t("overview.people.invited"), members.invited, "invited"], [t("overview.people.deactivated"), members.deactivated, "off"]];
   const sum = rows.reduce((n, row) => n + row[1], 0);
   return (
-    <Panel id="people-h" title="People">
+    <Panel id="people-h" title={t("overview.people.title")}>
       {off(insights, "members") ? <SectionUnavailable /> : (
         <>
-          <div className="stack-bar" role="img" aria-label={rows.map(([label, value]) => `${label}: ${value}`).join(", ")}>
+          <div className="stack-bar" role="img" aria-label={rows.map(([label, value]) => t("overview.people.summary", { label, value })).join(", ")}>
             {sum > 0 ? rows.map(([label, value, tone]) => value > 0 && <span key={label} className={`seg-${tone}`} style={{ flexGrow: value }} />) : <span className="seg-empty" style={{ flexGrow: 1 }} />}
           </div>
           <dl className="breakdown">
             {rows.map(([label, value, tone]) => <div key={label}><dt><span className={`dot seg-${tone}`} aria-hidden />{label}</dt><dd>{formatCount(value)}</dd></div>)}
-            <div className="total"><dt>Total members</dt><dd>{formatCount(members.total)}</dd></div>
+            <div className="total"><dt>{t("overview.people.total")}</dt><dd>{formatCount(members.total)}</dd></div>
           </dl>
         </>
       )}
@@ -321,16 +330,16 @@ export function PeopleCard({ insights }: { insights: CompanyInsights }) {
 export function TopMembers({ insights }: { insights: CompanyInsights }) {
   const members = insights.points?.topMembers ?? [];
   return (
-    <Panel id="top-members-h" title="Top members by points">
+    <Panel id="top-members-h" title={t("overview.topMembers.title")}>
       {off(insights, "points") ? <SectionUnavailable /> : members.length === 0 ? (
-        <p className="muted fill">No points earned yet.</p>
+        <p className="muted fill">{t("overview.topMembers.empty")}</p>
       ) : (
         <ol className="rank-list">
           {members.map((member, index) => (
             <li key={member.userId}>
               <span className="rank" aria-hidden>{index + 1}</span>
               <div className="rank-main person"><Avatar name={member.displayName} userId={member.userId} photoURL={member.photoURL} avatarId={member.avatarId} /><Link href={`/members/detail/?id=${encodeURIComponent(member.userId)}`} className="rank-title">{member.displayName}</Link></div>
-              <span className="rank-value"><strong>{formatCount(member.pointsBalance)}</strong><span className="muted"> pts</span></span>
+              <span className="rank-value"><strong>{formatCount(member.pointsBalance)}</strong><span className="muted"> {t("overview.topMembers.pts")}</span></span>
             </li>
           ))}
         </ol>
@@ -342,11 +351,11 @@ export function TopMembers({ insights }: { insights: CompanyInsights }) {
 /** Grid / List switch for the Interests card: a two-button segmented control with icon-only buttons (tooltip and accessible name). */
 export function InterestsViewToggle({ view, onChange }: { view: InterestsView; onChange: (next: InterestsView) => void }) {
   const items: { id: InterestsView; label: string; d: string }[] = [
-    { id: "grid", label: "Grid view", d: "M4 4h6.5v6.5H4zM13.5 4H20v6.5h-6.5zM4 13.5h6.5V20H4zM13.5 13.5H20V20h-6.5z" },
-    { id: "list", label: "List view", d: "M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" },
+    { id: "grid", label: t("overview.interests.grid"), d: "M4 4h6.5v6.5H4zM13.5 4H20v6.5h-6.5zM4 13.5h6.5V20H4zM13.5 13.5H20V20h-6.5z" },
+    { id: "list", label: t("overview.interests.list"), d: "M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" },
   ];
   return (
-    <SegmentedControl variant="icon" label="Interests layout" value={view} onChange={onChange} options={items.map((item) => ({ value: item.id, label: item.label, iconPath: item.d }))} />
+    <SegmentedControl variant="icon" label={t("overview.interests.layout")} value={view} onChange={onChange} options={items.map((item) => ({ value: item.id, label: item.label, iconPath: item.d }))} />
   );
 }
 
@@ -363,15 +372,15 @@ export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]
   return (
     <section className="panel interests-panel" aria-labelledby="interests-h">
       <div className="panel-head">
-        <h2 id="interests-h">Interests</h2>
+        <h2 id="interests-h">{t("overview.interests.title")}</h2>
         {rows.length > 0 && <InterestsViewToggle view={view} onChange={setView} />}
       </div>
       {rows.length === 0 ? (
-        <p className="muted">Interest counts appear once members pick interests.</p>
+        <p className="muted">{t("overview.interests.empty")}</p>
       ) : view === "grid" ? (
         <>
-          <p className="muted">Members who picked each interest</p>
-          <ul className="tag-grid" aria-label="Members per interest">
+          <p className="muted">{t("overview.interests.intro")}</p>
+          <ul className="tag-grid" aria-label={t("overview.interests.perInterest")}>
             {rows.map((row) => {
               const tag = byId.get(row.tagId) ?? { id: row.tagId, name: row.name };
               const art = tagArt(tag);
@@ -384,7 +393,7 @@ export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]
                   <span className="tag-card-text">
                     <span className="tag-card-name">{row.name}</span>
                     <span className="tag-card-blurb">{tagBlurb(tag)}</span>
-                    <span className="tag-card-meta"><strong>{row.count}</strong> {row.count === 1 ? "member" : "members"}{row.share !== null && <> · {row.share}%</>}</span>
+                    <span className="tag-card-meta"><strong>{row.count}</strong> {t("overview.interests.membersNoun", { count: row.count })}{row.share !== null && <> · {row.share}%</>}</span>
                   </span>
                   <span className="tag-card-bar meter" aria-hidden><span style={{ width: `${row.percent}%` }} /></span>
                 </li>
@@ -394,16 +403,16 @@ export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]
         </>
       ) : (
         <>
-          <p className="muted">Members who picked each interest</p>
-          <TableRegion label="Members per interest">
+          <p className="muted">{t("overview.interests.intro")}</p>
+          <TableRegion label={t("overview.interests.perInterest")}>
             <table className="table compact interest-table">
-              <caption className="sr-only">Members who picked each interest</caption>
+              <caption className="sr-only">{t("overview.interests.intro")}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Interest</th>
-                  <th scope="col"><span className="sr-only">{showShare ? "Share of active members" : "Relative to the most popular interest"}</span></th>
-                  <th scope="col" className="num">Members</th>
-                  {showShare && <th scope="col" className="num">Share</th>}
+                  <th scope="col">{t("overview.interests.col.interest")}</th>
+                  <th scope="col"><span className="sr-only">{showShare ? t("overview.interests.barShare") : t("overview.interests.barRelative")}</span></th>
+                  <th scope="col" className="num">{t("overview.interests.col.members")}</th>
+                  {showShare && <th scope="col" className="num">{t("overview.interests.col.share")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -427,15 +436,15 @@ export function InterestsCard({ stats, tags, activeMembers }: { stats: TagStat[]
 /** Shown above the page when any section failed, so placeholder sections are never read as real numbers. */
 export function UnavailableNotice({ insights }: { insights: CompanyInsights }) {
   if (insights.unavailable.length === 0) return null;
-  return <InlineNotice>Some sections couldn’t be loaded. Everything else is up to date; try Refresh in a few minutes.</InlineNotice>;
+  return <InlineNotice>{t("overview.unavailable.notice")}</InlineNotice>;
 }
 
 export function QuietNotice({ insights }: { insights: CompanyInsights }) {
   if (!isQuiet(insights)) return null;
   return (
     <p className="notice" role="status">
-      Nothing has happened yet. Create the first event and invite your team; these numbers fill in as people join.{" "}
-      <Link href="/events/new/" className="inline-link">Create an event</Link>
+      {t("overview.quiet.text")}{" "}
+      <Link href="/events/new/" className="inline-link">{t("overview.quiet.cta")}</Link>
     </p>
   );
 }

@@ -1,0 +1,6 @@
+# Reviewed exceptions for scripts/admin-i18n/check.ts (file<TAB>text). Not user-facing, or intentionally verbatim.
+apps/admin/src/lib/suggestionsApi.ts	A relaxed loop around the block with a coffee. Everyone is welcome to join for part or all of it.
+apps/admin/src/lib/suggestionsApi.ts	Lunchtime walk and talk
+apps/admin/src/lib/suggestionsApi.ts	Not your company.
+apps/admin/src/lib/suggestionsApi.ts	This link has expired.
+apps/admin/src/lib/weeks.ts	en-US

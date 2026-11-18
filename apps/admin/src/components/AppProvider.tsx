@@ -1,10 +1,13 @@
 "use client";
+// @i18n-migrated
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { TagCatalogProvider } from "./TagCatalog";
 import { holdReadsFromQuery } from "@/lib/loadingHold";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
 import { Button, EmptyState } from "@/components/kit";
+import { BRAND, initLocale, t } from "@/lib/i18n";
+import { I18nProvider } from "./I18nProvider";
 
 interface AppState {
   api: AdminApi;
@@ -26,6 +29,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // The language is a browser setting (Your settings, else the browser languages), read before anything renders text.
+    initLocale();
     (async () => {
       // Build-time config picks the backend: Firebase when the web app is configured, otherwise the local mock.
       // The Firebase adapter (and the SDK behind it) is fetched only in live mode, so mock and login routes stay small.
@@ -66,13 +71,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   if (failed) {
     return (
       <div className="boot-state">
-        <EmptyState role="alert" title="Can’t load DIP Admin" body="Something went wrong while signing you in. Check your connection and try again."
-          action={<Button variant="primary" onClick={() => window.location.reload()}>Reload</Button>} />
+        <EmptyState role="alert" title={t("common.boot.failedTitle")} body={t("common.boot.failedBody")}
+          action={<Button variant="primary" onClick={() => window.location.reload()}>{t("common.boot.reload")}</Button>} />
       </div>
     );
   }
-  if (!value) return <div className="boot-state" role="status"><title>DIP Admin</title><span className="sr-only">Loading DIP Admin</span></div>;
-  return <Context.Provider value={value}><TagCatalogProvider>{children}</TagCatalogProvider></Context.Provider>;
+  if (!value) return <div className="boot-state" role="status"><title>{BRAND}</title><span className="sr-only">{t("common.boot.loading")}</span></div>;
+  return <Context.Provider value={value}><TagCatalogProvider><I18nProvider>{children}</I18nProvider></TagCatalogProvider></Context.Provider>;
 }
 
 export function useApp(): AppState {

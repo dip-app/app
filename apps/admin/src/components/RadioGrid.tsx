@@ -1,5 +1,7 @@
 "use client";
 
+// @i18n-migrated
+
 import { useRef } from "react";
 
 export interface RadioOption { value: string; label: string; content: React.ReactNode; /** DOM id (used to focus the first invalid control). */ id?: string }

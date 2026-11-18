@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -17,11 +18,12 @@ import { CoverPicker } from "./CoverPicker";
 import { Disclosure } from "./Disclosure";
 import { ApiError } from "@/lib/contract";
 import {
-  type Answers, type Attempt, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
+  type Answers, type Attempt, type StepId, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
   bucketLevel, bucketText, capacityLabel, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
-  NONE, NOT_SET, presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleConsideration, toggleInterest, venueLabel,
+  presetAnswers, presetFor, readyToGenerate, requestIdFor, saveAiDraft, signatureOf, stepValid, summaryLines, toggleConsideration, toggleInterest, venueLabel,
 } from "@/lib/ideas";
 import { t, tMaybe, tn } from "@/lib/aiStrings";
+import { t as tText } from "@/lib/i18n";
 import { creditsView, resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter, CreditsNotice, PrivacyInfo } from "./CreditsMeter";
@@ -56,6 +58,8 @@ function failureMessage(error: unknown, ctx: EventIdeaContext | null): string {
   }
   return t("error.offline");
 }
+
+const isNoteStep = (id: StepId) => id === "note";
 
 const Check = () => (
   <svg className="opt-check" viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg>
@@ -347,7 +351,9 @@ export function Ideas() {
   const usage = ctx.usage;
   const dailyLeft = Math.max(0, usage.dailyGenerationLimit - usage.dailyGenerationsUsed);
   const remaining = usage.generationsRemaining;
-  const busy = phase === "generating" || quick === "armed";
+  const showResults = phase === "results";
+  const showGenerating = phase === "generating" || quick === "armed";
+  const busy = showGenerating;
   const set = (patch: Partial<Answers>) => { setAnswers((a) => ({ ...a, ...patch })); setNoteError(""); };
   const current = STEPS[step];
   const lines = summaryLines(answers, tagName);
@@ -368,15 +374,15 @@ export function Ideas() {
               <button type="button" className="stepper-item" data-state={isCurrent ? "current" : isDone ? "done" : "todo"} aria-current={isCurrent ? "step" : undefined}
                 disabled={!ok || isCurrent} aria-label={`${t("stepper.item", { n: i + 1, label: s.full })}${isDone && !isCurrent ? t("stepper.done") : ""}`} title={s.full} onClick={() => goStep(i)}>
                 <span className="stepper-n" aria-hidden>{isDone && !isCurrent ? <Check /> : i + 1}</span>
-                <span className="stepper-label">{s.id === "note" && <DipbotMark size={14} />}{s.label}</span>
+                <span className="stepper-label">{isNoteStep(s.id) && <DipbotMark size={14} />}{s.label}</span>
               </button>
             </li>
           );
         })}
       </ol>
       <div className="stepper-compact" aria-hidden={busy ? true : undefined}>
-        <p>{phase === "results" ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.full })}</p>
-        <div className="bar-track"><span style={{ width: `${phase === "results" ? 100 : ((step + 1) / STEPS.length) * 100}%` }} /></div>
+        <p>{showResults ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.full })}</p>
+        <div className="bar-track"><span style={{ width: `${showResults ? 100 : ((step + 1) / STEPS.length) * 100}%` }} /></div>
       </div>
     </>
   );
@@ -387,7 +393,7 @@ export function Ideas() {
       {lines.slice(0, step).map((line) => (
         <div key={line.label}>
           <dt>{STEPS[line.step].label}</dt>
-          <dd><button type="button" className="choice-edit" disabled={busy} onClick={() => goStep(line.step)} data-empty={line.value === NOT_SET || line.value === NONE ? "true" : undefined}>
+          <dd><button type="button" className="choice-edit" disabled={busy} onClick={() => goStep(line.step)} data-empty={line.empty ? "true" : undefined}>
             <span>{line.value}</span><span className="sr-only">{t("rail.edit")}</span>
           </button></dd>
         </div>
@@ -587,6 +593,8 @@ export function Ideas() {
     }
   };
 
+  const isGenerating = phase === "generating";
+  const hasError = phase === "error";
   const lastStep = step === STEPS.length - 1;
   const exhausted = remaining <= 0;
   const quotaReason = failureMessage(new ApiError("resource-exhausted", "", {}, dailyLeft === 0 ? "AI_DAILY_LIMIT" : usage.monthlyGenerationsUsed >= usage.monthlyGenerationLimit ? "AI_MONTHLY_LIMIT" : "AI_BUDGET_EXHAUSTED"), ctx);
@@ -661,10 +669,10 @@ export function Ideas() {
       <div className="ideas-layout">
         <div className="ideas-main">
           {stepper}
-          {phase !== "generating" && <CreditsNotice credits={ctx.credits} />}
+          {!isGenerating && <CreditsNotice credits={ctx.credits} />}
           {summary}
           {suggestBar}
-          {phase === "generating" || quick === "armed" ? generating : phase === "error" ? errorPanel : phase === "results" && results ? results : edit}
+          {showGenerating ? generating : hasError ? errorPanel : showResults && results ? results : edit}
         </div>
       </div>
     </div>
@@ -703,8 +711,8 @@ export function DraftCard({ draft, onOpen, siblingCovers = [], credits }: { draf
         {draft.tagIds.length > 0 && <ul className="draft-tags" aria-label={t("draft.tags")}>{draft.tagIds.map((id) => <li key={id}>{tagName(id)}</li>)}</ul>}
         <p className={`draft-desc${open ? " open" : ""}`}>{draft.description}</p>
         {long && <button type="button" className="link-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{t(open ? "draft.showLess" : "draft.showMore")}</button>}
-        <Disclosure className="draft-cover" summary="Change cover">
-          <CoverPicker compact label={`Cover for ${draft.title}`} value={coverURL} onChange={setCoverURL} excludeURLs={siblingCovers} credits={credits}
+        <Disclosure className="draft-cover" summary={tText("dipbot.draft.changeCover")}>
+          <CoverPicker compact label={tText("dipbot.draft.coverFor", { title: draft.title })} value={coverURL} onChange={setCoverURL} excludeURLs={siblingCovers} credits={credits}
             event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds }} />
         </Disclosure>
         <div className="draft-actions">

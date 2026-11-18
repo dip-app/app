@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";

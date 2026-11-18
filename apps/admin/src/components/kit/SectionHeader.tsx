@@ -1,3 +1,5 @@
+// @i18n-migrated
+
 import type { ReactNode } from "react";
 import { Chevron } from "../Chevron";
 import { DipbotMark } from "../DipbotMark";

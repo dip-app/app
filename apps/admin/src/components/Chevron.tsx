@@ -1,3 +1,5 @@
+// @i18n-migrated
+
 /** The portal's one chevron: a right-pointing stroke in currentColor; rotate it with CSS for open states. */
 export function Chevron({ size = 16, className }: { size?: number; className?: string }) {
   return (

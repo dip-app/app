@@ -15,8 +15,9 @@ $nav-text: #e6e8f0;
   scrollbar-width: none; -ms-overflow-style: none; &::-webkit-scrollbar { display: none; }
   background: $ink; color: $white; display: flex; flex-direction: column; padding: 14px 12px 12px;
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 14px 8px; min-height: 52px; }
-  nav { flex: 1; display: grid; align-content: start; gap: 20px; padding-top: 6px; }
-  .nav-group { display: grid; gap: 2px; }
+  // One shrinkable column, so a long label (other languages) ellipsizes instead of widening the sidebar.
+  nav { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 20px; padding-top: 6px; }
+  .nav-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .nav-heading { padding: 0 10px 6px; font-family: var(--font-figtree), sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: $nav-muted; }
   .account { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .14); display: grid; gap: 2px; }
   .who { display: flex; align-items: center; gap: 10px; padding: 6px 10px; min-width: 0; border-radius: 6px; color: $nav-text; font-family: var(--font-figtree), sans-serif; transition: background .15s ease, color .15s ease;

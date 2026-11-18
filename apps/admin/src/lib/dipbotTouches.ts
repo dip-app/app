@@ -1,8 +1,10 @@
+// @i18n-migrated
 // Pure helpers for the small Dipbot touches in the event editor: the one-time token behind "Generate suggestions"
 // (quick mode on /ideas/), the answers quick mode fills in, the "Dipbot suggests" time presets and the draft kept
 // while the admin visits Dipbot. No React and no network. All copy comes from aiStrings.ts.
 
 import type { AiSuggestionQuestion, AiTiming } from "./adminTypes";
+import { formatDate, t } from "./i18n";
 import { type Answers, emptyAnswers } from "./ideas";
 import type { LabeledSuggestion } from "./suggestionLabels";
 import { type DayKey, addDays, dayOfWeek, formatTime } from "./when";
@@ -66,16 +68,21 @@ export interface TimePreset {
   weekday?: number;
 }
 
-const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** "Sun" to "Sat" (0 = Sunday) in the current language. 2024-01-07 was a Sunday. */
+const weekdayShort = (weekday: number) => formatDate(new Date(2024, 0, 7 + weekday), { weekday: "short" });
 /** "12:00 to 1:00 PM": the period is written once when both ends share it. */
 const range = (start: number, end: number) => {
   const a = formatTime(start), b = formatTime(end);
-  return `${a.slice(-2) === b.slice(-2) ? a.slice(0, -3) : a} to ${b}`;
+  const period = /\s[AP]M$/i;
+  return t("dipbot.preset.range", { start: period.test(a) && a.slice(-2) === b.slice(-2) ? a.replace(period, "") : a, end: b });
 };
 
-const LUNCH = { id: "lunch", label: `Lunch ${range(12 * 60, 13 * 60)}`, start: 12 * 60, end: 13 * 60 } satisfies TimePreset;
-const AFTER_WORK = { id: "after-work", label: `After work ${range(17 * 60 + 30, 19 * 60 + 30)}`, start: 17 * 60 + 30, end: 19 * 60 + 30 } satisfies TimePreset;
-const WEEKEND: TimePreset = { id: "weekend", label: `Sat ${range(10 * 60, 12 * 60)}`, start: 10 * 60, end: 12 * 60, weekday: 6 };
+// The labels are getters so they follow the current language (a module constant would keep the one it was built in).
+const LUNCH = { id: "lunch", get label() { return t("dipbot.preset.lunch", { range: range(12 * 60, 13 * 60) }); }, start: 12 * 60, end: 13 * 60 } satisfies TimePreset;
+const AFTER_WORK = {
+  id: "after-work", get label() { return t("dipbot.preset.afterWork", { range: range(17 * 60 + 30, 19 * 60 + 30) }); }, start: 17 * 60 + 30, end: 19 * 60 + 30,
+} satisfies TimePreset;
+const WEEKEND: TimePreset = { id: "weekend", get label() { return t("dipbot.preset.day", { day: weekdayShort(6), range: range(10 * 60, 12 * 60) }); }, start: 10 * 60, end: 12 * 60, weekday: 6 };
 
 /** The two defaults, in the order the editor always showed them. */
 export const DEFAULT_PRESETS: readonly TimePreset[] = [LUNCH, AFTER_WORK];
@@ -89,7 +96,9 @@ export function timePresets(hint: TimeHint | null): readonly TimePreset[] {
   const base: TimePreset | null = hint.timing === "weekday_lunch" ? LUNCH : hint.timing === "after_work" ? AFTER_WORK : hint.timing === "weekend" ? WEEKEND : null;
   if (!base) return DEFAULT_PRESETS;
   const weekday = Number.isInteger(hint.weekday) && hint.weekday! >= 0 && hint.weekday! <= 6 ? hint.weekday : base.weekday;
-  const first: TimePreset = weekday === undefined ? base : { ...base, weekday, label: `${WEEKDAY_SHORT[weekday]} ${range(base.start, base.end)}` };
+  const first: TimePreset = weekday === undefined ? base : {
+    id: base.id, start: base.start, end: base.end, weekday, get label() { return t("dipbot.preset.day", { day: weekdayShort(weekday), range: range(base.start, base.end) }); },
+  };
   const rest = DEFAULT_PRESETS.filter((p) => p.id !== first.id);
   return [first, ...rest].slice(0, 2);
 }

@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -10,19 +11,15 @@ import { ApiError, type AdminEvent, classify } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button } from "@/components/kit";
+import { t } from "@/lib/i18n";
 
 type Filter = "upcoming" | "past" | "cancelled";
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: "upcoming", label: "Upcoming" },
-  { id: "past", label: "Past" },
-  { id: "cancelled", label: "Canceled" },
-];
+const FILTERS = [
+  { id: "upcoming", labelKey: "events.filter.upcoming", emptyTitleKey: "events.list.empty.upcoming.title", emptyBodyKey: "events.list.empty.upcoming.body" },
+  { id: "past", labelKey: "events.filter.past", emptyTitleKey: "events.list.empty.past.title", emptyBodyKey: "events.list.empty.past.body" },
+  { id: "cancelled", labelKey: "events.filter.cancelled", emptyTitleKey: "events.list.empty.cancelled.title", emptyBodyKey: "events.list.empty.cancelled.body" },
+] as const satisfies readonly { id: Filter; labelKey: string; emptyTitleKey: string; emptyBodyKey: string }[];
 const IDS = FILTERS.map((item) => item.id);
-const EMPTY_BODY: Record<Filter, string> = {
-  upcoming: "Create an event to give your team something to join.",
-  past: "Events move here after they end.",
-  cancelled: "Events you cancel stay here for reference.",
-};
 const DEFAULTS = { filter: "upcoming" };
 
 function Events() {
@@ -38,7 +35,7 @@ function Events() {
     let cancelled = false;
     api.listEvents().then(
       (list) => !cancelled && (setEvents(list), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load events. Check your connection and try again.")),
+      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("events.list.loadFailed"))),
     );
     return () => {
       cancelled = true;
@@ -47,19 +44,19 @@ function Events() {
 
   const hold = useSkeletonGate(events === null && !error);
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
-  const label = FILTERS.find((item) => item.id === filter)!.label;
+  const active = FILTERS.find((item) => item.id === filter)!;
 
   return (
-    <Shell title="Events" subtitle="Everything your company can see in the DIP app." requires="events.manage" action={<Button variant="primary" href="/events/new/">New event</Button>}>
+    <Shell title={t("events.list.title")} subtitle={t("events.list.subtitle")} requires="events.manage" action={<Button variant="primary" href="/events/new/">{t("events.list.new")}</Button>}>
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
-        : events === null || hold ? <Loading label="Loading events" layout="events" />
+        : events === null || hold ? <Loading label={t("events.list.loading")} layout="events" />
         : (
           <>
-            <Tabs idBase="events" label="Filter events" value={filter} onChange={(id) => setQuery({ filter: id })}
-              items={FILTERS.map((item) => ({ id: item.id, label: item.label, count: events.filter((event) => classify(event) === item.id).length }))} />
+            <Tabs idBase="events" label={t("events.list.filterLabel")} value={filter} onChange={(id) => setQuery({ filter: id })}
+              items={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), count: events.filter((event) => classify(event) === item.id).length }))} />
             <div {...tabPanelProps("events", filter)}>
               {shown.length === 0 ? (
-                <Empty title={`No ${label.toLowerCase()} events`} body={EMPTY_BODY[filter]} />
+                <Empty title={t(active.emptyTitleKey)} body={t(active.emptyBodyKey)} />
               ) : (
                 <EventTable>{shown.map((event) => <EventCard key={event.id} event={event} />)}</EventTable>
               )}
@@ -71,5 +68,5 @@ function Events() {
 }
 
 export default function EventsPage() {
-  return <Suspense fallback={<Loading label="Loading events" layout="events" />}><Events /></Suspense>;
+  return <Suspense fallback={<Loading label={t("events.list.loading")} layout="events" />}><Events /></Suspense>;
 }

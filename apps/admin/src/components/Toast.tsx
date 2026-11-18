@@ -1,6 +1,9 @@
 "use client";
 
+// @i18n-migrated
+
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { t } from "@/lib/i18n";
 
 export interface ToastOptions {
   tone?: "success" | "error";
@@ -59,7 +62,7 @@ function ToastView({ item }: { item: ToastItem }) {
       {item.action && (
         <button type="button" className="toast-btn" onClick={() => { void item.action!.onClick(); dismissToast(item.id); }}>{item.action.label}</button>
       )}
-      <button type="button" className="toast-btn toast-close" aria-label="Dismiss notification" onClick={() => dismissToast(item.id)}>
+      <button type="button" className="toast-btn toast-close" aria-label={t("common.dismissNotification")} onClick={() => dismissToast(item.id)}>
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
     </div>

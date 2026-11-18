@@ -1,10 +1,12 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { CloudMark } from "@/components/Brand";
 import { LoginArt, VALUE_ROWS, ValueIcon } from "@/components/LoginArt";
+import { BRAND, t } from "@/lib/i18n";
 
 export default function Login() {
   const { api, session, signIn } = useApp();
@@ -29,25 +31,25 @@ export default function Login() {
       <section className="login-copy">
         <div className="login-brand">
           <CloudMark size={44} />
-          <span>DIP Admin</span>
+          <span>{BRAND}</span>
         </div>
-        <h1>Organize your team’s activities</h1>
-        <p className="lead">The organizer portal for DIP. Plan events, keep the albums tidy and look after your people, all in one place.</p>
+        <h1>{t("login.title")}</h1>
+        <p className="lead">{t("login.lead")}</p>
         <ul className="value-list" role="list">
           {VALUE_ROWS.map((row) => (
             <li key={row.title}>
               <span className="value-icon"><ValueIcon name={row.icon} /></span>
-              <span className="value-text"><strong>{row.title}</strong><span>{row.text}</span></span>
+              <span className="value-text"><strong>{t(row.title)}</strong><span>{t(row.text)}</span></span>
             </li>
           ))}
         </ul>
         <div className="login-actions">
           <button className="big-pill dark" onClick={() => void start()}>
-            {live ? "Sign in with Google" : "Sign in as admin"}
+            {live ? t("login.google") : t("login.mockAdmin")}
           </button>
-          {!live && <button className="big-pill gray" onClick={() => void signIn("organizer").catch(() => setFailed(true))}>Preview as organizer</button>}
+          {!live && <button className="big-pill gray" onClick={() => void signIn("organizer").catch(() => setFailed(true))}>{t("login.mockOrganizer")}</button>}
         </div>
-        {failed && <p className="note error" role="alert">Sign-in didn’t finish. Try again.</p>}
+        {failed && <p className="note error" role="alert">{t("login.failed")}</p>}
       </section>
       <LoginArt />
     </main>

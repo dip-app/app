@@ -1,5 +1,7 @@
+// @i18n-migrated
 import type { AiCredits } from "./adminTypes";
-import { t, tn } from "./aiStrings";
+import { t as tAi, tn } from "./aiStrings";
+import { formatDate, t } from "./i18n";
 
 /** Below this share of the monthly allowance the portal shows a low-credits state. */
 export const LOW_CREDITS_SHARE = 0.2;
@@ -21,8 +23,8 @@ export interface CreditsView {
 /** "Dec 1" in the viewer's time zone (the reset is local midnight of the company, which is where admins work). */
 export function resetDate(iso: string, timeZone?: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "the first of next month";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(timeZone ? { timeZone } : {}) });
+  if (Number.isNaN(date.getTime())) return t("dipbot.credits.nextMonth");
+  return formatDate(date, { month: "short", day: "numeric", ...(timeZone ? { timeZone } : {}) });
 }
 
 export function creditsView(credits: AiCredits, timeZone?: string): CreditsView {
@@ -38,6 +40,6 @@ export const creditsText = (n: number) => tn("credits.unit", n);
 
 /** The cost as muted text: "1 credit", "10 credits"; 0 is "Free" when asked for and nothing otherwise. */
 export function creditCostLabel(n: number, showFree = false): string {
-  if (n <= 0) return showFree ? t("credits.free") : "";
+  if (n <= 0) return showFree ? tAi("credits.free") : "";
   return creditsText(n);
 }

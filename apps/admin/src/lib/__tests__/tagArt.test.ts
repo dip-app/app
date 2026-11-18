@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LIVE_TAG_NAMES, opaqueTagId } from "../catalog";
-import { GENERIC_BLURB, mascotArt, normalizeName, tagArt, tagBlurb } from "../tagArt";
+import { t } from "../i18n";
+import { mascotArt, normalizeName, tagArt, tagBlurb } from "../tagArt";
 
 const withId = (name: string) => ({ id: opaqueTagId(`live:${name}`), name });
 
@@ -55,7 +56,7 @@ describe("tagBlurb", () => {
   it("lets a description override, falls back by keyword family, then generic", () => {
     expect(tagBlurb({ name: "Fitness", description: "Sweat together" })).toBe("Sweat together");
     expect(tagBlurb({ name: "Kayak Trips" })).toBe("Fresh air and fun");
-    expect(tagBlurb({ name: "Zorbing" })).toBe(GENERIC_BLURB);
+    expect(tagBlurb({ name: "Zorbing" })).toBe(t("overview.tag.blurb.generic"));
     expect(normalizeName("Food & Drink")).toBe("food and drink");
   });
 });

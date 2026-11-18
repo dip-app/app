@@ -1,10 +1,11 @@
 "use client";
+// @i18n-migrated
 
 import { useId, useState } from "react";
 import type { AiConsiderationRank, AiSuggestionProvider } from "@/lib/adminTypes";
 import { t, tn } from "@/lib/aiStrings";
 import { MAX_CONSIDERATIONS, considerationById, type Consideration } from "@/lib/considerations";
-import { frontRow, groupedConsiderations } from "@/lib/considerationsView";
+import { considerationHint, considerationLabel, frontRow, groupedConsiderations } from "@/lib/considerationsView";
 import type { Answers } from "@/lib/ideas";
 import { DipbotMark } from "./DipbotMark";
 
@@ -19,10 +20,10 @@ interface Props {
 function Chip({ item, on, suggested, onToggle }: { item: Consideration; on: boolean; suggested: boolean; onToggle: () => void }) {
   return (
     <li>
-      <button type="button" className="pref-chip" aria-pressed={on} data-suggested={suggested ? "true" : undefined} title={item.hint} onClick={onToggle}>
-        <span>{item.label}</span>
+      <button type="button" className="pref-chip" aria-pressed={on} data-suggested={suggested ? "true" : undefined} title={considerationHint(item)} onClick={onToggle}>
+        <span>{considerationLabel(item)}</span>
         {suggested && <span className="sr-only">. {t("consider.suggested")}</span>}
-        <span className="sr-only">. {item.hint}</span>
+        <span className="sr-only">. {considerationHint(item)}</span>
       </button>
     </li>
   );

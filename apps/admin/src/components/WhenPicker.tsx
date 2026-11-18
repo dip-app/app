@@ -1,13 +1,15 @@
 "use client";
+// @i18n-migrated
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   DAY_MIN, HALF_DAY, type DayKey, type WhenIssue, type WhenModel,
-  addMonths, calendarKey, clickDay, dayDiff, dayOfWeek, describeDuration, dayKey, dragMinutes, dstNote, durationMinutes,
+  addMonths, calendarKey, clickDay, dayDiff, dayOfWeek, describeDuration, dayKey, durationParts, dragMinutes, dstNote, durationMinutes,
   formatTime, isPm, minutesToAngle, modelFromIso, modelToIso, monthGrid, parseDay, parseTime, pointToAngle, previewRange,
   resolveLocal, settle, sliderKey, withPeriod, zoneAbbreviation, angleToFaceMinutes,
 } from "@/lib/when";
-import { t } from "@/lib/aiStrings";
+import { t as tAi } from "@/lib/aiStrings";
+import { intlLocale, t } from "@/lib/i18n";
 import { DEFAULT_PRESETS, type TimePreset, nextWeekday } from "@/lib/dipbotTouches";
 import { Chevron } from "./Chevron";
 import { DipbotMark } from "./DipbotMark";
@@ -32,11 +34,15 @@ interface Props {
   now?: Date;
 }
 
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+/** Weekday names, Sunday first, in the current language (a function: the language can change while the app runs). */
+function weekdayNames(): string[] {
+  const format = new Intl.DateTimeFormat(intlLocale(), { weekday: "long" });
+  return Array.from({ length: 7 }, (_, i) => format.format(new Date(2023, 0, 1 + i))); // 2023-01-01 is a Sunday
+}
 
 function fmt(key: DayKey, options: Intl.DateTimeFormatOptions): string {
   const { y, m, d } = parseDay(key);
-  return new Intl.DateTimeFormat("en-US", options).format(new Date(y, m, d));
+  return new Intl.DateTimeFormat(intlLocale(), options).format(new Date(y, m, d));
 }
 const short = (key: DayKey) => fmt(key, { weekday: "short", month: "short", day: "numeric" });
 const long = (key: DayKey) => fmt(key, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
@@ -57,9 +63,8 @@ function arcPath(from: number, to: number): string {
 
 /** Biggest two units, so the centre of the dial stays short ("2d 16h"). */
 function centreDuration(minutes: number): string {
-  const days = Math.floor(minutes / DAY_MIN), hours = Math.floor((minutes % DAY_MIN) / 60), mins = minutes % 60;
-  const parts = [days && `${days}d`, hours && `${hours}h`, mins && `${mins}m`].filter(Boolean) as string[];
-  return parts.slice(0, 2).join(" ") || "0m";
+  const parts = durationParts(minutes);
+  return parts.slice(0, 2).join(" ") || t("editor.when.minuteShort", { n: 0 });
 }
 
 type Handle = "start" | "end";
@@ -126,7 +131,7 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
     }
     lastIso.current = `${iso.startTime}|${iso.endTime}`;
     onChange(iso.startTime, iso.endTime);
-    setAnnounce(`Starts ${short(m.range.start)} at ${formatTime(m.startMin)}, ends ${short(m.range.end)} at ${formatTime(m.endMin)}. Duration ${describeDuration(durationMinutes(m))}.`);
+    setAnnounce(t("editor.when.announce", { start: short(m.range.start), startTime: formatTime(m.startMin), end: short(m.range.end), endTime: formatTime(m.endMin), duration: describeDuration(durationMinutes(m)) }));
   }, [onChange, onPreview]);
 
   // ---- calendar
@@ -147,7 +152,7 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
       setModel(modelRef.current);
       setNotes([]);
       setIssue(null);
-      setAnnounce(`Start date ${short(range.start)}. Choose the end date.`);
+      setAnnounce(t("editor.when.announcePicking", { date: short(range.start) }));
       return;
     }
     setHover(null);
@@ -169,21 +174,21 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
 
   const dayState = (day: DayKey) => {
     const parts: string[] = [];
-    if (day === today) parts.push("today");
-    if (day === preview.start && day === preview.end) parts.push("start and end date");
-    else if (day === preview.start) parts.push("start date");
-    else if (day === preview.end) parts.push("end date");
-    else if (day > preview.start && day < preview.end) parts.push("in the selected range");
-    if (!allowPast && isPast(day)) parts.push("unavailable, in the past");
+    if (day === today) parts.push(t("editor.when.state.today"));
+    if (day === preview.start && day === preview.end) parts.push(t("editor.when.state.startAndEnd"));
+    else if (day === preview.start) parts.push(t("editor.when.state.start"));
+    else if (day === preview.end) parts.push(t("editor.when.state.end"));
+    else if (day > preview.start && day < preview.end) parts.push(t("editor.when.state.inRange"));
+    if (!allowPast && isPast(day)) parts.push(t("editor.when.state.past"));
     return parts;
   };
 
   const nights = dayDiff(model.range.start, model.range.end) + 1;
   const summary = model.range.phase === "picking"
-    ? `${short(model.range.start)} chosen as the start. Now choose the end date, or click it again for a one-day event.`
+    ? t("editor.when.summary.picking", { date: short(model.range.start) })
     : model.range.start === model.range.end
-      ? `${short(model.range.start)}, one day`
-      : `${short(model.range.start)} to ${short(model.range.end)}, ${nights} days`;
+      ? t("editor.when.summary.oneDay", { date: short(model.range.start) })
+      : t("editor.when.summary.range", { start: short(model.range.start), end: short(model.range.end), count: nights });
 
   // ---- dial
   const duration = durationMinutes(model);
@@ -276,20 +281,20 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
   const describedEnd = [endError ? "end-error" : "", issue ? `${uid}-issue` : ""].filter(Boolean).join(" ") || undefined;
 
   return (
-    <div className={`when${disabled ? " is-disabled" : ""}`} role="group" aria-label="Event date and time">
+    <div className={`when${disabled ? " is-disabled" : ""}`} role="group" aria-label={t("editor.when.group")}>
       {/* ------------------------------------------------ calendar */}
       <div className="when-cal">
         <div className="when-cal-head">
           <h3 id={`${uid}-month`} className="when-month" aria-live="polite">{fmt(view, { month: "long", year: "numeric" })}</h3>
           <div className="when-cal-nav">
-            <button type="button" className="when-iconbtn flip" onClick={() => moveView(-1)} aria-label="Previous month"><Chevron size={16} /></button>
-            <button type="button" className="when-today" onClick={() => { moveFocus.current = false; setView(`${today.slice(0, 8)}01`); setFocusDay(today); }}>Today</button>
-            <button type="button" className="when-iconbtn" onClick={() => moveView(1)} aria-label="Next month"><Chevron size={16} /></button>
+            <button type="button" className="when-iconbtn flip" onClick={() => moveView(-1)} aria-label={t("editor.when.prevMonth")}><Chevron size={16} /></button>
+            <button type="button" className="when-today" onClick={() => { moveFocus.current = false; setView(`${today.slice(0, 8)}01`); setFocusDay(today); }}>{t("editor.when.today")}</button>
+            <button type="button" className="when-iconbtn" onClick={() => moveView(1)} aria-label={t("editor.when.nextMonth")}><Chevron size={16} /></button>
           </div>
         </div>
         <div className="when-grid" role="grid" aria-labelledby={`${uid}-month`} aria-describedby={`${uid}-summary`} ref={gridRef} onKeyDown={onGridKey} onMouseLeave={() => setHover(null)}>
           <div role="row" className="when-week head">
-            {WEEKDAYS.map((name) => <div key={name} role="columnheader" aria-label={name} className="when-dow">{name.slice(0, 2)}</div>)}
+            {weekdayNames().map((name, i) => <div key={i} role="columnheader" aria-label={name} className="when-dow">{name.slice(0, 1).toUpperCase() + name.slice(1, 2)}</div>)}
           </div>
           {grid.map((week) => (
             <div role="row" className="when-week" key={week[0]}>
@@ -313,47 +318,47 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
           ))}
         </div>
         <p id={`${uid}-summary`} className="when-summary">{summary}</p>
-        <p className="hint when-help">Click a start date, then an end date. Click the same day twice for a one-day event. Arrow keys move, Page Up and Page Down change month.</p>
+        <p className="hint when-help">{t("editor.when.help")}</p>
       </div>
 
       {/* ------------------------------------------------ dial */}
       <div className="when-dial">
         <div className="when-read">
           <div className={`when-time${dragging === "start" ? " live" : ""}`}>
-            <span className="when-lbl">Starts</span>
+            <span className="when-lbl">{t("editor.when.starts")}</span>
             <strong>{formatTime(model.startMin)}</strong>
             <span className="when-date">{short(model.range.start)}</span>
           </div>
           <div className={`when-time${dragging === "end" ? " live" : ""}`}>
-            <span className="when-lbl">Ends</span>
+            <span className="when-lbl">{t("editor.when.ends")}</span>
             <strong>{formatTime(model.endMin)}</strong>
             <span className="when-date">{short(model.range.end)}</span>
           </div>
-          {zone && <span className="when-tz" title="Your time zone">{zone}</span>}
+          {zone && <span className="when-tz" title={t("editor.when.zone")}>{zone}</span>}
         </div>
 
-        <svg ref={svgRef} className={`when-clock${dragging ? " dragging" : ""}`} viewBox="0 0 280 280" role="group" aria-label="Clock dial. Drag the handles, or focus one and use the arrow keys for 15 minutes and Page Up or Page Down for an hour." onPointerDown={onTrackDown}>
+        <svg ref={svgRef} className={`when-clock${dragging ? " dragging" : ""}`} viewBox="0 0 280 280" role="group" aria-label={t("editor.when.dial")} onPointerDown={onTrackDown}>
           <circle cx={C} cy={C} r={R + 12} className="clock-edge" />
           <circle cx={C} cy={C} r={R - 12} className="clock-edge" />
           <circle cx={C} cy={C} r={R} className="clock-track" />
           {duration > 0 && (fullRing
             ? <><circle cx={C} cy={C} r={R} className="clock-arc-rim" /><circle cx={C} cy={C} r={R} className="clock-arc" /></>
             : <><path d={arcPath(model.startMin, model.endMin)} className="clock-arc-rim" /><path d={arcPath(model.startMin, model.endMin)} className="clock-arc" /></>)}
-          {ticks.map((t, i) => <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} className={t.major ? "tick major" : "tick"} />)}
+          {ticks.map((tick, i) => <line key={i} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} className={tick.major ? "tick major" : "tick"} />)}
           {Array.from({ length: 12 }, (_, i) => {
             const n = i === 0 ? 12 : i;
             const p = point(n * 60, 60);
             return <text key={n} x={p.x} y={p.y} className="numeral" textAnchor="middle" dominantBaseline="central">{n}</text>;
           })}
           <text x={C} y={C - 2} className={`centre${centreDuration(duration).length > 5 ? " small" : ""}`} textAnchor="middle" dominantBaseline="central" aria-hidden>{centreDuration(duration)}</text>
-          <text x={C} y={C + 20} className="centre-label" textAnchor="middle" aria-hidden>{multiDay ? "total" : "duration"}</text>
+          <text x={C} y={C + 20} className="centre-label" textAnchor="middle" aria-hidden>{multiDay ? t("editor.when.total") : t("editor.when.duration")}</text>
 
           {(["start", "end"] as const).map((handle) => {
             const p = handle === "start" ? startPoint : endPoint;
             const minutes = handle === "start" ? model.startMin : model.endMin;
             return (
               <g key={handle} data-handle={handle} role="slider" tabIndex={disabled ? -1 : 0} className={`handle ${handle}${dragging === handle ? " active" : ""}`}
-                aria-label={handle === "start" ? "Start time" : "End time"} aria-valuemin={0} aria-valuemax={DAY_MIN - 15} aria-valuenow={minutes}
+                aria-label={handle === "start" ? t("editor.when.startTime") : t("editor.when.endTime")} aria-valuemin={0} aria-valuemax={DAY_MIN - 15} aria-valuenow={minutes}
                 aria-valuetext={`${formatTime(minutes)}, ${short(handle === "start" ? model.range.start : model.range.end)}`} aria-disabled={disabled || undefined}
                 aria-describedby={handle === "start" ? describedStart : describedEnd}
                 onKeyDown={(e) => onHandleKey(handle, e)}
@@ -371,13 +376,13 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
         </svg>
 
         <div className="when-fields">
-          <TimeField id={startId} label="Start time" minutes={model.startMin} disabled={disabled} invalid={!!startError} describedBy={describedStart}
+          <TimeField id={startId} label={t("editor.when.startTime")} minutes={model.startMin} disabled={disabled} invalid={!!startError} describedBy={describedStart}
             onCommit={(minutes) => setHandle("start", minutes, true)} />
-          <TimeField id={endId} label="End time" minutes={model.endMin} disabled={disabled} invalid={!!endError || issue !== null} describedBy={describedEnd}
+          <TimeField id={endId} label={t("editor.when.endTime")} minutes={model.endMin} disabled={disabled} invalid={!!endError || issue !== null} describedBy={describedEnd}
             onCommit={(minutes) => setHandle("end", minutes, true)} />
         </div>
         <div className="when-suggest">
-          <span className="when-suggest-label" id={`${uid}-presets`}>{t("editor.timesLabel")}</span>
+          <span className="when-suggest-label" id={`${uid}-presets`}>{tAi("editor.timesLabel")}</span>
           <div className="chips when-presets" role="group" aria-labelledby={`${uid}-presets`}>
             {presets.map((p) => (
               <ChipToggle key={p.id} className="dipbot-chip" disabled={disabled} pressed={presetActive(p)} onClick={() => applyPreset(p)} icon={<DipbotMark size={14} />}>
@@ -389,10 +394,10 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
       </div>
 
       <div className="when-messages">
-        {issue && <p className="error" id={`${uid}-issue`} role="alert">End has to be after the start on a one-day event. We set it 15 minutes after the start; pick a later end date for a longer one.</p>}
+        {issue && <p className="error" id={`${uid}-issue`} role="alert">{t("editor.when.issue")}</p>}
         {startError && <p className="error" id="start-error">{startError}</p>}
         {endError && <p className="error" id="end-error">{endError}</p>}
-        {model.rolled && !issue && <p className="hint" role="status">Ends the next day, {short(model.range.end)}.</p>}
+        {model.rolled && !issue && <p className="hint" role="status">{t("editor.when.rolled", { date: short(model.range.end) })}</p>}
         {notes.map((note) => <p className="hint" role="status" key={note}>{note}</p>)}
       </div>
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>
@@ -423,10 +428,10 @@ function TimeField({ id, label, minutes, disabled, invalid, describedBy, onCommi
         <input id={id} inputMode="text" autoComplete="off" spellCheck={false} value={text} disabled={disabled} aria-invalid={invalid || bad || undefined} aria-describedby={describedBy}
           onFocus={() => { editing.current = true; }} onChange={(e) => setText(e.target.value)} onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }} />
-        <SegmentedControl variant="pill" label={`${label} AM or PM`} value={isPm(minutes) ? "pm" : "am"} disabled={disabled} onChange={(next) => onCommit(withPeriod(minutes, next === "pm"))}
+        <SegmentedControl variant="pill" label={t("editor.when.amPm", { label })} value={isPm(minutes) ? "pm" : "am"} disabled={disabled} onChange={(next) => onCommit(withPeriod(minutes, next === "pm"))}
           options={[{ value: "am", label: "AM" }, { value: "pm", label: "PM" }]} />
       </div>
-      {bad && <span className="error" role="alert">Type a time like 6:30 PM.</span>}
+      {bad && <span className="error" role="alert">{t("editor.when.typeTime")}</span>}
     </div>
   );
 }

@@ -1,8 +1,11 @@
 "use client";
 
+// @i18n-migrated
+
 import type { ReactNode } from "react";
 import { Sk, SkeletonAvatar, SkeletonBlock, SkeletonCardGrid, SkeletonColumn, SkeletonRegion, SkeletonTable } from "./Skeleton";
 import { OverviewLoading } from "./OverviewSkeleton";
+import { t } from "@/lib/i18n";
 
 // Loading layouts for every admin page. Each one reuses the page's own classes and column headings, so row heights,
 // gaps and widths match the loaded page. `Loading` (Ui.tsx) picks one by name.
@@ -36,75 +39,75 @@ const person = (i: number) => (
 // Wraps a stacked pair of placeholder lines in a block cell.
 const lines = (i: number, a = 60, b = 44) => (<><span className="line"><Sk w={w(i, a)} /></span><span className="line muted"><Sk w={w(i + 3, b)} /></span></>);
 
-const EVENT_COLUMNS: SkeletonColumn[] = [
-  { head: "Event", cellClass: "cell-main", cell: (i) => (
+const eventColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.event"), cellClass: "cell-main", cell: (i) => (
     <div className="media-cell"><span className="thumb sk" /><div className="media-text"><span className="row-title"><Sk w={px(i, 150, 80)} /></span><span className="muted clamp-1"><Sk w={px(i + 2, 190, 90)} /></span></div></div>) },
-  { head: "When", cell: (i) => <><span className="line"><Sk w={124} /><Sk w={84} /></span><span className="line muted"><Sk w={w(i + 3, 44)} /></span></> },
-  { head: "Where", cell: (i) => lines(i + 1) },
-  { head: "Price", className: "num", cell: () => <Sk w={36} /> },
-  { head: "Going", className: "num", cell: (i) => <div className="going"><Sk w={52} /><span className="meter-mini"><span style={{ width: `${30 + ((i * 19) % 60)}%` }} /></span></div> },
-  { head: "Status", cell: () => <Pill /> },
-  { head: "Actions", hidden: true, className: "right", cell: () => <span className="row-actions"><Button /><Button width={44} /></span> },
+  { head: t("ui.skeleton.col.when"), cell: (i) => <><span className="line"><Sk w={124} /><Sk w={84} /></span><span className="line muted"><Sk w={w(i + 3, 44)} /></span></> },
+  { head: t("ui.skeleton.col.where"), cell: (i) => lines(i + 1) },
+  { head: t("ui.skeleton.col.price"), className: "num", cell: () => <Sk w={36} /> },
+  { head: t("ui.skeleton.col.going"), className: "num", cell: (i) => <div className="going"><Sk w={52} /><span className="meter-mini"><span style={{ width: `${30 + ((i * 19) % 60)}%` }} /></span></div> },
+  { head: t("ui.skeleton.col.status"), cell: () => <Pill /> },
+  { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button /><Button width={44} /></span> },
 ];
 
-const THEME_COLUMNS: SkeletonColumn[] = [
-  { head: "Theme", cellClass: "cell-main", cell: (i) => (
+const themeColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.theme"), cellClass: "cell-main", cell: (i) => (
     <div className="media-cell"><span className="thumb art tile sk" /><div className="media-text"><span className="row-title"><Sk w={px(i, 120, 70)} /></span><span className="muted"><Sk w={px(i, 150, 60)} /></span></div></div>) },
-  { head: "Week", cell: (i) => <Sk w={w(i, 70, 20)} /> },
-  { head: "Goal", cell: () => <Sk w={60} /> },
-  { head: "Reward", cell: () => <Sk w={48} /> },
-  { head: "Participation", className: "num", cell: () => <Sk w={90} /> },
-  { head: "Status", cell: () => <Pill width={64} /> },
-  { head: "Actions", hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={44} /></span> },
+  { head: t("ui.skeleton.col.week"), cell: (i) => <Sk w={w(i, 70, 20)} /> },
+  { head: t("ui.skeleton.col.goal"), cell: () => <Sk w={60} /> },
+  { head: t("ui.skeleton.col.reward"), cell: () => <Sk w={48} /> },
+  { head: t("ui.skeleton.col.participation"), className: "num", cell: () => <Sk w={90} /> },
+  { head: t("ui.skeleton.col.status"), cell: () => <Pill width={64} /> },
+  { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={44} /></span> },
 ];
 
-const CHALLENGE_COLUMNS: SkeletonColumn[] = [
-  { head: "Challenge", cellClass: "cell-main", cell: (i) => (
+const challengeColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.challenge"), cellClass: "cell-main", cell: (i) => (
     <div className="media-cell"><span className="thumb art tile sk" /><div className="media-text"><span className="challenge-title"><strong><Sk w={px(i, 110, 60)} /></strong></span><span className="line muted"><Sk w={px(i, 190, 60)} /></span></div></div>) },
-  { head: "Dates", cell: () => <Sk w={104} /> },
-  { head: "Goal", cell: () => <Sk w={56} /> },
-  { head: "Joined", className: "num", cell: () => <Sk w={32} /> },
-  { head: "Pending", className: "num", cell: () => <Pill width={80} /> },
-  { head: "Action", hidden: true, className: "right", cell: () => <SkeletonBlock w={132} h={36} r={6} /> },
+  { head: t("ui.skeleton.col.dates"), cell: () => <Sk w={104} /> },
+  { head: t("ui.skeleton.col.goal"), cell: () => <Sk w={56} /> },
+  { head: t("ui.skeleton.col.joined"), className: "num", cell: () => <Sk w={32} /> },
+  { head: t("ui.skeleton.col.pending"), className: "num", cell: () => <Pill width={80} /> },
+  { head: t("ui.skeleton.col.action"), hidden: true, className: "right", cell: () => <SkeletonBlock w={132} h={36} r={6} /> },
 ];
 
-const MEMBER_COLUMNS = (points: boolean): SkeletonColumn[] => [
-  { head: "Name", cell: person },
-  { head: "Role", cell: () => <Sk w={64} /> },
-  { head: "Teams", cell: (i) => <Sk w={w(i, 40)} /> },
-  { head: "Work location", cell: (i) => <Sk w={w(i, 40, 30)} /> },
-  { head: "Status", cell: () => <Pill width={64} /> },
-  ...(points ? [{ head: "Points", className: "right", cell: () => <Sk w={36} /> } as SkeletonColumn] : []),
+const memberColumns = (points: boolean): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.name"), cell: person },
+  { head: t("ui.skeleton.col.role"), cell: () => <Sk w={64} /> },
+  { head: t("ui.skeleton.col.teams"), cell: (i) => <Sk w={w(i, 40)} /> },
+  { head: t("ui.skeleton.col.workLocation"), cell: (i) => <Sk w={w(i, 40, 30)} /> },
+  { head: t("ui.skeleton.col.status"), cell: () => <Pill width={64} /> },
+  ...(points ? [{ head: t("ui.skeleton.col.points"), className: "right", cell: () => <Sk w={36} /> } as SkeletonColumn] : []),
 ];
 
-const ROSTER_COLUMNS: SkeletonColumn[] = [
-  { head: "Name", cell: person },
-  { head: "Role", cell: () => <Sk w={64} /> },
-  { head: "Teams", cell: (i) => <Sk w={w(i, 40)} /> },
-  { head: "Status", cell: () => <Pill width={64} /> },
-  { head: "Added", cell: () => <Sk w={90} /> },
-  { head: "Actions", hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={92} /></span> },
+const rosterColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.name"), cell: person },
+  { head: t("ui.skeleton.col.role"), cell: () => <Sk w={64} /> },
+  { head: t("ui.skeleton.col.teams"), cell: (i) => <Sk w={w(i, 40)} /> },
+  { head: t("ui.skeleton.col.status"), cell: () => <Pill width={64} /> },
+  { head: t("ui.skeleton.col.added"), cell: () => <Sk w={90} /> },
+  { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={92} /></span> },
 ];
 
-const AUDIT_COLUMNS: SkeletonColumn[] = [
-  { head: "When", cellClass: "nowrap", cell: () => <Sk w={92} /> },
-  { head: "Action", cell: () => <Pill width={96} /> },
-  { head: "Who", cell: (i) => <span className="person"><SkeletonAvatar /><span><Sk w={px(i, 100, 50)} /></span></span> },
-  { head: "What", cell: (i) => <><p><Sk w={w(i, 70, 26)} /></p><p className="muted"><Sk w={w(i + 4, 40)} /></p></> },
-  { head: "Details", hidden: true, className: "right", cell: () => <Button width={36} /> },
+const auditColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.when"), cellClass: "nowrap", cell: () => <Sk w={92} /> },
+  { head: t("ui.skeleton.col.action"), cell: () => <Pill width={96} /> },
+  { head: t("ui.skeleton.col.who"), cell: (i) => <span className="person"><SkeletonAvatar /><span><Sk w={px(i, 100, 50)} /></span></span> },
+  { head: t("ui.skeleton.col.what"), cell: (i) => <><p><Sk w={w(i, 70, 26)} /></p><p className="muted"><Sk w={w(i + 4, 40)} /></p></> },
+  { head: t("ui.skeleton.col.details"), hidden: true, className: "right", cell: () => <Button width={36} /> },
 ];
 
-const ATTENDEE_COLUMNS: SkeletonColumn[] = [
-  { head: "Name", cell: person },
-  { head: "Status", cell: () => <Pill width={72} /> },
-  { head: "Actions", hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={80} /><Button width={64} /></span> },
+const attendeeColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.name"), cell: person },
+  { head: t("ui.skeleton.col.status"), cell: () => <Pill width={72} /> },
+  { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={80} /><Button width={64} /></span> },
 ];
 
-const IMPORT_COLUMNS: SkeletonColumn[] = [
-  { head: "Row", cell: () => <Sk w={24} /> },
-  { head: "Person", cell: person },
-  { head: "Action", cell: () => <Pill width={72} /> },
-  { head: "Changes", cell: (i) => <Sk w={w(i, 40, 40)} /> },
+const importColumns = (): SkeletonColumn[] => [
+  { head: t("ui.skeleton.col.row"), cell: () => <Sk w={24} /> },
+  { head: t("ui.skeleton.col.person"), cell: person },
+  { head: t("ui.skeleton.col.action"), cell: () => <Pill width={72} /> },
+  { head: t("ui.skeleton.col.changes"), cell: (i) => <Sk w={w(i, 40, 40)} /> },
 ];
 
 function QueueItems({ rows, bug = false }: { rows: number; bug?: boolean }) {
@@ -186,26 +189,26 @@ function IdeasGhost() {
 
 function Layout({ name }: { name: SkeletonLayout }): ReactNode {
   switch (name) {
-    case "events": return <><TabsGhost labels={["Upcoming", "Past", "Cancelled"]} /><SkeletonTable columns={EVENT_COLUMNS} rows={SKELETON_ROWS.events} tableClass="table responsive events-table" rowClass="event-row" /></>;
-    case "themes": return <><TabsGhost labels={["Current", "Upcoming", "Past"]} /><SkeletonTable columns={THEME_COLUMNS} rows={SKELETON_ROWS.themes} tableClass="table responsive themes-table" /></>;
-    case "challenges": return <SkeletonTable columns={CHALLENGE_COLUMNS} rows={SKELETON_ROWS.challenges} tableClass="table responsive challenges-table" rowClass="challenge-tr" />;
+    case "events": return <><TabsGhost labels={[t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past"), t("ui.skeleton.tab.cancelled")]} /><SkeletonTable columns={eventColumns()} rows={SKELETON_ROWS.events} tableClass="table responsive events-table" rowClass="event-row" /></>;
+    case "themes": return <><TabsGhost labels={[t("ui.skeleton.tab.current"), t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past")]} /><SkeletonTable columns={themeColumns()} rows={SKELETON_ROWS.themes} tableClass="table responsive themes-table" /></>;
+    case "challenges": return <SkeletonTable columns={challengeColumns()} rows={SKELETON_ROWS.challenges} tableClass="table responsive challenges-table" rowClass="challenge-tr" />;
     case "review": return <div className="review-layout" aria-hidden><section className="queue-wrap"><QueueItems rows={SKELETON_ROWS.queue} /></section><ReviewDetailGhost /></div>;
-    case "members": return <><CountLine /><SkeletonTable columns={MEMBER_COLUMNS(true)} rows={SKELETON_ROWS.members} /></>;
+    case "members": return <><CountLine /><SkeletonTable columns={memberColumns(true)} rows={SKELETON_ROWS.members} /></>;
     case "memberDetail": return (
       <div className="detail-layout" aria-hidden>
         <section className="panel"><div className="person big"><SkeletonAvatar size={40} /><div><h2><Sk w={180} /></h2><p className="muted"><Sk w={220} /></p></div></div>
           <dl className="facts">{range(4).map((i) => <div key={i}><dt><Sk w={80} /></dt><dd><Sk w={w(i, 40)} /></dd></div>)}</dl></section>
         <section className="panel"><h2><Sk w={120} /></h2><div className="field"><label><Sk w={70} /></label><InputGhost /></div><div className="field"><label><Sk w={90} /></label><InputGhost /></div></section>
       </div>);
-    case "roster": return <><CountLine /><SkeletonTable columns={ROSTER_COLUMNS} rows={SKELETON_ROWS.roster} /></>;
-    case "importPreview": return <SkeletonTable columns={IMPORT_COLUMNS} rows={SKELETON_ROWS.importPreview} tableClass="table compact" />;
+    case "roster": return <><CountLine /><SkeletonTable columns={rosterColumns()} rows={SKELETON_ROWS.roster} /></>;
+    case "importPreview": return <SkeletonTable columns={importColumns()} rows={SKELETON_ROWS.importPreview} tableClass="table compact" />;
     case "bugs": return <div className="review-layout" aria-hidden><section className="queue-wrap bug-list"><QueueItems rows={SKELETON_ROWS.queue} bug /></section><div className="bug-detail-wrap"><ReviewDetailGhost bug /></div></div>;
     case "bugDetail": return <ReviewDetailGhost bug />;
     case "audit": return (
       <>
-        <div className="filters" aria-hidden><SearchGhost /><div className="field"><label>Action</label><InputGhost /></div></div>
+        <div className="filters" aria-hidden><SearchGhost /><div className="field"><label>{t("ui.skeleton.col.action")}</label><InputGhost /></div></div>
         <CountLine />
-        <SkeletonTable columns={AUDIT_COLUMNS} rows={SKELETON_ROWS.audit} tableClass="table responsive audit-table" />
+        <SkeletonTable columns={auditColumns()} rows={SKELETON_ROWS.audit} tableClass="table responsive audit-table" />
       </>);
     case "ideas": return <IdeasGhost />;
     case "suggestions": return (
@@ -214,7 +217,7 @@ function Layout({ name }: { name: SkeletonLayout }): ReactNode {
         <section className="panel"><h2><Sk w={160} /></h2>{range(3).map((i) => <SkeletonBlock key={i} w="100%" h={64} r={8} />)}</section>
       </div>);
     case "form": return <FormGhost />;
-    case "attendees": return <><div className="filters" aria-hidden><SearchGhost /></div><CountLine /><SkeletonTable columns={ATTENDEE_COLUMNS} rows={SKELETON_ROWS.attendees} tableClass="table responsive" /></>;
+    case "attendees": return <><div className="filters" aria-hidden><SearchGhost /></div><CountLine /><SkeletonTable columns={attendeeColumns()} rows={SKELETON_ROWS.attendees} tableClass="table responsive" /></>;
     case "album": return <SkeletonCardGrid count={8} min={200} height={150} gap={12} />;
     case "overview": return null;
     default: return <div className="skeleton-list" aria-hidden>{range(3).map((i) => <SkeletonBlock key={i} w="100%" h={44} r={6} />)}</div>;

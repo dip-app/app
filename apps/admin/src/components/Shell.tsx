@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -6,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
 import { AdminOnly } from "./AdminOnly";
 import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
-import { t } from "@/lib/aiStrings";
+import { t as tAi } from "@/lib/aiStrings";
+import { BRAND, type MessageKey, t } from "@/lib/i18n";
 import { Avatar } from "./Avatar";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
@@ -23,32 +25,32 @@ interface Props {
   requires?: Capability;
 }
 
-interface NavItem { href: string; label: string; d: string; requires?: Capability; badge?: "bugReports" }
-interface NavGroup { heading: string; items: NavItem[]; /** Home has no visible heading; the group is still labeled for screen readers. */ headless?: boolean }
+interface NavItem { href: string; /** Catalog key, or null for the Dipbot item (named by the AI copy). */ labelKey: MessageKey | null; d: string; requires?: Capability; badge?: "bugReports" }
+interface NavGroup { id: string; headingKey: MessageKey; items: NavItem[]; /** Home has no visible heading; the group is still labeled for screen readers. */ headless?: boolean }
 
 // Grouped like most admin tools: what you run, what you review, who is involved, what happened. Items a role can't use are hidden.
 const NAV: NavGroup[] = [
-  { heading: "Home", headless: true, items: [
-    { href: "/overview/", label: "Overview", d: "M4 13.5h4V20H4zM10 4h4v16h-4zM16 9h4v11h-4z", requires: "insights.view" },
+  { id: "home", headingKey: "shell.group.home", headless: true, items: [
+    { href: "/overview/", labelKey: "shell.nav.overview", d: "M4 13.5h4V20H4zM10 4h4v16h-4zM16 9h4v11h-4z", requires: "insights.view" },
   ] },
-  { heading: "Program", items: [
-    { href: "/events/", label: "Events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
-    { href: "/ideas/", label: t("nav.label"), d: "M7 19.5a4.5 4.5 0 0 1-.9-8.9A6 6 0 0 1 17.4 11.4 4.1 4.1 0 0 1 17 19.5zM19.6 2.4l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z", requires: "ai.generate" },
+  { id: "program", headingKey: "shell.group.program", items: [
+    { href: "/events/", labelKey: "shell.nav.events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
+    { href: "/ideas/", labelKey: null, d: "M7 19.5a4.5 4.5 0 0 1-.9-8.9A6 6 0 0 1 17.4 11.4 4.1 4.1 0 0 1 17 19.5zM19.6 2.4l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z", requires: "ai.generate" },
   ] },
-  { heading: "Challenges", items: [
-    { href: "/themes/", label: "Weekly themes", d: "M4 5.5h16V20H4zM4 10h16M8 3v4M16 3v4" },
-    { href: "/challenges/", label: "Review submissions", d: "M12 3.5l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.7 5.4-.7z", requires: "challenges.review" },
+  { id: "challenges", headingKey: "shell.group.challenges", items: [
+    { href: "/themes/", labelKey: "shell.nav.themes", d: "M4 5.5h16V20H4zM4 10h16M8 3v4M16 3v4" },
+    { href: "/challenges/", labelKey: "shell.nav.challenges", d: "M12 3.5l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.7 5.4-.7z", requires: "challenges.review" },
   ] },
-  { heading: "People", items: [
-    { href: "/members/", label: "Members", d: "M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.7a3.5 3.5 0 0 1 0 6.6", requires: "members.view" },
-    { href: "/roster/", label: "Roster", d: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01", requires: "roster.manage" },
-    { href: "/import/", label: "Import people", d: "M12 4v11m0 0-4-4m4 4 4-4M5 19h14", requires: "import.run" },
+  { id: "people", headingKey: "shell.group.people", items: [
+    { href: "/members/", labelKey: "shell.nav.members", d: "M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.7a3.5 3.5 0 0 1 0 6.6", requires: "members.view" },
+    { href: "/roster/", labelKey: "shell.nav.roster", d: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01", requires: "roster.manage" },
+    { href: "/import/", labelKey: "shell.nav.import", d: "M12 4v11m0 0-4-4m4 4 4-4M5 19h14", requires: "import.run" },
   ] },
-  { heading: "Support", items: [
-    { href: "/bug-reports/", label: "Bug reports", d: "M9 9V7a3 3 0 0 1 6 0v2M7 9h10v5a5 5 0 0 1-10 0zM4 13h3M17 13h3M5 19l2.5-2.2M19 19l-2.5-2.2M12 9v10", requires: "bugreports.manage", badge: "bugReports" },
+  { id: "support", headingKey: "shell.group.support", items: [
+    { href: "/bug-reports/", labelKey: "shell.nav.bugReports", d: "M9 9V7a3 3 0 0 1 6 0v2M7 9h10v5a5 5 0 0 1-10 0zM4 13h3M17 13h3M5 19l2.5-2.2M19 19l-2.5-2.2M12 9v10", requires: "bugreports.manage", badge: "bugReports" },
   ] },
-  { heading: "Insights", items: [
-    { href: "/audit/", label: "Audit log", d: "M7 3.5h8l4 4V20.5H7zM14.5 3.5V8H19M10 13h6M10 17h6", requires: "audit.view" },
+  { id: "insights", headingKey: "shell.group.insights", items: [
+    { href: "/audit/", labelKey: "shell.nav.audit", d: "M7 3.5h8l4 4V20.5H7zM14.5 3.5V8H19M10 13h6M10 17h6", requires: "audit.view" },
   ] },
 ];
 
@@ -137,32 +139,32 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   return (
     <div className="app">
       {/* Each page names itself in the tab and history (React hoists <title> into the head). */}
-      <title>{`${title} | DIP Admin`}</title>
-      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById("main"); main?.focus(); main?.scrollIntoView(); }}>Skip to content</a>
+      <title>{t("shell.docTitle", { title, brand: BRAND })}</title>
+      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById("main"); main?.focus(); main?.scrollIntoView(); }}>{t("shell.skip")}</a>
       <header className="topbar" inert={open}>
-        <button type="button" ref={menuButton} className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
+        <button type="button" ref={menuButton} className="menu-btn" aria-label={t("shell.openMenu")} aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
-        <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={28} /><span>DIP Admin</span></Link>
+        <Link href="/overview/" className="brand" aria-label={t("shell.home")}><CloudMark size={28} /><span>{BRAND}</span></Link>
       </header>
       <div className="scrim" data-open={open ? "true" : undefined} onClick={() => close()} aria-hidden />
-      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label={open ? "Menu" : "App navigation"} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
+      <aside id="sidebar" className="sidebar" data-open={open ? "true" : undefined} ref={sidebar} aria-label={open ? t("shell.menu") : t("shell.appNav")} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
         <div className="sidebar-top">
-          <Link href="/overview/" className="brand" aria-label="DIP Admin home"><CloudMark size={30} /><span>DIP Admin</span></Link>
-          <button type="button" ref={closeButton} className="menu-btn close-btn" aria-label="Close menu" onClick={() => close()}>
+          <Link href="/overview/" className="brand" aria-label={t("shell.home")}><CloudMark size={30} /><span>{BRAND}</span></Link>
+          <button type="button" ref={closeButton} className="menu-btn close-btn" aria-label={t("shell.closeMenu")} onClick={() => close()}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
-        <nav aria-label="Main">
+        <nav aria-label={t("shell.mainNav")}>
           {visible.map((group) => (
-            <div className="nav-group" key={group.heading} role="group" aria-label={group.heading}>
-              {!group.headless && <p className="nav-heading" aria-hidden>{group.heading}</p>}
+            <div className="nav-group" key={group.id} role="group" aria-label={t(group.headingKey)}>
+              {!group.headless && <p className="nav-heading" aria-hidden>{t(group.headingKey)}</p>}
               {group.items.map((item) => (
                 <Link key={item.href} href={item.href} className="nav-item" aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
-                  <span className="label">{item.label}</span>
+                  <span className="label">{item.labelKey ? t(item.labelKey) : tAi("nav.label")}</span>
                   {item.badge === "bugReports" && bugBadge && bugBadge.count > 0 && (
-                    <span className="nav-badge">{badgeLabel(bugBadge)}<span className="sr-only"> new</span></span>
+                    <span className="nav-badge">{badgeLabel(bugBadge)}<span className="sr-only">{t("shell.newBadge")}</span></span>
                   )}
                 </Link>
               ))}
@@ -170,7 +172,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
           ))}
         </nav>
         <div className="account">
-          <Link href="/account/" className="who" aria-current={isWithin(pathname, "/account/")} aria-label={`Your settings, ${session.name}, ${ROLE_LABEL[session.role]}`} title="Your settings" onClick={() => { if (open) close(false); }}>
+          <Link href="/account/" className="who" aria-current={isWithin(pathname, "/account/")} aria-label={t("shell.settingsLink", { name: session.name, role: ROLE_LABEL[session.role] })} title={t("shell.settings")} onClick={() => { if (open) close(false); }}>
             <Avatar name={session.name} userId={session.uid} size={32} />
             <span className="who-text">
               <strong>{session.name}</strong>
@@ -179,13 +181,13 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
           </Link>
           <button type="button" className="nav-item signout" onClick={() => void signOut()}>
             <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10" /></svg>
-            <span className="label">Sign out</span>
+            <span className="label">{t("shell.signOut")}</span>
           </button>
         </div>
       </aside>
       <main id="main" tabIndex={-1} className="content" inert={open}>
         {!isStaff(session.role) ? (
-          <EmptyState title="No organizer access" body="Your account can use DIP, but it isn’t an organizer for your company. Ask a company admin to assign the organizer role, then sign in again." />
+          <EmptyState title={t("shell.noAccess.title")} body={t("shell.noAccess.body")} />
         ) : requires && !can(session.role, requires) ? (
           <AdminOnly page={title} capability={requires} role={session.role} />
         ) : (<>

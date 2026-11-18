@@ -2,6 +2,8 @@
 // audit). They follow the tickets #121-#126 and are adapted to docs/contracts/admin.md; every callable name
 // lives in ADMIN_CALLABLES so a rename in the spec is a one-line change.
 
+import { t } from "./i18n";
+
 export type Role = "member" | "organizer" | "admin";
 export type MemberStatus = "invited" | "active" | "deactivated";
 
@@ -28,7 +30,12 @@ export function can(role: Role | undefined, capability: Capability): boolean {
 export function isStaff(role: Role | undefined): boolean {
   return role === "admin" || role === "organizer";
 }
-export const ROLE_LABEL: Record<Role, string> = { member: "Member", organizer: "Organizer", admin: "Admin" };
+/** Display names for roles in the current language (getters, so module-level use still follows a language change). */
+export const ROLE_LABEL: Readonly<Record<Role, string>> = {
+  get member() { return t("common.role.member"); },
+  get organizer() { return t("common.role.organizer"); },
+  get admin() { return t("common.role.admin"); },
+};
 
 /** Callable names from docs/contracts/admin.md. */
 export const ADMIN_CALLABLES = {

@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { Fragment, Suspense, useMemo, useState } from "react";
 import { Shell } from "@/components/Shell";
@@ -7,7 +8,8 @@ import { toast } from "@/components/Toast";
 import { Avatar, Empty, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import { ROLE_LABEL } from "@/lib/adminTypes";
-import { aiFacts, auditAction, auditCategoriesInUse, isAiAction, isAuditCategory } from "@/lib/auditLabels";
+import { aiFacts, auditAction, auditCategoriesInUse, auditCategoryLabel, isAiAction, isAuditCategory } from "@/lib/auditLabels";
+import { t, type MessageKey } from "@/lib/i18n";
 import { downloadText } from "@/lib/csv";
 import { auditCsv } from "@/lib/exports";
 import { useQueryState } from "@/lib/useQueryState";
@@ -17,12 +19,16 @@ import { Button } from "@/components/kit";
 
 const PAGE = 40;
 /** Plain-language target kind under the summary; null hides the line (the summary already says it, e.g. company-wide settings). IDs live in Details. */
-const TARGET_KIND: Record<string, string | null> = {
-  company: null, member: "Member", event: "Event", challenge: "Weekly theme", submission: "Submission", cover: "Cover photo",
-  photo: "Photo", comment: "Comment", attendee: "Attendee", roster: "Roster", import: "Import", team: "Team", points: "Points",
-  bugReport: "Bug report", invite: "Invite",
+const TARGET_KIND: Record<string, MessageKey | null> = {
+  company: null, member: "audit.target.member", event: "audit.target.event", challenge: "audit.target.challenge",
+  submission: "audit.target.submission", cover: "audit.target.cover", photo: "audit.target.photo", comment: "audit.target.comment",
+  attendee: "audit.target.attendee", roster: "audit.target.roster", import: "audit.target.import", team: "audit.target.team",
+  points: "audit.target.points", bugReport: "audit.target.bugReport", invite: "audit.target.invite",
 };
-const targetKind = (type: string) => (type in TARGET_KIND ? TARGET_KIND[type] : null);
+const targetKind = (type: string) => {
+  const key = Object.prototype.hasOwnProperty.call(TARGET_KIND, type) ? TARGET_KIND[type] : null;
+  return key ? t(key) : null;
+};
 const DEFAULTS = { q: "", category: "all" };
 const CATEGORIES = auditCategoriesInUse();
 
@@ -49,35 +55,35 @@ function Audit() {
   function exportCsv() {
     try {
       downloadText("audit-log.csv", auditCsv(filtered));
-      toast(`Exported ${filtered.length} ${filtered.length === 1 ? "entry" : "entries"} to audit-log.csv.`);
+      toast(t("audit.export.done", { count: filtered.length }));
     } catch {
-      toast("The export didn’t finish. Try again.", { tone: "error" });
+      toast(t("common.exportFailed"), { tone: "error" });
     }
   }
 
   return (
-    <Shell title="Audit log" subtitle="Every admin change: who did it, to what, and why. Read-only; the latest 100 entries." requires="audit.view"
-      action={filtered.length > 0 ? <Button onClick={() => exportCsv()}>Export CSV</Button> : undefined}>
+    <Shell title={t("audit.title")} subtitle={t("audit.subtitle")} requires="audit.view"
+      action={filtered.length > 0 ? <Button onClick={() => exportCsv()}>{t("common.exportCsv")}</Button> : undefined}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
-        : !audit.data || hold ? <Loading label="Loading audit log" layout="audit" />
-        : audit.data.length === 0 ? <Empty title="No entries yet" body="Changes made with the admin tools appear here, newest first." />
+        : !audit.data || hold ? <Loading label={t("audit.loading")} layout="audit" />
+        : audit.data.length === 0 ? <Empty title={t("audit.empty.title")} body={t("audit.empty.body")} />
         : (
           <>
             <div className="filters">
-              <SearchBox id="audit-search" value={search} onChange={(v) => { setQs({ q: v }); setShown(PAGE); }} label="Search by person, target or reason" placeholder="Search by person, target or reason (press / to focus)" />
-              <div className="field"><label htmlFor="f-category">Category</label>
+              <SearchBox id="audit-search" value={search} onChange={(v) => { setQs({ q: v }); setShown(PAGE); }} label={t("audit.search.label")} placeholder={t("audit.search.placeholder")} />
+              <div className="field"><label htmlFor="f-category">{t("audit.filter.category")}</label>
                 <select id="f-category" value={category} onChange={(e) => { setQs({ category: e.target.value }); setShown(PAGE); }}>
-                  <option value="all">All categories</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  <option value="all">{t("audit.filter.allCategories")}</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{auditCategoryLabel(c)}</option>)}
                 </select></div>
             </div>
-            {filtered.length === 0 ? <Empty title="No matches" body="Try a different search or category." /> : (
+            {filtered.length === 0 ? <Empty title={t("audit.noMatches.title")} body={t("audit.noMatches.body")} /> : (
               <>
-                <ResultCount>{`Showing ${Math.min(shown, filtered.length)} of ${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}`}</ResultCount>
-                <TableRegion label="Audit log">
+                <ResultCount>{t("audit.showingOf", { shown: Math.min(shown, filtered.length), total: filtered.length })}</ResultCount>
+                <TableRegion label={t("audit.table.label")}>
                   <table className="table responsive audit-table">
-                    <caption className="sr-only">Audit log</caption>
-                    <thead><tr><th scope="col">When</th><th scope="col">What happened</th><th scope="col">Who</th><th scope="col">Target</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                    <caption className="sr-only">{t("audit.table.label")}</caption>
+                    <thead><tr><th scope="col">{t("audit.table.when")}</th><th scope="col">{t("audit.table.what")}</th><th scope="col">{t("audit.table.who")}</th><th scope="col">{t("audit.table.target")}</th><th scope="col"><span className="sr-only">{t("common.details")}</span></th></tr></thead>
                     <tbody>
                       {filtered.slice(0, shown).map((e) => {
                         const a = auditAction(e.action);
@@ -87,24 +93,24 @@ function Audit() {
                         return (
                           <Fragment key={e.id}>
                             <tr className="audit-entry">
-                              <td className="nowrap" data-label="When"><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
-                              <td data-label="What happened"><span className="audit-what"><span className="audit-label" title={`Action key: ${e.action}`}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{a.category}</span></span></td>
-                              <td data-label="Who"><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
-                              <td data-label="Target"><p>{e.summary}</p>{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
-                              <td className="right"><Button size="sm" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={`${open === e.id ? "Hide" : "Show"} details for ${a.label}`} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide details" : "Details"}</Button></td>
+                              <td className="nowrap" data-label={t("audit.table.when")}><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
+                              <td data-label={t("audit.table.what")}><span className="audit-what"><span className="audit-label" title={t("audit.actionKeyTitle", { key: e.action })}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{auditCategoryLabel(a.category)}</span></span></td>
+                              <td data-label={t("audit.table.who")}><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
+                              <td data-label={t("audit.table.target")}><p>{e.summary}</p>{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
+                              <td className="right"><Button size="sm" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={t(open === e.id ? "audit.hideDetailsFor" : "audit.showDetailsFor", { label: a.label })} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? t("common.hideDetails") : t("common.details")}</Button></td>
                             </tr>
                             {open === e.id && (
                               <tr className="audit-detail-row" id={`audit-detail-${e.id}`}><td colSpan={5}>
                                 <div className="audit-detail">
-                                  {e.reason && <p><strong>Reason:</strong> {e.reason}</p>}
+                                  {e.reason && <p><strong>{t("audit.detail.reason")}</strong> {e.reason}</p>}
                                   {facts.length > 0 && (
                                     <dl className="audit-facts">{facts.map((f) => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl>
                                   )}
                                   {shownChanges.length > 0 && (
-                                    <table className="table compact"><thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
-                                      <tbody>{shownChanges.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || <span className="muted">Empty</span>}</td><td>{c.after || <span className="muted">Empty</span>}</td></tr>)}</tbody></table>
+                                    <table className="table compact"><thead><tr><th scope="col">{t("audit.detail.field")}</th><th scope="col">{t("audit.detail.before")}</th><th scope="col">{t("audit.detail.after")}</th></tr></thead>
+                                      <tbody>{shownChanges.map((c) => <tr key={c.field}><th scope="row">{c.field}</th><td>{c.before || <span className="muted">{t("common.empty")}</span>}</td><td>{c.after || <span className="muted">{t("common.empty")}</span>}</td></tr>)}</tbody></table>
                                   )}
-                                  <p className="muted audit-key">Action key: <code>{e.action}</code> · Reference: <code>{e.targetType} {e.targetId}</code></p>
+                                  <p className="muted audit-key">{t("audit.detail.actionKey")} <code>{e.action}</code> · {t("audit.detail.reference")} <code>{e.targetType} {e.targetId}</code></p>
                                 </div>
                               </td></tr>
                             )}
@@ -124,5 +130,5 @@ function Audit() {
 }
 
 export default function AuditPage() {
-  return <Suspense fallback={<Loading label="Loading audit log" layout="audit" />}><Audit /></Suspense>;
+  return <Suspense fallback={<Loading label={t("audit.loading")} layout="audit" />}><Audit /></Suspense>;
 }

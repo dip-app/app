@@ -1,8 +1,10 @@
 // Mirrors contracts/v1/models.schema.json (Event, EventDraft, Venue) and docs/contracts/callables.md.
 // Replace with the generated types once the organizer callables exist.
 
-import { t } from "./aiStrings";
+// @i18n-migrated
+import { t as tAi } from "./aiStrings";
 import { TAG_IDS } from "./catalog";
+import { formatDate, formatNumber, formatTime, t } from "./i18n";
 
 export type EventStatus = "scheduled" | "cancelled";
 
@@ -115,41 +117,41 @@ export function validateDraft(
   const errors: FieldErrors = {};
   const title = draft.title.trim();
   if (title.length < 1 || title.length > LIMITS.titleMax) {
-    errors.title = `Title must be 1 to ${LIMITS.titleMax} characters.`;
+    errors.title = t("events.error.title", { max: LIMITS.titleMax });
   }
   const description = draft.description.trim();
   if (description.length < 1 || description.length > LIMITS.descriptionMax) {
-    errors.description = `Description must be 1 to ${LIMITS.descriptionMax} characters.`;
+    errors.description = t("events.error.description", { max: LIMITS.descriptionMax });
   }
   const start = Date.parse(draft.startTime);
   const end = Date.parse(draft.endTime);
-  if (Number.isNaN(start)) errors.startTime = "Choose a start time.";
-  if (Number.isNaN(end)) errors.endTime = "Choose an end time.";
-  if (!errors.startTime && !errors.endTime && end <= start) errors.endTime = "End must be after start.";
+  if (Number.isNaN(start)) errors.startTime = t("events.error.startTime");
+  if (Number.isNaN(end)) errors.endTime = t("events.error.endTime");
+  if (!errors.startTime && !errors.endTime && end <= start) errors.endTime = t("events.error.endBeforeStart");
   if (!errors.startTime && options.requireFuture && start <= (options.now ?? new Date()).getTime()) {
-    errors.startTime = "New events must start in the future.";
+    errors.startTime = t("events.error.startFuture");
   }
-  if (!draft.venue.name.trim()) errors["venue.name"] = "Add the venue name.";
-  if (!draft.venue.address.trim()) errors["venue.address"] = "Add the street address.";
-  if (!draft.venue.locality.trim()) errors["venue.locality"] = "Add the city or area.";
+  if (!draft.venue.name.trim()) errors["venue.name"] = t("events.error.venueName");
+  if (!draft.venue.address.trim()) errors["venue.address"] = t("events.error.venueAddress");
+  if (!draft.venue.locality.trim()) errors["venue.locality"] = t("events.error.venueLocality");
   // Coordinates are resolved at pick or save time, so unset (NaN) is fine here. Out-of-range ones are a safety net on the address.
   const { latitude, longitude } = draft.venue;
   if ((!Number.isNaN(latitude) && !(latitude >= -90 && latitude <= 90)) || (!Number.isNaN(longitude) && !(longitude >= -180 && longitude <= 180))) {
-    errors["venue.address"] ??= t("where.notFound");
+    errors["venue.address"] ??= tAi("where.notFound");
   }
-  if (!Number.isInteger(draft.costCents) || draft.costCents < 0) errors.costCents = "Price must be zero or more.";
+  if (!Number.isInteger(draft.costCents) || draft.costCents < 0) errors.costCents = t("events.error.price");
   const minCapacity = Math.max(LIMITS.capacityMin, options.minCapacity ?? 0);
   if (!Number.isInteger(draft.capacity) || draft.capacity < minCapacity || draft.capacity > LIMITS.capacityMax) {
     errors.capacity =
       minCapacity > LIMITS.capacityMin
-        ? `Capacity can’t be below the ${minCapacity} people already going (max ${LIMITS.capacityMax}).`
-        : `Capacity must be ${LIMITS.capacityMin} to ${LIMITS.capacityMax}.`;
+        ? t("events.error.capacityMin", { min: minCapacity, max: LIMITS.capacityMax })
+        : t("events.error.capacityRange", { min: LIMITS.capacityMin, max: LIMITS.capacityMax });
   }
   const known = options.knownTagIds ?? TAG_IDS;
   if (draft.tagIds.some((id) => !known.includes(id)) || new Set(draft.tagIds).size !== draft.tagIds.length) {
-    errors.tagIds = "Choose tags from the list.";
+    errors.tagIds = t("events.error.tags");
   }
-  if (!draft.coverImageURL) errors.coverImageURL = "Pick a cover image.";
+  if (!draft.coverImageURL) errors.coverImageURL = t("events.error.cover");
   return errors;
 }
 
@@ -181,7 +183,7 @@ export function normalizeDraft(draft: EventDraft): EventDraft {
 }
 
 export function formatPrice(costCents: number): string {
-  return costCents === 0 ? "Free" : (costCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  return costCents === 0 ? t("events.price.free") : formatNumber(costCents / 100, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" });
 }
 
 /** Classification uses timestamps and status, never labels. */
@@ -196,8 +198,8 @@ export function formatDuration(startIso: string, endIso: string): string {
   if (!Number.isFinite(minutes) || minutes <= 0) return "";
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
+  if (hours === 0) return t("events.duration.minutes", { minutes: rest });
+  return rest === 0 ? t("events.duration.hours", { hours }) : t("events.duration.hoursMinutes", { hours, minutes: rest });
 }
 
 /** "Mon, Nov 16 · 9:00 to 11:00 AM": date plus start and end, so date, time and length read at a glance. */
@@ -205,10 +207,12 @@ export function formatWhen(startIso: string, endIso: string): string {
   const start = new Date(startIso);
   const end = new Date(endIso);
   if (Number.isNaN(start.getTime())) return "";
-  const day = start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-  const from = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  if (Number.isNaN(end.getTime())) return `${day} · ${from}`;
-  const to = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const dayFormat: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" };
+  const timeFormat: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+  const day = formatDate(start, dayFormat);
+  const from = formatTime(start, timeFormat);
+  if (Number.isNaN(end.getTime())) return t("events.when.startOnly", { day, from });
+  const to = formatTime(end, timeFormat);
   const sameDay = start.toDateString() === end.toDateString();
-  return sameDay ? `${day} · ${from} to ${to}` : `${day} ${from} to ${end.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} ${to}`;
+  return sameDay ? t("events.when.sameDay", { day, from, to }) : t("events.when.multiDay", { day, from, endDay: formatDate(end, dayFormat), to });
 }

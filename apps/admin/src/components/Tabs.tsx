@@ -1,6 +1,9 @@
 "use client";
 
+// @i18n-migrated
+
 import { useId, useRef } from "react";
+import { t } from "@/lib/i18n";
 
 export interface TabItem { id: string; label: string; count?: number | string }
 
@@ -61,7 +64,7 @@ export function Tabs({ label, items, value, onChange, idBase }: Props) {
             tabIndex={selected ? 0 : -1}
             onClick={() => move(item.id)}
           >
-            {item.label}{item.count !== undefined ? ` (${item.count})` : ""}
+            {item.count !== undefined ? t("common.tabCount", { label: item.label, count: item.count }) : item.label}
           </button>
         );
       })}

@@ -1,3 +1,4 @@
+// @i18n-migrated
 // Pure helpers for the "Ideas for you" section: labels, the collapse memory, the refresh rule and the hand-off to the
 // wizard. No React and no network, so it is unit tested directly. Copy lives in aiStrings.ts (`ideasForYou.` keys).
 

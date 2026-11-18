@@ -1,3 +1,4 @@
+// @i18n-migrated
 // The one place that turns a suggestion's probability into what the admin sees. The interface never shows raw
 // percentages: a probability becomes one of three positive labels, or nothing at all. Thresholds, labels and provider
 // caps live here so they can be audited and changed together (unit tested in __tests__/suggestionLabels.test.ts).
@@ -10,9 +11,9 @@ export type SuggestionLevel = "perfect" | "great" | "good";
 
 /** Highest first. A probability below the last `min` gets no label (and no highlight). */
 export const SUGGESTION_LEVELS: readonly { level: SuggestionLevel; min: number; label: string }[] = [
-  { level: "perfect", min: 0.85, label: t("level.perfect") },
-  { level: "great", min: 0.7, label: t("level.great") },
-  { level: "good", min: 0.55, label: t("level.good") },
+  { level: "perfect", min: 0.85, get label() { return t("level.perfect"); } },
+  { level: "great", min: 0.7, get label() { return t("level.great"); } },
+  { level: "good", min: 0.55, get label() { return t("level.good"); } },
 ];
 
 /**

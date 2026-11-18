@@ -1,3 +1,4 @@
+// @i18n-migrated
 import { coverFor } from "@/lib/catalog";
 import { asset } from "@/lib/asset";
 

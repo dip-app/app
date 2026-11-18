@@ -1,3 +1,4 @@
+// @i18n-migrated
 // Illustrations for Dipbot's choice cards (interest tags resolve in tagArt.ts): the flat spot illustrations in public/img/ai/ (scripts/make-ai-art.py) for the other choices.
 // Decorative only: every card names its option in text.
 

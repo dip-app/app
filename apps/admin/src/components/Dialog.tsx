@@ -1,7 +1,10 @@
 "use client";
 
+// @i18n-migrated
+
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/kit";
+import { t } from "@/lib/i18n";
 
 interface Props {
   title: string;
@@ -26,7 +29,7 @@ interface Props {
 }
 
 /** Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. */
-export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = "Saved in the audit log.", danger, focusCancel = !!danger, confirmDisabled, busyLabel = "Saving…", onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = t("common.dialog.reasonHint"), danger, focusCancel = !!danger, confirmDisabled, busyLabel = t("common.saving"), onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,7 +58,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
     try {
       await onConfirm(reason.trim());
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Something went wrong. Check your connection and try again.");
+      setError(failure instanceof Error ? failure.message : t("common.genericError"));
       setBusy(false);
     }
   }
@@ -67,9 +70,9 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
       <div className="dialog-body" id={`${id}-b`}>{children}</div>
       {needsReason && (
         <div className="field">
-          <label htmlFor={`${id}-r`}>{reasonLabel} (required)</label>
+          <label htmlFor={`${id}-r`}>{t("common.dialog.reasonRequired", { label: reasonLabel })}</label>
           <textarea id={`${id}-r`} value={reason} maxLength={reasonMax} rows={3} onChange={(e) => setReason(e.target.value)} aria-describedby={`${id}-h`} />
-          <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? "Add a reason to continue. " : ""}{reasonHint} {reason.trim().length}/{reasonMax}</span>
+          <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? t("common.dialog.reasonNeeded") : ""}{reasonHint} {t("common.dialog.reasonCount", { count: reason.trim().length, max: reasonMax })}</span>
         </div>
       )}
       {error && <p className="error" role="alert">{error}</p>}
@@ -77,7 +80,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
         <Button variant={danger ? "danger" : "primary"} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
           {busy ? busyLabel : confirmLabel}
         </Button>
-        <Button ref={cancel} disabled={busy} onClick={onClose}>Cancel</Button>
+        <Button ref={cancel} disabled={busy} onClick={onClose}>{t("common.cancel")}</Button>
       </div>
     </dialog>
   );

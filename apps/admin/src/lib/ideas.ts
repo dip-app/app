@@ -1,3 +1,4 @@
+// @i18n-migrated
 // Pure logic for the Dipbot flow (AI drafts): steps, answers, labels, request id reuse, and the hand-off from a
 // generated draft to the event form. No React and no network, so it is unit tested directly. Every user-facing
 // string comes from aiStrings.ts.
@@ -5,7 +6,8 @@
 import type {
   AiBudget, AiDaypart, AiEventChoices, AiGoal, AiGroupSize, AiSetting, AiTiming, AiVenueType, GeneratedEventDraft,
 } from "./adminTypes";
-import { type AiStringKey, t, tn } from "./aiStrings";
+import { type AiStringKey, t as tAi, tn } from "./aiStrings";
+import { type MessageKey, t } from "./i18n";
 import { TAG_IDS } from "./catalog";
 import { MAX_CONSIDERATIONS, isConsiderationId } from "./considerations";
 import { coverByURL } from "./covers";
@@ -17,13 +19,21 @@ export const MAX_PROMPT = 500;
 export type StepId = "interests" | "goal" | "group" | "budget" | "note";
 const STEP_IDS: StepId[] = ["interests", "goal", "group", "budget", "note"];
 /** `label` is the short stepper text; `full` is the whole wording for names, tooltips and the summary. */
+/** The texts are getters, so they follow the current language each time they are read. */
 export const STEPS: { id: StepId; label: string; full: string; heading: string }[] = STEP_IDS.map((id) => ({
-  id, label: t(`step.${id}.label` as AiStringKey), full: t(`step.${id}.full` as AiStringKey), heading: t(`step.${id}.heading` as AiStringKey),
+  id,
+  get label() { return tAi(`step.${id}.label` as AiStringKey); },
+  get full() { return tAi(`step.${id}.full` as AiStringKey); },
+  get heading() { return tAi(`step.${id}.heading` as AiStringKey); },
 }));
 
 interface Option<T extends string> { value: T; label: string; hint: string }
 function options<T extends string>(group: "goal" | "size" | "setting" | "budget" | "timing", values: readonly T[]): Option<T>[] {
-  return values.map((value) => ({ value, label: t(`${group}.${value}` as AiStringKey), hint: t(`${group}.${value}.hint` as AiStringKey) }));
+  return values.map((value) => ({
+    value,
+    get label() { return tAi(`${group}.${value}` as AiStringKey); },
+    get hint() { return tAi(`${group}.${value}.hint` as AiStringKey); },
+  }));
 }
 export const GOALS = options<AiGoal>("goal", ["team_bonding", "wellness", "learning", "give_back", "celebrate", "competition"]);
 export const GROUP_SIZES = options<AiGroupSize>("size", ["small", "team", "company"]);
@@ -92,27 +102,29 @@ export function choicesOf(a: Answers): AiEventChoices | null {
 
 const labelOf = <T extends string>(options: Option<T>[], value: T | null) => options.find((o) => o.value === value)?.label ?? "";
 
-export const NOT_SET = t("rail.notSet");
-export const NONE = t("rail.none");
-export interface SummaryLine { step: number; label: string; value: string }
+/** `empty` is true for a line that reads "Not set" or "None" (the display text is never compared). */
+export interface SummaryLine { step: number; label: string; value: string; empty: boolean }
 /** The "Your choices" list. Unanswered lines read "Not set". */
 export function summaryLines(a: Answers, tagName: (id: string) => string): SummaryLine[] {
-  const interests = a.focusTagIds.map(tagName).join(", ") || t("interests.any");
+  const interests = a.focusTagIds.map(tagName).join(", ") || tAi("interests.any");
   const group = [labelOf(GROUP_SIZES, a.groupSize), labelOf(SETTINGS, a.setting)].filter(Boolean).join(", ");
   const budget = [labelOf(BUDGETS, a.budget), labelOf(TIMINGS, a.timing)].filter(Boolean).join(", ");
   const note = a.prompt.trim();
   const prefs = a.considerations.length > 0 ? tn("consider.rail", a.considerations.length) : "";
+  const notSet = tAi("rail.notSet");
+  const goal = labelOf(GOALS, a.goal);
+  const extra = [prefs, note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : ""].filter(Boolean).join(", ");
   return [
-    { step: 0, label: STEPS[0].full, value: interests },
-    { step: 1, label: STEPS[1].full, value: labelOf(GOALS, a.goal) || NOT_SET },
-    { step: 2, label: STEPS[2].full, value: group || NOT_SET },
-    { step: 3, label: STEPS[3].full, value: budget || NOT_SET },
-    { step: 4, label: STEPS[4].full, value: [prefs, note ? (note.length > 60 ? `${note.slice(0, 57)}...` : note) : ""].filter(Boolean).join(", ") || NONE },
+    { step: 0, label: STEPS[0].full, value: interests, empty: false },
+    { step: 1, label: STEPS[1].full, value: goal || notSet, empty: !goal },
+    { step: 2, label: STEPS[2].full, value: group || notSet, empty: !group },
+    { step: 3, label: STEPS[3].full, value: budget || notSet, empty: !budget },
+    { step: 4, label: STEPS[4].full, value: extra || tAi("rail.none"), empty: !extra },
   ];
 }
 
 export type Bucket = "5-9" | "10-19" | "20+";
-export const bucketText = (bucket: Bucket) => t(`bucket.${bucket}`);
+export const bucketText = (bucket: Bucket) => tAi(`bucket.${bucket}`);
 export const bucketLevel = (bucket: Bucket) => (bucket === "20+" ? 3 : bucket === "10-19" ? 2 : 1);
 
 // ---------- Request ids
@@ -135,43 +147,45 @@ export function requestIdFor(previous: Attempt | null, signature: string, regene
 
 // ---------- Draft labels
 
-const DAYPART: Record<AiDaypart, string> = {
-  weekday_morning: "Weekday morning", weekday_lunch: "Weekday lunch", weekday_afternoon: "Weekday afternoon",
-  after_work: "After work", weekend_daytime: "Weekend daytime", weekend_evening: "Weekend evening",
+const DAYPART_KEY: Record<AiDaypart, MessageKey> = {
+  weekday_morning: "dipbot.draft.daypart.weekdayMorning", weekday_lunch: "dipbot.draft.daypart.weekdayLunch",
+  weekday_afternoon: "dipbot.draft.daypart.weekdayAfternoon", after_work: "dipbot.draft.daypart.afterWork",
+  weekend_daytime: "dipbot.draft.daypart.weekendDaytime", weekend_evening: "dipbot.draft.daypart.weekendEvening",
 };
-export const daypartLabel = (value: AiDaypart) => DAYPART[value] ?? "Flexible";
+export const daypartLabel = (value: AiDaypart) => t(DAYPART_KEY[value] ?? "dipbot.draft.daypart.flexible");
 
 export function durationLabel(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m} min`;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return t("dipbot.draft.duration.minutes", { minutes: rest });
+  return rest === 0 ? t("dipbot.draft.duration.hours", { hours }) : t("dipbot.draft.duration.hoursMinutes", { hours, minutes: rest });
 }
-export const capacityLabel = (capacity: number) => `Up to ${capacity}`;
+export const capacityLabel = (capacity: number) => t("dipbot.draft.capacity", { capacity });
 export function costLabel(costCents: number): string {
-  if (costCents <= 0) return "Free";
+  if (costCents <= 0) return t("dipbot.draft.free");
   const dollars = costCents / 100;
-  return `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)} per person`;
+  return t("dipbot.draft.costPerPerson", { amount: Number.isInteger(dollars) ? dollars : dollars.toFixed(2) });
 }
-const VENUE: Record<AiVenueType, string> = {
-  office: "the office", park_or_outdoors: "a park or outdoor space", restaurant_or_cafe: "a restaurant or cafe",
-  activity_venue: "an activity venue", community_site: "a community site",
+const VENUE_KEY: Record<AiVenueType, MessageKey> = {
+  office: "dipbot.draft.venue.office", park_or_outdoors: "dipbot.draft.venue.park", restaurant_or_cafe: "dipbot.draft.venue.restaurant",
+  activity_venue: "dipbot.draft.venue.activity", community_site: "dipbot.draft.venue.community",
 };
 /** "Venue idea: bowling alley" (the hint when the model gave one, otherwise the venue type). */
 export function venueLabel(draft: Pick<GeneratedEventDraft, "venueType" | "venueSearchHint">): string {
-  return `Venue idea: ${draft.venueSearchHint.trim() || VENUE[draft.venueType] || "to be chosen"}`;
+  return t("dipbot.draft.venue.idea", { venue: draft.venueSearchHint.trim() || t(VENUE_KEY[draft.venueType] ?? "dipbot.draft.venue.tbd") });
 }
 
 /** Plain text for "Copy text". */
 export function draftText(d: GeneratedEventDraft, tagName: (id: string) => string): string {
+  const cost = costLabel(d.costCents);
   return [
     d.title, "", d.description, "",
-    `When: ${daypartLabel(d.suggestedDaypart)}, ${durationLabel(d.durationMinutes)}`,
-    `Capacity: ${capacityLabel(d.capacity)}`,
-    `Cost: ${costLabel(d.costCents)}${d.costNote ? ` (${d.costNote})` : ""}`,
-    `Setting: ${d.isOutdoor ? "Outdoors" : "Indoors"}`,
+    t("dipbot.draft.copy.when", { daypart: daypartLabel(d.suggestedDaypart), duration: durationLabel(d.durationMinutes) }),
+    t("dipbot.draft.copy.capacity", { capacity: capacityLabel(d.capacity) }),
+    d.costNote ? t("dipbot.draft.copy.costNote", { cost, note: d.costNote }) : t("dipbot.draft.copy.cost", { cost }),
+    t("dipbot.draft.copy.setting", { setting: tAi(d.isOutdoor ? "draft.outdoors" : "draft.indoors") }),
     venueLabel(d),
-    d.tagIds.length ? `Tags: ${d.tagIds.map(tagName).join(", ")}` : "",
+    d.tagIds.length ? t("dipbot.draft.copy.tags", { tags: d.tagIds.map(tagName).join(", ") }) : "",
   ].filter((line, i, all) => line !== "" || (i > 0 && all[i - 1] !== "")).join("\n").trim();
 }
 

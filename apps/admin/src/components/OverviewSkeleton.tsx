@@ -1,8 +1,11 @@
 "use client";
 
+// @i18n-migrated
+
 import type { ReactNode } from "react";
 import { type Role, can } from "@/lib/adminTypes";
 import { shortcutsFor } from "@/lib/insights";
+import { t } from "@/lib/i18n";
 import { useInterestsView } from "@/lib/interestsView";
 import { CHART_HEIGHT, INTEREST_CARD_HEIGHT, OVERVIEW_LAYOUT as L } from "@/lib/skeletonLayout";
 import { Sk, SkeletonAvatar, SkeletonBlock, SkeletonChart, SkeletonCircle, SkeletonRegion, SkeletonStatTile } from "./Skeleton";
@@ -52,7 +55,7 @@ export function InterestsSkeleton({ count = L.interestCards }: { count?: number 
       ) : (
         <div className="table-wrap">
           <table className="table compact interest-table">
-            <thead><tr><th scope="col">Interest</th><th scope="col" /><th scope="col" className="num">Members</th><th scope="col" className="num">Share</th></tr></thead>
+            <thead><tr><th scope="col">{t("overview.interests.col.interest")}</th><th scope="col" /><th scope="col" className="num">{t("overview.interests.col.members")}</th><th scope="col" className="num">{t("overview.interests.col.share")}</th></tr></thead>
             <tbody>
               {range(count).map((i) => (
                 <tr key={i}><th scope="row" className="interest-name"><Sk w={`${50 + ((i * 7) % 40)}%`} /></th><td className="interest-bar"><div className="meter"><span style={{ width: `${80 - ((i * 9) % 60)}%` }} /></div></td><td className="num"><Sk w={24} /></td><td className="num"><Sk w={32} /></td></tr>
@@ -73,7 +76,7 @@ export function OverviewLoading({ children, role = "admin", interestCount }: { c
   const showPoints = can(role, "insights.points");
   const shortcuts = shortcutsFor(role);
   return (
-    <SkeletonRegion label="Loading overview" className="overview">
+    <SkeletonRegion label={t("overview.loading")} className="overview">
       <section className="stat-grid" aria-hidden>{range(L.tiles).map((i) => <SkeletonStatTile key={i} />)}</section>
 
       <div className="overview-row wide-left" aria-hidden>

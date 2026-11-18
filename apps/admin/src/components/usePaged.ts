@@ -1,7 +1,9 @@
 "use client";
+// @i18n-migrated
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/contract";
+import { t } from "@/lib/i18n";
 import { useApp } from "./AppProvider";
 
 export interface PageResult<T, X> { items: T[]; nextCursor: string | null; extra: X | null }
@@ -70,7 +72,7 @@ export function usePaged<T, X>(
     return { added, cursor: next, first };
   }, [api, pageSize]);
 
-  const fail = (failure: unknown) => setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load this. Check your connection and try again.", {}, "LOAD_FAILED"));
+  const fail = (failure: unknown) => setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("common.loadFailed"), {}, "LOAD_FAILED"));
 
   useEffect(() => {
     if (!session) return;
@@ -119,14 +121,14 @@ export function usePaged<T, X>(
   }, [read]);
 
   const loadAll = useCallback(async () => {
-    if (firstLoading.current) throw new Error("The list is still loading. Try again in a moment.");
+    if (firstLoading.current) throw new Error(t("common.listLoading"));
     const gen = generation.current;
     const loaded = latest.current.items;
     const rest: T[] = [];
     let next = latest.current.cursor;
     while (next) {
       const page = await fetcher.current(api, next);
-      if (gen !== generation.current) throw new Error("The filters changed while exporting. Try again.");
+      if (gen !== generation.current) throw new Error(t("common.filtersChanged"));
       rest.push(...page.items);
       next = page.nextCursor;
     }

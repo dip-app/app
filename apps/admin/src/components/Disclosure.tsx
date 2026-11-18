@@ -1,5 +1,7 @@
 "use client";
 
+// @i18n-migrated
+
 import { useId, useState, type ReactNode } from "react";
 import { Chevron } from "./Chevron";
 

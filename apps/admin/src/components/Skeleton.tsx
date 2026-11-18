@@ -1,5 +1,7 @@
 "use client";
 
+// @i18n-migrated
+
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import { CHART_HEIGHT } from "@/lib/skeletonLayout";
 import { useDelayedShow } from "./useDelayedShow";

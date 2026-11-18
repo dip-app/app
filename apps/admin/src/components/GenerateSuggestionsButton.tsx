@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";

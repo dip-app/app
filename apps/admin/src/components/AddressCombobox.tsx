@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { type KeyboardEvent, type Ref, useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import { t, tn } from "@/lib/aiStrings";

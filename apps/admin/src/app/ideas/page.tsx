@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { Ideas } from "@/components/Ideas";
 import { Shell } from "@/components/Shell";
