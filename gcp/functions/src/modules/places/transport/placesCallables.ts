@@ -43,32 +43,42 @@ export function placesWiring(env: NodeJS.ProcessEnv): { places: LocationProvider
 const placesLimiter = () => new FirestorePlacesRateLimiter(getFirestore(defaultAdminApp()));
 
 /**
- * autocompletePlacesV1 (AutocompletePlacesRequest -> AutocompletePlacesResponse): address and place typeahead. event.manage
- * (organizer, admin), biased to the company office, free to admins, capped per company per day (PLACES_DAILY_LIMIT, default 400)
- * and per user per minute. Needs PLACES_ENABLED=true (else PLACES_DISABLED). Typed text is never logged.
+ * The cheap place lookups (no secrets, no model call), shared by the standalone exports below and the `dipApiV1`
+ * dispatcher (modules/dispatcher). findVenuesV1 stays standalone: it binds the AI secrets and may call a model.
  */
-export const autocompletePlacesV1 = onCall(
-  { ...base, timeoutSeconds: 30, memory: "256MiB", maxInstances: 10 },
-  command("autocompletePlacesV1", async (d, caller, data) => {
+export const placeCommands = {
+  autocompletePlacesV1: command("autocompletePlacesV1", async (d, caller, data) => {
     const { places, enabled } = placesWiring(process.env);
     return autocompletePlaces({
       store: d.store, places, enabled, now: d.now, limiter: placesLimiter(), dailyLimit: positive(process.env.PLACES_DAILY_LIMIT, DEFAULT_PLACES_DAILY_LIMIT),
       ...(d.log ? { log: d.log } : {}),
     }, caller, data);
   }),
-);
-
-/** resolvePlaceV1 (ResolvePlaceRequest -> ResolvePlaceResponse): resolves a picked suggestion or a typed address. Same limits as autocompletePlacesV1. */
-export const resolvePlaceV1 = onCall(
-  { ...base, timeoutSeconds: 30, memory: "256MiB", maxInstances: 10 },
-  command("resolvePlaceV1", async (d, caller, data) => {
+  resolvePlaceV1: command("resolvePlaceV1", async (d, caller, data) => {
     const { places, enabled } = placesWiring(process.env);
     return resolvePlace({
       store: d.store, places, enabled, now: d.now, limiter: placesLimiter(), dailyLimit: positive(process.env.PLACES_DAILY_LIMIT, DEFAULT_PLACES_DAILY_LIMIT),
       ...(d.log ? { log: d.log } : {}),
     }, caller, data);
   }),
-);
+  setCompanyOfficeV1: command("setCompanyOfficeV1", async (d, caller, data) => {
+    const { places, enabled } = placesWiring(process.env);
+    return setCompanyOffice({
+      store: d.store, places, enabled, now: d.now, newId: randomId, limiter: placesLimiter(), dailyLimit: positive(process.env.PLACES_DAILY_LIMIT, DEFAULT_PLACES_DAILY_LIMIT),
+      ...(d.log ? { log: d.log } : {}),
+    }, caller, data);
+  }),
+} as const;
+
+/**
+ * autocompletePlacesV1 (AutocompletePlacesRequest -> AutocompletePlacesResponse): address and place typeahead. event.manage
+ * (organizer, admin), biased to the company office, free to admins, capped per company per day (PLACES_DAILY_LIMIT, default 400)
+ * and per user per minute. Needs PLACES_ENABLED=true (else PLACES_DISABLED). Typed text is never logged.
+ */
+export const autocompletePlacesV1 = onCall({ ...base, timeoutSeconds: 30, memory: "256MiB", maxInstances: 10 }, placeCommands.autocompletePlacesV1);
+
+/** resolvePlaceV1 (ResolvePlaceRequest -> ResolvePlaceResponse): resolves a picked suggestion or a typed address. Same limits as autocompletePlacesV1. */
+export const resolvePlaceV1 = onCall({ ...base, timeoutSeconds: 30, memory: "256MiB", maxInstances: 10 }, placeCommands.resolvePlaceV1);
 
 /**
  * findVenuesV1 (FindVenuesRequest -> FindVenuesResponse): Dipbot venue finder. Admin only (ai.generate), same burst limiter
@@ -89,16 +99,7 @@ export const findVenuesV1 = onCall(
 );
 
 /** setCompanyOfficeV1 (SetCompanyOfficeRequest -> SetCompanyOfficeResponse): sets the office from a picked place. Admin only (company.manage). */
-export const setCompanyOfficeV1 = onCall(
-  { ...base, timeoutSeconds: 30, memory: "256MiB", maxInstances: 5 },
-  command("setCompanyOfficeV1", async (d, caller, data) => {
-    const { places, enabled } = placesWiring(process.env);
-    return setCompanyOffice({
-      store: d.store, places, enabled, now: d.now, newId: randomId, limiter: placesLimiter(), dailyLimit: positive(process.env.PLACES_DAILY_LIMIT, DEFAULT_PLACES_DAILY_LIMIT),
-      ...(d.log ? { log: d.log } : {}),
-    }, caller, data);
-  }),
-);
+export const setCompanyOfficeV1 = onCall({ ...base, timeoutSeconds: 30, memory: "256MiB", maxInstances: 5 }, placeCommands.setCompanyOfficeV1);
 
 /**
  * refreshPlaceLocations (daily, 04:15 UTC): keeps stored place coordinates inside Google's 30-day caching limit. Refreshes

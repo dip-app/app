@@ -97,6 +97,8 @@ Setting up live mode (once per Firebase project):
 4. Assign organizers with trusted tooling after their first sign-in: set `users/{uid}.role` to `"admin"` (Admin SDK or the Firebase console). Clients cannot write roles.
 5. Build with the variables set (`.env.local` or the environment) and deploy as described below.
 
+Light admin callables go through the single warm `dipApiV1` dispatcher by default and fall back to their standalone callable if it is missing; build with `NEXT_PUBLIC_ADMIN_DISPATCHER=off` to call the standalone callables directly ([functions dispatcher](../../docs/design/functions-dispatcher.md), `src/lib/dispatcher.ts`).
+
 Weekly themes in live mode read `companies/{companyId}/challenges` (type `weekly`) and write only through `createChallengeV1` / `updateChallengeV1` (request `{ contractVersion: 1, companyId, requestId | challengeId + expectedRevision, draft }`). Those callables and the challenge read rules come from the weekly theme backend work (`feature/weekly-theme-backend`); until they are deployed, the live portal's Weekly themes screen fails with the backend's answer, and the mock is the way to try it. Error mapping keeps the server's `details.reason` on `ApiError.reason` and an overlap's `details.conflict` on `ApiError.conflict`.
 
 Tests: `npm test` runs the unit tests. `npm run test:admin:live` (repo root) runs the adapter end to end against the Auth, Firestore and Functions emulators; it is part of CI. The weekly theme part of that suite skips itself until `gcp/functions/src/index.ts` exports `createChallengeV1`.

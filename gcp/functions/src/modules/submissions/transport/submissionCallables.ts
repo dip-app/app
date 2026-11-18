@@ -59,6 +59,13 @@ const options = { region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_
 
 export const submitChallengeV1 = onCall(options, request =>
   handleSubmitChallenge(store(), new StoragePhotoObjects(getStorage(app())), request));
-export const approveChallengeV1 = onCall(options, request => handleApproveChallenge(store(), request, routedPushNotifier(app())));
-export const rejectChallengeV1 = onCall(options, request => handleRejectChallenge(store(), request, routedPushNotifier(app())));
-export const listChallengeSubmissionsV1 = onCall(options, request => handleListChallengeSubmissions(store(), request));
+/** Production review handlers, shared by the standalone exports below and the `dipApiV1` dispatcher (modules/dispatcher). */
+export const submissionReviewCommands = {
+  approveChallengeV1: (request: CallableRequest) => handleApproveChallenge(store(), request, routedPushNotifier(app())),
+  rejectChallengeV1: (request: CallableRequest) => handleRejectChallenge(store(), request, routedPushNotifier(app())),
+  listChallengeSubmissionsV1: (request: CallableRequest) => handleListChallengeSubmissions(store(), request),
+} as const;
+
+export const approveChallengeV1 = onCall(options, submissionReviewCommands.approveChallengeV1);
+export const rejectChallengeV1 = onCall(options, submissionReviewCommands.rejectChallengeV1);
+export const listChallengeSubmissionsV1 = onCall(options, submissionReviewCommands.listChallengeSubmissionsV1);

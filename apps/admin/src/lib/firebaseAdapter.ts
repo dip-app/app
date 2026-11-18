@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 import { createLiveOps } from "./adminLive";
+import { createCallableInvoker } from "./dispatcher";
 import { isStaff } from "./adminTypes";
 import type { AdminApi, CommandResult, Session } from "./api";
 import type { Tag } from "./catalog";
@@ -177,12 +178,15 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
       });
     }
   }
+  // Sign-in stays on its own callable; the light commands go through dipApiV1 when enabled (dispatcher.ts).
   const resolveMembership = httpsCallable(functions, "resolveMembershipV1");
-  const createCallable = httpsCallable<unknown, CommandResult & { contractVersion: number }>(functions, "createEventV1");
-  const updateCallable = httpsCallable<unknown, CommandResult & { contractVersion: number }>(functions, "updateEventV1");
+  const invoke = createCallableInvoker(async (callable, data) => (await httpsCallable(functions, callable)(data)).data);
+  type Result<T> = T & { contractVersion: number };
+  const createCallable = (data: unknown) => invoke<Result<CommandResult>>("createEventV1", data);
+  const updateCallable = (data: unknown) => invoke<Result<CommandResult>>("updateEventV1", data);
   // T1 responses: create {contractVersion, challengeId, revision, challenge, replayed}; update has no `replayed`.
-  const createThemeCallable = httpsCallable<unknown, ThemeCommandResult & { contractVersion: number }>(functions, "createChallengeV1");
-  const updateThemeCallable = httpsCallable<unknown, ThemeCommandResult & { contractVersion: number }>(functions, "updateChallengeV1");
+  const createThemeCallable = (data: unknown) => invoke<Result<ThemeCommandResult>>("createChallengeV1", data);
+  const updateThemeCallable = (data: unknown) => invoke<Result<ThemeCommandResult>>("updateChallengeV1", data);
 
   async function loadSession(): Promise<Session | null> {
     await auth.authStateReady();
@@ -225,7 +229,7 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
   }
 
   return {
-    ...createLiveOps({ app, db, functions, organizer, run }),
+    ...createLiveOps({ app, db, functions, organizer, run, invoke }),
     mode: "live",
     session: loadSession,
     async signIn() {
@@ -259,12 +263,12 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
     createEvent: (requestId: string, draft: EventDraft) => run(async () => {
       const session = await organizer();
       const result = await createCallable({ contractVersion: 1, companyId: session.companyId, requestId, event: normalizeDraft(draft) });
-      return { eventId: result.data.eventId, revision: result.data.revision };
+      return { eventId: result.eventId, revision: result.revision };
     }),
     updateEvent: (eventId: string, expectedRevision: number, draft: EventDraft, status: EventStatus) => run(async () => {
       const session = await organizer();
       const result = await updateCallable({ contractVersion: 1, companyId: session.companyId, eventId, expectedRevision, event: normalizeDraft(draft), status });
-      return { eventId: result.data.eventId, revision: result.data.revision };
+      return { eventId: result.eventId, revision: result.revision };
     }),
     listThemes: () => run(async () => {
       const session = await organizer();
@@ -281,12 +285,12 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
     createTheme: (requestId: string, draft: ThemeDraft) => run(async () => {
       const session = await organizer();
       const result = await createThemeCallable({ contractVersion: 1, companyId: session.companyId, requestId, draft: normalizeThemeDraft(draft) });
-      return { challengeId: result.data.challengeId, revision: result.data.revision, replayed: result.data.replayed === true };
+      return { challengeId: result.challengeId, revision: result.revision, replayed: result.replayed === true };
     }),
     updateTheme: (challengeId: string, expectedRevision: number, draft: ThemeDraft) => run(async () => {
       const session = await organizer();
       const result = await updateThemeCallable({ contractVersion: 1, companyId: session.companyId, challengeId, expectedRevision, draft: normalizeThemeDraft(draft) });
-      return { challengeId: result.data.challengeId, revision: result.data.revision };
+      return { challengeId: result.challengeId, revision: result.revision };
     }),
   };
 }

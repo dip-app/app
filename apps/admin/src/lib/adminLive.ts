@@ -5,6 +5,7 @@ import {
 import { type Functions, httpsCallable } from "firebase/functions";
 import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
+import { type CallableInvoker, createCallableInvoker } from "./dispatcher";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
   type AiBucket, type AiConsiderationRank, type AiEventChoices, type DipbotIdea, type DipbotIdeas, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
@@ -292,9 +293,12 @@ interface Deps {
   functions: Functions;
   organizer: () => Promise<Session>;
   run: <T>(work: () => Promise<T>) => Promise<T>;
+  /** Callable transport (dipApiV1 with standalone fallback, see dispatcher.ts); defaults to one built on `functions`. */
+  invoke?: CallableInvoker;
 }
 
-export function createLiveOps({ app, db, functions, organizer, run }: Deps): AdminOpsApi {
+export function createLiveOps({ app, db, functions, organizer, run, invoke: given }: Deps): AdminOpsApi {
+  const invoke = given ?? createCallableInvoker(async (name, data) => (await httpsCallable(functions, name)(data)).data);
   // Retries of the same action reuse one requestId (a lost response then replays instead of repeating); a success
   // forgets it so the next identical action is new. Callers that hold their own key pass `requestId`.
   const pendingKeys = new Map<string, string>();
@@ -306,11 +310,11 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       if (pendingKeys.size > 200) pendingKeys.clear();
       pendingKeys.set(memo, requestId);
     }
-    const result = await httpsCallable<unknown, T>(functions, name)({
+    const data = await invoke<T>(name, {
       contractVersion: 1, companyId: session.companyId, ...payload, ...(mutating ? { requestId } : {}),
     });
     if (memo) pendingKeys.delete(memo);
-    return result.data;
+    return data;
   }
   const col = (session: Session, ...path: string[]) => collection(db, "companies", session.companyId, ...path);
 

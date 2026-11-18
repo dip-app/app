@@ -19,3 +19,4 @@ export {
   listBugReportsV1, getBugReportV1, updateBugReportV1, getCompanyInsightsV1,
 } from "./modules/admin";
 export { autocompletePlacesV1, findVenuesV1, refreshPlaceLocations, resolvePlaceV1, setCompanyOfficeV1 } from "./modules/places";
+export { dipApiV1 } from "./modules/dispatcher";

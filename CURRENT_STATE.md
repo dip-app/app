@@ -72,3 +72,7 @@ The `admin` Functions module implements tickets #121 to #126 ([contract](docs/co
 ## Tag interest counts (stretch S3, November 17)
 
 Per-company interest counts at `companies/{c}/tagStats/{tagId}` (organizer and admin read only; members never see counts): the receipt-guarded `onUserInterestsWritten` trigger, the nightly `reconcileTagStats` job, the dry-run-default `gcp/scripts/backfill-tag-stats.ts`, `getInterestSummary` for the AI flow (counts under 5 suppressed), and portal counts on event form tag chips plus an Overview Interests card. Unit, rules and emulator tests (`npm run test:tags:integration`, in CI) and portal tests cover it. **Nothing is deployed**; the receipts TTL policy and the production backfill are owner steps. See [tag-interest-counts](docs/design/stretch/tag-interest-counts.md#decisions).
+
+## Functions dispatcher experiment (draft PR, November 18)
+
+`dipApiV1` (`gcp/functions/src/modules/dispatcher`) routes `{ command, payload }` for 29 admin-portal commands to the same handlers their standalone callables use, with one warm instance (`minInstances: 1`). The admin portal uses it by default (`NEXT_PUBLIC_ADMIN_DISPATCHER=off` disables it) and falls back to the standalone callable when the dispatcher is missing or does not know a command. All standalone callables stay exported; iOS is unchanged. Unit tests only; **not deployed**, not run against the emulators. See [functions dispatcher](docs/design/functions-dispatcher.md).

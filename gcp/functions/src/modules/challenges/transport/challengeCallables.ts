@@ -55,8 +55,13 @@ const options = {
   enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
 } as const;
 
-export const createChallengeV1 = onCall(options, (request) =>
-  handleCreateChallenge(new FirestoreChallengeStore(getFirestore(defaultAdminApp())), request));
+const store = () => new FirestoreChallengeStore(getFirestore(defaultAdminApp()));
 
-export const updateChallengeV1 = onCall(options, (request) =>
-  handleUpdateChallenge(new FirestoreChallengeStore(getFirestore(defaultAdminApp())), request));
+/** Production handlers, shared by the standalone exports below and the `dipApiV1` dispatcher (modules/dispatcher). */
+export const challengeCommands = {
+  createChallengeV1: (request: CallableRequest) => handleCreateChallenge(store(), request),
+  updateChallengeV1: (request: CallableRequest) => handleUpdateChallenge(store(), request),
+} as const;
+
+export const createChallengeV1 = onCall(options, challengeCommands.createChallengeV1);
+export const updateChallengeV1 = onCall(options, challengeCommands.updateChallengeV1);

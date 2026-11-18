@@ -63,8 +63,13 @@ const options = {
   enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
 } as const;
 
-export const createEventV1 = onCall(options, (request) =>
-  handleCreateEvent(new FirestoreOrganizerStore(getFirestore(defaultAdminApp())), request, undefined, undefined, dynamicCoverCatalog()));
+const store = () => new FirestoreOrganizerStore(getFirestore(defaultAdminApp()));
 
-export const updateEventV1 = onCall(options, (request) =>
-  handleUpdateEvent(new FirestoreOrganizerStore(getFirestore(defaultAdminApp())), request, dynamicCoverCatalog()));
+/** Production handlers, shared by the standalone exports below and the `dipApiV1` dispatcher (modules/dispatcher). */
+export const organizerCommands = {
+  createEventV1: (request: CallableRequest) => handleCreateEvent(store(), request, undefined, undefined, dynamicCoverCatalog()),
+  updateEventV1: (request: CallableRequest) => handleUpdateEvent(store(), request, dynamicCoverCatalog()),
+} as const;
+
+export const createEventV1 = onCall(options, organizerCommands.createEventV1);
+export const updateEventV1 = onCall(options, organizerCommands.updateEventV1);

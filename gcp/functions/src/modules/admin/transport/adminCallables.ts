@@ -65,29 +65,68 @@ const base = {
   region: "us-central1", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true", maxInstances: 10, timeoutSeconds: 60, memory: "256MiB",
 } as const;
 const heavy = { ...base, maxInstances: 3, timeoutSeconds: 300, memory: "512MiB" } as const;
-const command = <T>(name: string, run: Command<T>) => (request: CallableRequest) => handleAdminCommand(name, run, defaultDeps(), request);
+type Handler<T> = (request: CallableRequest) => Promise<T>;
 
-export const removeEventPhotoV1 = onCall(base, command("removeEventPhotoV1", removeEventPhoto));
-export const removeEventPhotoCommentV1 = onCall(base, command("removeEventPhotoCommentV1", removeEventPhotoComment));
-export const addEventAttendeeV1 = onCall(base, command("addEventAttendeeV1", addEventAttendee));
-export const removeEventAttendeeV1 = onCall(base, command("removeEventAttendeeV1", removeEventAttendee));
-export const recordAttendanceV1 = onCall(base, command("recordAttendanceV1", recordAttendance));
-export const listMembersV1 = onCall(base, command("listMembersV1", listMembers));
-export const getMemberV1 = onCall(base, command("getMemberV1", getMember));
-export const updateMemberV1 = onCall(base, command("updateMemberV1", updateMember));
-export const resetMemberProfileV1 = onCall(base, command("resetMemberProfileV1", resetMemberProfile));
-export const setMemberStatusV1 = onCall(heavy, command("setMemberStatusV1", setMemberStatus));
-export const adjustMemberPointsV1 = onCall(base, command("adjustMemberPointsV1", adjustMemberPoints));
-export const upsertTeamV1 = onCall(base, command("upsertTeamV1", upsertTeam));
-export const upsertRosterEntryV1 = onCall(base, command("upsertRosterEntryV1", upsertRosterEntry));
-export const revokeRosterEntryV1 = onCall(base, command("revokeRosterEntryV1", revokeRosterEntry));
-export const resendRosterInviteV1 = onCall(base, command("resendRosterInviteV1", resendRosterInvite));
-export const listRosterV1 = onCall(base, command("listRosterV1", listRoster));
-export const backfillRosterV1 = onCall(heavy, command("backfillRosterV1", backfillRosterCallable));
-export const importEmployeesV1 = onCall(heavy, command("importEmployeesV1", importEmployees));
-export const applyEmployeeImportV1 = onCall(heavy, command("applyEmployeeImportV1", applyEmployeeImport));
-export const getEmployeeImportV1 = onCall(base, command("getEmployeeImportV1", getEmployeeImport));
-export const listBugReportsV1 = onCall(base, command("listBugReportsV1", listBugReports));
-export const getBugReportV1 = onCall(base, command("getBugReportV1", getBugReport));
-export const updateBugReportV1 = onCall(base, command("updateBugReportV1", updateBugReport));
-export const getCompanyInsightsV1 = onCall(base, command("getCompanyInsightsV1", getCompanyInsights));
+/**
+ * The callable handlers, one per command. Each standalone export below and the `dipApiV1` dispatcher
+ * (modules/dispatcher) reference the same function, so there is no second copy of auth, validation or error mapping.
+ * Tests pass fake deps through `adminHandlers(() => deps)`.
+ */
+export function adminHandlers(deps: () => AdminDeps = defaultDeps) {
+  const command = <T>(name: string, run: Command<T>): Handler<T> => (request) => handleAdminCommand(name, run, deps(), request);
+  return {
+    removeEventPhotoV1: command("removeEventPhotoV1", removeEventPhoto),
+    removeEventPhotoCommentV1: command("removeEventPhotoCommentV1", removeEventPhotoComment),
+    addEventAttendeeV1: command("addEventAttendeeV1", addEventAttendee),
+    removeEventAttendeeV1: command("removeEventAttendeeV1", removeEventAttendee),
+    recordAttendanceV1: command("recordAttendanceV1", recordAttendance),
+    listMembersV1: command("listMembersV1", listMembers),
+    getMemberV1: command("getMemberV1", getMember),
+    updateMemberV1: command("updateMemberV1", updateMember),
+    resetMemberProfileV1: command("resetMemberProfileV1", resetMemberProfile),
+    setMemberStatusV1: command("setMemberStatusV1", setMemberStatus),
+    adjustMemberPointsV1: command("adjustMemberPointsV1", adjustMemberPoints),
+    upsertTeamV1: command("upsertTeamV1", upsertTeam),
+    upsertRosterEntryV1: command("upsertRosterEntryV1", upsertRosterEntry),
+    revokeRosterEntryV1: command("revokeRosterEntryV1", revokeRosterEntry),
+    resendRosterInviteV1: command("resendRosterInviteV1", resendRosterInvite),
+    listRosterV1: command("listRosterV1", listRoster),
+    backfillRosterV1: command("backfillRosterV1", backfillRosterCallable),
+    importEmployeesV1: command("importEmployeesV1", importEmployees),
+    applyEmployeeImportV1: command("applyEmployeeImportV1", applyEmployeeImport),
+    getEmployeeImportV1: command("getEmployeeImportV1", getEmployeeImport),
+    listBugReportsV1: command("listBugReportsV1", listBugReports),
+    getBugReportV1: command("getBugReportV1", getBugReport),
+    updateBugReportV1: command("updateBugReportV1", updateBugReport),
+    getCompanyInsightsV1: command("getCompanyInsightsV1", getCompanyInsights),
+  } as const;
+}
+export type AdminHandlers = ReturnType<typeof adminHandlers>;
+
+/** Production handlers (real Firestore/Storage/Auth deps, built per request as before). */
+export const adminCommands: AdminHandlers = adminHandlers();
+
+export const removeEventPhotoV1 = onCall(base, adminCommands.removeEventPhotoV1);
+export const removeEventPhotoCommentV1 = onCall(base, adminCommands.removeEventPhotoCommentV1);
+export const addEventAttendeeV1 = onCall(base, adminCommands.addEventAttendeeV1);
+export const removeEventAttendeeV1 = onCall(base, adminCommands.removeEventAttendeeV1);
+export const recordAttendanceV1 = onCall(base, adminCommands.recordAttendanceV1);
+export const listMembersV1 = onCall(base, adminCommands.listMembersV1);
+export const getMemberV1 = onCall(base, adminCommands.getMemberV1);
+export const updateMemberV1 = onCall(base, adminCommands.updateMemberV1);
+export const resetMemberProfileV1 = onCall(base, adminCommands.resetMemberProfileV1);
+export const setMemberStatusV1 = onCall(heavy, adminCommands.setMemberStatusV1);
+export const adjustMemberPointsV1 = onCall(base, adminCommands.adjustMemberPointsV1);
+export const upsertTeamV1 = onCall(base, adminCommands.upsertTeamV1);
+export const upsertRosterEntryV1 = onCall(base, adminCommands.upsertRosterEntryV1);
+export const revokeRosterEntryV1 = onCall(base, adminCommands.revokeRosterEntryV1);
+export const resendRosterInviteV1 = onCall(base, adminCommands.resendRosterInviteV1);
+export const listRosterV1 = onCall(base, adminCommands.listRosterV1);
+export const backfillRosterV1 = onCall(heavy, adminCommands.backfillRosterV1);
+export const importEmployeesV1 = onCall(heavy, adminCommands.importEmployeesV1);
+export const applyEmployeeImportV1 = onCall(heavy, adminCommands.applyEmployeeImportV1);
+export const getEmployeeImportV1 = onCall(base, adminCommands.getEmployeeImportV1);
+export const listBugReportsV1 = onCall(base, adminCommands.listBugReportsV1);
+export const getBugReportV1 = onCall(base, adminCommands.getBugReportV1);
+export const updateBugReportV1 = onCall(base, adminCommands.updateBugReportV1);
+export const getCompanyInsightsV1 = onCall(base, adminCommands.getCompanyInsightsV1);
