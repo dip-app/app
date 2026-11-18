@@ -1,0 +1,40 @@
+// The English catalog: the source of every key. One file per area so areas can be migrated in parallel.
+// Imports stay relative and dependency free, because scripts/admin-i18n/check.ts loads these files outside Next.
+
+import { account } from "./account";
+import { ai } from "./ai";
+import { audit } from "./audit";
+import { challenges } from "./challenges";
+import { common } from "./common";
+import { dipbot } from "./dipbot";
+import { editor } from "./editor";
+import { events } from "./events";
+import { login } from "./login";
+import { members } from "./members";
+import { overview } from "./overview";
+import { shell } from "./shell";
+import { ui } from "./ui";
+
+export type Prefixed<T, P extends string> = { [K in keyof T & string as `${P}${K}`]: T[K] };
+
+export function prefixed<T extends Record<string, string>, P extends string>(prefix: P, messages: T): Prefixed<T, P> {
+  return Object.fromEntries(Object.entries(messages).map(([key, value]) => [`${prefix}${key}`, value])) as Prefixed<T, P>;
+}
+
+export const en = {
+  ...common,
+  ...shell,
+  ...ui,
+  ...login,
+  ...account,
+  ...events,
+  ...editor,
+  ...dipbot,
+  ...overview,
+  ...members,
+  ...audit,
+  ...challenges,
+  ...prefixed("ai.", ai),
+};
+
+export type MessageKey = keyof typeof en;

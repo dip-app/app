@@ -1,9 +1,11 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { COVER_LIBRARY, THEMES, buildPickRequest, type CoverEntry, type CoverPhotoCandidate, type CoverThemeKey, coverByURL, coverImage, coverThumb, rememberCoverAlt, searchCovers, themeLabel } from "@/lib/covers";
 import type { AiCredits } from "@/lib/adminTypes";
-import { tMaybe } from "@/lib/aiStrings";
+import { t as tAi, tMaybe } from "@/lib/aiStrings";
+import { t } from "@/lib/i18n";
 import { ApiError } from "@/lib/contract";
 import { resetDate } from "@/lib/credits";
 import { useApp } from "./AppProvider";
@@ -34,7 +36,7 @@ interface Props {
 
 /** "Search more photos" results live in component state only: Pixabay previews may be shown temporarily, never persisted. */
 type More = { kind: "idle" } | { kind: "loading" } | { kind: "results"; candidates: CoverPhotoCandidate[] } | { kind: "message"; text: string };
-const MORE_UNAVAILABLE = "More photos are not available right now. Try again later.";
+const moreUnavailable = () => t("editor.cover.moreUnavailable");
 
 type Note = { kind: "picked"; text: string; badge: string; dipbot: boolean; fresh?: boolean; url?: string } | { kind: "error"; text: string } | null;
 
@@ -51,8 +53,9 @@ function CheckMark() {
 }
 
 /** Searchable cover library: preview, text search, theme filter and a thumbnail grid in its own scroll region, plus "Let Dipbot choose". */
-export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, label = "Cover image", compact = false, firstId, describedBy, invalid, credits }: Props) {
+export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, label: labelProp, compact = false, firstId, describedBy, invalid, credits }: Props) {
   const { api } = useApp();
+  const label = labelProp ?? t("editor.cover.label");
   const uid = useId();
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState<CoverThemeKey | "">("");
@@ -66,7 +69,7 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
 
   const selected = coverByURL(value);
   const shown = useMemo(() => searchCovers({ query, theme }), [query, theme]);
-  const themeCounts = useMemo(() => THEMES.map((t) => ({ ...t, count: searchCovers({ query, theme: t.key }).length })), [query]);
+  const themeCounts = useMemo(() => THEMES.map((th) => ({ ...th, count: searchCovers({ query, theme: th.key }).length })), [query]);
   const total = useMemo(() => searchCovers({ query }).length, [query]);
   const stop = shown.find((c) => c.url === selected?.url)?.url ?? shown[0]?.url;
 
@@ -103,20 +106,20 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
   async function dipbotPick() {
     if (busy) return;
     const request = buildPickRequest(event, excludeURLs ?? []);
-    if (!request) { setNote({ kind: "error", text: "Add a title first so Dipbot knows what the event is." }); return; }
+    if (!request) { setNote({ kind: "error", text: t("editor.cover.needTitle") }); return; }
     setBusy(true);
     setNote(null);
     try {
       const result = await api.pickEventCover(request);
       const entry = coverByURL(result.coverImageURL);
-      if (!entry) { setNote({ kind: "error", text: "Dipbot suggested a cover this portal doesn’t have yet. Pick one below." }); return; }
+      if (!entry) { setNote({ kind: "error", text: t("editor.cover.unknown") }); return; }
       rememberCoverAlt(entry.url, result.coverAlt);
       const dipbot = result.source === "dipbot" || result.source === "match";
       onChange(entry.url, dipbot ? "dipbot" : undefined);
       setNote({
         kind: "picked", url: entry.url, fresh: result.newPhoto === true, dipbot,
-        badge: result.source === "dipbot" ? "Dipbot picked this" : result.source === "match" ? "Best match" : "Default cover",
-        text: result.source === "dipbot" ? `Dipbot picked ${entry.label}` : result.source === "match" ? `Best match: ${entry.label}` : `No close match, so Dipbot used the default: ${entry.label}`,
+        badge: result.source === "dipbot" ? tAi("editor.coverPicked") : result.source === "match" ? t("editor.cover.badgeMatch") : t("editor.cover.badgeDefault"),
+        text: result.source === "dipbot" ? t("editor.cover.pickedDipbot", { label: entry.label }) : result.source === "match" ? t("editor.cover.pickedMatch", { label: entry.label }) : t("editor.cover.pickedDefault", { label: entry.label }),
       });
       // Make sure the new choice is visible and reachable in the grid.
       if (COVER_LIBRARY.some((c) => c.url === entry.url) && !searchCovers({ query, theme }).some((c) => c.url === entry.url)) { setQuery(""); setTheme(""); }
@@ -124,7 +127,7 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
       const known = error instanceof ApiError && error.reason ? tMaybe(`limit.${error.reason}`, { n: "", date: resetDate(credits?.resetsAt ?? "") }) : null;
       // The reason class goes to the console only; the admin sees a plain message and keeps every other form edit.
       if (!known) console.warn("pickEventCover failed", error instanceof ApiError ? { code: error.code, reason: error.reason ?? null, fields: Object.keys(error.fields) } : { name: error instanceof Error ? error.name : typeof error });
-      setNote({ kind: "error", text: known ?? "Dipbot couldn’t pick a cover this time. Try again or choose one yourself." });
+      setNote({ kind: "error", text: known ?? t("editor.cover.pickFailed") });
     } finally {
       setBusy(false);
     }
@@ -138,10 +141,10 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
     try {
       const result = await api.searchCoverPhotos(text);
       if (result.status === "ok" && result.candidates.length > 0) setMore({ kind: "results", candidates: result.candidates });
-      else if (result.status === "ok") setMore({ kind: "message", text: "No more photos found. Try different words." });
-      else setMore({ kind: "message", text: MORE_UNAVAILABLE });
+      else if (result.status === "ok") setMore({ kind: "message", text: t("editor.cover.noMore") });
+      else setMore({ kind: "message", text: moreUnavailable() });
     } catch {
-      setMore({ kind: "message", text: MORE_UNAVAILABLE });
+      setMore({ kind: "message", text: moreUnavailable() });
     }
   }
 
@@ -153,10 +156,10 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
       const result = await api.importCoverPhoto(candidate.key);
       rememberCoverAlt(result.coverImageURL, result.coverAlt);
       onChange(result.coverImageURL);
-      setNote({ kind: "picked", url: result.coverImageURL, fresh: result.newPhoto, dipbot: false, badge: "Photo from Pixabay", text: "Picked a photo from Pixabay" });
+      setNote({ kind: "picked", url: result.coverImageURL, fresh: result.newPhoto, dipbot: false, badge: t("editor.cover.badgePixabay"), text: t("editor.cover.pickedPixabay") });
     } catch (error) {
       const reason = error instanceof ApiError ? error.reason : undefined;
-      setMoreError(reason === "COVER_CANDIDATE_EXPIRED" ? "That photo is no longer available. Search again." : reason === "COVER_SEARCH_UNAVAILABLE" ? MORE_UNAVAILABLE : "That photo couldn’t be added. Try another one.");
+      setMoreError(reason === "COVER_CANDIDATE_EXPIRED" ? t("editor.cover.expired") : reason === "COVER_SEARCH_UNAVAILABLE" ? moreUnavailable() : t("editor.cover.addFailed"));
     } finally {
       setImporting(null);
     }
@@ -165,7 +168,7 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
   const clear = () => { setQuery(""); setTheme(""); searchRef.current?.focus(); };
   const noteId = `${uid}-note`;
   const resultsId = `${uid}-results`;
-  const count = shown.length === COVER_LIBRARY.length ? `${shown.length} covers` : `${shown.length} of ${COVER_LIBRARY.length}`;
+  const count = shown.length === COVER_LIBRARY.length ? t("editor.cover.count", { count: shown.length }) : t("editor.cover.countOf", { shown: shown.length, total: COVER_LIBRARY.length });
 
   return (
     <div className={`cover-picker${compact ? " compact" : ""}`}>
@@ -175,29 +178,29 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
             // eslint-disable-next-line @next/next/no-img-element -- static export, unoptimized images
             <img src={coverImage(selected)} alt={selected.alt} width={320} height={200} />
           ) : (
-            <div className="cp-empty-preview" role="img" aria-label="No cover selected">No cover</div>
+            <div className="cp-empty-preview" role="img" aria-label={t("editor.cover.noneSelected")}>{t("editor.cover.none")}</div>
           )}
           {byDipbot ? <DipbotCoverTag /> : note?.kind === "picked" && note.url === value && <span className="cp-badge" aria-hidden>{note.badge}</span>}
         </div>
         <div className="cp-selected">
           <div className="cp-selected-text">
-            <span className="cp-selected-label">{selected ? selected.label : "No cover selected"}</span>
-            <span className="cp-selected-meta">{selected ? selected.themes.map(themeLabel).join(" · ") : "Search or browse, or let Dipbot choose."}</span>
+            <span className="cp-selected-label">{selected ? selected.label : t("editor.cover.noneSelected")}</span>
+            <span className="cp-selected-meta">{selected ? selected.themes.map(themeLabel).join(" · ") : t("editor.cover.hint")}</span>
           </div>
-          <DipbotAction className="cp-dipbot" label="Let Dipbot choose" loadingLabel="Dipbot is choosing…" credits={credits?.creditCost.coverPick ?? 1} loading={busy} onClick={() => void dipbotPick()} aria-describedby={noteId} />
+          <DipbotAction className="cp-dipbot" label={t("editor.cover.choose")} loadingLabel={t("editor.cover.choosing")} credits={credits?.creditCost.coverPick ?? 1} loading={busy} onClick={() => void dipbotPick()} aria-describedby={noteId} />
           <div id={noteId} className={`cp-note ${note?.kind ?? ""}`} role={note?.kind === "error" ? "alert" : "status"} aria-live="polite">
-            {note?.kind === "error" ? note.text : note?.kind === "picked" ? <><span className="sr-only">{note.text}</span>{note.fresh && <span className="cp-fresh">Found a new photo for this event</span>}</> : ""}
+            {note?.kind === "error" ? note.text : note?.kind === "picked" ? <><span className="sr-only">{note.text}</span>{note.fresh && <span className="cp-fresh">{t("editor.cover.fresh")}</span>}</> : ""}
           </div>
         </div>
       </div>
 
       <div className="cp-toolbar">
-        <input ref={searchRef} className="cp-search" type="search" aria-label="Search covers" placeholder={`Search ${COVER_LIBRARY.length} covers`} value={query} autoComplete="off" aria-controls={resultsId}
+        <input ref={searchRef} className="cp-search" type="search" aria-label={t("editor.cover.searchLabel")} placeholder={t("editor.cover.searchPlaceholder", { count: COVER_LIBRARY.length })} value={query} autoComplete="off" aria-controls={resultsId}
           onChange={(e) => setQuery(e.target.value)} />
-        <select className="cp-theme" aria-label="Filter by theme" value={theme} onChange={(e) => setTheme(e.target.value as CoverThemeKey | "")}>
-          <option value="">All themes ({total})</option>
-          {themeCounts.map((t) => (
-            <option key={t.key} value={t.key} disabled={t.count === 0 && theme !== t.key}>{t.label} ({t.count})</option>
+        <select className="cp-theme" aria-label={t("editor.cover.themeFilter")} value={theme} onChange={(e) => setTheme(e.target.value as CoverThemeKey | "")}>
+          <option value="">{t("editor.cover.allThemes", { count: total })}</option>
+          {themeCounts.map((th) => (
+            <option key={th.key} value={th.key} disabled={th.count === 0 && theme !== th.key}>{th.label} ({th.count})</option>
           ))}
         </select>
       </div>
@@ -206,8 +209,8 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
       <div className={`cp-region${shown.length === 0 ? " empty" : ""}`}>
         {shown.length === 0 ? (
           <div className="cp-no-results">
-            <p>No covers match {query.trim() ? <>“{query.trim()}”</> : "these filters"}{theme ? <> in {themeLabel(theme)}</> : null}.</p>
-            <Button size="sm" onClick={clear}>Clear search</Button>
+            <p>{t(theme ? (query.trim() ? "editor.cover.noMatch.queryTheme" : "editor.cover.noMatch.theme") : (query.trim() ? "editor.cover.noMatch.query" : "editor.cover.noMatch.filters"), { query: query.trim(), theme: theme ? themeLabel(theme) : "" })}</p>
+            <Button size="sm" onClick={clear}>{t("editor.cover.clear")}</Button>
           </div>
         ) : (
           <div className="cp-grid" role="radiogroup" aria-label={label} aria-describedby={describedBy} aria-invalid={invalid || undefined} onKeyDown={move}>
@@ -246,30 +249,30 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
       {query.trim() && (
         <div className="cp-more">
           <Button size="sm" className="cp-more-btn" onClick={() => void searchMore()} aria-busy={more.kind === "loading" || undefined} disabled={more.kind === "loading" || importing !== null}>
-            {more.kind === "loading" ? "Searching…" : "Search more photos"}
+            {more.kind === "loading" ? t("editor.cover.searching") : t("editor.cover.searchMore")}
           </Button>
           <div className="cp-more-status" role="status" aria-live="polite">
-            {more.kind === "message" ? more.text : more.kind === "loading" ? "Searching for more photos…" : ""}
+            {more.kind === "message" ? more.text : more.kind === "loading" ? t("editor.cover.searchingMore") : ""}
           </div>
           {moreError && <div className="cp-more-status error" role="alert">{moreError}</div>}
           {more.kind === "results" && (
             <>
-              <ul className="cp-more-grid" aria-label="More photos">
+              <ul className="cp-more-grid" aria-label={t("editor.cover.morePhotos")}>
                 {more.candidates.map((c) => (
                   <li key={c.key}>
                     <button type="button" className="cp-tile cp-more-tile" onClick={() => void importPhoto(c)} disabled={importing !== null} aria-busy={importing === c.key || undefined}
-                      aria-label={c.tags.length ? `Use photo: ${c.tags.slice(0, 3).join(", ")}` : "Use this photo"}>
+                      aria-label={c.tags.length ? t("editor.cover.usePhotoTags", { tags: c.tags.slice(0, 3).join(", ") }) : t("editor.cover.usePhoto")}>
                       <span className="cp-thumb">
                         {/* eslint-disable-next-line @next/next/no-img-element -- temporary third-party preview, not optimizable */}
                         <img src={c.previewURL} alt={c.tags.slice(0, 3).join(", ")} width={200} height={125} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
-                        {importing === c.key && <span className="cp-busy">Adding…</span>}
+                        {importing === c.key && <span className="cp-busy">{t("editor.cover.adding")}</span>}
                       </span>
                     </button>
                   </li>
                 ))}
               </ul>
               <p className="cp-credit">
-                <a href="https://pixabay.com/" target="_blank" rel="noopener noreferrer">Photos from Pixabay</a>
+                <a href="https://pixabay.com/" target="_blank" rel="noopener noreferrer">{t("editor.cover.credit")}</a>
               </p>
             </>
           )}

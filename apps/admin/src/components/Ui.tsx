@@ -1,7 +1,9 @@
 "use client";
+// @i18n-migrated
 
 import { useId } from "react";
 import type { ApiError } from "@/lib/contract";
+import { formatDate as formatDateIn, formatTime, t } from "@/lib/i18n";
 import { Button, Chip, InlineNotice } from "./kit";
 import { PageSkeleton, type SkeletonLayout } from "./PageSkeletons";
 
@@ -9,7 +11,7 @@ export function LoadError({ error, onRetry, backHref, backLabel }: { error: ApiE
   // Retrying a missing item never helps: offer the way back instead.
   const missing = error.code === "not-found" && backHref;
   return (
-    <InlineNotice tone="error" action={missing ? <Button variant="plain" href={backHref}>{backLabel ?? "Go back"}</Button> : <Button variant="plain" onClick={onRetry}>Try again</Button>}>
+    <InlineNotice tone="error" action={missing ? <Button variant="plain" href={backHref}>{backLabel ?? t("common.goBack")}</Button> : <Button variant="plain" onClick={onRetry}>{t("common.tryAgain")}</Button>}>
       {error.message}
     </InlineNotice>
   );
@@ -29,11 +31,11 @@ export function ResultCount({ children }: { children: React.ReactNode }) {
 }
 
 /** Pager button for server-paged lists. The count stays in a polite live region so the new total is announced. */
-export function LoadMore({ shown, total, loading, onClick, label = "Load more" }: { shown: number; total?: number; loading: boolean; onClick: () => void; label?: string }) {
+export function LoadMore({ shown, total, loading, onClick, label = t("common.loadMore") }: { shown: number; total?: number; loading: boolean; onClick: () => void; label?: string }) {
   return (
     <div className="load-more">
-      <Button size="sm" disabled={loading} onClick={onClick}>{loading ? "Loading more…" : label}</Button>
-      <span className="muted" role="status" aria-live="polite">{total !== undefined ? `Showing ${shown} of ${total}` : `Showing ${shown}`}</span>
+      <Button size="sm" disabled={loading} onClick={onClick}>{loading ? t("common.loadingMore") : label}</Button>
+      <span className="muted" role="status" aria-live="polite">{total !== undefined ? t("common.showingOf", { shown, total }) : t("common.showing", { shown })}</span>
     </div>
   );
 }
@@ -59,9 +61,9 @@ export { Avatar, initials } from "./Avatar";
 
 export function formatDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return Number.isNaN(d.getTime()) ? "" : formatDateIn(d, { month: "short", day: "numeric", year: "numeric" });
 }
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+  return Number.isNaN(d.getTime()) ? "" : `${formatDateIn(d, { month: "short", day: "numeric" })}, ${formatTime(d, { hour: "numeric", minute: "2-digit" })}`;
 }

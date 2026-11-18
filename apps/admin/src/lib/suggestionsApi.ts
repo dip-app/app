@@ -1,3 +1,4 @@
+// @i18n-migrated
 // Typed wrappers for manageSuggestionsEmailV1 and resolveSuggestedIdeaV1. Mock mode (the local preview) answers
 // in the browser; live mode calls the callables through the portal's Firebase app. Kept apart from AdminOpsApi so
 // these two callables do not touch the shared API files.
@@ -10,6 +11,7 @@ import { getApps } from "firebase/app";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import type { AdminApi, Session } from "./api";
 import { ApiError } from "./contract";
+import { t } from "./i18n";
 import { apiErrorFrom } from "./firebaseAdapter";
 import {
   type ManageSuggestionsResponse, type ResolveSuggestedIdeaResponse, type SuggestionsAction, type SuggestionsSchedule,
@@ -30,7 +32,7 @@ export function suggestionsApiFor(api: AdminApi, session: Session): SuggestionsA
 function createLiveSuggestions(session: Session): SuggestionsApi {
   const functions = () => {
     const app = getApps().find((a) => a.name === "dip-admin");
-    if (!app) throw new ApiError("failed-precondition", "The portal is not connected yet. Reload the page.");
+    if (!app) throw new ApiError("failed-precondition", t("dipbot.email.error.notConnected"));
     return getFunctions(app, "us-central1");
   };
   async function call<T>(name: string, payload: unknown): Promise<T> {
@@ -88,8 +90,8 @@ function createMockSuggestions(session: Session): SuggestionsApi {
   const gate = async () => {
     const s = scenario();
     await wait(s === "slow" ? 2500 : 350);
-    if (s === "error") throw new ApiError("failed-precondition", "Something went wrong on our side. Try again in a moment.");
-    if (session.role !== "admin") throw new ApiError("permission-denied", "Only admins can manage the weekly ideas email.");
+    if (s === "error") throw new ApiError("failed-precondition", t("dipbot.email.error.serverSide"));
+    if (session.role !== "admin") throw new ApiError("permission-denied", t("dipbot.email.error.adminsOnly"));
   };
   return {
     async manage(action, schedule) {
@@ -101,7 +103,7 @@ function createMockSuggestions(session: Session): SuggestionsApi {
       if (action === "subscribe") state.subscribed = true;
       if (action === "unsubscribe") state.subscribed = false;
       if (action === "setSchedule") {
-        if (!schedule || !scheduleValid(schedule)) throw new ApiError("invalid-argument", "Pick a day and an hour.");
+        if (!schedule || !scheduleValid(schedule)) throw new ApiError("invalid-argument", t("dipbot.email.error.pickSchedule"));
         state.schedule = schedule;
       }
       const response: ManageSuggestionsResponse = {

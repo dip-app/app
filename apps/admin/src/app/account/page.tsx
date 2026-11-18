@@ -1,11 +1,13 @@
 "use client";
+// @i18n-migrated
 
 import { Shell } from "@/components/Shell";
 import { UserSettings } from "@/components/UserSettings";
+import { t } from "@/lib/i18n";
 
 export default function AccountPage() {
   return (
-    <Shell title="Your settings" subtitle="Preferences that belong to you, not to your company.">
+    <Shell title={t("account.title")} subtitle={t("account.subtitle")}>
       <UserSettings />
     </Shell>
   );

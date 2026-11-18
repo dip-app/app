@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react"; // tags load from the shared catalog
@@ -21,7 +22,8 @@ import { toast } from "./Toast";
 import { useTags } from "./TagCatalog";
 import { WhereSection } from "./WhereSection";
 import { WhenPicker } from "./WhenPicker";
-import { t } from "@/lib/aiStrings";
+import { t as tAi } from "@/lib/aiStrings";
+import { t } from "@/lib/i18n";
 import { Button, ChipToggle } from "@/components/kit";
 
 interface Props {
@@ -140,7 +142,7 @@ export function EventForm({ event, onReload }: Props) {
       // The server owns tag existence; the client checks it only against a catalog it managed to load.
       knownTagIds: tags.length ? tags.map((tag) => tag.id) : candidate.tagIds,
     });
-    if (Number.isNaN(cents)) found.costCents = "Enter a price like 12.50, or leave blank for free.";
+    if (Number.isNaN(cents)) found.costCents = t("events.form.priceInvalid");
     setErrors(found);
     setFailure(null);
     if (Object.keys(found).length) {
@@ -174,7 +176,7 @@ export function EventForm({ event, onReload }: Props) {
       if (event) await api.updateEvent(event.id, event.revision, candidate, status);
       else await api.createEvent(requestId.current, candidate);
       setSaved(true);
-      toast(editing ? `Saved changes to “${candidate.title}”.` : `Created “${candidate.title}”.`);
+      toast(editing ? t("events.form.saved", { title: candidate.title }) : t("events.form.created", { title: candidate.title }));
       router.push("/events/");
     } catch (error) {
       // A lost response is ambiguous: the server may have applied the edit. Creates are safe to retry (same
@@ -182,8 +184,8 @@ export function EventForm({ event, onReload }: Props) {
       const apiError = error instanceof ApiError ? error : new ApiError(
         editing ? "aborted" : "failed-precondition",
         editing
-          ? "We couldn’t confirm whether your changes were saved. Reload the latest version to check before saving again."
-          : "Couldn’t create the event. Your draft is kept; trying again is safe and won’t create a duplicate.",
+          ? t("events.form.saveUnconfirmed")
+          : t("events.form.createFailed"),
       );
       setFailure(apiError);
       if (apiError.fields) setErrors(apiError.fields);
@@ -198,41 +200,41 @@ export function EventForm({ event, onReload }: Props) {
   return (
     <div className="form-layout">
     <form className="form" onSubmit={submit} noValidate>
-      {fromAi && <p className="notice form-notice" role="status">{t("editor.fromAi")}</p>}
+      {fromAi && <p className="notice form-notice" role="status">{tAi("editor.fromAi")}</p>}
       {Object.keys(errors).length > 0 && !failure && (
         <div className="banner error" role="alert">
-          <span>Fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} to continue.</span>
+          <span>{t("events.form.fixFields", { count: Object.keys(errors).length })}</span>
         </div>
       )}
       {failure && (
         <div className="banner error" role="alert">
           <span>{failure.message}</span>
           {failure.code === "aborted" && onReload && (
-            <Button onClick={onReload}>Reload latest</Button>
+            <Button onClick={onReload}>{t("events.form.reloadLatest")}</Button>
           )}
         </div>
       )}
       <div className="section wide">
         <div className="field">
-          <label htmlFor="title">Title</label>
+          <label htmlFor="title">{t("events.form.title")}</label>
           <input id="title" aria-describedby={err("title") ? "title-error" : undefined} value={draft.title} maxLength={LIMITS.titleMax} aria-invalid={invalid("title")} onChange={(e) => set("title", e.target.value)} />
           {err("title") && <span className="error" id="title-error">{err("title")}</span>}
         </div>
         <div className="field">
-          <label htmlFor="description">Description</label>
+          <label htmlFor="description">{t("events.form.description")}</label>
           <textarea id="description" aria-describedby={err("description") ? "description-error" : undefined} value={draft.description} maxLength={LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
           {err("description") && <span className="error" id="description-error">{err("description")}</span>}
         </div>
         <fieldset className="field">
-          <legend>Tags</legend>
+          <legend>{t("events.form.tags")}</legend>
           <div className="chips">
-            {catalog.status === "loading" && <span className="hint">Loading tags…</span>}
-            {catalog.status === "error" && <span className="hint">Couldn’t load tags. <button type="button" className="link-btn" onClick={catalog.reload}>Try again</button></span>}
+            {catalog.status === "loading" && <span className="hint">{t("events.form.tagsLoading")}</span>}
+            {catalog.status === "error" && <span className="hint">{t("events.form.tagsFailed")} <button type="button" className="link-btn" onClick={catalog.reload}>{t("common.tryAgain")}</button></span>}
             {tags.map((tag) => (
               <ChipToggle key={tag.id} pressed={draft.tagIds.includes(tag.id)}
                 aria-label={tagCounts ? `${tag.name}, ${interestLabel(tagCounts.get(tag.id) ?? 0)}` : undefined}
                 count={tagCounts ? (tagCounts.get(tag.id) ?? 0) : undefined} countTitle={tagCounts ? interestLabel(tagCounts.get(tag.id) ?? 0) : undefined}
-                onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((t) => t !== tag.id) : [...draft.tagIds, tag.id])}>
+                onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((id) => id !== tag.id) : [...draft.tagIds, tag.id])}>
                 {tag.name}
               </ChipToggle>
             ))}
@@ -240,8 +242,8 @@ export function EventForm({ event, onReload }: Props) {
           {err("tagIds") && <span className="error" id="tags-error">{err("tagIds")}</span>}
         </fieldset>
         <fieldset className="field">
-          <legend>Cover image</legend>
-          <span className="hint">Pick from the library or let Dipbot choose. Photo uploads aren’t available yet.</span>
+          <legend>{t("events.form.coverImage")}</legend>
+          <span className="hint">{t("events.form.coverHint")}</span>
           <CoverPicker value={draft.coverImageURL} onChange={(url, by) => { set("coverImageURL", url); setCoverBy(by === "dipbot" ? url : null); }} dipbotURL={coverBy} firstId="cover-first"
             event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds }}
             describedBy={err("coverImageURL") ? "cover-error" : undefined} invalid={!!err("coverImageURL")} />
@@ -250,14 +252,14 @@ export function EventForm({ event, onReload }: Props) {
       </div>
 
       <div className="section wide">
-        <h2>When</h2>
+        <h2>{t("events.form.when")}</h2>
         <WhenPicker startTime={draft.startTime} endTime={draft.endTime} disabled={timesLocked} allowPast={editing} presets={presets}
           startError={err("startTime")} endError={err("endTime")}
           onChange={(startTime, endTime) => setDraft((current) => ({ ...current, startTime, endTime }))} />
         <span className="hint">
           {timesLocked
-            ? "Times are locked because people have responded. Cancel and recreate the event to change them."
-            : "Times use your local time zone, and members see them in theirs."}
+            ? t("events.form.timesLocked")
+            : t("events.form.timesLocal")}
         </span>
       </div>
 
@@ -266,49 +268,49 @@ export function EventForm({ event, onReload }: Props) {
         event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds, capacity: draft.capacity, costCents: dollarsToCents(price) }} />
 
       <div className="section">
-        <h2>Cost &amp; spots</h2>
+        <h2>{t("events.form.costAndSpots")}</h2>
         <div className="row">
-          <div className="field"><label htmlFor="price">Price (USD)</label>
-            <input id="price" aria-describedby={err("costCents") ? "price-error" : undefined} inputMode="decimal" placeholder="Free" value={price} aria-invalid={invalid("costCents")} onChange={(e) => setPrice(e.target.value)} />
+          <div className="field"><label htmlFor="price">{t("events.form.price")}</label>
+            <input id="price" aria-describedby={err("costCents") ? "price-error" : undefined} inputMode="decimal" placeholder={t("events.form.pricePlaceholder")} value={price} aria-invalid={invalid("costCents")} onChange={(e) => setPrice(e.target.value)} />
             {err("costCents") && <span className="error" id="price-error">{err("costCents")}</span>}</div>
-          <div className="field"><label htmlFor="capacity">Capacity</label>
+          <div className="field"><label htmlFor="capacity">{t("events.form.capacity")}</label>
             <input id="capacity" aria-describedby={err("capacity") ? "capacity-error" : undefined} type="number" min={LIMITS.capacityMin} max={LIMITS.capacityMax} value={Number.isNaN(draft.capacity) ? "" : draft.capacity} aria-invalid={invalid("capacity")} onChange={(e) => set("capacity", e.target.valueAsNumber)} />
             {err("capacity") && <span className="error" id="capacity-error">{err("capacity")}</span>}</div>
         </div>
-        <div className="field"><label htmlFor="note">Price note (optional)</label>
+        <div className="field"><label htmlFor="note">{t("events.form.priceNote")}</label>
           <input id="note" value={draft.costNote} onChange={(e) => set("costNote", e.target.value)} /></div>
       </div>
 
       {editing && (
         <div className="section">
-          <h2>Status</h2>
+          <h2>{t("events.form.status")}</h2>
           <div className="field">
-            <label htmlFor="status">Event status</label>
+            <label htmlFor="status">{t("events.form.eventStatus")}</label>
             <select id="status" value={status} onChange={(e) => setStatus(e.target.value as EventStatus)}>
-              <option value="scheduled">Scheduled</option>
-              <option value="cancelled">Canceled</option>
+              <option value="scheduled">{t("events.form.statusScheduled")}</option>
+              <option value="cancelled">{t("events.form.statusCanceled")}</option>
             </select>
-            <span className="hint">Events can’t be deleted. Canceling keeps the record and tells attendees.</span>
+            <span className="hint">{t("events.form.statusHint")}</span>
           </div>
         </div>
       )}
 
       <div className="actions">
-        <button className="big-pill dark" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create event"}</button>
-        <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/events/"))}>Cancel</button>
+        <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("common.saving") : editing ? t("events.form.save") : t("events.form.create")}</button>
+        <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/events/"))}>{t("common.cancel")}</button>
       </div>
     </form>
     <EventPreview draft={draft} price={price} dipbotCover={!!draft.coverImageURL && coverBy === draft.coverImageURL} />
     {confirmCancel && (
-      <Dialog danger title="Cancel this event?" confirmLabel="Cancel event" busyLabel="Canceling event…" onClose={() => setConfirmCancel(null)}
+      <Dialog danger title={t("events.form.cancelDialog.title")} confirmLabel={t("events.form.cancelDialog.confirm")} busyLabel={t("events.form.cancelDialog.busy")} onClose={() => setConfirmCancel(null)}
         onConfirm={async () => { await persist(confirmCancel); setConfirmCancel(null); }}>
-        <p>Everyone who is going will see “{event?.title}” as canceled in the app. The event stays in your list under Canceled, and you can schedule it again later.</p>
+        <p>{t("events.form.cancelDialog.body", { title: event?.title ?? "" })}</p>
       </Dialog>
     )}
     {discarding && (
-      <Dialog danger title="Discard your changes?" confirmLabel="Discard changes" onClose={() => setDiscarding(false)}
+      <Dialog danger title={t("events.form.discardDialog.title")} confirmLabel={t("events.form.discardDialog.confirm")} onClose={() => setDiscarding(false)}
         onConfirm={async () => { setSaved(true); router.push("/events/"); }}>
-        <p>{editing ? "The changes you made to this event" : "The event you started"} won’t be saved.</p>
+        <p>{editing ? t("events.form.discardDialog.bodyEdit") : t("events.form.discardDialog.bodyNew")}</p>
       </Dialog>
     )}
     </div>

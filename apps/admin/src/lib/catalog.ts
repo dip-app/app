@@ -1,3 +1,5 @@
+// @i18n-migrated
+import { t } from "./i18n";
 import { COVER_LIBRARY, type CoverEntry, coverByURL, coverImage } from "./covers";
 // Event covers come from the cover library (lib/covers.ts, manifest in public/img/covers). COVERS and coverFor stay
 // for older callers; `id` is the key, or the category for the five legacy `catalog://default/*` photos.
@@ -32,10 +34,12 @@ export const TAG_IDS = TAGS.map((tag) => tag.id);
 
 /** Shown for a tag ID the catalog doesn't know. Raw IDs are opaque Firestore IDs and never go on screen. */
 export const UNKNOWN_TAG_NAME = "Unknown tag";
+/** The same fallback in the current language; prefer this at render time. */
+export const unknownTagName = (): string => t("overview.tag.unknown");
 
 /** Name from the bundled (mock) catalog only. Live screens resolve through `useTagCatalog`, which reads `tags/{tagId}`. */
 export function tagName(id: string): string {
-  return TAGS.find((tag) => tag.id === id)?.name ?? UNKNOWN_TAG_NAME;
+  return TAGS.find((tag) => tag.id === id)?.name ?? unknownTagName();
 }
 
 /**

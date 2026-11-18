@@ -1,9 +1,11 @@
 "use client";
+// @i18n-migrated
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { t } from "@/lib/i18n";
 import { saveAiDraft } from "@/lib/ideas";
-import { LINK_MESSAGES, type LinkProblem, linkProblem, readToken } from "@/lib/suggestions";
+import { type LinkProblem, linkMessage, linkProblem, linkTitle, readToken } from "@/lib/suggestions";
 import { suggestionsApiFor } from "@/lib/suggestionsApi";
 import { useApp } from "./AppProvider";
 import { Button, EmptyState } from "@/components/kit";
@@ -31,14 +33,14 @@ export function SuggestedIdeaOpen() {
 
   if (problem) {
     return (
-      <EmptyState role="alert" title={problem === "forbidden" ? "This idea isn’t available to you" : problem === "expired" ? "This link doesn’t work anymore" : "Couldn’t open this idea"} body={LINK_MESSAGES[problem]}
-        action={problem === "unavailable" ? <Button onClick={() => window.location.reload()}>Try again</Button> : <Button href="/ideas/">Open Event ideas</Button>} />
+      <EmptyState role="alert" title={linkTitle(problem)} body={linkMessage(problem)}
+        action={problem === "unavailable" ? <Button onClick={() => window.location.reload()}>{t("common.tryAgain")}</Button> : <Button href="/ideas/">{t("dipbot.link.openIdeas")}</Button>} />
     );
   }
   return (
     <div className="sug-opening" role="status">
       <span className="spinner" aria-hidden />
-      <p>Opening your event idea...</p>
+      <p>{t("dipbot.link.opening")}</p>
     </div>
   );
 }

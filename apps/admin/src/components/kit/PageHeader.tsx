@@ -1,3 +1,5 @@
+// @i18n-migrated
+
 import type { ReactNode } from "react";
 
 /** The page's title row: one h1, a muted description and at most one compact action on the right. Shell renders it for every page. */

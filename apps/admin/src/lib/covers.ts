@@ -1,5 +1,7 @@
+// @i18n-migrated
 import manifestJson from "../../public/img/covers/manifest.json";
 import { asset } from "./asset";
+import { t } from "./i18n";
 import { THEMES as WEEKLY_THEMES } from "./themes";
 
 // Event cover library: typed view of public/img/covers/manifest.json (owned by scripts/covers; the server reads the
@@ -57,7 +59,7 @@ function dynamicEntry(key: string): CoverEntry {
   const file = `${key}.webp`;
   return {
     key, url: `catalog://cover/${key}`, kind: "photo", file, thumb: file, width: 1200, height: 750,
-    themes: [], tags: [], mood: [], season: [], label: "Photo", alt: dynamicAlt.get(key) ?? "Event cover photo",
+    themes: [], tags: [], mood: [], season: [], label: t("editor.cover.dynamicLabel"), alt: dynamicAlt.get(key) ?? t("editor.cover.dynamicAlt"),
   };
 }
 

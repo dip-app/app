@@ -3,7 +3,9 @@
 // (c) a deterministic fallback: the generated Crew mascot (the same id -> character mapping as the avatars) on an
 // accent tile, keyed by the tag ID, so two unknown tags never share one picture. Decorative: cards name the tag.
 
+// @i18n-migrated
 import { asset } from "./asset";
+import { t, type MessageKey } from "./i18n";
 import { CREW_INK, PALETTE_FILL, type Palette, fnv1a64, generatedAvatarFor, mixed } from "./generatedAvatar";
 import { THEMES } from "./themes";
 
@@ -100,31 +102,30 @@ export function tagArt(tag: { id: string; name: string }): TagArt {
 
 // ---------- Copy: 3 to 5 word blurbs (US English). A `description` on the tag document overrides everything.
 
-const BLURBS: Record<string, string> = {
-  fitness: "Workouts, classes, runs", "weekly activity": "Recurring team habits", "water sport": "Paddle, swim, sail", bonding: "Get to know each other",
-  energetic: "High-energy group fun", hype: "Big, loud, memorable", cooking: "Cook or bake together", outdoors: "Hikes, parks, fresh air",
-  carpentry: "Build something by hand", social: "Mix and mingle", food: "Meals, tastings, treats", "food and drink": "Meals, tastings, treats",
-  games: "Board games and trivia", volunteering: "Give back together", creative: "Make art and crafts", "arts and crafts": "Make art and crafts",
-  arts: "Make art and crafts", music: "Karaoke, jams, concerts", learning: "Workshops and lunch-and-learns", wellness: "Yoga, stretching, recharging",
-  chill: "Low-key and relaxed",
+const BLURBS: Record<string, MessageKey> = {
+  fitness: "overview.tag.blurb.fitness", "weekly activity": "overview.tag.blurb.weeklyActivity", "water sport": "overview.tag.blurb.waterSport",
+  bonding: "overview.tag.blurb.bonding", energetic: "overview.tag.blurb.energetic", hype: "overview.tag.blurb.hype", cooking: "overview.tag.blurb.cooking",
+  outdoors: "overview.tag.blurb.outdoors", carpentry: "overview.tag.blurb.carpentry", social: "overview.tag.blurb.social", food: "overview.tag.blurb.food",
+  "food and drink": "overview.tag.blurb.food", games: "overview.tag.blurb.games", volunteering: "overview.tag.blurb.volunteering",
+  creative: "overview.tag.blurb.creative", "arts and crafts": "overview.tag.blurb.creative", arts: "overview.tag.blurb.creative",
+  music: "overview.tag.blurb.music", learning: "overview.tag.blurb.learning", wellness: "overview.tag.blurb.wellness", chill: "overview.tag.blurb.chill",
 };
 
 /** Fallback blurbs by the art family a keyword match lands on. */
-const FAMILY_BLURB: Record<string, string> = {
-  fitness: "Get moving together", outdoors: "Fresh air and fun", food: "Good food, shared", arts: "Make something together",
-  games: "Play and compete", music: "Make some noise", learning: "Learn something new", volunteering: "Give back together",
-  wellness: "Relax and recharge", "goal-team_bonding": "Get to know each other", "interest-energetic": "High-energy group fun",
-  "interest-hype": "Big, loud, memorable", "interest-chill": "Low-key and relaxed", "interest-social": "Mix and mingle", "interest-cooking": "Cook or bake together",
+const FAMILY_BLURB: Record<string, MessageKey> = {
+  fitness: "overview.tag.family.fitness", outdoors: "overview.tag.family.outdoors", food: "overview.tag.family.food", arts: "overview.tag.family.arts",
+  games: "overview.tag.family.games", music: "overview.tag.family.music", learning: "overview.tag.family.learning", volunteering: "overview.tag.blurb.volunteering",
+  wellness: "overview.tag.family.wellness", "goal-team_bonding": "overview.tag.blurb.bonding", "interest-energetic": "overview.tag.blurb.energetic",
+  "interest-hype": "overview.tag.blurb.hype", "interest-chill": "overview.tag.blurb.chill", "interest-social": "overview.tag.blurb.social", "interest-cooking": "overview.tag.blurb.cooking",
 };
-export const GENERIC_BLURB = "A team favorite";
 
 /** One short line for a tag card: the tag's own `description` if it has one, then the curated blurb, then a keyword family. */
 export function tagBlurb(tag: { name: string; description?: string }): string {
   const own = tag.description?.trim();
   if (own) return own;
   const known = BLURBS[normalizeName(tag.name)];
-  if (known) return known;
+  if (known) return t(known);
   const source = sourceFor(tag.name);
-  if (!source) return GENERIC_BLURB;
-  return FAMILY_BLURB["theme" in source ? source.theme : source.spot] ?? GENERIC_BLURB;
+  const family = source ? FAMILY_BLURB["theme" in source ? source.theme : source.spot] : undefined;
+  return t(family ?? "overview.tag.blurb.generic");
 }

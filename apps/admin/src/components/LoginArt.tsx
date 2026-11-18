@@ -1,4 +1,6 @@
+// @i18n-migrated
 import type { CSSProperties } from "react";
+import type { MessageKey } from "@/lib/i18n";
 
 /**
  * Login hero: the app's own avatar characters (exported from the iOS asset catalog and Figma, see
@@ -52,13 +54,14 @@ const ICONS = {
   challenges: <><circle cx="12" cy="12" r="8.5" /><path d="m8.2 12.3 2.6 2.6 5-5.4" /></>,
 } as const;
 
-export const VALUE_ROWS: { icon: keyof typeof ICONS; title: string; text: string }[] = [
-  { icon: "events", title: "Events", text: "Create, edit and cancel" },
-  { icon: "albums", title: "Albums and moderation", text: "Keep photos on brand" },
-  { icon: "attendees", title: "Attendees", text: "See who is going" },
-  { icon: "roster", title: "Members and roster", text: "Invite and manage people" },
-  { icon: "import", title: "Bulk import", text: "Add a whole team at once" },
-  { icon: "challenges", title: "Challenge review", text: "Approve submissions" },
+/** The value list on the sign-in page; titles and texts are catalog keys (login.value.<icon>.title / .text). */
+export const VALUE_ROWS: { icon: keyof typeof ICONS; title: MessageKey; text: MessageKey }[] = [
+  { icon: "events", title: "login.value.events.title", text: "login.value.events.text" },
+  { icon: "albums", title: "login.value.albums.title", text: "login.value.albums.text" },
+  { icon: "attendees", title: "login.value.attendees.title", text: "login.value.attendees.text" },
+  { icon: "roster", title: "login.value.roster.title", text: "login.value.roster.text" },
+  { icon: "import", title: "login.value.import.title", text: "login.value.import.text" },
+  { icon: "challenges", title: "login.value.challenges.title", text: "login.value.challenges.text" },
 ];
 
 export function ValueIcon({ name }: { name: keyof typeof ICONS }) {

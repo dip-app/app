@@ -2,8 +2,14 @@
 // (the shared spec: "Monday 00:00 America/New_York to the following Monday 00:00 minus 1 s"), whatever
 // time zone the organizer's browser is in, so the portal, the seed script and the app agree on "this week".
 // No date library: Intl gives the zone offset, and civil dates ("YYYY-MM-DD") are handled in UTC.
+// @i18n-migrated
+
+import { intlLocale, t } from "./i18n";
 
 export const THEME_TIME_ZONE = "America/New_York";
+/** The zone name to show; follows the current language. */
+export const themeTimeZoneLabel = (): string => t("challenges.weeks.easternTime");
+/** Stays English; use themeTimeZoneLabel() for display. */
 export const THEME_TIME_ZONE_LABEL = "Eastern Time";
 
 const DAY_MS = 86_400_000;
@@ -108,7 +114,7 @@ export function mondays(first: CivilDate, count: number): CivilDate[] {
 
 /** "Nov 9" (with the year when `withYear`), read as a calendar date, not converted. */
 export function formatDay(date: CivilDate, withYear = false): string {
-  return new Date(parseCivil(date)).toLocaleDateString("en-US", {
+  return new Date(parseCivil(date)).toLocaleDateString(intlLocale(), {
     timeZone: "UTC", month: "short", day: "numeric", ...(withYear ? { year: "numeric" } : {}),
   });
 }
@@ -121,7 +127,7 @@ export function formatWindow(startIso: string, endIso: string): string {
   const first = civilDateIn(start);
   const last = civilDateIn(end);
   const sameYear = first.slice(0, 4) === last.slice(0, 4);
-  return `${formatDay(first, !sameYear)} to ${formatDay(last, true)}`;
+  return t("challenges.window.range", { start: formatDay(first, !sameYear), end: formatDay(last, true) });
 }
 
 /** True when the window is exactly whole Eastern weeks (Monday 00:00 to Sunday 23:59:59). */

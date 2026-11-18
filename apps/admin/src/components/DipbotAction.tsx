@@ -1,7 +1,9 @@
 "use client";
+// @i18n-migrated
 
 import { type AnchorHTMLAttributes, type ButtonHTMLAttributes, type MouseEvent, type ReactNode, type Ref, forwardRef, useId } from "react";
 import { creditCostLabel } from "@/lib/credits";
+import { t } from "@/lib/i18n";
 import { DipbotMark } from "./DipbotMark";
 
 export type DipbotActionVariant = "outline" | "solid" | "ghost" | "link";
@@ -62,7 +64,7 @@ export const DipbotAction = forwardRef<HTMLButtonElement | HTMLAnchorElement, Di
   const disabled = Boolean((rest as { disabled?: boolean }).disabled);
   const base = loading && loadingLabel ? loadingLabel : accessibleLabel ?? (typeof label === "string" ? label : "");
   const costText = credits === undefined ? "" : creditCostLabel(credits, showFree);
-  const name = costText ? `${base}, ${costText}` : base;
+  const name = costText ? t("dipbot.action.nameWithCost", { label: base, cost: costText }) : base;
   const shown = loading && loadingLabel ? loadingLabel : label;
   const mark = icon === undefined ? <DipbotMark size={size === "sm" ? 14 : 16} /> : icon;
   const reason = disabled && disabledReason ? disabledReason : undefined;

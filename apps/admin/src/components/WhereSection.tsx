@@ -1,8 +1,10 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FieldErrors, Venue } from "@/lib/contract";
 import { t } from "@/lib/aiStrings";
+import { t as tI } from "@/lib/i18n";
 import { type LocationProvider, type PlaceSuggestion, type ResolvedPlace, createCallableProvider } from "@/lib/location";
 import type { ResolvedFor } from "@/lib/location/saveLocation";
 import { type VenueFill, placeToVenue, venueOptionToVenue } from "@/lib/location/venueFill";
@@ -79,7 +81,7 @@ export function WhereSection({ venue, isOutdoor, errors, onVenue, onOutdoor, onR
 
   return (
     <div className="section where">
-      <h2>Where</h2>
+      <h2>{tI("editor.where.title")}</h2>
 
       {collapsed && picked ? (
         <div className="where-picked" role="group" aria-label={t("where.pickedLabel")}>

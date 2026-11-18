@@ -326,7 +326,8 @@ $ctl-h: 36px;
     .bug-filters { grid-template-columns: minmax(0, 1fr) auto; &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .covers:has(.theme-option) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .table.responsive td[data-label] { position: relative; padding-left: 96px; min-height: 20px; }
-    .table.responsive td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+    // The label column is 96px; a longer label (other languages) wraps inside it instead of running into the value.
+    .table.responsive td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 10px; max-width: 88px; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; color: var(--muted); }
     .going { justify-items: start; }
     .table-wrap:has(.responsive) { border: 0; background: transparent; overflow: visible; }
     .page-header { flex-wrap: wrap; align-items: flex-start; }

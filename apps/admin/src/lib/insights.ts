@@ -1,13 +1,15 @@
 import { type CompanyInsights, type InsightsDay, type Role, can } from "./adminTypes";
 import { AI_NAME } from "./aiStrings";
+import { formatDate, formatNumber, t, type MessageKey } from "./i18n";
 
+// @i18n-migrated
 // Pure helpers behind the Overview page (formatting, the activity chart geometry, the "needs attention" list).
 
-export const formatCount = (value: number): string => value.toLocaleString("en-US");
+export const formatCount = (value: number): string => formatNumber(value);
 
 /** 0.744 -> "74%"; null (no completed events yet) -> "None". */
 export function formatPercent(rate: number | null): string {
-  return rate === null ? "None" : `${Math.round(rate * 100)}%`;
+  return rate === null ? t("common.none") : `${Math.round(rate * 100)}%`;
 }
 
 /** "Updated just now", "Updated 4 min ago", "Updated 2 hr ago", then the date. */
@@ -15,11 +17,11 @@ export function updatedLabel(generatedAt: string, now: Date): string {
   const at = Date.parse(generatedAt);
   if (Number.isNaN(at)) return "";
   const minutes = Math.max(0, Math.floor((now.getTime() - at) / 60_000));
-  if (minutes < 1) return "Updated just now";
-  if (minutes < 60) return `Updated ${minutes} min ago`;
+  if (minutes < 1) return t("overview.updated.justNow");
+  if (minutes < 60) return t("overview.updated.minutes", { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Updated ${hours} hr ago`;
-  return `Updated ${new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  if (hours < 24) return t("overview.updated.hours", { hours });
+  return t("overview.updated.date", { date: formatDate(new Date(at), { month: "short", day: "numeric" }) });
 }
 
 /** The next "nice" ceiling for an axis (1, 2, 5, 10, 20, 50 ...) so grid lines land on round numbers. */
@@ -42,11 +44,11 @@ export interface ChartModel {
   total: { rsvps: number; photos: number };
 }
 
-const shortDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDay = (iso: string) => formatDate(new Date(`${iso}T00:00:00Z`), { month: "short", day: "numeric", timeZone: "UTC" });
 export { shortDay };
 
 /** "Tue, Nov 11": the tooltip's date line (UTC, like the data). */
-export const tooltipDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+export const tooltipDay = (iso: string) => formatDate(new Date(`${iso}T00:00:00Z`), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 
 export interface TooltipPlacement { left: number; top: number; flipped: boolean }
 
@@ -103,16 +105,16 @@ export type ThemePhase = "past" | "current" | "upcoming";
 
 /** Where a theme's date range sits relative to `now`. Instants, so week edges (Sunday 23:59:59 Eastern) hold in any time zone. */
 export function themePhase(startDate: string, endDate: string, now: Date): ThemePhase {
-  const t = now.getTime();
-  if (t < Date.parse(startDate)) return "upcoming";
-  if (t > Date.parse(endDate)) return "past";
+  const instant = now.getTime();
+  if (instant < Date.parse(startDate)) return "upcoming";
+  if (instant > Date.parse(endDate)) return "past";
   return "current";
 }
 
 /** "Nov 9 to Nov 15", always in Eastern Time because weekly themes run on Eastern weeks. */
 export function weekRange(startDate: string, endDate: string): string {
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
-  return `${fmt(startDate)} to ${fmt(endDate)}`;
+  const fmt = (iso: string) => formatDate(new Date(iso), { month: "short", day: "numeric", timeZone: "America/New_York" });
+  return t("overview.pending.range", { start: fmt(startDate), end: fmt(endDate) });
 }
 
 export interface ReviewGroup { phase: ThemePhase; challengeId: string | null; title: string; range: string; count: number }
@@ -137,10 +139,16 @@ export function reviewGroups(insights: CompanyInsights, now: Date): ReviewGroup[
   return groups;
 }
 
+const GROUP_KEYS = {
+  current: "overview.pending.group.current", past: "overview.pending.group.past", upcoming: "overview.pending.group.upcoming", pastThemes: "overview.pending.group.pastThemes",
+} as const satisfies Record<ThemePhase | "pastThemes", MessageKey>;
+const GROUP_FROM_KEYS = {
+  current: "overview.pending.groupFrom.current", past: "overview.pending.groupFrom.past", upcoming: "overview.pending.groupFrom.upcoming", pastThemes: "overview.pending.groupFrom.pastThemes",
+} as const satisfies Record<ThemePhase | "pastThemes", MessageKey>;
+
 const groupText = (g: ReviewGroup, several: boolean): string => {
-  const kind = g.phase === "current" ? "Current theme" : g.phase === "past" ? "Past theme" : "Upcoming theme";
-  const where = g.title ? `${kind}: ${g.title}${g.phase === "current" ? "" : `, ${g.range}`}` : "Past themes";
-  return several ? `${g.count} from ${where}` : where;
+  const keys = several ? GROUP_FROM_KEYS : GROUP_KEYS;
+  return t(g.title ? keys[g.phase] : keys.pastThemes, { count: g.count, title: g.title, range: g.range });
 };
 
 /** What needs a person: reviews waiting, people invited who haven't signed in. Zero-count items are left out. */
@@ -149,19 +157,19 @@ export function pendingActions(insights: CompanyInsights, role: Role, now: Date 
   const total = insights.challenges.pendingReviews;
   if (total > 0) {
     const groups = reviewGroups(insights, now);
-    const lines = groups.length > 0 ? groups.map((g) => groupText(g, groups.length > 1)) : ["Recent weekly themes"];
+    const lines = groups.length > 0 ? groups.map((g) => groupText(g, groups.length > 1)) : [t("overview.pending.recentThemes")];
     // One challenge: open its queue directly (submitted filter); several: the list of themes.
     const only = groups.length === 1 ? groups[0].challengeId : null;
     items.push({
-      id: "reviews", label: total === 1 ? "Submission to review" : "Submissions to review", count: total,
+      id: "reviews", label: t("overview.pending.reviews", { count: total }), count: total,
       detail: lines.join(" · "), lines,
       href: can(role, "challenges.review") ? (only ? `/challenges/review/?id=${encodeURIComponent(only)}&status=submitted` : "/challenges/") : null,
     });
   }
   if (insights.members.invited > 0) {
     items.push({
-      id: "invited", label: "Invited, not joined yet", count: insights.members.invited,
-      detail: "Resend the invite message from the roster", lines: ["Resend the invite message from the roster"], href: can(role, "roster.manage") ? "/roster/" : null,
+      id: "invited", label: t("overview.pending.invited"), count: insights.members.invited,
+      detail: t("overview.pending.resend"), lines: [t("overview.pending.resend")], href: can(role, "roster.manage") ? "/roster/" : null,
     });
   }
   return items;
@@ -172,10 +180,10 @@ export interface Shortcut { id: string; label: string; href: string }
 /** Quick links under "Needs attention" (what the role can actually do), so a short card is still useful. At most two. */
 export function shortcutsFor(role: Role): Shortcut[] {
   const all: [Parameters<typeof can>[1], Shortcut][] = [
-    ["events.manage", { id: "new-event", label: "Create an event", href: "/events/new/" }],
-    ["themes.manage", { id: "new-theme", label: "Plan a weekly theme", href: "/themes/new/" }],
-    ["ai.generate", { id: "ideas", label: `Ask ${AI_NAME} for event ideas`, href: "/ideas/" }],
-    ["import.run", { id: "import", label: "Import people", href: "/import/" }],
+    ["events.manage", { id: "new-event", label: t("overview.shortcuts.newEvent"), href: "/events/new/" }],
+    ["themes.manage", { id: "new-theme", label: t("overview.shortcuts.newTheme"), href: "/themes/new/" }],
+    ["ai.generate", { id: "ideas", label: t("overview.shortcuts.ideas", { ai: AI_NAME }), href: "/ideas/" }],
+    ["import.run", { id: "import", label: t("overview.shortcuts.import"), href: "/import/" }],
   ];
   return all.filter(([capability]) => can(role, capability)).map(([, shortcut]) => shortcut).slice(0, 2);
 }
@@ -199,8 +207,14 @@ export function isQuiet(insights: CompanyInsights): boolean {
   return insights.unavailable.length === 0 && insights.participation.rsvpsLast30Days === 0 && insights.events.completed === 0 && insights.events.upcoming === 0;
 }
 
+export type RefreshSection = "insights" | "interestCounts" | "interestNames";
+const SECTION_KEYS = {
+  insights: "overview.refresh.section.insights", interestCounts: "overview.refresh.section.interestCounts", interestNames: "overview.refresh.section.interestNames",
+} as const satisfies Record<RefreshSection, MessageKey>;
+
 /** Names the sections that failed to refresh: "insights", "insights and interest counts". */
-export function refreshFailureMessage(failed: string[]): string {
-  const list = failed.length > 1 ? `${failed.slice(0, -1).join(", ")} and ${failed[failed.length - 1]}` : failed[0];
-  return `Couldn’t refresh the ${list}. What’s shown is from the last update; try again in a moment.`;
+export function refreshFailureMessage(failed: RefreshSection[]): string {
+  const names = failed.map((section) => t(SECTION_KEYS[section]));
+  const sections = names.length > 1 ? t("overview.refresh.and", { head: names.slice(0, -1).join(", "), last: names[names.length - 1] }) : names[0];
+  return t("overview.refresh.failed", { sections });
 }

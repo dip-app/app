@@ -1,3 +1,4 @@
+// @i18n-migrated
 import type { CSSProperties } from "react";
 
 /**

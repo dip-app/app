@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -16,13 +17,14 @@ import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button, InlineNotice } from "@/components/kit";
+import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
-const STATUSES: { id: MemberStatus | "all"; label: string }[] = [
-  { id: "all", label: "All" }, { id: "active", label: "Active" }, { id: "invited", label: "Invited" }, { id: "deactivated", label: "Deactivated" },
+const STATUSES: { id: MemberStatus | "all"; labelKey: MessageKey }[] = [
+  { id: "all", labelKey: "members.status.all" }, { id: "active", labelKey: "members.status.active" },
+  { id: "invited", labelKey: "members.status.invited" }, { id: "deactivated", labelKey: "members.status.deactivated" },
 ];
 const STATUS_IDS = STATUSES.map((item) => item.id);
 const ROLES = ["admin", "organizer", "member"] as const;
-const number = (n: number) => n.toLocaleString("en-US");
 const DEFAULTS = { q: "", status: "all", role: "all", team: "all", location: "all" };
 
 function Members() {
@@ -57,7 +59,7 @@ function Members() {
   const teams = company.data?.teams ?? [];
   // Organizers read people without balances (the backend leaves points out for them).
   const showPoints = list.items.some((m) => m.pointsBalance !== null);
-  const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? id;
+  const teamName = (id: string) => teams.find((team) => team.id === id)?.name ?? id;
   const clearable = search !== "" || role !== "all" || team !== "all" || location !== "all";
   const total = list.extra;
   const firstLoad = list.loading && list.items.length === 0;
@@ -68,60 +70,62 @@ function Members() {
     try {
       const everyone = await list.loadAll();
       downloadText("members.csv", membersCsv(everyone, teams));
-      toast(`Exported ${number(everyone.length)} ${everyone.length === 1 ? "person" : "people"} to members.csv.`);
+      toast(t("members.export.done", { count: everyone.length }));
     } catch (failure) {
-      toast(describe(failure, "The export didn’t finish. Try again."), { tone: "error" });
+      toast(describe(failure, t("common.exportFailed")), { tone: "error" });
     } finally {
       setExporting(false);
     }
   }
+  const shownCount = formatNumber(list.items.length);
+  const matches = list.hasMore ? t("members.count.matchesSoFar", { shown: shownCount }) : t("members.count.matches", { shown: list.items.length });
   const count = !filtered && total !== null
-    ? `Showing ${number(list.items.length)} of ${number(total)} ${total === 1 ? "person" : "people"}`
-    : `${number(list.items.length)}${list.hasMore ? " matches so far" : list.items.length === 1 ? " person matches" : " people match"}${total !== null && !list.hasMore ? ` (of ${number(total)})` : ""}`;
+    ? t("members.count.showingOf", { shown: shownCount, total })
+    : total !== null && !list.hasMore ? t("members.count.withTotal", { matches, total: formatNumber(total) }) : matches;
 
   return (
-    <Shell title="Members" subtitle="Everyone at your company. Admins can open a person to edit their details." requires="members.view"
-      action={<Button disabled={!list.items.length || exporting} onClick={() => void exportCsv()}>{exporting ? "Exporting…" : "Export CSV"}</Button>}>
-      <Tabs idBase="members" label="Filter by status" value={status} onChange={(id) => setQs({ status: id })} items={STATUSES} />
+    <Shell title={t("members.title")} subtitle={t("members.subtitle")} requires="members.view"
+      action={<Button disabled={!list.items.length || exporting} onClick={() => void exportCsv()}>{exporting ? t("common.exporting") : t("common.exportCsv")}</Button>}>
+      <Tabs idBase="members" label={t("members.filterByStatus")} value={status} onChange={(id) => setQs({ status: id })} items={STATUSES.map((item) => ({ id: item.id, label: t(item.labelKey) }))} />
       <div className="filters">
-        <SearchBox id="members-search" value={search} onChange={(v) => setQs({ q: v })} label="Search by name, email or title" placeholder="Search by name, email or title (press / to focus)" />
-        <div className="field"><label htmlFor="f-role">Role</label>
+        <SearchBox id="members-search" value={search} onChange={(v) => setQs({ q: v })} label={t("members.search.label")} placeholder={t("members.search.placeholder")} />
+        <div className="field"><label htmlFor="f-role">{t("members.filter.role")}</label>
           <select id="f-role" value={role} onChange={(e) => setQs({ role: e.target.value })}>
-            <option value="all">All roles</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+            <option value="all">{t("members.filter.allRoles")}</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select></div>
-        <div className="field"><label htmlFor="f-team">Team</label>
+        <div className="field"><label htmlFor="f-team">{t("members.filter.team")}</label>
           <select id="f-team" value={team} onChange={(e) => setQs({ team: e.target.value })}>
-            <option value="all">All teams</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="all">{t("members.filter.allTeams")}</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
           </select></div>
-        <div className="field"><label htmlFor="f-loc">Work location</label>
+        <div className="field"><label htmlFor="f-loc">{t("members.filter.location")}</label>
           <select id="f-loc" value={location} onChange={(e) => setQs({ location: e.target.value })}>
-            <option value="all">All locations</option>{[...new Set([...knownLocations, ...(location !== "all" ? [location] : [])])].sort().map((l) => <option key={l}>{l}</option>)}
+            <option value="all">{t("members.filter.allLocations")}</option>{[...new Set([...knownLocations, ...(location !== "all" ? [location] : [])])].sort().map((l) => <option key={l}>{l}</option>)}
           </select></div>
       </div>
       {clearable && (
-        <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>Clear filters</Button></div>
+        <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t("members.filter.clear")}</Button></div>
       )}
       <div {...tabPanelProps("members", status)}>
         {list.error && list.items.length === 0 ? <LoadError error={list.error} onRetry={list.reload} />
-          : firstLoad || holdLoad ? <Loading label="Loading members" layout="members" />
+          : firstLoad || holdLoad ? <Loading label={t("members.loading")} layout="members" />
           : list.items.length === 0 ? (
-            <Empty title="No one matches" body="Clear a filter or search for a different name." />
+            <Empty title={t("members.empty.title")} body={t("members.empty.body")} />
           ) : (
             <>
               <ResultCount>{count}</ResultCount>
-              <TableRegion label="Company members" busy={list.loading}>
+              <TableRegion label={t("members.table.label")} busy={list.loading}>
                 <table className="table responsive">
-                  <caption className="sr-only">Company members</caption>
-                  <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Teams</th><th scope="col">Work location</th><th scope="col">Status</th>{showPoints && <th scope="col" className="right">Points</th>}</tr></thead>
+                  <caption className="sr-only">{t("members.table.label")}</caption>
+                  <thead><tr><th scope="col">{t("members.table.name")}</th><th scope="col">{t("members.table.role")}</th><th scope="col">{t("members.table.teams")}</th><th scope="col">{t("members.table.location")}</th><th scope="col">{t("members.table.status")}</th>{showPoints && <th scope="col" className="right">{t("members.table.points")}</th>}</tr></thead>
                   <tbody>
                     {list.items.map((m) => (
                       <tr key={m.id}>
                         <th scope="row"><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span></span></Link></th>
-                        <td data-label="Role">{ROLE_LABEL[m.role]}</td>
-                        <td data-label="Teams">{m.teamIds.map(teamName).join(", ") || <span className="muted">None</span>}</td>
-                        <td data-label="Work location">{m.workLocation || <span className="muted">Not set</span>}</td>
-                        <td data-label="Status"><Info tone={m.status === "active" ? "ok" : "warn"}>{m.status === "active" ? "Active" : m.status === "invited" ? "Invited" : "Deactivated"}</Info></td>
-                        {showPoints && <td className="right" data-label="Points">{m.pointsBalance}</td>}
+                        <td data-label={t("members.table.role")}>{ROLE_LABEL[m.role]}</td>
+                        <td data-label={t("members.table.teams")}>{m.teamIds.map(teamName).join(", ") || <span className="muted">{t("common.none")}</span>}</td>
+                        <td data-label={t("members.table.location")}>{m.workLocation || <span className="muted">{t("common.notSet")}</span>}</td>
+                        <td data-label={t("members.table.status")}><Info tone={m.status === "active" ? "ok" : "warn"}>{t(m.status === "active" ? "members.chip.active" : m.status === "invited" ? "members.chip.invited" : "members.chip.deactivated")}</Info></td>
+                        {showPoints && <td className="right" data-label={t("members.table.points")}>{m.pointsBalance}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -137,5 +141,5 @@ function Members() {
 }
 
 export default function MembersPage() {
-  return <Suspense fallback={<Loading label="Loading members" layout="members" />}><Members /></Suspense>;
+  return <Suspense fallback={<Loading label={t("members.loading")} layout="members" />}><Members /></Suspense>;
 }

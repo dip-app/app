@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -6,7 +7,8 @@ import {
   manageFailureMessage, nextSendLabel, sameSchedule, statusNotices, testMessage,
 } from "@/lib/suggestions";
 import { suggestionsApiFor } from "@/lib/suggestionsApi";
-import { t } from "@/lib/aiStrings";
+import { t as tAi } from "@/lib/aiStrings";
+import { t } from "@/lib/i18n";
 import { creditsText } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter } from "./CreditsMeter";
@@ -53,10 +55,10 @@ export function SuggestionsEmail() {
   const hold = useSkeletonGate((!status || !sug) && !state.error);
   if (state.error) {
     return (
-      <InlineNotice tone="error" action={<Button variant="plain" onClick={state.reload}>Try again</Button>}>{manageFailureMessage(state.error)}</InlineNotice>
+      <InlineNotice tone="error" action={<Button variant="plain" onClick={state.reload}>{t("common.tryAgain")}</Button>}>{manageFailureMessage(state.error)}</InlineNotice>
     );
   }
-  if (!status || !sug || hold) return <Loading label="Loading weekly ideas email" layout="suggestions" />;
+  if (!status || !sug || hold) return <Loading label={t("dipbot.email.loading")} layout="suggestions" />;
 
   const current: ManageSuggestionsResponse = status;
   const api2 = sug;
@@ -64,6 +66,7 @@ export function SuggestionsEmail() {
   const notices = statusNotices(current);
   const next = nextSendLabel(current.nextSendAt, current.timeZone);
   const dirty = !sameSchedule({ weekday, hour }, current.schedule);
+  const showHtml = view === "html";
 
   async function run(kind: Exclude<Busy, null>, work: () => Promise<void>) {
     if (busy) return;
@@ -82,7 +85,7 @@ export function SuggestionsEmail() {
     state.setData(next);
     setWeekday(next.schedule.weekday);
     setHour(next.schedule.hour);
-    setMessage({ tone: "ok", text: "Schedule saved." });
+    setMessage({ tone: "ok", text: t("dipbot.email.schedule.saved") });
   });
   const showPreview = () => run("preview", async () => {
     const next = await api2.manage("preview");
@@ -105,69 +108,69 @@ export function SuggestionsEmail() {
       )}
       {failure && <InlineNotice tone="error">{failure}</InlineNotice>}
 
-      <Panel id="sug-status" title="Weekly email">
-        <Toggle checked={current.subscribed} onChange={(on) => { if (!disabled) void toggle(on); }} label="Send me weekly event ideas"
-          hint={current.subscribed ? (next ? `Next email: ${next}` : "You are on the list.") : "Turn on to get a short email with event ideas each week."} />
+      <Panel id="sug-status" title={t("dipbot.email.status.title")}>
+        <Toggle checked={current.subscribed} onChange={(on) => { if (!disabled) void toggle(on); }} label={t("dipbot.email.status.label")}
+          hint={current.subscribed ? (next ? t("dipbot.email.status.next", { next }) : t("dipbot.email.status.onList")) : t("dipbot.email.status.off")} />
         {notices.map((text) => <InlineNotice key={text}>{text}</InlineNotice>)}
-        <p className="muted">This setting is only for you. Other admins choose for themselves.</p>
-        {credits && <p className="muted">{t("credits.email", { cost: creditsText(credits.creditCost.weeklyEmail) })}</p>}
+        <p className="muted">{t("dipbot.email.status.personal")}</p>
+        {credits && <p className="muted">{tAi("credits.email", { cost: creditsText(credits.creditCost.weeklyEmail) })}</p>}
       </Panel>
 
-      <Panel id="sug-schedule" title="Schedule">
+      <Panel id="sug-schedule" title={t("dipbot.email.schedule.title")}>
         <div className="row">
           <div className="field">
-            <label htmlFor={dayId}>Day</label>
+            <label htmlFor={dayId}>{t("dipbot.email.schedule.day")}</label>
             <select id={dayId} value={weekday} disabled={disabled} onChange={(e) => setWeekday(Number(e.target.value))}>
               {WEEKDAY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="field">
-            <label htmlFor={hourId}>Time</label>
+            <label htmlFor={hourId}>{t("dipbot.email.schedule.time")}</label>
             <select id={hourId} value={hour} disabled={disabled} onChange={(e) => setHour(Number(e.target.value))}>
               {HOUR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>
-        <p className="muted">Times are in {current.timeZone}. This schedule applies to every admin in your company.</p>
+        <p className="muted">{t("dipbot.email.schedule.zone", { timeZone: current.timeZone })}</p>
         <div className="actions inline">
           <Button variant="primary" disabled={disabled || !dirty} onClick={() => void saveSchedule()}>
-            {busy === "schedule" ? "Saving..." : "Save schedule"}
+            {t(busy === "schedule" ? "dipbot.email.schedule.saving" : "dipbot.email.schedule.save")}
           </Button>
         </div>
         {message && <InlineNotice>{message.text}</InlineNotice>}
       </Panel>
 
-      <Panel id="sug-preview" title="Preview">
-        <p className="muted">See this week’s email before it goes out. Dry run: nothing is sent.</p>
+      <Panel id="sug-preview" title={t("dipbot.email.preview.title")}>
+        <p className="muted">{t("dipbot.email.preview.intro")}</p>
         <div className="actions inline">
-          <DipbotAction label="Preview this week’s email" loadingLabel="Building the preview..." loading={busy === "preview"} disabled={disabled} onClick={() => void showPreview()} />
+          <DipbotAction label={t("dipbot.email.preview.button")} loadingLabel={t("dipbot.email.preview.building")} loading={busy === "preview"} disabled={disabled} onClick={() => void showPreview()} />
         </div>
         {preview && (
           <div className="sug-preview">
-            <p className="sug-subject"><span className="muted">Subject</span> <strong>{preview.subject}</strong></p>
+            <p className="sug-subject"><span className="muted">{t("dipbot.email.preview.subject")}</span> <strong>{preview.subject}</strong></p>
             <div className="sug-controls">
-              <SegmentedControl label="Preview format" value={view} onChange={setView} options={[{ value: "html", label: "Email" }, { value: "text", label: "Plain text" }]} />
-              {view === "html" && (
-                <SegmentedControl label="Preview width" value={width} onChange={setWidth}
-                  options={[{ value: "desktop", label: `Desktop ${PREVIEW_WIDTHS.desktop}` }, { value: "mobile", label: `Mobile ${PREVIEW_WIDTHS.mobile}` }]} />
+              <SegmentedControl label={t("dipbot.email.preview.format")} value={view} onChange={setView} options={[{ value: "html", label: t("dipbot.email.preview.formatEmail") }, { value: "text", label: t("dipbot.email.preview.formatText") }]} />
+              {showHtml && (
+                <SegmentedControl label={t("dipbot.email.preview.width")} value={width} onChange={setWidth}
+                  options={[{ value: "desktop", label: t("dipbot.email.preview.desktop", { width: PREVIEW_WIDTHS.desktop }) }, { value: "mobile", label: t("dipbot.email.preview.mobile", { width: PREVIEW_WIDTHS.mobile }) }]} />
               )}
             </div>
-            {view === "html" ? (
+            {showHtml ? (
               <div className="sug-frame-wrap">
-                <iframe title="Preview of the weekly ideas email" className="sug-frame" sandbox="allow-same-origin" referrerPolicy="no-referrer" srcDoc={preview.html} style={{ width: PREVIEW_WIDTHS[width] }} />
+                <iframe title={t("dipbot.email.preview.frame")} className="sug-frame" sandbox="allow-same-origin" referrerPolicy="no-referrer" srcDoc={preview.html} style={{ width: PREVIEW_WIDTHS[width] }} />
               </div>
             ) : (
-              <pre className="sug-text" tabIndex={0} aria-label="Plain text version">{preview.text}</pre>
+              <pre className="sug-text" tabIndex={0} aria-label={t("dipbot.email.preview.textLabel")}>{preview.text}</pre>
             )}
             <p className="muted">{engineLabel(preview.engine)}</p>
           </div>
         )}
       </Panel>
 
-      <Panel id="sug-test" title="Test">
-        <p className="muted">Get this week’s email in your own inbox. You can send one test per hour.</p>
+      <Panel id="sug-test" title={t("dipbot.email.test.title")}>
+        <p className="muted">{t("dipbot.email.test.intro")}</p>
         <div className="actions inline">
-          <DipbotAction label="Send me a test" loadingLabel="Sending..." loading={busy === "test"} disabled={disabled} onClick={() => void sendTest()} />
+          <DipbotAction label={t("dipbot.email.test.button")} loadingLabel={t("dipbot.email.test.sending")} loading={busy === "test"} disabled={disabled} onClick={() => void sendTest()} />
         </div>
         {testResult && <InlineNotice>{testResult.text}</InlineNotice>}
       </Panel>

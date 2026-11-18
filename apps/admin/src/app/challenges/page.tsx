@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -9,6 +10,7 @@ import { useLoad } from "@/components/useLoad";
 import { themePhase } from "@/lib/challenge";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button } from "@/components/kit";
+import { t } from "@/lib/i18n";
 
 export default function ChallengesPage() {
   const { api } = useApp();
@@ -35,11 +37,11 @@ export default function ChallengesPage() {
   const hold = useSkeletonGate(!themes.data && !themes.error);
 
   return (
-    <Shell title="Challenges" subtitle="Review what people submitted for each weekly theme: approve it to award the points, or ask for changes." requires="challenges.review">
+    <Shell title={t("challenges.title")} subtitle={t("challenges.subtitle")} requires="challenges.review">
       {themes.error ? <LoadError error={themes.error} onRetry={themes.reload} />
-        : !themes.data || hold ? <Loading label="Loading weekly themes" layout="challenges" />
+        : !themes.data || hold ? <Loading label={t("challenges.loading")} layout="challenges" />
         : sorted.length === 0 ? (
-          <Empty title="Nothing to review yet" body="Submissions appear here once a weekly theme has started." action={<Button variant="primary" href="/themes/">Weekly themes</Button>} />
+          <Empty title={t("challenges.empty.title")} body={t("challenges.empty.body")} action={<Button variant="primary" href="/themes/">{t("challenges.empty.action")}</Button>} />
         ) : (
           <ChallengeTable>
             {sorted.map((theme) => <ChallengeRow key={theme.id} theme={theme} phase={themePhase(theme, now)} pending={pending[theme.id]} />)}

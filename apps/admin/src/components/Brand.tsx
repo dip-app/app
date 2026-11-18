@@ -1,3 +1,5 @@
+// @i18n-migrated
+
 import { useId } from "react";
 
 /** The DIP cloud mark (Figma favicon): purple disc, white cloud clipped to it, three flat strokes. */

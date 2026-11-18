@@ -1,3 +1,4 @@
+// @i18n-migrated
 import { t } from "@/lib/aiStrings";
 import { DipbotMark } from "./DipbotMark";
 

@@ -2,8 +2,10 @@
 // companies/{companyId}/challenges/{challengeId} with `type: "weekly"` and a `catalog://theme/<key>` cover.
 // Mirrors the createChallengeV1/updateChallengeV1 drafts from the weekly theme spec (T1). The server stays
 // the authority; this validation only shows errors before submitting.
+// @i18n-migrated
 
 import type { FieldErrors } from "./contract";
+import { formatNumber, t, type MessageKey } from "./i18n";
 import { THEME_URLS } from "./themes";
 import {
   type CivilDate, addDays, civilDateIn, formatDay, formatWindow, lastDayOfIso, mondayOf, mondayOfIso, mondays, weekEndIso,
@@ -92,32 +94,32 @@ export function normalizeThemeDraft(draft: ThemeDraft): ThemeDraft {
 export function validateThemeDraft(draft: ThemeDraft, options: { knownTagIds?: string[]; now?: Date } = {}): FieldErrors {
   const errors: FieldErrors = {};
   const title = draft.title.trim();
-  if (title.length < 1 || title.length > THEME_LIMITS.titleMax) errors.title = `Title must be 1 to ${THEME_LIMITS.titleMax} characters.`;
+  if (title.length < 1 || title.length > THEME_LIMITS.titleMax) errors.title = t("challenges.validation.title", { max: THEME_LIMITS.titleMax });
   const description = draft.description.trim();
   if (description.length < 1 || description.length > THEME_LIMITS.descriptionMax) {
-    errors.description = `Description must be 1 to ${THEME_LIMITS.descriptionMax} characters.`;
+    errors.description = t("challenges.validation.description", { max: THEME_LIMITS.descriptionMax });
   }
-  if (!THEME_URLS.includes(draft.coverImageURL)) errors.coverImageURL = "Pick a theme from the catalog.";
+  if (!THEME_URLS.includes(draft.coverImageURL)) errors.coverImageURL = t("challenges.validation.cover");
   if (!(Number.isFinite(draft.goal) && draft.goal > 0 && draft.goal <= THEME_LIMITS.goalMax)) {
-    errors.goal = `Goal must be more than 0 and at most ${THEME_LIMITS.goalMax.toLocaleString("en-US")}.`;
+    errors.goal = t("challenges.validation.goal", { max: formatNumber(THEME_LIMITS.goalMax) });
   }
   const unit = draft.goalUnit.trim();
-  if (unit.length < 1 || unit.length > THEME_LIMITS.goalUnitMax) errors.goalUnit = `Unit must be 1 to ${THEME_LIMITS.goalUnitMax} characters.`;
+  if (unit.length < 1 || unit.length > THEME_LIMITS.goalUnitMax) errors.goalUnit = t("challenges.validation.unit", { max: THEME_LIMITS.goalUnitMax });
   if (!Number.isInteger(draft.pointsReward) || draft.pointsReward < 0 || draft.pointsReward > THEME_LIMITS.pointsMax) {
-    errors.pointsReward = `Points must be a whole number from 0 to ${THEME_LIMITS.pointsMax}.`;
+    errors.pointsReward = t("challenges.validation.points", { max: THEME_LIMITS.pointsMax });
   }
   const start = Date.parse(draft.startDate);
   const end = Date.parse(draft.endDate);
-  if (Number.isNaN(start)) errors.startDate = "Choose the first week.";
-  if (Number.isNaN(end)) errors.endDate = "Choose the last week.";
+  if (Number.isNaN(start)) errors.startDate = t("challenges.validation.startDate");
+  if (Number.isNaN(end)) errors.endDate = t("challenges.validation.endDate");
   if (!errors.startDate && !errors.endDate) {
-    if (end <= start) errors.endDate = "The last week can’t end before the first week starts.";
-    else if (end - start > SPAN_MS) errors.endDate = `A theme can run for at most ${THEME_LIMITS.maxSpanDays} days (two weeks).`;
-    else if (options.now && end <= options.now.getTime()) errors.endDate = "These weeks have already passed. Pick this week or a later one.";
+    if (end <= start) errors.endDate = t("challenges.validation.endBeforeStart");
+    else if (end - start > SPAN_MS) errors.endDate = t("challenges.validation.tooLong", { max: THEME_LIMITS.maxSpanDays });
+    else if (options.now && end <= options.now.getTime()) errors.endDate = t("challenges.validation.passed");
   }
-  if (options.knownTagIds && draft.tagIds.some((id) => !options.knownTagIds!.includes(id))) errors.tagIds = "Choose tags from the list.";
-  if (new Set(draft.tagIds).size !== draft.tagIds.length) errors.tagIds = "Choose each tag once.";
-  if (draft.tagIds.length > THEME_LIMITS.maxTags) errors.tagIds = `Choose at most ${THEME_LIMITS.maxTags} tags.`;
+  if (options.knownTagIds && draft.tagIds.some((id) => !options.knownTagIds!.includes(id))) errors.tagIds = t("challenges.validation.tagsUnknown");
+  if (new Set(draft.tagIds).size !== draft.tagIds.length) errors.tagIds = t("challenges.validation.tagsDuplicate");
+  if (draft.tagIds.length > THEME_LIMITS.maxTags) errors.tagIds = t("challenges.validation.tagsMax", { max: THEME_LIMITS.maxTags });
   return errors;
 }
 
@@ -137,7 +139,7 @@ export function findOverlap(
 
 /** "Overlaps “Fitness” (Nov 9 to Nov 15, 2026). Pick a free week." */
 export function overlapMessage(conflict: WeeklyTheme): string {
-  return `Overlaps “${conflict.title}” (${formatWindow(conflict.startDate, conflict.endDate)}). Pick a week without a theme.`;
+  return t("challenges.validation.overlap", { title: conflict.title, window: formatWindow(conflict.startDate, conflict.endDate) });
 }
 
 export interface WeekOption {
@@ -164,7 +166,7 @@ export function startWeekOptions(themes: WeeklyTheme[], now: Date, options: { ex
   }
   return values.map((monday) => ({
     value: monday,
-    label: `Week of Mon, ${formatDay(monday, true)}`,
+    label: t("challenges.weeks.weekOf", { date: formatDay(monday, true) }),
     takenBy: findOverlap({ startDate: weekStartIso(monday), endDate: weekEndIso(addDays(monday, 6)) }, themes, options.excludeId),
   }));
 }
@@ -178,7 +180,7 @@ export function endWeekOptions(themes: WeeklyTheme[], startDate: string, options
   if (own && !values.includes(own)) values.push(own);
   return values.map((sunday, index) => ({
     value: sunday,
-    label: `Sun, ${formatDay(sunday, true)}${index === 0 ? " (1 week)" : index === 1 ? " (2 weeks)" : ""}`,
+    label: t(index === 0 ? "challenges.weeks.endLabelOneWeek" : index === 1 ? "challenges.weeks.endLabelTwoWeeks" : "challenges.weeks.endLabel", { date: formatDay(sunday, true) }),
     takenBy: findOverlap({ startDate, endDate: weekEndIso(sunday) }, themes, options.excludeId),
   }));
 }
@@ -193,6 +195,13 @@ export function firstFreeMonday(themes: WeeklyTheme[], from: CivilDate): CivilDa
 }
 
 export type ThemePhase = "current" | "upcoming" | "past";
+
+const PHASE_LABEL_KEY: Record<ThemePhase, MessageKey> = {
+  current: "challenges.phase.current", upcoming: "challenges.phase.upcoming", past: "challenges.phase.past",
+};
+
+/** The status chip text for a phase ("This week", "Upcoming", "Past"). */
+export const phaseLabel = (phase: ThemePhase): string => t(PHASE_LABEL_KEY[phase]);
 
 /** Classified from the window only. */
 export function themePhase(theme: { startDate: string; endDate: string }, now: Date = new Date()): ThemePhase {
@@ -210,9 +219,9 @@ export function sortThemes(themes: WeeklyTheme[], phase: ThemePhase): WeeklyThem
 /** "3 workouts" (the unit is stored as typed, so singular goals read as written). */
 export function formatGoal(goal: number, unit: string): string {
   if (!Number.isFinite(goal)) return unit.trim();
-  return `${goal.toLocaleString("en-US")} ${unit.trim()}`.trim();
+  return `${formatNumber(goal)} ${unit.trim()}`.trim();
 }
 
 export function formatReward(points: number): string {
-  return Number.isInteger(points) ? `+${points} points` : "";
+  return Number.isInteger(points) ? t("challenges.reward", { points }) : "";
 }

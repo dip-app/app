@@ -1,0 +1,42 @@
+// Spanish (neutral Latin American, informal "tú") for shared UI components. Draft: needs review by a native speaker.
+
+import type { ui as source } from "../en/ui";
+
+export const ui: Record<keyof typeof source, string> = {
+  // Toggle state text
+  "ui.toggle.on": "Activado",
+  "ui.toggle.off": "Desactivado",
+  "ui.skeleton.tab.current": "Actuales",
+  "ui.skeleton.tab.upcoming": "Próximos",
+  "ui.skeleton.tab.past": "Pasados",
+  "ui.skeleton.tab.cancelled": "Cancelados",
+  "ui.skeleton.col.event": "Evento",
+  "ui.skeleton.col.when": "Cuándo",
+  "ui.skeleton.col.where": "Dónde",
+  "ui.skeleton.col.price": "Precio",
+  "ui.skeleton.col.going": "Asistirán",
+  "ui.skeleton.col.status": "Estado",
+  "ui.skeleton.col.actions": "Acciones",
+  "ui.skeleton.col.theme": "Tema",
+  "ui.skeleton.col.week": "Semana",
+  "ui.skeleton.col.goal": "Meta",
+  "ui.skeleton.col.reward": "Recompensa",
+  "ui.skeleton.col.participation": "Participación",
+  "ui.skeleton.col.challenge": "Reto",
+  "ui.skeleton.col.dates": "Fechas",
+  "ui.skeleton.col.joined": "Unidos",
+  "ui.skeleton.col.pending": "Pendientes",
+  "ui.skeleton.col.action": "Acción",
+  "ui.skeleton.col.name": "Nombre",
+  "ui.skeleton.col.role": "Rol",
+  "ui.skeleton.col.teams": "Equipos",
+  "ui.skeleton.col.workLocation": "Lugar de trabajo",
+  "ui.skeleton.col.points": "Puntos",
+  "ui.skeleton.col.added": "Agregado",
+  "ui.skeleton.col.who": "Quién",
+  "ui.skeleton.col.what": "Qué",
+  "ui.skeleton.col.details": "Detalles",
+  "ui.skeleton.col.row": "Fila",
+  "ui.skeleton.col.person": "Persona",
+  "ui.skeleton.col.changes": "Cambios",
+};

@@ -1,5 +1,7 @@
 "use client";
 
+// @i18n-migrated
+
 import { useEffect, useState } from "react";
 import { ActivityChart, InterestsCard, OverviewLoading, PeopleCard, PendingActions, QuietNotice, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "@/components/Overview";
 import { Shell } from "@/components/Shell";
@@ -10,7 +12,8 @@ import { useTags } from "@/components/TagCatalog";
 import { useLoad } from "@/components/useLoad";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { can } from "@/lib/adminTypes";
-import { refreshFailureMessage, updatedLabel } from "@/lib/insights";
+import { type RefreshSection, refreshFailureMessage, updatedLabel } from "@/lib/insights";
+import { t } from "@/lib/i18n";
 import { Button, InlineNotice } from "@/components/kit";
 
 export default function OverviewPage() {
@@ -37,10 +40,10 @@ export default function OverviewPage() {
     setRefreshError("");
     try {
       const [fresh, stats, tags] = await Promise.allSettled([api.companyInsights(true), api.tagStats(), tagCatalog.reload()]);
-      const failed: string[] = [];
+      const failed: RefreshSection[] = [];
       if (fresh.status === "fulfilled") insights.setData(fresh.value); else failed.push("insights");
-      if (stats.status === "fulfilled") tagStats.setData(stats.value); else failed.push("interest counts");
-      if (tags.status === "rejected" || (tags.status === "fulfilled" && tags.value === false)) failed.push("interest names");
+      if (stats.status === "fulfilled") tagStats.setData(stats.value); else failed.push("interestCounts");
+      if (tags.status === "rejected" || (tags.status === "fulfilled" && tags.value === false)) failed.push("interestNames");
       if (failed.length > 0) setRefreshError(refreshFailureMessage(failed));
       setNow(new Date());
     } finally {
@@ -52,8 +55,8 @@ export default function OverviewPage() {
   const data = insights.data;
   const action = data ? (
     <div className="refresh">
-      <span className="muted" role="status">{refreshing ? "Refreshing…" : updatedLabel(data.generatedAt, now)}</span>
-      <Button size="sm" onClick={() => void refresh()} disabled={refreshing} aria-busy={refreshing || undefined}>{refreshing ? "Refreshing" : "Refresh"}</Button>
+      <span className="muted" role="status">{refreshing ? t("overview.refreshing") : updatedLabel(data.generatedAt, now)}</span>
+      <Button size="sm" onClick={() => void refresh()} disabled={refreshing} aria-busy={refreshing || undefined}>{refreshing ? t("overview.refresh.busy") : t("overview.refresh.button")}</Button>
     </div>
   ) : insights.error ? undefined : (
     // Same footprint as the loaded hint and button, so the header does not change height when the data arrives.
@@ -69,7 +72,7 @@ export default function OverviewPage() {
   const holdSkeleton = useSkeletonGate(loading);
 
   return (
-    <Shell title="Overview" subtitle="How your company uses DIP over the last 30 days." requires="insights.view" action={action}>
+    <Shell title={t("overview.title")} subtitle={t("overview.subtitle")} requires="insights.view" action={action}>
       {insights.error ? <div className="overview"><LoadError error={insights.error} onRetry={insights.reload} />{interests}</div>
         : !data || holdSkeleton ? <OverviewLoading role={role} interestCount={tagCatalog.status === "ready" ? tagCatalog.tags.length : undefined}>{interests}</OverviewLoading>
         : (

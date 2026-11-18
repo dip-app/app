@@ -1,3 +1,6 @@
+// @i18n-migrated
+import { intlLocale, t } from "@/lib/i18n";
+
 /**
  * Pure logic behind the event "When" picker: day keys, the two-click range machine, the clock-dial math,
  * 12-hour text, DST helpers and the ISO round trip. No React, no DOM.
@@ -193,20 +196,28 @@ export function parseTime(text: string, fallbackPm = false): number | null {
   return hour * 60 + minute;
 }
 
-export function formatDuration(minutes: number): string {
-  if (minutes <= 0) return "0m";
+/** Short units ("1d 2h 5m") for every part that is not zero. */
+export function durationParts(minutes: number): string[] {
   const days = Math.floor(minutes / DAY_MIN);
   const hours = Math.floor((minutes % DAY_MIN) / 60);
   const mins = minutes % 60;
-  return [days && `${days}d`, hours && `${hours}h`, mins && `${mins}m`].filter(Boolean).join(" ");
+  return [days && t("editor.when.dayShort", { n: days }), hours && t("editor.when.hourShort", { n: hours }), mins && t("editor.when.minuteShort", { n: mins })].filter(Boolean) as string[];
+}
+
+export function formatDuration(minutes: number): string {
+  if (minutes <= 0) return t("editor.when.minuteShort", { n: 0 });
+  return durationParts(minutes).join(" ");
 }
 
 export function describeDuration(minutes: number): string {
   const days = Math.floor(minutes / DAY_MIN);
   const hours = Math.floor((minutes % DAY_MIN) / 60);
   const mins = minutes % 60;
-  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  return [days && unit(days, "day"), hours && unit(hours, "hour"), mins && unit(mins, "minute")].filter(Boolean).join(" ") || "0 minutes";
+  return [
+    days && t("editor.when.days", { count: days }),
+    hours && t("editor.when.hours", { count: hours }),
+    mins && t("editor.when.minutes", { count: mins }),
+  ].filter(Boolean).join(" ") || t("editor.when.minutes", { count: 0 });
 }
 
 // ---------------------------------------------------------------- local time, ISO and DST
@@ -235,7 +246,7 @@ export function isoToLocal(iso: string): { day: DayKey; minutes: number } | null
 /** Local time zone abbreviation for a moment, e.g. "EST". */
 export function zoneAbbreviation(date: Date): string {
   try {
-    return new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(date).find((p) => p.type === "timeZoneName")?.value ?? "";
+    return new Intl.DateTimeFormat(intlLocale(), { timeZoneName: "short" }).formatToParts(date).find((p) => p.type === "timeZoneName")?.value ?? "";
   } catch {
     return "";
   }
@@ -246,9 +257,9 @@ export function dstNote(day: DayKey, minutes: number): string | null {
   const { date, shifted, ambiguous } = resolveLocal(day, minutes);
   if (shifted) {
     const used = date.getHours() * 60 + date.getMinutes();
-    return `${formatTime(minutes)} doesn’t exist on that day because clocks move forward. We use ${formatTime(used)}.`;
+    return t("editor.when.dstGap", { time: formatTime(minutes), used: formatTime(used) });
   }
-  if (ambiguous) return `${formatTime(minutes)} happens twice on that day because clocks move back. We use the first one.`;
+  if (ambiguous) return t("editor.when.dstRepeat", { time: formatTime(minutes) });
   return null;
 }
 

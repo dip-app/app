@@ -1,5 +1,7 @@
 "use client";
 
+// @i18n-migrated
+
 import Link from "next/link";
 import type { ComponentPropsWithRef, ReactNode } from "react";
 

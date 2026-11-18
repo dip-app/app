@@ -1,3 +1,4 @@
+// @i18n-migrated
 // Pure helpers for the saved company suggestions (getEventIdeaSuggestionsV1 cacheStatus): the "Updated 3 days ago" line.
 
 import type { EventIdeaSuggestions } from "./adminTypes";

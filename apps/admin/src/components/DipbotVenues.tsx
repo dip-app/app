@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useId, useRef, useState } from "react";
 import { type CompanyOffice, DEFAULT_RADIUS, type FindVenuesResult, RADIUS_CHOICES, type VenueOption, buildVenueRequest, readRadius, saveRadius } from "@/lib/venues";

@@ -1,7 +1,9 @@
 "use client";
+// @i18n-migrated
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/contract";
+import { t } from "@/lib/i18n";
 import type { AdminApi } from "@/lib/api";
 import { useApp } from "./AppProvider";
 
@@ -25,7 +27,7 @@ export function useLoad<T>(load: (api: AdminApi) => Promise<T>, key: string = ""
     let cancelled = false;
     loader(api).then(
       (value) => !cancelled && (setData(value), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load this. Check your connection and try again.")),
+      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("common.loadFailed"))),
     );
     return () => { cancelled = true; };
   }, [api, session, loader, attempt, key]);
@@ -33,6 +35,6 @@ export function useLoad<T>(load: (api: AdminApi) => Promise<T>, key: string = ""
   return { data, error, reload: useCallback(() => setAttempt((n) => n + 1), []), setData };
 }
 
-export function describe(failure: unknown, fallback = "That didn’t go through. Try again."): string {
+export function describe(failure: unknown, fallback = t("common.actionFailed")): string {
   return failure instanceof ApiError ? failure.message : fallback;
 }

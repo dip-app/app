@@ -47,10 +47,10 @@ describe("UserSettings", () => {
     expect(screen.getByTestId("email-settings")).toBeTruthy();
   });
 
-  it("hides sections the role cannot use", () => {
+  it("hides sections the role cannot use; everyone gets the language picker", () => {
     state.session = { ...state.session, role: "member" };
     render(<UserSettings />);
     expect(screen.queryByTestId("email-settings")).toBeNull();
-    expect(screen.getByText("Nothing to set yet")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Language" })).toBeTruthy();
   });
 });

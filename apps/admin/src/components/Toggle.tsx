@@ -1,5 +1,9 @@
 "use client";
 
+// @i18n-migrated
+
+import { t } from "@/lib/i18n";
+
 /** Switch for yes/no settings (role="switch"); replaces a native checkbox with the portal's pill style. */
 export function Toggle({ checked, onChange, label, hint, badge }: {
   checked: boolean;
@@ -15,7 +19,7 @@ export function Toggle({ checked, onChange, label, hint, badge }: {
         <span className="label">{label}{badge}</span>
         {hint && <span className="hint">{hint}</span>}
       </span>
-      <span className="state" aria-hidden>{checked ? "On" : "Off"}</span>
+      <span className="state" aria-hidden>{checked ? t("ui.toggle.on") : t("ui.toggle.off")}</span>
       <span className="track" aria-hidden><span className="knob" /></span>
     </button>
   );

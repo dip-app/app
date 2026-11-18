@@ -1,3 +1,5 @@
+// @i18n-migrated
+
 import type { ReactNode } from "react";
 
 export type ChipTone = "ok" | "warn";

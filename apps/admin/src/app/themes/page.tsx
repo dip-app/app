@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -12,18 +13,19 @@ import { ApiError } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button } from "@/components/kit";
+import { t, type MessageKey } from "@/lib/i18n";
 
-const PHASES: { id: ThemePhase; label: string }[] = [
-  { id: "current", label: "Current" },
-  { id: "upcoming", label: "Upcoming" },
-  { id: "past", label: "Past" },
+const PHASES: { id: ThemePhase; labelKey: MessageKey }[] = [
+  { id: "current", labelKey: "challenges.themes.tab.current" },
+  { id: "upcoming", labelKey: "challenges.themes.tab.upcoming" },
+  { id: "past", labelKey: "challenges.themes.tab.past" },
 ];
 const IDS = PHASES.map((item) => item.id);
 
-const EMPTY: Record<ThemePhase, { title: string; body: string }> = {
-  current: { title: "No theme this week", body: "Members see the Home challenge card only while a theme runs. Add one for this week or plan the next." },
-  upcoming: { title: "Nothing planned", body: "Plan the next weeks so Home always has a challenge on Monday." },
-  past: { title: "No past themes", body: "Themes move here once their last day ends." },
+const EMPTY: Record<ThemePhase, { titleKey: MessageKey; bodyKey: MessageKey }> = {
+  current: { titleKey: "challenges.themes.empty.current.title", bodyKey: "challenges.themes.empty.current.body" },
+  upcoming: { titleKey: "challenges.themes.empty.upcoming.title", bodyKey: "challenges.themes.empty.upcoming.body" },
+  past: { titleKey: "challenges.themes.empty.past.title", bodyKey: "challenges.themes.empty.past.body" },
 };
 const DEFAULTS = { phase: "current" };
 
@@ -41,7 +43,7 @@ function Themes() {
     let cancelled = false;
     api.listThemes().then(
       (list) => !cancelled && (setThemes(list), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", "Couldn’t load weekly themes. Check your connection and try again.")),
+      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("challenges.themes.loadFailed"))),
     );
     return () => { cancelled = true; };
   }, [api, session, attempt]);
@@ -51,17 +53,17 @@ function Themes() {
   const shown = themes ? sortThemes(themes.filter((theme) => themePhase(theme, now) === phase), phase) : [];
 
   return (
-    <Shell title="Weekly themes" subtitle="The “This Week’s Challenge” card on the app’s Home screen."
-      action={canManage ? <Button variant="primary" href="/themes/new/">New theme</Button> : undefined}>
+    <Shell title={t("challenges.themes.title")} subtitle={t("challenges.themes.subtitle")}
+      action={canManage ? <Button variant="primary" href="/themes/new/">{t("challenges.themes.new")}</Button> : undefined}>
       {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
-        : themes === null || hold ? <Loading label="Loading weekly themes" layout="themes" />
+        : themes === null || hold ? <Loading label={t("challenges.loading")} layout="themes" />
         : (
           <>
-            <Tabs idBase="themes" label="Filter weekly themes" value={phase} onChange={(id) => setQuery({ phase: id })}
-              items={PHASES.map((item) => ({ id: item.id, label: item.label, count: themes.filter((theme) => themePhase(theme, now) === item.id).length }))} />
+            <Tabs idBase="themes" label={t("challenges.themes.filterLabel")} value={phase} onChange={(id) => setQuery({ phase: id })}
+              items={PHASES.map((item) => ({ id: item.id, label: t(item.labelKey), count: themes.filter((theme) => themePhase(theme, now) === item.id).length }))} />
             <div {...tabPanelProps("themes", phase)}>
               {shown.length === 0 ? (
-                <Empty title={EMPTY[phase].title} body={EMPTY[phase].body} />
+                <Empty title={t(EMPTY[phase].titleKey)} body={t(EMPTY[phase].bodyKey)} />
               ) : (
                 <ThemeTable>{shown.map((theme) => <ThemeCard key={theme.id} theme={theme} phase={phase} canEdit={canManage} />)}</ThemeTable>
               )}
@@ -73,5 +75,5 @@ function Themes() {
 }
 
 export default function ThemesPage() {
-  return <Suspense fallback={<Loading label="Loading weekly themes" layout="themes" />}><Themes /></Suspense>;
+  return <Suspense fallback={<Loading label={t("challenges.loading")} layout="themes" />}><Themes /></Suspense>;
 }

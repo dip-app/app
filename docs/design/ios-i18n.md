@@ -173,5 +173,5 @@ member locale on the profile, server-side catalogs, and push payloads with local
   there was no RTL audit or pseudolanguage pass.
 - Duo layouts were only checked for English regressions.
 - Other languages.
-- Admin portal, email and push copy, which are separate phases of #259.
+- Email and push copy, which are a separate phase of #259. The admin portal is covered in [admin-i18n.md](admin-i18n.md).
 - Translating server or catalog content, such as interest names and theme descriptions.

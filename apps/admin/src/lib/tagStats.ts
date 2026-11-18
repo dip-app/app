@@ -1,4 +1,6 @@
+// @i18n-migrated
 import type { Tag } from "./catalog";
+import { t } from "./i18n";
 
 /** `companies/{companyId}/tagStats/{tagId}` (schema `TagStat`). Timestamps are ISO strings in the portal. */
 export interface TagStat {
@@ -54,4 +56,4 @@ export function interestRows(stats: readonly TagStat[] | null | undefined, tags:
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-export const interestLabel = (count: number): string => `${count} ${count === 1 ? "member" : "members"} interested`;
+export const interestLabel = (count: number): string => t("overview.interests.interested", { count });

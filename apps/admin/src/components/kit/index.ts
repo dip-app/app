@@ -1,3 +1,4 @@
+// @i18n-migrated
 // The portal's shared UI kit. Reach for these before writing markup with .pill-btn, .banner, .notice, .info-pill,
 // .chip, .panel, .empty or .page-header. See docs/design/admin-components.md.
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant, type LinkProps } from "./Button";

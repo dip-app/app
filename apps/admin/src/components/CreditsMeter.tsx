@@ -1,4 +1,5 @@
 "use client";
+// @i18n-migrated
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { AiCredits } from "@/lib/adminTypes";
