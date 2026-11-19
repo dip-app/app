@@ -7,11 +7,11 @@ Status: implemented in code (contract, rules, server helper, iOS mirror); nothin
 | Category id | Covers (kinds) | Per-event level gate | Push default | Email offered | Email default |
 | --- | --- | --- | --- | --- | --- |
 | `invites` | `invite`, `invite_answered` | none | on | yes | on |
-| `event_updates` | `event_changed`, `event_cancelled` (gated), `attendee_added` (not gated) | `changes` (`all`, `changes`) | on | yes | on |
+| `event_updates` | `event_changed`, `event_cancelled` (gated), `attendee_added`, `attendee_removed` (not gated) | `changes` (`all`, `changes`) | on | yes | on |
 | `reminders` | `reminder` | `reminders` (`all`, `changes`, `reminders`) | on | yes | off |
 | `chat` | `chat` | `all` | on | no | n/a |
 | `challenges` | `challenge_approved`, `challenge_changes_requested`, `weekly_theme` | none | on | yes | on |
-| `social` | comments and photos (no kind yet) | none | off | no | n/a |
+| `social` | `photo_comment` (comment on your album photo), `photo_added` (new photo in an album you attended) | none | off | no | n/a |
 | `discovery` | `event_interest` | none | off | yes | off |
 | `calendar_invites` | `calendar_invite` (METHOD:REQUEST and METHOD:CANCEL .ics emails, [design](calendar.md)) | none | n/a (not offered) | yes | on |
 | `admin_suggestions` | `admin_suggestions` (weekly ideas for admins, [design](admin-suggestions-email.md)) | none | n/a (not offered) | yes | off |

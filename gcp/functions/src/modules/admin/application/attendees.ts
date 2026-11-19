@@ -33,6 +33,8 @@ export interface RemoveResult { removed: boolean; attendeeCount: number; notifie
  */
 export async function cancelAttendance(tx: AdminTransaction, actor: Actor, eventId: string, uid: string, options: {
   now: Date; notify: boolean; auditId: string; requestId?: string | undefined; reason?: string | undefined; notificationId: string;
+  /** Called with the event title when a notified removal happens, so the caller can push after the commit. */
+  onNotified?: (eventTitle: string) => void;
 }): Promise<RemoveResult> {
   const event = await loadEvent(tx, actor, eventId);
   const rsvp = await tx.get(paths.rsvp(actor.companyId, eventId, uid));
@@ -45,6 +47,7 @@ export async function cancelAttendance(tx: AdminTransaction, actor: Actor, event
   if (options.notify) {
     tx.create(paths.notification(uid, options.notificationId),
       notification(actor, uid, "attendee_removed", "Your spot was released", `An organizer removed you from ${event.title}.`, eventId));
+    options.onNotified?.(event.title);
   }
   writeAudit(tx, actor, {
     id: options.auditId, action: "attendee.remove", targetType: "attendee", targetId: `${eventId}/${uid}`,
@@ -138,17 +141,27 @@ export async function removeEventAttendee(deps: AdminDeps, caller: Caller | null
   const req = parseRemoveAttendee(data);
   await consumeAfterAuth(deps, authenticated, req.companyId, "attendee.manage");
   const now = deps.now();
-  return (await deps.store.runTransaction(async tx => {
+  let eventTitle: string | null = null;
+  const result = (await deps.store.runTransaction(async tx => {
+    eventTitle = null;
     const actor = await authorize(tx, authenticated, req.companyId, "attendee.manage");
     const payload = { eventId: req.eventId, userId: req.userId, notify: req.notify, reason: req.reason ?? null };
     return once(tx, actor, "removeEventAttendeeV1", req.requestId, payload, async () => {
       await loadMember(tx, actor, req.userId);
       const result = await cancelAttendance(tx, actor, req.eventId, req.userId, {
         now, notify: req.notify, auditId: `${actor.uid}_${req.requestId}`, requestId: req.requestId, reason: req.reason, notificationId: `admin_${req.requestId}`,
+        onNotified: title => { eventTitle = title; },
       });
       return { contractVersion: 1, eventId: req.eventId, userId: req.userId, ...result } satisfies RemoveEventAttendeeResponse;
     }, now);
   })).value;
+  // Best-effort, after the commit, and only for a request that actually ran (an idempotent replay never reaches the callback).
+  if (eventTitle !== null && deps.pushes?.attendeeRemoved) {
+    try {
+      await deps.pushes.attendeeRemoved({ companyId: req.companyId, eventId: req.eventId, eventTitle, userId: req.userId, notificationId: `admin_${req.requestId}` });
+    } catch { /* best-effort */ }
+  }
+  return result;
 }
 
 /**

@@ -891,11 +891,14 @@
             "invite",
             "invite_answered",
             "attendee_added",
+            "attendee_removed",
             "event_cancelled",
             "challenge_approved",
             "challenge_changes_requested",
             "weekly_theme",
-            "event_interest"
+            "event_interest",
+            "photo_comment",
+            "photo_added"
           ]
         },
         "companyId": {
@@ -932,6 +935,12 @@
           "type": "string"
         },
         "challengeId": {
+          "type": "string"
+        },
+        "photoId": {
+          "type": "string"
+        },
+        "commentId": {
           "type": "string"
         }
       },

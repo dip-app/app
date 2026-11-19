@@ -433,8 +433,10 @@ public struct PushNotificationData: Codable, Equatable, Sendable {
     public var inviteId: String?
     public var submissionId: String?
     public var challengeId: String?
+    public var photoId: String?
+    public var commentId: String?
 
-    public init(type: String, companyId: String, eventId: String? = nil, deepLink: String, messageId: String? = nil, revision: String? = nil, window: String? = nil, category: NotificationCategory? = nil, inviteId: String? = nil, submissionId: String? = nil, challengeId: String? = nil) {
+    public init(type: String, companyId: String, eventId: String? = nil, deepLink: String, messageId: String? = nil, revision: String? = nil, window: String? = nil, category: NotificationCategory? = nil, inviteId: String? = nil, submissionId: String? = nil, challengeId: String? = nil, photoId: String? = nil, commentId: String? = nil) {
         self.type = type
         self.companyId = companyId
         self.eventId = eventId
@@ -446,6 +448,8 @@ public struct PushNotificationData: Codable, Equatable, Sendable {
         self.inviteId = inviteId
         self.submissionId = submissionId
         self.challengeId = challengeId
+        self.photoId = photoId
+        self.commentId = commentId
     }
 }
 

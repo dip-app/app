@@ -55,6 +55,7 @@ describe("notification registry", () => {
       invite: "invite", invite_answered: "invite_answered", attendee_added: "attendee_added",
       challenge_approved: "challenge_approved", challenge_changes_requested: "challenge_changes_requested",
       weekly_theme: null, event_interest: null, calendar_invite: null, admin_suggestions: null,
+      photo_comment: "comment", photo_added: "photo_added", attendee_removed: "attendee_removed",
     });
   });
 
@@ -63,7 +64,7 @@ describe("notification registry", () => {
     assert.deepEqual(eventLevelsFor("event_changed"), LEVELS_FOR.event_changed);
     assert.deepEqual(eventLevelsFor("event_cancelled"), LEVELS_FOR.event_changed);
     assert.deepEqual(eventLevelsFor("reminder"), LEVELS_FOR.reminder);
-    for (const kind of ["invite", "invite_answered", "attendee_added", "challenge_approved", "challenge_changes_requested", "weekly_theme", "event_interest", "calendar_invite", "admin_suggestions"] as const) {
+    for (const kind of ["invite", "invite_answered", "attendee_added", "challenge_approved", "challenge_changes_requested", "weekly_theme", "event_interest", "calendar_invite", "admin_suggestions", "photo_comment", "photo_added", "attendee_removed"] as const) {
       assert.equal(eventLevelsFor(kind), null, kind);
     }
   });
@@ -127,6 +128,7 @@ describe("evaluateDelivery precedence matrix", () => {
     reminder: "reminders", chat: "chat",
     challenge_approved: "challenges", challenge_changes_requested: "challenges", weekly_theme: "challenges",
     event_interest: "discovery", calendar_invite: "calendar_invites", admin_suggestions: "admin_suggestions",
+    photo_comment: "social", photo_added: "social", attendee_removed: "event_updates",
   };
   const DOC_GATE: Partial<Record<NotificationKind, string[]>> = {
     chat: ["all"], event_changed: ["all", "changes"], event_cancelled: ["all", "changes"], reminder: ["all", "changes", "reminders"],
@@ -167,7 +169,7 @@ describe("evaluateDelivery precedence matrix", () => {
         }
       }
     }
-    assert.equal(cases, 13 * 2 * 2 * 6 * 2);
+    assert.equal(cases, 16 * 2 * 2 * 6 * 2);
   });
 
   test("reason order: category_off before event_level before no_destination", () => {

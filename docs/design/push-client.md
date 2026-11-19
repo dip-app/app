@@ -65,7 +65,7 @@ Status: nothing below has been run on a device yet. Use two physical iPhones (A 
 - [ ] Reminders: switch off: no 24 h or 1 h push. On (and activity level All or Reminders): both arrive.
 - [ ] Chat: switch off, B posts: no push even at activity level All. On: push arrives.
 - [ ] Challenges: switch off: no review or weekly theme push. On: both arrive.
-- [ ] Comments and photos: default off, no push; turn on and confirm the behavior the server offers (no kind yet).
+- [ ] Comments and photos: default off, no push; turn on, then a comment on your photo ("New comment on your photo") and a new photo in an album you attended (activity title, "X added a photo to the album.") both arrive. Rows 24 to 29 of the [device verification guide](../ops/push-device-verification.md).
 - [ ] Suggestions: default off, no push; turn on and confirm the behavior the server offers (no kind yet).
 - [ ] The per-activity bell still overrides: category on with activity level None gives no push.
 
@@ -85,4 +85,8 @@ Payload: every push is an alert (`apns-push-type: alert`, priority 10, `interrup
 
 Token hygiene: `registerDeviceV1` refreshes `lastSeenAt` on every launch, and a daily server job deletes registry rows unseen for 60 days. Invalid tokens are still pruned on send.
 
-Background/silent pushes, badge counts, notification categories/actions, and any server change. A rich notification service extension is out of scope.
+### Invite action buttons (PUSH-8)
+
+Server side is ready: invite pushes carry `aps.category` `DIP_INVITE` and the data keys `type` `invite`, `companyId`, `eventId`, `inviteId`. iOS ignores a category the app has not registered, so current builds are unaffected. The app work, not started and device-only to verify: register `UNNotificationCategory` `DIP_INVITE` with actions `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE`, handle `userNotificationCenter(_:didReceive:)` by calling `respondToInviteV1 {companyId, inviteId, response}` with App Check in a short launch, and on failure leave the notice and show a recoverable state when the app opens. Also: see the [catalog follow-ups](push-catalog.md#ios-follow-ups-not-part-of-this-change).
+
+Background/silent pushes, badge counts, other notification categories/actions, and any server change. A rich notification service extension is out of scope.

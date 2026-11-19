@@ -9,12 +9,14 @@ export const PUSH_RATE_LIMITS = { perHour: 20, perDay: 100 } as const;
  * counted (their volume is bounded by organizer actions and the 15-minute schedule, and silently dropping them is
  * worse than any runaway risk).
  */
-export type RateClass = "shared" | "chat" | "changes" | "exempt";
+export type RateClass = "shared" | "chat" | "changes" | "social" | "exempt";
 
 export const RATE_CLASS_LIMITS: Readonly<Record<Exclude<RateClass, "exempt">, { perHour: number; perDay: number }>> = {
   shared: PUSH_RATE_LIMITS,
   chat: { perHour: 30, perDay: 200 },
   changes: { perHour: 60, perDay: 300 },
+  /** Photo comments and new-photo notices: an opt-in category, so a small separate budget that never eats the shared one. */
+  social: { perHour: 10, perDay: 40 },
 };
 
 const KIND_CLASS: Readonly<Record<NotificationKind, RateClass>> = {
@@ -25,10 +27,13 @@ const KIND_CLASS: Readonly<Record<NotificationKind, RateClass>> = {
   invite: "shared",
   invite_answered: "shared",
   attendee_added: "shared",
+  attendee_removed: "shared",
   challenge_approved: "shared",
   challenge_changes_requested: "shared",
   weekly_theme: "shared",
   event_interest: "shared",
+  photo_comment: "social",
+  photo_added: "social",
   // Email only (push never offers the category); listed so the map stays total.
   calendar_invite: "shared",
   admin_suggestions: "shared",
@@ -41,7 +46,7 @@ export interface RateCounter { hourKey: string; hourCount: number; dayKey: strin
  * The shared counter lives in the top-level fields (unchanged shape). Other classes live under `buckets`; documents
  * written before this field existed have no buckets and read as zero.
  */
-export interface RateLimitState extends RateCounter { buckets?: Partial<Record<"chat" | "changes", RateCounter>> }
+export interface RateLimitState extends RateCounter { buckets?: Partial<Record<"chat" | "changes" | "social", RateCounter>> }
 
 /** "YYYY-MM-DDTHH" in UTC. */
 export const hourBucket = (now: Date): string => now.toISOString().slice(0, 13);

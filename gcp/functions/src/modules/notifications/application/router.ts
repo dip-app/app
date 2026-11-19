@@ -65,7 +65,7 @@ export interface DeliveryStats extends PushStats {
 
 const EMAIL_PARALLELISM = 20;
 
-const safeLog = (log: DeliveryLog | undefined, level: "warn" | "error", message: string, fields: Record<string, unknown>) => {
+const safeLog = (log: DeliveryLog | undefined, level: "info" | "warn" | "error", message: string, fields: Record<string, unknown>) => {
   try { log?.[level](message, fields); } catch { /* logging must not break delivery */ }
 };
 
@@ -206,5 +206,10 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
   let result: DeliveryStats = stats;
   if (toSend.length > 0) result = { ...stats, ...(await sendLocalized(deps, request, toSend, context)) };
   await deps.receipts.complete(receiptKey);
+  // Device-verification breadcrumb (docs/ops/push-device-verification.md): ids, kind and counts only, never tokens, names or text.
+  safeLog(deps.logger, "info", "notification delivered", {
+    ...context, recipients: recipients.length, tokens: result.tokens, sent: result.sent, failed: result.failed, removed: result.removed,
+    inApp: result.inApp, emailsEnqueued: result.emailsEnqueued, blocked: result.blocked,
+  });
   return result;
 }

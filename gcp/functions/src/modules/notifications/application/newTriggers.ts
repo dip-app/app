@@ -1,7 +1,7 @@
 import { attendeeAddedEmail, challengeReviewedEmail, eventFacts, inviteAnsweredEmail } from "./emailPayload";
 import type { NotificationRequest } from "./router";
 import type { MemberPager, WeeklyTheme, WeeklyThemeReader } from "./routerPorts";
-import { attendeeAddedPush, challengeReviewedPush, inviteAnsweredPush, weeklyThemePush } from "../domain/push";
+import { attendeeAddedPush, attendeeRemovedPush, challengeReviewedPush, inviteAnsweredPush, weeklyThemePush } from "../domain/push";
 
 /**
  * Requests for the triggers that always use the router (PUSH-4). Each builds a `NotificationRequest` with
@@ -23,6 +23,17 @@ export function attendeeAddedRequest(input: AttendeeAddedInput): NotificationReq
     pushFor: (locale) => attendeeAddedPush(input.companyId, input.eventId, input.eventTitle, locale),
     email: attendeeAddedEmail(input.eventId, input.notificationId,
       eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
+  };
+}
+
+export interface AttendeeRemovedInput { companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string }
+/** The in-app notice (`attendee_removed`) is written by the removing command in its own transaction (same id). */
+export function attendeeRemovedRequest(input: AttendeeRemovedInput): NotificationRequest {
+  return {
+    id: input.notificationId, kind: "attendee_removed", companyId: input.companyId,
+    recipients: [{ uid: input.userId }],
+    push: attendeeRemovedPush(input.companyId, input.eventId, input.eventTitle),
+    pushFor: (locale) => attendeeRemovedPush(input.companyId, input.eventId, input.eventTitle, locale),
   };
 }
 
@@ -92,6 +103,10 @@ export class RoutedPushNotifier {
 
   attendeeAdded(input: AttendeeAddedInput): Promise<void> {
     return this.send("attendee_added", () => attendeeAddedRequest(input));
+  }
+
+  attendeeRemoved(input: AttendeeRemovedInput): Promise<void> {
+    return this.send("attendee_removed", () => attendeeRemovedRequest(input));
   }
 
   accepted(input: InviteAcceptedInput): Promise<void> {
