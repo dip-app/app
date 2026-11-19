@@ -1,6 +1,7 @@
 import type { FirebaseApp } from "firebase/app";
 import {
-  type DocumentData, type Firestore, type QueryDocumentSnapshot, Timestamp, collection, doc, documentId, getDoc, getDocs, limit, orderBy, query, startAfter, where,
+  type DocumentData, type Firestore, type QueryDocumentSnapshot, Timestamp, collection, doc, documentId, getDoc, getDocs, limit, orderBy, query,
+  serverTimestamp, setDoc, startAfter, where,
 } from "firebase/firestore";
 import { type Functions, httpsCallable } from "firebase/functions";
 import { getBlob, getStorage, ref } from "firebase/storage";
@@ -8,7 +9,7 @@ import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
   type AiBucket, type AiConsiderationRank, type AiEventChoices, type DipbotIdea, type DipbotIdeas, type SuggestThemeResult, type ThemeSuggestion, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
-  type Submission,
+  type Submission, emailSwitchesFrom,
 } from "./adminTypes";
 import type { Session } from "./api";
 import type { TagStat } from "./tagStats";
@@ -689,6 +690,21 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     setMyLocale: (locale) => run(async () => {
       await organizer();
       await httpsCallable(functions, ADMIN_CALLABLES.setMyLocale)({ contractVersion: 1, locale });
+    }),
+
+    // The person's own preference document: the rules allow the owner to read it and to merge-write allow-listed booleans
+    // with contractVersion 1 and a server timestamp (the same write the iOS app makes).
+    emailSwitches: () => run(async () => {
+      const session = await organizer();
+      const snap = await getDoc(doc(db, "users", session.uid, "settings", "notifications"));
+      return emailSwitchesFrom(snap.exists() ? snap.get("email") : null);
+    }),
+    setEmailSwitch: (name, on) => run(async () => {
+      const session = await organizer();
+      const ref = doc(db, "users", session.uid, "settings", "notifications");
+      await setDoc(ref, { contractVersion: 1, email: { [name]: on }, updatedAt: serverTimestamp() }, { merge: true });
+      const snap = await getDoc(ref);
+      return emailSwitchesFrom(snap.exists() ? snap.get("email") : null);
     }),
   };
 }

@@ -35,6 +35,8 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.reason.discovery": "sugerencias de eventos",
   "email.reason.calendar_invites": "invitaciones de calendario",
   "email.reason.admin_suggestions": "ideas semanales de eventos",
+  "email.reason.weekly_themes": "temas semanales",
+  "email.reason.admin_digest": "resumen diario de la lista de personal",
 
   "email.inviteReceived.heading": "Nueva invitación",
   "email.inviteReceived.subject": "{who} te invitó a {title}",
@@ -144,6 +146,30 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.ideas.footer.reason": "Recibes este correo porque activaste las ideas semanales de eventos para administradores.",
   "email.ideas.footer.manage": "Administrar en el portal de administración",
   "email.ideas.text.when": "Cuándo: {hint}",
+
+  "email.weeklyTheme.heading": "El tema de esta semana",
+  "email.weeklyTheme.subject": "Tema de la semana: {title}",
+  "email.weeklyTheme.preheader": "{title} es el nuevo tema semanal. Participa con tus compañeros.",
+  "email.weeklyTheme.lead": "Empezó un nuevo tema semanal. Participa con tus compañeros y luego registra en DIP lo que hiciste.",
+  "email.weeklyTheme.dates": "{start} a {end}",
+  "email.weeklyTheme.points": "{points, plural, one {Vale # punto} other {Vale # puntos}}",
+  "email.weeklyTheme.note": "Lo encontrarás en la pantalla de Inicio de la app DIP.",
+
+  "email.adminDigest.heading": "Novedades de la lista de personal",
+  "email.adminDigest.subject": "Novedades de la lista de personal de DIP: {day}",
+  "email.adminDigest.summary.joined": "{count, plural, one {# persona se unió} other {# personas se unieron}}",
+  "email.adminDigest.summary.imports": "{count, plural, one {terminó # importación} other {terminaron # importaciones}}",
+  "email.adminDigest.preheader": "{summary} el {day}.",
+  "email.adminDigest.lead": "Esto cambió en tu lista de personal el {day}.",
+  "email.adminDigest.joined.label": "Se unieron ({count})",
+  "email.adminDigest.joined.more": "{count, plural, one {y # persona más} other {y # personas más}}",
+  "email.adminDigest.joined.unnamed": "{count, plural, one {# persona} other {# personas}}",
+  "email.adminDigest.imports.label": "Importaciones terminadas ({count})",
+  "email.adminDigest.import": "{time}: {invited} invitadas, {updated} actualizadas{failed, plural, =0 {} one {, # no se pudo agregar} other {, # no se pudieron agregar}}",
+  "email.adminDigest.imports.more": "{count, plural, one {y # importación más} other {y # importaciones más}}",
+  "email.adminDigest.cta": "Abrir la lista de personal",
+  "email.adminDigest.reason": "Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.",
+  "email.adminDigest.manage": "Administrar en el portal de administración",
 };
 
 /** Spanish for server-written sentences that reach the ideas email as stored text (matched exactly, else shown as is). */

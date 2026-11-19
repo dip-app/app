@@ -17,6 +17,9 @@ export const TEMPLATE_CATEGORY = {
   calendar_cancel: "calendar_invites",
   challenge_reviewed: "challenges",
   admin_suggestions: "admin_suggestions",
+  // Opt-in emails added with the email catalog follow-up (docs/design/email-catalog.md): both categories default off.
+  weekly_theme: "weekly_themes",
+  admin_digest: "admin_digest",
   // Account emails (docs/design/email-catalog.md): transactional, not a member preference category.
   roster_invite: "account",
   welcome: "account",
@@ -57,6 +60,8 @@ export function templateKind(template: TemplateId, variables?: { outcome?: strin
     case "calendar_cancel": return "calendar_invite";
     case "challenge_reviewed": return variables?.outcome === "changes_requested" ? "challenge_changes_requested" : "challenge_approved";
     case "admin_suggestions": return "admin_suggestions";
+    case "weekly_theme": return "weekly_theme_email";
+    case "admin_digest": return "admin_digest";
     case "roster_invite":
     case "welcome":
     case "bug_report_resolved": return null;
@@ -134,6 +139,39 @@ export interface TemplateVariables {
   welcome: { companyName: string; role: "member" | "organizer" | "admin" };
   /** The member's own problem report was marked resolved. Never the report text, category or an admin note. */
   bug_report_resolved: { reportId: string; submittedAt: string };
+  /**
+   * Weekly theme announcement to a member who turned on `weekly_themes` emails, sent when the theme starts (same
+   * audience and timing as the `weekly_theme` push). Theme copy as the organizer wrote it; the art is a catalog key.
+   */
+  weekly_theme: {
+    challengeId: string;
+    /** Theme title, at most 120 characters. */
+    themeTitle: string;
+    /** Theme description, at most 400 characters (longer descriptions are shortened at a word boundary when queued). */
+    themeDescription?: string;
+    /** Catalog key of `catalog://theme/<key>`; absent (unknown key) renders the card without art. */
+    themeKey?: SuggestionTheme;
+    /** Theme window, ISO-8601 UTC; the end is exclusive (the last day shown is the day before an end at midnight). */
+    startDate: string;
+    endDate: string;
+    /** Points for finishing the theme, 1 to 1000; absent or 0 shows no points line. */
+    pointsReward?: number;
+  };
+  /**
+   * Daily roster digest for admins who turned on `admin_digest` (one per admin per company day, only when something
+   * happened). Only what the roster and import pages already show admins: names of invited people who joined and the
+   * counts of finished imports. No addresses, no file names, no row errors.
+   */
+  admin_digest: {
+    /** Company-local day the digest covers, `YYYY-MM-DD`. */
+    dayKey: string;
+    /** Invited or imported people who joined that day; `names` holds at most 10 roster names (each at most 80 characters). */
+    joined: { count: number; names: string[] };
+    /** Up to 5 imports that finished that day, newest first; `finishedAt` (ISO-8601 UTC) labels each row with its time. */
+    imports: Array<{ invited: number; updated: number; failed: number; finishedAt: string }>;
+    /** All imports that finished that day (at least `imports.length`). */
+    importCount: number;
+  };
   /** Weekly ideas for company admins (docs/design/stretch/admin-suggestions-email.md). Company aggregates only; no names or emails. */
   admin_suggestions: {
     /** ISO week in the company zone, `^\d{4}-W\d{2}$`. */

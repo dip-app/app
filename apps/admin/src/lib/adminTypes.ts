@@ -571,3 +571,17 @@ export interface DipbotIdeas {
 }
 /** `load` never spends credits; `auto` is the one background call per page load; `refresh` is the button (needs a requestId). */
 export interface DipbotIdeasInput { mode: DipbotIdeaMode; requestId?: string }
+
+/**
+ * Opt-in emails a person switches on in Your settings (docs/design/email-catalog.md). Ids are the shared email
+ * categories of `users/{uid}/settings/notifications`; a missing key means off (the server default for both).
+ */
+export const EMAIL_SWITCHES = ["weekly_themes", "admin_digest"] as const;
+export type EmailSwitch = (typeof EMAIL_SWITCHES)[number];
+export type EmailSwitches = Record<EmailSwitch, boolean>;
+
+/** Reads a stored `email` preference map: only a stored `true` is on (default off). */
+export function emailSwitchesFrom(map: unknown): EmailSwitches {
+  const rec = map && typeof map === "object" && !Array.isArray(map) ? map as Record<string, unknown> : {};
+  return { weekly_themes: rec.weekly_themes === true, admin_digest: rec.admin_digest === true };
+}

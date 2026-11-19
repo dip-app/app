@@ -198,6 +198,8 @@ export interface EmailCategoryPreferences {
   discovery?: boolean;
   calendar_invites?: boolean;
   admin_suggestions?: boolean;
+  weekly_themes?: boolean;
+  admin_digest?: boolean;
 }
 
 export interface NotificationPreferences {

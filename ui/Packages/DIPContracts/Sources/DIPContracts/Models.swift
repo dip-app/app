@@ -395,8 +395,10 @@ public struct EmailCategoryPreferences: Codable, Equatable, Sendable {
     public var discovery: Bool?
     public var calendar_invites: Bool?
     public var admin_suggestions: Bool?
+    public var weekly_themes: Bool?
+    public var admin_digest: Bool?
 
-    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil, calendar_invites: Bool? = nil, admin_suggestions: Bool? = nil) {
+    public init(invites: Bool? = nil, event_updates: Bool? = nil, reminders: Bool? = nil, challenges: Bool? = nil, discovery: Bool? = nil, calendar_invites: Bool? = nil, admin_suggestions: Bool? = nil, weekly_themes: Bool? = nil, admin_digest: Bool? = nil) {
         self.invites = invites
         self.event_updates = event_updates
         self.reminders = reminders
@@ -404,6 +406,8 @@ public struct EmailCategoryPreferences: Codable, Equatable, Sendable {
         self.discovery = discovery
         self.calendar_invites = calendar_invites
         self.admin_suggestions = admin_suggestions
+        self.weekly_themes = weekly_themes
+        self.admin_digest = admin_digest
     }
 }
 

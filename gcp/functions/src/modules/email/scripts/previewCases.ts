@@ -198,6 +198,45 @@ PREVIEW_CASES.push(
   make("bug_report_resolved", "bug_report_resolved", { reportId: "rep_7c1d2e", submittedAt: "2026-11-12T15:04:00Z" }),
 );
 
+// Opt-in emails of the catalog follow-up (docs/design/email-catalog.md): weekly theme announcement and admin roster digest.
+// Appended so every earlier case and its golden files are untouched.
+const THEME = {
+  challengeId: "chal_outdoors_week",
+  themeTitle: "Outdoors Week",
+  themeDescription: "Get outside with coworkers this week: try a hike, a kayak trip or a picnic in the park, and log your outing.",
+  themeKey: "outdoors" as const,
+  startDate: "2026-11-23T05:00:00Z",
+  endDate: "2026-11-30T05:00:00Z",
+  pointsReward: 50,
+};
+PREVIEW_CASES.push(
+  make("weekly_theme", "weekly_theme", THEME),
+  make("weekly_theme_plain", "weekly_theme", {
+    challengeId: "chal_custom",
+    themeTitle: "Bring Your Own Lunch and Learn Week for Every Team in the Company",
+    startDate: "2026-11-23T05:00:00Z",
+    endDate: "2026-11-27T05:00:00Z",
+  }, { ...SAMPLE_CTX, recipientFirstName: null }),
+  make("admin_digest", "admin_digest", {
+    dayKey: "2026-11-19",
+    joined: { count: 14, names: ["Priya Patel", "Jordan Lee", "Sam Okafor", "Alex Kim", "Maria Garcia", "Chen Wei", "Taylor Brooks", "Noor Haddad", "Luis Romero", "Ava Johnson"] },
+    imports: [{ invited: 42, updated: 3, failed: 1, finishedAt: "2026-11-19T19:42:00Z" }],
+    importCount: 1,
+  }),
+  make("admin_digest_joined", "admin_digest", {
+    dayKey: "2026-11-19", joined: { count: 1, names: ["Priya Patel"] }, imports: [], importCount: 0,
+  }),
+  make("admin_digest_imports", "admin_digest", {
+    dayKey: "2026-11-19", joined: { count: 0, names: [] },
+    imports: [
+      { invited: 120, updated: 0, failed: 0, finishedAt: "2026-11-19T22:05:00Z" }, { invited: 8, updated: 2, failed: 0, finishedAt: "2026-11-19T20:30:00Z" },
+      { invited: 1, updated: 0, failed: 1, finishedAt: "2026-11-19T18:12:00Z" }, { invited: 0, updated: 5, failed: 0, finishedAt: "2026-11-19T16:47:00Z" },
+      { invited: 3, updated: 3, failed: 2, finishedAt: "2026-11-19T14:03:00Z" },
+    ],
+    importCount: 7,
+  }, { ...SAMPLE_CTX, recipientFirstName: null }),
+);
+
 /**
  * Spanish twins of every case, plus one without a first name (issue #259). Golden snapshots live in
  * `__snapshots__/email/es/`, and `npm run check:email` checks them too (as `es_<name>`).

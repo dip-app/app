@@ -39,6 +39,8 @@ export const en = {
   "email.reason.discovery": "event suggestion",
   "email.reason.calendar_invites": "calendar invite",
   "email.reason.admin_suggestions": "weekly event idea",
+  "email.reason.weekly_themes": "weekly theme",
+  "email.reason.admin_digest": "daily roster digest",
 
   // invite_received
   "email.inviteReceived.heading": "New invitation",
@@ -163,6 +165,32 @@ export const en = {
   "email.ideas.footer.reason": "You get this because you turned on weekly event ideas for admins.",
   "email.ideas.footer.manage": "Manage in the admin portal",
   "email.ideas.text.when": "When: {hint}",
+
+  // weekly_theme (opt-in `weekly_themes`): {title} is the theme title as the organizer wrote it.
+  "email.weeklyTheme.heading": "This week's theme",
+  "email.weeklyTheme.subject": "This week's theme: {title}",
+  "email.weeklyTheme.preheader": "{title} is the new weekly theme. Join in with your coworkers.",
+  "email.weeklyTheme.lead": "a new weekly theme just started. Join in with coworkers, then log what you did in DIP.",
+  "email.weeklyTheme.dates": "{start} to {end}",
+  "email.weeklyTheme.points": "{points, plural, one {Worth # point} other {Worth # points}}",
+  "email.weeklyTheme.note": "You will find it on the Home screen of the DIP app.",
+
+  // admin_digest (opt-in, admins): {day} is the company-local day the digest covers ("Thursday, November 19").
+  "email.adminDigest.heading": "Roster update",
+  "email.adminDigest.subject": "DIP roster update for {day}",
+  "email.adminDigest.summary.joined": "{count, plural, one {# person joined} other {# people joined}}",
+  "email.adminDigest.summary.imports": "{count, plural, one {# import finished} other {# imports finished}}",
+  "email.adminDigest.preheader": "{summary} on {day}.",
+  "email.adminDigest.lead": "here is what changed on your roster on {day}.",
+  "email.adminDigest.joined.label": "Joined ({count})",
+  "email.adminDigest.joined.more": "{count, plural, one {and # more person} other {and # more people}}",
+  "email.adminDigest.joined.unnamed": "{count, plural, one {# person} other {# people}}",
+  "email.adminDigest.imports.label": "Imports finished ({count})",
+  "email.adminDigest.import": "{time}: {invited} invited, {updated} updated{failed, plural, =0 {} one {, # could not be added} other {, # could not be added}}",
+  "email.adminDigest.imports.more": "{count, plural, one {and # more import} other {and # more imports}}",
+  "email.adminDigest.cta": "Open the roster",
+  "email.adminDigest.reason": "You get this because you turned on the daily roster digest for admins.",
+  "email.adminDigest.manage": "Manage in the admin portal",
 } as const;
 
 export type EmailMessageKey = keyof typeof en;

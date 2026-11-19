@@ -5,7 +5,7 @@ import { intlTag, localeOrDefault, splitAround, type Locale } from "../../../i18
 import { buildCopy, categoryReason, changeSummary, eventURL, hasVisibleChange } from "./copy";
 import { tEmail } from "./i18n";
 import type { EmailCategory } from "../categories";
-import { TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
+import { SUGGESTION_THEMES, TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
 
 export { eventURL, hasVisibleChange, EMAIL_ASSET_BASE };
 
@@ -149,6 +149,74 @@ function eventFacts(rec: Rec): EventFacts | null {
   return out;
 }
 
+const THEME_TITLE_MAX = 120;
+export const THEME_DESCRIPTION_MAX = 400;
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+export const DIGEST_NAMES_MAX = 10;
+export const DIGEST_IMPORTS_MAX = 5;
+const COUNT_MAX = 1_000_000;
+
+const count = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= COUNT_MAX ? v : null);
+
+function weeklyThemeVariables(rec: Rec): TemplateVariables["weekly_theme"] | null {
+  if (!onlyKeys(rec, ["challengeId", "themeTitle", "themeDescription", "themeKey", "startDate", "endDate", "pointsReward"])) return null;
+  const challengeId = typeof rec.challengeId === "string" && ID.test(rec.challengeId) ? rec.challengeId : null;
+  const themeTitle = str(rec.themeTitle, THEME_TITLE_MAX);
+  const startDate = iso(rec.startDate);
+  const endDate = iso(rec.endDate);
+  if (!challengeId || !themeTitle || !startDate || !endDate || new Date(endDate).getTime() <= new Date(startDate).getTime()) return null;
+  const out: TemplateVariables["weekly_theme"] = { challengeId, themeTitle, startDate, endDate };
+  if (rec.themeDescription !== undefined) {
+    const description = str(rec.themeDescription, THEME_DESCRIPTION_MAX);
+    if (!description) return null;
+    out.themeDescription = description;
+  }
+  if (rec.themeKey !== undefined) {
+    const key = SUGGESTION_THEMES.find((theme) => theme === rec.themeKey);
+    if (!key) return null;
+    out.themeKey = key;
+  }
+  if (rec.pointsReward !== undefined) {
+    const points = count(rec.pointsReward);
+    if (points === null || points > 1000) return null;
+    out.pointsReward = points;
+  }
+  return out;
+}
+
+function adminDigestVariables(rec: Rec): TemplateVariables["admin_digest"] | null {
+  if (!onlyKeys(rec, ["dayKey", "joined", "imports", "importCount"])) return null;
+  const dayKey = typeof rec.dayKey === "string" && DAY_KEY.test(rec.dayKey) && !Number.isNaN(new Date(`${rec.dayKey}T00:00:00Z`).getTime()) ? rec.dayKey : null;
+  const joinedRec = rec.joined;
+  if (!dayKey || typeof joinedRec !== "object" || joinedRec === null || Array.isArray(joinedRec)) return null;
+  const joined = joinedRec as Rec;
+  if (!onlyKeys(joined, ["count", "names"])) return null;
+  const joinedCount = count(joined.count);
+  if (joinedCount === null || !Array.isArray(joined.names) || joined.names.length > DIGEST_NAMES_MAX || joined.names.length > joinedCount) return null;
+  const names: string[] = [];
+  for (const raw of joined.names) {
+    const name = str(raw, NAME_MAX);
+    if (!name) return null;
+    names.push(name);
+  }
+  const importCount = count(rec.importCount);
+  if (importCount === null || !Array.isArray(rec.imports) || rec.imports.length > DIGEST_IMPORTS_MAX || rec.imports.length > importCount) return null;
+  const imports: TemplateVariables["admin_digest"]["imports"] = [];
+  for (const raw of rec.imports) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw) || !onlyKeys(raw as Rec, ["invited", "updated", "failed", "finishedAt"])) return null;
+    const item = raw as Rec;
+    const invited = count(item.invited);
+    const updated = count(item.updated);
+    const failed = count(item.failed);
+    const finishedAt = iso(item.finishedAt);
+    if (invited === null || updated === null || failed === null || !finishedAt) return null;
+    imports.push({ invited, updated, failed, finishedAt });
+  }
+  // Nothing to report is never an email.
+  if (joinedCount === 0 && importCount === 0) return null;
+  return { dayKey, joined: { count: joinedCount, names }, imports, importCount };
+}
+
 /**
  * Strict allow-list check of stored template variables. Returns a NEW object holding only the allowed keys, or null
  * when anything is unknown, mistyped, overlong, out of enum or not an ISO date.
@@ -253,6 +321,14 @@ export function validateVariables<T extends TemplateId>(template: T, value: unkn
       result = companyName && role ? { companyName, role } : null;
       break;
     }
+    case "weekly_theme": {
+      result = weeklyThemeVariables(rec);
+      break;
+    }
+    case "admin_digest": {
+      result = adminDigestVariables(rec);
+      break;
+    }
     case "bug_report_resolved": {
       if (!onlyKeys(rec, ["reportId", "submittedAt"])) return null;
       const reportId = typeof rec.reportId === "string" && ID.test(rec.reportId) ? rec.reportId : null;
@@ -269,6 +345,19 @@ export function validateVariables<T extends TemplateId>(template: T, value: unkn
 // ---------------------------------------------------------------------------------------------
 
 const PREHEADER_MAX = 110;
+
+/** Theme card classes (weekly_theme only): stacked art on phones, darker card in dark mode. */
+const THEME_STYLE = `
+  @media (max-width: 620px) {
+    .stack { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+    .tile-col { padding: 16px 16px 0 16px !important; }
+    .theme-text { padding: 14px 16px 16px 16px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .theme-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
+  }
+  [data-ogsb] .theme-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
+`;
 
 /** One complete sentence: the copy sentence plus the event day when it fits; cut only at a word boundary, no ellipsis. */
 function buildPreheader(template: TemplateId, sentence: string, day: string, locale: Locale): string {
@@ -378,6 +467,23 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
   const steps = copy.steps?.length
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;">${copy.steps.map((step) => `<tr><td class="text-main" valign="top" width="20" style="width:20px;padding:0 0 8px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">&bull;</td><td class="text-main" valign="top" style="padding:0 0 8px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(step)}</td></tr>`).join("")}</table>`
     : "";
+  // Opt-in emails only: labeled lists (admin digest) and the theme card (weekly theme). Absent for every other template.
+  const sectionLabel = (label: string): string =>
+    `<div class="text-muted" style="margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${e(label)}</div>`;
+  const sections = copy.sections?.length
+    ? copy.sections.map((section) => `${sectionLabel(section.label)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;">${section.items.map((item) => `<tr><td class="text-main" valign="top" width="20" style="width:20px;padding:0 0 6px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">&bull;</td><td dir="auto" class="text-main" valign="top" style="padding:0 0 6px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(item)}</td></tr>`).join("")}</table>`).join("\n")
+    : "";
+  const theme = copy.theme;
+  const themeCard = theme
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="theme-card border" style="margin:0 0 20px 0;border:1px solid ${HAIRLINE};border-radius:12px;border-collapse:separate;">
+<tr>
+${theme.artURL ? `<td class="stack tile-col" width="112" valign="top" style="width:112px;padding:16px 0 16px 16px;"><table role="presentation" width="112" cellpadding="0" cellspacing="0" border="0" style="width:112px;"><tr><td width="112" height="112" bgcolor="${theme.accent}" style="width:112px;height:112px;background-color:${theme.accent};border-radius:8px;font-size:0;line-height:0;"><img src="${e(theme.artURL)}" width="112" height="112" alt="" style="display:block;width:112px;height:112px;border:0;border-radius:8px;" /></td></tr></table></td>\n` : ""}<td class="stack theme-text" valign="top" style="padding:16px;">
+<h2 dir="auto" class="text-main" style="margin:0 0 6px 0;padding:0;font-family:${HEAD_FONT};font-size:20px;line-height:26px;font-weight:normal;letter-spacing:0.02em;text-transform:uppercase;color:${INK};">${e(theme.title)}</h2>
+${theme.body ? `<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(theme.body)}</p>\n` : ""}${theme.lines.map((line) => `<p class="text-muted" style="margin:0;font-family:${FONT};font-size:14px;line-height:20px;color:${MUTED};">${e(line)}</p>`).join("\n")}
+</td>
+</tr>
+</table>`
+    : "";
   const emphasisAt = copy.emphasis && copy.note ? copy.note.indexOf(copy.emphasis) : -1;
   const noteHtml = (note: string): string => (emphasisAt < 0 || !copy.emphasis
     ? para(note, "20px")
@@ -392,16 +498,20 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
   const unsubscribe = copy.footer?.unsubscribeLabel ?? t("email.footer.unsubscribe");
   const sentBy = t("email.footer.sentBy");
   const questions = t("email.footer.questions");
-  const manageHtml = showManage ? ` &middot; ${e(managePrefix)}${e(profile)}&nbsp;&gt;&nbsp;${e(notifications)}${e(manageSuffix)}` : "";
+  const manageLink = copy.footer?.manageLink;
+  const manageHtml = manageLink
+    ? ` &middot; <a class="link" href="${e(manageLink.url)}" style="color:${INK};text-decoration:underline;">${e(manageLink.label)}</a>`
+    : showManage ? ` &middot; ${e(managePrefix)}${e(profile)}&nbsp;&gt;&nbsp;${e(notifications)}${e(manageSuffix)}` : "";
 
   const html = layoutShell({
     title: copy.subject,
     preheader,
     ctx,
     lang: locale,
+    ...(themeCard ? { extraStyle: THEME_STYLE } : {}),
     main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>
 ${para(lead, "20px")}
-${steps ? `${steps}\n` : ""}${card}
+${steps ? `${steps}\n` : ""}${sections ? `${sections}\n` : ""}${themeCard ? `${themeCard}\n` : ""}${card}
 ${copy.note ? noteHtml(copy.note) : ""}
 ${highlight}
 ${button}${fine ? `\n${fine}` : ""}`,
@@ -413,6 +523,8 @@ ${button}${fine ? `\n${fine}` : ""}`,
   const wasText = (value: string | null): string => (value ? `  ${t("email.text.was", { value })}` : "");
   const lines: string[] = [copy.heading.toLocaleUpperCase(intlTag(locale)), "", lead, ""];
   if (copy.steps?.length) lines.push(...copy.steps.map((step) => `- ${step}`), "");
+  for (const section of copy.sections ?? []) lines.push(section.label, ...section.items.map((item) => `- ${item}`), "");
+  if (theme) lines.push(theme.title.toLocaleUpperCase(intlTag(locale)), ...(theme.body ? [theme.body] : []), ...theme.lines, "");
   if (facts && title) {
     if (copy.badge) lines.push(`[${copy.badge}]`);
     lines.push(`${title}${wasText(oldTitle)}`);
@@ -430,7 +542,8 @@ ${button}${fine ? `\n${fine}` : ""}`,
   lines.push("--");
   lines.push(reasonLine);
   lines.push(`${unsubscribe}: ${ctx.unsubscribeURL}`);
-  if (showManage) lines.push(`${managePrefix}${profile} > ${notifications}${manageSuffix}`);
+  if (manageLink) lines.push(`${manageLink.label}: ${manageLink.url}`);
+  else if (showManage) lines.push(`${managePrefix}${profile} > ${notifications}${manageSuffix}`);
   lines.push(`${sentBy} · ${questions} ${SUPPORT_EMAIL}`);
 
   return { subject: copy.subject, preheader, html, text: `${lines.join("\n")}\n` };

@@ -4,7 +4,7 @@ import { MAX_INVITE_EMAILS, MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
   type DipbotIdeas, type SuggestThemeResult, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
-  IMPORT_FIELDS, IMPORT_LIMITS, can,
+  type EmailSwitches, IMPORT_FIELDS, IMPORT_LIMITS, can, emailSwitchesFrom,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
 import { t } from "./aiStrings";
@@ -65,6 +65,8 @@ interface OpsState {
   submissions?: Stored<Submission & { changeOnReview?: boolean }>[];
   seededThemes?: string[];
   bugReports?: StoredBug[];
+  /** Opt-in email switches per uid (Your settings); missing means off, like the server default. */
+  emailSwitches?: Record<string, Partial<EmailSwitches>>;
 }
 
 interface StoredBug extends BugReport {
@@ -1226,5 +1228,21 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
 
     // The mock keeps the language in this browser only (localStorage, set by the Language setting): nothing to save.
     async setMyLocale() {},
+
+    // ----- opt-in emails: the signed-in person's own switches, kept in this browser
+    async emailSwitches() {
+      const session = deps.session();
+      if (!session) throw new ApiError("unauthenticated", "Sign in to continue.", {}, "UNAUTHENTICATED");
+      return emailSwitchesFrom(load().emailSwitches?.[session.uid]);
+    },
+    async setEmailSwitch(name, on) {
+      const session = deps.session();
+      if (!session) throw new ApiError("unauthenticated", "Sign in to continue.", {}, "UNAUTHENTICATED");
+      const state = load();
+      state.emailSwitches ??= {};
+      state.emailSwitches[session.uid] = { ...state.emailSwitches[session.uid], [name]: on };
+      save(state);
+      return emailSwitchesFrom(state.emailSwitches[session.uid]);
+    },
   };
 }

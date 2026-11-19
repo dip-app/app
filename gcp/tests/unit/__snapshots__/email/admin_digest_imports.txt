@@ -1,0 +1,19 @@
+ROSTER UPDATE
+
+Hi there, here is what changed on your roster on Thursday, November 19.
+
+Imports finished (7)
+- 5:05 PM EST: 120 invited, 0 updated
+- 3:30 PM EST: 8 invited, 2 updated
+- 1:12 PM EST: 1 invited, 0 updated, 1 could not be added
+- 11:47 AM EST: 0 invited, 5 updated
+- 9:03 AM EST: 3 invited, 3 updated, 2 could not be added
+- and 2 more imports
+
+Open the roster: https://letsdip.work/admin/roster/
+
+--
+You get this because you turned on the daily roster digest for admins.
+Unsubscribe: https://letsdip.work/u/sample-token
+Manage in the admin portal: https://letsdip.work/admin/account/
+Sent by DIP · Questions? support@letsdip.work

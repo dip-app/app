@@ -328,9 +328,10 @@ service cloud.firestore {
           && boolOrAbsent(m, 'chat') && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'social') && boolOrAbsent(m, 'discovery');
       }
       function validEmail(m) {
-        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery', 'calendar_invites', 'admin_suggestions'])
+        return m is map && m.keys().hasOnly(['invites', 'event_updates', 'reminders', 'challenges', 'discovery', 'calendar_invites', 'admin_suggestions', 'weekly_themes', 'admin_digest'])
           && boolOrAbsent(m, 'invites') && boolOrAbsent(m, 'event_updates') && boolOrAbsent(m, 'reminders')
-          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery') && boolOrAbsent(m, 'calendar_invites') && boolOrAbsent(m, 'admin_suggestions');
+          && boolOrAbsent(m, 'challenges') && boolOrAbsent(m, 'discovery') && boolOrAbsent(m, 'calendar_invites') && boolOrAbsent(m, 'admin_suggestions')
+          && boolOrAbsent(m, 'weekly_themes') && boolOrAbsent(m, 'admin_digest');
       }
       function validPreferences(data) {
         return data.keys().hasOnly(['contractVersion', 'push', 'email', 'updatedAt'])

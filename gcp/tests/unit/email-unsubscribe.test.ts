@@ -109,7 +109,7 @@ describe("GET and HEAD", () => {
     assert.equal(calls.length, 0);
   });
   test("category wording", async () => {
-    const words = { invites: "event invitations", event_updates: "event updates", reminders: "event reminders", challenges: "weekly theme reviews", discovery: "event suggestions", calendar_invites: "calendar invites", admin_suggestions: "weekly event ideas" };
+    const words = { invites: "event invitations", event_updates: "event updates", reminders: "event reminders", challenges: "weekly theme reviews", discovery: "event suggestions", calendar_invites: "calendar invites", admin_suggestions: "weekly event ideas", weekly_themes: "weekly theme announcements", admin_digest: "daily roster digests" };
     for (const c of EMAIL_CATEGORIES) {
       const res = await handleUnsubscribe(setup().deps, req("GET", tok(c)));
       assert.ok(res.body.includes(words[c]), c);
@@ -147,7 +147,8 @@ describe("POST", () => {
     const res = await handleUnsubscribe(deps, req("POST", tok("invites"), "List-Unsubscribe=One-Click&scope=all", FORM));
     assert.equal(res.status, 200);
     assert.deepEqual(calls[0]!.categories, [...EMAIL_CATEGORIES]);
-    assert.equal(calls[0]!.categories.length, 7);
+    assert.equal(calls[0]!.categories.length, 9);
+    assert.ok(calls[0]!.categories.includes("weekly_themes") && calls[0]!.categories.includes("admin_digest"));
   });
   test("POST without an unsubscribe action changes nothing", async () => {
     const { deps, calls } = setup();

@@ -2,7 +2,7 @@ import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult, InviteEmailResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
-  DipbotIdeas, DipbotIdeasInput, SuggestThemeInput, SuggestThemeResult, EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  DipbotIdeas, DipbotIdeasInput, EmailSwitch, EmailSwitches, SuggestThemeInput, SuggestThemeResult, EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 import type { ImportCoverPhotoResult, PickEventCoverInput, PickEventCoverResult, SearchCoverPhotosResult } from "./covers";
 import type { TagStat } from "./tagStats";
@@ -126,4 +126,10 @@ export interface AdminOpsApi {
   // ----- Language (#259)
   /** setMyLocaleV1: saves the signed-in member's language on the server. Mock mode keeps it in this browser only (no-op). */
   setMyLocale(locale: "en" | "es"): Promise<void>;
+
+  // ----- Opt-in emails (docs/design/email-catalog.md)
+  /** The signed-in person's own opt-in email switches (`users/{uid}/settings/notifications`); a missing key reads as off. */
+  emailSwitches(): Promise<EmailSwitches>;
+  /** Owner-only merge write of one switch (allowed by the Firestore rules; no callable). Resolves to the switches after the write. */
+  setEmailSwitch(name: EmailSwitch, on: boolean): Promise<EmailSwitches>;
 }

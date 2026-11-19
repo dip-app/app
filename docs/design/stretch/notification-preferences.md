@@ -15,6 +15,8 @@ Status: implemented in code (contract, rules, server helper, iOS mirror); nothin
 | `discovery` | `event_interest` | none | off | yes | off |
 | `calendar_invites` | `calendar_invite` (METHOD:REQUEST and METHOD:CANCEL .ics emails, [design](calendar.md)) | none | n/a (not offered) | yes | on |
 | `admin_suggestions` | `admin_suggestions` (weekly ideas for admins, [design](admin-suggestions-email.md)) | none | n/a (not offered) | yes | off |
+| `weekly_themes` | `weekly_theme_email` (weekly theme announcement email, [catalog](../email-catalog.md); the `weekly_theme` push stays under `challenges`) | none | n/a (not offered) | yes | off |
+| `admin_digest` | `admin_digest` (daily roster digest for admins, [catalog](../email-catalog.md)) | none | n/a (not offered) | yes | off |
 
 Source of truth: `gcp/functions/src/modules/notifications/domain/categories.ts` (`NOTIFICATION_CATEGORIES`, `CHANNEL_CATEGORIES`, `DEFAULT_PREFERENCES`, `NOTIFICATION_KINDS`). iOS mirror: `DIPNotificationCategory` in `ui/Packages/DIPCore`. A unit test on each side pins the ids and defaults, so a drift fails CI.
 
@@ -32,7 +34,7 @@ Source of truth: `gcp/functions/src/modules/notifications/domain/categories.ts` 
 ```
 
 - Both maps and every key are optional. A missing document, map or key means the registry default, resolved server-side on every read (changing a default needs no migration).
-- Rules: the owner may get, create and update only this document; top-level keys `contractVersion` (must be 1), `push`, `email`, `updatedAt` (must equal `request.time`); `push` keys limited to the seven categories, `email` keys limited to the five offered ones, all values booleans. No list, no delete, no other user's document. Writes are direct (no callable), like per-event levels.
+- Rules: the owner may get, create and update only this document; top-level keys `contractVersion` (must be 1), `push`, `email`, `updatedAt` (must equal `request.time`); `push` keys limited to the seven categories, `email` keys limited to the offered ones (today nine: the five above plus `calendar_invites`, `admin_suggestions`, `weekly_themes` and `admin_digest`), all values booleans. No list, no delete, no other user's document. Writes are direct (no callable), like per-event levels.
 - The server may write the same shape through `FirestorePreferences.setCategory` (merge write), for example an email unsubscribe or a spam complaint.
 
 ## Precedence (one rule for every channel)

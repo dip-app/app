@@ -12,7 +12,7 @@ import type { EmailChannelPort, NotificationRequest, RouterDependencies } from "
 import { deliverNotification } from "../../functions/src/modules/notifications/application/router";
 import { routerEmailChannel } from "../../functions/src/modules/email/application/routerChannel";
 import { TEMPLATE_CATEGORY, isTemplateId } from "../../functions/src/modules/email/domain/templates/types";
-import { validateVariables } from "../../functions/src/modules/email/domain/templates/render";
+import { renderEmail, validateVariables } from "../../functions/src/modules/email/domain/templates/render";
 import { NOTIFICATION_KINDS } from "../../functions/src/modules/notifications/domain/categories";
 
 const HOUR = 3_600_000;
@@ -163,6 +163,33 @@ describe("email payloads from router-mode handlers", () => {
     assert.equal(request.email!.revisionOrWindow, `1h_${START.getTime()}`);
     assert.equal(request.email!.notAfter?.getTime(), START.getTime());
     assert.equal((request.email!.variables as { window: string }).window, "1h");
+  });
+
+  test("reminders carry the venue name and address for the Where row, and the email still opens the event", async () => {
+    const f = new Fixture();
+    f.subs.set("a", "reminders");
+    f.events.set(`${C}/${E}`, {
+      companyId: C, eventId: E, title: "Sunset run", status: "scheduled", startTime: START, endTime: END,
+      venueName: "Frick Park", venueAddress: "Hot Metal St, Pittsburgh, PA",
+    });
+    await sendDueRemindersViaRouter(f.deps());
+    const { request } = f.emailCalls[0]!;
+    assertValidEmail(request, "event_reminder");
+    const variables = request.email!.variables as Record<string, unknown>;
+    assert.equal(variables.venueName, "Frick Park");
+    assert.equal(variables.venueAddress, "Hot Metal St, Pittsburgh, PA");
+    const rendered = renderEmail("event_reminder", validateVariables("event_reminder", variables)!, { recipientFirstName: "Sam", timeZone: "UTC", unsubscribeURL: "https://letsdip.work/u/t" });
+    assert.ok(rendered.text.includes("Where: Frick Park") && rendered.text.includes("Hot Metal St, Pittsburgh, PA"));
+    assert.ok(rendered.text.includes(`Open in DIP: https://letsdip.work/e/${E}`));
+  });
+
+  test("reminders without a venue still email (no Where row)", async () => {
+    const f = new Fixture();
+    f.subs.set("a", "reminders");
+    f.events.set(`${C}/${E}`, { companyId: C, eventId: E, title: "Sunset run", status: "scheduled", startTime: START, endTime: END });
+    await sendDueRemindersViaRouter(f.deps());
+    const variables = f.emailCalls[0]!.request.email!.variables as Record<string, unknown>;
+    assert.equal("venueName" in variables || "venueAddress" in variables, false);
   });
 
   test("chat never carries an email payload and the email port is not called", async () => {
