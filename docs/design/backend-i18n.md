@@ -35,8 +35,12 @@ Who sets it:
 - **Admin portal.** Your settings > Language saves English or Español through `setMyLocaleV1` when signed in live.
   "Same as this browser" and the pseudo-locale are never sent. On load and sign-in, a saved member locale is preferred
   over the browser default, and localStorage stays the fallback and offline store.
-- **iOS.** Nothing yet. The app still follows the iOS language, and the generated Swift model already has
-  `AppUser.locale`. A later change can call `setMyLocaleV1` when the app language changes.
+- **iOS (0.1.2).** The app sends its own language. On sign-in and when the app comes to the foreground it maps the
+  app's preferred localization to `en` or `es` (anything else, the Klingon demo locale included, is `en`), compares it
+  with the profile's `locale` (absent means `en`) and calls `setMyLocaleV1` only when they differ, at most once per
+  member and language in a launch. It shows nothing and logs nothing; a failure is retried at the next launch
+  (`MemberLocaleSync` in DIPAccounts, adapter in `FirebaseAccountsRepository`). The app language therefore wins over a
+  value saved from the portal the next time the member opens the app.
 
 ## Runtime
 
@@ -172,4 +176,4 @@ fallback, plurals, and that sending uses each recipient's locale, including mixe
 - **Audit params with enum values** stay as stored: bug report statuses in "(open to triaged)" and the field names in
   "Updated Mia: role, teamIds".
 - **Mock-mode data** in the admin portal stays English.
-- **iOS** does not call `setMyLocaleV1` yet.
+- **iOS** sets the locale from the app language (above) but has no in-app language setting.

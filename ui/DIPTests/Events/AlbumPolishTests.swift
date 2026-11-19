@@ -20,8 +20,8 @@ final class AlbumPolishTests: XCTestCase {
 
     func testCommentSendErrorsSayWhatHappened() {
         XCTAssertTrue(DIPPhotoCommentsScreen.sendErrorMessage(for: URLError(.notConnectedToInternet)).contains("offline"))
-        XCTAssertEqual(DIPPhotoCommentsScreen.sendErrorMessage(for: DIPRepositoryError.invalidInput("Comments are closed.")), "Comments are closed.")
-        XCTAssertEqual(DIPPhotoCommentsScreen.sendErrorMessage(for: DIPRepositoryError.invalidInput("")), "Your comment could not be sent. Try again.")
+        XCTAssertEqual(DIPPhotoCommentsScreen.sendErrorMessage(for: DIPRepositoryError.rejected(DIPMemberMessage(localized: "Comments are closed."))), "Comments are closed.")
+        XCTAssertEqual(DIPPhotoCommentsScreen.sendErrorMessage(for: DIPRepositoryError.rejected(DIPMemberMessage(localized: ""))), "Your comment could not be sent. Try again.")
         XCTAssertEqual(DIPPhotoCommentsScreen.sendErrorMessage(for: CancellationError()), "Your comment could not be sent. Try again.")
     }
 }

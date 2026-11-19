@@ -20,6 +20,11 @@ import Foundation
     func currentToken() async -> String?
     /// Drops the FCM token so the next member on this phone gets a fresh one. Needs no sign-in. Returns whether it worked.
     func deleteToken() async -> Bool
+    /// True while DIP is in the foreground (an action pressed on a banner while the app is open).
+    var isForeground: Bool { get }
+    /// An invite button pressed in the background could not answer: a local notification asks the member to answer in
+    /// the app; tapping it opens `link` (the activity), or just the app when nil.
+    func postInviteFallback(link: URL?) async
 }
 
 /// Small persistent flags so the app never re-prompts or re-registers needlessly.

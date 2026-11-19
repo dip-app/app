@@ -22,16 +22,32 @@ public protocol DIPRepository: Sendable {
     func originalPhotoData(eventID: String, photoID: String) async throws -> Data
 }
 
+/// Text shown to the member when a command is refused. Build it only from a localized catalog lookup
+/// (`String(localized:)`) or a failure type's localized `message`, never from server or SDK text: adapters map server
+/// reasons to their own failure cases first.
+public struct DIPMemberMessage: Equatable, Sendable {
+    public let text: String
+    public init(localized text: String) { self.text = text }
+}
+
 public enum DIPRepositoryError: Error, Equatable, Sendable {
     case notFound(String)
-    case invalidInput(String)
+    /// The command was refused for a reason the member can act on; the message is shown as is.
+    case rejected(DIPMemberMessage)
+    /// Test and preview fault injection (mock repositories only).
     case injectedFailure(String)
+
+    /// The member-facing text of a refusal, or nil for the other cases (screens then use their own generic copy).
+    public var memberMessage: String? {
+        if case .rejected(let message) = self, !message.text.isEmpty { return message.text }
+        return nil
+    }
 }
 
 public extension DIPRepository {
     /// Adapters without challenge support refuse instead of pretending to join.
     func setChallengeJoined(challengeID: String, joined: Bool) async throws {
-        throw DIPRepositoryError.invalidInput(String(localized: "repository.error.challengesUnavailable", defaultValue: "Challenges aren’t available yet", bundle: .module, comment: "Error when the data source has no challenge support"))
+        throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "repository.error.challengesUnavailable", defaultValue: "Challenges aren’t available yet", bundle: .module, comment: "Error when the data source has no challenge support")))
     }
 
     func originalPhotoData(eventID: String, photoID: String) async throws -> Data {

@@ -1,0 +1,312 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "mock.error.activityEnded" : {
+      "comment" : "Preview data error: joining or leaving an activity that already ended",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity has ended"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad ya terminó"
+          }
+        }
+      }
+    },
+    "mock.error.activityFull" : {
+      "comment" : "Preview data error: joining an activity with no places left",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity is full"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad está llena"
+          }
+        }
+      }
+    },
+    "mock.error.commentEmpty" : {
+      "comment" : "Preview data error: an empty photo comment",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comment is empty"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El comentario está vacío"
+          }
+        }
+      }
+    },
+    "mock.error.commentExists" : {
+      "comment" : "Preview data error: a different comment was already sent with this id",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comment identity already exists"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya existe un comentario con este identificador"
+          }
+        }
+      }
+    },
+    "mock.error.commentIdRequired" : {
+      "comment" : "Preview data error: a photo comment without an id",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comment identity is required"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El comentario necesita un identificador"
+          }
+        }
+      }
+    },
+    "mock.error.commentTooLong" : {
+      "comment" : "Preview data error: a photo comment over the length limit",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comment exceeds 2000 characters"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El comentario supera los 2000 caracteres"
+          }
+        }
+      }
+    },
+    "mock.error.imageInvalid" : {
+      "comment" : "Preview data error: an empty or too large photo",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Choose a nonempty image smaller than 25 MB"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una imagen que no esté vacía y pese menos de 25 MB"
+          }
+        }
+      }
+    },
+    "mock.error.joinToMessage" : {
+      "comment" : "Preview data error: sending a chat message without having joined",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Join this activity before sending a message"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Únete a esta actividad antes de enviar un mensaje"
+          }
+        }
+      }
+    },
+    "mock.error.messageEmpty" : {
+      "comment" : "Preview data error: an empty chat message",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Message is empty"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mensaje está vacío"
+          }
+        }
+      }
+    },
+    "mock.error.messageExists" : {
+      "comment" : "Preview data error: a different message was already sent with this id",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Message identity already exists"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya existe un mensaje con este identificador"
+          }
+        }
+      }
+    },
+    "mock.error.messageIdRequired" : {
+      "comment" : "Preview data error: a chat message without an id",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Message identity is required"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mensaje necesita un identificador"
+          }
+        }
+      }
+    },
+    "mock.error.messageTooLong" : {
+      "comment" : "Preview data error: a chat message over the length limit",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Message exceeds 2000 characters"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mensaje supera los 2000 caracteres"
+          }
+        }
+      }
+    },
+    "mock.error.photoExists" : {
+      "comment" : "Preview data error: a different photo was already added with this id",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Photo identity already exists"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya existe una foto con este identificador"
+          }
+        }
+      }
+    },
+    "mock.error.radiusTooLarge" : {
+      "comment" : "Preview data error: travel radius out of range",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Choose a travel radius up to 500 miles"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un radio de hasta 500 millas"
+          }
+        }
+      }
+    },
+    "mock.error.rsvpClosed" : {
+      "comment" : "Preview data error: changing an RSVP after the activity started",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "RSVP changes close when the activity starts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los cambios de asistencia cierran cuando empieza la actividad"
+          }
+        }
+      }
+    },
+    "mock.error.tooManyInterests" : {
+      "comment" : "Preview data error: more than 10 interests selected",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Choose up to 10 interests"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige hasta 10 intereses"
+          }
+        }
+      }
+    },
+    "mock.error.unknownInterest" : {
+      "comment" : "Preview data error: an interest that is not in the catalog",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unknown interest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interés desconocido"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

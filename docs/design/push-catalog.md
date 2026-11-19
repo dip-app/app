@@ -38,7 +38,7 @@ Priority: P1 must have, P2 should have, P3 nice. "Built" means implemented and u
 | 17 | Weekly theme ends soon | Members who have not submitted | `challenges` | on | none | Deferred | P3 | n/a | n/a | Medium, but it needs a "has not submitted" read per member and a second weekly schedule. Candidate once the weekly push is verified on devices. |
 | 18 | Calendar conflict | The member | none | n/a | none | Not a server push | n/a | n/a | n/a | The server never sees the calendar ([calendar](stretch/calendar.md)); in-app only. |
 | 19 | Invite declined | The sender | `invites` | n/a | none | Rejected by design | n/a | n/a | n/a | A decline notification is discouraging; the invitations sheet still shows the status. |
-| 20 | Invite Accept and Decline buttons | The invitee | `invites` | on | none | Server payload built; iOS deferred | P3 | n/a | n/a | See "PUSH-8" below. |
+| 20 | Invite Accept and Decline buttons | The invitee | `invites` | on | none | Built (iOS 0.1.2) | P3 | n/a | n/a | See "PUSH-8" below. |
 
 Admin-facing events (a submission awaiting review, a bug report) are intentionally not pushed: admins work in the web portal, which has no push channel. Their email is the [admin suggestions email](stretch/admin-suggestions-email.md).
 
@@ -60,12 +60,17 @@ The registry has nine categories; seven are offered for push and all seven exist
 
 ## PUSH-8: invite action buttons
 
-Server side is done and safe: invite pushes carry `aps.category` `DIP_INVITE` and the data keys the app needs (`type` `invite`, `companyId`, `eventId`, `inviteId`). iOS ignores an `aps.category` it has not registered, so nothing changes on today's builds. The app side (register `UNNotificationCategory` `DIP_INVITE` with actions `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE`, call `respondToInviteV1` from a short background launch with App Check, show a recoverable state on failure) is iOS work that cannot be tested without a device and is listed as a follow-up in [push client](push-client.md#invite-action-buttons-push-8).
+Server side: invite pushes carry `aps.category` `DIP_INVITE` and the data keys the app needs (`type` `invite`, `companyId`, `eventId`, `inviteId`). App side (0.1.2, device-unverified): the app registers `DIP_INVITE` with `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE` (background, unlock required) and answers through `respondToInviteV1`, the same call as the in-app buttons; on failure it posts a local notification that opens the activity. Details in [push client](push-client.md#invite-action-buttons-push-8).
 
-## iOS follow-ups (not part of this change)
+## iOS follow-ups
 
-1. Settings copy for Comments and photos: "Comments and photos on your posts" no longer covers new photos in albums you attended; suggested "Comments on your photos and new photos in activities you went to". Spanish string too.
-2. In-app center: render `comment` and `photo_added` (the kinds already exist; targets are `event` ids).
-3. Register the `DIP_INVITE` category and actions (PUSH-8).
-4. Push `type` values `photo_comment`, `photo_added` and `attendee_removed` are new; unknown types must fall back to the `deepLink` (they all open `dip://events/{id}`).
-5. Optional: open the album instead of the event page for social pushes once an album deep link exists.
+Done in 0.1.2 (device-unverified):
+
+1. Settings copy for Comments and photos now reads "Comments on your photos and new photos from activities you went to" (Spanish too). The category key `social` is unchanged.
+2. In-app center: `comment` (speech bubble) and `photo_added` (photo) rows open the activity; `attendee_removed` has its own row icon; any unknown kind falls back to a generic bell row.
+3. The `DIP_INVITE` category and actions (PUSH-8).
+4. Every push `type`, known or not, opens its `deepLink`, else `dip://events/{eventId}`.
+
+Open:
+
+1. Optional: open the album instead of the event page for social pushes once an album deep link exists.

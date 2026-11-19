@@ -17,7 +17,7 @@ final class RepositoryTests: XCTestCase {
         do {
             try await repository.setRSVP(eventID: "kayaking-memory", going: true)
             XCTFail("Past event must not accept an RSVP")
-        } catch { XCTAssertEqual(error as? DIPRepositoryError, .invalidInput("This activity has ended")) }
+        } catch { XCTAssertEqual(error as? DIPRepositoryError, .rejected(.init(localized: "This activity has ended"))) }
     }
 
     func testInterestsUseCatalogLimitAndPreserveOtherProfileFields() async throws {
@@ -25,7 +25,7 @@ final class RepositoryTests: XCTestCase {
         let initial = await repository.currentSnapshot()
         let profile = initial.profile
         let eleven = Array(profile.interestCatalog.map(\.id).prefix(11))
-        await expect(.invalidInput("Choose up to 10 interests")) {
+        await expect(.rejected(.init(localized: "Choose up to 10 interests"))) {
             try await repository.updateProfile(.init(department: profile.department, city: profile.city, interestTagIDs: eleven))
         }
         let unchanged = await repository.currentSnapshot()
@@ -60,7 +60,7 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(saved.profile.availability, ["weekday-evenings"])
         XCTAssertEqual(saved.profile.travelRadiusMiles, 50)
         let before = await repository.currentSnapshot()
-        await expect(.invalidInput("Choose a travel radius up to 500 miles")) {
+        await expect(.rejected(.init(localized: "Choose a travel radius up to 500 miles"))) {
             try await repository.updateProfile(.init(department: "Changed", city: "Changed", interestTagIDs: [], travelRadiusMiles: 501))
         }
         let after = await repository.currentSnapshot()
@@ -78,7 +78,7 @@ final class RepositoryTests: XCTestCase {
         let saved = await repository.currentSnapshot()
         XCTAssertEqual(saved.profile.interestTagIDs, ["tag-fitness", "tag-retired"])
         XCTAssertEqual(saved.profile.interests, ["Movement", "Unavailable interest"])
-        await expect(.invalidInput("Unknown interest")) {
+        await expect(.rejected(.init(localized: "Unknown interest"))) {
             try await repository.updateProfile(.init(department: "", city: "", interestTagIDs: ["Movement"]))
         }
     }
@@ -215,9 +215,9 @@ final class RepositoryTests: XCTestCase {
         let initial = await repository.currentSnapshot()
         await expect(.notFound("missing")) { try await repository.setRSVP(eventID: "missing", going: true) }
         await expect(.notFound("missing")) { try await repository.sendMessage(eventID: "missing", messageID: "test-message", text: "Hello") }
-        await expect(.invalidInput("Unknown interest")) { try await repository.updateProfile(.init(department: "D", city: "C", interestTagIDs: ["Unknown"])) }
-        await expect(.invalidInput("Message is empty")) { try await repository.sendMessage(eventID: "puppy-yoga", messageID: "test-message", text: " \n ") }
-        await expect(.invalidInput("Choose a nonempty image smaller than 25 MB")) {
+        await expect(.rejected(.init(localized: "Unknown interest"))) { try await repository.updateProfile(.init(department: "D", city: "C", interestTagIDs: ["Unknown"])) }
+        await expect(.rejected(.init(localized: "Message is empty"))) { try await repository.sendMessage(eventID: "puppy-yoga", messageID: "test-message", text: " \n ") }
+        await expect(.rejected(.init(localized: "Choose a nonempty image smaller than 25 MB"))) {
             try await repository.addPhotos(eventID: "kayaking-memory", photos: [.init(id: "valid", data: Data([1])), .init(id: "invalid", data: Data())])
         }
         let after = await repository.currentSnapshot()

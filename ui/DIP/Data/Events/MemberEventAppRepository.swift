@@ -231,13 +231,13 @@ import DIPAccounts
     /// Home cards) and rolls back only if the server rejects or fails. The latest intent wins; the RSVP and event
     /// listeners reconcile once the server state arrives.
     func setRSVP(eventID: String, going: Bool) async throws {
-        guard let participation, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "event.rsvp.error.notAvailable", defaultValue: "RSVP isn’t available yet", comment: "Error shown when joining an event before RSVP is configured")) }
+        guard let participation, !stopped else { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "event.rsvp.error.notAvailable", defaultValue: "RSVP isn’t available yet", comment: "Error shown when joining an event before RSVP is configured"))) }
         let requestID = UUID().uuidString
         if let event = records[eventID] ?? joinedRecords[eventID], let metadata = try? MemberEventsRepository.metadata(event) {
             let state = rsvpStates[eventID] ?? DIPOptimisticRSVP(going: joinedIDs.contains(eventID), attendeeCount: event.attendeeCount)
             if let denial = DIPParticipationRules.denial(going: going, metadata: metadata, attendeeCount: state.attendeeCount,
                                                          isGoing: state.isGoing, now: clock()) {
-                throw DIPRepositoryError.invalidInput(denial.message)
+                throw DIPRepositoryError.rejected(DIPMemberMessage(localized: denial.message))
             }
             var next = state
             next.begin(going: going, requestID: requestID)
@@ -248,7 +248,7 @@ import DIPAccounts
         do { count = try await participation.setRsvp(scope: reads.scope, eventID: eventID, going: going) }
         catch {
             if var state = rsvpStates[eventID], state.fail(requestID: requestID) { rsvpStates[eventID] = nil; publish() }
-            throw DIPRepositoryError.invalidInput((error as? RsvpFailure ?? .unknown).message)
+            throw DIPRepositoryError.rejected(DIPMemberMessage(localized: (error as? RsvpFailure ?? .unknown).message))
         }
         guard !stopped else { return }
         // A newer intent replaced this request: its own result decides the final state.
@@ -347,21 +347,21 @@ import DIPAccounts
     /// RSVP snapshots carry an avatar ID but no approved avatar catalog exists, so attendees get the
     /// app-assigned avatar derived from their user id (never a fixture person's photo).
     nonisolated static func avatar(userID: String) -> MediaReference { .generatedAvatar(userID: userID) }
-    func updateProfile(_ edit: ProfileEdit) async throws { throw DIPRepositoryError.invalidInput(String(localized: "error.profile.useEditor", defaultValue: "Use your account profile editor", comment: "Error shown when profile editing is attempted through the events repository")) }
+    func updateProfile(_ edit: ProfileEdit) async throws { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "error.profile.useEditor", defaultValue: "Use your account profile editor", comment: "Error shown when profile editing is attempted through the events repository"))) }
     func sendMessage(eventID: String, messageID: String, text: String) async throws {
-        guard let chat, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "chat.error.notAvailable", defaultValue: "Chat isn’t available yet", comment: "Error shown when sending a chat message before chat is configured")) }
+        guard let chat, let chatAuthor, !stopped else { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "chat.error.notAvailable", defaultValue: "Chat isn’t available yet", comment: "Error shown when sending a chat message before chat is configured"))) }
         do {
             try await chat.sendMessage(scope: reads.scope, eventID: eventID, messageID: messageID, text: text, author: chatAuthor)
-        } catch { throw DIPRepositoryError.invalidInput((error as? ChatFailure ?? .unknown).message) }
+        } catch { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: (error as? ChatFailure ?? .unknown).message)) }
     }
     func notificationLevel(eventID: String) async throws -> DIPNotificationLevel? {
         guard let chat, !stopped else { return nil }
         return try? await chat.notificationLevel(scope: reads.scope, eventID: eventID)
     }
     func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws {
-        guard let chat, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "notifications.error.notAvailable", defaultValue: "Notification settings aren’t available yet", comment: "Error shown when changing activity notification level before it is configured")) }
+        guard let chat, !stopped else { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "notifications.error.notAvailable", defaultValue: "Notification settings aren’t available yet", comment: "Error shown when changing activity notification level before it is configured"))) }
         do { try await chat.setNotificationLevel(scope: reads.scope, eventID: eventID, level: level) }
-        catch { throw DIPRepositoryError.invalidInput(String(localized: "notifications.error.saveFailed", defaultValue: "Couldn’t save your notification setting. Please try again.", comment: "Error shown when saving an activity notification level fails")) }
+        catch { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "notifications.error.saveFailed", defaultValue: "Couldn’t save your notification setting. Please try again.", comment: "Error shown when saving an activity notification level fails"))) }
     }
 
     /// Listens to the messages of the last opened event while the member is going to it; the listener is
@@ -527,9 +527,9 @@ import DIPAccounts
     /// upload ID reuses its slot: if the bytes already landed, the create-only write is recognized by checksum and
     /// only the (idempotent) finalize runs again, so a photo is never published twice.
     func uploadPhoto(eventID: String, photo: PhotoUpload, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
-        guard let albums, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "album.error.uploadsNotAvailable", defaultValue: "Photo uploads aren’t available yet", comment: "Error shown when adding a photo before uploads are configured")) }
+        guard let albums, !stopped else { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "album.error.uploadsNotAvailable", defaultValue: "Photo uploads aren’t available yet", comment: "Error shown when adding a photo before uploads are configured"))) }
         let scope = reads.scope
-        if let denial = uploadDenial(eventID) { throw DIPRepositoryError.invalidInput(denial.message) }
+        if let denial = uploadDenial(eventID) { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: denial.message)) }
         do {
             if ownSlots[eventID] == nil {
                 let ids = try await albums.ownPhotoIDs(scope: scope, eventID: eventID)
@@ -558,7 +558,7 @@ import DIPAccounts
             // The server deleted an invalid object, so its slot is free again.
             if failure == .invalidImage { uploadSlots[photo.id] = nil; landedUploads.remove(photo.id) }
             publish()
-            throw DIPRepositoryError.invalidInput(failure.message)
+            throw DIPRepositoryError.rejected(DIPMemberMessage(localized: failure.message))
         }
     }
 
@@ -598,14 +598,14 @@ import DIPAccounts
     }
 
     func addPhotoComment(eventID: String, photoID: String, commentID: String, text: String) async throws {
-        guard let albums, let chatAuthor, !stopped else { throw DIPRepositoryError.invalidInput(String(localized: "album.error.commentsNotAvailable", defaultValue: "Comments aren’t available yet", comment: "Error shown when commenting on a photo before comments are configured")) }
+        guard let albums, let chatAuthor, !stopped else { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "album.error.commentsNotAvailable", defaultValue: "Comments aren’t available yet", comment: "Error shown when commenting on a photo before comments are configured"))) }
         do {
             try await albums.addComment(scope: reads.scope, eventID: eventID, photoID: photoID, commentID: commentID,
                                         text: text, author: chatAuthor)
         } catch {
-            throw DIPRepositoryError.invalidInput((error as? AlbumFailure) == .unavailable
+            throw DIPRepositoryError.rejected(DIPMemberMessage(localized: (error as? AlbumFailure) == .unavailable
                 ? AlbumFailure.unavailable.message
-                : String(localized: "album.error.commentFailed", defaultValue: "Your comment could not be sent. Try again.", comment: "Error shown when posting a photo comment fails"))
+                : String(localized: "album.error.commentFailed", defaultValue: "Your comment could not be sent. Try again.", comment: "Error shown when posting a photo comment fails")))
         }
     }
 }

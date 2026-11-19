@@ -239,7 +239,7 @@ struct DIPPrototypeApp: View {
         guard MockLaunch.Flags.contains("--album-upload-review") else { return nil }
         let queue = AlbumUploadQueue(send: { _, photo, progress in
             if photo.data.first == 1 { progress(0.4); try await Task.sleep(for: .seconds(3600)) }
-            if photo.data.first == 2 { throw DIPRepositoryError.invalidInput(AlbumFailure.unavailable.message) }
+            if photo.data.first == 2 { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: AlbumFailure.unavailable.message)) }
             return photo.id
         }, prepare: { data in
             let shades: [UInt8: (Double, Double, Double)] = [1: (0.48, 0.53, 0.98), 2: (0.94, 0.33, 0.65), 3: (1, 0.8, 0.24)]
@@ -375,7 +375,7 @@ struct DIPPrototypeApp: View {
         ) {
             Button("OK") { notice = nil }
         } message: {
-            Text("\(notice ?? "") is not connected yet.")
+            Text(String(localized: "shell.notice.notConnected", defaultValue: "\(notice ?? "") is not connected yet.", comment: "Not available yet alert message; %@ = a feature name such as RSVP or Attendee lists (shell.notice.*). Translations should read correctly for singular and plural feature names"))
         }
         .sheet(isPresented: $showChat) {
             DIPActivityChatScreen(
@@ -952,10 +952,11 @@ struct DIPPrototypeApp: View {
         changeRSVP(eventID, going: true)
     }
 
-    /// Readable RSVP failure text (the live adapter sends user-facing invalidInput messages).
+    /// Readable RSVP failure text (the live adapter sends localized `rejected` member messages).
     nonisolated static func rsvpMessage(_ error: Error) -> String {
         switch error as? DIPRepositoryError {
-        case .invalidInput(let message)?, .injectedFailure(let message)?: message
+        case .rejected(let message)?: message.text
+        case .injectedFailure(let message)?: message
         case .notFound?: String(localized: "event.rsvp.error.notFound", defaultValue: "This event no longer exists.", comment: "Error when joining or leaving an event that was removed")
         case nil: String(localized: "event.rsvp.error.generic", defaultValue: "Couldn’t change your RSVP. Please try again.", comment: "Error when joining or leaving an event failed")
         }

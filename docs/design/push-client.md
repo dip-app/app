@@ -7,7 +7,8 @@ Status: built, behind a feature flag (off), unit-tested with fakes. **Not tested
 - **Flag.** `PushFeature.isEnabled` is true only when Info.plist `DIPPushEnabled` is `YES` (build setting `DIP_PUSH_ENABLED`, default `NO` in `ui/Config/Base.xcconfig`) or the app is launched with `--push-enabled`. With the flag off, no push code runs: no permission prompt, no registration, no delegates.
 - **Registration.** `PushRegistrar` registers the device through `registerDeviceV1` (`{contractVersion: 1, token, platform: "ios", appVersion}`) when a member session is ready and notifications are already authorized, again when FCM refreshes the token, and calls `unregisterDeviceV1` before sign-out (best effort, never blocks sign-out). A token already registered is not sent twice; failures are retried at the next launch or token refresh.
 - **Permission priming.** Never at launch. After the member's first accepted RSVP, once, and only while the system status is undetermined, the app shows its own dialog ("Get updates for activities you join?"). "Turn on notifications" shows the system prompt; "Not now" is remembered and never asked again (Settings still works).
-- **Deep links.** A tapped notification carries `deepLink` (`dip://events/{id}` or `dip://events/{id}/chat`, written by the notifications module). It goes through the same `DIPShareLink` parser and `EventLinkInbox` as share links, so the shell opens the event; `/chat` also opens the chat when the member is going and the event is not over.
+- **Deep links.** A tapped notification carries `deepLink` (`dip://events/{id}` or `dip://events/{id}/chat`, written by the notifications module). It goes through the same `DIPShareLink` parser and `EventLinkInbox` as share links, so the shell opens the event; `/chat` also opens the chat when the member is going and the event is not over. A push without a usable `deepLink` opens `dip://events/{eventId}`; the `type` is never needed to route, so new or unknown types still open.
+- **Member language.** Not push code, but it decides push copy: the app sends its language through `setMyLocaleV1` when it differs from the profile (see [backend-i18n](backend-i18n.md)).
 - **Notification settings.** The per-event All / Changes / Reminders / None menu in the chat screen (bell, top left) is the setting; there is no separate settings page.
 
 ## To make it work on a device (enablement)
@@ -65,7 +66,7 @@ Status: nothing below has been run on a device yet. Use two physical iPhones (A 
 - [ ] Reminders: switch off: no 24 h or 1 h push. On (and activity level All or Reminders): both arrive.
 - [ ] Chat: switch off, B posts: no push even at activity level All. On: push arrives.
 - [ ] Challenges: switch off: no review or weekly theme push. On: both arrive.
-- [ ] Comments and photos: default off, no push; turn on, then a comment on your photo ("New comment on your photo") and a new photo in an album you attended (activity title, "X added a photo to the album.") both arrive. Rows 24 to 29 of the [device verification guide](../ops/push-device-verification.md).
+- [ ] Comments and photos ("Comments on your photos and new photos from activities you went to"): default off, no push; turn on, then a comment on your photo ("New comment on your photo") and a new photo in an album you attended (activity title, "X added a photo to the album.") both arrive. Rows 24 to 29 of the [device verification guide](../ops/push-device-verification.md).
 - [ ] Suggestions: default off, no push; turn on and confirm the behavior the server offers (no kind yet).
 - [ ] The per-activity bell still overrides: category on with activity level None gives no push.
 
@@ -87,6 +88,14 @@ Token hygiene: `registerDeviceV1` refreshes `lastSeenAt` on every launch, and a 
 
 ### Invite action buttons (PUSH-8)
 
-Server side is ready: invite pushes carry `aps.category` `DIP_INVITE` and the data keys `type` `invite`, `companyId`, `eventId`, `inviteId`. iOS ignores a category the app has not registered, so current builds are unaffected. The app work, not started and device-only to verify: register `UNNotificationCategory` `DIP_INVITE` with actions `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE`, handle `userNotificationCenter(_:didReceive:)` by calling `respondToInviteV1 {companyId, inviteId, response}` with App Check in a short launch, and on failure leave the notice and show a recoverable state when the app opens. Also: see the [catalog follow-ups](push-catalog.md#ios-follow-ups-not-part-of-this-change).
+Built in 0.1.2, unit-tested with fakes, **device-unverified** (the simulator cannot deliver a remote push with actions). Invite pushes carry `aps.category` `DIP_INVITE` and the data keys `type` `invite`, `companyId`, `eventId`, `inviteId`.
 
-Background/silent pushes, badge counts, other notification categories/actions, and any server change. A rich notification service extension is out of scope.
+- **Category.** `SystemPushAdapter.install()` registers `DIP_INVITE` with `DIP_INVITE_ACCEPT` ("Accept", "Aceptar") and `DIP_INVITE_DECLINE` ("Decline", "Rechazar"). Both run in the background (no `.foreground`: the app does not open) and both need an unlocked device (`.authenticationRequired`), because answering changes the member's plans and is visible to the inviter. Decline is not styled destructive; it deletes nothing. Titles follow the app language at launch.
+- **Answer.** `PushCoordinator.handleResponse` passes the button to `PushInviteResponder`, which uses the same `DIPInvitesRepository.respond(inviteID:accept:)` call (`respondToInviteV1`) as the in-app buttons. The repository is built per action from the signed-in Firebase user and the push's `companyId` (a background launch has no member session on screen); the server checks membership and that the caller is the recipient. The delegate awaits the call, so iOS keeps the launch alive until it finished.
+- **Idempotent.** A second press while the first is running is ignored; `INVITE_ALREADY_RESPONDED` counts as done.
+- **Failure.** Missing ids, nobody signed in, offline or any other refusal: in the background the app posts a local notification ("Couldn't answer the invitation", "Open the activity in DIP to answer it.") whose tap opens the activity; in the foreground it opens the activity directly.
+- **Any type.** A tap opens the payload's `deepLink`, else `dip://events/{eventId}`, whatever the `type` (new types such as `photo_comment`, `photo_added`, `attendee_removed` included); without either the app just opens.
+
+Device steps: rows 30 to 39 of the [device verification guide](../ops/push-device-verification.md).
+
+Background/silent pushes, badge counts, notification categories and actions other than `DIP_INVITE`, and any server change. A rich notification service extension is out of scope.

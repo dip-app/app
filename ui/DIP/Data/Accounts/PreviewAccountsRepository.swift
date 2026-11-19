@@ -7,7 +7,7 @@ import Foundation
 /// and mimics resolveMembershipV1's domain rules closely enough to click through
 /// onboarding. It is not evidence about Firebase behavior.
 @MainActor
-final class PreviewAccountsRepository: AccountsRepository, InterestCatalogRepository {
+final class PreviewAccountsRepository: AccountsRepository, InterestCatalogRepository, MemberLocaleRepository {
     static let companiesByDomain = ["example.invalid": "company-demo"]
     static let personalDomains: Set<String> = ["gmail.com", "icloud.com", "outlook.com", "yahoo.com"]
 
@@ -78,6 +78,19 @@ final class PreviewAccountsRepository: AccountsRepository, InterestCatalogReposi
         try profile.validate()
         try await pause()
         profiles[uid] = profile.applied(to: stored)
+        publish()
+    }
+
+    /// Languages sent through `setMyLocale`, newest last (tests and previews only).
+    private(set) var localeCalls: [MemberLanguage] = []
+
+    /// Mirrors setMyLocaleV1: merges the locale into the signed-in member's profile and publishes it like the listener.
+    func setMyLocale(_ language: MemberLanguage) async throws {
+        guard let email = signedInEmail, let stored = profiles[Self.uid(for: email)] else { throw AccountsFailure.unauthenticated }
+        localeCalls.append(language)
+        var updated = stored
+        updated.locale = language.rawValue
+        profiles[Self.uid(for: email)] = updated
         publish()
     }
 

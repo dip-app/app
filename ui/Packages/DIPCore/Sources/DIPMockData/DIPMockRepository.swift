@@ -5,6 +5,11 @@ public enum DIPMockOperation: Hashable, Sendable {
     case observation, rsvp, profile, message, photos, comment
 }
 
+/// Refusals of the in-memory repository: localized like the live adapter's messages (mock builds only).
+enum MockMessage {
+    static func reject(_ localized: String) -> DIPRepositoryError { .rejected(DIPMemberMessage(localized: localized)) }
+}
+
 /// In-memory repository used by previews and local development, never a Firebase adapter.
 /// Actor isolation serializes commands; observers only receive committed snapshots.
 public actor DIPMockRepository: DIPRepository {
@@ -61,11 +66,11 @@ public actor DIPMockRepository: DIPRepository {
     public func setRSVP(eventID: String, going: Bool) async throws {
         try consumeFailure(.rsvp)
         guard let event = snapshot.eventDetails[eventID] else { throw DIPRepositoryError.notFound(eventID) }
-        guard !event.isPast else { throw DIPRepositoryError.invalidInput("This activity has ended") }
+        guard !event.isPast else { throw MockMessage.reject(String(localized: "mock.error.activityEnded", defaultValue: "This activity has ended", bundle: .module, comment: "Preview data error: joining or leaving an activity that already ended")) }
         guard event.isJoined != going else { return }
         if let metadata = event.metadata {
-            guard metadata.canCancel(now: Date()) else { throw DIPRepositoryError.invalidInput("RSVP changes close when the activity starts") }
-            if going && event.attendeeCount >= metadata.capacity { throw DIPRepositoryError.invalidInput("This activity is full") }
+            guard metadata.canCancel(now: Date()) else { throw MockMessage.reject(String(localized: "mock.error.rsvpClosed", defaultValue: "RSVP changes close when the activity starts", bundle: .module, comment: "Preview data error: changing an RSVP after the activity started")) }
+            if going && event.attendeeCount >= metadata.capacity { throw MockMessage.reject(String(localized: "mock.error.activityFull", defaultValue: "This activity is full", bundle: .module, comment: "Preview data error: joining an activity with no places left")) }
         }
         Self.applyRSVP(eventID: eventID, going: going, to: &snapshot)
         publish()
@@ -81,12 +86,12 @@ public actor DIPMockRepository: DIPRepository {
 
     public func updateProfile(_ edit: ProfileEdit) async throws {
         try consumeFailure(.profile)
-        guard Set(edit.interestTagIDs).count <= 10 else { throw DIPRepositoryError.invalidInput("Choose up to 10 interests") }
+        guard Set(edit.interestTagIDs).count <= 10 else { throw MockMessage.reject(String(localized: "mock.error.tooManyInterests", defaultValue: "Choose up to 10 interests", bundle: .module, comment: "Preview data error: more than 10 interests selected")) }
         if let radius = edit.travelRadiusMiles, !(0...500).contains(radius) {
-            throw DIPRepositoryError.invalidInput("Choose a travel radius up to 500 miles")
+            throw MockMessage.reject(String(localized: "mock.error.radiusTooLarge", defaultValue: "Choose a travel radius up to 500 miles", bundle: .module, comment: "Preview data error: travel radius out of range"))
         }
         guard Set(edit.interestTagIDs).isSubset(of: Set(snapshot.profile.interestCatalog.map(\.id)).union(snapshot.profile.interestTagIDs)) else {
-            throw DIPRepositoryError.invalidInput("Unknown interest")
+            throw MockMessage.reject(String(localized: "mock.error.unknownInterest", defaultValue: "Unknown interest", bundle: .module, comment: "Preview data error: an interest that is not in the catalog"))
         }
         snapshot.profile.department = edit.department.trimmingCharacters(in: .whitespacesAndNewlines)
         snapshot.profile.city = edit.city.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -113,12 +118,12 @@ public actor DIPMockRepository: DIPRepository {
             throw DIPRepositoryError.notFound(eventID)
         }
         guard let event = snapshot.eventDetails[eventID], event.isJoined, !event.isPast else {
-            throw DIPRepositoryError.invalidInput("Join this activity before sending a message")
+            throw MockMessage.reject(String(localized: "mock.error.joinToMessage", defaultValue: "Join this activity before sending a message", bundle: .module, comment: "Preview data error: sending a chat message without having joined"))
         }
-        let trimmed = try validatedText(text, identity: messageID, kind: "Message")
+        let trimmed = try validatedText(text, identity: messageID, kind: .message)
         if let existing = snapshot.messages[eventID]?.first(where: { $0.id == messageID }) {
             guard existing.authorID == snapshot.profile.id && existing.text == trimmed else {
-                throw DIPRepositoryError.invalidInput("Message identity already exists")
+                throw MockMessage.reject(String(localized: "mock.error.messageExists", defaultValue: "Message identity already exists", bundle: .module, comment: "Preview data error: a different message was already sent with this id"))
             }
             return
         }
@@ -140,10 +145,10 @@ public actor DIPMockRepository: DIPRepository {
         try consumeFailure(.comment)
         guard let album = snapshot.albums[eventID] else { throw DIPRepositoryError.notFound(eventID) }
         guard album.photos.contains(where: { $0.id == photoID }) else { throw DIPRepositoryError.notFound(photoID) }
-        let trimmed = try validatedText(text, identity: commentID, kind: "Comment")
+        let trimmed = try validatedText(text, identity: commentID, kind: .comment)
         if let existing = snapshot.photoComments[eventID]?[photoID]?.first(where: { $0.id == commentID }) {
             guard existing.authorID == snapshot.profile.id && existing.text == trimmed else {
-                throw DIPRepositoryError.invalidInput("Comment identity already exists")
+                throw MockMessage.reject(String(localized: "mock.error.commentExists", defaultValue: "Comment identity already exists", bundle: .module, comment: "Preview data error: a different comment was already sent with this id"))
             }
             return
         }
@@ -157,12 +162,12 @@ public actor DIPMockRepository: DIPRepository {
         try consumeFailure(.photos)
         guard var album = snapshot.albums[eventID] else { throw DIPRepositoryError.notFound(eventID) }
         guard photos.allSatisfy({ !$0.id.isEmpty && !$0.data.isEmpty && $0.data.count <= 25_000_000 }) else {
-            throw DIPRepositoryError.invalidInput("Choose a nonempty image smaller than 25 MB")
+            throw MockMessage.reject(String(localized: "mock.error.imageInvalid", defaultValue: "Choose a nonempty image smaller than 25 MB", bundle: .module, comment: "Preview data error: an empty or too large photo"))
         }
         // Validate before any mutation so a mixed invalid batch cannot partially import.
         for photo in photos {
             if let existing = album.photos.first(where: { $0.id == photo.id }), existing.image != .data(photo.data) {
-                throw DIPRepositoryError.invalidInput("Photo identity already exists")
+                throw MockMessage.reject(String(localized: "mock.error.photoExists", defaultValue: "Photo identity already exists", bundle: .module, comment: "Preview data error: a different photo was already added with this id"))
             }
             if !album.photos.contains(where: { $0.id == photo.id }) {
                 album.photos.append(.init(id: photo.id, image: .data(photo.data),
@@ -174,13 +179,26 @@ public actor DIPMockRepository: DIPRepository {
         publish()
     }
 
-    private func validatedText(_ text: String, identity: String, kind: String) throws -> String {
+    private enum TextKind { case message, comment }
+
+    /// One full sentence per kind (never "\(kind) is empty"), so each translates on its own.
+    private func validatedText(_ text: String, identity: String, kind: TextKind) throws -> String {
         guard !identity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw DIPRepositoryError.invalidInput("\(kind) identity is required")
+            throw MockMessage.reject(kind == .message
+                ? String(localized: "mock.error.messageIdRequired", defaultValue: "Message identity is required", bundle: .module, comment: "Preview data error: a chat message without an id")
+                : String(localized: "mock.error.commentIdRequired", defaultValue: "Comment identity is required", bundle: .module, comment: "Preview data error: a photo comment without an id"))
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw DIPRepositoryError.invalidInput("\(kind) is empty") }
-        guard trimmed.count <= 2_000 else { throw DIPRepositoryError.invalidInput("\(kind) exceeds 2000 characters") }
+        guard !trimmed.isEmpty else {
+            throw MockMessage.reject(kind == .message
+                ? String(localized: "mock.error.messageEmpty", defaultValue: "Message is empty", bundle: .module, comment: "Preview data error: an empty chat message")
+                : String(localized: "mock.error.commentEmpty", defaultValue: "Comment is empty", bundle: .module, comment: "Preview data error: an empty photo comment"))
+        }
+        guard trimmed.count <= 2_000 else {
+            throw MockMessage.reject(kind == .message
+                ? String(localized: "mock.error.messageTooLong", defaultValue: "Message exceeds 2000 characters", bundle: .module, comment: "Preview data error: a chat message over the length limit")
+                : String(localized: "mock.error.commentTooLong", defaultValue: "Comment exceeds 2000 characters", bundle: .module, comment: "Preview data error: a photo comment over the length limit"))
+        }
         return trimmed
     }
 

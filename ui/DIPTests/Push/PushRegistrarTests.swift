@@ -40,6 +40,9 @@ final class PushRegistrarTests: XCTestCase {
         var deletedTokens = 0
         var failDelete = false
         func deleteToken() async -> Bool { deletedTokens += 1; return !failDelete }
+        var isForeground = false
+        var fallbacks: [URL?] = []
+        func postInviteFallback(link: URL?) async { fallbacks.append(link) }
     }
 
     final class FakeStore: PushStateStore {

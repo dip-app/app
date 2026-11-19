@@ -62,7 +62,7 @@ import DIPCore
     func testLiveReadBridgeNeverPretendsToPerformAnRSVP() async throws {
         let repository = bridge(AppBridgeSource())
         do { try await repository.setRSVP(eventID: "event-00", going: true); XCTFail() }
-        catch { guard case DIPRepositoryError.invalidInput = error else { return XCTFail("Expected explicit unavailable action") } }
+        catch { guard case DIPRepositoryError.rejected = error else { return XCTFail("Expected explicit unavailable action") } }
         repository.stop()
     }
 }

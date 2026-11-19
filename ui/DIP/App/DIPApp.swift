@@ -11,6 +11,8 @@ struct DIPApp: App {
     @State private var eventLinks = EventLinkInbox()
     /// Push client; nil unless the feature flag is on and Firebase is configured (device-unverified, see PushRegistration.swift).
     @State private var push: PushCoordinator?
+    /// Sends the app language to the member's profile (setMyLocaleV1) so emails and pushes match it. Silent, best effort.
+    @State private var localeSync: MemberLocaleSync
     /// The uid of the last signed-in (or resolving) account, so a transition to signed out / another account is seen once.
     @State private var signedInUID: String?
     /// Forwards the APNs token to FCM explicitly (SwiftUI lifecycle); inert unless the push flag is on.
@@ -58,6 +60,7 @@ struct DIPApp: App {
         let repository = Self.makeRepository()
         self.repository = repository
         _session = State(initialValue: AccountsSession(repository: repository))
+        _localeSync = State(initialValue: MemberLocaleSync(repository: repository as? any MemberLocaleRepository))
         _push = State(initialValue: MockLaunch.mode() == nil ? PushComposition.make() : nil)
     }
 
@@ -76,7 +79,11 @@ struct DIPApp: App {
             .onChange(of: session.state) { _, state in sessionStateChanged(state) }
             .onChange(of: scenePhase) { _, phase in
                 // Permission granted later in iOS Settings takes effect when the app returns to the foreground.
-                if phase == .active { Task { await push?.refresh() } }
+                if phase == .active {
+                    Task { await push?.refresh() }
+                    // The language may have changed in iOS Settings; sends only when it differs from the profile.
+                    if case .member(let context) = session.state { Task { await localeSync.sync(context) } }
+                }
             }
             // The buttons drive the coordinator; the setter is a no-op so a dismissal never double-fires.
             .alert(Text("Get updates for activities you join?", comment: "Notification priming alert title"), isPresented: Binding(
@@ -138,6 +145,7 @@ struct DIPApp: App {
     @ViewBuilder private func memberHome(_ context: MembershipContext) -> some View {
         let home = DIPMemberHome(context: context, repository: repository, oauthPhotoURL: FirebaseBootstrap.oauthPhotoURL(), eventReadFactory: makeEventReads, participationFactory: makeParticipation, albumFactory: makeAlbums, invitesFactory: makeInvites, notificationsFactory: makeNotifications, notificationPreferencesFactory: makeNotificationPreferences, pushPermission: push?.permissionControl, mockSnapshot: MockLaunch.snapshot(), onboarding: .standard(), bugReportSubmitter: makeBugReportSubmitter, deepLinkEventID: eventLinks.pendingEventID, onDeepLinkHandled: { eventLinks.consume($0) }, deepLinkOpensChat: eventLinks.pendingOpensChat, onJoined: { Task { await push?.didJoin() } }, onSignOut: { await push?.signingOut(); await session.signOut() })
         .task(id: context.uid) { await push?.memberSignedIn(uid: context.uid) }
+        .task(id: context.uid) { await localeSync.sync(context) }
         let submissions = ChallengeSubmissionContext(
             scope: ChallengeReadScope(uid: context.uid, companyID: context.companyID),
             makeSource: { makeSubmissionSource() })

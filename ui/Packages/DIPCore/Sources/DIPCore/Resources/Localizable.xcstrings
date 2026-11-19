@@ -3505,19 +3505,19 @@
       }
     },
     "notif.category.social.summary" : {
-      "comment" : "Notification preference category description",
+      "comment" : "Notification preference category description: comments on the member's album photos and new photos in albums of activities they attended",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Comments and photos on your posts"
+            "value" : "Comments on your photos and new photos from activities you went to"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comentarios y fotos en tus publicaciones"
+            "value" : "Comentarios en tus fotos y fotos nuevas de actividades a las que fuiste"
           }
         },
         "tlh" : {

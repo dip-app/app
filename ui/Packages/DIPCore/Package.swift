@@ -12,7 +12,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "DIPCore", resources: [.process("Resources")]),
-        .target(name: "DIPMockData", dependencies: ["DIPCore"]),
+        .target(name: "DIPMockData", dependencies: ["DIPCore"], resources: [.process("Resources")]),
         .target(name: "DIPPresentation", dependencies: ["DIPCore"], resources: [.process("Resources")]),
         .testTarget(name: "DIPCoreTests", dependencies: ["DIPCore", "DIPMockData"]),
         .testTarget(name: "DIPPresentationTests", dependencies: ["DIPCore", "DIPPresentation", "DIPMockData"])

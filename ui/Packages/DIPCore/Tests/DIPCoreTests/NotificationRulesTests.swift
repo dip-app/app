@@ -63,6 +63,12 @@ import Testing
         #expect(DIPNotificationKind(serverType: "challenge_approved") == .challengeApproved)
         #expect(DIPNotificationKind(serverType: "challenge_changes_requested") == .challengeChanges)
         #expect(DIPNotificationKind(serverType: "attendee_added") == .attendeeAdded)
+        #expect(DIPNotificationKind(serverType: "attendee_removed") == .attendeeRemoved)
+        // Social notices: the in-app type is `comment`; the push type `photo_comment` maps the same way.
+        #expect(DIPNotificationKind(serverType: "comment") == .comment)
+        #expect(DIPNotificationKind(serverType: "photo_comment") == .comment)
+        #expect(DIPNotificationKind(serverType: "photo_added") == .photo)
         #expect(DIPNotificationKind(serverType: "something_new") == .other)
+        #expect(DIPNotificationKind(serverType: "") == .other)
     }
 }

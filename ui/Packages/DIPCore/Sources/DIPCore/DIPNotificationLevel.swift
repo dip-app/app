@@ -27,6 +27,6 @@ public extension DIPRepository {
     /// Adapters without preference support return nil (the menu stays hidden).
     func notificationLevel(eventID: String) async throws -> DIPNotificationLevel? { nil }
     func setNotificationLevel(eventID: String, level: DIPNotificationLevel) async throws {
-        throw DIPRepositoryError.invalidInput(String(localized: "notif.level.unavailable", defaultValue: "Notification settings aren’t available yet", bundle: .module, comment: "Error when the repository has no per-activity notification settings"))
+        throw DIPRepositoryError.rejected(DIPMemberMessage(localized: String(localized: "notif.level.unavailable", defaultValue: "Notification settings aren’t available yet", bundle: .module, comment: "Error when the repository has no per-activity notification settings")))
     }
 }

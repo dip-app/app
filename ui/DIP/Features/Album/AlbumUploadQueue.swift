@@ -232,7 +232,8 @@ final class AlbumUploadQueue {
 
     nonisolated static func message(_ error: Error) -> String {
         switch error as? DIPRepositoryError {
-        case .invalidInput(let message)?, .injectedFailure(let message)?: message
+        case .rejected(let message)?: message.text
+        case .injectedFailure(let message)?: message
         case .notFound?: String(localized: "album.upload.error.albumGone", defaultValue: "This album is no longer available.", comment: "Album upload tile error when the album was removed")
         case nil: String(localized: "album.upload.error.generic", defaultValue: "This photo couldn’t be added. Try again.", comment: "Album upload tile error for an unknown upload failure")
         }

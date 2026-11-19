@@ -283,7 +283,7 @@ struct DIPNotificationsScreen: View {
         .buttonStyle(DIPPressFeedbackStyle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(item.isRead ? "\(item.title). \(item.body) \(time)" : String(localized: "notifications.row.a11y.unread", defaultValue: "Unread: \(item.title). \(item.body) \(time)", comment: "VoiceOver label of an unread notification row; %1$@ = title, %2$@ = body, %3$@ = relative time"))
-        .accessibilityHint(Self.hint(item.destination))
+        .accessibilityHint(Self.hint(item))
         .accessibilityAddTraits(.isButton)
         .accessibilityActions {
             if !item.isRead { Button("Mark as read") { Task { await model.markRead(item.id) } } }
@@ -301,6 +301,7 @@ struct DIPNotificationsScreen: View {
         case .challengeApproved: "star"
         case .challengeChanges: "arrow.uturn.backward"
         case .attendeeAdded: "person.crop.circle.badge.checkmark"
+        case .attendeeRemoved: "person.crop.circle.badge.minus"
         case .comment: "bubble.left"
         case .photo: "photo"
         case .other: "bell"
@@ -311,12 +312,20 @@ struct DIPNotificationsScreen: View {
         switch kind {
         case .invite, .inviteAnswered: DIPTokens.Color.actionPrimary.swiftUIColor
         case .eventUpdated, .reminder: DIPTokens.Color.notificationAccent.swiftUIColor
-        case .eventCancelled: DIPTokens.Color.textPrimary.swiftUIColor
+        case .eventCancelled, .attendeeRemoved: DIPTokens.Color.textPrimary.swiftUIColor
         case .challengeApproved, .challengeChanges: DIPTokens.Color.challengeAccent.swiftUIColor
         case .attendeeAdded: DIPTokens.Color.actionComplete.swiftUIColor
         case .comment, .photo: DIPTokens.Color.actionPrimary.swiftUIColor
         case .other: DIPTokens.Color.textPrimary.swiftUIColor
         }
+    }
+
+    /// Comments and new photos open the activity page (the push opens the same place); its album is one step away.
+    static func hint(_ item: DIPNotification) -> String {
+        if case .event = item.destination, item.kind == .comment || item.kind == .photo {
+            return String(localized: "notifications.hint.eventAlbum", defaultValue: "Opens the activity, where you can view its album", comment: "VoiceOver hint on a photo comment or new photo notification that opens the activity page")
+        }
+        return hint(item.destination)
     }
 
     static func hint(_ destination: DIPNotificationDestination) -> String {

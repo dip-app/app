@@ -1,5 +1,6 @@
 import DIPAccounts
 import DIPContracts
+@preconcurrency import FirebaseFirestore
 import XCTest
 @testable import DIP
 
@@ -40,6 +41,35 @@ final class ProfileDataTests: XCTestCase {
             XCTFail("preview did not reach member state"); throw CancellationError()
         }
         return (repository, session, context)
+    }
+
+    @MainActor
+    func testLocaleSyncWritesTheAppLanguageThroughTheMembershipListenerOnce() async throws {
+        let (repository, session, context) = try await signedInPreview()
+        XCTAssertNil(context.profile.locale)
+        let sync = MemberLocaleSync(repository: repository, appLanguage: { .es })
+        let sent = await sync.sync(context)
+        XCTAssertTrue(sent)
+        for _ in 0..<50 { await Task.yield() }
+        guard case .member(let updated) = session.state else { return XCTFail("left member state") }
+        XCTAssertEqual(updated.profile.locale, "es")
+        let again = await sync.sync(updated)   // foreground after the listener caught up: same language, no call
+        XCTAssertFalse(again)
+        XCTAssertEqual(repository.localeCalls, [.es])
+        session.stop()
+    }
+
+    @MainActor
+    func testProfileMapperReadsTheOptionalLocale() throws {
+        func fields(_ extra: [String: Any]) -> [String: Any] {
+            ["companyId": "c1", "displayName": "Sam", "email": "sam@example.test", "photoURL": "", "avatarId": "", "department": "",
+             "jobTitle": "", "city": "", "role": "member", "interestTagIds": [String](), "travelRadiusMiles": 20,
+             "availability": [String](), "friendIds": [String](), "favoritePhotoIds": [String](), "pointsBalance": 0,
+             "createdAt": Timestamp(seconds: 0, nanoseconds: 0)].merging(extra) { $1 }
+        }
+        XCTAssertNil(try AccountDocumentMapper.decode(id: "u1", fields: fields([:]))?.locale)
+        XCTAssertEqual(try AccountDocumentMapper.decode(id: "u1", fields: fields(["locale": "es"]))?.locale, "es")
+        XCTAssertNil(try AccountDocumentMapper.decode(id: "u1", fields: fields(["locale": 7]))?.locale)   // malformed: English
     }
 
     @MainActor
