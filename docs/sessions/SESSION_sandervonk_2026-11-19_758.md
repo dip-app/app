@@ -39,6 +39,10 @@ Root cause of (2), reproduced on the Claude-Duo simulator: the generated Info.pl
 - Review P3 pill gap: accepted, outer clearance 170 to 173 pt to match the inner gap.
 - Review P3 carousel clip and home indicator: unchanged phone behavior, not in scope.
 
+## Follow-up: top space on Duo displays
+
+Owner question: why the Duo screens leave space at the top. Cause: every page reserved the phone's 60 pt status-bar allowance (`DIPDuoPaneLayout.topInset(open:)` returned 60 whenever the posture was not open, and the fixed tab header, the accounts stage, the header avatar flight frame and the Profile badge fallback hardcoded 60). On both Duo displays the real top safe area is 0 (debug probe: `safe=... t0`), because clock and status pill live in the side sensor column. Fix: `DIPDuoSensor.safeTop` carries the real top inset; `topInset(open:sensor:)` returns safeTop + 20 pt on any Duo display with a sensor column and 60 pt otherwise, exposed as `\.dipTopInset`. Used by the tab header, fixed header, Profile, event details, detail header, album, attendees, photo comments, accounts stage, avatar flight and badge fallback. Profile's status-bar fade is off on Duo displays. Not changed: the onboarding tour (fixed scene geometry, headerTop 70) and system sheets (own safe areas). Checks: `DuoLayoutTests` 26 passed (new `testDuoDisplaysDropThePhoneStatusBarAllowance`); Claude-Duo closed Home, Profile and event page before/after; design review PASS (P3 only: pre-existing control sizes and spacing). Regular iPhones get 60 pt by construction (no sensor); not re-captured on a phone simulator for this follow-up.
+
 ## Handoff
 
 Not verified: a physical iPhone Duo (whether the outer display ever reports landscape when held upright, real hinge timing), VoiceOver and Switch Control on a device (the drag is an additional gesture; buttons keep labels and traits), Spanish screens on the Duo (no new strings). The rail is not dimmed under alerts (pre-existing for the inner display; touches are blocked while a sheet is up). Disabling landscape on regular iPhones (broken prototype layouts there) is a separate decision.

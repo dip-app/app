@@ -83,8 +83,9 @@ struct DIPProfileScreen: View {
                 }
                 .scrollIndicators(.hidden)
                 .padding(.bottom, 22)
-                // The fade hides content scrolling under the phone status bar; the Duo has none.
-                if !duoOpen {
+                // The fade hides content scrolling under the phone status bar; Duo displays (status in the side
+                // column) have none.
+                if !duoOpen && !tabsInRail {
                     LinearGradient(
                         stops: [
                             .init(color: .white, location: 0.35),
