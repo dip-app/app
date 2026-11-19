@@ -171,6 +171,14 @@
           "type": "string",
           "format": "date-time",
           "description": "Server-owned, optional. When status last changed."
+        },
+        "locale": {
+          "type": "string",
+          "enum": [
+            "en",
+            "es"
+          ],
+          "description": "Server-owned, optional (setMyLocaleV1). Language of server-written copy (email, push) and the admin portal default. Missing means en. iOS keeps following the device language."
         }
       },
       "required": [
@@ -724,6 +732,53 @@
       "required": [
         "contractVersion",
         "removed"
+      ]
+    },
+    "SetMyLocaleRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "setMyLocaleV1: the signed-in member sets the language of their emails and pushes. The uid comes from Auth.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "locale": {
+          "type": "string",
+          "enum": [
+            "en",
+            "es"
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "locale"
+      ]
+    },
+    "SetMyLocaleResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "locale": {
+          "type": "string",
+          "enum": [
+            "en",
+            "es"
+          ]
+        },
+        "changed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "locale",
+        "changed"
       ]
     },
     "NotificationCategory": {
@@ -2438,6 +2493,27 @@
         "after"
       ]
     },
+    "AuditSummaryParam": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One placeholder value of an audit summary. Numbers are sent as decimal strings.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 280
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ]
+    },
     "AuditEntry": {
       "type": "object",
       "additionalProperties": false,
@@ -2520,6 +2596,21 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "summaryKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+          "description": "Optional, additive. Stable message key of the summary (for example roster.invite); the admin portal renders it in the viewer's language with summaryParams. summary keeps the English text for older clients."
+        },
+        "summaryParams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuditSummaryParam"
+          },
+          "maxItems": 10,
+          "description": "Optional, additive. Values for the summaryKey placeholders. Server or user content (names, titles, emails) is never translated."
         }
       },
       "required": [

@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { escapeHtml } from "../../share/domain/sharePage";
 import { EMAIL_ASSET_BASE, renderEmail } from "../domain/templates/render";
-import { PREVIEW_CASES } from "./previewCases";
+import { PREVIEW_CASES, PREVIEW_CASES_ES } from "./previewCases";
 
 const args = process.argv.slice(2);
 let assetBase: string | null = null;
@@ -23,7 +23,8 @@ const localize = (html: string): string => (assetBase ? html.split(EMAIL_ASSET_B
 mkdirSync(outDir, { recursive: true });
 
 const items: string[] = [];
-for (const c of PREVIEW_CASES) {
+const cases = [...PREVIEW_CASES, ...PREVIEW_CASES_ES.map((c) => ({ ...c, name: `es_${c.name}` }))];
+for (const c of cases) {
   const rendered = renderEmail(c.template, c.variables as never, c.ctx);
   writeFileSync(join(outDir, `${c.name}.html`), localize(rendered.html));
   writeFileSync(join(outDir, `${c.name}.txt`), rendered.text);
@@ -43,4 +44,4 @@ ${items.join("\n")}
 `,
 );
 
-console.log(`Wrote ${PREVIEW_CASES.length} previews to ${outDir}`);
+console.log(`Wrote ${cases.length} previews to ${outDir}`);

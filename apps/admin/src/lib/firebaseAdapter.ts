@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 import { createLiveOps } from "./adminLive";
+import { getLocale, hasMessage, t } from "./i18n";
 import { isStaff } from "./adminTypes";
 import type { AdminApi, CommandResult, Session } from "./api";
 import type { Tag } from "./catalog";
@@ -68,8 +69,12 @@ export function apiErrorFrom(error: unknown): unknown {
   if (typeof raw !== "string") return error;
   const code = raw.replace(/^functions\//, "").replace(/^firestore\//, "");
   if (!API_CODES.includes(code as ApiErrorCode)) return error;
-  const message = String((error as { message?: unknown }).message ?? "Request failed.");
-  const details = (error as { details?: { fields?: unknown; reason?: unknown; conflict?: unknown } }).details;
+  const serverMessage = String((error as { message?: unknown }).message ?? "Request failed.");
+  const details = (error as { details?: { fields?: unknown; reason?: unknown; conflict?: unknown; messageKey?: unknown; messageParams?: unknown } }).details;
+  // The server sends a stable catalog key next to its English message; outside English the portal shows its own text.
+  const messageKey = typeof details?.messageKey === "string" ? details.messageKey : undefined;
+  const messageParams = scalarParams(details?.messageParams);
+  const message = localizedMessage(serverMessage, messageKey, messageParams);
   const fields: FieldErrors = {};
   if (Array.isArray(details?.fields)) {
     // Field names are draft-relative ("title", "venue.name"); a "draft."/"event." prefix is tolerated.
@@ -81,7 +86,20 @@ export function apiErrorFrom(error: unknown): unknown {
   const conflict = given && typeof given.challengeId === "string" && typeof given.startDate === "string" && typeof given.endDate === "string"
     ? { challengeId: given.challengeId, startDate: given.startDate, endDate: given.endDate }
     : undefined;
-  return new ApiError(code as ApiErrorCode, message, fields, reason, conflict);
+  return new ApiError(code as ApiErrorCode, message, fields, reason, conflict, messageKey, messageParams);
+}
+
+function scalarParams(value: unknown): Record<string, string | number> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const out: Record<string, string | number> = {};
+  for (const [name, param] of Object.entries(value)) if (typeof param === "string" || typeof param === "number") out[name] = param;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** English keeps the server's exact message; other languages use the catalog text for the key when there is one. */
+export function localizedMessage(serverMessage: string, messageKey: string | undefined, params: Record<string, string | number> | undefined): string {
+  if (!messageKey || getLocale() === "en" || !hasMessage(messageKey)) return serverMessage;
+  return t(messageKey, params ?? {});
 }
 
 function iso(value: unknown): string {
@@ -206,6 +224,7 @@ export function createFirebaseApi(config: LiveConfig, deps: FirebaseApiDeps = {}
       email: user.email ?? "",
       companyId: typeof data?.companyId === "string" ? data.companyId : "",
       role: data?.role === "admin" ? "admin" : data?.role === "organizer" ? "organizer" : "member",
+      ...(data?.locale === "en" || data?.locale === "es" ? { locale: data.locale } : {}),
     };
   }
 

@@ -377,6 +377,8 @@ async function settle(deps: AiDeps, uid: string, request: ParsedGenerateRequest,
       targetId: companyId,
       summary: result.status === "done" ? `Generated ${result.drafts.length} AI event draft${result.drafts.length === 1 ? "" : "s"}`
         : result.status === "flagged" ? "AI note declined by the safety check" : "AI event drafts failed",
+      ...(result.status === "done" ? { summaryKey: "ai.generated" as const, summaryParams: { count: result.drafts.length } }
+        : { summaryKey: result.status === "flagged" ? "ai.noteDeclined" as const : "ai.generateFailed" as const }),
       changes: [
         change("models", null, result.models.join(",")),
         change("tokens", null, `${result.tokensIn} in, ${result.tokensOut} out`),

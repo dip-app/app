@@ -201,7 +201,19 @@ export function auditFromDoc(id: string, d: DocumentData): AuditEntry {
     id, at: iso(d.createdAt), actorId: str(d.actorId), actorName: str(d.actorName), actorRole: roleOf(d.actorRole), action: str(d.action),
     targetType: (str(d.targetType) || "member") as AuditEntry["targetType"], targetId: str(d.targetId), summary: str(d.summary),
     reason: str(d.reason) || undefined, changes,
+    ...summaryFromDoc(d),
   };
+}
+
+/** The optional message key and params the server adds to audit entries (absent on older entries). */
+function summaryFromDoc(d: DocumentData): Pick<AuditEntry, "summaryKey" | "summaryParams"> {
+  const key = str(d.summaryKey);
+  if (!key) return {};
+  const params: Record<string, string> = {};
+  if (Array.isArray(d.summaryParams)) {
+    for (const p of d.summaryParams as Record<string, unknown>[]) if (typeof p?.name === "string" && typeof p.value === "string") params[p.name] = p.value;
+  }
+  return { summaryKey: key, summaryParams: params };
 }
 
 const bugStatus = (value: unknown): BugStatus => (value === "triaged" || value === "resolved" ? value : "new");
@@ -635,6 +647,12 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       const session = await organizer();
       const snap = await getDocs(query(col(session, "auditLog"), orderBy("createdAt", "desc"), limit(100)));
       return snap.docs.map((d) => auditFromDoc(d.id, d.data()));
+    }),
+
+    // The callable takes exactly {contractVersion, locale}: no companyId or requestId (the setting is idempotent).
+    setMyLocale: (locale) => run(async () => {
+      await organizer();
+      await httpsCallable(functions, ADMIN_CALLABLES.setMyLocale)({ contractVersion: 1, locale });
     }),
   };
 }

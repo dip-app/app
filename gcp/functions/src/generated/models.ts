@@ -39,6 +39,7 @@ export interface AppUser {
   startDate?: string;
   revision?: number;
   statusUpdatedAt?: string;
+  locale?: "en" | "es";
 }
 
 export interface AppNotification {
@@ -164,6 +165,17 @@ export interface UnregisterDeviceRequest {
 export interface UnregisterDeviceResponse {
   contractVersion: number;
   removed: boolean;
+}
+
+export interface SetMyLocaleRequest {
+  contractVersion: number;
+  locale: "en" | "es";
+}
+
+export interface SetMyLocaleResponse {
+  contractVersion: number;
+  locale: "en" | "es";
+  changed: boolean;
 }
 
 export type NotificationCategory = "invites" | "event_updates" | "reminders" | "chat" | "challenges" | "social" | "discovery";
@@ -568,6 +580,11 @@ export interface AuditFieldChange {
   after: string | null;
 }
 
+export interface AuditSummaryParam {
+  name: string;
+  value: string;
+}
+
 export interface AuditEntry {
   id?: string;
   companyId: string;
@@ -582,6 +599,8 @@ export interface AuditEntry {
   reason?: string;
   requestId?: string;
   createdAt: string;
+  summaryKey?: string;
+  summaryParams?: Array<AuditSummaryParam>;
 }
 
 export interface EmployeeRecordInput {

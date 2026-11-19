@@ -1155,5 +1155,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const session = staff("audit.view");
       return state.audit.filter((a) => a.companyId === session.companyId).map((a) => strip(a)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
     },
+
+    // The mock keeps the language in this browser only (localStorage, set by the Language setting): nothing to save.
+    async setMyLocale() {},
   };
 }

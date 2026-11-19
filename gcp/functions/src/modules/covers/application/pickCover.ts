@@ -291,6 +291,7 @@ export async function pickEventCover(deps: PickCoverDeps, rawCaller: Caller | nu
       writeAudit(tx, actor, {
         id: auditId, action: picked.newPhoto ? "cover.import" : "cover.pick", targetType: "cover", targetId: chosenKey ?? "default", requestId,
         summary: picked.newPhoto ? "Imported a new cover photo for an event draft" : "Picked an event cover",
+        summaryKey: picked.newPhoto ? "cover.import" : "cover.pick",
         changes: [change("source", null, picked.source), change("provider", null, picked.provider), change("cover", null, chosenKey)],
       });
     });

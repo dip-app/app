@@ -72,3 +72,7 @@ The `admin` Functions module implements tickets #121 to #126 ([contract](docs/co
 ## Tag interest counts (stretch S3, November 17)
 
 Per-company interest counts at `companies/{c}/tagStats/{tagId}` (organizer and admin read only; members never see counts): the receipt-guarded `onUserInterestsWritten` trigger, the nightly `reconcileTagStats` job, the dry-run-default `gcp/scripts/backfill-tag-stats.ts`, `getInterestSummary` for the AI flow (counts under 5 suppressed), and portal counts on event form tag chips plus an Overview Interests card. Unit, rules and emulator tests (`npm run test:tags:integration`, in CI) and portal tests cover it. **Nothing is deployed**; the receipts TTL policy and the production backfill are owner steps. See [tag-interest-counts](docs/design/stretch/tag-interest-counts.md#decisions).
+
+## Backend internationalization (issue #259 backend phase, November 18)
+
+Emails and push notifications are written in each member's language (English or Spanish) from the server-owned `users/{uid}.locale`, set only by the new `setMyLocaleV1` callable (implemented and exported, not deployed) and by the admin portal's Language setting. English output is byte-identical (email golden snapshots and pinned push strings). Audit entries add `summaryKey`/`summaryParams` and callable errors add `details.messageKey`, which the admin portal renders in the active language. `npm run check:backend-i18n` guards the catalogs. The iOS app does not set the locale yet, and in-app notices stay English. See [backend-i18n.md](docs/design/backend-i18n.md).

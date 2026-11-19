@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { eventURL, formatEventTime, hasVisibleChange, renderEmail, validateVariables } from "../../functions/src/modules/email/domain/templates/render";
 import { TEMPLATE_IDS, type TemplateId } from "../../functions/src/modules/email/domain/templates/types";
-import { PREVIEW_CASES, SAMPLE_CTX } from "../../functions/src/modules/email/scripts/previewCases";
+import { PREVIEW_CASES, PREVIEW_CASES_ES, SAMPLE_CTX } from "../../functions/src/modules/email/scripts/previewCases";
 
 const SNAP_DIR = join(__dirname, "__snapshots__", "email");
 const UPDATE = process.env.UPDATE_EMAIL_SNAPSHOTS === "1";
@@ -30,6 +30,27 @@ describe("email template snapshots", () => {
         } else {
           assert.ok(existsSync(file), `missing snapshot ${file}; run with UPDATE_EMAIL_SNAPSHOTS=1`);
           assert.equal(actual, readFileSync(file, "utf8"), `${c.name}.${ext} differs from snapshot`);
+        }
+      }
+    });
+  }
+});
+
+// Spanish (issue #259): separate golden files so the English ones above stay the untouched proof that English is
+// byte-identical. Regenerate both with UPDATE_EMAIL_SNAPSHOTS=1 and review the diff.
+describe("email template snapshots (es)", () => {
+  const dir = join(SNAP_DIR, "es");
+  for (const c of PREVIEW_CASES_ES) {
+    test(`golden output (es): ${c.name}`, () => {
+      const out = render(c);
+      for (const [ext, actual] of [["html", out.html], ["txt", out.text]] as const) {
+        const file = join(dir, `${c.name}.${ext}`);
+        if (UPDATE) {
+          mkdirSync(dir, { recursive: true });
+          writeFileSync(file, actual);
+        } else {
+          assert.ok(existsSync(file), `missing snapshot ${file}; run with UPDATE_EMAIL_SNAPSHOTS=1`);
+          assert.equal(actual, readFileSync(file, "utf8"), `es/${c.name}.${ext} differs from snapshot`);
         }
       }
     });

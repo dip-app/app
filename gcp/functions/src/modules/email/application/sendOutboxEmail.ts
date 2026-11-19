@@ -1,4 +1,5 @@
 import * as logger from "firebase-functions/logger";
+import { localeOrDefault } from "../../i18n";
 import { INVITE_FROM, INVITE_REPLY_TO, type InviteContext } from "../domain/ics";
 import { resolveEmailPreferences } from "../domain/categories";
 import {
@@ -164,6 +165,9 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
   const cap = await deps.caps.consume(doc.uid, doc.companyId, capDay(now), MEMBER_DAILY_CAP, company.dailyCap, now, doc.id);
   if (cap !== "ok") return skip(cap);
 
+  // Every email is rendered in its own recipient's language: one outbox document per recipient, so a fan-out with mixed
+  // locales sends each member their own copy. Missing or unsupported values mean English.
+  const locale = localeOrDefault(recipient.locale);
   const nowSeconds = Math.floor(now.getTime() / 1000);
   const sign = deps.tokenSigner ?? signUnsubscribeToken;
   const unsubscribeURL = `${deps.config.publicOrigin}/u/${sign(deps.config.unsubscribeKey, doc.uid, doc.category, nowSeconds)}`;
@@ -174,10 +178,11 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
     openPixelURL: deps.config.openTracking
       ? `${deps.config.publicOrigin}/o/${signOpenToken(deps.config.unsubscribeKey, doc.id, nowSeconds)}.gif`
       : null,
+    locale,
   });
   const attachment = deps.renderer.attachment(doc.template, variables,
     "revision" in variables && typeof variables.revision === "number" ? variables.revision : 0,
-    isInvite ? { attendeeEmail: to, attendeeName: recipient.displayName?.trim() || null, memberUid: doc.uid, now } : undefined);
+    isInvite ? { attendeeEmail: to, attendeeName: recipient.displayName?.trim() || null, memberUid: doc.uid, now, locale } : undefined);
   // An invite without its calendar part would be a plain "you joined" email with a promise it cannot keep.
   if (isInvite && attachment === null) return skip("invalid_variables");
 

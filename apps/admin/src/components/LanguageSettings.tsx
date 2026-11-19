@@ -9,9 +9,9 @@ import { useApp } from "./AppProvider";
 import { toast } from "./Toast";
 
 /**
- * Language picker for Your settings. The choice is kept in this browser only (no profile field yet); "Same as this
- * browser" follows the browser languages. The pseudo-locale (accented, double length) is offered outside live mode
- * for layout testing.
+ * Language picker for Your settings. The choice is kept in this browser (the fallback and offline store) and, signed in
+ * live, also saved on the member's profile (setMyLocaleV1); "Same as this browser" follows the browser languages. The
+ * pseudo-locale (accented, double length) is offered outside live mode for layout testing.
  */
 export function LanguageSettings() {
   const { api } = useApp();
@@ -24,6 +24,10 @@ export function LanguageSettings() {
     setValue(next);
     // Switching re-mounts the signed-in tree in the new language; the toast store outlives that.
     setLocalePreference(next);
+    // Signed in live: also save en/es on the member's profile so the choice follows them to other browsers and the app.
+    // "Same as this browser" and the pseudo-locale are never sent. A failure keeps the local choice (this browser still
+    // uses it); no error is shown because nothing the person asked for failed.
+    if (api.mode === "live" && (next === "en" || next === "es")) api.setMyLocale(next).catch(() => {});
     toast(t("account.language.saved"));
   }
 

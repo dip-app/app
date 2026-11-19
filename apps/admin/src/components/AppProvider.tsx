@@ -6,7 +6,7 @@ import { TagCatalogProvider } from "./TagCatalog";
 import { holdReadsFromQuery } from "@/lib/loadingHold";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
 import { Button, EmptyState } from "@/components/kit";
-import { BRAND, initLocale, t } from "@/lib/i18n";
+import { BRAND, applyMemberLocale, initLocale, t } from "@/lib/i18n";
 import { I18nProvider } from "./I18nProvider";
 
 interface AppState {
@@ -49,6 +49,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setApi(created);
       const stored = await created.session();
       if (cancelled) return;
+      // A language saved on the member's profile wins over the browser default (localStorage stays the fallback).
+      applyMemberLocale(stored?.locale);
       setSession(stored);
       setLoaded(true);
     })().catch(() => { if (!cancelled) setFailed(true); });
@@ -56,7 +58,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (persona?: PersonaId) => {
-    if (api) setSession(await api.signIn(persona));
+    if (!api) return;
+    const signedIn = await api.signIn(persona);
+    applyMemberLocale(signedIn.locale);
+    setSession(signedIn);
   }, [api]);
   const signOut = useCallback(async () => {
     if (!api) return;

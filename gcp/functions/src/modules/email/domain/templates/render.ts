@@ -1,7 +1,9 @@
 import { SHARE_ORIGIN, collapseWhitespace, escapeHtml } from "../../../share/domain/sharePage";
 import { EMAIL_ASSET_BASE, FINE, HAIRLINE, INK, MUTED, FONT, HEAD_FONT, STRIKE, SUPPORT_EMAIL, layoutShell, primaryButton } from "./layout";
 import { renderAdminSuggestions, validateAdminSuggestions } from "./adminSuggestions";
-import { buildCopy, CATEGORY_REASON, changeSummary, eventURL, hasVisibleChange } from "./copy";
+import { intlTag, localeOrDefault, splitAround, type Locale } from "../../../i18n";
+import { buildCopy, categoryReason, changeSummary, eventURL, hasVisibleChange } from "./copy";
+import { tEmail } from "./i18n";
 import { TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
 
 export { eventURL, hasVisibleChange, EMAIL_ASSET_BASE };
@@ -29,26 +31,42 @@ function safeZone(timeZone: string): string {
 
 const norm = (s: string): string => s.replace(/[  ]/g, " ");
 
-/** "Thu, Nov 20, 6:30 PM to 8:00 PM EST". The zone abbreviation is always shown. Invalid input yields "". */
-export function formatEventTime(startISO: string, endISO: string, timeZone: string): string {
+/** A formatted event time and its first day ("Thu, Nov 20"), which the preheader and the old-time line reuse. */
+interface EventWhen { text: string; startDay: string }
+
+function eventWhen(startISO: string, endISO: string, timeZone: string, locale: Locale): EventWhen {
   const start = new Date(startISO);
   const end = new Date(endISO);
-  if (Number.isNaN(start.getTime())) return "";
+  if (Number.isNaN(start.getTime())) return { text: "", startDay: "" };
   const zone = safeZone(timeZone);
-  const day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: zone });
-  const clock = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: zone });
+  const tag = intlTag(locale);
+  const day = new Intl.DateTimeFormat(tag, { weekday: "short", month: "short", day: "numeric", timeZone: zone });
+  const clock = new Intl.DateTimeFormat(tag, { hour: "numeric", minute: "2-digit", timeZone: zone });
+  // The zone abbreviation stays the US English one in every language ("EST", not "GMT-5"): the existing time zone logic.
   const abbr =
     new Intl.DateTimeFormat("en-US", { timeZoneName: "short", hour: "numeric", timeZone: zone })
       .formatToParts(start)
       .find((p) => p.type === "timeZoneName")?.value ?? zone;
   const startDay = norm(day.format(start));
   const startClock = norm(clock.format(start));
-  if (Number.isNaN(end.getTime()) || end.getTime() <= start.getTime()) return `${startDay}, ${startClock} ${abbr}`;
+  if (Number.isNaN(end.getTime()) || end.getTime() <= start.getTime()) return { text: `${startDay}, ${startClock} ${abbr}`, startDay };
   const endDay = norm(day.format(end));
   const endClock = norm(clock.format(end));
-  return endDay === startDay
-    ? `${startDay}, ${startClock} to ${endClock} ${abbr}`
-    : `${startDay}, ${startClock} to ${endDay}, ${endClock} ${abbr}`;
+  const range = (from: string, to: string) => tEmail(locale, "email.time.range", { start: from, end: to });
+  return {
+    text: endDay === startDay
+      ? `${startDay}, ${range(startClock, endClock)} ${abbr}`
+      : `${startDay}, ${range(startClock, `${endDay}, ${endClock}`)} ${abbr}`,
+    startDay,
+  };
+}
+
+/**
+ * "Thu, Nov 20, 6:30 PM to 8:00 PM EST" (Spanish: "vie, 20 nov, 6:30 p.m. a 8:00 p.m. EST"). Dates and clock times
+ * follow the locale through Intl; the zone abbreviation is always shown. Invalid input yields "".
+ */
+export function formatEventTime(startISO: string, endISO: string, timeZone: string, locale: Locale = "en"): string {
+  return eventWhen(startISO, endISO, timeZone, locale).text;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -221,10 +239,9 @@ export function validateVariables<T extends TemplateId>(template: T, value: unkn
 const PREHEADER_MAX = 110;
 
 /** One complete sentence: the copy sentence plus the event day when it fits; cut only at a word boundary, no ellipsis. */
-function buildPreheader(template: TemplateId, sentence: string, when: string): string {
-  const day = when.split(/, \d/)[0] ?? "";
+function buildPreheader(template: TemplateId, sentence: string, day: string, locale: Locale): string {
   if (template !== "event_reminder" && day) {
-    const withDay = `${sentence.replace(/\.$/, "")} on ${day}.`;
+    const withDay = tEmail(locale, "email.preheader.onDay", { sentence: sentence.replace(/\.$/, ""), day });
     if (withDay.length <= PREHEADER_MAX) return withDay;
   }
   if (sentence.length <= PREHEADER_MAX) return sentence;
@@ -233,9 +250,15 @@ function buildPreheader(template: TemplateId, sentence: string, when: string): s
   return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[\s.,;:!?-]+$/u, "")}.`;
 }
 
-function greeting(ctx: RenderContext): string {
+/** "Hi Sam, " + the lead sentence ("¡Hola, Sam! " in Spanish, where the lead starts a new sentence). */
+function greetingLead(ctx: RenderContext, locale: Locale, lead: string): string {
   const name = ctx.recipientFirstName ? collapseWhitespace(ctx.recipientFirstName).slice(0, NAME_MAX) : "";
-  return name ? `Hi ${name},` : "Hi there,";
+  return name ? tEmail(locale, "email.lead.named", { name, lead }) : tEmail(locale, "email.lead.anonymous", { lead });
+}
+
+/** The recipient language of a render; absent or unsupported means English. */
+export function renderLocale(ctx: Pick<RenderContext, "locale">): Locale {
+  return localeOrDefault(ctx.locale);
 }
 
 /**
@@ -245,14 +268,16 @@ function greeting(ctx: RenderContext): string {
  */
 export function renderEmail<T extends TemplateId>(template: T, variables: TemplateVariables[T], ctx: RenderContext): RenderedEmail {
   if (template === "admin_suggestions") return renderAdminSuggestions(variables as TemplateVariables["admin_suggestions"], ctx);
+  const locale = renderLocale(ctx);
+  const t = (key: Parameters<typeof tEmail>[1], vars: Record<string, string | number> = {}) => tEmail(locale, key, vars);
   const zone = safeZone(ctx.timeZone);
-  const copy = buildCopy(template, variables, zone);
-  const hello = greeting(ctx);
-  const reason = CATEGORY_REASON[TEMPLATE_CATEGORY[template]];
+  const copy = buildCopy(template, variables, zone, locale);
+  const reason = categoryReason(TEMPLATE_CATEGORY[template], locale);
 
   const facts = copy.event;
   const title = facts ? collapseWhitespace(facts.eventTitle) : null;
-  const when = facts ? formatEventTime(facts.startTime, facts.endTime, zone) : "";
+  const whenParts = facts ? eventWhen(facts.startTime, facts.endTime, zone, locale) : { text: "", startDay: "" };
+  const when = whenParts.text;
   const venue = facts?.venueName ? collapseWhitespace(facts.venueName) : null;
   const address = facts?.venueAddress ? collapseWhitespace(facts.venueAddress) : null;
 
@@ -267,39 +292,45 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
     const prev = v.previous;
     if (c.title && prev?.eventTitle) oldTitle = collapseWhitespace(prev.eventTitle);
     if (c.time && prev && (prev.startTime !== undefined || prev.endTime !== undefined)) {
-      const full = formatEventTime(prev.startTime ?? v.startTime, prev.endTime ?? v.endTime, zone);
-      const dayOf = (t: string): string => t.split(/, \d/)[0] ?? "";
-      const newDay = dayOf(when);
-      oldTime = full && dayOf(full) === newDay && full.startsWith(`${newDay}, `) ? full.slice(newDay.length + 2) : full || null;
+      const full = eventWhen(prev.startTime ?? v.startTime, prev.endTime ?? v.endTime, zone, locale);
+      const newDay = whenParts.startDay;
+      oldTime = full.text && full.startDay === newDay && full.text.startsWith(`${newDay}, `) ? full.text.slice(newDay.length + 2) : full.text || null;
     }
     if (c.venueName && prev?.venueName) oldVenue = collapseWhitespace(prev.venueName);
     if (c.venueAddress && prev?.venueAddress) oldAddress = collapseWhitespace(prev.venueAddress);
   }
-  const lead = `${hello} ${copy.lead}`;
-  const preheader = buildPreheader(template, copy.preheader, when);
+  const lead = greetingLead(ctx, locale, copy.lead);
+  const preheader = buildPreheader(template, copy.preheader, whenParts.startDay, locale);
 
   const e = escapeHtml;
   const para = (text: string, margin = "16px"): string =>
     `<p class="text-main" style="margin:0 0 ${margin} 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(text)}</p>`;
 
-  const nb = (t: string): string => e(t).replace(/(\d) (AM|PM)\b/g, "$1&nbsp;$2").replace(/(AM|PM) ([A-Z]{2,5}(?:[+-]\d+)?)$/, "$1&nbsp;$2");
+  // Keep "6:30 PM" and "PM EST" (Spanish "6:30 p.m." and "p.m. EST") on one line.
+  const nb = (text: string): string => {
+    const out = e(text).replace(/(\d) (AM|PM)\b/g, "$1&nbsp;$2").replace(/(AM|PM) ([A-Z]{2,5}(?:[+-]\d+)?)$/, "$1&nbsp;$2");
+    return locale === "en" ? out : out.replace(/(\d) ([ap]\.(?: |&nbsp;)?m\.)/g, "$1&nbsp;$2").replace(/(m\.) ([A-Z]{2,5}(?:[+-]\d+)?)$/, "$1&nbsp;$2");
+  };
+  const was = e(t("email.card.was"));
   const old = (value: string | null, nbsp = false): string =>
     value
-      ? `<div dir="auto" style="margin:0 0 2px 0;"><del style="text-decoration:line-through;color:${STRIKE};"><span style="position:absolute;display:inline-block;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;font-size:1px;line-height:1px;color:transparent;text-decoration:none;">was </span><span dir="auto">${nbsp ? nb(value) : e(value)}</span></del></div>`
+      ? `<div dir="auto" style="margin:0 0 2px 0;"><del style="text-decoration:line-through;color:${STRIKE};"><span style="position:absolute;display:inline-block;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;font-size:1px;line-height:1px;color:transparent;text-decoration:none;">${was}</span><span dir="auto">${nbsp ? nb(value) : e(value)}</span></del></div>`
       : "";
   const row = (label: string, value: string, first: boolean): string =>
-    `<tr><td class="lbl text-muted${first ? "" : " border"}" valign="top" width="64" style="width:64px;padding:10px 12px 10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${label}</td><td dir="auto" class="text-main${first ? "" : " border"}" valign="top" style="padding:10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:15px;line-height:20px;color:${INK};">${value}</td></tr>`;
+    `<tr><td class="lbl text-muted${first ? "" : " border"}" valign="top" width="64" style="width:64px;padding:10px 12px 10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${e(label)}</td><td dir="auto" class="text-main${first ? "" : " border"}" valign="top" style="padding:10px 0;${first ? "" : `border-top:1px solid ${HAIRLINE};`}font-family:${FONT};font-size:15px;line-height:20px;color:${INK};">${value}</td></tr>`;
 
   const pill = copy.badge
     ? `<div style="margin:0 0 10px 0;"><span class="pill border" style="display:inline-block;padding:2px 10px;border:1px solid ${HAIRLINE};border-radius:999px;font-family:${FONT};font-size:12px;line-height:16px;font-weight:600;color:${INK};">${e(copy.badge)}</span></div>`
     : "";
+  const whenLabel = t("email.card.when");
+  const whereLabel = t("email.card.where");
   const whenHtml = `${old(oldTime, true)}<span dir="auto">${nb(when)}</span>`;
   const nameHtml = venue ? `<div><span dir="auto">${e(venue)}</span></div>` : "";
   const whereHtml = [
     oldVenue && oldAddress ? `${old(oldVenue)}${old(oldAddress)}${nameHtml}` : `${old(oldVenue)}${nameHtml}${old(oldAddress)}`,
     address ? `<div class="text-muted" style="font-size:14px;line-height:20px;color:${MUTED};"><span dir="auto">${e(address)}</span></div>` : "",
   ].join("");
-  const detailRows = [when ? row("When", whenHtml, true) : "", venue || address ? row("Where", whereHtml, !when) : ""].join("");
+  const detailRows = [when ? row(whenLabel, whenHtml, true) : "", venue || address ? row(whereLabel, whereHtml, !when) : ""].join("");
   const card =
     facts && title
       ? `${pill}${old(oldTitle)}<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-family:${FONT};font-size:18px;line-height:26px;font-weight:700;color:${INK};"><span dir="auto">${e(title)}</span></p>
@@ -312,39 +343,49 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
 
   const button = primaryButton(copy.ctaURL, copy.ctaLabel);
 
+  const profile = t("email.footer.profile");
+  const notifications = t("email.footer.notifications");
+  const [managePrefix, manageSuffix] = splitAround(tEmail, locale, "email.footer.manage", "path");
+  const reasonLine = t("email.footer.reason", { reason });
+  const unsubscribe = t("email.footer.unsubscribe");
+  const sentBy = t("email.footer.sentBy");
+  const questions = t("email.footer.questions");
+
   const html = layoutShell({
     title: copy.subject,
     preheader,
     ctx,
+    lang: locale,
     main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>
 ${para(lead, "20px")}
 ${card}
 ${copy.note ? para(copy.note, "20px") : ""}
 ${highlight}
 ${button}`,
-    footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">You are getting this because ${e(reason)} emails are on.</td></tr>
-<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">Unsubscribe</a> &middot; Manage in DIP: Profile&nbsp;&gt;&nbsp;Notifications</td></tr>
-<tr><td class="text-muted" style="padding:0;${FINE}">Sent by DIP &middot; Questions? <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
+    footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">${e(reasonLine)}</td></tr>
+<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(unsubscribe)}</a> &middot; ${e(managePrefix)}${e(profile)}&nbsp;&gt;&nbsp;${e(notifications)}${e(manageSuffix)}</td></tr>
+<tr><td class="text-muted" style="padding:0;${FINE}">${e(sentBy)} &middot; ${e(questions)} <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
   });
 
-  const lines: string[] = [copy.heading.toUpperCase(), "", lead, ""];
+  const wasText = (value: string | null): string => (value ? `  ${t("email.text.was", { value })}` : "");
+  const lines: string[] = [copy.heading.toLocaleUpperCase(intlTag(locale)), "", lead, ""];
   if (facts && title) {
     if (copy.badge) lines.push(`[${copy.badge}]`);
-    lines.push(`${title}${oldTitle ? `  (was: ${oldTitle})` : ""}`);
-    if (when) lines.push(`When: ${when}${oldTime ? `  (was: ${oldTime})` : ""}`);
+    lines.push(`${title}${wasText(oldTitle)}`);
+    if (when) lines.push(`${whenLabel}: ${when}${wasText(oldTime)}`);
     if (venue || address) {
-      if (venue) lines.push(`Where: ${venue}${oldVenue ? `  (was: ${oldVenue})` : ""}`);
-      if (address) lines.push(`${venue ? "       " : "Where: "}${address}${oldAddress ? `  (was: ${oldAddress})` : ""}`);
+      if (venue) lines.push(`${whereLabel}: ${venue}${wasText(oldVenue)}`);
+      if (address) lines.push(`${venue ? " ".repeat(whereLabel.length + 2) : `${whereLabel}: `}${address}${wasText(oldAddress)}`);
     }
     lines.push("");
   }
   if (copy.note) lines.push(copy.note, "");
   if (copy.highlight) lines.push(copy.highlight, "");
   lines.push(`${copy.ctaLabel}: ${copy.ctaURL}`, "", "--");
-  lines.push(`You are getting this because ${reason} emails are on.`);
-  lines.push(`Unsubscribe: ${ctx.unsubscribeURL}`);
-  lines.push("Manage in DIP: Profile > Notifications");
-  lines.push(`Sent by DIP · Questions? ${SUPPORT_EMAIL}`);
+  lines.push(reasonLine);
+  lines.push(`${unsubscribe}: ${ctx.unsubscribeURL}`);
+  lines.push(`${managePrefix}${profile} > ${notifications}${manageSuffix}`);
+  lines.push(`${sentBy} · ${questions} ${SUPPORT_EMAIL}`);
 
   return { subject: copy.subject, preheader, html, text: `${lines.join("\n")}\n` };
 }

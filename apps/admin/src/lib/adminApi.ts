@@ -118,4 +118,8 @@ export interface AdminOpsApi {
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;
+
+  // ----- Language (#259)
+  /** setMyLocaleV1: saves the signed-in member's language on the server. Mock mode keeps it in this browser only (no-op). */
+  setMyLocale(locale: "en" | "es"): Promise<void>;
 }

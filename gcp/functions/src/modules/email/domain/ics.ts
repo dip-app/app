@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { collapseWhitespace } from "../../share/domain/sharePage";
+import { localeOrDefault, type Locale } from "../../i18n";
 import { eventURL } from "./templates/copy";
+import { tEmail } from "./templates/i18n";
 import type { EventFacts, TemplateId, TemplateVariables } from "./templates/types";
 
 export type IcsFacts = EventFacts & { revision: number; canceled?: boolean };
@@ -102,6 +104,8 @@ export interface InviteContext {
   /** Member uid, hashed into the stable UID; never written to the calendar file. */
   memberUid: string;
   now: Date;
+  /** Recipient language for our calendar text (description, alarm). Absent means English; the event title is never translated. */
+  locale?: Locale;
 }
 
 export interface InviteFacts extends EventFacts { sequence: number }
@@ -138,6 +142,7 @@ export function buildInviteIcs(method: InviteMethod, facts: InviteFacts, ctx: In
   const attendeeName = ctx.attendeeName ? collapseWhitespace(ctx.attendeeName).slice(0, 80) : "";
   const location = [facts.venueName, facts.venueAddress].filter((p): p is string => !!p).map(collapseWhitespace).join(", ");
   const cancel = method === "CANCEL";
+  const locale = localeOrDefault(ctx.locale);
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -154,7 +159,7 @@ export function buildInviteIcs(method: InviteMethod, facts: InviteFacts, ctx: In
   ];
   if (location) lines.push(`LOCATION:${escapeIcsText(location)}`);
   lines.push(
-    `DESCRIPTION:${escapeIcsText(`Open in DIP: ${url}`)}`,
+    `DESCRIPTION:${escapeIcsText(tEmail(locale, "email.ics.description", { url }))}`,
     `URL:${url}`,
     `ORGANIZER;CN=${paramText(INVITE_ORGANIZER_NAME)}:mailto:${INVITE_ORGANIZER_EMAIL}`,
     `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE${attendeeName ? `;CN=${paramText(attendeeName)}` : ""}:mailto:${ctx.attendeeEmail}`,
@@ -165,7 +170,7 @@ export function buildInviteIcs(method: InviteMethod, facts: InviteFacts, ctx: In
     lines.push(
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
-      `DESCRIPTION:${escapeIcsText(`${collapseWhitespace(facts.eventTitle)} starts soon`)}`,
+      `DESCRIPTION:${escapeIcsText(tEmail(locale, "email.ics.alarm", { title: collapseWhitespace(facts.eventTitle) }))}`,
       `TRIGGER:-PT${INVITE_ALARM_MINUTES}M`,
       "END:VALARM",
     );

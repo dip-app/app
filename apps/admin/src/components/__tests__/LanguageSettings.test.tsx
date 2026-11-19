@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STORAGE_KEY, setLocale } from "@/lib/i18n";
 import { stubLocalStorage } from "./storageStub";
 
-const state = vi.hoisted(() => ({ mode: "mock" as "mock" | "live" }));
+const state = vi.hoisted(() => ({ mode: "mock" as "mock" | "live", setMyLocale: vi.fn() }));
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/account/", useRouter: () => ({ replace: vi.fn() }) }));
@@ -12,7 +12,7 @@ vi.mock("../AppProvider", () => ({
   useApp: () => ({
     session: { uid: "u1", name: "Ada Lovelace", email: "ada@example.com", companyId: "c", role: "organizer" },
     signOut: vi.fn(),
-    api: { mode: state.mode, listBugReports: vi.fn().mockResolvedValue({ counts: null }) },
+    api: { mode: state.mode, setMyLocale: state.setMyLocale, listBugReports: vi.fn().mockResolvedValue({ counts: null }) },
   }),
 }));
 
@@ -20,7 +20,7 @@ import { I18nProvider } from "../I18nProvider";
 import { LanguageSettings } from "../LanguageSettings";
 import { Shell } from "../Shell";
 
-beforeEach(() => { stubLocalStorage(); state.mode = "mock"; vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]); });
+beforeEach(() => { stubLocalStorage(); state.mode = "mock"; state.setMyLocale = vi.fn().mockResolvedValue(undefined); vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]); });
 afterEach(() => { cleanup(); act(() => setLocale("en")); vi.restoreAllMocks(); });
 
 function Page() {
@@ -48,6 +48,29 @@ describe("language picker", () => {
     expect(screen.getByRole("link", { name: "Eventos" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Tus ajustes, Ada Lovelace, Organizador/ })).toBeTruthy();
     expect((screen.getByLabelText("Idioma") as HTMLSelectElement).value).toBe("es");
+  });
+
+  it("saves en or es on the member profile when signed in live, never auto or mock mode", () => {
+    state.mode = "live";
+    render(<Page />);
+    act(() => { fireEvent.change(screen.getByLabelText("Language"), { target: { value: "es" } }); });
+    expect(state.setMyLocale).toHaveBeenCalledWith("es");
+    act(() => { fireEvent.change(screen.getByLabelText("Idioma"), { target: { value: "auto" } }); });
+    expect(state.setMyLocale).toHaveBeenCalledTimes(1);
+    cleanup();
+    state.mode = "mock";
+    render(<Page />);
+    act(() => { fireEvent.change(screen.getByLabelText("Language"), { target: { value: "es" } }); });
+    expect(state.setMyLocale).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the local choice when the save fails", async () => {
+    state.mode = "live";
+    state.setMyLocale.mockRejectedValue(new Error("offline"));
+    render(<Page />);
+    await act(async () => { fireEvent.change(screen.getByLabelText("Language"), { target: { value: "es" } }); });
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("es");
+    expect(document.documentElement.lang).toBe("es");
   });
 
   it("goes back to following the browser", () => {

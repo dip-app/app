@@ -175,6 +175,8 @@ export interface Recipient {
   status: string | null;
   /** Member role (`member` | `organizer` | `admin`); optional so older fakes keep compiling. */
   role?: string | null;
+  /** Raw `users/{uid}.locale` (server-owned via setMyLocaleV1); the sender maps anything unsupported or missing to English. */
+  locale?: string | null;
 }
 
 export interface RecipientDirectory {

@@ -1,6 +1,7 @@
 import { buildEntry, summarizeChanges } from "../domain/changeLog";
 import { eventChangeEmail, eventFacts, reminderEmail, venueAddressOf, venueNameOf } from "./emailPayload";
 import { changePush, chatPush, reminderPush, shorten } from "../domain/push";
+import type { Locale } from "../../i18n";
 import { dueWindow, reminderKey, REMINDER_WINDOWS } from "../domain/reminders";
 import { LEVELS_FOR } from "../domain/subscription";
 import type {
@@ -150,6 +151,7 @@ export async function onChatMessageCreatedViaRouter(
   return deliverNotification(deps, {
     id: `chat_${messageId}`, kind: "chat", companyId, recipients,
     push: chatPush(companyId, eventId, event.title, messageId, author, text),
+    pushFor: (locale) => chatPush(companyId, eventId, event.title, messageId, author, text, locale),
   });
 }
 
@@ -177,6 +179,7 @@ export async function onEventDocumentUpdatedViaRouter(
   const push = await deliverNotification(deps, {
     id: `event_${eventId}_${entry.revision}`, kind: cancelled ? "event_cancelled" : "event_changed", companyId, recipients,
     push: changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined),
+    pushFor: (locale) => changePush(companyId, eventId, title, entry.revision, summarizeChanges(entry.changes, locale), endTime ?? undefined, locale),
     inApp: { title: shorten(title, 60), body: summary, targetType: "event", targetId: eventId },
     email: eventChangeEmail(eventId, entry.revision, cancelled, entry.changes.map((change) => change.field), facts, entry.changes, after),
   });
@@ -206,9 +209,11 @@ export async function sendDueRemindersViaRouter(
       const recipients = (await deps.recipients.subscribersWithLevels(event.companyId, event.eventId, LEVELS_FOR.reminder))
         .map((s) => ({ uid: s.uid, eventLevel: s.level }));
       if (recipients.length === 0) { skipped++; continue; }
-      const push = reminderPush(event.companyId, event.eventId, event.title, window, event.startTime.getTime() - now.getTime(), event.startTime);
+      const leadMs = event.startTime.getTime() - now.getTime();
+      const build = (locale: Locale) => reminderPush(event.companyId, event.eventId, event.title, window, leadMs, event.startTime, locale);
+      const push = build("en");
       const stats = await deliverNotification(deps, {
-        id, kind: "reminder", companyId: event.companyId, recipients, push,
+        id, kind: "reminder", companyId: event.companyId, recipients, push, pushFor: build,
         inApp: { title: shorten(event.title, 60), body: push.body, targetType: "event", targetId: event.eventId },
         email: reminderEmail(event.eventId, window, event.startTime,
           eventFacts({ eventId: event.eventId, title: event.title, startTime: event.startTime, endTime: event.endTime })),

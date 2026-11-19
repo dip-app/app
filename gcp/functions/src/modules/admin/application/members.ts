@@ -3,6 +3,7 @@ import type {
   UpdateMemberResponse, UpsertTeamResponse,
 } from "../../../generated/models";
 import { change, diffFields } from "../domain/audit";
+import { named } from "../domain/auditSummaries";
 import { AdminError, stored } from "../domain/errors";
 import { emailHash } from "../domain/employee";
 import { hasOtherActiveAdmin, matchesFilter, resetPatch, revisionOf, statusOf, toSummary, type MemberSummary } from "../domain/member";
@@ -114,6 +115,7 @@ export async function updateMember(deps: AdminDeps, caller: Caller | null, data:
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "member.update", targetType: "member", targetId: userId,
         summary: `Updated ${typeof member.displayName === "string" ? member.displayName : "a member"}: ${changes.map(c => c.field).join(", ")}`,
+        summaryKey: "member.update", summaryParams: { ...named(member.displayName), fields: changes.map(c => c.field).join(", ") },
         changes, requestId: req.requestId,
       });
       return { contractVersion: 1, userId, revision: nextRevision, changedFields: changes.map(c => c.field) } satisfies UpdateMemberResponse;
@@ -139,6 +141,7 @@ export async function resetMemberProfile(deps: AdminDeps, caller: Caller | null,
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "member.reset", targetType: "member", targetId: req.userId,
         summary: `Reset the profile of ${typeof member.displayName === "string" ? member.displayName : "a member"}`,
+        summaryKey: "member.reset", summaryParams: named(member.displayName),
         changes: fields.map(f => change(f, Array.isArray(member[f]) ? `${(member[f] as unknown[]).length} items` : member[f], Array.isArray(patch[f]) ? "0 items" : patch[f])),
         reason: req.reason, requestId: req.requestId,
       });
@@ -182,6 +185,7 @@ export async function setMemberStatus(deps: AdminDeps, caller: Caller | null, da
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "member.status", targetType: "member", targetId: req.userId,
         summary: `${req.status === "deactivated" ? "Deactivated" : "Reactivated"} ${typeof member.displayName === "string" ? member.displayName : "a member"}`,
+        summaryKey: req.status === "deactivated" ? "member.deactivate" : "member.reactivate", summaryParams: named(member.displayName),
         changes: [change("status", current, req.status)], reason: req.reason, requestId: req.requestId,
       });
       return { contractVersion: 1, userId: req.userId, status: req.status, changed: true, rsvpsCancelled: 0, revision: nextRevision } satisfies SetMemberStatusResponse;
@@ -226,7 +230,8 @@ export async function adjustMemberPoints(deps: AdminDeps, caller: Caller | null,
       tx.update(paths.user(req.userId), { pointsBalance: increment(req.delta) });
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "points.adjust", targetType: "points", targetId: req.userId,
-        summary: `Adjusted points by ${req.delta > 0 ? "+" : ""}${req.delta}`, changes: [change("pointsBalance", balance, pointsBalance)],
+        summary: `Adjusted points by ${req.delta > 0 ? "+" : ""}${req.delta}`,
+        summaryKey: "points.adjust", summaryParams: { delta: `${req.delta > 0 ? "+" : ""}${req.delta}` }, changes: [change("pointsBalance", balance, pointsBalance)],
         reason: req.reason, requestId: req.requestId, ...(actor.uid === req.userId ? { selfTarget: true as const } : {}),
       });
       return { contractVersion: 1, userId: req.userId, pointsBalance, applied: true } satisfies AdjustMemberPointsResponse;
@@ -256,7 +261,7 @@ export async function upsertTeam(deps: AdminDeps, caller: Caller | null, data: u
           companyId: actor.companyId, name: req.name, archived: req.archived ?? false, createdAt: SERVER_TIME, updatedAt: SERVER_TIME, revision: 1,
         });
         writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "team.upsert", targetType: "team", targetId: teamId,
-          summary: `Created team ${req.name}`, changes: [change("name", null, req.name)], requestId: req.requestId });
+          summary: `Created team ${req.name}`, summaryKey: "team.create", summaryParams: { name: req.name }, changes: [change("name", null, req.name)], requestId: req.requestId });
         return { contractVersion: 1, teamId, created: true, revision: 1 } satisfies UpsertTeamResponse;
       }
       const revision = typeof existing.data.revision === "number" ? existing.data.revision : 1;
@@ -264,7 +269,7 @@ export async function upsertTeam(deps: AdminDeps, caller: Caller | null, data: u
       if (changes.length === 0) return { contractVersion: 1, teamId: existing.id, created: false, revision } satisfies UpsertTeamResponse;
       tx.update(paths.team(actor.companyId, existing.id), { name: req.name, ...(req.archived !== undefined ? { archived: req.archived } : {}), updatedAt: now, revision: revision + 1 });
       writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "team.upsert", targetType: "team", targetId: existing.id,
-        summary: `Updated team ${req.name}`, changes, requestId: req.requestId });
+        summary: `Updated team ${req.name}`, summaryKey: "team.update", summaryParams: { name: req.name }, changes, requestId: req.requestId });
       return { contractVersion: 1, teamId: existing.id, created: false, revision: revision + 1 } satisfies UpsertTeamResponse;
     }, now);
   })).value;

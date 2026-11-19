@@ -1,3 +1,6 @@
+import type { Locale } from "../../i18n";
+import { tPush, type PushKey } from "./i18n";
+
 /**
  * Event change history (`changeLog` on the event document). Only user-visible fields are diffed, so writes
  * that touch nothing else (changeLog itself, attendeeCount, revision/updatedBy bookkeeping, RSVP counters)
@@ -104,17 +107,19 @@ export function mergeChangeLog(existing: unknown, entry: Pick<ChangeLogEntry, "r
   return { log: log.slice(Math.max(0, log.length - CHANGE_LOG_LIMIT)), appended: true };
 }
 
-const LABELS: Record<TrackedField, string> = {
-  title: "name", description: "details", tagIds: "tags", coverImageURL: "photo", startTime: "time", endTime: "time",
-  "venue.name": "location", "venue.address": "location", "venue.locality": "location",
-  costCents: "cost", costNote: "cost", capacity: "spots", isOutdoor: "indoor/outdoor", status: "status",
+const LABELS: Record<TrackedField, PushKey> = {
+  title: "push.change.label.name", description: "push.change.label.details", tagIds: "push.change.label.tags",
+  coverImageURL: "push.change.label.photo", startTime: "push.change.label.time", endTime: "push.change.label.time",
+  "venue.name": "push.change.label.location", "venue.address": "push.change.label.location", "venue.locality": "push.change.label.location",
+  costCents: "push.change.label.cost", costNote: "push.change.label.cost", capacity: "push.change.label.spots",
+  isOutdoor: "push.change.label.indoorOutdoor", status: "push.change.label.status",
 };
 
 /** One-line push body for an event change. Values are deliberately omitted (no timezone context server-side). */
-export function summarizeChanges(changes: readonly FieldChange[]): string {
+export function summarizeChanges(changes: readonly FieldChange[], locale: Locale = "en"): string {
   const status = changes.find((change) => change.field === "status");
-  if (status?.to === "cancelled") return "This activity was cancelled.";
-  if (status?.from === "cancelled" && status.to === "scheduled") return "This activity is back on.";
-  const labels = [...new Set(changes.filter((change) => change.field !== "status").map((change) => LABELS[change.field]))];
-  return labels.length ? `Updated: ${labels.join(", ")}.` : "This activity was updated.";
+  if (status?.to === "cancelled") return tPush(locale, "push.change.cancelled");
+  if (status?.from === "cancelled" && status.to === "scheduled") return tPush(locale, "push.change.backOn");
+  const labels = [...new Set(changes.filter((change) => change.field !== "status").map((change) => tPush(locale, LABELS[change.field])))];
+  return labels.length ? tPush(locale, "push.change.updated", { labels: labels.join(", ") }) : tPush(locale, "push.change.generic");
 }

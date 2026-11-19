@@ -1,4 +1,5 @@
 import type { AuditAction } from "./auditActions";
+import type { AuditSummaryKey } from "./auditSummaries";
 import { SERVER_TIME, type ServerTime } from "./ops";
 import { isRole, type Role } from "./permissions";
 import { length } from "./reader";
@@ -14,6 +15,9 @@ export interface AuditInput {
   targetType: AuditTargetType;
   targetId: string;
   summary: string;
+  /** Stable message key for `summary` plus its params (additive: `summary` stays the English sentence). */
+  summaryKey?: AuditSummaryKey | undefined;
+  summaryParams?: Readonly<Record<string, string | number>> | undefined;
   changes?: readonly AuditChange[];
   reason?: string | undefined;
   requestId?: string | undefined;
@@ -21,11 +25,14 @@ export interface AuditInput {
   selfTarget?: true | undefined;
 }
 
+export interface AuditSummaryParam { name: string; value: string }
+
 export interface AuditActor { uid: string; name: string; role: Role }
 
 export interface AuditDocument {
   companyId: string; actorId: string; actorName: string; actorRole: Role;
   action: AuditAction; targetType: AuditTargetType; targetId: string; summary: string; changes: AuditChange[];
+  summaryKey?: string; summaryParams?: AuditSummaryParam[];
   reason?: string; requestId?: string; selfTarget?: true; createdAt: ServerTime;
 }
 
@@ -59,6 +66,12 @@ export function auditDocument(companyId: string, actor: AuditActor, input: Audit
     action: input.action, targetType: input.targetType, targetId: clip(input.targetId, 256),
     summary: clip(input.summary, 280), changes: (input.changes ?? []).slice(0, 30).map(c => ({ ...c })), createdAt: SERVER_TIME,
   };
+  if (input.summaryKey) {
+    doc.summaryKey = input.summaryKey;
+    const params = Object.entries(input.summaryParams ?? {}).slice(0, 10)
+      .map(([name, value]) => ({ name: clip(name, 40), value: clip(String(value), 280) }));
+    if (params.length > 0) doc.summaryParams = params;
+  }
   if (input.reason) doc.reason = clip(input.reason, 200);
   if (input.requestId) doc.requestId = input.requestId;
   if (input.selfTarget) doc.selfTarget = true;

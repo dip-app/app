@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
-import type { DeliveryReceipts, MembershipReader, PushRateLimiter } from "../application/routerPorts";
+import type { DeliveryReceipts, LocaleReader, MembershipReader, PushRateLimiter } from "../application/routerPorts";
+import { localeOrDefault, type Locale } from "../../i18n";
 import { isDeactivated } from "../../admin/domain/member";
 import { nextCounts, type RateClass, type RateCounter, type RateLimitState } from "../domain/rateLimit";
 
@@ -114,5 +115,22 @@ export class FirestoreMembership implements MembershipReader {
       }
     }
     return active;
+  }
+}
+
+/** Recipient locales from `users/{uid}.locale` (server-owned). Missing documents or unsupported values resolve to "en". */
+export class FirestoreLocales implements LocaleReader {
+  constructor(private readonly db: Firestore) {}
+
+  async localesFor(uids: readonly string[]): Promise<Map<string, Locale>> {
+    const unique = [...new Set(uids)];
+    const locales = new Map<string, Locale>(unique.map((uid) => [uid, "en"]));
+    for (let offset = 0; offset < unique.length; offset += MEMBER_READ_CHUNK) {
+      const refs = unique.slice(offset, offset + MEMBER_READ_CHUNK).map((uid) => this.db.collection("users").doc(uid));
+      for (const snap of await this.db.getAll(...refs, { fieldMask: ["locale"] })) {
+        if (snap.exists) locales.set(snap.id, localeOrDefault(snap.get("locale")));
+      }
+    }
+    return locales;
   }
 }

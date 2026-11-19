@@ -1,4 +1,4 @@
-export { resolveMembershipV1 } from "./modules/accounts";
+export { resolveMembershipV1, setMyLocaleV1 } from "./modules/accounts";
 export { createEventV1, updateEventV1 } from "./modules/organizer";
 export { setRsvpV1, onUserProfileUpdated } from "./modules/participation";
 export { registerDeviceV1, unregisterDeviceV1, onEventMessageCreated, onEventChanged, onRsvpChanged, sendEventReminders, pruneStaleDeviceTokens, sendWeeklyThemePushes } from "./modules/notifications";

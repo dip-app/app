@@ -103,6 +103,16 @@ export function setLocalePreference(preference: LocalePreference) {
   apply(resolveLocale(preference, browserLanguages()));
 }
 
+/**
+ * Applies the signed-in member's saved language (`users/{uid}.locale`) so it wins over the browser default. The browser's
+ * stored choice stays the fallback when the member has none; a pseudo-locale layout test is left alone.
+ */
+export function applyMemberLocale(locale: unknown) {
+  if (locale !== "en" && locale !== "es") return;
+  if (readPreference() === "pseudo") return;
+  setLocalePreference(locale);
+}
+
 /** Switches without saving (tests and previews). */
 export function setLocale(locale: Locale) {
   apply(locale);

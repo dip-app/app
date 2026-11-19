@@ -8,7 +8,7 @@ import { toast } from "@/components/Toast";
 import { Avatar, Empty, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import { ROLE_LABEL } from "@/lib/adminTypes";
-import { aiFacts, auditAction, auditCategoriesInUse, auditCategoryLabel, isAiAction, isAuditCategory } from "@/lib/auditLabels";
+import { aiFacts, auditAction, auditCategoriesInUse, auditCategoryLabel, auditSummary, isAiAction, isAuditCategory } from "@/lib/auditLabels";
 import { t, type MessageKey } from "@/lib/i18n";
 import { downloadText } from "@/lib/csv";
 import { auditCsv } from "@/lib/exports";
@@ -46,7 +46,7 @@ function Audit() {
     return (audit.data ?? []).filter((e) => {
       const a = auditAction(e.action);
       return (category === "all" || a.category === category) &&
-        (!q || `${a.label} ${e.actorName} ${e.targetId} ${e.summary} ${e.reason ?? ""}`.toLowerCase().includes(q));
+        (!q || `${a.label} ${e.actorName} ${e.targetId} ${e.summary} ${auditSummary(e)} ${e.reason ?? ""}`.toLowerCase().includes(q));
     });
   }, [audit.data, search, category]);
 
@@ -96,7 +96,7 @@ function Audit() {
                               <td className="nowrap" data-label={t("audit.table.when")}><time dateTime={e.at}>{formatDateTime(e.at)}</time></td>
                               <td data-label={t("audit.table.what")}><span className="audit-what"><span className="audit-label" title={t("audit.actionKeyTitle", { key: e.action })}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{auditCategoryLabel(a.category)}</span></span></td>
                               <td data-label={t("audit.table.who")}><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong>{e.actorName}</strong> <span className="muted">({ROLE_LABEL[e.actorRole]})</span></span></span></td>
-                              <td data-label={t("audit.table.target")}><p>{e.summary}</p>{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
+                              <td data-label={t("audit.table.target")}><p>{auditSummary(e)}</p>{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
                               <td className="right"><Button size="sm" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={t(open === e.id ? "audit.hideDetailsFor" : "audit.showDetailsFor", { label: a.label })} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? t("common.hideDetails") : t("common.details")}</Button></td>
                             </tr>
                             {open === e.id && (

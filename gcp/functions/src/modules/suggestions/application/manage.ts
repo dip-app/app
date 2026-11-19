@@ -114,7 +114,7 @@ export async function manageSuggestionsEmail(deps: ManageDeps, rawCaller: Caller
         action: "suggestions.setSchedule",
         targetType: "company",
         targetId: companyId,
-        summary: "Changed the weekly ideas email schedule",
+        summary: "Changed the weekly ideas email schedule", summaryKey: "suggestions.setSchedule",
         changes: [change("weekday", before?.weekday ?? null, schedule.weekday), change("hour", before?.hour ?? null, schedule.hour)],
       });
     });
@@ -192,6 +192,7 @@ async function preview(deps: ManageDeps, actor: Actor, now: Date): Promise<Manag
   }
   const rendered = renderEmail("admin_suggestions", variables, {
     recipientFirstName: firstName(actor.name), timeZone: snap.timeZone, unsubscribeURL: `${deps.config.origin}/admin/suggestions/`, openPixelURL: null,
+    ...(actor.locale ? { locale: actor.locale } : {}),
   });
   const result: SuggestionsEmailPreview = {
     subject: rendered.subject, preheader: rendered.preheader, html: rendered.html, text: rendered.text,
@@ -227,7 +228,7 @@ async function sendTest(deps: ManageDeps, actor: Actor, now: Date): Promise<Mana
     await deps.admin.runTransaction(async tx => {
       if (await tx.get(paths.audit(actor.companyId, auditId))) return;
       writeAudit(tx, actor, {
-        id: auditId, action: "suggestions.sendTest", targetType: "company", targetId: actor.companyId, summary: "Sent a test of the weekly ideas email to themselves",
+        id: auditId, action: "suggestions.sendTest", targetType: "company", targetId: actor.companyId, summary: "Sent a test of the weekly ideas email to themselves", summaryKey: "suggestions.sendTest",
       });
     });
     return { ...snap.response, testQueued: true };

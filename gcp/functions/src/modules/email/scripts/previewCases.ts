@@ -183,3 +183,12 @@ PREVIEW_CASES.push(
     })),
   }, { ...SAMPLE_CTX, recipientFirstName: null }),
 );
+
+/**
+ * Spanish twins of every case, plus one without a first name (issue #259). Golden snapshots live in
+ * `__snapshots__/email/es/`, and `npm run check:email` checks them too (as `es_<name>`).
+ */
+export const PREVIEW_CASES_ES: PreviewCase[] = [
+  ...PREVIEW_CASES.map((c) => ({ ...c, ctx: { ...c.ctx, locale: "es" as const } })),
+  make("attendee_added_no_name", "attendee_added", EVENT, { ...SAMPLE_CTX, recipientFirstName: null, locale: "es" }),
+];

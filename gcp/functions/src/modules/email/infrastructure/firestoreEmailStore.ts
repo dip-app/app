@@ -189,6 +189,7 @@ class FirestoreRecipientDirectory implements RecipientDirectory {
       displayName: str(snap.get("displayName")),
       status: str(snap.get("status")),
       role: str(snap.get("role")),
+      locale: str(snap.get("locale")),
     };
   }
 

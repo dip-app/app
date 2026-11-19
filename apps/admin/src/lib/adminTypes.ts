@@ -76,6 +76,7 @@ export const ADMIN_CALLABLES = {
   resolvePlace: "resolvePlaceV1",
   setCompanyOffice: "setCompanyOfficeV1",
   dipbotIdeas: "getDipbotIdeasV1",
+  setMyLocale: "setMyLocaleV1",
 } as const;
 
 export interface Team { id: string; name: string }
@@ -231,7 +232,11 @@ export interface AuditEntry {
   action: string;
   targetType: "member" | "event" | "photo" | "comment" | "attendee" | "roster" | "import" | "team" | "company" | "points" | "bugReport";
   targetId: string;
+  /** The English sentence the server stored; shown as is in English and by clients that predate `summaryKey`. */
   summary: string;
+  /** Stable message key and params (additive, absent on older entries): other languages render `audit.summary.<key>`. */
+  summaryKey?: string;
+  summaryParams?: Record<string, string>;
   reason?: string;
   changes: { field: string; before: string; after: string }[];
 }

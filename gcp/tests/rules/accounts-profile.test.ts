@@ -72,6 +72,20 @@ for (const [field, value] of Object.entries({ companyId: "company-b", role: "adm
   });
 }
 
+// users/{uid}.locale is server-owned (setMyLocaleV1, issue #259): no client write path, not even a valid value.
+test("client cannot set, change or delete the server-owned locale", async () => {
+  for (const value of ["es", "en", "fr", 1]) await assertFails(own().update({ locale: value }));
+  await assertFails(db("admin").doc("users/admin").update({ locale: "es" }));
+  await assertFails(own().update({ city: "Boston", locale: "es" }));
+  await environment.withSecurityRulesDisabled(async (context) => { await context.firestore().doc("users/colleague").update({ locale: "es" }); });
+  await assertFails(db("colleague").doc("users/colleague").update({ locale: "en" }));
+  await assertFails(db("colleague").doc("users/colleague").update({ locale: deleteField() }));
+  // Allowed profile fields still save and leave the stored locale untouched; the owner can read it.
+  await assertSucceeds(db("colleague").doc("users/colleague").update({ city: "Austin" }));
+  assert.equal((await assertSucceeds(db("colleague").doc("users/colleague").get())).data()?.locale, "es");
+  await assertFails(db().doc("users/colleague").get());
+});
+
 test("even admins cannot overwrite their own membership or private profile peers", async () => {
   await assertSucceeds(db("admin").doc("users/admin").update({ jobTitle: "Organizer" }));
   await assertFails(db("admin").doc("users/admin").update({ displayName: "Admin Profile" }));
