@@ -6,7 +6,7 @@ Sources: [email design (S5)](stretch/email.md) template catalog, [calendar email
 
 ## How to read the matrix
 
-- **Category** is the switch that governs the email: a member category from the shared registry (`invites`, `event_updates`, `reminders`, `challenges`, `discovery`, `calendar_invites`, `admin_suggestions`; members change them in the app under Profile > Notifications, admins also in the portal), or `account`, the transactional account emails added in this pass. `account` is not a member switch: a member stops account emails only by unsubscribing from all DIP emails, and a roster invitee stops invitations from the link in the email.
+- **Category** is the switch that governs the email: a member category from the shared registry (`invites`, `event_updates`, `reminders`, `challenges`, `discovery`, `calendar_invites`, `admin_suggestions`, `weekly_themes`, `admin_digest`; members change them in the app under Profile > Notifications, admins also in the portal under Your settings), or `account`, the transactional account emails added in this pass. `account` is not a member switch: a member stops account emails only by unsubscribing from all DIP emails, and a roster invitee stops invitations from the link in the email.
 - **Push policy** is the router's push-or-email rule ([email design, decision 16](stretch/email.md#decisions-defaults-taken-while-owner-questions-are-open)): invites and event updates go to both channels; reminders and discovery follow the email switch; challenge emails go only when push will not be delivered.
 - Every email has a plain-text part, a one-click unsubscribe header and link, per-recipient language (English or Spanish), the per-member (20) and per-company (2,000) daily caps, suppression after bounces and complaints, tenant checks at send time and a deterministic outbox id (a redelivered trigger or replayed command sends once).
 
@@ -27,10 +27,9 @@ Sources: [email design (S5)](stretch/email.md) template catalog, [calendar email
 | **Roster invitation (`roster_invite`)** | admin clicks **Send invite email** (`sendRosterInviteEmailV1`), or leaves "Email them an invitation now" on in Add person | the invited person (no account yet), at the roster entry's address | `account` (opt out per address) | sent only on an admin action | **built in this pass** | P1 |
 | **Welcome (`welcome`)** | `users/{uid}` created by the first membership resolve (`welcomeEmailOnMemberCreated`) | the new member | `account` | on (once per member) | **built in this pass** | P2 |
 | **Problem report resolved (`bug_report_resolved`)** | `updateBugReportV1` sets a report to Resolved for the first time | the reporter | `account` | on (once per report) | **built in this pass** | P3 |
-| Weekly theme announcement | new weekly theme starts (`weekly_theme` push today) | all members | would be `challenges` | would have to be off | deferred | P3 |
+| **Weekly theme announcement (`weekly_theme`)** | `sendWeeklyThemeEmails`, Monday 09:00 America/New_York, themes that started in the last 24 hours (same schedule, lookback and member pager as the `weekly_theme` push) | active members who turned it on | `weekly_themes` (new, email only) | **off** (opt in) | **built in the follow-up pass** | P3 |
 | Event suggestions (`discovery`) | new event matching interests (`event_interest` push, not built) | members with matching interests | `discovery` | off | deferred (no trigger exists) | P3 |
-| Invited person joined (admin notice) | roster entry claimed | the inviting admin | none fits | would be off | deferred | P3 |
-| Import finished (admin notice) | bulk import applied | the importing admin | none fits | n/a | not needed | none |
+| **Admin roster digest (`admin_digest`)**: invited people who joined, imports that finished | `sendAdminDigestEmails`, hourly; per company from 08:00 local, reports the previous local day | admins who turned it on | `admin_digest` (new, email only) | **off** (opt in) | **built in the follow-up pass** (replaces per-join and per-import notices) | P3 |
 | Points and achievements | points awarded, attendance recorded | the member | none fits | would be off | not built (too frequent) | none |
 | Weekly member digest | weekly | members | `discovery` | off | not built (would be promotional) | none |
 | Chat messages, comments, photos | chat, comments | members | `chat`, `social` | never emailed | by design | none |
@@ -59,14 +58,35 @@ All three use the shared layout (`layoutShell`, the same header band, white body
 - **Trigger:** `updateBugReportV1` moving a report to Resolved for the first time; queued in the same transaction as the triage update with the id `account_<reportId>_<uid>_resolved`, so reopening and resolving again never emails twice. Skipped while email is off.
 - **Content:** the date the report was sent (in the company zone), thanks, and how to report again. Never the report text, its category, the screenshot or the admin's triage note.
 
+## Opt-in emails built in the follow-up pass (November 19, 2026)
+
+Owner decision: build every planned email that is valuable. Both new emails use the shared layout and button, have English and Spanish copy (`email.weeklyTheme.*`, `email.adminDigest.*`), golden snapshots (`weekly_theme`, `weekly_theme_plain`, `admin_digest`, `admin_digest_joined`, `admin_digest_imports`, in English and under `es/`), and their own **default-off** category in the shared registry (`notifications/domain/categories.ts`), the Firestore rules (owner-only boolean), the contract (`EmailCategoryPreferences.weekly_themes` and `.admin_digest`, additive) and the generated TypeScript and Swift models.
+
+**How default off is guaranteed.** Three independent places. `DEFAULT_PREFERENCES.email` has both at `false`, and `resolvePreferences` treats a missing document, a missing key and any non-boolean value as the default (unit-tested). The jobs evaluate the switch before queuing anything, so a member without a stored choice gets no outbox document. The sender re-reads the switch at send time and skips with `preference_off`. Nobody can switch it on for someone else: the rules allow only the owner to write their own preference document (emulator-tested for same company, other company, unverified and signed out), and the server only ever writes `false` (unsubscribe, complaints).
+
+### Weekly theme announcement
+
+- **Audience and timing:** mirrors `runWeeklyThemePushes`: the same `FirestoreThemes` reader (weekly challenges whose start is in the last 24 hours), the same member pager (active `member` and `admin` roles; organizers are not in the push audience either) and the same Monday 09:00 America/New_York schedule, as its own scheduled function so a push failure never blocks email and the reverse.
+- **Once per member per theme:** outbox id `weekly_themes_<challengeId>_<uid>_announce` (create-once); a retry or a second run enqueues nothing. `notAfter` is the theme end.
+- **Content:** "This week's theme" with the catalog art tile on the theme accent (`img/email/ideas/<key>.png`, the same tiles as the ideas email; no tile for an unknown key), the title, the description (shortened to 400 characters), the dates in the company zone and the points. One button, **Open DIP** (`https://letsdip.work/`): the app has no theme link yet, so a note says the theme is on the Home screen.
+- **Switch:** admins and organizers in the portal (Your settings > Other emails from DIP). The iOS Profile > Notifications switch is an iOS follow-up.
+
+### Admin roster digest
+
+- **Trigger:** hourly job like the weekly ideas email. A company is due from 08:00 to 11:59 in its zone (`emailSettings/{c}.timeZone`, else `EMAIL_DEFAULT_TIME_ZONE`) and the digest reports the previous local day (DST and half-hour zones handled). One email per admin per company day (`admin_digest_<company-day>_<uid>_<day>`), only when something happened.
+- **Content (only what admins already see):** roster entries invited by an admin or an import (not walk-in sign-ups) that were claimed that day, with up to 10 roster names and a count of the rest; imports that finished that day (completed or with errors), up to 5 with their finish time and invited, updated and failed counts. No addresses, file names or row errors. Button **Open the roster**; the footer links to Your settings.
+- **Recipients:** active admins whose `admin_digest` switch is on; the role is checked again at send time (`not_admin`). Reads are single-field range queries (`claimedAt`, `updatedAt`) inside one company, so no new index is needed.
+
+### Reminder emails now show the venue
+
+`sendEventReminders` now passes the venue name (shortened to the template's 120 characters) and the one-line address into the reminder variables, so the existing Where row appears and the button opens the event (`/e/<id>`). The template did not change, so every English golden snapshot is byte-identical (the snapshot cases always had a venue).
+
 ## Deferred, and why
 
-- **Weekly theme announcement.** Members already get a push and the theme is on the app's home screen. It is a company-wide weekly fan-out, so it must be off by default, but its category (`challenges`) is on by default for the low-volume review emails. Doing it right needs a separate default-off category in the shared registry, the Firestore rules, the contract and the iOS settings mirror (push workstream ownership). Proposal: an email-only `weekly_themes` category, default off, offered in Profile > Notifications > Email; then a `weekly_theme` template on the shared layout with the theme title, dates and one button.
 - **Event suggestions (`discovery`).** The category exists (default off) but nothing produces `event_interest` yet; build the email with that trigger.
-- **Invited person joined.** Useful to the inviting admin, but one email per join is noise for a large import, and the roster already shows who joined. Better as a daily admin digest with its own admin category; not built.
-- **Import finished.** Imports run interactively in the portal, which shows progress and the result; an email adds nothing.
+- **Per-join and per-import admin notices.** Replaced by the daily digest (one email a day instead of one per join or import).
 - **Points and achievements.** High volume and already visible in the app; not worth an email.
 
 ## Verification still owed
 
-Real sends have never happened. Before the first pilot, run the manual checks in the [email runbook](../ops/email-runbook.md#12-manual-test-plan-for-the-email-catalog) (roster invitation, welcome, problem report, reminders and the calendar invite join, update and cancel checklist).
+Real sends have never happened. Before the first pilot, run the manual checks in the [email runbook](../ops/email-runbook.md#12-manual-test-plan-for-the-email-catalog): roster invitation, welcome, problem report, reminders with the venue, the calendar invite checklist, and steps 12 to 15 for the weekly theme email and the admin digest.

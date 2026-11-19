@@ -12,6 +12,8 @@ Implementation of [reminder and notification emails](../design/stretch/email.md)
 | `emailWebhookV1` | HTTPS, public, direct function URL | Provider bounce, complaint and subscription-change webhook |
 | `emailOpenV1` | HTTPS, public, Hosting rewrite `/o/**` | Approximate open counter (1x1 GIF), only when `EMAIL_OPEN_TRACKING` is on |
 | `welcomeEmailOnMemberCreated` | Firestore `onDocumentCreated` on `users/{uid}`, `retry: true` | Queues one `welcome` email per member (`account_<companyId>_<uid>_welcome`) while email is on for the company |
+| `sendWeeklyThemeEmails` | Scheduler, Monday 09:00 America/New_York | Queues one `weekly_theme` email per opted-in member per started theme (`weekly_themes_<challengeId>_<uid>_announce`); category `weekly_themes`, default off |
+| `sendAdminDigestEmails` | Scheduler, hourly (UTC) | From 08:00 company time, queues one `admin_digest` per opted-in admin for the previous company day when someone invited joined or an import finished; category `admin_digest`, default off |
 
 Router integration (EML-8): `deliverNotification` accepts an optional `request.email` payload `{ template, variables, objectId, revisionOrWindow, notAfter? }` and an optional `deps.email` port. Wire it as `email: routerEmailChannel(emailChannelDependencies())` (both exported from `modules/email`). Per recipient, after the push decision, the channel applies the shared `evaluateDelivery` (channel `email`), the company switch and the push-or-email policy, rejects a template whose category differs from the notification kind's, validates the variables and creates the outbox entry once. Failures never block the push. Triggers start sending emails when they are migrated onto the router with an `email` payload (PUSH-3).
 

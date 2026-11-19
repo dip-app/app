@@ -471,7 +471,7 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
   const sectionLabel = (label: string): string =>
     `<div class="text-muted" style="margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:20px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${e(label)}</div>`;
   const sections = copy.sections?.length
-    ? copy.sections.map((section) => `${sectionLabel(section.label)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;">${section.items.map((item) => `<tr><td class="text-main" valign="top" width="20" style="width:20px;padding:0 0 6px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">&bull;</td><td dir="auto" class="text-main" valign="top" style="padding:0 0 6px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(item)}</td></tr>`).join("")}</table>`).join("\n")
+    ? copy.sections.map((section) => `${sectionLabel(section.label)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;">${section.items.map((item) => `<tr><td class="text-main" valign="top" width="20" style="width:20px;padding:0 0 6px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">&bull;</td><td dir="auto" class="text-main" valign="top" style="padding:0 0 6px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(item).replace(/(\d) (?=\S)/g, "$1&nbsp;")}</td></tr>`).join("")}</table>`).join("\n")
     : "";
   const theme = copy.theme;
   const themeCard = theme
