@@ -9,8 +9,8 @@ import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { TableRegion } from "@/components/TableRegion";
-import { toast } from "@/components/Toast";
-import { Avatar, Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDate } from "@/components/Ui";
+import { dismissAllToasts, toast } from "@/components/Toast";
+import { Avatar, Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDate, formatDateTime } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import { useDebounced, usePaged } from "@/components/usePaged";
 import { LIST_PAGE_SIZE, ROLE_LABEL, type ResendResult, type RosterCounts, type RosterRow, type RosterState } from "@/lib/adminTypes";
@@ -48,21 +48,24 @@ function Roster() {
   useSlashFocus("roster-search");
   const [revoking, setRevoking] = useState<RosterRow | null>(null);
   const [resent, setResent] = useState<{ row: RosterRow; result: ResendResult } | null>(null);
+  const [emailing, setEmailing] = useState<RosterRow | null>(null);
   const [backfill, setBackfill] = useState<Backfill>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const query = useDebounced(search.trim());
 
-  const list = usePaged<RosterRow, RosterCounts>(
+  const list = usePaged<RosterRow, { counts: RosterCounts | null; inviteEmail: boolean }>(
     async (a, cursor) => {
       const page = await a.listRosterPage({ query, state: filter }, cursor, LIST_PAGE_SIZE);
-      return { items: [...page.rows].sort((x, y) => x.displayName.localeCompare(y.displayName)), nextCursor: page.nextCursor, extra: page.counts };
+      return { items: [...page.rows].sort((x, y) => x.displayName.localeCompare(y.displayName)), nextCursor: page.nextCursor, extra: { counts: page.counts, inviteEmail: page.inviteEmail } };
     },
     `${filter}|${query}`,
     LIST_PAGE_SIZE,
   );
-  const counts = list.extra;
+  const counts = list.extra?.counts ?? null;
+  // Email for invitations is on for this company: the row action emails the invite (the message stays one click away).
+  const inviteEmail = list.extra?.inviteEmail === true;
   const teamName = (id: string) => company.data?.teams.find((t) => t.id === id)?.name ?? id;
   const unlisted = useMemo(() => (members.data?.total != null && counts ? Math.max(0, members.data.total - counts.active - counts.deactivated) : 0), [members.data, counts]);
   const searching = query !== "";
@@ -78,6 +81,36 @@ function Roster() {
       setError(describe(failure));
     } finally {
       setBusy("");
+    }
+  }
+
+  /** Confirmed in the dialog; the row shows the new count right away (the email goes out within a few minutes). */
+  async function sendEmail(row: RosterRow) {
+    const result = await api.sendInviteEmail(row);
+    list.mutate((rows) => rows.map((r) => (r.entryId === row.entryId ? { ...r, inviteEmailCount: result.inviteEmailCount, lastInviteEmailAt: result.lastInviteEmailAt } : r)));
+    setEmailing(null);
+    toast(t("roster.toast.emailed", { email: row.email }));
+  }
+
+  /** After Add person: optionally email the new person right away (their entry is looked up by the email just added). */
+  async function added(name: string, email: string, emailNow: boolean) {
+    setAdding(false);
+    setError("");
+    if (!emailNow) {
+      toast(t(inviteEmail ? "roster.toast.addedPersonEmail" : "roster.toast.addedPerson", { name }));
+      list.reload();
+      return;
+    }
+    try {
+      const found = (await api.listRosterPage({ query: email, state: "invited" }, null, 5)).rows.find((r) => r.email === email);
+      if (!found) throw new Error(t("common.genericError"));
+      await api.sendInviteEmail(found);
+      toast(t("roster.toast.addedEmailed", { name }));
+    } catch (failure) {
+      toast(t("roster.toast.addedPersonEmail", { name }));
+      setError(describe(failure));
+    } finally {
+      list.reload();
     }
   }
 
@@ -167,12 +200,14 @@ function Roster() {
                       <td data-label={t("roster.table.teams")}>{r.teamIds.map(teamName).join(", ") || <span className="muted">{t("roster.table.noTeams")}</span>}</td>
                       <td data-label={t("roster.table.status")}>
                         <Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{t(STATE_LABEL_KEY[r.state])}</Info>
+                        {r.state === "invited" && r.inviteEmailCount ? <><br /><span className="muted small-note">{r.lastInviteEmailAt ? t("roster.table.emailedLast", { count: r.inviteEmailCount, date: formatDate(r.lastInviteEmailAt) }) : t("roster.table.emailed", { count: r.inviteEmailCount })}</span></> : null}
                         {r.state === "invited" && r.resendCount ? <><br /><span className="muted small-note">{r.lastResentAt ? t("roster.table.resentLast", { count: r.resendCount, date: formatDate(r.lastResentAt) }) : t("roster.table.resent", { count: r.resendCount })}</span></> : null}
                       </td>
                       <td data-label={t("roster.table.added")}>{formatDate(r.invitedAt)}</td>
                       <td className="right">
                         <div className="row-actions">
-                          {r.state === "invited" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={t("roster.action.resendAria", { name: r.displayName })}>{busy === r.entryId ? t("roster.action.resending") : t("roster.action.resend")}</Button>}
+                          {r.state === "invited" && inviteEmail && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => { dismissAllToasts(); setEmailing(r); }} aria-label={t("roster.action.emailAria", { name: r.displayName })}>{t("roster.action.email")}</Button>}
+                          {r.state === "invited" && !inviteEmail && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={t("roster.action.resendAria", { name: r.displayName })}>{busy === r.entryId ? t("roster.action.resending") : t("roster.action.resend")}</Button>}
                           {r.state === "invited" && <Button size="sm" className="quiet-danger" onClick={() => setRevoking(r)} aria-label={t("roster.action.revokeAria", { name: r.displayName })}>{t("roster.action.revoke")}</Button>}
                           {r.state === "revoked" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={t("roster.action.inviteAgainAria", { name: r.displayName })}>{t("roster.action.inviteAgain")}</Button>}
                         </div>
@@ -198,10 +233,19 @@ function Roster() {
           <p>{t("roster.revoke.body", { email: revoking.email })}</p>
         </Dialog>
       )}
-      {resent && <ResendDialog row={resent.row} result={resent.result} onClose={() => setResent(null)} />}
+      {resent && <ResendDialog row={resent.row} result={resent.result} inviteEmail={inviteEmail} onClose={() => setResent(null)} />}
+      {emailing && (
+        <Dialog title={t("roster.email.title", { name: emailing.displayName })} confirmLabel={t("roster.email.confirm")} busyLabel={t("roster.email.busy")}
+          onClose={() => setEmailing(null)} onConfirm={() => sendEmail(emailing)}>
+          <p>{t("roster.email.body", { email: emailing.email })}</p>
+          {emailing.inviteEmailCount ? <p className="muted">{emailing.lastInviteEmailAt ? t("roster.email.sentBefore", { count: emailing.inviteEmailCount, date: formatDateTime(emailing.lastInviteEmailAt) }) : t("roster.table.emailed", { count: emailing.inviteEmailCount })}</p> : null}
+          <p className="muted">{t("roster.email.copyInstead")}</p>
+          <div><Button onClick={() => { const row = emailing; setEmailing(null); void resend(row); }}>{t("roster.action.resend")}</Button></div>
+        </Dialog>
+      )}
       {adding && (
         <AddPersonDialog api={api} domain={company.data?.emailDomain ?? ""} onClose={() => setAdding(false)}
-          onAdded={(name) => { setAdding(false); toast(t("roster.toast.addedPerson", { name })); list.reload(); }} />
+          inviteEmail={inviteEmail} onAdded={(name, email, emailNow) => void added(name, email, emailNow)} />
       )}
       {backfill?.phase === "ready" && (
         <Dialog title={t("roster.backfill.title")} confirmLabel={t("roster.backfill.confirm", { count: backfill.created })} busyLabel={t("roster.backfill.busy")} onClose={() => setBackfill(null)}
@@ -224,8 +268,8 @@ export default function RosterPage() {
   return <Suspense fallback={<Loading label={t("roster.loading")} layout="roster" />}><Roster /></Suspense>;
 }
 
-/** DIP sends no email: the resend is recorded and this is what the admin shares through their own channel. */
-function ResendDialog({ row, result, onClose }: { row: RosterRow; result: ResendResult; onClose: () => void }) {
+/** The resend is recorded and this is what the admin shares through their own channel (also when DIP can email the invite). */
+function ResendDialog({ row, result, inviteEmail, onClose }: { row: RosterRow; result: ResendResult; inviteEmail: boolean; onClose: () => void }) {
   return (
     <Dialog title={t("roster.message.title", { name: row.displayName })} confirmLabel={t("roster.message.copy")} busyLabel={t("roster.message.copying")} onClose={onClose}
       onConfirm={async () => {
@@ -238,7 +282,7 @@ function ResendDialog({ row, result, onClose }: { row: RosterRow; result: Resend
         toast(t("roster.toast.copied", { name: row.displayName }));
         onClose();
       }}>
-      <p><strong>{t("roster.message.intro", { email: row.email })}</strong> {t("roster.message.recorded", { count: result.resendCount })}</p>
+      <p><strong>{t(inviteEmail ? "roster.message.introSelf" : "roster.message.intro", { email: row.email })}</strong> {t("roster.message.recorded", { count: result.resendCount })}</p>
       <div className="field">
         <label htmlFor="invite-message">{t("roster.message.label")}</label>
         <textarea id="invite-message" readOnly rows={5} value={result.message} />

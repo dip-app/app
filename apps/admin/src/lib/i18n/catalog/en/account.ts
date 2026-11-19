@@ -13,4 +13,8 @@ export const account = {
   "account.language.auto": "Same as this browser ({language})",
   "account.language.saved": "Language saved.",
   "account.language.note": "Spanish is a draft translation and may change.",
+  "account.otherEmails.title": "Other emails from DIP",
+  "account.otherEmails.description": "What DIP emails you, and where to change it.",
+  "account.otherEmails.app": "Event invites, event updates, reminders and calendar invites: choose which ones you get in the DIP app under Profile > Notifications.",
+  "account.otherEmails.account": "Account emails: a welcome when you join, and a note when a problem you reported is resolved. Unsubscribing from all DIP emails stops these too.",
 };

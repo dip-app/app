@@ -1,6 +1,6 @@
 import { asset } from "./asset";
 import type { AdminOpsApi } from "./adminApi";
-import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
+import { MAX_INVITE_EMAILS, MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
   type DipbotIdeas, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
@@ -49,6 +49,8 @@ interface Job {
   results: ApplyRowResult[]; status: "planned" | "running" | "completed" | "completed_with_errors";
 }
 interface OpsState {
+  /** Invitation email is on for the demo company unless set to false (listRosterV1 `inviteEmail`). */
+  inviteEmail?: boolean;
   companies: Record<string, CompanyInfo>;
   members: StoredMember[];
   roster: StoredRoster[];
@@ -654,7 +656,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         counts = { all: entries.length, invited: 0, active: 0, deactivated: 0, revoked: 0 };
         for (const r of entries) counts[stateOf(r)] += 1;
       }
-      return { rows: page.map((r) => ({ ...strip(r), state: stateOf(r) })), nextCursor: more ? last!.entryId : null, counts };
+      return { rows: page.map((r) => ({ ...strip(r), state: stateOf(r) })), nextCursor: more ? last!.entryId : null, counts, inviteEmail: state.inviteEmail !== false };
     },
     async resendInvite(row) {
       const state = load();
@@ -670,6 +672,26 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       log(state, session, { action: "roster.resend", targetType: "roster", targetId: entry.entryId, summary: `Resent the invite for ${entry.email} (#${sent + 1})`, changes: [{ field: "resendCount", before: String(sent), after: String(sent + 1) }] });
       save(state);
       return { resendCount: sent + 1, lastResentAt: entry.lastResentAt, ...inviteMessage({ name: entry.displayName, company: company(state, session).name, email: entry.email, role: entry.role }) };
+    },
+    // Mirrors sendRosterInviteEmailV1: invited entries only, at most MAX_INVITE_EMAILS, an hour apart; nothing is sent in mock mode.
+    async sendInviteEmail(row) {
+      const state = load();
+      const session = staff("roster.manage");
+      const entry = state.roster.find((r) => r.companyId === session.companyId && r.entryId === row.entryId);
+      if (!entry) throw new ApiError("not-found", "That person isn’t on the roster.", {}, "ROSTER_ENTRY_NOT_FOUND");
+      if (entry.state === "active" || entry.state === "deactivated") throw new ApiError("failed-precondition", "This person already signed in.", {}, "ROSTER_ENTRY_CLAIMED");
+      if (entry.state !== "invited") throw new ApiError("failed-precondition", "Invite this person again before resending.", {}, "ROSTER_ENTRY_NOT_INVITED");
+      if (state.inviteEmail === false) throw new ApiError("failed-precondition", "Email isn't turned on for your company yet. Copy the invite message instead.", {}, "EMAIL_NOT_ENABLED", undefined, "errors.emailNotEnabled");
+      const sent = entry.inviteEmailCount ?? 0;
+      if (sent >= MAX_INVITE_EMAILS) throw new ApiError("resource-exhausted", "This person already got several invitation emails. Reach out to them directly.", {}, "INVITE_EMAIL_LIMIT", undefined, "errors.inviteEmailLimit");
+      if (entry.lastInviteEmailAt && now().getTime() - new Date(entry.lastInviteEmailAt).getTime() < 3_600_000) {
+        throw new ApiError("resource-exhausted", "An invitation email went out less than an hour ago. Try again later.", {}, "INVITE_EMAIL_TOO_SOON", undefined, "errors.inviteEmailTooSoon");
+      }
+      entry.inviteEmailCount = sent + 1;
+      entry.lastInviteEmailAt = now().toISOString();
+      log(state, session, { action: "roster.inviteEmail", targetType: "roster", targetId: entry.entryId, summary: `Emailed an invite to ${entry.email} (#${sent + 1})`, changes: [{ field: "inviteEmailCount", before: String(sent), after: String(sent + 1) }] });
+      save(state);
+      return { inviteEmailCount: sent + 1, lastInviteEmailAt: entry.lastInviteEmailAt };
     },
     async backfillRoster(dryRun, _requestId, cursor): Promise<BackfillStep> {
       const state = load();

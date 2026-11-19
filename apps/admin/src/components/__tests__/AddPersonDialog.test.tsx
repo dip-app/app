@@ -25,6 +25,23 @@ function fill(name: string, email: string) {
 }
 
 describe("AddPersonDialog", () => {
+  it("offers to email the invitation when invitation email is on (on by default, can be switched off)", async () => {
+    const onAdded = vi.fn();
+    render(<AddPersonDialog api={api("create")} domain="acme.com" inviteEmail onAdded={onAdded} onClose={() => {}} />);
+    const toggle = screen.getByRole("switch", { name: /Email them an invitation now/ });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fill("Jordan Lee", "jordan.lee@acme.com");
+    fireEvent.click(screen.getByRole("button", { name: "Add and send invite" }));
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith("Jordan Lee", "jordan.lee@acme.com", true));
+    cleanup();
+    const second = vi.fn();
+    render(<AddPersonDialog api={api("create")} domain="acme.com" inviteEmail onAdded={second} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("switch", { name: /Email them an invitation now/ }));
+    fill("Jordan Lee", "jordan.lee@acme.com");
+    fireEvent.click(screen.getByRole("button", { name: "Add person" }));
+    await waitFor(() => expect(second).toHaveBeenCalledWith("Jordan Lee", "jordan.lee@acme.com", false));
+  });
+
   it("adds one person through the import's dry run and apply, with the chosen role", async () => {
     const fake = api("create");
     const onAdded = vi.fn();
@@ -33,7 +50,7 @@ describe("AddPersonDialog", () => {
     fill("Jordan Lee", " Jordan.Lee@acme.com ");
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "organizer" } });
     fireEvent.click(screen.getByRole("button", { name: "Add person" }));
-    await waitFor(() => expect(onAdded).toHaveBeenCalledWith("Jordan Lee"));
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith("Jordan Lee", "jordan.lee@acme.com", false));
     expect(fake.planImport.mock.calls[0][0].rows).toEqual([expect.objectContaining({ email: "jordan.lee@acme.com", displayName: "Jordan Lee", role: "organizer" })]);
     expect(fake.applyImportStep).toHaveBeenCalledWith("job-1", "h");
   });
