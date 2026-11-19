@@ -7,7 +7,24 @@ Runbook for the AI event drafts feature (stretch S2, [design](../design/stretch/
 - Callables `getEventIdeaContextV1` and `generateEventDraftsV1` (`gcp/functions/src/modules/ai`), admin only (`ai.generate`), App Check enforced outside the emulator. Contract: [admin contract](../contracts/admin.md#ai-event-drafts-aigenerate-admin-only).
 - Drafts are written by a cheap, older OpenAI model, `gpt-4o-mini` (Responses API, strict structured output, temperature 0.3, `store: false`). Free OpenAI moderation and typed decision questions (note triage, draft checks) screen the note and the drafts. The decision questions go to TypeSafe AI's Jev model by default whenever `JEV_API_KEY` holds a real value; if Jev has no key or a Jev call fails, `gpt-4o-mini` answers the same questions, and if that fails too, deterministic keyword rules answer (free, last resort). Which provider answered is logged (`decisionProviders`) and stored on the request document.
 - Portal page `/admin/ideas/` ("Event ideas" in the sidebar, admins only).
-- Off by default twice: the deployment switch `AI_EVENTS_ENABLED` is false unless set, and each company must also have `companies/{companyId}/aiSettings/current` with `enabled: true`.
+- On by default for every company (see [Rollout policy](#rollout-policy-ai-10-issue-196-on-by-default-for-every-organization)). Two things turn it off: the deployment switch `AI_EVENTS_ENABLED` (false unless set; true in production) and, per company, an explicit `companies/{companyId}/aiSettings/current` with `enabled: false`. A missing document or field means on.
+
+## Rollout policy (AI-10, issue #196): on by default for every organization
+
+Owner decision, November 19, 2026: "just enable [AI] for all organizations by default; the idea is they'd be paying subscribers." The per-company opt-in is gone. This section is the policy summary; the rest of this runbook is the mechanics.
+
+| Question | Answer |
+| --- | --- |
+| What is on by default | Every company, with no data migration: Dipbot drafts (`generateEventDraftsV1`), Dipbot Suggest, daily ideas, the cover picker and cover search, and venue search. A company is ON when `companies/{c}/aiSettings/current` is missing or has no `enabled` field (the rule is `companyAiEnabled` in `domain/quota.ts`, used by `effectiveLimits`, so every caller agrees). Admins only (`ai.generate`). |
+| What stays off until the owner switches it | The deployment switches. `AI_EVENTS_ENABLED=true` (already true in production) and a real `OPENAI_API_KEY` are required for anything to run. `AI_IDEAS_ENABLED=false` hides the daily ideas row. `PLACES_ENABLED` and `AI_VENUES_ENABLED` still default to off ([launch switches](launch-switches.md#4-places-typeahead-and-dipbot-venue-search)). The weekly suggested-events email still needs `EMAIL_ENABLED=true`, `emailSettings/{c}.enabled` and an admin who subscribed, so default-on sends no mail by itself. |
+| How to turn it off for one company | `node scripts/set-company-ai.mjs --project team05-dip --company <COMPANY_ID> --off` (dry run), then add `--apply`. It merge-writes `{ enabled: false }` into the server-only `aiSettings/current`, keeps other overrides, is idempotent and is respected immediately by every callable (`AI_DISABLED`, the context answers `enabled: false`, the portal shows the off state). `--on --apply` sets `enabled: true` again (deleting the field or the document has the same effect). A malformed value (anything but `true` or a missing field) also reads as off: a bad write fails closed. There is no portal control; the opt-out is operator-only. |
+| Budgets per company | Dipbot credits 500 a month (override `monthlyCredits`), 30 generations a month, 10 per admin per UTC day, 20 attempts per admin per day, 3 declined notes per admin per day, and the dollar guard of $2 a month and $0.50 a UTC day (`AI_MONTHLY_BUDGET_CENTS`, `AI_DAILY_BUDGET_CENTS`). Overrides in `aiSettings/current`: `monthlyCredits`, `monthlyBudgetCents`, `dailyBudgetCents`, `monthlyGenerationLimit`, `dailyGenerationLimit`. |
+| Worst-case exposure | Per company per month: $2.00 of metered spend (generation, Suggest, ideas, weekly ranking) plus at most about $0.25 of cover and venue picks, which are bound by the 500 credits (1 credit each, about $0.0005) rather than metered in dollars: about $2.25. Realistically the generation and credit caps bind first: 30 generations reserve at most about $0.29 and cost about $0.03. Across all companies the metered spend stops at the platform ceiling `AI_PLATFORM_MONTHLY_BUDGET_CENTS` (default $200 a month), and the OpenAI project spend limit is the last backstop. The unmetered picks are not under the platform ceiling, so at 1,000 companies using every credit on picks they add up to about $250; size the OpenAI project limit for that. |
+| Kill switches (all still win over a company that is on) | `AI_EVENTS_ENABLED=false` (everything, redeploy), `AI_IDEAS_ENABLED=false` (daily ideas), `AI_VENUES_ENABLED=false` and `PLACES_ENABLED=false` (venue search and typeahead), `AI_COVER_LIVE_FALLBACK=false` (fresh-photo cover fallback), a blank or `none` `OPENAI_API_KEY`, revoking the OpenAI key. Per company: the script above. |
+| Paying subscribers | The policy assumes AI is part of the paid plan. There is no billing or plan check in the code yet: today every organization gets it, bounded by the budgets above. If a free tier appears, add a plan gate next to `companyAiEnabled` (one function, one test file); do not reintroduce a per-company opt-in. |
+| What Dipbot sees | The admin's own choices and note, rounded interest buckets (`5-9`, `10-19`, `20+`; tags under 5 members are named without counts), totals of past events, the running weekly theme and the company's own event titles and dates through read-only tools. Never member names, emails, departments, per-member data or other companies. The tenant is derived from the caller's membership, so an admin never reaches another company. Providers: OpenAI and TypeSafe AI (Jev) as processors, `store: false`; the privacy page names both. Their data terms are still UNVERIFIED (checklist). |
+
+Because default-on removes the human pilot gate, the checklist below now covers the owner actions that must be done before relying on it: the OpenAI project spend limit, the data terms, the privacy page and the model change before January 14, 2027.
 
 ## Owner actions before the first real call
 
@@ -63,7 +80,7 @@ Admins never see money for AI. The portal shows **credits**: a fixed price per t
 | Let Dipbot choose with a fresh photo (live Pixabay fallback) | 1 (same pick, no extra charge) | Same as the row above: one charge per `requestId`, refunded when no model answered | Pixabay calls are free but capped (20 pulls per company and 200 per platform a day); the model call is the same single Choice |
 | Daily ideas (Dipbot ideas row, `getDipbotIdeasV1`) | 3 | Reserved when a run starts (the automatic daily refresh or the Refresh button) and refunded exactly once when no model idea survives validation (outage, deadline, malformed twice). Page loads, replays of a `requestId` and unchanged-input checks are free | A few small-model turns over read-only data tools plus one ranking call, about $0.002 typical and $0.019 reserved. One automatic run per company per local day, at most 3 manual refreshes a day |
 
-**Allowance.** Default 500 credits a month (about 50 draft generations, or one a day). Override per company with `monthlyCredits` (a whole number, 0 allowed) in the server-only `companies/{c}/aiSettings/current` document, for example `{ enabled: true, monthlyCredits: 1500 }`. Nothing else changes with it. Do this in the console or an Admin SDK script; clients cannot write it.
+**Allowance.** Default 500 credits a month (about 50 draft generations, or one a day). Override per company with `monthlyCredits` (a whole number, 0 allowed) in the server-only `companies/{c}/aiSettings/current` document, for example `{ monthlyCredits: 1500 }` (no `enabled` field needed: it is on by default). Nothing else changes with it. Do this in the console or an Admin SDK script; clients cannot write it.
 
 **Reset.** The allowance resets at the start of the calendar month in the company's time zone (`emailSettings/{companyId}.timeZone`, UTC when unset or invalid). The ledger is `companies/{c}/aiCredits/{yyyymm}` (`used` and a `charges` map keyed by request, so a repeated request is charged once and a failed run refunded exactly once). It is a separate document from `aiUsage/{yyyymm}` because the credit month follows the company's zone while the cost month is UTC. Charging and refunding are transactions on the ledger, so parallel requests cannot overspend.
 
@@ -73,7 +90,7 @@ Admins never see money for AI. The portal shows **credits**: a fixed price per t
 
 ## Feature off (clean no-op)
 
-If `AI_EVENTS_ENABLED` is not `true`, or `OPENAI_API_KEY` is missing, blank or `none`, the feature is disabled without errors in the logs: `generateEventDraftsV1` returns `AI_DISABLED`, `getEventIdeaContextV1` returns `enabled: false`, and the portal shows the off state. The same happens when the company document has no `enabled: true`.
+If `AI_EVENTS_ENABLED` is not `true`, or `OPENAI_API_KEY` is missing, blank or `none`, the feature is disabled without errors in the logs: `generateEventDraftsV1` returns `AI_DISABLED`, `getEventIdeaContextV1` returns `enabled: false`, and the portal shows the off state. The same happens when the company document says `enabled: false` (or holds a malformed `enabled` value). A company with no document, or a document without an `enabled` field, is ON.
 
 ## Deploy notes for the coordinator
 
@@ -100,14 +117,15 @@ Design, provider choice and costs: [smart location](../design/smart-location.md)
 
 ## Pilot
 
-1. Deploy with `AI_EVENTS_ENABLED=true` and the secrets.
-2. Turn it on for our own company only: write `companies/<ourCompanyId>/aiSettings/current` = `{ enabled: true }` with trusted tooling (Admin SDK or console; clients cannot write it).
-3. Run 5 to 10 real generations, check the audit log entries (`ai.generateDrafts`, `ai.noteDeclined`, `ai.generateFailed`: models, tokens and cost only, never content) and `companies/<id>/aiUsage/<yyyymm>` (`spentMicros`, `generations`).
-4. Then one pilot company, then wider. Per-company overrides in the same document: `monthlyBudgetCents`, `dailyBudgetCents`, `monthlyGenerationLimit`, `dailyGenerationLimit`.
+Superseded by the default-on [rollout policy](#rollout-policy-ai-10-issue-196-on-by-default-for-every-organization): there is no per-company opt-in step any more. Smoke test after the deploy that ships default-on:
+
+1. Deploy with `AI_EVENTS_ENABLED=true` and the secrets (production already has the switch on).
+2. Sign in as an admin of a company with no `aiSettings` document and open `/admin/ideas/`: the page is on. Run 5 to 10 real generations, check the audit log entries (`ai.generateDrafts`, `ai.noteDeclined`, `ai.generateFailed`: models, tokens and cost only, never content) and `companies/<id>/aiUsage/<yyyymm>` (`spentMicros`, `generations`).
+3. Test the per-company kill switch on our own company: `node scripts/set-company-ai.mjs --project team05-dip --company <ourCompanyId> --off --apply` (generation returns `AI_DISABLED`, the page shows the off state), then `--on --apply`. Per-company overrides live in the same document: `monthlyCredits`, `monthlyBudgetCents`, `dailyBudgetCents`, `monthlyGenerationLimit`, `dailyGenerationLimit`.
 
 ## Kill switches and rollback
 
-- One company: set `aiSettings/current.enabled` to false. Immediate.
+- One company: `node scripts/set-company-ai.mjs --project team05-dip --company <COMPANY_ID> --off --apply` (sets `aiSettings/current.enabled` to false; idempotent, immediate, keeps other overrides). Without the script: write `{ enabled: false }` in the console.
 - Everyone: set `AI_EVENTS_ENABLED=false` and redeploy the two functions, or revoke the OpenAI key in the OpenAI dashboard (drafting then fails with `AI_UNAVAILABLE`; no spend). A revoked or failing Jev key needs no action: each failed Jev call falls back to `gpt-4o-mini` in the same request. To stop calling Jev at all, set the decision providers to `openai-mini` (or the secret to `none`) and redeploy.
 - Live cover fallback only: `AI_COVER_LIVE_FALLBACK=false` and redeploy `pickEventCoverV1`; stored fresh covers keep displaying.
 - Nothing else depends on the feature: no event is written by it, so rollback leaves only usage and request documents.
@@ -122,14 +140,15 @@ Design, provider choice and costs: [smart location](../design/smart-location.md)
 - [ ] OpenAI and TypeSafe AI data terms read.
 - [ ] Privacy page deployed.
 - [ ] TTL policies created.
-- [ ] Pilot on our own company; kill switch tested (enabled false returns `AI_DISABLED`).
+- [ ] Default-on smoke test and the per-company kill switch tested on our own company (`--off` returns `AI_DISABLED`, `--on` restores it).
+- [ ] OpenAI project spend limit sized for default-on (platform ceiling `AI_PLATFORM_MONTHLY_BUDGET_CENTS` plus unmetered picks, see the policy table).
 
 ## Weekly ideas email (S6)
 
 The admin weekly suggested-events email ([design](../design/stretch/admin-suggestions-email.md)) reuses these switches and the email setup ([email setup](email-setup.md)).
 
 - Functions: `sendAdminSuggestionsEmails` (scheduler, every hour at minute 0 UTC, 540 s, 512 MiB), `manageSuggestionsEmailV1` and `resolveSuggestedIdeaV1` (callables, App Check). The scheduler and `manageSuggestionsEmailV1` bind `EMAIL_UNSUBSCRIBE_KEY`, `JEV_API_KEY` and `OPENAI_API_KEY`; `resolveSuggestedIdeaV1` binds only `EMAIL_UNSUBSCRIBE_KEY` (it also signs the deep links, purpose label `suggest-link:v1`). Deploying the scheduler creates a Cloud Scheduler job; it does nothing until the switches below are on.
-- Needs: `EMAIL_ENABLED=true` and `emailSettings/{companyId}.enabled`, `AI_EVENTS_ENABLED=true` with `aiSettings/current.enabled`, and at least one admin who turned the email on in the portal (`/admin/suggestions/`). Engine: Jev when `JEV_API_KEY` is real and `SUGGESTIONS_DECISION_PROVIDER` is `jev` (default), else the OpenAI mini model, else the built-in heuristic.
+- Needs: `EMAIL_ENABLED=true` and `emailSettings/{companyId}.enabled`, `AI_EVENTS_ENABLED=true` (a company is on unless `aiSettings/current.enabled` is `false`), and at least one admin who turned the email on in the portal (`/admin/suggestions/`). Engine: Jev when `JEV_API_KEY` is real and `SUGGESTIONS_DECISION_PROVIDER` is `jev` (default), else the OpenAI mini model, else the built-in heuristic.
 - Optional env: `SUGGESTIONS_DECISION_PROVIDER` (`jev` or `openai-mini`). Schedule per company in `companies/{c}/suggestionsEmail/settings` (`weekday` 1 to 7, `hour` 0 to 23; default Monday 9, company time zone from `emailSettings/{c}.timeZone`), set by admins in the portal.
 - Firestore TTL policy (optional): `expireAt` on collection group `suggestionDigests` (120 days).
 - Cost: shares the company AI budget (`aiUsage/{yyyymm}`, pending key `suggest_<week>`), not counted as a generation; about $0.0005 a week with Jev. Also charges 3 Dipbot credits per company run (see Dipbot credits above); with fewer than 3 credits left the ranking uses the free heuristic.
@@ -142,7 +161,7 @@ The "Ideas for you" row on `/admin/ideas/` ([design](../design/stretch/dipbot-da
 
 - Function: `getDipbotIdeasV1` (`us-central1`, 60 s, 512 MiB, App Check outside the emulator). It binds `OPENAI_API_KEY` and `JEV_API_KEY` (ranking: Jev when the key is real, then the OpenAI mini model, then the prior only). Modes: `load` (every visit, never calls a model), `auto` (started once by the portal when a refresh is due) and `refresh` (the button, needs a `requestId`). Admin only (`ai.generate`). In the emulator an offline demo agent answers, so no keys are needed.
 - Env switches: `AI_IDEAS_ENABLED` (default on whenever `AI_EVENTS_ENABLED` is on; `false` hides the row), `AI_IDEAS_MAX_AGE_HOURS` (default 24: older ideas are stale and due for an automatic refresh), `AI_IDEAS_MANUAL_PER_DAY` (default 3, per company per local day), `AI_MODEL_IDEAS` (default `gpt-4o-mini`; needs function calling and strict structured outputs; temperature 0.4, or `AI_EFFORT_IDEAS` for reasoning models). Replace `gpt-4o-mini` before its January 14, 2027 shutdown like the other steps; unknown model ids are priced at the most expensive known rate.
-- Per company: `companies/{c}/aiSettings/current.ideasEnabled: false` turns the row off for one company (default on; the company still needs `enabled: true`). Both off paths answer `enabled: false`, never an error.
+- Per company: `companies/{c}/aiSettings/current.ideasEnabled: false` turns the row off for one company (default on; the company must also not be opted out with `enabled: false`). Both off paths answer `enabled: false`, never an error.
 - State: the server-only document `companies/{c}/aiCache/ideas` holds the ideas, fingerprint, `generatedAt`, `checkedAt`, provider, model, tool names, `autoRunDay`, `manualRefreshes` and the 90 second run lease. No TTL policy is needed (one document per company, overwritten) and no rules or index changes (deny-all, covered by `gcp/tests/rules/ai.test.ts`).
 - Cost per run: typical about 9,000 input and 1,100 output tokens on `gpt-4o-mini` plus one ranking call, about $0.002 (0.2 cents). The pre-run guard reserves the worst case: 5 turns at 10,000 input and 3,000 output tokens (`ideasWorstCaseMicros`, $0.0165 on `gpt-4o-mini`) plus the ranking providers' worst case (about $0.0025), so about $0.019; the run is skipped (free fallback ideas, no charge) when the company month or day budget or the platform ceiling cannot cover it. Actual spend is added to `aiUsage` and `aiUsagePlatform`, never as a generation. At most one automatic run a day plus 3 manual refreshes: about $0.07 a month for a company that is visited daily, 90 credits at most from the automatic runs.
 - Credits: 3 per run (price table above). Exhausted credits never auto-run (stored ideas or the free fallback show); a manual refresh fails with `AI_CREDITS_EXHAUSTED` before any model call. A manual refresh beyond the daily limit fails with `AI_IDEAS_REFRESH_LIMIT`. A failed refresh still counts toward the daily manual limit; a failed automatic run still uses up that day's automatic run.

@@ -12,7 +12,7 @@ Once a week, each admin who opted in gets a short, calm email with 3 to 5 event 
 
 ## Flow
 
-1. **Scheduler** `sendAdminSuggestionsEmails` runs every hour (`0 * * * *`, UTC). For each company with `emailSettings/{c}.enabled == true` it checks the AI switches (`AI_EVENTS_ENABLED` with the company's `aiSettings/current.enabled`), reads the company time zone (`emailSettings/{c}.timeZone`, else `EMAIL_DEFAULT_TIME_ZONE`) and the schedule (`companies/{c}/suggestionsEmail/settings`: `weekday` 1 = Monday to 7, `hour` 0 to 23; default Monday 9). It is due when the local weekday matches and the local hour is at or after the configured hour (so a missed run catches up the same day).
+1. **Scheduler** `sendAdminSuggestionsEmails` runs every hour (`0 * * * *`, UTC). For each company with `emailSettings/{c}.enabled == true` it checks the AI switches (`AI_EVENTS_ENABLED` unless the company opted out with `aiSettings/current.enabled: false`), reads the company time zone (`emailSettings/{c}.timeZone`, else `EMAIL_DEFAULT_TIME_ZONE`) and the schedule (`companies/{c}/suggestionsEmail/settings`: `weekday` 1 = Monday to 7, `hour` 0 to 23; default Monday 9). It is due when the local weekday matches and the local hour is at or after the configured hour (so a missed run catches up the same day).
 2. **Digest, once per company-week.** `companies/{c}/suggestionDigests/{weekKey}` (`weekKey` = ISO week in the company zone, for example `2026-W48`) is created with a lease; a finished digest is reused by the job, by previews and by test sends, so a week is ranked at most once.
 3. **Recipients.** Active members with role `admin` whose resolved email preference `admin_suggestions` is on. One outbox document per admin per week: `outboxId("admin_suggestions", "{companyId}-{weekKey}", uid, weekKey)`, created with `create()`, so replays never enqueue twice; the existing sender then applies `EMAIL_ENABLED`, company switch, tenant match, member status, suppression, preference and the member and company daily caps, at most once.
 
@@ -91,7 +91,7 @@ Template `admin_suggestions` in the email template system, category `admin_sugge
 
 ## Rollout and flags
 
-Needs `EMAIL_ENABLED=true`, `emailSettings/{c}.enabled`, `AI_EVENTS_ENABLED=true` with `aiSettings/current.enabled`, and the admin's opt-in. Optional: `JEV_API_KEY` (else OpenAI mini, else heuristic), `SUGGESTIONS_DECISION_PROVIDER` (`jev` or `openai-mini`). Rollback: turn any switch off; digests expire after 120 days (TTL on `expireAt`).
+Needs `EMAIL_ENABLED=true`, `emailSettings/{c}.enabled`, `AI_EVENTS_ENABLED=true` (a company is on unless `aiSettings/current.enabled` is `false`), and the admin's opt-in. Optional: `JEV_API_KEY` (else OpenAI mini, else heuristic), `SUGGESTIONS_DECISION_PROVIDER` (`jev` or `openai-mini`). Rollback: turn any switch off; digests expire after 120 days (TTL on `expireAt`).
 
 ## Decisions (November 17, 2026)
 
