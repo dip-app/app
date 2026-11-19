@@ -166,7 +166,8 @@ describe("Ideas for you: refresh", () => {
     await screen.findByRole("list", { name: "Event ideas" }, wait);
     expect(refreshButton().disabled).toBe(true);
     expect(refreshButton().title).toMatch(/^Out of credits until /);
-    expect(document.querySelector(".sh-hint")?.textContent).toMatch(/^Out of credits until /);
+    // Said once by the page's credits notice, so the section header shows no visible hint of its own.
+    expect(document.querySelector(".sh-hint")).toBeNull();
     // The stored ideas stay.
     expect(screen.getAllByRole("button", { name: /^Use this idea:/ })).toHaveLength(5);
     cleanup();
@@ -298,7 +299,8 @@ describe("Ideas for you with the preview mock", () => {
 
   it("exhausted, limit, off and empty each show their state", async () => {
     await previewPage("?ideas=exhausted");
-    await waitFor(() => expect(document.querySelector(".sh-hint")?.textContent).toMatch(/^Out of credits until /), wait);
+    await waitFor(() => expect((screen.getByRole("button", { name: /^Refresh ideas/ }) as HTMLButtonElement).title).toMatch(/^Out of credits until /), wait);
+    expect(document.querySelector(".sh-hint")).toBeNull();
     expect((screen.getByRole("button", { name: /^Refresh ideas/ }) as HTMLButtonElement).disabled).toBe(true);
     cleanup();
     await previewPage("?ideas=limit");

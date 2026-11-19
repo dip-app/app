@@ -131,7 +131,7 @@ export const ai = {
   "suggest.noData": "No suggestions yet. {ai} suggests choices once members pick interests or your company has past events.",
   // Saved suggestions: one company-level answer shared by every admin. Visiting is free; refreshing costs credits.
   "suggest.updated": "Updated {when}",
-  "suggest.updatedData": "Updated {when}, new data available",
+  "suggest.newData": "New data available",
   "suggest.refresh": "Refresh suggestions",
   "suggest.refreshAria": "Refresh {ai} suggestions",
   "suggest.refreshOut": "No credits left this month",

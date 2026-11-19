@@ -15,7 +15,12 @@ export function relativeAgo(iso: string | undefined, now: Date): string {
   return tn("suggest.when.days", Math.floor(hours / 24));
 }
 
-export interface FreshnessLine { text: string; stale: boolean }
+export interface FreshnessLine {
+  text: string;
+  stale: boolean;
+  /** Short "New data available" note, only when the saved answer is stale because the underlying data changed. */
+  hint?: string;
+}
 
 /**
  * The quiet line under the suggestions, or null when there is nothing saved to describe (a free heuristic answer, or no
@@ -25,6 +30,6 @@ export function freshnessLine(s: EventIdeaSuggestions, now: Date): FreshnessLine
   const saved = s.cacheStatus !== "computed" || s.provider === "jev" || s.provider === "openai";
   if (!saved || !s.computedAt) return null;
   const when = relativeAgo(s.computedAt, now);
-  if (s.cacheStatus === "stale" && s.staleReason !== "age") return { text: t("suggest.updatedData", { when }), stale: true };
+  if (s.cacheStatus === "stale" && s.staleReason !== "age") return { text: t("suggest.updated", { when }), stale: true, hint: t("suggest.newData") };
   return { text: t("suggest.updated", { when }), stale: s.cacheStatus === "stale" };
 }

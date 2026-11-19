@@ -19,7 +19,7 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | A titled section card | `Panel` | `title`, `description`, `actions`, `loading`, `empty`, `error`, `headingLevel`. |
 | Nothing here yet | `EmptyState` | `title`, `body`, one `action`, optional `art`. `Empty` in `Ui.tsx` is the same component. |
 | The page title row | `PageHeader` | `title`, `description`, `actions`. `Shell` renders it. |
-| The header row of a Dipbot section | `SectionHeader` | `title`, `headingLevel`, `updated` (muted "Updated 3 hours ago"), optional `toggle` (collapse), `hint`, `end` (actions). Used by "Ideas for you" and the wizard's per-step suggestions. |
+| The header row of a Dipbot section | `SectionHeader` | `title`, `headingLevel`, `updated` (muted "Updated 3 hours ago"), `staleHint` (compact inline "New data available" beside it, only when stale), optional `toggle` (collapse), `hint`, `end` (actions). Used by "Ideas for you" and the wizard's per-step suggestions. |
 | One choice out of a few, always visible | `SegmentedControl` | `tabs` (underlined views), `pill` (compact, AM/PM), `icon` (grid or list). |
 
 `Tabs` (a real tablist with arrow keys) stays for switching whole pages of content; `SegmentedControl` is for switching how the same data is shown.

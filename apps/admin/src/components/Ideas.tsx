@@ -452,7 +452,7 @@ export function Ideas() {
   );
   // One header row, the same component as "Ideas for you": [mark] title, muted "Updated 3 hours ago", then Refresh and Use suggestions.
   const sgHeader = (title: string, withUpdated: boolean, showUse: boolean) => (
-    <SectionHeader headingLevel={3} stackActions title={title} updated={withUpdated && freshness ? freshness.text : undefined} end={<>{refreshAction}{showUse && useAction}</>} />
+    <SectionHeader headingLevel={3} stackActions title={title} updated={withUpdated && freshness ? freshness.text : undefined} staleHint={withUpdated && freshness?.hint ? freshness.hint : undefined} end={<>{refreshAction}{showUse && useAction}</>} />
   );
   const suggestBar = phase === "edit" && current.id !== "note" && suggest !== null && (
     suggest === "loading" || refreshing
