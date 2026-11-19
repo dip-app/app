@@ -112,7 +112,17 @@ export function readDay(doc: Record<string, unknown> | null): DayState {
   return { generations: counter(doc, "generations"), flags: counter(doc, "flags"), attempts: counter(doc, "attempts") };
 }
 
-/** Deployment limits, narrowed or widened by the company document, which must also opt in (`enabled: true`). */
+/**
+ * Rollout policy (AI-10, issue #196): AI is on by default for every company. A company is off only when its server-owned
+ * `aiSettings/current` document says so explicitly. A missing document or a missing `enabled` field means on; `true` is on;
+ * anything else (`false` or a malformed value) is off, so a bad write fails closed.
+ */
+export function companyAiEnabled(companySettings: Record<string, unknown> | null): boolean {
+  const value = companySettings?.enabled;
+  return value === undefined || value === true;
+}
+
+/** Deployment limits, narrowed or widened by the company document. The deployment switch must be on and the company must not have opted out. */
 export function effectiveLimits(settings: AiSettings, companySettings: Record<string, unknown> | null): Limits {
   const override = (key: string): number | null => {
     const value = companySettings?.[key];
@@ -121,7 +131,7 @@ export function effectiveLimits(settings: AiSettings, companySettings: Record<st
   const cents = override("monthlyBudgetCents");
   const dailyCents = override("dailyBudgetCents");
   return {
-    enabled: settings.enabled && companySettings?.enabled === true,
+    enabled: settings.enabled && companyAiEnabled(companySettings),
     monthlyBudgetMicros: cents === null ? settings.monthlyBudgetMicros : cents * 10_000,
     dailyBudgetMicros: dailyCents === null ? settings.dailyBudgetMicros : dailyCents * 10_000,
     monthlyGenerationLimit: override("monthlyGenerationLimit") ?? settings.monthlyGenerationLimit,

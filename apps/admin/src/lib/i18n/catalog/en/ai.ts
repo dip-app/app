@@ -10,7 +10,7 @@ export const ai = {
   "page.loading": "Loading {ai}",
   "access.capability": "plan events with {ai}",
   "off.title": "{ai} is off for your company",
-  "off.body": "An owner can turn it on. Until then, create events the usual way.",
+  "off.body": "It was switched off for your company, or is paused for everyone for now. Create events the usual way.",
   "off.action": "New event",
   "privacy.link": "What does {ai} see?",
   "privacy": "{ai} sees rounded interest counts, totals of past events and your choices. It never sees names or personal data.",

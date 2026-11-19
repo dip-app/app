@@ -172,7 +172,7 @@ Two admin-only callables behind the idea flow in [AI event creation](../design/s
 
 Authorization: `ai.generate` is checked first in the command's transaction, admins only (organizers and members get `INSUFFICIENT_ROLE`). Both calls consume the per-caller rate limit.
 
-Kill switches: the deployment flag `AI_EVENTS_ENABLED` (which also needs the OpenAI key secret to be present) and the per-company `companies/{c}/aiSettings/current.enabled`. If either is off, generation fails with `AI_DISABLED` and the context call returns `enabled: false`.
+Kill switches: the deployment flag `AI_EVENTS_ENABLED` (which also needs the OpenAI key secret to be present) and the per-company opt-out `companies/{c}/aiSettings/current.enabled: false` (a missing document or field means on: AI is on by default for every company, issue #196). If either is off, generation fails with `AI_DISABLED` and the context call returns `enabled: false`.
 
 Caps, checked before the model runs (the worst-case cost is reserved, so parallel requests cannot pass a cap): per admin per UTC day `AI_DAILY_LIMIT`, company per UTC month `AI_MONTHLY_LIMIT`, company monthly spend and company daily spend (both `AI_BUDGET_EXHAUSTED`), and declined notes per admin per day `AI_FLAG_LIMIT`. A note refused by the safety check is `AI_PROMPT_REJECTED`; unusable model output after one retry is `AI_OUTPUT_INVALID`; a provider failure is `AI_UNAVAILABLE`. Only a successful generation counts toward the generation caps; spend is always metered.
 

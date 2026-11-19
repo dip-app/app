@@ -123,22 +123,61 @@ describe("kill switches", () => {
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "failed-precondition", "AI_DISABLED");
     untouched(r);
   });
-  test("company document missing: AI_DISABLED", async () => {
+  test("company document missing: AI is ON by default (rollout policy) and the generation is counted", async () => {
     const r = rig([drafts()], {}, "missing");
-    await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "failed-precondition", "AI_DISABLED");
-    untouched(r);
+    assert.equal(r.store.get("companies/alpha/aiSettings/current"), undefined);
+    const result = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(result.drafts.length, 3);
+    assert.equal(month(r).generations, 1);
   });
-  test("company document enabled:false: AI_DISABLED", async () => {
+  test("company document without an enabled field is ON (a credits override alone does not opt out)", async () => {
+    const r = rig([drafts()], {}, "missing");
+    r.store.seed("companies/alpha/aiSettings/current", { monthlyCredits: 500 });
+    const result = await generateEventDrafts(r.deps, caller("admin1"), request(1));
+    assert.equal(result.drafts.length, 3);
+  });
+  test("company document enabled:false is the explicit opt-out: AI_DISABLED, nothing written", async () => {
     const r = rig([drafts()], {}, false);
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "failed-precondition", "AI_DISABLED");
     untouched(r);
   });
-  test("company document with enabled other than true does not enable", async () => {
-    const r = rig([drafts()], {}, "yes" as unknown as boolean);
+  test("re-applying the opt-out (idempotent merge) keeps it off, and flipping back on re-enables", async () => {
+    const r = rig([drafts()], {}, false);
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: false, monthlyCredits: 900 });
     await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "failed-precondition", "AI_DISABLED");
-    untouched(r);
+    r.store.seed("companies/alpha/aiSettings/current", { enabled: true, monthlyCredits: 900 });
+    assert.equal((await generateEventDrafts(r.deps, caller("admin1"), request(1))).drafts.length, 3);
   });
-  for (const [name, settings, enabled] of [["global off", { enabled: false }, true], ["company missing", {}, "missing"], ["company off", {}, false]] as const) {
+  test("company document with a malformed enabled value fails closed", async () => {
+    for (const bad of ["yes", "false", 0, null]) {
+      const r = rig([drafts()], {}, bad as unknown as boolean);
+      await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "failed-precondition", "AI_DISABLED");
+      untouched(r);
+    }
+  });
+  test("the global kill switch wins over a company that is on, enabled:true or missing", async () => {
+    for (const enabled of [true, "missing"] as const) {
+      const r = rig([drafts()], { enabled: false }, enabled);
+      await fails(generateEventDrafts(r.deps, caller("admin1"), request(1)), "failed-precondition", "AI_DISABLED");
+      untouched(r);
+    }
+  });
+  test("a company that is off does not switch another company on or off (tenant isolation)", async () => {
+    const r = rig([drafts()], {}, "missing");
+    r.store.seed("companies/beta/aiSettings/current", { enabled: false });
+    assert.equal((await generateEventDrafts(r.deps, caller("admin1"), request(1))).drafts.length, 3);
+    await fails(generateEventDrafts(r.deps, caller("bo"), request(1)), "permission-denied", "COMPANY_MISMATCH");
+    assert.equal(r.store.children("companies/beta/aiUsage").length, 0);
+  });
+  test("default-on companies still hit the credits ceiling and the quota", async () => {
+    const credits = rig([drafts()], {}, "missing");
+    credits.store.seed("companies/alpha/aiSettings/current", { monthlyCredits: 0 });
+    await fails(generateEventDrafts(credits.deps, caller("admin1"), request(1)), "resource-exhausted", "AI_CREDITS_EXHAUSTED");
+    const quota = rig([drafts(), drafts()], { monthlyGenerationLimit: 1 }, "missing");
+    await generateEventDrafts(quota.deps, caller("admin1"), request(1));
+    await assert.rejects(generateEventDrafts(quota.deps, caller("admin1"), request(2)), (e: unknown) => e instanceof AdminError && e.code === "resource-exhausted");
+  });
+  for (const [name, settings, enabled] of [["global off", { enabled: false }, true], ["company explicitly off", {}, false]] as const) {
     test(`context reports enabled:false with nothing remaining (${name})`, async () => {
       const r = rig([], settings, enabled);
       const context = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
@@ -146,6 +185,12 @@ describe("kill switches", () => {
       assert.equal(context.usage.generationsRemaining, 0);
     });
   }
+  test("context reports enabled:true for a company with no settings document (default on)", async () => {
+    const r = rig([], {}, "missing");
+    const context = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });
+    assert.equal(context.enabled, true);
+    assert.equal(context.usage.generationsRemaining, 3);
+  });
   test("context reports remaining quota when enabled", async () => {
     const r = rig();
     const context = await getEventIdeaContext(r.deps, caller("admin1"), { contractVersion: 1, companyId: "alpha" });

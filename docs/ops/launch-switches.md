@@ -59,6 +59,10 @@ Apple requires its own artwork and rules for the "Download on the App Store" bad
 - Push: `#include "Push.xcconfig"` in `ui/Config/Local.xcconfig` ([push client](../design/push-client.md)).
 - Shake to report stays Debug and TestFlight only; the App Store build does not include it.
 
+## 3b. Dipbot (AI) is on by default for every organization
+
+Not a launch switch any more: since issue #196 (AI-10) every company has Dipbot as long as the deployment switch `AI_EVENTS_ENABLED=true` (already true in production) and a real `OPENAI_API_KEY` exist. The per-company opt-in `aiSettings/current.enabled: true` is no longer needed; a missing document or field means on. To switch one company off: `node scripts/set-company-ai.mjs --project team05-dip --company <COMPANY_ID> --off --apply`. To switch everyone off: `AI_EVENTS_ENABLED=false` and redeploy. The summary (budgets, worst case, data seen, paying-subscriber note) is in [AI events ops](ai-events.md#rollout-policy-ai-10-issue-196-on-by-default-for-every-organization). The Places and venue switches below stay off until the owner turns them on.
+
 ## 4. Places typeahead and Dipbot venue search
 
 Off until the owner turns them on. `PLACES_ENABLED=true` in the functions environment enables address and place typeahead, resolving and the office setting (`autocompletePlacesV1`, `resolvePlaceV1`, `setCompanyOfficeV1`); `AI_VENUES_ENABLED=true` additionally enables `findVenuesV1`. Both are `PLACES_DISABLED` / `AI_VENUES_DISABLED` otherwise. Caps: `PLACES_DAILY_LIMIT` (default 400 Google calls per company per day), `AI_VENUES_DAILY_LIMIT` (default 40 venue searches per company per day). No key or secret is involved (Google is called with the Functions service account). Before switching on, set the $5 Cloud Billing budget alert and the Places API per-day quota caps ([smart location](../design/smart-location.md#cost-at-our-volume)). Operations: [AI events ops](ai-events.md#places-typeahead-venue-search-and-the-office). Redeploy the functions after changing a switch.
