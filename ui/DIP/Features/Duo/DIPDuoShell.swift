@@ -20,7 +20,13 @@ enum DIPDuoPaneLayout {
 
     /// `total` is the content width beside the sensor column.
     static func detailWidth(total: CGFloat) -> CGFloat { max(0, total - listWidth - dividerWidth) }
-    static func topInset(open: Bool) -> CGFloat { open ? topInset : phoneTopInset }
+    /// Top inset of page content. A Duo display with a sensor column (open inner or folded outer) keeps clock and
+    /// status pill in that side column, so pages start `topInset` below the window's real top safe area instead of
+    /// the phone's 60 pt status-bar allowance. Regular iPhones (no sensor) keep 60 pt.
+    static func topInset(open: Bool, sensor: DIPDuoSensor? = nil) -> CGFloat {
+        if let sensor { return max(0, sensor.safeTop) + topInset }
+        return open ? topInset : phoneTopInset
+    }
     /// Space kept clear under scrolling content: the phone's floating bar needs 120 pt, the rail does not.
     static func bottomClearance(open: Bool, phone: CGFloat = 120) -> CGFloat { open ? 28 : phone }
 
@@ -95,6 +101,7 @@ extension View {
 /// bell and the profile live in the rail.
 struct DIPTabHeader<Avatar: View>: View {
     @Environment(\.dipDuoOpen) private var open
+    @Environment(\.dipTopInset) private var topInset
     let title: String
     let unreadCount: Int
     let avatar: Avatar
@@ -122,7 +129,7 @@ struct DIPTabHeader<Avatar: View>: View {
         } else {
             DIPHomeHeader(title: title, unreadCount: unreadCount, profileAvatar: { avatar },
                           onNotifications: onNotifications, onProfile: onProfile)
-                .padding(.horizontal, 20).padding(.top, 60).padding(.bottom, 10)
+                .padding(.horizontal, 20).padding(.top, topInset).padding(.bottom, 10)
         }
     }
 }

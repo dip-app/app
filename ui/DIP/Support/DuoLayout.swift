@@ -158,6 +158,8 @@ struct DIPDuoSensor: Equatable {
     var width: CGFloat
     /// Where the rail may start: below the status pill of the display this column belongs to.
     var topClearance: CGFloat = DIPDuoSensor.pillClearance
+    /// The window's real top safe-area inset (0 on both Duo displays, whose status lives in the side column).
+    var safeTop: CGFloat = 0
 
     /// Height the status pill occupies at the top of the column (about 100 pt on the 951x669 inner display, plus margin). UIKit exposes only the side inset,
     /// not the pill, so this is a measured constant: the rail starts below it and nothing is drawn under the pill.
@@ -169,11 +171,11 @@ struct DIPDuoSensor: Equatable {
 
     /// The sensor column implied by the safe-area insets: the larger side inset. Nil when neither side has an inset.
     /// `open` picks the display: the unfolded inner one, or the folded outer one with its taller pill.
-    static func resolve(safeLeading: CGFloat, safeTrailing: CGFloat, open: Bool = true) -> DIPDuoSensor? {
+    static func resolve(safeLeading: CGFloat, safeTrailing: CGFloat, open: Bool = true, safeTop: CGFloat = 0) -> DIPDuoSensor? {
         let leading = max(0, safeLeading), trailing = max(0, safeTrailing)
         guard max(leading, trailing) > 0 else { return nil }
         return DIPDuoSensor(onTrailing: trailing >= leading, width: max(leading, trailing),
-                            topClearance: open ? pillClearance : outerPillClearance)
+                            topClearance: open ? pillClearance : outerPillClearance, safeTop: max(0, safeTop))
     }
 }
 
@@ -216,6 +218,9 @@ extension EnvironmentValues {
         get { self[DIPDuoRailSlotKey.self] }
         set { self[DIPDuoRailSlotKey.self] = newValue }
     }
+    /// Top inset of page content for this display (`DIPDuoPaneLayout.topInset`): 60 pt on regular iPhones, the real
+    /// top safe area plus 20 pt on a Duo display whose status lives in the sensor column.
+    var dipTopInset: CGFloat { DIPDuoPaneLayout.topInset(open: dipDuoOpen, sensor: dipDuoSensor) }
     /// True on a Duo display with a sensor column (inner or folded outer): the tabs live in the rail there, so pages
     /// keep no room for the phone's floating tab bar. False on every regular iPhone and iPad.
     var dipDuoTabsInRail: Bool {
@@ -363,7 +368,8 @@ private final class DIPDuoColumnController<Content: View>: UIViewController {
         let open = DIPDuoLayout.isOpen(hingeAvailable: true, width: width, wasOpen: isOpen)
         // The rail lives in the sensor column, on whichever side the safe area reports (it follows a 180 degree turn).
         // Folded, the outer display has the same column (taller pill); the inner display held upright has none.
-        let newSensor = DIPDuoSensor.resolve(safeLeading: insets.left, safeTrailing: insets.right, open: open)
+        let newSensor = DIPDuoSensor.resolve(
+            safeLeading: insets.left, safeTrailing: insets.right, open: open, safeTop: insets.top)
         if let newSensor {
             let x = newSensor.onTrailing ? view.bounds.width - newSensor.width : 0
             railContainer.frame = CGRect(x: x, y: 0, width: newSensor.width, height: view.bounds.height)

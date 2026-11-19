@@ -76,6 +76,7 @@ struct DIPAlbumScreen: View {
     }
 
     @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipTopInset) private var topInset
 
     var body: some View {
         GeometryReader { geometry in
@@ -84,7 +85,7 @@ struct DIPAlbumScreen: View {
                 DIPTokens.Color.surfaceDefault.swiftUIColor
                 VStack(spacing: 0) {
                     header
-                        .padding(.horizontal, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)).padding(.bottom, 10)
+                        .padding(.horizontal, 20).padding(.top, topInset).padding(.bottom, 10)
                     ScrollView {
                         VStack(spacing: 9) {
                             if !drafts.isEmpty { uploadStrip }

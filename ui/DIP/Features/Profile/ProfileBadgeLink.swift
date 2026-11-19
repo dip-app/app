@@ -19,8 +19,9 @@ struct ProfileBadgeLink {
     static let badgeNudge = CGSize(width: 8, height: -6)
     static let badgeSize: CGFloat = 38
     static let photoSize: CGFloat = 88
-    static func fallbackFrame() -> CGRect {
-        CGRect(x: 20 + 20 + photoSize - badgeSize + 8, y: 60 + 20 - 6, width: badgeSize, height: badgeSize)
+    /// `top` is the page's top inset (`dipTopInset`): 60 on phones, smaller on a Duo display.
+    static func fallbackFrame(top: CGFloat = 60) -> CGRect {
+        CGRect(x: 20 + 20 + photoSize - badgeSize + 8, y: top + 20 - 6, width: badgeSize, height: badgeSize)
     }
 }
 

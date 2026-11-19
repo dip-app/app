@@ -302,6 +302,8 @@ struct DIPPrototypeApp: View {
     @Environment(\.dipDuoRailSlot) private var railSlot
     /// True on a Duo display with a sensor column (open inner or folded outer): the tabs are in the rail, not the bar.
     @Environment(\.dipDuoTabsInRail) private var tabsInRail
+    /// Where page content starts: 60 pt on phones, less on a Duo display whose status lives in the sensor column.
+    @Environment(\.dipTopInset) private var topInset
     /// The route the shell itself put in the detail pane (the first event listed), not one the member or a link chose.
     /// Folding the Duo clears it, and only it, so a deliberate selection or deep link survives.
     @State private var duoAutoRoute: Route?
@@ -648,14 +650,14 @@ struct DIPPrototypeApp: View {
     // MARK: Avatar flight
 
     private func headerAvatarFrame(in size: CGSize) -> CGRect {
-        // Corner capsule: 20pt screen inset, 5pt capsule padding, 40pt avatar, header 60pt from the top.
-        CGRect(x: size.width - 20 - 5 - 40, y: 60 + 5, width: 40, height: 40)
+        // Corner capsule: 20pt screen inset, 5pt capsule padding, 40pt avatar, header `topInset` (60pt on phones) from the top.
+        CGRect(x: size.width - 20 - 5 - 40, y: topInset + 5, width: 40, height: 40)
     }
 
     private func idleAvatarFrame(for tab: DIPHomeTab, in size: CGSize) -> CGRect {
         guard tab == .profile else { return headerAvatarFrame(in: size) }
         // Profile page space is screen-aligned; express it in the overlay's space.
-        return (badgeFrame ?? ProfileBadgeLink.fallbackFrame()).offsetBy(dx: -shellOrigin.x, dy: -shellOrigin.y)
+        return (badgeFrame ?? ProfileBadgeLink.fallbackFrame(top: topInset)).offsetBy(dx: -shellOrigin.x, dy: -shellOrigin.y)
     }
 
     /// The Profile page reports the badge frame in its own space, which stays correct while the page
@@ -729,7 +731,7 @@ struct DIPPrototypeApp: View {
             onNotifications: openNotifications, onProfile: { selectTab(.profile) }
         )
         .environment(\.dipHeaderHosted, false)
-        .padding(.horizontal, 20).padding(.top, 60)
+        .padding(.horizontal, 20).padding(.top, topInset)
         .opacity(away ? 0 : 1)
         .offset(y: away ? -16 : 0)
         .allowsHitTesting(!away)

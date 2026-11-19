@@ -22,7 +22,7 @@ struct DIPParticipantsScreen: View {
         self.onChat = onChat
     }
 
-    @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipTopInset) private var topInset
 
     var body: some View {
         GeometryReader { geometry in
@@ -31,7 +31,7 @@ struct DIPParticipantsScreen: View {
                 VStack(spacing: 0) {
                     header
                         .padding(.horizontal, 20)
-                        .padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen))
+                        .padding(.top, topInset)
                         .padding(.bottom, 10)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 4) {

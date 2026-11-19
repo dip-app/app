@@ -168,6 +168,24 @@ final class DuoLayoutTests: XCTestCase {
         XCTAssertNil(DIPDuoPaneLayout.resolvedSelection(selected: nil, exists: { _ in true }, fallback: nil))
     }
 
+    // MARK: Top inset
+
+    func testDuoDisplaysDropThePhoneStatusBarAllowance() {
+        // Regular iPhones: no sensor column, the 60 pt allowance as before (open is never true there).
+        XCTAssertEqual(DIPDuoPaneLayout.topInset(open: false, sensor: nil), 60)
+        // Folded outer and open inner displays: status lives in the side column, real top safe area 0.
+        let outer = DIPDuoSensor.resolve(safeLeading: 0, safeTrailing: 84, open: false, safeTop: 0)
+        let inner = DIPDuoSensor.resolve(safeLeading: 0, safeTrailing: 84, open: true, safeTop: 0)
+        XCTAssertEqual(DIPDuoPaneLayout.topInset(open: false, sensor: outer), 20)
+        XCTAssertEqual(DIPDuoPaneLayout.topInset(open: true, sensor: inner), 20)
+        XCTAssertEqual(DIPDuoPaneLayout.topInset(open: true, sensor: inner), DIPDuoPaneLayout.topInset(open: false, sensor: outer))
+        // A real top inset is respected, never assumed away.
+        XCTAssertEqual(DIPDuoPaneLayout.topInset(open: false, sensor: DIPDuoSensor.resolve(
+            safeLeading: 0, safeTrailing: 84, open: false, safeTop: 24)), 44)
+        // Open without a sensor inset (never on a real Duo) keeps the old 20 pt.
+        XCTAssertEqual(DIPDuoPaneLayout.topInset(open: true, sensor: nil), 20)
+    }
+
     // MARK: Orientation
 
     func testOuterDisplayIsPortraitOnly() {

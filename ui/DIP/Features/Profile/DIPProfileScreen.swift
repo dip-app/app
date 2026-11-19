@@ -31,6 +31,7 @@ struct DIPProfileScreen: View {
     @State private var isChoosingDraftInterests = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipTopInset) private var topInset
     /// Duo display whose tabs are in the sensor-column rail: no floating bar to keep clear of.
     @Environment(\.dipDuoTabsInRail) private var tabsInRail
     @State private var draftDepartment = ""
@@ -77,7 +78,7 @@ struct DIPProfileScreen: View {
                 ScrollView {
                     profileLayout
                     .padding(.horizontal, 20)
-                    .padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen))
+                    .padding(.top, topInset)
                     .padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail, phone: 150))
                 }
                 .scrollIndicators(.hidden)

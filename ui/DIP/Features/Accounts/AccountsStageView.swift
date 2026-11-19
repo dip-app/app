@@ -35,6 +35,8 @@ struct AccountsStageView: View {
     @State private var focusTask: Task<Void, Never>?
     @State private var winkTask: Task<Void, Never>?
     @Environment(\.dipDuoOpen) private var duoOpen
+    /// 60 pt status-bar allowance on phones; less on a Duo display whose status lives in the sensor column.
+    @Environment(\.dipTopInset) private var topInset
 
     /// Set by `AccountsRootView` while it holds "Finding your company" for its minimum display time; nil shows
     /// the session's own route.
@@ -71,7 +73,7 @@ struct AccountsStageView: View {
                         copy(scene)
                     }
                     .padding(.horizontal, DIPFloatingNavigation.horizontalInset)
-                    .padding(.top, 60).padding(.bottom, 20)
+                    .padding(.top, topInset).padding(.bottom, 20)
                     .frame(maxWidth: OnboardingMetrics.readingWidth, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
