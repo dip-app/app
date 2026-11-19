@@ -7,6 +7,7 @@ import { useApp } from "./AppProvider";
 import { type MessageKey, t } from "@/lib/i18n";
 import { LanguageSettings } from "./LanguageSettings";
 import { SuggestionsEmail } from "./SuggestionsEmail";
+import { OtherEmails } from "./OtherEmails";
 
 interface SettingsSection {
   id: string;
@@ -22,6 +23,7 @@ export const USER_SETTINGS_SECTIONS: SettingsSection[] = [
   // Language first: it is short and everyone has it; in the usability study people scrolled past the email section to find it.
   { id: "language", title: "account.language.title", description: "account.language.description", Body: LanguageSettings },
   { id: "email", title: "account.email.title", description: "account.email.description", requires: "ai.generate", Body: SuggestionsEmail },
+  { id: "other-emails", title: "account.otherEmails.title", description: "account.otherEmails.description", Body: OtherEmails },
 ];
 
 export function UserSettings() {

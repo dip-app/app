@@ -15,4 +15,8 @@ export const account: Record<keyof typeof source, string> = {
   "account.language.auto": "Igual que este navegador ({language})",
   "account.language.saved": "Idioma guardado.",
   "account.language.note": "El español es una traducción preliminar y puede cambiar.",
+  "account.otherEmails.title": "Otros correos de DIP",
+  "account.otherEmails.description": "Qué correos te envía DIP y dónde cambiarlos.",
+  "account.otherEmails.app": "Invitaciones a eventos, cambios en eventos, recordatorios e invitaciones de calendario: elige cuáles recibes en la app DIP, en Perfil > Notificaciones.",
+  "account.otherEmails.account": "Correos de tu cuenta: una bienvenida cuando te unes y un aviso cuando se resuelve un problema que reportaste. Si cancelas la suscripción a todos los correos de DIP, también dejas de recibir estos.",
 };

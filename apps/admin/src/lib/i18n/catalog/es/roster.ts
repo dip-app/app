@@ -55,6 +55,8 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.table.noTeams": "Ninguno",
   "roster.table.resent": "Mensaje compartido {count}×",
   "roster.table.resentLast": "Mensaje compartido {count}×, último {date}",
+  "roster.table.emailed": "Correo enviado {count}×",
+  "roster.table.emailedLast": "Correo enviado {count}×, último {date}",
 
   // Row actions
   "roster.action.resend": "Obtener mensaje de invitación",
@@ -64,6 +66,8 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.action.revokeAria": "Revocar la invitación de {name}",
   "roster.action.inviteAgain": "Invitar de nuevo",
   "roster.action.inviteAgainAria": "Invitar de nuevo: {name}",
+  "roster.action.email": "Enviar invitación por correo",
+  "roster.action.emailAria": "Enviar una invitación por correo a {name}",
 
   // Toasts
   "roster.toast.reinvited": "{name} fue invitado de nuevo. Recibirá el rol y los equipos definidos aquí cuando se registre.",
@@ -72,16 +76,22 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.toast.added": "{count, plural, one {Se agregó # persona a la lista de personal.} other {Se agregaron # personas a la lista de personal.}}",
   "roster.toast.copied": "Mensaje de invitación copiado. Envíaselo a {name} por tu cuenta.",
   "roster.toast.addedPerson": "Se agregó a {name} a la lista de personal como invitado. Usa Obtener mensaje de invitación en su fila para enviarle la invitación.",
+  "roster.toast.addedPersonEmail": "Se agregó a {name} a la lista de personal como invitado. Usa Enviar invitación por correo en su fila cuando quieras.",
+  "roster.toast.addedEmailed": "Se agregó a {name} y se le envió una invitación por correo.",
+  "roster.toast.emailed": "Se envió la invitación a {email}. Llegará en unos minutos.",
 
   // Add one person
   "roster.add": "Agregar persona",
   "roster.add.title": "Agregar una persona",
   "roster.add.intro": "Se agrega como invitada y recibe este rol al iniciar sesión con este correo. DIP no le envía correos; tú le mandas el mensaje de invitación.",
+  "roster.add.introEmail": "Se agrega como invitada y recibe este rol al iniciar sesión con este correo.",
+  "roster.add.sendEmail": "Enviarle una invitación por correo ahora",
   "roster.add.name": "Nombre",
   "roster.add.email": "Correo de trabajo",
   "roster.add.emailHint": "Debe terminar en @{domain}.",
   "roster.add.role": "Rol",
   "roster.add.confirm": "Agregar persona",
+  "roster.add.confirmEmail": "Agregar y enviar invitación",
   "roster.add.busy": "Agregando…",
   "roster.add.nameRequired": "Agrega su nombre.",
   "roster.add.checkDetails": "Revisa los datos de arriba.",
@@ -106,8 +116,15 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.message.copy": "Copiar mensaje",
   "roster.message.copying": "Copiando…",
   "roster.message.intro": "DIP no envía correos, así que comparte este mensaje con {email} por tu cuenta.",
+  "roster.message.introSelf": "Comparte este mensaje con {email} por tu cuenta.",
   "roster.message.recorded": "Mensaje compartido {count}× hasta ahora.",
   "roster.message.label": "Mensaje",
   "roster.message.link": "Enlace: {url}",
   "roster.message.copyFailed": "No se pudo copiar automáticamente. El mensaje está seleccionado: cópialo con Ctrl+C o Cmd+C.",
+  "roster.email.title": "¿Enviar una invitación por correo a {name}?",
+  "roster.email.confirm": "Enviar correo",
+  "roster.email.busy": "Enviando…",
+  "roster.email.body": "DIP le envía a {email} un correo con tu invitación y un enlace para iniciar sesión con esa dirección.",
+  "roster.email.sentBefore": "Ya se envió {count}×. Última vez: {date}",
+  "roster.email.copyInstead": "¿Prefieres enviarla tú?",
 };

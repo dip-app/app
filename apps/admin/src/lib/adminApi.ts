@@ -1,6 +1,6 @@
 import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
-  BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult,
+  BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult, InviteEmailResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
   DipbotIdeas, DipbotIdeasInput, EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
@@ -50,6 +50,8 @@ export interface AdminOpsApi {
   revokeRosterEntry(entryId: string): Promise<void>;
   /** resendRosterInviteV1: records a resend for an invited entry and returns the message and link to share (no email is sent). */
   resendInvite(row: RosterRow): Promise<ResendResult>;
+  /** sendRosterInviteEmailV1: emails the invitation to an invited person (only when `RosterPage.inviteEmail` is true). */
+  sendInviteEmail(row: RosterRow): Promise<InviteEmailResult>;
   /** backfillRosterV1: adds existing members that have no roster entry, 100 per call. A dry run only counts. */
   backfillRoster(dryRun: boolean, requestId: string, cursor?: string | null): Promise<BackfillStep>;
   /** getEmployeeImportV1: where an import stands (used to resume after a reload). */

@@ -252,6 +252,22 @@ describe("paged lists, resend and roster backfill (mock, same rules as the calla
     const organizer = await as("organizer");
     await expect(organizer.resendInvite(invited)).rejects.toMatchObject({ code: "permission-denied" });
   });
+  it("emails an invite (counts it, an hour apart) only while invitation email is on, and only to invited people", async () => {
+    const api = await as("admin");
+    const page = await api.listRosterPage({ query: "", state: "invited" }, null, 50);
+    expect(page.inviteEmail).toBe(true);
+    const invited = page.rows[0]!;
+    const first = await api.sendInviteEmail(invited);
+    expect(first.inviteEmailCount).toBe(1);
+    await expect(api.sendInviteEmail(invited)).rejects.toMatchObject({ reason: "INVITE_EMAIL_TOO_SOON" });
+    const again = (await api.listRosterPage({ query: invited.email, state: "invited" }, null, 5)).rows[0]!;
+    expect(again.inviteEmailCount).toBe(1);
+    const joined = (await api.listRosterPage({ query: "", state: "active" }, null, 5)).rows[0]!;
+    await expect(api.sendInviteEmail(joined)).rejects.toMatchObject({ reason: "ROSTER_ENTRY_CLAIMED" });
+    expect((await api.listAudit()).some((a) => a.action === "roster.inviteEmail")).toBe(true);
+    const organizer = await as("organizer");
+    await expect(organizer.sendInviteEmail(invited)).rejects.toMatchObject({ code: "permission-denied" });
+  });
   it("backfills the members missing from the roster: a dry run writes nothing, the real run is idempotent", async () => {
     const api = await as("admin");
     const before = (await api.listRosterPage({ query: "", state: "all" })).counts!;

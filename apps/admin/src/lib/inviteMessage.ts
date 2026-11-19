@@ -1,6 +1,9 @@
 /** Mock-mode twin of the server's invite message (gcp/functions .../domain/rosterView.ts `inviteMessage`). */
 export const MAX_RESENDS = 10;
 
+/** sendRosterInviteEmailV1's limit per person (gcp/functions .../domain/rosterView.ts `MAX_INVITE_EMAILS`). */
+export const MAX_INVITE_EMAILS = 5;
+
 export function inviteMessage(input: { name: string; company: string; email: string; role: string }): { signInUrl: string; message: string } {
   const staff = input.role === "admin" || input.role === "organizer";
   const signInUrl = staff ? "https://letsdip.work/admin/" : "https://letsdip.work";

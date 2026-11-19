@@ -53,6 +53,7 @@ export const ADMIN_CALLABLES = {
   upsertRosterEntry: "upsertRosterEntryV1",
   revokeRosterEntry: "revokeRosterEntryV1",
   resendRosterInvite: "resendRosterInviteV1",
+  sendRosterInviteEmail: "sendRosterInviteEmailV1",
   listRoster: "listRosterV1",
   backfillRoster: "backfillRosterV1",
   planImport: "importEmployeesV1",
@@ -141,6 +142,9 @@ export interface RosterRow {
   /** How many times an admin resent the invite message, and when last. */
   resendCount?: number;
   lastResentAt?: string;
+  /** How many invitation emails DIP sent (sendRosterInviteEmailV1), and when last. */
+  inviteEmailCount?: number;
+  lastInviteEmailAt?: string;
 }
 
 /** Page size of the people lists (the server allows up to 100). */
@@ -158,10 +162,17 @@ export interface MemberPage {
 export type RosterState = RosterRow["state"];
 export interface RosterQuery { query: string; state: RosterState | "all" }
 export interface RosterCounts { all: number; invited: number; active: number; deactivated: number; revoked: number }
-export interface RosterPage { rows: RosterRow[]; nextCursor: string | null; /** First page only. */ counts: RosterCounts | null }
+export interface RosterPage {
+  rows: RosterRow[]; nextCursor: string | null; /** First page only. */ counts: RosterCounts | null;
+  /** DIP can email invitations for this company (email is switched on for it); otherwise only the invite message is offered. */
+  inviteEmail: boolean;
+}
 
 /** resendRosterInviteV1: DIP sends no email, so a resend records the event and returns a message for the admin to share. */
 export interface ResendResult { resendCount: number; lastResentAt: string; signInUrl: string; message: string }
+
+/** sendRosterInviteEmailV1: the invitation email is queued (at most 5 per person, an hour apart). */
+export interface InviteEmailResult { inviteEmailCount: number; lastInviteEmailAt: string }
 
 /** One chunk of backfillRosterV1 (`created` is "would create" in a dry run). */
 export interface BackfillStep { dryRun: boolean; scanned: number; created: number; existing: number; skipped: number; nextCursor: string | null; done: boolean }

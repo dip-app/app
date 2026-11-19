@@ -47,6 +47,7 @@ export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
     state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
     ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), ...(str(d.memberPhotoURL) ? { photoURL: str(d.memberPhotoURL) } : {}), ...(str(d.memberAvatarId) ? { avatarId: str(d.memberAvatarId) } : {}), invitedAt: iso(d.createdAt),
     ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
+    ...(typeof d.inviteEmailCount === "number" && d.inviteEmailCount > 0 ? { inviteEmailCount: d.inviteEmailCount } : {}), ...(iso(d.lastInviteEmailAt) ? { lastInviteEmailAt: iso(d.lastInviteEmailAt) } : {}),
   };
 }
 
@@ -449,14 +450,18 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
 
     // The roster lists everyone (invited, joined, deactivated, revoked); listRosterV1 pages and searches on the server.
     listRosterPage: (q, cursor, pageSize = 25) => run(async () => {
-      const data = await call<{ entries: DocumentData[]; nextPageToken?: string; counts?: RosterCounts }>(ADMIN_CALLABLES.listRoster, await organizer(), {
+      const data = await call<{ entries: DocumentData[]; nextPageToken?: string; counts?: RosterCounts; inviteEmail?: boolean }>(ADMIN_CALLABLES.listRoster, await organizer(), {
         pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.state !== "all" ? { state: q.state } : {}), ...(cursor ? { pageToken: cursor } : {}),
       }, false);
-      return { rows: data.entries.map((e) => rosterFromDoc(str(e.id), e)), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null };
+      return { rows: data.entries.map((e) => rosterFromDoc(str(e.id), e)), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null, inviteEmail: data.inviteEmail === true };
     }),
     resendInvite: (row) => run(async () => {
       const data = await call<{ resendCount: number; lastResentAt: string; signInUrl: string; message: string }>(ADMIN_CALLABLES.resendRosterInvite, await organizer(), { entryId: row.entryId });
       return { resendCount: Number(data.resendCount ?? 0), lastResentAt: iso(data.lastResentAt), signInUrl: str(data.signInUrl), message: str(data.message) };
+    }),
+    sendInviteEmail: (row) => run(async () => {
+      const data = await call<{ inviteEmailCount: number; lastInviteEmailAt: string }>(ADMIN_CALLABLES.sendRosterInviteEmail, await organizer(), { entryId: row.entryId });
+      return { inviteEmailCount: Number(data.inviteEmailCount ?? 0), lastInviteEmailAt: iso(data.lastInviteEmailAt) };
     }),
     backfillRoster: (dryRun, requestId, cursor) => run(async () => {
       const data = await call<BackfillStep & { nextPageToken?: string }>(ADMIN_CALLABLES.backfillRoster, await organizer(), { dryRun, requestId, ...(cursor ? { pageToken: cursor } : {}) });
