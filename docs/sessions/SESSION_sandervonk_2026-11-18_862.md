@@ -24,5 +24,5 @@ Selected Dipbot option cards: the second border pixel was an inset box-shadow pa
 
 ## Handoff
 
-None.
+No pending work; deploy the admin site after merge.
 
