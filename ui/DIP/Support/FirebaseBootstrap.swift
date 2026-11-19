@@ -114,6 +114,16 @@ enum FirebaseBootstrap {
                                          scope: EventReadScope(uid: context.uid, companyID: context.companyID))
     }
 
+    /// Invitations answered from a push's Accept or Decline button (possibly a background launch with no member session
+    /// on screen): the signed-in Firebase user and the push's company. respondToInviteV1 checks on the server that the
+    /// caller is a member of that company and the invitation's recipient; a mismatch fails and the app opens the activity.
+    @MainActor static func makePushInvitesRepository(companyID: String) -> (any DIPInvitesRepository)? {
+        guard case .configured = status, let uid = Auth.auth().currentUser?.uid else { return nil }
+        return FirebaseInvitesRepository(firestore: Firestore.firestore(),
+                                         functions: Functions.functions(region: FirebaseAccountsRepository.region),
+                                         scope: EventReadScope(uid: uid, companyID: companyID))
+    }
+
     /// The member's own in-app notifications (users/{uid}/notifications): live list, unread count and isRead-only writes.
     @MainActor static func makeNotificationsRepository(context: MembershipContext) -> (any DIPNotificationsRepository)? {
         guard case .configured = status else { return nil }

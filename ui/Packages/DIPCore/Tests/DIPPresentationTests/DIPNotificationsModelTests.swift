@@ -18,7 +18,7 @@ import Testing
         let (model, task) = await ready(.reference())
         defer { task.cancel() }
         #expect(model.phase == .ready)
-        #expect(model.items.count == 8)
+        #expect(model.items.count == 10)
         #expect(model.unreadCount == 4)
         #expect(model.sections().first?.group == .today)
     }

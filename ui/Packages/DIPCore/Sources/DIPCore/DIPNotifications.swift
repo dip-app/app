@@ -10,7 +10,10 @@ public enum DIPNotificationKind: String, Equatable, Sendable, CaseIterable {
     case challengeApproved = "challenge_approved"
     case challengeChanges = "challenge_changes_requested"
     case attendeeAdded = "attendee_added"
+    case attendeeRemoved = "attendee_removed"
+    /// Someone commented on the member's album photo (in-app type `comment`, push type `photo_comment`).
     case comment
+    /// A new photo in the album of an activity the member went to (in-app and push type `photo_added`).
     case photo
     case other
 
@@ -18,7 +21,7 @@ public enum DIPNotificationKind: String, Equatable, Sendable, CaseIterable {
         switch serverType {
         case "event_changed": self = .eventUpdated
         case "photo_added": self = .photo
-        case "comment_added", "new_comment": self = .comment
+        case "photo_comment", "comment_added", "new_comment": self = .comment
         default: self = Self(rawValue: serverType) ?? .other
         }
     }

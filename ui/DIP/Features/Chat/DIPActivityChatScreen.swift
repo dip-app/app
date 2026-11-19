@@ -217,7 +217,7 @@ struct DIPActivityChatScreen: View {
                 if trimmedDraft == intent.text { draft = "" }
                 retryIntent = nil
             } catch {
-                if case DIPRepositoryError.invalidInput(let message) = error { sendError = message }
+                if let message = (error as? DIPRepositoryError)?.memberMessage { sendError = message }
                 else { sendError = String(localized: "chat.error.sendFailed", defaultValue: "Your message couldn’t be sent. Try again.", comment: "Error under the chat message field when sending failed") }
             }
         }

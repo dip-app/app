@@ -20,22 +20,6 @@
         }
       }
     },
-    "%@ is not connected yet." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ aún no está conectado."
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%@ rarta'be' DaH."
-          }
-        }
-      }
-    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {
@@ -12648,6 +12632,24 @@
         }
       }
     },
+    "notifications.hint.eventAlbum" : {
+      "comment" : "VoiceOver hint on a photo comment or new photo notification that opens the activity page",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Opens the activity, where you can view its album"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la actividad, donde puedes ver su álbum"
+          }
+        }
+      }
+    },
     "notifications.hint.invitations" : {
       "comment" : "VoiceOver hint on a notification that opens invitations",
       "extractionState" : "extracted_with_value",
@@ -16902,6 +16904,78 @@
         }
       }
     },
+    "push.invite.accept" : {
+      "comment" : "Button on an invitation notification: accepts the invitation and joins the activity",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Accept"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptar"
+          }
+        }
+      }
+    },
+    "push.invite.decline" : {
+      "comment" : "Button on an invitation notification: declines the invitation",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Decline"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechazar"
+          }
+        }
+      }
+    },
+    "push.invite.fallback.body" : {
+      "comment" : "Local notification body after answering an invitation from a notification failed; tapping it opens the activity",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open the activity in DIP to answer it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la actividad en DIP para responderla."
+          }
+        }
+      }
+    },
+    "push.invite.fallback.title" : {
+      "comment" : "Local notification after an Accept or Decline button on an invitation notification failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t answer the invitation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo responder la invitación"
+          }
+        }
+      }
+    },
     "push.priming.accept" : {
       "comment" : "Notification priming alert button that continues to the system permission prompt",
       "extractionState" : "extracted_with_value",
@@ -17400,13 +17474,37 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las listas de asistentes"
+            "value" : "Listas de asistentes"
           }
         },
         "tlh" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "ghommey tlhegh"
+          }
+        }
+      }
+    },
+    "shell.notice.notConnected" : {
+      "comment" : "Not available yet alert message; %@ = a feature name such as RSVP or Attendee lists (shell.notice.*). Translations should read correctly for singular and plural feature names",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ is not connected yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: aún sin conectar."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ rarta'be' DaH."
           }
         }
       }
@@ -17424,7 +17522,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las notificaciones"
+            "value" : "Notificaciones"
           }
         },
         "tlh" : {
@@ -17448,7 +17546,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La confirmación de asistencia"
+            "value" : "Confirmación de asistencia"
           }
         },
         "tlh" : {

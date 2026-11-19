@@ -51,9 +51,18 @@ Where a push should have arrived but did not, check in this order: the log line 
 | 25 | A turns Comments and photos **on**. B adds another photo once the next UTC hour has started (photos in the same hour as row 24 are absorbed by the dedupe) | A: banner with the activity title and "B added a photo to the album." One banner only even if B adds five photos in a row | `kind: photo_added`, `sent: 1`; later photos in the same hour log `duplicate: true` |
 | 26 | B comments on A's photo, A has Comments and photos on | A: "New comment on your photo", body "B: snippet" (at most 80 characters). B gets nothing | `kind: photo_comment`, `sent: 1` |
 | 27 | A comments on A's own photo | No push | no `notification delivered` line for it |
-| 28 | A switches the language to Spanish (admin portal Language setting, or `setMyLocaleV1`), then repeat rows 25 and 26 | Spanish copy ("Nuevo comentario en tu foto") | `sent: 1` |
+| 28 | A switches the language to Spanish (iOS Settings > DIP > Language > Español, then open DIP once; or the admin portal Language setting), then repeat rows 25 and 26 | Spanish copy ("Nuevo comentario en tu foto") | `setMyLocaleV1` once after the app opened; then `sent: 1` |
 | 29 | Social cap sanity (test company only): B posts 12 comments on A's photo within an hour | The first 10 push (they collapse into one visible banner per photo), later ones are dropped; the in-app notices all appear | `blocked.rate_limited` greater than 0 after the 10th |
-| 30 | Invite push action buttons (only after the iOS app registers the `DIP_INVITE` category; PUSH-8 follow-up) | Long-press the invite banner: Accept and Decline appear; Accept from the lock screen joins the activity; failure shows a recoverable state | `respondToInviteV1` succeeds in the callable logs |
+| 30 | Invite push action buttons (app 0.1.2 or later; the simulator cannot test them). B invites A; on A, long-press (or pull down) the invite banner | Accept and Decline appear, in Spanish on a Spanish phone ("Aceptar", "Rechazar") | |
+| 31 | A taps Accept on the banner with the phone unlocked and DIP in the background (also once with DIP force-quit) | DIP does not open; the invitation is accepted and A is going (Invitations shows Accepted, the activity shows Joined); B gets "Invitation accepted". Logs: one `respondToInviteV1`, then `kind: invite_answered`, `sent: 1` | |
+| 32 | Lock A's phone; B sends a new invitation; on the lock screen tap Decline | iOS asks for Face ID or the passcode first; after unlocking, the invitation is declined without opening DIP; B gets no push (declines are silent) | |
+| 33 | Answer the same invitation twice (Accept on the banner, then Accept again from Notification Center if it is still listed) | Nothing visible the second time: an already answered invitation counts as done | |
+| 34 | Airplane mode on A, then Accept on a new invite banner | A local notification "Couldn't answer the invitation" appears; tapping it opens the activity, where A can join. No `respondToInviteV1` line | |
+| 35 | DIP open in the foreground, Accept on an invite banner while in airplane mode | The app opens the activity instead of posting a notification | |
+| 36 | Sign out of DIP on A, then Accept on an older invite banner still in Notification Center | The fallback notification as in row 34; nothing is answered | |
+| 37 | Tap a push of a type the build does not know (for example a test message with only `eventId`, or a future type) | The app opens the activity from `deepLink`, or from `eventId` when `deepLink` is missing; never a crash | |
+| 38 | Open the in-app center after rows 22 and 24 to 26 | Comment rows show a speech bubble, photo rows a photo icon, the removed row a person-minus icon; tapping opens the activity | |
+| 39 | Language: set iOS Settings > DIP > Language to Español, open DIP, then set it back to English and open DIP again | One `setMyLocaleV1` call per change, none on later launches without a change; emails and pushes follow (row 28). With the network off nothing is shown and the call is retried at the next launch | |
 
 ## When something fails
 

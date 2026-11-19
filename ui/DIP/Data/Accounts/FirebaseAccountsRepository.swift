@@ -123,6 +123,18 @@ import UIKit
     }
 }
 
+extension FirebaseAccountsRepository: MemberLocaleRepository {
+    /// setMyLocaleV1: merges `{ locale }` into the caller's own profile. The server derives the uid and tenant from the
+    /// auth; only the language is sent. Callers ignore failures (retried at the next launch).
+    func setMyLocale(_ language: MemberLanguage) async throws {
+        guard auth.currentUser != nil else { throw AccountsFailure.unauthenticated }
+        do {
+            let data = try JSONSerialization.jsonObject(with: JSONEncoder().encode(SetMyLocaleRequest(contractVersion: 1, locale: language.rawValue)))
+            _ = try await functions.httpsCallable("setMyLocaleV1").call(data)
+        } catch { throw Self.failure(error) }
+    }
+}
+
 extension FirebaseAccountsRepository: InterestCatalogRepository {
     /// Reads the shared `tags` catalog (verified users only). Malformed documents are
     /// skipped rather than failing the whole catalog; InterestCatalog sorts the result.
@@ -213,7 +225,7 @@ enum AccountDocumentMapper {
             return result
         }
         guard let timestamp = f["createdAt"] as? Timestamp else { throw AccountsFailure.invalidProfile }
-        let profile = try AppUser(id: id, companyId: string("companyId"), displayName: string("displayName"), email: string("email"), photoURL: string("photoURL"), avatarId: string("avatarId"), department: string("department"), jobTitle: string("jobTitle"), city: string("city"), role: string("role"), interestTagIds: strings("interestTagIds"), travelRadiusMiles: integer("travelRadiusMiles"), availability: strings("availability"), friendIds: strings("friendIds"), favoritePhotoIds: strings("favoritePhotoIds"), pointsBalance: integer("pointsBalance"), createdAt: timestamp.dateValue())
+        let profile = try AppUser(id: id, companyId: string("companyId"), displayName: string("displayName"), email: string("email"), photoURL: string("photoURL"), avatarId: string("avatarId"), department: string("department"), jobTitle: string("jobTitle"), city: string("city"), role: string("role"), interestTagIds: strings("interestTagIds"), travelRadiusMiles: integer("travelRadiusMiles"), availability: strings("availability"), friendIds: strings("friendIds"), favoritePhotoIds: strings("favoritePhotoIds"), pointsBalance: integer("pointsBalance"), createdAt: timestamp.dateValue(), locale: f["locale"] as? String)
         _ = try MembershipContext(uid: id, profile: profile)
         return profile
     }

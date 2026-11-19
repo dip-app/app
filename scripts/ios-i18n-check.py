@@ -30,6 +30,9 @@ TARGETS = {
     "ui/DIP/Resources/Localizable.xcstrings": (["ui/DIP"], False),
     "ui/Packages/DIPCore/Sources/DIPCore/Resources/Localizable.xcstrings": (["ui/Packages/DIPCore/Sources/DIPCore"], True),
     "ui/Packages/DIPCore/Sources/DIPPresentation/Resources/Localizable.xcstrings": (["ui/Packages/DIPCore/Sources/DIPPresentation"], True),
+    # Only the mock repository's refusal messages are localized; the other DIPMockData files are fixture content
+    # (names, titles, chat), which stays verbatim like server content.
+    "ui/Packages/DIPCore/Sources/DIPMockData/Resources/Localizable.xcstrings": (["ui/Packages/DIPCore/Sources/DIPMockData/DIPMockRepository.swift"], True),
     "ui/Packages/DIPAccounts/Sources/DIPAccounts/Resources/Localizable.xcstrings": (["ui/Packages/DIPAccounts/Sources/DIPAccounts"], True),
     "ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Resources/Localizable.xcstrings": (["ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem"], True),
 }
@@ -117,6 +120,9 @@ def check_catalog(path, data, errors):
 
 def swift_files(directories):
     for directory in directories:
+        if directory.endswith(".swift"):
+            yield os.path.join(ROOT, directory)
+            continue
         for base, dirs, files in os.walk(os.path.join(ROOT, directory)):
             dirs[:] = [d for d in dirs if d not in ("Tests", ".build")]
             for name in files:

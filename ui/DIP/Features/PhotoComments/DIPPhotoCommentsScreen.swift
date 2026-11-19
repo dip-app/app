@@ -401,7 +401,7 @@ struct DIPPhotoCommentsScreen: View {
     /// Comment failures say what to do: offline/unavailable keeps the draft, and an unchanged retry reuses its id.
     nonisolated static func sendErrorMessage(for error: Error) -> String {
         if (error as? URLError)?.code == .notConnectedToInternet { return String(localized: "photoViewer.comment.error.offline", defaultValue: "You’re offline. Your comment is kept; try again when you’re back online.", comment: "Error under the comment field when the device is offline") }
-        if let failure = error as? DIPRepositoryError, case .invalidInput(let message) = failure, !message.isEmpty { return message }
+        if let message = (error as? DIPRepositoryError)?.memberMessage { return message }
         return String(localized: "photoViewer.comment.error.generic", defaultValue: "Your comment could not be sent. Try again.", comment: "Error under the comment field when sending failed")
     }
 }

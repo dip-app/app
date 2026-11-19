@@ -30,12 +30,39 @@ import UserNotifications
 @MainActor final class SystemPushAdapter: NSObject, PushSystem, MessagingDelegate, UNUserNotificationCenterDelegate {
     /// FCM delivered a new token.
     var onToken: ((String) -> Void)?
-    /// A tapped notification's `deepLink` payload.
-    var onDeepLink: ((String) -> Void)?
+    /// A tapped notification or a pressed action button, with the payload's data keys.
+    var onResponse: ((PushResponseAction, PushPayload) async -> Void)?
 
     func install() {
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().setNotificationCategories([Self.inviteCategory()])
+    }
+
+    /// `DIP_INVITE` (invite pushes carry it as `aps.category`). Both buttons answer in the background, without opening
+    /// the app, and need an unlocked device: answering changes the member's plans and is visible to the inviter, so it
+    /// must not happen from a locked lock screen. Decline is not styled destructive; it deletes nothing.
+    static func inviteCategory() -> UNNotificationCategory {
+        let accept = UNNotificationAction(
+            identifier: PushResponseAction.acceptInvite,
+            title: String(localized: "push.invite.accept", defaultValue: "Accept", comment: "Button on an invitation notification: accepts the invitation and joins the activity"),
+            options: [.authenticationRequired])
+        let decline = UNNotificationAction(
+            identifier: PushResponseAction.declineInvite,
+            title: String(localized: "push.invite.decline", defaultValue: "Decline", comment: "Button on an invitation notification: declines the invitation"),
+            options: [.authenticationRequired])
+        return UNNotificationCategory(identifier: PushCategory.invite, actions: [accept, decline], intentIdentifiers: [], options: [])
+    }
+
+    var isForeground: Bool { UIApplication.shared.applicationState == .active }
+
+    func postInviteFallback(link: URL?) async {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "push.invite.fallback.title", defaultValue: "Couldn’t answer the invitation", comment: "Local notification after an Accept or Decline button on an invitation notification failed")
+        content.body = String(localized: "push.invite.fallback.body", defaultValue: "Open the activity in DIP to answer it.", comment: "Local notification body after answering an invitation from a notification failed; tapping it opens the activity")
+        if let link { content.userInfo = ["deepLink": link.absoluteString] }
+        let request = UNNotificationRequest(identifier: "invite-fallback-" + UUID().uuidString, content: content, trigger: nil)
+        try? await UNUserNotificationCenter.current().add(request)
     }
 
     func authorization() async -> DIPPushAuthorization {
@@ -67,9 +94,16 @@ import UserNotifications
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        // Extract the plain string here: UNNotificationResponse and userInfo are not Sendable and must not cross actors.
-        guard let link = response.notification.request.content.userInfo["deepLink"] as? String else { return }
-        await MainActor.run { self.onDeepLink?(link) }
+        // Extract plain values here: UNNotificationResponse and userInfo are not Sendable and must not cross actors.
+        guard response.actionIdentifier != UNNotificationDismissActionIdentifier else { return }
+        let action = PushResponseAction(identifier: response.actionIdentifier)
+        let payload = PushPayload(userInfo: response.notification.request.content.userInfo)
+        // Awaited, so iOS keeps a background launch for an action alive until the answer was sent.
+        await deliver(action, payload)
+    }
+
+    private func deliver(_ action: PushResponseAction, _ payload: PushPayload) async {
+        await onResponse?(action, payload)
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
@@ -127,9 +161,12 @@ enum PushComposition {
         let registrar = PushRegistrar(
             api: FirebasePushDeviceAPI(functions: Functions.functions(region: FirebaseAccountsRepository.region)),
             system: system, store: store, appVersion: version, enabled: true)
-        let coordinator = PushCoordinator(registrar: registrar, system: system, store: store, enabled: true)
+        // Accept and Decline on invite pushes use the same invites repository call as the in-app buttons.
+        let invites = PushInviteResponder(makeRepository: { FirebaseBootstrap.makePushInvitesRepository(companyID: $0) })
+        let coordinator = PushCoordinator(registrar: registrar, system: system, store: store, enabled: true, inviteResponder: invites)
         system.onToken = { token in Task { @MainActor in await coordinator.tokenChanged(token) } }
-        system.onDeepLink = { link in coordinator.handleDeepLink(link) }   // buffered until the inbox is attached
+        // Links are buffered until the inbox is attached (cold launch).
+        system.onResponse = { action, payload in await coordinator.handleResponse(action, payload: payload) }
         system.install()
         return coordinator
     }

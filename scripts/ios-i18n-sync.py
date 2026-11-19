@@ -21,6 +21,7 @@ CATALOGS = {
     "ui/DIP/Resources/Localizable.xcstrings": "DIP.build",
     "ui/Packages/DIPCore/Sources/DIPCore/Resources/Localizable.xcstrings": "DIPCore-t.build",
     "ui/Packages/DIPCore/Sources/DIPPresentation/Resources/Localizable.xcstrings": "DIPPresentation-t.build",
+    "ui/Packages/DIPCore/Sources/DIPMockData/Resources/Localizable.xcstrings": "DIPMockData-t.build",
     "ui/Packages/DIPAccounts/Sources/DIPAccounts/Resources/Localizable.xcstrings": "DIPAccounts-t.build",
     "ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Resources/Localizable.xcstrings": "DIPDesignSystem-t.build",
 }

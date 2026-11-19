@@ -47,6 +47,10 @@ public actor DIPMockNotificationsRepository: DIPNotificationsRepository {
                   createdAt: now.addingTimeInterval(-day - 3 * hour), isRead: true),
             .init(id: "admin_r1", kind: .attendeeAdded, title: "You’re going!", body: "An organizer added you to Trivia Lunch.",
                   destination: .event("trivia"), createdAt: now.addingTimeInterval(-4 * day), isRead: true),
+            .init(id: "photo_comment_c1", kind: .comment, title: "New comment on your photo", body: "Priya Shah: Love this shot!",
+                  destination: .event("kayaking"), createdAt: now.addingTimeInterval(-day - 5 * hour), isRead: true),
+            .init(id: "admin_r2", kind: .attendeeRemoved, title: "Your spot was released", body: "An organizer removed you from Sunset Run.",
+                  destination: .event("sunset-run"), createdAt: now.addingTimeInterval(-5 * day), isRead: true),
             .init(id: "photo_p1", kind: .photo, title: "New photos", body: "Sam added photos to Kayaking on the Lake.",
                   destination: .album("kayaking-memory"), createdAt: now.addingTimeInterval(-6 * day), isRead: true),
         ]

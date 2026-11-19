@@ -32,7 +32,7 @@ final class SocialCommandTests: XCTestCase {
         try await repository.sendMessage(eventID: "puppy-yoga", messageID: "draft-1", text: "See you there")
         let repeated = await repository.currentSnapshot()
         XCTAssertEqual(repeated, confirmed, "An acknowledged retry keeps the original timestamp and message")
-        await expect(.invalidInput("Message identity already exists")) {
+        await expect(.rejected(.init(localized: "Message identity already exists"))) {
             try await repository.sendMessage(eventID: "puppy-yoga", messageID: "draft-1", text: "Changed payload")
         }
         let afterConflict = await repository.currentSnapshot()
@@ -77,7 +77,7 @@ final class SocialCommandTests: XCTestCase {
         try await repository.addPhotoComment(eventID: "kayaking-memory", photoID: "0", commentID: "comment-1", text: "Great day!")
         let repeated = await repository.currentSnapshot()
         XCTAssertEqual(repeated, confirmed)
-        await expect(.invalidInput("Comment identity already exists")) {
+        await expect(.rejected(.init(localized: "Comment identity already exists"))) {
             try await repository.addPhotoComment(eventID: "kayaking-memory", photoID: "0", commentID: "comment-1", text: "Changed payload")
         }
         let afterConflict = await repository.currentSnapshot()
@@ -106,23 +106,23 @@ final class SocialCommandTests: XCTestCase {
         await expect(.notFound("missing-photo")) {
             try await repository.addPhotoComment(eventID: "kayaking-memory", photoID: "missing-photo", commentID: "comment", text: "Hello")
         }
-        await expect(.invalidInput("Message identity is required")) {
+        await expect(.rejected(.init(localized: "Message identity is required"))) {
             try await repository.sendMessage(eventID: "puppy-yoga", messageID: " ", text: "Hello")
         }
-        await expect(.invalidInput("Comment identity is required")) {
+        await expect(.rejected(.init(localized: "Comment identity is required"))) {
             try await repository.addPhotoComment(eventID: "kayaking-memory", photoID: "0", commentID: "", text: "Hello")
         }
-        await expect(.invalidInput("Message is empty")) {
+        await expect(.rejected(.init(localized: "Message is empty"))) {
             try await repository.sendMessage(eventID: "puppy-yoga", messageID: "message", text: "\n ")
         }
-        await expect(.invalidInput("Comment is empty")) {
+        await expect(.rejected(.init(localized: "Comment is empty"))) {
             try await repository.addPhotoComment(eventID: "kayaking-memory", photoID: "0", commentID: "comment", text: "\n ")
         }
         let longText = String(repeating: "x", count: 2_001)
-        await expect(.invalidInput("Message exceeds 2000 characters")) {
+        await expect(.rejected(.init(localized: "Message exceeds 2000 characters"))) {
             try await repository.sendMessage(eventID: "puppy-yoga", messageID: "message", text: longText)
         }
-        await expect(.invalidInput("Comment exceeds 2000 characters")) {
+        await expect(.rejected(.init(localized: "Comment exceeds 2000 characters"))) {
             try await repository.addPhotoComment(eventID: "kayaking-memory", photoID: "0", commentID: "comment", text: longText)
         }
         let unchanged = await repository.currentSnapshot()
@@ -137,13 +137,13 @@ final class SocialCommandTests: XCTestCase {
 
     func testMessagesRequireObservedParticipationAndImportsKeepAttribution() async throws {
         let repository = DIPMockRepository()
-        await expect(.invalidInput("Join this activity before sending a message")) {
+        await expect(.rejected(.init(localized: "Join this activity before sending a message"))) {
             try await repository.sendMessage(eventID: "puppy-yoga", messageID: "not-joined", text: "Hello")
         }
         try await repository.setRSVP(eventID: "puppy-yoga", going: true)
         try await repository.sendMessage(eventID: "puppy-yoga", messageID: "joined", text: "Hello")
         try await repository.setRSVP(eventID: "puppy-yoga", going: false)
-        await expect(.invalidInput("Join this activity before sending a message")) {
+        await expect(.rejected(.init(localized: "Join this activity before sending a message"))) {
             try await repository.sendMessage(eventID: "puppy-yoga", messageID: "left", text: "Hello")
         }
         try await repository.addPhotos(eventID: "kayaking-memory", photos: [.init(id: "import", data: Data([1]))])

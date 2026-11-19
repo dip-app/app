@@ -34,7 +34,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .reminders: String(localized: "notif.category.reminders.summary", defaultValue: "About a day and an hour before activities you joined", bundle: .module, comment: "Notification preference category description")
         case .chat: String(localized: "notif.category.chat.summary", defaultValue: "New messages in activity chats", bundle: .module, comment: "Notification preference category description")
         case .challenges: String(localized: "notif.category.challenges.summary", defaultValue: "Submission reviews and new weekly themes", bundle: .module, comment: "Notification preference category description")
-        case .social: String(localized: "notif.category.social.summary", defaultValue: "Comments and photos on your posts", bundle: .module, comment: "Notification preference category description")
+        case .social: String(localized: "notif.category.social.summary", defaultValue: "Comments on your photos and new photos from activities you went to", bundle: .module, comment: "Notification preference category description: comments on the member's album photos and new photos in albums of activities they attended")
         case .discovery: String(localized: "notif.category.discovery.summary", defaultValue: "New activities that match your interests", bundle: .module, comment: "Notification preference category description")
         case .calendarInvites: String(localized: "notif.category.calendarInvites.summary", defaultValue: "An email that adds activities you join to your calendar, and keeps it up to date", bundle: .module, comment: "Notification preference category description (email only)")
         }

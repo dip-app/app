@@ -129,7 +129,7 @@ import UniformTypeIdentifiers
                 _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u1", data: Data([1])), progress: { _ in })
                 XCTFail("upload must be refused")
             } catch {
-                XCTAssertEqual(error as? DIPRepositoryError, .invalidInput(reason.message))
+                XCTAssertEqual(error as? DIPRepositoryError, .rejected(.init(localized: reason.message)))
             }
             XCTAssertTrue(albums.uploads.isEmpty)
             repository.stop()
@@ -148,7 +148,7 @@ import UniformTypeIdentifiers
         do {
             _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u1", data: Data([1])), progress: { _ in })
             XCTFail("finalize failed")
-        } catch { XCTAssertEqual(error as? DIPRepositoryError, .invalidInput(AlbumFailure.unavailable.message)) }
+        } catch { XCTAssertEqual(error as? DIPRepositoryError, .rejected(.init(localized: AlbumFailure.unavailable.message))) }
         XCTAssertEqual(albums.uploads.map(\.slot), [1, 2])
         // The retry keeps slot 2 (its bytes already landed) and only finalizes once.
         albums.finalizeFailure = nil
@@ -195,7 +195,7 @@ import UniformTypeIdentifiers
         do {
             _ = try await repository.uploadPhoto(eventID: "boat", photo: PhotoUpload(id: "u1", data: Data([1])), progress: { _ in })
             XCTFail("limit")
-        } catch { XCTAssertEqual(error as? DIPRepositoryError, .invalidInput(AlbumFailure.limitReached.message)) }
+        } catch { XCTAssertEqual(error as? DIPRepositoryError, .rejected(.init(localized: AlbumFailure.limitReached.message))) }
         XCTAssertTrue(albums.uploads.isEmpty)
         repository.stop()
     }
@@ -360,7 +360,7 @@ import UniformTypeIdentifiers
 
     func testRemovingAFailedDraftReleasesItsSlotHook() async throws {
         var released: [String] = []
-        let queue = AlbumUploadQueue(send: { _, _, _ in throw DIPRepositoryError.invalidInput("offline") }, prepare: { data in
+        let queue = AlbumUploadQueue(send: { _, _, _ in throw DIPRepositoryError.rejected(DIPMemberMessage(localized: "offline")) }, prepare: { data in
             guard data != Data([0]) else { throw AlbumImageProcessing.Failure.unreadable }
             return (data, nil)
         })
@@ -380,7 +380,7 @@ import UniformTypeIdentifiers
         var runs: [(Int, Int)] = []
         let queue = AlbumUploadQueue(send: { _, photo, _ in
             attempts.append(photo.id)
-            if fail { throw DIPRepositoryError.invalidInput("You’re offline.") }
+            if fail { throw DIPRepositoryError.rejected(DIPMemberMessage(localized: "You’re offline.")) }
             return photo.id
         }, prepare: { data in
             guard data != Data([0]) else { throw AlbumImageProcessing.Failure.unreadable }

@@ -14,10 +14,15 @@ locale. The app follows the iOS language; there is no in-app setting for members
 | `ui/Packages/DIPCore/Sources/DIPPresentation/Resources/Localizable.xcstrings` | DIPPresentation | `bundle: .module` |
 | `ui/Packages/DIPAccounts/Sources/DIPAccounts/Resources/Localizable.xcstrings` | DIPAccounts | `bundle: .module` |
 | `ui/Packages/DIPDesignSystem/Sources/DIPDesignSystem/Resources/Localizable.xcstrings` | DIPDesignSystem | `bundle: .module` |
+| `ui/Packages/DIPCore/Sources/DIPMockData/Resources/Localizable.xcstrings` | DIPMockData (refusal messages of `DIPMockRepository.swift` only) | `bundle: .module` |
 
 Each package declares `defaultLocalization: "en"`. SwiftPM compiles its catalog into the package resource bundle, both in
-Xcode builds and in `swift test`. DIPContracts (generated DTOs) and DIPMockData (fixture content) have no user-facing
-copy and no catalog.
+Xcode builds and in `swift test`. DIPContracts (generated DTOs) has no user-facing copy and no catalog. DIPMockData
+fixture content (names, titles, chat, notices) stays verbatim like server content; only the mock repository's refusal
+messages are localized (mock builds only), and the guardrail scans only that file for the DIPMockData catalog.
+
+Refusals reach screens as `DIPRepositoryError.rejected(DIPMemberMessage)`. Build the message only from a
+`String(localized:)` lookup or a failure type's localized `message`, never from server or SDK text.
 
 `ui/project.yml` sets `developmentLanguage: en`, `LOCALIZATION_PREFERS_STRING_CATALOGS`, `SWIFT_EMIT_LOC_STRINGS`
 (compiler-based extraction), `LOCALIZED_STRING_SWIFTUI_SUPPORT`, `CFBundleDevelopmentRegion: en` and
@@ -136,8 +141,9 @@ offers System, English, Español and tlhIngan Hol, writes the per-app `AppleLang
 DIP. It adds no visible UI.
 
 Emails and push notifications follow the member's server-owned `users/{uid}.locale` (backend phase of #259, see
-[backend-i18n.md](backend-i18n.md)). The app does not set it yet; the admin portal does. A later change can call
-`setMyLocaleV1` when the app language changes (the generated `AppUser.locale` is already in DIPContracts).
+[backend-i18n.md](backend-i18n.md)). Since 0.1.2 the app keeps it in step: on sign-in and on foreground it maps its
+preferred localization to `en` or `es` (Klingon and anything else to `en`) and calls `setMyLocaleV1` only when that
+differs from the stored value, at most once per member and language in a launch, silently (`MemberLocaleSync`).
 
 ## Testing
 

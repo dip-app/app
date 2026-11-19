@@ -23,8 +23,13 @@ final class PushCoordinator {
         }
     }
 
-    init(registrar: PushRegistrar, system: any PushSystem, store: any PushStateStore, enabled: Bool) {
+    /// Answers invitations from the Accept and Decline buttons; nil leaves the buttons opening the activity instead.
+    private let inviteResponder: PushInviteResponder?
+
+    init(registrar: PushRegistrar, system: any PushSystem, store: any PushStateStore, enabled: Bool,
+         inviteResponder: PushInviteResponder? = nil) {
         self.registrar = registrar; self.system = system; self.store = store; self.enabled = enabled
+        self.inviteResponder = inviteResponder
     }
 
     func memberSignedIn(uid: String) async { await registrar.memberSignedIn(uid: uid) }
@@ -61,6 +66,24 @@ final class PushCoordinator {
                 return await system.authorization()
             },
             openSettings: PushPermissionControl.settingsOpener())
+    }
+
+    /// A delivered notification was tapped or one of its buttons pressed. Returns when the work is done, so a background
+    /// launch for an action stays alive until the answer was sent.
+    func handleResponse(_ action: PushResponseAction, payload: PushPayload) async {
+        switch action {
+        case .open:
+            // Any push type, known or not, opens its link (or the app only, when it has none).
+            if let link = payload.link { handleDeepLink(link.absoluteString) }
+        case .answerInvite(let accept):
+            let outcome = await inviteResponder?.answer(accept: accept, payload: payload) ?? .openInvite(payload.link)
+            guard case .openInvite(let link) = outcome else { return }
+            if system.isForeground {
+                if let link { handleDeepLink(link.absoluteString) }
+            } else {
+                await system.postInviteFallback(link: link)
+            }
+        }
     }
 
     /// A tapped notification's `deepLink` payload (`dip://events/{id}[/chat]`); anything else is ignored.
