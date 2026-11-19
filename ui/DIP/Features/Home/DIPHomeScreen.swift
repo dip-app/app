@@ -42,6 +42,8 @@ struct DIPHomeScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Open iPhone Duo only: Home is the list pane, events are a two-column grid and the open one is outlined.
     @Environment(\.dipDuoOpen) private var duoOpen
+    /// Duo display whose tabs are in the sensor-column rail: no floating bar to keep clear of.
+    @Environment(\.dipDuoTabsInRail) private var tabsInRail
     @Environment(\.dipDuoSelectedEvent) private var duoSelectedEvent
     init(
         home: DIPHomeSnapshot, showsBottomBar: Bool = true, onEvent: @escaping (String) -> Void,
@@ -88,7 +90,7 @@ struct DIPHomeScreen: View {
                             eventsSection(width: geometry.size.width - 40)
                             recentAttendees
                         }
-                        .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen))
+                        .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
                     }
                     .scrollIndicators(.hidden)
                     .modifier(MemberEventRefresh(action: onRefresh))

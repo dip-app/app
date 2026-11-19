@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 @testable import DIP
 
@@ -80,6 +81,18 @@ final class DuoLayoutTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(84, 56 + 12)
     }
 
+    func testFoldedOuterDisplayRailStartsBelowItsTallerPill() {
+        // Outer display, portrait 466x678: camera, clock and the wifi pill reach y 151 pt; 84 pt column on either side.
+        let right = DIPDuoSensor.resolve(safeLeading: 0, safeTrailing: 84, open: false)
+        XCTAssertEqual(right, DIPDuoSensor(onTrailing: true, width: 84, topClearance: DIPDuoSensor.outerPillClearance))
+        XCTAssertEqual(DIPDuoSensor.resolve(safeLeading: 84, safeTrailing: 0, open: false)?.onTrailing, false)
+        XCTAssertGreaterThan(DIPDuoSensor.outerPillClearance, 151)
+        XCTAssertEqual(DIPDuoSensor.resolve(safeLeading: 0, safeTrailing: 84)?.topClearance, DIPDuoSensor.pillClearance)
+        // Tabs only (the phone header keeps the bell): 4 x 56 + 3 x 10 + capsule padding, above the 34 pt home indicator.
+        let rail = DIPDuoRail.track.restingOrigin(index: 3) + DIPDuoRail.item + 20
+        XCTAssertLessThanOrEqual(DIPDuoSensor.outerPillClearance + rail, 678 - 34)
+    }
+
     func testListPaneIsAPhonesWidthSoPhoneCardsKeepTheirDesignedGeometry() {
         XCTAssertEqual(DIPDuoPaneLayout.listWidth - 40, 353)
     }
@@ -153,5 +166,54 @@ final class DuoLayoutTests: XCTestCase {
         XCTAssertEqual(DIPDuoPaneLayout.resolvedSelection(selected: "gone", exists: { $0 == "a" }, fallback: "a"), "a")
         XCTAssertEqual(DIPDuoPaneLayout.resolvedSelection(selected: "a", exists: { $0 == "a" }, fallback: "b"), "a")
         XCTAssertNil(DIPDuoPaneLayout.resolvedSelection(selected: nil, exists: { _ in true }, fallback: nil))
+    }
+
+    // MARK: Orientation
+
+    func testOuterDisplayIsPortraitOnly() {
+        // Folded: hinge closed and the 466x678 outer screen, whichever orientation the device last had.
+        XCTAssertEqual(DIPDuoOrientation.supported(hingeAvailable: true, hingeClosed: true, screenLongSide: 678,
+                                                   defaultMask: .allButUpsideDown), .portrait)
+        // The outer screen alone decides it too (a half-open angle iOS shows on the outer display).
+        XCTAssertEqual(DIPDuoOrientation.supported(hingeAvailable: true, hingeClosed: false, screenLongSide: 678,
+                                                   defaultMask: .allButUpsideDown), .portrait)
+    }
+
+    func testInnerDisplayKeepsTheDefaultSet() {
+        // Unfolded 951x669 inner display: landscape stays available (the open shell is a landscape layout).
+        let mask = DIPDuoOrientation.supported(hingeAvailable: true, hingeClosed: false, screenLongSide: 951,
+                                               defaultMask: .allButUpsideDown)
+        XCTAssertEqual(mask, .allButUpsideDown)
+        XCTAssertTrue(mask.contains(.landscapeLeft) && mask.contains(.landscapeRight))
+    }
+
+    func testRegularIPhonesAndIPadsAreUnchanged() {
+        for side in [CGFloat(568), 874, 956, 1366] {
+            XCTAssertEqual(DIPDuoOrientation.supported(hingeAvailable: false, hingeClosed: false, screenLongSide: side,
+                                                       defaultMask: .allButUpsideDown), .allButUpsideDown)
+            XCTAssertEqual(DIPDuoOrientation.supported(hingeAvailable: false, hingeClosed: true, screenLongSide: side,
+                                                       defaultMask: .all), .all)
+        }
+    }
+
+    func testDefaultMaskFollowsTheInfoPlist() {
+        // No key (the app today): UIKit's default for the idiom.
+        XCTAssertEqual(DIPDuoOrientation.infoPlistMask([:], idiom: .phone), .allButUpsideDown)
+        XCTAssertEqual(DIPDuoOrientation.infoPlistMask([:], idiom: .pad), .all)
+        let portraitOnly = ["UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"]]
+        XCTAssertEqual(DIPDuoOrientation.infoPlistMask(portraitOnly, idiom: .phone), .portrait)
+        let phoneSpecific: [String: Any] = [
+            "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
+            "UISupportedInterfaceOrientations~iphone": ["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]
+        ]
+        XCTAssertEqual(DIPDuoOrientation.infoPlistMask(phoneSpecific, idiom: .phone), .landscape)
+    }
+
+    @MainActor func testAppDelegateAnswersTheOrientationQuery() {
+        let delegate = DIPAppDelegate()
+        XCTAssertTrue(delegate.responds(to: #selector(UIApplicationDelegate.application(_:supportedInterfaceOrientationsFor:))))
+        // This test host is not a hinge device: the app's default set, as before.
+        XCTAssertEqual(delegate.application(UIApplication.shared, supportedInterfaceOrientationsFor: nil),
+                       DIPDuoOrientation.infoPlistMask(idiom: UIDevice.current.userInterfaceIdiom))
     }
 }

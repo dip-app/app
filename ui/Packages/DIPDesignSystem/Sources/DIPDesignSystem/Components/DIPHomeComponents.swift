@@ -539,17 +539,13 @@ public enum DIPBadgeCount {
             }
         }
 
+        /// Marker geometry shared with the Duo rail (`DIPTabMarkerTrack`): first and last slots sit 40 pt from the ends.
+        private func track(width: CGFloat) -> DIPTabMarkerTrack {
+            .floatingBar(width: width, count: tabs.count)
+        }
+
         private func restingMarkerX(width: CGFloat) -> CGFloat {
-            10 + slotStep(width: width) * CGFloat(selectedIndex)
-        }
-
-        /// Distance between adjacent tab slots (the first and last slots sit 40 pt from the ends).
-        private func slotStep(width: CGFloat) -> CGFloat {
-            Self.slotStep(width: width, count: tabs.count)
-        }
-
-        private static func slotStep(width: CGFloat, count: Int) -> CGFloat {
-            (width - 80) / CGFloat(max(1, count - 1))
+            track(width: width).restingOrigin(index: selectedIndex)
         }
 
         /// The centre x of `tab`'s icon in a bar of `width`, measured from the bar's leading edge, using the same
@@ -558,7 +554,7 @@ public enum DIPBadgeCount {
             _ tab: DIPHomeTab, tabs: [DIPHomeTab] = DIPHomeTab.allCases, width: CGFloat
         ) -> CGFloat? {
             guard let index = tabs.firstIndex(of: tab) else { return nil }
-            return 40 + slotStep(width: width, count: tabs.count) * CGFloat(index)
+            return 40 + DIPTabMarkerTrack.floatingBar(width: width, count: tabs.count).step * CGFloat(index)
         }
 
         private func marker(width: CGFloat) -> some View {
@@ -573,13 +569,13 @@ public enum DIPBadgeCount {
 
         /// Dragging the marker selects each tab it crosses; releasing settles on the selected tab.
         private func dragGesture(width: CGFloat) -> some Gesture {
-            let step = slotStep(width: width)
+            let track = track(width: width)
             let tabs = self.tabs
             return DragGesture(minimumDistance: 6)
                 .onChanged { value in
-                    let x = min(max(value.location.x - 40, 10), 10 + CGFloat(tabs.count - 1) * step)
+                    let x = track.origin(forFinger: value.location.x)
                     dragMarkerX = x
-                    let index = min(max(Int(((x - 10) / step).rounded()), 0), tabs.count - 1)
+                    let index = track.index(forOrigin: x)
                     if tabs[index] != selected { onSelect(tabs[index]) }
                 }
                 .onEnded { _ in dragMarkerX = nil }

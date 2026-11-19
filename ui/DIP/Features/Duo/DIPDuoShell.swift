@@ -129,6 +129,8 @@ struct DIPTabHeader<Avatar: View>: View {
 
 /// The navigation rail, in the sensor column beside the status pill: the four tabs in a floating ink capsule (white disc
 /// marks the selected tab) and the bell beneath them. Solid = pressable. Every target is at least 44 pt.
+/// Like the phone's floating bar, the disc can be dragged: it follows the finger along the tabs, selects each tab it
+/// crosses and settles on release (`DIPTabMarkerTrack`, shared with the bar). The bell is outside the drag.
 struct DIPDuoRail: View {
     /// Column the rail is centred in; the capsule starts below the status pill.
     var columnWidth: CGFloat = DIPDuoPaneLayout.railWidth
@@ -137,7 +139,15 @@ struct DIPDuoRail: View {
     let unreadCount: Int
     let onSelect: (DIPHomeTab) -> Void
     let onNotifications: () -> Void
+    /// The bell below the tabs. The folded outer display keeps the phone header (bell and profile), so it has none.
+    var showsNotifications = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Marker position while a finger is dragging it; nil when it rests on the selected tab.
+    @State private var dragMarkerY: CGFloat?
+
+    static let item: CGFloat = 56
+    static let spacing: CGFloat = 10
+    static let track = DIPTabMarkerTrack.rail(count: DIPHomeTab.allCases.count, item: item, spacing: spacing)
 
     private func asset(_ tab: DIPHomeTab, selected: Bool) -> String {
         switch tab {
@@ -148,45 +158,62 @@ struct DIPDuoRail: View {
         }
     }
 
-    var body: some View {
-        VStack(spacing: 10) {
+    private var marker: some View {
+        let y = dragMarkerY ?? Self.track.restingOrigin(index: DIPHomeTab.allCases.firstIndex(of: selected) ?? 0)
+        return Circle().fill(Color.white)
+            .frame(width: Self.item, height: Self.item)
+            .offset(y: y)
+            // Follows the finger exactly while dragging, then settles with the phone bar's spring.
+            .animation(dragMarkerY == nil && !reduceMotion ? DIPMotion.marker : nil, value: y)
+            .accessibilityHidden(true)
+    }
+
+    /// Dragging the disc selects each tab it crosses; releasing settles on the selected tab. Same rule as the phone bar.
+    private var dragGesture: some Gesture {
+        let tabs = DIPHomeTab.allCases
+        return DragGesture(minimumDistance: 6)
+            .onChanged { value in
+                let y = Self.track.origin(forFinger: value.location.y)
+                dragMarkerY = y
+                let tab = tabs[Self.track.index(forOrigin: y)]
+                if tab != selected { onSelect(tab) }
+            }
+            .onEnded { _ in dragMarkerY = nil }
+    }
+
+    private var tabItems: some View {
+        VStack(spacing: Self.spacing) {
             ForEach(DIPHomeTab.allCases) { tab in
                 Button { onSelect(tab) } label: {
-                    ZStack {
-                        Circle().fill(selected == tab ? Color.white : Color.clear)
-                        DIPReferenceAssets.image(asset(tab, selected: selected == tab)).resizable()
-                            .frame(width: tab == .events ? 24 : 28, height: tab == .events ? 24 : 28)
-                            .accessibilityHidden(true)
-                    }
-                    .frame(width: 56, height: 56)
-                    .contentShape(Circle())
+                    DIPReferenceAssets.image(asset(tab, selected: selected == tab)).resizable()
+                        .frame(width: tab == .events ? 24 : 28, height: tab == .events ? 24 : 28)
+                        .accessibilityHidden(true)
+                        .frame(width: Self.item, height: Self.item)
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
                 .accessibilityIdentifier("home.tab.\(tab.id)")
                 .accessibilityAddTraits(tab == selected ? .isSelected : [])
             }
-            Rectangle().fill(Color.white.opacity(0.2)).frame(width: 28, height: 1)
-            Button(action: onNotifications) {
-                // Ink item like the tabs (no white disc, which marks the selected tab); the count is a pink badge.
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "bell").font(.system(size: 24, weight: .regular))
-                        .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
-                        .frame(width: 56, height: 56).accessibilityHidden(true)
-                    if unreadCount > 0 {
-                        Text(DIPBadgeCount.text(unreadCount))
-                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 13)).foregroundStyle(.white)
-                            .padding(.horizontal, 6).frame(minWidth: 22, minHeight: 22)
-                            .background(DIPTokens.Color.eventsAccent.swiftUIColor, in: Capsule())
-                            .offset(x: -2, y: 2).accessibilityHidden(true)
-                    }
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ZStack(alignment: .top) {
+                if reduceMotion {
+                    // Reduce Motion: no travel and no drag; the disc cross-fades to the new tab (as on the phone bar).
+                    marker.id(selected).transition(.opacity)
+                } else {
+                    marker
                 }
-                .frame(width: 56, height: 56).contentShape(Circle())
+                tabItems
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "duo.rail.notifications.a11y", defaultValue: "Notifications, \(unreadCount) unread",
-                                         comment: "VoiceOver label of the notifications button in the Duo navigation rail; %lld = unread count"))
-            .accessibilityIdentifier("home.notifications")
+            .contentShape(Rectangle())
+            .simultaneousGesture(dragGesture, including: reduceMotion ? .none : .all)
+            .animation(reduceMotion ? DIPMotion.navigation(reduceMotion: true) : nil, value: selected)
+            if showsNotifications { notificationsButton }
         }
         .padding(6).padding(.vertical, 4)
         .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
@@ -197,6 +224,30 @@ struct DIPDuoRail: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Main navigation", comment: "VoiceOver label of the Duo navigation rail"))
         .accessibilityIdentifier("duo.rail")
+    }
+
+    @ViewBuilder private var notificationsButton: some View {
+        Rectangle().fill(Color.white.opacity(0.2)).frame(width: 28, height: 1)
+        Button(action: onNotifications) {
+            // Ink item like the tabs (no white disc, which marks the selected tab); the count is a pink badge.
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "bell").font(.system(size: 24, weight: .regular))
+                    .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
+                    .frame(width: 56, height: 56).accessibilityHidden(true)
+                if unreadCount > 0 {
+                    Text(DIPBadgeCount.text(unreadCount))
+                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 13)).foregroundStyle(.white)
+                        .padding(.horizontal, 6).frame(minWidth: 22, minHeight: 22)
+                        .background(DIPTokens.Color.eventsAccent.swiftUIColor, in: Capsule())
+                        .offset(x: -2, y: 2).accessibilityHidden(true)
+                }
+            }
+            .frame(width: 56, height: 56).contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "duo.rail.notifications.a11y", defaultValue: "Notifications, \(unreadCount) unread",
+                                     comment: "VoiceOver label of the notifications button in the Duo navigation rail; %lld = unread count"))
+        .accessibilityIdentifier("home.notifications")
     }
 }
 

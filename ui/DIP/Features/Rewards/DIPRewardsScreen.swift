@@ -112,6 +112,8 @@ struct DIPRewardsScreen: View {
     }
 
     @Environment(\.dipDuoOpen) private var duoOpen
+    /// Duo display whose tabs are in the sensor-column rail: no floating bar to keep clear of.
+    @Environment(\.dipDuoTabsInRail) private var tabsInRail
 
     private var ink: Color { DIPTokens.Color.textPrimary.swiftUIColor }
 
@@ -150,7 +152,7 @@ struct DIPRewardsScreen: View {
                                 discountSection
                             }
                         }
-                        .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen))
+                        .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
                     }
                     .scrollIndicators(.hidden)
                     .accessibilityIdentifier("rewards.content")
