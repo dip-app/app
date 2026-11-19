@@ -1268,8 +1268,10 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var resendCount: Int?
     public var lastResentAt: Date?
     public var lastResentBy: String?
+    public var inviteEmailCount: Int?
+    public var lastInviteEmailAt: Date?
 
-    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, memberPhotoURL: String? = nil, memberAvatarId: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil) {
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, memberPhotoURL: String? = nil, memberAvatarId: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil, inviteEmailCount: Int? = nil, lastInviteEmailAt: Date? = nil) {
         self.id = id
         self.companyId = companyId
         self.email = email
@@ -1296,6 +1298,8 @@ public struct RosterEntry: Codable, Equatable, Sendable {
         self.resendCount = resendCount
         self.lastResentAt = lastResentAt
         self.lastResentBy = lastResentBy
+        self.inviteEmailCount = inviteEmailCount
+        self.lastInviteEmailAt = lastInviteEmailAt
     }
 }
 
@@ -2229,6 +2233,36 @@ public struct ResendRosterInviteResponse: Codable, Equatable, Sendable {
     }
 }
 
+public struct SendRosterInviteEmailRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var entryId: String
+
+    public init(contractVersion: Int, companyId: String, requestId: String, entryId: String) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.entryId = entryId
+    }
+}
+
+public struct SendRosterInviteEmailResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var entryId: String
+    public var status: String
+    public var inviteEmailCount: Int
+    public var lastInviteEmailAt: Date
+
+    public init(contractVersion: Int, entryId: String, status: String, inviteEmailCount: Int, lastInviteEmailAt: Date) {
+        self.contractVersion = contractVersion
+        self.entryId = entryId
+        self.status = status
+        self.inviteEmailCount = inviteEmailCount
+        self.lastInviteEmailAt = lastInviteEmailAt
+    }
+}
+
 public struct BackfillRosterRequest: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var companyId: String
@@ -2306,12 +2340,14 @@ public struct ListRosterResponse: Codable, Equatable, Sendable {
     public var entries: [RosterEntry]
     public var nextPageToken: String?
     public var counts: RosterCounts?
+    public var inviteEmail: Bool?
 
-    public init(contractVersion: Int, entries: [RosterEntry], nextPageToken: String? = nil, counts: RosterCounts? = nil) {
+    public init(contractVersion: Int, entries: [RosterEntry], nextPageToken: String? = nil, counts: RosterCounts? = nil, inviteEmail: Bool? = nil) {
         self.contractVersion = contractVersion
         self.entries = entries
         self.nextPageToken = nextPageToken
         self.counts = counts
+        self.inviteEmail = inviteEmail
     }
 }
 

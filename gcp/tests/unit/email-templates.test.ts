@@ -13,8 +13,12 @@ function render(c: (typeof PREVIEW_CASES)[number]) {
   return renderEmail(c.template, c.variables as never, c.ctx);
 }
 
-/** Cases of the event and challenge emails; the admin weekly ideas email has its own footer and layout (email-admin-suggestions.test.ts). */
-const LEGACY_CASES = PREVIEW_CASES.filter((c) => c.template !== "admin_suggestions");
+/**
+ * Cases of the event and challenge emails; the admin weekly ideas email has its own footer and layout
+ * (email-admin-suggestions.test.ts) and the account emails their own footer and button (email-account.test.ts).
+ */
+const ACCOUNT_TEMPLATES = new Set(["admin_suggestions", "roster_invite", "welcome", "bug_report_resolved"]);
+const LEGACY_CASES = PREVIEW_CASES.filter((c) => !ACCOUNT_TEMPLATES.has(c.template));
 
 const EVIL = '<script>alert("x")</script> & "q"';
 

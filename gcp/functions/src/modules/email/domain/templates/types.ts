@@ -1,6 +1,6 @@
 import type { NotificationKind } from "../../../notifications/domain/categories";
 import type { Locale } from "../../../i18n";
-import type { EmailCategory } from "../categories";
+import type { OutboxCategory } from "../categories";
 
 /**
  * Template ids (docs/design/stretch/email.md, Template catalog). Each template has a fixed category and an
@@ -17,12 +17,35 @@ export const TEMPLATE_CATEGORY = {
   calendar_cancel: "calendar_invites",
   challenge_reviewed: "challenges",
   admin_suggestions: "admin_suggestions",
-} as const satisfies Record<string, EmailCategory>;
+  // Account emails (docs/design/email-catalog.md): transactional, not a member preference category.
+  roster_invite: "account",
+  welcome: "account",
+  bug_report_resolved: "account",
+} as const satisfies Record<string, OutboxCategory>;
 
 export type TemplateId = keyof typeof TEMPLATE_CATEGORY;
 
-/** Shared notification kind per template (notifications/domain/categories.ts); decides the per-event level gate. */
-export function templateKind(template: TemplateId, variables?: { outcome?: string }): NotificationKind {
+/** Templates addressed to a roster entry (a person without an account yet) rather than a `users/{uid}` member. */
+export function isRosterTemplate(template: TemplateId): template is "roster_invite" {
+  return template === "roster_invite";
+}
+
+/** Outbox `uid` of a roster recipient: a stable, non-member key (`roster-<entryId>`) for caps and unsubscribe tokens. */
+export function rosterRecipientKey(entryId: string): string {
+  return `roster-${entryId}`;
+}
+
+/** The roster entry id inside a `roster-<entryId>` recipient key, or null for a member uid. */
+export function rosterEntryOf(recipientKey: string): string | null {
+  const match = /^roster-([0-9a-f]{64})$/.exec(recipientKey);
+  return match ? match[1]! : null;
+}
+
+/**
+ * Shared notification kind per template (notifications/domain/categories.ts); decides the per-event level gate. Account
+ * templates never pass through the shared router and have no kind (null).
+ */
+export function templateKind(template: TemplateId, variables?: { outcome?: string }): NotificationKind | null {
   switch (template) {
     case "invite_received": return "invite";
     case "invite_answered": return "invite_answered";
@@ -34,6 +57,9 @@ export function templateKind(template: TemplateId, variables?: { outcome?: strin
     case "calendar_cancel": return "calendar_invite";
     case "challenge_reviewed": return variables?.outcome === "changes_requested" ? "challenge_changes_requested" : "challenge_approved";
     case "admin_suggestions": return "admin_suggestions";
+    case "roster_invite":
+    case "welcome":
+    case "bug_report_resolved": return null;
   }
 }
 export const TEMPLATE_IDS = Object.keys(TEMPLATE_CATEGORY) as TemplateId[];
@@ -88,6 +114,26 @@ export interface TemplateVariables {
   /** Calendar removal (iCalendar METHOD:CANCEL) with the SEQUENCE after the last invite. */
   calendar_cancel: EventFacts & { sequence: number; reason: "left" | "canceled" };
   challenge_reviewed: { challengeId: string; challengeTitle: string; outcome: "approved" | "changes_requested"; points?: number };
+  /**
+   * Invitation to a person an admin added to the roster before they signed in. The address is read at send time from
+   * `companies/{c}/roster/{entryId}` (never stored here); the entry must still be `invited` then.
+   */
+  roster_invite: {
+    /** Roster entry id: sha256 hex of the normalized address. */
+    entryId: string;
+    /** Company display name, at most 120 characters. */
+    companyName: string;
+    /** First name of the admin who sent it, at most 80 characters; absent when unknown. */
+    inviterFirstName?: string;
+    /** Organizers and admins are pointed at the admin portal, members at the app. */
+    role: "member" | "organizer" | "admin";
+    /** A second or later invitation email to the same entry. */
+    reminder: boolean;
+  };
+  /** One-time welcome after a member's account is created (first membership resolve). */
+  welcome: { companyName: string; role: "member" | "organizer" | "admin" };
+  /** The member's own problem report was marked resolved. Never the report text, category or an admin note. */
+  bug_report_resolved: { reportId: string; submittedAt: string };
   /** Weekly ideas for company admins (docs/design/stretch/admin-suggestions-email.md). Company aggregates only; no names or emails. */
   admin_suggestions: {
     /** ISO week in the company zone, `^\d{4}-W\d{2}$`. */
@@ -144,6 +190,11 @@ export interface RenderContext {
    * server content (event titles, names, idea text) never changes. Absent means English.
    */
   locale?: Locale;
+  /**
+   * The address this email goes to (the sender already holds it). Only the roster invitation shows it ("sign in with
+   * Google using sam@acme.com"); it is never stored in the outbox.
+   */
+  recipientAddress?: string | null;
 }
 
 export interface RenderedEmail {

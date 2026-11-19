@@ -54,7 +54,7 @@ Sender identity: From `DIP <notify@letsdip.work>`, Reply-To `support@letsdip.wor
 
 **Recommendation: react-email** rendered inside the function (`@react-email/render`) to HTML plus a plain-text alternative, one component per template, shared `Layout`, typed props. If bundling React is unwelcome, MJML plus typed data builders is the fallback. Compatibility with the Node 22 Functions bundle was not verified (UNVERIFIED). Dark mode tips (transparent logos, no pure black or white, `color-scheme` meta, expect clients to override) are general guidance, not verified.
 
-Template catalog (V2): `invite_received`, `invite_answered`, `event_changed`, `event_canceled`, `event_reminder` (24 h, 1 h variants), `challenge_reviewed`, `attendee_added`. Variables: member first name, event title, start (localized to the member's time zone if known, else UTC with a label; see question 3), venue name, a coarse cover image (existing catalog art, hosted), CTA URL. No chat text, photos or comments in email.
+Template catalog (V2): `invite_received`, `invite_answered`, `event_changed`, `event_canceled`, `event_reminder` (24 h, 1 h variants), `challenge_reviewed`, `attendee_added`. Since then: `calendar_invite`, `calendar_cancel`, `admin_suggestions`, and the account emails `roster_invite`, `welcome` and `bug_report_resolved` (November 19, 2026). The full list with triggers, defaults and what was deferred is the [email catalog](../email-catalog.md). Variables: member first name, event title, start (localized to the member's time zone if known, else UTC with a label; see question 3), venue name, a coarse cover image (existing catalog art, hosted), CTA URL. No chat text, photos or comments in email.
 
 ## Design
 
@@ -150,6 +150,7 @@ Recorded November 17, 2026 by the email workstream. Each can be revisited; none 
 15. **Caps:** 20 emails per member per day and 2,000 per company per day (overridable up to 50,000 in `emailSettings`).
 16. **Push-or-email policy:** invites and event updates go to both channels; reminders and discovery follow the email switch only; challenge emails are sent only when push will not be delivered.
 17. **Event updated emails** show When and Where with current values and the old value of each changed field struck through directly above it (time-only changes strike only the time, venue name and address independently). Old values come from the event change log, collapsed to the earliest old and latest new value. The venue street address is now included for members (they see it in the app). Updates that change no time, place or title are not emailed.
+18. **Account emails (November 19, 2026):** a separate outbox category `account` for transactional emails that are not member notifications: the roster invitation (sent only when an admin clicks Send invite email, to the roster entry's own address, opt-out per address), the one-time welcome and the problem-report-resolved note. No new member switch: unsubscribing from all DIP emails stops the member ones. The weekly theme announcement was deferred because it needs its own default-off category ([email catalog](../email-catalog.md#deferred-and-why)).
 
 ## Email style guide
 

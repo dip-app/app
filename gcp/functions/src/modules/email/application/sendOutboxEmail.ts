@@ -1,7 +1,8 @@
 import * as logger from "firebase-functions/logger";
 import { localeOrDefault } from "../../i18n";
 import { INVITE_FROM, INVITE_REPLY_TO, type InviteContext } from "../domain/ics";
-import { resolveEmailPreferences } from "../domain/categories";
+import { ACCOUNT_CATEGORY, resolveEmailPreferences } from "../domain/categories";
+import { isRosterTemplate, rosterEntryOf } from "../domain/templates/types";
 import {
   MAX_ATTEMPTS, MEMBER_DAILY_CAP, SEND_LEASE_MS, capDay, emailHash, type OutboxDocument, type OutboxStatus, type SkipReason,
 } from "../domain/outbox";
@@ -10,7 +11,7 @@ import type { RenderContext, RenderedEmail, TemplateId, TemplateVariables } from
 import { MIN_KEY_BYTES, signUnsubscribeToken } from "../domain/unsubscribeToken";
 import type {
   Clock, CompanySettingsReader, CapStore, EmailAttachment, EmailConfig, EmailPreferencesStore, EmailProviderPort,
-  InviteEligibility, InviteSequenceStore, OutboxStore, RecipientDirectory, SuppressionStore,
+  InviteEligibility, InviteOptOutStore, InviteSequenceStore, OutboxStore, RecipientDirectory, RosterInviteeDirectory, SuppressionStore,
 } from "./ports";
 
 /** Rendering functions, injected so unit tests use fakes (the real ones are `renderEmail`, `validateVariables`, `icsAttachmentFor`). */
@@ -43,6 +44,9 @@ export interface SendDeps {
   /** Calendar invites only: per-member SEQUENCE/delivery state and the fresh going/status read. Without them invites are skipped. */
   inviteSequences?: InviteSequenceStore;
   inviteEligibility?: InviteEligibility;
+  /** Roster invitations only: the roster entry read and the invitation opt-outs. Without them invitations are skipped. */
+  invitees?: RosterInviteeDirectory;
+  inviteOptOuts?: InviteOptOutStore;
   /** Structured log sink; fields never contain addresses, names, subjects or bodies. */
   log?: (event: string, fields: Record<string, string | number>) => void;
 }
@@ -113,6 +117,45 @@ export async function sendOutboxEmail(deps: SendDeps, outboxId: string): Promise
   return result;
 }
 
+type ResolvedRecipient = { to: string; hash: string; displayName: string | null; locale: string | null | undefined } | { skip: SkipReason };
+
+/**
+ * Who this email goes to, read fresh at send time. Members: `users/{uid}` of the same company, active, with their own
+ * category switch (account emails: at least one email category still on). Roster invitations: the roster entry of the
+ * same company, still `invited`, whose address still hashes to the entry id, and not opted out of invitations.
+ */
+async function resolveRecipient(deps: SendDeps, doc: OutboxDocument, variables: TemplateVariables[TemplateId]): Promise<ResolvedRecipient> {
+  if (isRosterTemplate(doc.template)) {
+    if (!deps.invitees || !deps.inviteOptOuts) return { skip: "config_incomplete" };
+    const entryId = (variables as TemplateVariables["roster_invite"]).entryId;
+    if (rosterEntryOf(doc.uid) !== entryId) return { skip: "tenant_mismatch" };
+    const invitee = await deps.invitees.get(doc.companyId, entryId);
+    if (invitee === null) return { skip: "no_member" };
+    if (invitee.companyId !== doc.companyId) return { skip: "tenant_mismatch" };
+    if (invitee.status !== "invited") return { skip: "not_invited" };
+    const to = invitee.email?.trim() ?? "";
+    if (to.length === 0) return { skip: "no_email" };
+    const hash = emailHash(to);
+    if (hash !== entryId) return { skip: "tenant_mismatch" };
+    if (await deps.inviteOptOuts.isOptedOut(hash)) return { skip: "opted_out" };
+    return { to, hash, displayName: invitee.displayName, locale: doc.locale ?? null };
+  }
+  const recipient = await deps.recipients.get(doc.uid);
+  if (recipient === null) return { skip: "no_member" };
+  if (recipient.companyId !== doc.companyId) return { skip: "tenant_mismatch" };
+  if (recipient.status !== null && recipient.status !== "active") return { skip: "inactive_member" };
+  // Admin-only content: the role is re-checked at send time (a demoted admin must not receive the ideas email).
+  if (doc.template === "admin_suggestions" && recipient.role !== "admin") return { skip: "not_admin" };
+  const to = recipient.email?.trim() ?? "";
+  if (to.length === 0) return { skip: "no_email" };
+  const preferences = resolveEmailPreferences(await deps.preferences.getEmailMap(doc.uid));
+  if (doc.category === ACCOUNT_CATEGORY) {
+    // No switch of its own: "Unsubscribe from all DIP emails" (every category off) also stops account emails.
+    if (!Object.values(preferences).some(Boolean)) return { skip: "all_off" };
+  } else if (!preferences[doc.category]) return { skip: "preference_off" };
+  return { to, hash: emailHash(to), displayName: recipient.displayName, locale: recipient.locale };
+}
+
 async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { providerCalled: boolean }): Promise<{ result: SendResult; retry: string | null }> {
   const finish = async (status: Exclude<OutboxStatus, "sending">, fields: { reason?: SkipReason | string; providerMessageId?: string; toHash?: string }) => {
     await deps.outbox.finish(doc.id, status, fields, deps.clock.now());
@@ -131,19 +174,9 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
   const company = await deps.companies.get(doc.companyId);
   if (company === null || !company.enabled) return skip("company_disabled");
 
-  const recipient = await deps.recipients.get(doc.uid);
-  if (recipient === null) return skip("no_member");
-  if (recipient.companyId !== doc.companyId) return skip("tenant_mismatch");
-  if (recipient.status !== null && recipient.status !== "active") return skip("inactive_member");
-  // Admin-only content: the role is re-checked at send time (a demoted admin must not receive the ideas email).
-  if (doc.template === "admin_suggestions" && recipient.role !== "admin") return skip("not_admin");
-  const to = recipient.email?.trim() ?? "";
-  if (to.length === 0) return skip("no_email");
-
-  const preferences = resolveEmailPreferences(await deps.preferences.getEmailMap(doc.uid));
-  if (!preferences[doc.category]) return skip("preference_off");
-
-  const hash = emailHash(to);
+  const resolved = await resolveRecipient(deps, doc, variables);
+  if ("skip" in resolved) return skip(resolved.skip);
+  const { to, hash, displayName, locale: rawLocale } = resolved;
   if (await deps.suppressions.isSuppressed(hash)) return skip("suppressed");
 
   const isInvite = doc.template === "calendar_invite" || doc.template === "calendar_cancel";
@@ -167,22 +200,23 @@ async function process(deps: SendDeps, doc: OutboxDocument, now: Date, state: { 
 
   // Every email is rendered in its own recipient's language: one outbox document per recipient, so a fan-out with mixed
   // locales sends each member their own copy. Missing or unsupported values mean English.
-  const locale = localeOrDefault(recipient.locale);
+  const locale = localeOrDefault(rawLocale);
   const nowSeconds = Math.floor(now.getTime() / 1000);
   const sign = deps.tokenSigner ?? signUnsubscribeToken;
   const unsubscribeURL = `${deps.config.publicOrigin}/u/${sign(deps.config.unsubscribeKey, doc.uid, doc.category, nowSeconds)}`;
   const rendered = deps.renderer.render(doc.template, variables, {
-    recipientFirstName: firstName(recipient.displayName),
+    recipientFirstName: firstName(displayName),
     timeZone: company.timeZone ?? deps.config.defaultTimeZone,
     unsubscribeURL,
     openPixelURL: deps.config.openTracking
       ? `${deps.config.publicOrigin}/o/${signOpenToken(deps.config.unsubscribeKey, doc.id, nowSeconds)}.gif`
       : null,
     locale,
+    ...(isRosterTemplate(doc.template) ? { recipientAddress: to } : {}),
   });
   const attachment = deps.renderer.attachment(doc.template, variables,
     "revision" in variables && typeof variables.revision === "number" ? variables.revision : 0,
-    isInvite ? { attendeeEmail: to, attendeeName: recipient.displayName?.trim() || null, memberUid: doc.uid, now, locale } : undefined);
+    isInvite ? { attendeeEmail: to, attendeeName: displayName?.trim() || null, memberUid: doc.uid, now, locale } : undefined);
   // An invite without its calendar part would be a plain "you joined" email with a promise it cannot keep.
   if (isInvite && attachment === null) return skip("invalid_variables");
 

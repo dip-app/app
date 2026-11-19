@@ -117,6 +117,8 @@ Enable: Bounce (with "include message content" off), Spam Complaint, Subscriptio
 firebase deploy --only functions:dip:onEmailOutboxCreated,functions:dip:emailUnsubscribeV1,functions:dip:emailWebhookV1,functions:dip:emailOpenV1 --project team05-dip
 ```
 
+   The account emails ([email catalog](../design/email-catalog.md)) also need `welcomeEmailOnMemberCreated` (welcome), `sendRosterInviteEmailV1`, `listRosterV1` and `updateBugReportV1` (roster invitation and problem report emails) and the admin portal build that shows **Send invite email**. `sendRosterInviteEmailV1` and `listRosterV1` read `EMAIL_ENABLED` too, so redeploy them after changing it.
+
 3. Deploy Hosting so `/u/**` reaches `emailUnsubscribeV1` and `/o/**` reaches `emailOpenV1` (rewrites in `firebase.json`), and so `https://letsdip.work/img/email/{logo,header,footer}.png` are live before the first email (they are part of the site build).
 4. Firestore TTL policies (one-time, like `inviteRateLimits.expiresAt`): `emailOutbox.expireAt` and `emailCaps.expireAt`.
 
@@ -186,3 +188,21 @@ For each client:
 7. **No-send cases.** Join and leave within a few seconds (no email; the queued invite is skipped with reason `not_going` in `emailOutbox`); join a past event (nothing); set `emailSettings.enabled=false` (nothing).
 
 Record in the PR or session log, per client: card shown or only an attachment, add works, update replaces, cancel removes. If a client shows only an attachment and cannot import it, the fallback is the provider's SMTP relay with a hand-built `multipart/alternative` message (not built). Also check the headers of one received message: SPF, DKIM and DMARC pass for `letsdip.work`, and `Content-Type: text/calendar; charset=UTF-8; method=REQUEST` is on the attachment part.
+
+## 12. Manual test plan for the email catalog
+
+The [email catalog](../design/email-catalog.md) lists every email. None has been sent for real. Run this once with your own mailboxes, after section 7 (pilot company enabled, `EMAIL_ENABLED=true`) and before announcing email to a company. Use two Google accounts on the pilot company's domain (A: an admin, B: a person not yet signed in) and the seed list from section 8 (Gmail, Outlook, Apple Mail; light and dark). For every email check: sender `DIP <notify@letsdip.work>` (calendar invites: `DIP Events <events@letsdip.work>`), Reply-To `support@letsdip.work`, not in spam, the shared header art, white card and footer art load, one button that opens the right page, the plain-text part (Gmail "Show original"), a working one-click Unsubscribe next to the sender, and the `emailOutbox/{id}` document reaching `status: "sent"` with no address stored on it.
+
+1. **Roster invitation (English).** As A (portal language English), Roster > Add person with B's work address and leave "Email them an invitation now" on. B gets "A invited you to join <company> on DIP" with B's address in bold and **Get DIP** (`https://letsdip.work/`). The row shows "Invite emailed 1×, last <date>" and the audit log has "Emailed an invite to <address> (#1)".
+2. **Reminder and limits.** Click **Send invite email** again on B's row within the hour: the dialog shows "An invitation email went out less than an hour ago". After an hour, send again: the subject starts "Reminder: join <company> on DIP". The sixth attempt is refused ("already got several invitation emails").
+3. **Staff link and Spanish.** Switch A's portal language to Español (Your settings > Language), add an organizer C and email them: the email is in Spanish and the button is **Abrir el portal de administración** (`https://letsdip.work/admin/`).
+4. **Invitation opt-out.** In C's email click **Dejar de recibir invitaciones** (or Gmail's Unsubscribe): the page says invitations stop; `emailInviteOptOuts/<entryId>` exists; **Send invite email** for C now says they asked not to get invitation emails. Delete that document to undo the test.
+5. **Invitee already joined.** Queue an invitation for B, then sign in as B in the app before it sends (or check an older queued one): the outbox document ends `skipped` with reason `not_invited`, and no email arrives.
+6. **Email off.** Set `emailSettings/<company>.enabled=false`: the roster shows **Get invite message** again (no Send invite email), Add person has no email switch, and the message dialog says to share the message yourself. Turn it back on.
+7. **Welcome.** Sign in to the app for the first time as B (the profile is created): one "Welcome to DIP at <company>" email arrives; signing out and in again sends nothing more (`account_<company>_<uid>_welcome` exists once). An admin's first sign-in gets the admin portal step and button.
+8. **Problem report resolved.** As B (TestFlight or Debug build), Profile > Report a problem. As A, Bug reports > that report > Status Resolved: B gets "Your problem report was resolved" with the date only (no report text). Set it to Triaged and Resolved again: no second email.
+9. **Unsubscribe from all.** In B's welcome email click Unsubscribe and confirm "Unsubscribe from all DIP emails": every email switch in Profile > Notifications is off, and a later problem report resolution sends nothing (`skipped`, `all_off`). Turn the switches back on in the app.
+10. **Existing event emails.** With B going to an event: change its time (an "Updated: <title> (time changed)" email with the old time struck through), turn on Reminders in Profile > Notifications > Email and wait for the about 24 hour and 1 hour reminders (none after the start), have a coworker invite B to an event ("<name> invited you to <title>"), and cancel an event ("Canceled: <title>").
+11. **Calendar invites.** Run the section 11 checklist (join, update, leave, rejoin, cancel, unsubscribe, no-send cases) in every client of the seed list.
+
+Record the result per email and client in the PR or session log: arrived, inbox or spam, rendering (light and dark), button target, plain text, unsubscribe.

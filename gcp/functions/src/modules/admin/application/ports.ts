@@ -109,6 +109,8 @@ export interface AdminDeps {
   newId: () => string;
   /** Best-effort pushes sent after a command commits; a failure never fails the command. Absent in unit tests that ignore pushes. */
   pushes?: AdminPushNotifier;
+  /** The EMAIL_ENABLED switch; absent (unit tests that ignore email) means email is off. */
+  email?: { enabled(): boolean };
 }
 
 export interface AttendeeAddedPush {

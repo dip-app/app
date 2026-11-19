@@ -61,10 +61,13 @@ export interface ChannelResult { decision: EmailRoutingDecision; enqueue: Enqueu
 /** Email channel of the shared push router: decides per recipient with the shared precedence rule, then enqueues once. */
 export async function emailChannel(deps: ChannelDeps, candidate: EmailCandidate): Promise<ChannelResult> {
   if (!deps.config.enabled) return { decision: { send: false, reason: "disabled" }, enqueue: null };
+  const kind = templateKind(candidate.template, candidate.variables as { outcome?: string });
+  // Account emails have no notification kind and never come through the shared router.
+  if (kind === null) return { decision: { send: false, reason: "category_off" }, enqueue: null };
   const company = await deps.companies.get(candidate.companyId);
   const emailMap = await deps.preferences.getEmailMap(candidate.uid);
   const decision = decideEmail({
-    kind: templateKind(candidate.template, candidate.variables as { outcome?: string }),
+    kind,
     globalEnabled: deps.config.enabled,
     companyEnabled: company?.enabled === true,
     preferences: resolvePreferences({ email: emailMap ?? {} }),

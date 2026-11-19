@@ -4,6 +4,7 @@ import { renderAdminSuggestions, validateAdminSuggestions } from "./adminSuggest
 import { intlTag, localeOrDefault, splitAround, type Locale } from "../../../i18n";
 import { buildCopy, categoryReason, changeSummary, eventURL, hasVisibleChange } from "./copy";
 import { tEmail } from "./i18n";
+import type { EmailCategory } from "../categories";
 import { TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
 
 export { eventURL, hasVisibleChange, EMAIL_ASSET_BASE };
@@ -15,6 +16,8 @@ const VENUE_MAX = 120;
 const ADDRESS_MAX = 200;
 const ID_MAX = 128;
 const URL_MAX = 1024;
+const COMPANY_MAX = 120;
+const ROLES = ["member", "organizer", "admin"] as const;
 
 // ---------------------------------------------------------------------------------------------
 // Time formatting
@@ -228,6 +231,35 @@ export function validateVariables<T extends TemplateId>(template: T, value: unkn
       result = out;
       break;
     }
+    case "roster_invite": {
+      if (!onlyKeys(rec, ["entryId", "companyName", "inviterFirstName", "role", "reminder"])) return null;
+      const entryId = typeof rec.entryId === "string" && /^[0-9a-f]{64}$/.test(rec.entryId) ? rec.entryId : null;
+      const companyName = str(rec.companyName, COMPANY_MAX);
+      const role = ROLES.find((r) => r === rec.role) ?? null;
+      if (!entryId || !companyName || !role || typeof rec.reminder !== "boolean") return null;
+      const out: TemplateVariables["roster_invite"] = { entryId, companyName, role, reminder: rec.reminder };
+      if (rec.inviterFirstName !== undefined) {
+        const name = str(rec.inviterFirstName, NAME_MAX);
+        if (!name) return null;
+        out.inviterFirstName = name;
+      }
+      result = out;
+      break;
+    }
+    case "welcome": {
+      if (!onlyKeys(rec, ["companyName", "role"])) return null;
+      const companyName = str(rec.companyName, COMPANY_MAX);
+      const role = ROLES.find((r) => r === rec.role) ?? null;
+      result = companyName && role ? { companyName, role } : null;
+      break;
+    }
+    case "bug_report_resolved": {
+      if (!onlyKeys(rec, ["reportId", "submittedAt"])) return null;
+      const reportId = typeof rec.reportId === "string" && ID.test(rec.reportId) ? rec.reportId : null;
+      const submittedAt = iso(rec.submittedAt);
+      result = reportId && submittedAt ? { reportId, submittedAt } : null;
+      break;
+    }
   }
   return result as TemplateVariables[T] | null;
 }
@@ -271,8 +303,8 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
   const locale = renderLocale(ctx);
   const t = (key: Parameters<typeof tEmail>[1], vars: Record<string, string | number> = {}) => tEmail(locale, key, vars);
   const zone = safeZone(ctx.timeZone);
-  const copy = buildCopy(template, variables, zone, locale);
-  const reason = categoryReason(TEMPLATE_CATEGORY[template], locale);
+  const copy = buildCopy(template, variables, zone, locale, ctx.recipientAddress);
+  const category = TEMPLATE_CATEGORY[template];
 
   const facts = copy.event;
   const title = facts ? collapseWhitespace(facts.eventTitle) : null;
@@ -342,14 +374,25 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
     : "";
 
   const button = primaryButton(copy.ctaURL, copy.ctaLabel);
+  // Account emails only: a short list after the lead and a small line after the button.
+  const steps = copy.steps?.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;">${copy.steps.map((step) => `<tr><td class="text-main" valign="top" width="20" style="width:20px;padding:0 0 8px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">&bull;</td><td class="text-main" valign="top" style="padding:0 0 8px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(step)}</td></tr>`).join("")}</table>`
+    : "";
+  const emphasisAt = copy.emphasis && copy.note ? copy.note.indexOf(copy.emphasis) : -1;
+  const noteHtml = (note: string): string => (emphasisAt < 0 || !copy.emphasis
+    ? para(note, "20px")
+    : `<p class="text-main" style="margin:0 0 20px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(note.slice(0, emphasisAt))}<strong style="font-weight:700;">${e(copy.emphasis)}</strong>${e(note.slice(emphasisAt + copy.emphasis.length))}</p>`);
+  const fine = copy.fine ? `<p class="text-muted" style="margin:16px 0 0 0;${FINE}">${e(copy.fine)}</p>` : "";
 
   const profile = t("email.footer.profile");
   const notifications = t("email.footer.notifications");
   const [managePrefix, manageSuffix] = splitAround(tEmail, locale, "email.footer.manage", "path");
-  const reasonLine = t("email.footer.reason", { reason });
-  const unsubscribe = t("email.footer.unsubscribe");
+  const reasonLine = copy.footer?.reason ?? t("email.footer.reason", { reason: categoryReason(category as EmailCategory, locale) });
+  const showManage = copy.footer?.manage ?? true;
+  const unsubscribe = copy.footer?.unsubscribeLabel ?? t("email.footer.unsubscribe");
   const sentBy = t("email.footer.sentBy");
   const questions = t("email.footer.questions");
+  const manageHtml = showManage ? ` &middot; ${e(managePrefix)}${e(profile)}&nbsp;&gt;&nbsp;${e(notifications)}${e(manageSuffix)}` : "";
 
   const html = layoutShell({
     title: copy.subject,
@@ -358,17 +401,18 @@ ${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspac
     lang: locale,
     main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>
 ${para(lead, "20px")}
-${card}
-${copy.note ? para(copy.note, "20px") : ""}
+${steps ? `${steps}\n` : ""}${card}
+${copy.note ? noteHtml(copy.note) : ""}
 ${highlight}
-${button}`,
+${button}${fine ? `\n${fine}` : ""}`,
     footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">${e(reasonLine)}</td></tr>
-<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(unsubscribe)}</a> &middot; ${e(managePrefix)}${e(profile)}&nbsp;&gt;&nbsp;${e(notifications)}${e(manageSuffix)}</td></tr>
+<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(unsubscribe)}</a>${manageHtml}</td></tr>
 <tr><td class="text-muted" style="padding:0;${FINE}">${e(sentBy)} &middot; ${e(questions)} <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
   });
 
   const wasText = (value: string | null): string => (value ? `  ${t("email.text.was", { value })}` : "");
   const lines: string[] = [copy.heading.toLocaleUpperCase(intlTag(locale)), "", lead, ""];
+  if (copy.steps?.length) lines.push(...copy.steps.map((step) => `- ${step}`), "");
   if (facts && title) {
     if (copy.badge) lines.push(`[${copy.badge}]`);
     lines.push(`${title}${wasText(oldTitle)}`);
@@ -381,10 +425,12 @@ ${button}`,
   }
   if (copy.note) lines.push(copy.note, "");
   if (copy.highlight) lines.push(copy.highlight, "");
-  lines.push(`${copy.ctaLabel}: ${copy.ctaURL}`, "", "--");
+  lines.push(`${copy.ctaLabel}: ${copy.ctaURL}`, "");
+  if (copy.fine) lines.push(copy.fine, "");
+  lines.push("--");
   lines.push(reasonLine);
   lines.push(`${unsubscribe}: ${ctx.unsubscribeURL}`);
-  lines.push(`${managePrefix}${profile} > ${notifications}${manageSuffix}`);
+  if (showManage) lines.push(`${managePrefix}${profile} > ${notifications}${manageSuffix}`);
   lines.push(`${sentBy} · ${questions} ${SUPPORT_EMAIL}`);
 
   return { subject: copy.subject, preheader, html, text: `${lines.join("\n")}\n` };

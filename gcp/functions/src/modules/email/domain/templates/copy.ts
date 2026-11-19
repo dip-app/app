@@ -45,7 +45,24 @@ export interface EmailCopy {
   note: string | null;
   ctaLabel: string;
   ctaURL: string;
+  /** Short list after the lead (welcome steps), or absent. */
+  steps?: string[];
+  /** Small muted line after the button ("Not expecting this? ..."), or absent. */
+  fine?: string;
+  /** Text inside `note` shown in bold in the HTML part (the address to sign in with), or absent. */
+  emphasis?: string;
+  /**
+   * Account emails only: the footer reason sentence (replaces "You are getting this because <category> emails are on.")
+   * and whether the "Manage in DIP: Profile > Notifications" path is shown (a roster invitee has no account yet).
+   */
+  footer?: { reason: string; manage: boolean; unsubscribeLabel?: string };
 }
+
+/** Sign-in links of the account emails: members use the app (the site links the App Store), organizers and admins the portal. */
+export const APP_URL = `${SHARE_ORIGIN}/`;
+export const PORTAL_URL = `${SHARE_ORIGIN}/admin/`;
+
+const isStaff = (role: string): boolean => role === "organizer" || role === "admin";
 
 
 /** "time", "time and location", "time, location, and title"; other languages use Intl.ListFormat ("la hora y el lugar"). */
@@ -143,7 +160,7 @@ function withEvent(facts: EventFacts, locale: Locale, rest: Pick<EmailCopy, "sub
  * Plain-text copy of one template in the recipient's language. English is the source and renders byte-identically to
  * the pre-catalog templates (golden snapshots); server content (titles, names) is never translated.
  */
-export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T], zone = "America/New_York", locale: Locale = "en"): EmailCopy {
+export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T], zone = "America/New_York", locale: Locale = "en", recipientAddress?: string | null): EmailCopy {
   const id: TemplateId = template;
   const t = (key: EmailMessageKey, vars: Record<string, string | number> = {}) => tEmail(locale, key, vars);
   switch (id) {
@@ -264,6 +281,68 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         note: outcome === "approved" ? null : t("email.challenge.note"),
         ctaLabel: t("email.cta.open"),
         ctaURL: `${SHARE_ORIGIN}/`,
+      };
+    }
+    case "roster_invite": {
+      const e = variables as TemplateVariables["roster_invite"];
+      const company = clean(e.companyName);
+      const who = e.inviterFirstName ? clean(e.inviterFirstName) : "";
+      const named = who ? "yes" : "no";
+      const staff = isStaff(e.role) ? "yes" : "no";
+      const address = recipientAddress?.trim() || t("email.rosterInvite.thisAddress");
+      return {
+        heading: t("email.rosterInvite.heading", { reminder: e.reminder ? "yes" : "no" }),
+        subject: subject(locale, "email.rosterInvite.subject", company, { reminder: e.reminder ? "yes" : "no", named, who }),
+        preheader: t("email.rosterInvite.preheader", { named, who, company }),
+        lead: t("email.rosterInvite.lead", { named, who, company }),
+        badge: null,
+        event: null,
+        highlight: null,
+        note: t("email.rosterInvite.note", { staff, address }),
+        ...(recipientAddress?.trim() ? { emphasis: address } : {}),
+        ctaLabel: staff === "yes" ? t("email.cta.portal") : t("email.cta.getApp"),
+        ctaURL: staff === "yes" ? PORTAL_URL : APP_URL,
+        fine: t("email.rosterInvite.ignore"),
+        footer: { reason: t("email.rosterInvite.reason", { named, who, company }), manage: false, unsubscribeLabel: t("email.footer.unsubscribeInvites") },
+      };
+    }
+    case "welcome": {
+      const e = variables as TemplateVariables["welcome"];
+      const company = clean(e.companyName);
+      const staff = isStaff(e.role);
+      return {
+        heading: t("email.welcome.heading"),
+        subject: subject(locale, "email.welcome.subject", company),
+        preheader: t("email.welcome.preheader", { company }),
+        lead: t("email.welcome.lead", { company }),
+        badge: null,
+        event: null,
+        highlight: null,
+        note: null,
+        steps: [
+          ...(staff ? [t("email.welcome.step.portal")] : []),
+          t("email.welcome.step.join"), t("email.welcome.step.interests"),
+        ],
+        ctaLabel: staff ? t("email.cta.portal") : t("email.cta.openApp"),
+        ctaURL: staff ? PORTAL_URL : APP_URL,
+        footer: { reason: t("email.welcome.reason", { company }), manage: true },
+      };
+    }
+    case "bug_report_resolved": {
+      const e = variables as TemplateVariables["bug_report_resolved"];
+      const day = new Intl.DateTimeFormat(intlTag(locale), { month: "long", day: "numeric", timeZone: zone }).format(new Date(e.submittedAt));
+      return {
+        heading: t("email.bugResolved.heading"),
+        subject: t("email.bugResolved.subject"),
+        preheader: t("email.bugResolved.preheader", { day }),
+        lead: t("email.bugResolved.lead", { day }),
+        badge: null,
+        event: null,
+        highlight: null,
+        note: t("email.bugResolved.note"),
+        ctaLabel: t("email.cta.openApp"),
+        ctaURL: APP_URL,
+        footer: { reason: t("email.bugResolved.reason"), manage: true },
       };
     }
   }

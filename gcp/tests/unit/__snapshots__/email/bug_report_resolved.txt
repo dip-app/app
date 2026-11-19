@@ -1,0 +1,13 @@
+THANKS FOR YOUR REPORT
+
+Hi Sam, the problem you reported on November 12 was marked resolved. Thank you for helping us make DIP better.
+
+Still seeing it? Report it again from the app: shake your phone, or go to Profile > Report a problem.
+
+Open DIP: https://letsdip.work/
+
+--
+You are getting this because you sent a problem report in DIP.
+Unsubscribe: https://letsdip.work/u/sample-token
+Manage in DIP: Profile > Notifications
+Sent by DIP · Questions? support@letsdip.work
