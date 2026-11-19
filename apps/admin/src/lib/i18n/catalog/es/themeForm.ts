@@ -59,7 +59,6 @@ export const themeForm: Record<keyof typeof source, string> = {
   "themeForm.discard.title": "¿Descartar tus cambios?",
   "themeForm.discard.confirm": "Descartar cambios",
   "themeForm.discard.bodyEdit": "Los cambios que hiciste en este tema no se guardarán.",
-  "themeForm.discard.bodyNew": "El tema que empezaste no se guardará.",
   "themeForm.toast.saved": "Se guardaron los cambios de “{title}”.",
   "themeForm.toast.created": "Se creó “{title}”.",
 

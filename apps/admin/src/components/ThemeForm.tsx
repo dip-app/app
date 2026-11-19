@@ -10,6 +10,8 @@ import {
 } from "@/lib/challenge";
 import { ApiError, type FieldErrors } from "@/lib/contract";
 import { THEMES, resolveTheme } from "@/lib/themes";
+import { parseThemeSnapshot, restoreTheme, themeSnapshot } from "@/lib/formDraftSnapshots";
+import { useFormDraft } from "@/lib/useFormDraft";
 import { t } from "@/lib/i18n";
 import {
   themeTimeZoneLabel, addDays, formatWindow, lastDayOfIso, mondayOfIso, nextMonday, weekEndIso, weekStartIso,
@@ -17,6 +19,7 @@ import {
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { useApp } from "./AppProvider";
 import { Dialog } from "./Dialog";
+import { DraftOffer, DraftStatusLine, agoText } from "./DraftUi";
 import { RadioGrid } from "./RadioGrid";
 import { ThemeArt } from "./ThemeArt";
 import { ThemePreview } from "./ThemePreview";
@@ -52,7 +55,7 @@ function newDraft(): ThemeDraft {
 }
 
 export function ThemeForm({ theme, onReload }: Props) {
-  const { api } = useApp();
+  const { api, session } = useApp();
   const router = useRouter();
   const editing = Boolean(theme);
   // Once people have joined or completed, the start stays put (server: WINDOW_CHANGE_BLOCKED).
@@ -78,7 +81,48 @@ export function ThemeForm({ theme, onReload }: Props) {
   // Set by the organizer's own edits only: the tag and week defaults that fill in after mount don't count.
   const [edited, setEdited] = useState(false);
   const dirty = edited && !saved;
-  useUnsavedGuard(dirty);
+
+  // New themes autosave to this browser (docs/design/admin-drafts.md). Editing a saved theme has no draft.
+  const snapshot = useMemo(() => themeSnapshot(draft), [draft]);
+  const scope = useMemo(() => (session ? { uid: session.uid, companyId: session.companyId } : null), [session]);
+  const picked = resolveTheme(draft.coverImageURL);
+  // Only the defaults a theme starts with (and its tags and weeks, which the page fills in) are not worth keeping.
+  const hasContent = edited && (
+    draft.coverImageURL !== THEMES[0].url || draft.title !== picked.displayName || draft.description !== picked.defaultDescription
+    || draft.goal !== picked.defaultGoal || draft.goalUnit !== picked.goalUnits[0] || draft.pointsReward !== 50
+  );
+  const autosave = useFormDraft({ kind: "theme", scope, enabled: !editing, value: snapshot, touched: edited && !saved, meaningful: hasContent, parse: parseThemeSnapshot });
+  // With autosave the browser's leave-page dialog is only for content that no draft holds (storage blocked or full).
+  useUnsavedGuard(editing ? dirty : autosave.unsaved);
+  const [restoreNote, setRestoreNote] = useState<"restored" | "weeksReset" | null>(null);
+  const [draftDialog, setDraftDialog] = useState<"restore" | "decline" | null>(null);
+  const focusFirst = () => requestAnimationFrame(() => setTimeout(() => document.getElementById("title")?.focus(), 0));
+  function restoreOffer() {
+    const taken = autosave.acceptOffer();
+    if (!taken) return;
+    const restored = restoreTheme(taken.data, catalog.status === "ready" ? catalog.tags.map((tag) => tag.id) : undefined);
+    // The weeks are re-checked against today and the themes that exist now: a taken or passed week is never kept silently.
+    const open = startWeekOptions(others, new Date()).some((option) => option.value === mondayOfIso(restored.startDate) && !option.takenBy);
+    const stale = !open || Number.isNaN(Date.parse(restored.endDate)) || Boolean(findOverlap(restored, others)) || Object.keys(validateThemeDraft(restored, { now: new Date() })).some((key) => key === "startDate" || key === "endDate");
+    if (stale) {
+      const monday = firstFreeMonday(others, nextMonday());
+      restored.startDate = weekStartIso(monday);
+      restored.endDate = weekEndIso(addDays(monday, 6));
+    }
+    touched.current.tags = true;
+    touched.current.weeks = true;
+    setEdited(true);
+    setDraft(restored);
+    setErrors({});
+    setRestoreNote(stale ? "weeksReset" : "restored");
+    focusFirst();
+  }
+  const offerAgo = autosave.offer ? agoText(autosave.offer.savedAt) : "";
+  function leave() {
+    setSaved(true);
+    autosave.clear({ keepOffer: true });
+    router.push("/themes/");
+  }
 
   // A new theme starts with its picked theme's tag, once the shared catalog is in.
   useEffect(() => {
@@ -177,6 +221,7 @@ export function ThemeForm({ theme, onReload }: Props) {
       if (theme) await api.updateTheme(theme.id, theme.revision, candidate);
       else await api.createTheme(requestId.current, candidate);
       setSaved(true);
+      autosave.clear();
       toast(t(editing ? "themeForm.toast.saved" : "themeForm.toast.created", { title: candidate.title }));
       router.push("/themes/");
     } catch (error) {
@@ -220,6 +265,14 @@ export function ThemeForm({ theme, onReload }: Props) {
   return (
     <div className="form-layout">
       <form className="form" onSubmit={submit} noValidate>
+        {autosave.offer && (
+          <DraftOffer kind="theme" ago={offerAgo} replaces={hasContent} onRestore={() => (hasContent ? setDraftDialog("restore") : restoreOffer())} onDiscard={() => setDraftDialog("decline")} />
+        )}
+        {restoreNote && (
+          <InlineNotice tone={restoreNote === "weeksReset" ? "warn" : "info"} className="draft-restored">
+            {t(restoreNote === "weeksReset" ? "drafts.restored.weeksReset" : "drafts.restored")}
+          </InlineNotice>
+        )}
         {Object.keys(errors).length > 0 && !failure && (
           <InlineNotice tone="error">{t("themeForm.fixFields", { count: Object.keys(errors).length })}</InlineNotice>
         )}
@@ -339,14 +392,27 @@ export function ThemeForm({ theme, onReload }: Props) {
 
         <div className="actions">
           <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("themeForm.saving") : editing ? t("themeForm.saveChanges") : t("themeForm.create")}</button>
-            <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/themes/"))}>{t("themeForm.cancel")}</button>
+            <button className="big-pill gray" type="button" disabled={saving} onClick={() => ((editing ? dirty : dirty && hasContent) ? setDiscarding(true) : leave())}>{t("themeForm.cancel")}</button>
+          {!editing && <DraftStatusLine status={autosave.status} />}
         </div>
       </form>
       <ThemePreview draft={draft} participantCount={theme?.participantCount ?? 0} />
       {discarding && (
-        <Dialog danger title={t("themeForm.discard.title")} confirmLabel={t("themeForm.discard.confirm")}onClose={() => setDiscarding(false)}
-          onConfirm={async () => { setSaved(true); router.push("/themes/"); }}>
-          <p>{t(editing ? "themeForm.discard.bodyEdit" : "themeForm.discard.bodyNew")}</p>
+        <Dialog danger title={editing ? t("themeForm.discard.title") : t("drafts.discard.title")} confirmLabel={editing ? t("themeForm.discard.confirm") : t("drafts.discard.confirm")} onClose={() => setDiscarding(false)}
+          onConfirm={async () => { leave(); }}>
+          <p>{editing ? t("themeForm.discard.bodyEdit") : t("drafts.discard.theme")}</p>
+        </Dialog>
+      )}
+      {draftDialog === "restore" && (
+        <Dialog title={t("drafts.replace.title")} confirmLabel={t("drafts.restore")} onClose={() => setDraftDialog(null)}
+          onConfirm={async () => { setDraftDialog(null); restoreOffer(); }}>
+          <p>{t("drafts.replace.body", { ago: offerAgo })}</p>
+        </Dialog>
+      )}
+      {draftDialog === "decline" && (
+        <Dialog danger title={t("drafts.decline.title")} confirmLabel={hasContent ? t("drafts.deleteOld") : t("drafts.startFresh")} onClose={() => setDraftDialog(null)}
+          onConfirm={async () => { setDraftDialog(null); autosave.declineOffer(); focusFirst(); }}>
+          <p>{t("drafts.decline.body", { ago: offerAgo })}</p>
         </Dialog>
       )}
     </div>

@@ -2,7 +2,7 @@
 // @i18n-migrated
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react"; // tags load from the shared catalog
+import { useEffect, useMemo, useRef, useState } from "react"; // tags load from the shared catalog
 import { type TagStat, countsByTag, hasStats, interestLabel } from "@/lib/tagStats";
 import {
   ApiError, type AdminEvent, type EventDraft, type EventStatus, type FieldErrors, LIMITS,
@@ -14,9 +14,12 @@ import { draftToPrefill, takeAiDraft } from "@/lib/ideas";
 import { type TimeHint, readTimeHint, registerEditorStash, stashEditor, takeEditorStash, timePresets } from "@/lib/dipbotTouches";
 import { type ResolvedFor, applyOutcome, planLocation, resolveTyped } from "@/lib/location/saveLocation";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
+import { eventMeaningful, eventSnapshot, parseEventSnapshot, restoreEvent } from "@/lib/formDraftSnapshots";
+import { useFormDraft } from "@/lib/useFormDraft";
 import { useApp } from "./AppProvider";
 import { CoverPicker } from "./CoverPicker";
 import { Dialog } from "./Dialog";
+import { DraftOffer, DraftStatusLine, agoText } from "./DraftUi";
 import { EventPreview } from "./EventPreview";
 import { toast } from "./Toast";
 import { useTags } from "./TagCatalog";
@@ -73,7 +76,7 @@ function summaryItems(found: FieldErrors): ErrorSummaryItem[] {
 }
 
 export function EventForm({ event, onReload }: Props) {
-  const { api } = useApp();
+  const { api, session } = useApp();
   const router = useRouter();
   const editing = Boolean(event);
   // Mirrors the server rule: once anyone has responded, start and end are locked.
@@ -151,7 +154,30 @@ export function EventForm({ event, onReload }: Props) {
   const [saved, setSaved] = useState(false);
   const initial = useRef(JSON.stringify([draft, status, price]));
   const dirty = !saved && JSON.stringify([draft, status, price]) !== initial.current;
-  useUnsavedGuard(dirty);
+
+  // New events autosave to this browser (docs/design/admin-drafts.md). Editing a saved event has no draft.
+  const snapshot = useMemo(() => eventSnapshot(draft, price, coverBy), [draft, price, coverBy]);
+  const hasContent = eventMeaningful(snapshot);
+  const scope = useMemo(() => (session ? { uid: session.uid, companyId: session.companyId } : null), [session]);
+  const autosave = useFormDraft({ kind: "event", scope, enabled: !editing, value: snapshot, touched: dirty, meaningful: hasContent, parse: parseEventSnapshot });
+  // With autosave the browser's leave-page dialog is only for content that no draft holds (storage blocked or full).
+  useUnsavedGuard(editing ? dirty : autosave.unsaved);
+  const [restoreNote, setRestoreNote] = useState<"restored" | "datesReset" | null>(null);
+  const [draftDialog, setDraftDialog] = useState<"restore" | "decline" | null>(null);
+  const focusTitle = () => requestAnimationFrame(() => setTimeout(() => document.getElementById("title")?.focus(), 0));
+  function restoreOffer() {
+    const taken = autosave.acceptOffer();
+    if (!taken) return;
+    const restored = restoreEvent(taken.data, { knownTagIds: catalog.status === "ready" ? catalog.tags.map((tag) => tag.id) : undefined });
+    setDraft(restored.draft);
+    setPrice(restored.price);
+    setCoverBy(restored.coverBy);
+    resolvedFor.current = null; // the map position is looked up again from the restored address when the event is created
+    setErrors({});
+    setRestoreNote(restored.datesReset ? "datesReset" : "restored");
+    focusTitle();
+  }
+  const offerAgo = autosave.offer ? agoText(autosave.offer.savedAt) : "";
 
   // "Generate suggestions" (New event header) keeps this form so Back from Dipbot returns to it.
   const latest = useRef({ draft, price, coverBy, dirty });
@@ -174,6 +200,13 @@ export function EventForm({ event, onReload }: Props) {
   });
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => { setDraft((current) => ({ ...current, [key]: value })); clearErrors(key); };
   const VENUE_KEYS: Record<string, string[]> = { address: ["venue.address", "venue.coordinates", "venue.latitude", "venue.longitude"], name: ["venue.name"], locality: ["venue.locality"] };
+
+  /** Cancel: leaves the page and, for a new event, deletes its draft (the admin has just confirmed, or there was nothing to keep). */
+  function leave() {
+    setSaved(true);
+    autosave.clear({ keepOffer: true });
+    router.push("/events/");
+  }
 
   async function submit(submitEvent: React.FormEvent) {
     submitEvent.preventDefault();
@@ -218,6 +251,7 @@ export function EventForm({ event, onReload }: Props) {
       if (event) await api.updateEvent(event.id, event.revision, candidate, status);
       else await api.createEvent(requestId.current, candidate);
       setSaved(true);
+      autosave.clear();
       toast(editing ? t("events.form.saved", { title: candidate.title }) : t("events.form.created", { title: candidate.title }));
       router.push("/events/");
     } catch (error) {
@@ -248,6 +282,14 @@ export function EventForm({ event, onReload }: Props) {
   return (
     <div className="form-layout">
     <form className="form" onSubmit={submit} noValidate onKeyDown={blockImplicitSubmit}>
+      {autosave.offer && (
+        <DraftOffer kind="event" ago={offerAgo} replaces={hasContent} onRestore={() => (hasContent ? setDraftDialog("restore") : restoreOffer())} onDiscard={() => setDraftDialog("decline")} />
+      )}
+      {restoreNote && (
+        <InlineNotice tone={restoreNote === "datesReset" ? "warn" : "info"} className="draft-restored">
+          {t(restoreNote === "datesReset" ? "drafts.restored.datesReset" : "drafts.restored")}
+        </InlineNotice>
+      )}
       {fromAi && <p className="notice form-notice" role="status">{tAi("editor.fromAi")}</p>}
       <p className="hint form-required-note">{t("events.form.requiredNote")}</p>
       {Object.keys(errors).length > 0 && (
@@ -300,7 +342,7 @@ export function EventForm({ event, onReload }: Props) {
         <h2>{t("events.form.when")}</h2>
         <WhenPicker startTime={draft.startTime} endTime={draft.endTime} disabled={timesLocked} allowPast={editing} presets={presets}
           startError={err("startTime")} endError={err("endTime")}
-          onChange={(startTime, endTime) => { setDraft((current) => ({ ...current, startTime, endTime })); clearErrors("startTime", "endTime"); }} />
+          onChange={(startTime, endTime) => { setDraft((current) => ({ ...current, startTime, endTime })); clearErrors("startTime", "endTime"); setRestoreNote((note) => (note === "datesReset" ? "restored" : note)); }} />
         <span className="hint">
           {timesLocked
             ? t("events.form.timesLocked")
@@ -342,8 +384,9 @@ export function EventForm({ event, onReload }: Props) {
 
       <div className="actions">
         <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("common.saving") : editing ? t("events.form.save") : t("events.form.create")}</button>
-        <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/events/"))}>{t("common.cancel")}</button>
+        <button className="big-pill gray" type="button" disabled={saving} onClick={() => ((editing ? dirty : dirty && hasContent) ? setDiscarding(true) : leave())}>{t("common.cancel")}</button>
         {!editing && <p className="hint actions-note">{t("events.form.createNote")}</p>}
+        {!editing && <DraftStatusLine status={autosave.status} />}
       </div>
     </form>
     <EventPreview draft={draft} price={price} dipbotCover={!!draft.coverImageURL && coverBy === draft.coverImageURL} />
@@ -354,9 +397,21 @@ export function EventForm({ event, onReload }: Props) {
       </Dialog>
     )}
     {discarding && (
-      <Dialog danger title={t("events.form.discardDialog.title")} confirmLabel={t("events.form.discardDialog.confirm")} onClose={() => setDiscarding(false)}
-        onConfirm={async () => { setSaved(true); router.push("/events/"); }}>
-        <p>{editing ? t("events.form.discardDialog.bodyEdit") : t("events.form.discardDialog.bodyNew")}</p>
+      <Dialog danger title={editing ? t("events.form.discardDialog.title") : t("drafts.discard.title")} confirmLabel={editing ? t("events.form.discardDialog.confirm") : t("drafts.discard.confirm")} onClose={() => setDiscarding(false)}
+        onConfirm={async () => { leave(); }}>
+        <p>{editing ? t("events.form.discardDialog.bodyEdit") : t("drafts.discard.event")}</p>
+      </Dialog>
+    )}
+    {draftDialog === "restore" && (
+      <Dialog title={t("drafts.replace.title")} confirmLabel={t("drafts.restore")} onClose={() => setDraftDialog(null)}
+        onConfirm={async () => { setDraftDialog(null); restoreOffer(); }}>
+        <p>{t("drafts.replace.body", { ago: offerAgo })}</p>
+      </Dialog>
+    )}
+    {draftDialog === "decline" && (
+      <Dialog danger title={t("drafts.decline.title")} confirmLabel={hasContent ? t("drafts.deleteOld") : t("drafts.startFresh")} onClose={() => setDraftDialog(null)}
+        onConfirm={async () => { setDraftDialog(null); autosave.declineOffer(); focusTitle(); }}>
+        <p>{t("drafts.decline.body", { ago: offerAgo })}</p>
       </Dialog>
     )}
     </div>

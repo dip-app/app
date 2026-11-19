@@ -1,0 +1,26 @@
+// English copy for autosaved form drafts (New event, New theme). US English, no em dashes. See docs/design/admin-drafts.md.
+
+export const drafts = {
+  "drafts.offer.event": "You have an unfinished event draft, saved {ago}.",
+  "drafts.offer.theme": "You have an unfinished theme draft, saved {ago}.",
+  "drafts.offer.replaces": "You also have an older draft, saved {ago}. Restoring it replaces what is on this page.",
+  "drafts.agoNow": "a moment ago",
+  "drafts.restore": "Restore draft",
+  "drafts.startFresh": "Start fresh",
+  "drafts.restored": "Draft restored. Check everything before you continue.",
+  "drafts.restored.datesReset": "Draft restored. Its date had passed, so we set the next free hour. Check the date and time.",
+  "drafts.restored.weeksReset": "Draft restored. Its weeks were no longer free, so we picked the next free ones. Check them.",
+  "drafts.status.saved": "Draft saved on this device",
+  "drafts.status.unavailable": "Draft not saved. Your browser is blocking storage, so keep this page open until you finish.",
+  "drafts.status.tooLarge": "Draft not saved. It is too long to keep.",
+  "drafts.status.otherTab": "Edited in another tab. Your next change replaces that draft.",
+  "drafts.deleteOld": "Delete old draft",
+  "drafts.decline.title": "Discard the saved draft?",
+  "drafts.decline.body": "The draft saved {ago} will be deleted. This can’t be undone.",
+  "drafts.replace.title": "Replace what is on this page?",
+  "drafts.replace.body": "Restoring the draft saved {ago} replaces what you have entered here.",
+  "drafts.discard.title": "Discard this draft?",
+  "drafts.discard.event": "The event you started and its saved draft will be deleted.",
+  "drafts.discard.theme": "The theme you started and its saved draft will be deleted.",
+  "drafts.discard.confirm": "Discard draft",
+} as const;

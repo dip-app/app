@@ -97,6 +97,15 @@ Guardrails: `src/lib/__tests__/userError.test.ts` (every callable code and reaso
 message in either language contains a bracketed status, a reason key or SDK wording) and the kit guard
 (`{error.message}` in JSX, `toast(error.message)` and `instanceof Error ? e.message` fail).
 
+## Autosaved drafts
+
+New event and New theme keep what the admin typed in this browser and offer it back on the next visit. The pieces are
+`DraftOffer` (the calm restore banner, built on `InlineNotice`: one outlined Restore draft, one quiet Start fresh, 44 px
+on phones) and `DraftStatusLine` (a polite `role="status"` line under the form buttons that stays silent until the first
+save) in `components/DraftUi.tsx`, driven by the `useFormDraft` hook. Use them for any other long create form; do not
+build a second banner. After a restore the form shows an `InlineNotice` (info, or warn when a date or week was reset), and
+focus moves to the first field. Rules, storage and edge cases: [admin-drafts.md](admin-drafts.md).
+
 ## Do and don't
 
 - Do give each screen one `primary`/`solid` action. Everything else is `outline`.
