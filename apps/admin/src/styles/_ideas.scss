@@ -96,7 +96,9 @@ $r-box: 8px;
   .opt-meta { font-size: 12px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
   // The check sits in the top-right corner; the name keeps that corner free so nothing collides with it.
   .opt-check { position: absolute; top: 10px; right: 10px; opacity: 0; color: $purple; }
-  .opt-input:checked + .opt-body { border-color: $purple; box-shadow: inset 0 0 0 1px $purple; background: $tint; .opt-check { opacity: 1; } }
+  .opt-input:checked + .opt-body { border-color: $purple; background: $tint; .opt-check { opacity: 1; }
+    /* The second border pixel is an overlay above the card contents, so the option art never covers it. */
+    &::after { content: ""; position: absolute; inset: 0; border-radius: $r-ctl - 1px; box-shadow: inset 0 0 0 1px $purple; pointer-events: none; } }
   .opt-input:focus-visible + .opt-body { outline: 2px solid $purple; outline-offset: 2px; }
   .opt[data-disabled="true"] { cursor: not-allowed; .opt-body { border-style: dashed; .opt-name, .opt-meta { color: #646a80; } } }
 
