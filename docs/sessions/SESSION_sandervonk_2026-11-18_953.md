@@ -89,6 +89,14 @@ This session did the backend phase of issue #259: server-written copy in each me
 - **Not run:** the whole unit suite (`npm run test:unit`), the emulator integration suites, and an Xcode build. The
   app code did not change; only the generated models did.
 
+- **CI follow-up.** I merged `origin/main`. The `Ideas.credits.test.tsx` "no data" test failed in CI with "Found multiple elements" ("Good match"). The cause is a timing race, not this change and not the date: the mock "Ideas for you" daily ideas resolve 50 ms after the step suggestions (450 ms vs 400 ms), and on a slower runner their fit labels were already on the page when the page-wide check ran. Adding an 800 ms wait reproduced it locally.
+
+  The fix is in the test. It now waits until the "Ideas for you" panel is `ready`, then checks the no-data step panel (`section.step-panel`) for the claim, so the result no longer depends on which request finishes first. After the fix:
+  - `Ideas.credits.test.tsx` passed 3 times in a row with `TZ=UTC`.
+  - `vitest run src/components` passed 296/296.
+  - Admin `tsc` and `eslint src` are clean.
+  - `check:generated`, `check:admin-i18n`, `check:backend-i18n` and `test:backend-i18n` all pass.
+
 ## Decisions
 
 - **Member locale.** It is server-owned, and a new small callable sets it rather than a client rule, so clients still
