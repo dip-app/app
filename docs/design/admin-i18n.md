@@ -29,7 +29,7 @@ import the catalogs and the message parser directly.
 
 Areas: `common`, `shell`, `ui`, `login`, `account`, `events`, `editor`, `dipbot`, `overview`, `members`, `audit`,
 `challenges`, `importer` (`import.*`), `roster`, `bugs`, `review`, `memberDetail`, `failure` (plain error copy, read through `userError()`), `attendees` (`attendees.*` and
-`album.*`), `themeForm`, `drafts` (autosaved form drafts), `ai`. 2,052 keys in total (337 of them `ai.*`).
+`album.*`), `themeForm`, `drafts` (autosaved form drafts), `ai`. 2,053 keys in total (337 of them `ai.*`).
 
 To add an area, create `en/<area>.ts` and `es/<area>.ts` and spread both into the two `index.ts` files.
 
