@@ -10,12 +10,15 @@ import { addDays, weekEndIso, weekStartIso } from "./weeks";
 import { intlLocale } from "./i18n";
 import { t } from "./aiStrings";
 
+/** A field the card can name: the suggested ones plus goal and unit, which follow a new theme picture while they hold its defaults. */
+export type FillField = ThemeSuggestField | "goal";
+
 /** Form order, used for the "Filled in" and "Kept" lists. */
-export const SUGGEST_FIELDS: readonly ThemeSuggestField[] = ["illustration", "title", "description", "tags", "week"];
+export const SUGGEST_FIELDS: readonly FillField[] = ["illustration", "title", "description", "tags", "week", "goal"];
 
 export interface ApplyOptions {
   /** Fields the admin changed by hand; they are kept unless `replaceMine`. */
-  mine: ReadonlySet<ThemeSuggestField>;
+  mine: ReadonlySet<FillField>;
   replaceMine?: boolean;
   /** Catalog tag ids the form shows; tags outside it are dropped. Null while the catalog is loading (tags are kept as sent). */
   knownTagIds: readonly string[] | null;
@@ -26,9 +29,9 @@ export interface ApplyOptions {
 export interface Applied {
   draft: ThemeDraft;
   /** Fields Dipbot set, in form order. */
-  filled: ThemeSuggestField[];
+  filled: FillField[];
   /** Fields the admin changed that hold a different value than the suggestion, in form order. */
-  kept: ThemeSuggestField[];
+  kept: FillField[];
 }
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -36,8 +39,8 @@ const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.
 /** Fills the draft from a suggestion: only untouched fields unless `replaceMine`. Goal and unit follow the picture's defaults when unchanged. */
 export function applySuggestion(draft: ThemeDraft, s: ThemeSuggestion, options: ApplyOptions): Applied {
   const next: ThemeDraft = { ...draft };
-  const filled: ThemeSuggestField[] = [];
-  const kept: ThemeSuggestField[] = [];
+  const filled: FillField[] = [];
+  const kept: FillField[] = [];
   const allowed = (field: ThemeSuggestField) => options.replaceMine === true || !options.mine.has(field);
 
   const url = `${THEME_URL_PREFIX}${s.themeKey}`;
@@ -49,6 +52,7 @@ export function applySuggestion(draft: ThemeDraft, s: ThemeSuggestion, options: 
       if (!draft.goalUnit.trim() || draft.goalUnit === previous.goalUnits[0]) next.goalUnit = picked.goalUnits[0] ?? draft.goalUnit;
       if (draft.goal === previous.defaultGoal && picked.goalUnits.length > 0) next.goal = picked.defaultGoal;
       filled.push("illustration");
+      if (next.goal !== draft.goal || next.goalUnit !== draft.goalUnit) filled.push("goal");
     } else kept.push("illustration");
   }
 
@@ -72,12 +76,12 @@ export function applySuggestion(draft: ThemeDraft, s: ThemeSuggestion, options: 
       if (allowed("week")) { next.startDate = startDate; next.endDate = endDate; filled.push("week"); } else kept.push("week");
     }
   }
-  const order = (list: ThemeSuggestField[]) => SUGGEST_FIELDS.filter((f) => list.includes(f));
+  const order = (list: FillField[]) => SUGGEST_FIELDS.filter((f) => list.includes(f));
   return { draft: next, filled: order(filled), kept: order(kept) };
 }
 
 /** "title, description and tags" in the current language. */
-export function fieldList(fields: readonly ThemeSuggestField[]): string {
+export function fieldList(fields: readonly FillField[]): string {
   const names = fields.map((f) => t(`themeSuggest.field.${f}`));
   try {
     return new Intl.ListFormat(intlLocale(), { style: "long", type: "conjunction" }).format(names);

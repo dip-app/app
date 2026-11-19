@@ -68,11 +68,11 @@ describe("Suggest theme on the New theme form", () => {
     expect(pressed()).toEqual(["Food & Drink", "Cooking"]);
     expect((document.getElementById("start-week") as HTMLSelectElement).value).toBe(week);
     expect(screen.getByRole("radio", { name: "Food & Drink" }).getAttribute("aria-checked")).toBe("true");
-    expect(document.querySelectorAll(".dipbot-tag").length).toBe(5);
+    expect(document.querySelectorAll(".dipbot-tag").length).toBe(7);
     expect(screen.getByRole("heading", { name: "Dipbot suggested “Recipe Swap”" })).toBeTruthy();
     expect(screen.getByText("Why Recipe Swap.")).toBeTruthy();
     expect(screen.getByRole("status", { name: "" }).textContent ?? "").toBeDefined();
-    expect(document.body.textContent).toContain("Dipbot filled in: theme picture, title, description, tags, and week. Undo is available.");
+    expect(document.body.textContent).toContain("Dipbot filled in: theme picture, title, description, tags, week, and goal. Undo is available.");
     const sent = suggestTheme.mock.calls[0]![0] as { requestId: string; locale: string };
     expect(sent.locale).toBe("en");
     expect(sent.requestId).toMatch(/^[0-9a-f-]{36}$/);
@@ -182,7 +182,7 @@ describe("applySuggestion", () => {
     const out = applySuggestion(draft, s("Recipe Swap", "food", ["tag-food", "tag-gone"]), { mine: new Set(), knownTagIds: ["tag-food"], freeMonday: () => null });
     expect(out.draft.tagIds).toEqual(["tag-food"]);
     expect(out.draft.goalUnit).not.toBe("workouts");
-    expect(out.filled).toEqual(["illustration", "title", "description", "tags"]);
+    expect(out.filled).toEqual(["illustration", "title", "description", "tags", "goal"]);
     const kept = applySuggestion({ ...draft, goalUnit: "laps" }, s("Recipe Swap", "food", ["tag-food"]), { mine: new Set(["tags"]), knownTagIds: null, freeMonday: () => null });
     expect(kept.draft.goalUnit).toBe("laps");
     expect(kept.kept).toEqual(["tags"]);

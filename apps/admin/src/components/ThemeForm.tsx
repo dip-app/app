@@ -26,8 +26,7 @@ import { ThemePreview } from "./ThemePreview";
 import { toast } from "./Toast";
 import { Button, ChipToggle, InlineNotice } from "@/components/kit";
 import { saveFailureMessage, userErrorMessage } from "@/lib/userError";
-import type { ThemeSuggestField } from "@/lib/adminTypes";
-import { applySuggestion, fieldList } from "@/lib/themeSuggest";
+import { type FillField, SUGGEST_FIELDS, applySuggestion, fieldList } from "@/lib/themeSuggest";
 import { t as tAi } from "@/lib/aiStrings";
 import { type PanelState, type SuggestRun, SuggestedTag, ThemeSuggestPanel, useThemeSuggest } from "./ThemeSuggest";
 
@@ -39,11 +38,11 @@ interface Props {
 }
 
 /** Which Suggest theme field a draft key belongs to (the admin's own edits are never overwritten without asking). */
-const SUGGEST_FIELD_OF: Partial<Record<keyof ThemeDraft, ThemeSuggestField>> = {
-  title: "title", description: "description", tagIds: "tags", startDate: "week", endDate: "week", coverImageURL: "illustration",
+const SUGGEST_FIELD_OF: Partial<Record<keyof ThemeDraft, FillField>> = {
+  title: "title", description: "description", tagIds: "tags", startDate: "week", endDate: "week", coverImageURL: "illustration", goal: "goal", goalUnit: "goal",
 };
 
-interface SuggestUndo { draft: ThemeDraft; mine: Set<ThemeSuggestField>; dipbot: Set<ThemeSuggestField>; touched: { tags: boolean; weeks: boolean }; edited: boolean }
+interface SuggestUndo { draft: ThemeDraft; mine: Set<FillField>; dipbot: Set<FillField>; touched: { tags: boolean; weeks: boolean }; edited: boolean }
 
 const FIELD_IDS: Record<string, string> = {
   coverImageURL: "theme-first", title: "title", description: "description", goal: "goal", goalUnit: "unit",
@@ -143,10 +142,11 @@ export function ThemeForm({ theme, onReload }: Props) {
 
   // Suggest theme (New theme page only): fields the admin changed by hand, fields Dipbot filled, the card and Undo.
   const suggest = useThemeSuggest();
-  const mine = useRef(new Set<ThemeSuggestField>());
-  const [dipbot, setDipbot] = useState<ReadonlySet<ThemeSuggestField>>(new Set());
+  const mine = useRef(new Set<FillField>());
+  const [dipbot, setDipbot] = useState<ReadonlySet<FillField>>(new Set());
   const [panel, setPanel] = useState<PanelState | null>(null);
-  const [closedRun, setClosedRun] = useState(0);
+  // The card can be closed; it comes back with the next press.
+  const [closedAttempt, setClosedAttempt] = useState(-1);
   const [announcement, setAnnouncement] = useState("");
   const undo = useRef<SuggestUndo | null>(null);
   const markMine = (key: keyof ThemeDraft) => {
@@ -223,7 +223,7 @@ export function ThemeForm({ theme, onReload }: Props) {
     if (result.filled.includes("tags")) touched.current.tags = true;
     if (result.filled.includes("week")) touched.current.weeks = true;
     const owned = new Set([...dipbot, ...result.filled].filter((field) => !mine.current.has(field)));
-    const filled = (["illustration", "title", "description", "tags", "week"] as const).filter((field) => owned.has(field));
+    const filled = SUGGEST_FIELDS.filter((field) => owned.has(field));
     setDraft(result.draft);
     setEdited(true);
     setErrors({});
@@ -355,13 +355,13 @@ export function ThemeForm({ theme, onReload }: Props) {
             {t(restoreNote === "weeksReset" ? "drafts.restored.weeksReset" : "drafts.restored")}
           </InlineNotice>
         )}
-        {suggest && suggest.phase !== "idle" && !(suggest.phase === "done" && closedRun === runId) && (
+        {suggest?.available && (suggest.phase !== "idle" || suggest.out) && closedAttempt !== suggest.attempt && (
           <ThemeSuggestPanel ctl={suggest} state={panel}
             onAnother={() => suggest.run && panel && applyRun(suggest.run, (panel.index + 1) % suggest.run.list.length)}
             onUndo={undoSuggestion}
             onReapply={() => suggest.run && panel && applyRun(suggest.run, panel.index)}
             onReplaceKept={() => suggest.run && panel && applyRun(suggest.run, panel.index, true)}
-            onClose={() => setClosedRun(runId)} />
+            onClose={() => setClosedAttempt(suggest.attempt)} />
         )}
         {suggest && <p className="sr-only" role="status" aria-live="polite">{announcement}</p>}
         {Object.keys(errors).length > 0 && !failure && (
@@ -397,7 +397,7 @@ export function ThemeForm({ theme, onReload }: Props) {
           </div>
           <div className="field">
             <label htmlFor="description">{t("themeForm.description")}{dipbot.has("description") && <SuggestedTag />}</label>
-            <textarea id="description" aria-describedby={describedBy("description")} value={draft.description} maxLength={THEME_LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
+            <textarea id="description" className={dipbot.has("description") ? "ts-grow" : undefined} aria-describedby={describedBy("description")} value={draft.description} maxLength={THEME_LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
             {err("description") && <span className="error" id="description-error">{err("description")}</span>}
           </div>
           <fieldset className="field">
@@ -456,13 +456,13 @@ export function ThemeForm({ theme, onReload }: Props) {
           <h2>{t("themeForm.goalReward")}</h2>
           <div className="row">
             <div className="field">
-              <label htmlFor="goal">{t("themeForm.goal")}</label>
+              <label htmlFor="goal">{t("themeForm.goal")}{dipbot.has("goal") && <SuggestedTag />}</label>
               <input id="goal" type="number" min={1} max={THEME_LIMITS.goalMax} step="any" inputMode="decimal" value={Number.isNaN(draft.goal) ? "" : draft.goal}
                 aria-invalid={invalid("goal")} aria-describedby={describedBy("goal")} onChange={(e) => set("goal", e.target.valueAsNumber)} />
               {err("goal") && <span className="error" id="goal-error">{err("goal")}</span>}
             </div>
             <div className="field">
-              <label htmlFor="unit">{t("themeForm.unit")}</label>
+              <label htmlFor="unit">{t("themeForm.unit")}{dipbot.has("goal") && <SuggestedTag />}</label>
               <input id="unit" list="unit-suggestions" value={draft.goalUnit} maxLength={THEME_LIMITS.goalUnitMax}
                 aria-invalid={invalid("goalUnit")} aria-describedby={describedBy("goalUnit")} onChange={(e) => set("goalUnit", e.target.value)} />
               <datalist id="unit-suggestions">{units.map((unit) => <option key={unit} value={unit} />)}</datalist>

@@ -15,7 +15,11 @@ $sg-line: #8f99f6;
 .content .form {
   .dipbot-tag { display: inline-flex; align-items: center; gap: 4px; height: 20px; margin-left: 8px; padding: 0 8px 0 5px; border-radius: 999px; background: $tint; color: $dipbot; font-size: 11.5px; font-weight: 600; line-height: 1; vertical-align: middle; white-space: nowrap; svg { flex: none; } }
   legend .dipbot-tag { vertical-align: baseline; }
+  // A description Dipbot wrote is shown whole, so it can be read before creating (browsers without field-sizing keep the fixed height).
+  textarea.ts-grow { field-sizing: content; min-height: 96px; max-height: 360px; }
 }
+
+.content .form .ts-out { grid-column: 1 / -1; margin: 0; }
 
 .content .theme-suggest {
   grid-column: 1 / -1; display: grid; gap: 10px; margin: 0; padding: 12px 14px; background: $card; border: 1px solid $card-line; border-radius: 8px; color: $ink; min-width: 0;
@@ -41,16 +45,18 @@ $sg-line: #8f99f6;
   .ts-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .ts-notice { margin: 0; }
 
-  .ts-hint { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid $card-line; min-width: 0;
+  .ts-hint { padding-top: 10px; border-top: 1px solid $card-line;
     label { font-size: 13px; font-weight: 600; } }
   .ts-hint-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0;
-    input { flex: 1 1 240px; max-width: 560px; min-width: 0; height: 36px; box-sizing: border-box; background: $white; }
+    input { flex: 1 1 240px; width: auto; max-width: 560px; min-width: 0; }
     .dip-action { flex: none; } }
+  .ts-head-error { justify-content: flex-end; }
 
   @media (max-width: 600px) {
     padding: 12px;
-    .ts-close, .ts-actions .pill-btn { min-height: 44px; }
-    .ts-close { display: inline-flex; align-items: center; }
-    .ts-hint-row { input { flex-basis: 100%; height: 44px; } .dip-action { width: 100%; justify-content: center; } }
+    .ts-actions .pill-btn { min-height: 44px; }
+    // A 44px tap target without making the row taller.
+    .ts-close { display: inline-flex; align-items: center; min-height: 44px; margin-block: -12px; padding-inline: 4px; }
+    .ts-hint-row { input { flex-basis: 100%; max-width: none; } .dip-action { width: 100%; justify-content: center; } }
   }
 }

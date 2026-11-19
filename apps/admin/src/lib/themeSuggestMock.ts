@@ -54,6 +54,16 @@ const LONG: Row = {
   ],
 };
 
+const LONG_ES: Row = {
+  title: "Semana de voluntariado y amabilidad en el vecindario", themeKey: "volunteering", tagIds: ["tag-volunteering", "tag-social", "tag-outdoors", "tag-wellness"], fitLabel: "great",
+  description: "Dedica al menos treinta minutos esta semana a ayudar en tu vecindario: recoge basura en una caminata, lleva ropa abrigada o libros a un punto de donación, ayuda a un vecino con las compras o colabora una hora en un banco de alimentos. Publica una foto de lo que hiciste o unas palabras, sin nombres, y anima lo que comparten los demás.",
+  why: [
+    "El voluntariado es un interés en aumento aquí y los temas solidarios mantuvieron activos a los miembros (10-19).",
+    "No hubo un tema de Voluntariado en las últimas 8 semanas, así que aporta variedad tras fitness y comida.",
+    "Las partes al aire libre funcionan casi con cualquier clima y las opciones bajo techo lo abren a todos.",
+  ],
+};
+
 /** Monday "YYYY-MM-DD" `weeks` weeks after the current week, in local time (the client checks it against its own week list). */
 function mondayIn(now: Date, weeks: number): string {
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -66,12 +76,12 @@ function mondayIn(now: Date, weeks: number): string {
 export function buildMockThemeSuggestions(scenario: ThemeSuggestScenario, locale: "en" | "es", generation: number, now: Date): ThemeSuggestion[] {
   const rows = locale === "es" ? ES : EN;
   const rotated = [...rows.slice(generation % rows.length), ...rows.slice(0, generation % rows.length)];
-  const list = scenario === "long" ? [LONG, ...rotated.slice(0, 3)] : rotated;
+  const list = scenario === "long" ? [locale === "es" ? LONG_ES : LONG, ...rotated.slice(0, 3)] : rotated;
   const fallback = scenario === "fallback";
   return list.map((row, i) => {
     const { fitLabel, ...rest } = row;
     return {
-      ...rest, id: `mock-theme-${generation}-${i}`, weekStart: mondayIn(now, 2 + i), reasonBasis: fallback ? "generic" : "company_data",
+      ...rest, id: `mock-theme-${generation}-${i}`, weekStart: mondayIn(now, 3 + i), reasonBasis: fallback ? "generic" : "company_data",
       source: fallback ? "catalog" : "agent", ...(fitLabel && !fallback ? { fitLabel } : {}),
       ...(fallback ? { why: [locale === "es" ? "Un hábito semanal fácil al que cualquiera puede unirse." : "An easy weekly habit anyone can join."] } : {}),
     };

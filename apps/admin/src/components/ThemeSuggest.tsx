@@ -2,13 +2,13 @@
 // @i18n-migrated
 
 import { type ReactNode, createContext, useCallback, useContext, useId, useRef, useState } from "react";
-import { type AiCredits, type ThemeSuggestField, type ThemeSuggestion, can } from "@/lib/adminTypes";
+import { type AiCredits, type ThemeSuggestion, can } from "@/lib/adminTypes";
 import { t } from "@/lib/aiStrings";
 import { ApiError } from "@/lib/contract";
 import { resetDate } from "@/lib/credits";
 import { getLocale } from "@/lib/i18n";
 import { labelOf } from "@/lib/suggestionLabels";
-import { fieldList } from "@/lib/themeSuggest";
+import { type FillField, fieldList } from "@/lib/themeSuggest";
 import { useApp } from "./AppProvider";
 import { DipbotAction } from "./DipbotAction";
 import { DipbotMark } from "./DipbotMark";
@@ -36,6 +36,8 @@ export interface ThemeSuggestController {
   credits: AiCredits | null;
   out: boolean;
   phase: SuggestPhase;
+  /** Increments on every press (and retry), so a closed card comes back with the next one. */
+  attempt: number;
   run: SuggestRun | null;
   error: unknown;
   start: (hint?: string) => void;
@@ -55,6 +57,7 @@ export function ThemeSuggestProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<SuggestPhase>("idle");
   const [run, setRun] = useState<SuggestRun | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
   // One key per press; a retry of a failed press reuses it so a lost answer is never charged twice.
   const last = useRef<{ requestId: string; hint: string } | null>(null);
   const runs = useRef(0);
@@ -72,6 +75,7 @@ export function ThemeSuggestProvider({ children }: { children: ReactNode }) {
     busy.current = true;
     last.current = { requestId, hint };
     setPhase("loading");
+    setAttempt((n) => n + 1);
     setError(null);
     try {
       const result = await api.suggestTheme({ requestId, ...(hint ? { hint } : {}), locale: getLocale() === "es" ? "es" : "en" });
@@ -98,7 +102,7 @@ export function ThemeSuggestProvider({ children }: { children: ReactNode }) {
     else start();
   }, [send, start]);
 
-  const value: ThemeSuggestController = { available, cost, credits, out, phase, run, error, start, retry };
+  const value: ThemeSuggestController = { available, cost, credits, out, phase, attempt, run, error, start, retry };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -122,8 +126,8 @@ export function SuggestedTag() {
 export interface PanelState {
   index: number;
   applied: boolean;
-  filled: ThemeSuggestField[];
-  kept: ThemeSuggestField[];
+  filled: FillField[];
+  kept: FillField[];
 }
 
 interface PanelProps {
@@ -141,7 +145,12 @@ export function ThemeSuggestPanel({ ctl, state, onAnother, onUndo, onReapply, on
   const uid = useId();
   const [hint, setHint] = useState("");
   const { phase, run } = ctl;
-  if (phase === "idle") return null;
+  if (phase === "idle") {
+    // Out of credits before the first press: say why the header action is off, on the page (a tooltip alone is not enough on touch).
+    return ctl.out && ctl.credits
+      ? <InlineNotice tone="info" className="ts-out">{t("limit.AI_CREDITS_EXHAUSTED", { date: resetDate(ctl.credits.resetsAt) })}</InlineNotice>
+      : null;
+  }
   const current = run && state ? run.list[state.index] ?? null : null;
   const loading = phase === "loading";
   const total = run?.list.length ?? 0;
@@ -160,14 +169,19 @@ export function ThemeSuggestPanel({ ctl, state, onAnother, onUndo, onReapply, on
       {phase === "error" && (exhausted
         ? <InlineNotice tone="warn" className="ts-notice">{t("limit.AI_CREDITS_EXHAUSTED", { date: resetDate(resetsAt) })}</InlineNotice>
         : <ErrorNotice error={ctl.error} className="ts-notice" dipbot fallback={t("themeSuggest.error")} onRetry={ctl.retry} retryLabel={t("themeSuggest.retry")} />)}
-      {phase === "error" && <h2 id={`${uid}-title`} className="sr-only">{t("themeSuggest.button")}</h2>}
+      {phase === "error" && (
+        <div className="ts-head ts-head-error">
+          <h2 id={`${uid}-title`} className="sr-only">{t("themeSuggest.button")}</h2>
+          <button type="button" className="ts-close link-btn" onClick={onClose}>{t("themeSuggest.close")}</button>
+        </div>
+      )}
 
       {!loading && current && state && (
         <>
           <div className="ts-head">
             <DipbotMark size={16} />
-            <h2 id={`${uid}-title`} className="ts-title">{t("themeSuggest.title", { title: current.title })}</h2>
-            {current.fitLabel && (
+            <h2 id={`${uid}-title`} className="ts-title">{t(state.applied ? "themeSuggest.title" : "themeSuggest.titleUndone", { title: current.title })}</h2>
+            {state.applied && current.fitLabel && (
               <span className="sg-tag" data-level={current.fitLabel}>
                 <span aria-hidden>{labelOf(current.fitLabel)}</span>
                 <span className="sr-only">{t("ideasForYou.fitSpoken", { label: labelOf(current.fitLabel).toLowerCase() })}</span>
@@ -176,10 +190,10 @@ export function ThemeSuggestPanel({ ctl, state, onAnother, onUndo, onReapply, on
             {total > 1 && <span className="ts-count">{t("themeSuggest.position", { n: state.index + 1, total })}</span>}
             <button type="button" className="ts-close link-btn" onClick={onClose}>{t("themeSuggest.close")}</button>
           </div>
-          <div className="ts-why">
+          {state.applied && <div className="ts-why">
             <span className="ts-label">{t("themeSuggest.whyLabel")}</span>
             <ul>{current.why.map((line) => <li key={line}>{line}</li>)}</ul>
-          </div>
+          </div>}
           {run?.outcome === "fallback" && <p className="ts-note">{t("themeSuggest.catalogNote")}</p>}
           {state.applied ? (
             <>
@@ -199,8 +213,8 @@ export function ThemeSuggestPanel({ ctl, state, onAnother, onUndo, onReapply, on
         </>
       )}
 
-      {!loading && (
-        <div className="ts-hint">
+      {!loading && phase !== "error" && (
+        <div className="ts-hint field">
           <label htmlFor={`${uid}-hint`}>{t("themeSuggest.hintLabel")}</label>
           <div className="ts-hint-row">
             <input id={`${uid}-hint`} value={hint} maxLength={200} placeholder={t("themeSuggest.hintPlaceholder")} onChange={(e) => setHint(e.target.value)}
