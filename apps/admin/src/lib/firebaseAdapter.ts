@@ -19,6 +19,7 @@ import {
   ApiError, type AdminEvent, type ApiErrorCode, type EventDraft, type EventStatus, type FieldErrors, type WindowConflict,
   normalizeDraft,
 } from "./contract";
+import { fieldMessage, stripStatus } from "./userError";
 
 export interface LiveConfig {
   firebase: FirebaseOptions;
@@ -69,7 +70,8 @@ export function apiErrorFrom(error: unknown): unknown {
   if (typeof raw !== "string") return error;
   const code = raw.replace(/^functions\//, "").replace(/^firestore\//, "");
   if (!API_CODES.includes(code as ApiErrorCode)) return error;
-  const serverMessage = String((error as { message?: unknown }).message ?? "Request failed.");
+  // The SDK appends the HTTP status ("Invalid request. [400]"); it is never part of what a person reads.
+  const serverMessage = stripStatus(String((error as { message?: unknown }).message ?? "Request failed."));
   const details = (error as { details?: { fields?: unknown; reason?: unknown; conflict?: unknown; messageKey?: unknown; messageParams?: unknown } }).details;
   // The server sends a stable catalog key next to its English message; outside English the portal shows its own text.
   const messageKey = typeof details?.messageKey === "string" ? details.messageKey : undefined;
@@ -78,7 +80,9 @@ export function apiErrorFrom(error: unknown): unknown {
   const fields: FieldErrors = {};
   if (Array.isArray(details?.fields)) {
     // Field names are draft-relative ("title", "venue.name"); a "draft."/"event." prefix is tolerated.
-    for (const field of details.fields) if (typeof field === "string") fields[field.replace(/^(draft|event)\./, "")] = message;
+    // A bare "Invalid request." under a field says nothing: it becomes "Check this field."
+    const fieldText = fieldMessage(message, messageKey);
+    for (const field of details.fields) if (typeof field === "string") fields[field.replace(/^(draft|event)\./, "")] = fieldText;
   }
   // The stable reason (e.g. CHALLENGE_WINDOW_OVERLAP) lets screens react precisely; unknown reasons fall back to the code.
   const reason = typeof details?.reason === "string" ? details.reason : undefined;

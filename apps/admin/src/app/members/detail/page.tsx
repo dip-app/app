@@ -15,8 +15,9 @@ import { type Member, type MemberPatch, ROLE_LABEL, type Role, can } from "@/lib
 import { ApiError } from "@/lib/contract";
 import { t } from "@/lib/i18n";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
+import { saveFailureMessage } from "@/lib/userError";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, ChipToggle, InlineNotice, Panel } from "@/components/kit";
+import { Button, ChipToggle, ErrorNotice, InlineNotice, Panel } from "@/components/kit";
 
 function roleDescription(role: Role): string {
   return t(`memberDetail.role.description.${role}`);
@@ -89,10 +90,9 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
         <span className="muted">{t("memberDetail.joined", { date: formatDate(member.createdAt) })}</span>
       </div>
       {error && (
-        <div className="banner error" role="alert">
-          <span>{error.message}</span>
-          {error.code === "aborted" && <Button variant="plain" onClick={onReload}>{t("memberDetail.reloadLatest")}</Button>}
-        </div>
+        error.code === "aborted"
+          ? <InlineNotice tone="error" title={t("failure.title.save")} action={<Button variant="plain" onClick={onReload}>{t("memberDetail.reloadLatest")}</Button>}>{saveFailureMessage(error, true)}</InlineNotice>
+          : <ErrorNotice error={error} title={t("failure.title.save")} />
       )}
 
       <div className="detail-layout">

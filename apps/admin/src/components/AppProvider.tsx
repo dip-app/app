@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { TagCatalogProvider } from "./TagCatalog";
 import { holdReadsFromQuery } from "@/lib/loadingHold";
+import { failFromQuery } from "@/lib/mockFailures";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
 import { Button, EmptyState } from "@/components/kit";
 import { BRAND, applyMemberLocale, initLocale, t } from "@/lib/i18n";
@@ -42,8 +43,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const live = readLiveConfig();
         created = live ? createFirebaseApi(live) : holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search);
       } else {
-        // `?loading=1` (mock only) keeps every page in its loading state for screenshots.
-        created = holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search);
+        // `?loading=1` (mock only) keeps every page in its loading state for screenshots; `?fail=` forces error states.
+        created = await failFromQuery(holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search), window.location.search);
       }
       if (cancelled) return;
       setApi(created);

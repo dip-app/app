@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Toaster, dismissAllToasts, toast } from "../Toast";
+import { Toaster, dismissAllToasts, toast, toastError } from "../Toast";
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => {
@@ -62,6 +62,23 @@ describe("Toast", () => {
     act(() => { toast("Saved."); });
     fireEvent.click(screen.getByRole("button", { name: "Dismiss notification" }));
     expect(screen.queryByText("Saved.")).toBeNull();
+  });
+
+  it("keeps error toasts until dismissed, with the error mark, and replaces a repeat instead of stacking", () => {
+    render(<Toaster />);
+    act(() => { toast("Export failed.", { tone: "error" }); toast("Export failed.", { tone: "error" }); });
+    expect(screen.getAllByText("Export failed.")).toHaveLength(1);
+    act(() => { vi.advanceTimersByTime(60_000); });
+    const item = screen.getByText("Export failed.").closest(".toast")!;
+    expect(item.querySelector("svg.alert-icon")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("toastError words any thrown value in plain language", () => {
+    render(<Toaster />);
+    act(() => { toastError(Object.assign(new Error("Invalid request. [400]"), { code: "functions/invalid-argument" })); });
+    expect(screen.getByRole("alert").textContent).toBe("DIP couldn’t accept these changes. Check them and try again; if it keeps happening, contact support.");
+    act(() => { toastError(new Error("weird"), "The export didn’t finish. Try again."); });
+    expect(screen.getByRole("alert").textContent).toContain("The export didn’t finish. Try again.");
   });
 
   it("keeps at most four toasts, newest last", () => {

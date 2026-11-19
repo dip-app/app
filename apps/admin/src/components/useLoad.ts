@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/contract";
 import { t } from "@/lib/i18n";
 import type { AdminApi } from "@/lib/api";
+import { userErrorMessage } from "@/lib/userError";
 import { useApp } from "./AppProvider";
 
 /** Loads data for a screen once signed in; `reload` refetches (used by "Try again" and after changes). */
@@ -35,6 +36,7 @@ export function useLoad<T>(load: (api: AdminApi) => Promise<T>, key: string = ""
   return { data, error, reload: useCallback(() => setAttempt((n) => n + 1), []), setData };
 }
 
+/** The plain-language sentence for a failed action (`userError`); `fallback` words an unknown failure. */
 export function describe(failure: unknown, fallback = t("common.actionFailed")): string {
-  return failure instanceof ApiError ? failure.message : fallback;
+  return userErrorMessage(failure, fallback);
 }

@@ -24,7 +24,8 @@ import { WhereSection } from "./WhereSection";
 import { WhenPicker } from "./WhenPicker";
 import { t as tAi } from "@/lib/aiStrings";
 import { t } from "@/lib/i18n";
-import { Button, ChipToggle } from "@/components/kit";
+import { Button, ChipToggle, InlineNotice } from "@/components/kit";
+import { saveFailureMessage } from "@/lib/userError";
 
 interface Props {
   /** Present when editing. */
@@ -58,6 +59,11 @@ export function EventForm({ event, onReload }: Props) {
   const [price, setPrice] = useState(() => (event ? centsToDollars(event.costCents) : ""));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<ApiError | null>(null);
+  const failureRef = useRef<HTMLDivElement>(null);
+  // A save that failed without a field to fix: focus the alert so it is read and seen (fields get focus themselves).
+  useEffect(() => {
+    if (failure && Object.keys(failure.fields).length === 0) failureRef.current?.focus();
+  }, [failure]);
   const [saving, setSaving] = useState(false);
   // IDs are opaque in production: the selector writes IDs and shows the catalog's names.
   const catalog = useTags();
@@ -188,7 +194,7 @@ export function EventForm({ event, onReload }: Props) {
           : t("events.form.createFailed"),
       );
       setFailure(apiError);
-      if (apiError.fields) setErrors(apiError.fields);
+      if (apiError.fields) { setErrors(apiError.fields); focusFirstInvalid(apiError.fields); }
     } finally {
       setSaving(false);
     }
@@ -202,17 +208,13 @@ export function EventForm({ event, onReload }: Props) {
     <form className="form" onSubmit={submit} noValidate>
       {fromAi && <p className="notice form-notice" role="status">{tAi("editor.fromAi")}</p>}
       {Object.keys(errors).length > 0 && !failure && (
-        <div className="banner error" role="alert">
-          <span>{t("events.form.fixFields", { count: Object.keys(errors).length })}</span>
-        </div>
+        <InlineNotice tone="error">{t("events.form.fixFields", { count: Object.keys(errors).length })}</InlineNotice>
       )}
       {failure && (
-        <div className="banner error" role="alert">
-          <span>{failure.message}</span>
-          {failure.code === "aborted" && onReload && (
-            <Button onClick={onReload}>{t("events.form.reloadLatest")}</Button>
-          )}
-        </div>
+        <InlineNotice tone="error" ref={failureRef} announce={Object.keys(failure.fields).length > 0} title={t("failure.title.save")}
+          action={failure.code === "aborted" && onReload ? <Button variant="plain" onClick={onReload}>{t("events.form.reloadLatest")}</Button> : undefined}>
+          {saveFailureMessage(failure, Boolean(onReload))}
+        </InlineNotice>
       )}
       <div className="section wide">
         <div className="field">

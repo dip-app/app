@@ -4,6 +4,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { t } from "@/lib/i18n";
+import { userErrorMessage } from "@/lib/userError";
+import { ErrorIcon } from "./kit/InlineNotice";
 
 export interface ToastOptions {
   tone?: "success" | "error";
@@ -21,12 +23,20 @@ let nextId = 1;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
 
-/** Shows a short confirmation (or error) at the bottom right. Safe to call from anywhere; needs a mounted <Toaster />. */
+/**
+ * Shows a short confirmation (or error) at the bottom right. Safe to call from anywhere; needs a mounted <Toaster />.
+ * Successes leave after 6 s; errors stay until dismissed. The same message again replaces the earlier toast.
+ * For a caught error use `toastError`, which never shows a code.
+ */
 export function toast(message: string, options: ToastOptions = {}): number {
   const item: ToastItem = { id: nextId++, message, tone: options.tone ?? "success", action: options.action };
-  items = [...items, item].slice(-MAX_VISIBLE);
+  items = [...items.filter((other) => other.message !== message), item].slice(-MAX_VISIBLE);
   emit();
   return item.id;
+}
+/** An error toast for anything thrown, in plain language (`userError`). `fallback` words an unknown failure. */
+export function toastError(error: unknown, fallback?: string): number {
+  return toast(userErrorMessage(error, fallback), { tone: "error" });
 }
 export function dismissToast(id: number) {
   items = items.filter((item) => item.id !== id);
@@ -46,10 +56,11 @@ function subscribe(listener: () => void) {
 function ToastView({ item }: { item: ToastItem }) {
   const [paused, setPaused] = useState(false);
   useEffect(() => {
-    if (paused) return;
+    // Errors stay until dismissed: a two-line message (longer in Spanish) needs more than 6 s.
+    if (paused || item.tone === "error") return;
     const timer = setTimeout(() => dismissToast(item.id), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [paused, item.id]);
+  }, [paused, item.id, item.tone]);
   return (
     <div
       className={`toast ${item.tone}`}
@@ -58,6 +69,7 @@ function ToastView({ item }: { item: ToastItem }) {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
+      {item.tone === "error" && <ErrorIcon />}
       <p className="toast-text">{item.message}</p>
       {item.action && (
         <button type="button" className="toast-btn" onClick={() => { void item.action!.onClick(); dismissToast(item.id); }}>{item.action.label}</button>

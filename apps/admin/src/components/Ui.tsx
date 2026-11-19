@@ -4,17 +4,21 @@
 import { useId } from "react";
 import type { ApiError } from "@/lib/contract";
 import { formatDate as formatDateIn, formatTime, t } from "@/lib/i18n";
+import { userError } from "@/lib/userError";
 import { Button, Chip, InlineNotice } from "./kit";
 import { PageSkeleton, type SkeletonLayout } from "./PageSkeletons";
 
+/** A page or section that could not load: the error alert with a title, and Try again (or Go back when it is gone). */
 export function LoadError({ error, onRetry, backHref, backLabel }: { error: ApiError; onRetry: () => void; backHref?: string; backLabel?: string }) {
   // Retrying a missing item never helps: offer the way back instead.
   const missing = error.code === "not-found" && backHref;
-  return (
-    <InlineNotice tone="error" action={missing ? <Button variant="plain" href={backHref}>{backLabel ?? t("common.goBack")}</Button> : <Button variant="plain" onClick={onRetry}>{t("common.tryAgain")}</Button>}>
-      {error.message}
-    </InlineNotice>
-  );
+  const shown = userError(error);
+  const action = missing
+    ? <Button variant="plain" href={backHref}>{backLabel ?? t("common.goBack")}</Button>
+    : shown.kind === "signedOut" ? <Button variant="plain" href="/login/">{t("failure.signIn")}</Button>
+      : <Button variant="plain" onClick={onRetry}>{t("common.tryAgain")}</Button>;
+  // The title says what failed when the message is generic ("Can’t reach DIP…"); a page's own sentence already does.
+  return <InlineNotice tone="error" title={shown.generic ? t("failure.title.load") : undefined} action={action}>{shown.message}</InlineNotice>;
 }
 
 /**

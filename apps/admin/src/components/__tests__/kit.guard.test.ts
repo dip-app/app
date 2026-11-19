@@ -32,9 +32,15 @@ describe("shared kit guard", () => {
     expect(offenders(/<button[^>]*className="chip\b/)).toEqual([]);
   });
 
-  it("no hand-written error banners outside the files still to migrate: use InlineNotice", () => {
-    const pending = ["app/members/detail/page.tsx", "components/EventForm.tsx", "components/ThemeForm.tsx", "app/import/page.tsx"];
-    expect(offenders(/className="banner error"/, pending)).toEqual([]);
+  it("no hand-written error banners: use InlineNotice or ErrorNotice", () => {
+    expect(offenders(/className="banner error"/)).toEqual([]);
+  });
+
+  it("no raw error text on screen: pass caught errors through userError (ErrorNotice, toastError, describe)", () => {
+    // `{error.message}` in JSX or `toast(error.message …)` would show the SDK's "Invalid request. [400]" or "internal [0]".
+    expect(offenders(/\{\s*(?:[\w.]*\.)?(?:error|failure|err|e|reason)\.message\s*\}/)).toEqual([]);
+    expect(offenders(/toast\(\s*(?:[\w.]*\.)?(?:error|failure|err|e)\.message/)).toEqual([]);
+    expect(offenders(/instanceof Error \? \w+\.message/)).toEqual([]);
   });
 
   it("no hand-written Dipbot action with a cost in its label: use DipbotAction", () => {

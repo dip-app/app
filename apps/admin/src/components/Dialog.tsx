@@ -3,8 +3,9 @@
 // @i18n-migrated
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Button } from "@/components/kit";
+import { Button, InlineNotice } from "@/components/kit";
 import { t } from "@/lib/i18n";
+import { userError } from "@/lib/userError";
 
 interface Props {
   title: string;
@@ -58,7 +59,9 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
     try {
       await onConfirm(reason.trim());
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : t("common.genericError"));
+      // A confirm dialog is one action, not a set of changes: a rejected request reads "DIP couldn’t do this."
+      const shown = userError(failure, { fallback: t("common.genericError") });
+      setError(shown.kind === "validation" && shown.generic ? t("failure.rejectedAction") : shown.message);
       setBusy(false);
     }
   }
@@ -75,7 +78,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
           <span className="hint" id={`${id}-h`}>{reason.trim().length < 3 ? t("common.dialog.reasonNeeded") : ""}{reasonHint} {t("common.dialog.reasonCount", { count: reason.trim().length, max: reasonMax })}</span>
         </div>
       )}
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div className="actions">
         <Button variant={danger ? "danger" : "primary"} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
           {busy ? busyLabel : confirmLabel}

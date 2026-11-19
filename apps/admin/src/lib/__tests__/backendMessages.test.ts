@@ -62,7 +62,8 @@ describe("typed error messages", () => {
     setLocale("es");
     const error = apiErrorFrom({ code: "functions/invalid-argument", message: "Invalid request.", details: { reason: "VALIDATION_FAILED", fields: ["title"], messageKey: "errors.validationFailed" } }) as { message: string; fields: Record<string, string> };
     expect(error.message).toBe(es["errors.validationFailed"]);
-    expect(error.fields).toEqual({ title: es["errors.validationFailed"] });
+    // A bare "Invalid request." under a field says nothing; the field gets "Check this field." instead.
+    expect(error.fields).toEqual({ title: es["failure.field"] });
   });
 
   it("fills params and falls back to the server text for unknown keys", () => {

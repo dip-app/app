@@ -16,7 +16,7 @@ import { LIST_PAGE_SIZE, ROLE_LABEL, type ResendResult, type RosterCounts, type 
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, InlineNotice } from "@/components/kit";
+import { Button, ErrorNotice, InlineNotice } from "@/components/kit";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
 type Filter = RosterState | "all";
@@ -181,7 +181,7 @@ function Roster() {
                 </tbody>
               </table>
             </TableRegion>
-            {list.error && <InlineNotice tone="error">{list.error.message}</InlineNotice>}
+            {list.error && <ErrorNotice error={list.error} />}
             {list.hasMore && <LoadMore shown={list.items.length} total={!searching && counts ? counts[filter] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
           </>
         )}

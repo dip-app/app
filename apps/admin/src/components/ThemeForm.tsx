@@ -21,7 +21,8 @@ import { RadioGrid } from "./RadioGrid";
 import { ThemeArt } from "./ThemeArt";
 import { ThemePreview } from "./ThemePreview";
 import { toast } from "./Toast";
-import { Button, ChipToggle } from "@/components/kit";
+import { Button, ChipToggle, InlineNotice } from "@/components/kit";
+import { saveFailureMessage, userErrorMessage } from "@/lib/userError";
 
 interface Props {
   /** Present when editing. */
@@ -59,6 +60,11 @@ export function ThemeForm({ theme, onReload }: Props) {
   const [draft, setDraft] = useState<ThemeDraft>(() => (theme ? normalizeThemeDraft(theme) : newDraft()));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<ApiError | null>(null);
+  const failureRef = useRef<HTMLDivElement>(null);
+  // A save that failed without a field to fix: focus the alert so it is read and seen (fields get focus themselves).
+  useEffect(() => {
+    if (failure && Object.keys(failure.fields).length === 0) failureRef.current?.focus();
+  }, [failure]);
   const [saving, setSaving] = useState(false);
   const catalog = useTags();
   const tags = catalog.tags;
@@ -186,9 +192,9 @@ export function ThemeForm({ theme, onReload }: Props) {
           ? overlapMessage(conflict)
           : error.conflict
             ? t("themeForm.error.overlap", { window: formatWindow(error.conflict.startDate, error.conflict.endDate) })
-            : error.message;
+            : userErrorMessage(error);
         setErrors({ startDate: message });
-        setFailure(new ApiError(error.code, message, {}, error.reason, error.conflict));
+        setFailure(new ApiError(error.code, message, { startDate: message }, error.reason, error.conflict));
         focusFirstInvalid({ startDate: message });
         return;
       }
@@ -199,7 +205,7 @@ export function ThemeForm({ theme, onReload }: Props) {
         t(editing ? "themeForm.error.unconfirmedSave" : "themeForm.error.createFailed"),
       );
       setFailure(apiError);
-      if (apiError.fields) setErrors(apiError.fields);
+      if (apiError.fields) { setErrors(apiError.fields); focusFirstInvalid(apiError.fields); }
     } finally {
       setSaving(false);
     }
@@ -215,17 +221,13 @@ export function ThemeForm({ theme, onReload }: Props) {
     <div className="form-layout">
       <form className="form" onSubmit={submit} noValidate>
         {Object.keys(errors).length > 0 && !failure && (
-          <div className="banner error" role="alert">
-            <span>{t("themeForm.fixFields", { count: Object.keys(errors).length })}</span>
-          </div>
+          <InlineNotice tone="error">{t("themeForm.fixFields", { count: Object.keys(errors).length })}</InlineNotice>
         )}
         {failure && (
-          <div className="banner error" role="alert">
-            <span>{failure.message}</span>
-            {failure.code === "aborted" && onReload && (
-              <Button onClick={onReload}>{t("themeForm.reloadLatest")}</Button>
-            )}
-          </div>
+          <InlineNotice tone="error" ref={failureRef} announce={Object.keys(failure.fields).length > 0} title={t("failure.title.save")}
+            action={failure.code === "aborted" && onReload ? <Button variant="plain" onClick={onReload}>{t("themeForm.reloadLatest")}</Button> : undefined}>
+            {saveFailureMessage(failure, Boolean(onReload))}
+          </InlineNotice>
         )}
 
         <div className="section wide">
