@@ -41,10 +41,10 @@ describe("name block in the nav", () => {
 });
 
 describe("UserSettings", () => {
-  it("shows Language first, then the weekly email section for admins", () => {
+  it("shows Language first, then the weekly email section for admins, then the other emails note", () => {
     render(<UserSettings />);
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(["Language", "Weekly ideas email"]);
+    expect(headings).toEqual(["Language", "Weekly ideas email", "Other emails from DIP"]);
     expect(screen.getByTestId("email-settings")).toBeTruthy();
   });
 
@@ -53,5 +53,7 @@ describe("UserSettings", () => {
     render(<UserSettings />);
     expect(screen.queryByTestId("email-settings")).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Language" })).toBeTruthy();
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Language", "Other emails from DIP"]);
   });
 });
