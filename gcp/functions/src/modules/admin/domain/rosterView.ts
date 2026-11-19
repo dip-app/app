@@ -25,8 +25,6 @@ export function toRosterEntry(id: string, entry: Doc): RosterEntry {
     source: entry.source === "import" ? "import" : entry.source === "signup" ? "signup" : "manual",
     createdAt: toIso(entry.createdAt), updatedAt: toIso(entry.updatedAt), revision: typeof entry.revision === "number" && entry.revision >= 1 ? entry.revision : 1,
   };
-  if (text(entry.managerEmail)) out.managerEmail = text(entry.managerEmail);
-  if (text(entry.startDate)) out.startDate = text(entry.startDate);
   if (typeof entry.importJobId === "string") out.importJobId = entry.importJobId;
   if (typeof entry.claimedBy === "string") out.claimedBy = entry.claimedBy;
   if (toIso(entry.claimedAt)) out.claimedAt = toIso(entry.claimedAt);

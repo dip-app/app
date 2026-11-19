@@ -97,7 +97,6 @@ export async function updateMember(deps: AdminDeps, caller: Caller | null, data:
       }
       const wanted: Doc = {
         role: req.role, teamIds: req.teamIds, workLocation: req.workLocation, department: req.department, jobTitle: req.jobTitle,
-        managerEmail: req.managerEmail, startDate: req.startDate,
       };
       const changes = diffFields({ ...member, teamIds: Array.isArray(member.teamIds) ? member.teamIds : [] }, wanted);
       if (changes.length === 0) return { contractVersion: 1, userId, revision, changedFields: [] } satisfies UpdateMemberResponse;

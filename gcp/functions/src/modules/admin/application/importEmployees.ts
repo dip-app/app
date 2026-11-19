@@ -9,10 +9,12 @@ import { DELETE_FIELD, paths, SERVER_TIME } from "../domain/ops";
 import { parseApplyImport, parseGetImport, parseImportEmployees } from "../domain/requests";
 import { payloadHash } from "../domain/reader";
 import {
-  chunkRows, decideRow, IMPORT_CHUNK_SIZE, IMPORT_MAX_ERRORS, planHashOf, planImport, progressFromTallies, tallyOf, totalsOf, type PlannedRow, type Tallies,
+  chunkRows, decideRow, IMPORT_CHUNK_SIZE, IMPORT_MAX_ERRORS, newTeamsOf, planHashOf, planImport, progressFromTallies, skippedTeamsOf, tallyOf, totalsOf,
+  type PlannedRow, type Tallies,
 } from "../domain/importPlan";
 import { authorize, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import { findMemberByEmail, loadEmployeeContext } from "./roster";
+import { createTeams, resolveTeamsLive } from "./teams";
 import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
 const LEASE_MS = 120_000;
@@ -37,12 +39,20 @@ async function scanAll(tx: AdminTransaction, collection: string, where: Readonly
 const iso = (value: unknown) => (value instanceof Date && Number.isFinite(value.getTime()) ? value.toISOString() : new Date(0).toISOString());
 const wirePlanRow = (row: PlannedRow): ImportRowPlan => ({
   rowNumber: row.rowNumber, email: row.email, action: row.action, target: row.target, changes: row.changes, errors: row.errors,
+  ...(row.notices?.length ? { notices: row.notices.slice(0, 20) } : {}),
 });
+
+/** Additive team fields of the plan response: present only when the plan creates or leaves out a team. */
+function teamFields(rows: PlannedRow[]): Pick<ImportEmployeesResponse, "newTeams" | "skippedTeams"> {
+  const newTeams = newTeamsOf(rows);
+  const skippedTeams = skippedTeamsOf(rows).slice(0, 200);
+  return { ...(newTeams.length ? { newTeams } : {}), ...(skippedTeams.length ? { skippedTeams } : {}) };
+}
 
 function responseFrom(jobId: string, job: Doc, rows: PlannedRow[]): ImportEmployeesResponse {
   return {
     contractVersion: 1, jobId, status: "planned", totals: job.totals as ImportEmployeesResponse["totals"], rows: rows.map(wirePlanRow),
-    planHash: job.planHash as string, chunkCount: job.chunkCount as number,
+    planHash: job.planHash as string, chunkCount: job.chunkCount as number, ...teamFields(rows),
   };
 }
 
@@ -101,6 +111,7 @@ export async function importEmployees(deps: AdminDeps, caller: Caller | null, da
   const totals = totalsOf(rows);
   const planHash = planHashOf(rows);
   const chunks = chunkRows(rows, IMPORT_CHUNK_SIZE);
+  const teams = teamFields(rows);
   return deps.store.runTransaction(async tx => {
     const actor = await authorize(tx, authenticated, req.companyId, "import.run");
     const receipt = await tx.get(receiptPath(actor));
@@ -109,7 +120,7 @@ export async function importEmployees(deps: AdminDeps, caller: Caller | null, da
       companyId: actor.companyId, status: "planned", ...(req.fileName ? { fileName: req.fileName } : {}), totals,
       progress: { processed: 0, total: rows.length, created: 0, updated: 0, unchanged: 0, failed: 0 },
       planHash, chunkCount: chunks.length, nextChunk: 0, errors: [], errorsTruncated: false, createdBy: actor.uid, createdAt: SERVER_TIME, updatedAt: SERVER_TIME,
-      expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS),
+      expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS), ...(teams.newTeams ? { newTeams: teams.newTeams } : {}),
     });
     chunks.forEach((chunk, index) => tx.create(paths.importChunk(actor.companyId, jobId, index), { index, rows: chunk, expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS) }));
     tx.create(receiptPath(actor), { command: "importEmployeesV1", hash, jobId, createdAt: now, expireAt: new Date(now.getTime() + 30 * 86_400_000) });
@@ -117,43 +128,53 @@ export async function importEmployees(deps: AdminDeps, caller: Caller | null, da
       id: `${actor.uid}_${req.requestId}`, action: "import.plan", targetType: "import", targetId: jobId,
       summary: `Planned an employee import of ${rows.length} rows (${totals.create} new, ${totals.update} updates, ${totals.invalid} invalid)`,
       summaryKey: "import.plan", summaryParams: { rows: rows.length, create: totals.create, update: totals.update, invalid: totals.invalid },
-      changes: [change("rows", null, rows.length), change("invalid", null, totals.invalid)], requestId: req.requestId,
+      changes: [change("rows", null, rows.length), change("invalid", null, totals.invalid), ...(teams.newTeams ? [change("newTeams", null, teams.newTeams.length)] : [])],
+      requestId: req.requestId,
     });
-    return { contractVersion: 1, jobId, status: "planned", totals, rows: rows.map(wirePlanRow), planHash, chunkCount: chunks.length } satisfies ImportEmployeesResponse;
+    return { contractVersion: 1, jobId, status: "planned", totals, rows: rows.map(wirePlanRow), planHash, chunkCount: chunks.length, ...teams } satisfies ImportEmployeesResponse;
   });
 }
 
-type RowOutcome = ImportRowResult;
+/** A row result plus the number of teams its transaction created (kept off the wire row, summed into the job progress). */
+interface RowOutcome { result: ImportRowResult; teamsCreated: number }
 
-/** Applies one planned row in its own transaction against live data; every failure is contained to the row. */
+/**
+ * Applies one planned row in its own transaction against live data; every failure is contained to the row. Teams are re-checked
+ * live: a new team named by the plan is created here (deterministic id, so concurrent rows and imports converge on one team), an
+ * archived or missing team is left out. A team problem never fails the row.
+ */
 async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: PlannedRow, now: Date): Promise<RowOutcome> {
-  const fail = (code: string, message: string): RowOutcome => ({ rowNumber: row.rowNumber, email: row.email, outcome: "failed", errorCode: code, message });
+  const fail = (code: string, message: string): RowOutcome => ({ result: { rowNumber: row.rowNumber, email: row.email, outcome: "failed", errorCode: code, message }, teamsCreated: 0 });
   if (row.action === "invalid" || !row.record) {
     const first = row.errors[0];
     return fail(first?.code ?? "INVALID_ROW", first?.message ?? "Row is invalid.");
   }
-  const record = row.record;
+  const planned = row.record;
   try {
     return await deps.store.runTransaction(async tx => {
       // A row applied by an earlier (interrupted) attempt keeps its recorded outcome, so counters stay exact on a retry.
       const resultPath = paths.importResult(actor.companyId, jobId, row.rowNumber);
       const prior = await tx.get(resultPath);
       if (prior && (prior.outcome === "created" || prior.outcome === "updated" || prior.outcome === "unchanged")) {
-        return { rowNumber: row.rowNumber, email: row.email, outcome: prior.outcome } satisfies RowOutcome;
+        const teamsCreated = typeof prior.teamsCreated === "number" && prior.teamsCreated > 0 ? prior.teamsCreated : 0;
+        return { result: { rowNumber: row.rowNumber, email: row.email, outcome: prior.outcome }, teamsCreated };
       }
-      const recorded = (outcome: "created" | "updated" | "unchanged"): RowOutcome => {
-        tx.create(resultPath, { rowNumber: row.rowNumber, email: row.email, outcome, createdAt: now, expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS) });
-        return { rowNumber: row.rowNumber, email: row.email, outcome };
-      };
-      for (const teamId of record.teamIds ?? []) {
-        const team = await tx.get(paths.team(actor.companyId, teamId));
-        if (!team || team.archived === true) return fail("TEAM_NOT_FOUND", "A team in this row no longer exists.");
-      }
+      // Reads first (Firestore transactions read before they write): teams, member, roster entry.
+      const teams = planned.teamIds ? await resolveTeamsLive(tx, actor.companyId, planned.teamIds, row.newTeams ?? []) : null;
+      const record = teams ? { ...planned, teamIds: teams.teamIds } : planned;
       const member = await findMemberByEmail(tx, actor, record.email);
       const hash = emailHash(record.email);
       const entry = await tx.get(paths.rosterEntry(actor.companyId, hash));
       const decision = decideRow(record, member?.data, entry ?? undefined);
       const auditId = `${actor.uid}_${jobId}_${row.rowNumber}`;
+      const recorded = (outcome: "created" | "updated" | "unchanged"): RowOutcome => {
+        const teamsCreated = outcome === "unchanged" ? 0 : teams?.create.length ?? 0;
+        if (teamsCreated > 0) createTeams(tx, actor, teams!.create, `${actor.uid}_${jobId}`, jobId);
+        tx.create(resultPath, {
+          rowNumber: row.rowNumber, email: row.email, outcome, ...(teamsCreated > 0 ? { teamsCreated } : {}), createdAt: now, expireAt: new Date(now.getTime() + IMPORT_RETENTION_MS),
+        });
+        return { result: { rowNumber: row.rowNumber, email: row.email, outcome }, teamsCreated };
+      };
       if (decision.kind === "error") return fail(decision.issue.code, decision.issue.message);
       if (decision.action === "unchanged") return recorded("unchanged");
       if (decision.kind === "member" && member) {
@@ -220,8 +241,10 @@ export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null
     return { contractVersion: 1, jobId: req.jobId, status: claimed.job.status as ApplyEmployeeImportResponse["status"], done: true, progress: progressOf(claimed.job), results: [] };
   }
   const { actor, chunkIndex, rows } = claimed;
-  const results: RowOutcome[] = [];
-  for (const row of rows) results.push(await applyRow(deps, actor, req.jobId, row, now));
+  const outcomes: RowOutcome[] = [];
+  for (const row of rows) outcomes.push(await applyRow(deps, actor, req.jobId, row, now));
+  const results = outcomes.map(o => o.result);
+  const teamsCreated = outcomes.reduce((sum, o) => sum + o.teamsCreated, 0);
 
   return deps.store.runTransaction(async tx => {
     const job = await tx.get(paths.importJob(actor.companyId, req.jobId));
@@ -230,7 +253,7 @@ export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null
     const before = progressOf(job);
     const legacy: Tallies = !job.tallies && chunkIndex > 0
       ? { legacy: { created: before.created, updated: before.updated, unchanged: before.unchanged, failed: before.failed } } : {};
-    const tallies: Tallies = { ...legacy, ...((job.tallies as Tallies | undefined) ?? {}), [String(chunkIndex)]: tallyOf(results) };
+    const tallies: Tallies = { ...legacy, ...((job.tallies as Tallies | undefined) ?? {}), [String(chunkIndex)]: { ...tallyOf(results), ...(teamsCreated > 0 ? { teamsCreated } : {}) } };
     const progress = progressFromTallies(tallies, before.total);
     const failed = results.filter(r => r.outcome === "failed");
     const chunkRowNumbers = new Set(rows.map(r => r.rowNumber));
@@ -248,7 +271,10 @@ export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null
         id: `${actor.uid}_${req.jobId}_done`, action: "import.apply", targetType: "import", targetId: req.jobId,
         summary: `Applied an employee import: ${progress.created} invited, ${progress.updated} updated, ${progress.failed} failed`,
         summaryKey: "import.apply", summaryParams: { invited: progress.created, updated: progress.updated, failed: progress.failed },
-        changes: [change("created", null, progress.created), change("updated", null, progress.updated), change("failed", null, progress.failed)], requestId: req.jobId,
+        changes: [
+          change("created", null, progress.created), change("updated", null, progress.updated), change("failed", null, progress.failed),
+          ...(progress.teamsCreated ? [change("teamsCreated", null, progress.teamsCreated)] : []),
+        ], requestId: req.jobId,
       });
     }
     return { contractVersion: 1, jobId: req.jobId, status, done, progress, results } satisfies ApplyEmployeeImportResponse;
@@ -271,6 +297,7 @@ export async function getEmployeeImport(deps: AdminDeps, caller: Caller | null, 
         totals: job.totals as GetEmployeeImportResponse["job"]["totals"], progress: progressOf(job), planHash: job.planHash as string,
         chunkCount: job.chunkCount as number, nextChunk: job.nextChunk as number, errors: (job.errors as ImportRowResult[]) ?? [],
         errorsTruncated: job.errorsTruncated === true, createdBy: job.createdBy as string, createdAt: iso(job.createdAt), updatedAt: iso(job.updatedAt),
+        ...(Array.isArray(job.newTeams) && job.newTeams.length ? { newTeams: job.newTeams as NonNullable<GetEmployeeImportResponse["job"]["newTeams"]> } : {}),
       },
     } satisfies GetEmployeeImportResponse;
   });

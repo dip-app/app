@@ -58,8 +58,6 @@ export class FirestoreMembershipStore implements MembershipStore {
             teamIds: Array.isArray(teams) ? teams.filter((t): t is string => typeof t === "string") : [],
             workLocation: text("workLocation"), department: text("department"), jobTitle: text("jobTitle"),
           };
-          if (text("managerEmail")) claim.managerEmail = text("managerEmail");
-          if (text("startDate")) claim.startDate = text("startDate");
           return claim;
         },
         recordRosterJoin(companyId, entryId, action, uid, profile) {
@@ -67,8 +65,6 @@ export class FirestoreMembershipStore implements MembershipStore {
           const memberFields = {
             email: profile.email.toLowerCase(), displayName: profile.displayName, role: profile.role, teamIds: profile.teamIds ?? [],
             workLocation: profile.workLocation ?? "", department: profile.department, jobTitle: profile.jobTitle,
-            ...(profile.managerEmail !== undefined ? { managerEmail: profile.managerEmail } : {}),
-            ...(profile.startDate !== undefined ? { startDate: profile.startDate } : {}),
           };
           const claimed = { status: "claimed", memberStatus: "active", claimedBy: uid, claimedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
           if (action === "claim") {

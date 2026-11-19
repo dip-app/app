@@ -39,14 +39,22 @@ describe("importer (Spanish)", () => {
     expect(t("import.apply", { count: 1 })).toBe("Aplicar 1 cambio");
     expect(t("import.apply", { count: 1200 })).toBe("Aplicar 1200 cambios");
     expect(t("import.confirm.added", { create: 1, update: 2 })).toBe("Se agrega 1 persona nueva a la lista de personal y se actualizan 2 registros existentes.");
-    expect(fieldLabel("startDate")).toBe("Fecha de inicio");
+    expect(fieldLabel("teamIds")).toBe("Equipos");
     expect(fieldLabel("somethingElse")).toBe("somethingElse");
+    expect(t("import.preview.row")).toBe("Fila");
+    expect(t("import.teams.new", { count: 2, names: "Platform, Mentors" })).toBe("2 equipos nuevos que se crearán: Platform, Mentors.");
+    expect(t("import.preview.ignored", { columns: t("import.preview.notUsed", { column: "managerEmail" }) })).toBe("Columnas ignoradas: managerEmail (no se usa).");
+    setLocale("en");
+    expect(t("import.preview.row")).toBe("Row");
+    expect(t("import.teams.new", { count: 2, names: "Platform, Mentors" })).toBe("2 new teams to create: Platform, Mentors.");
+    expect(t("import.teams.new", { count: 1, names: "Platform" })).toBe("New team to create: Platform.");
+    expect(t("import.preview.ignored", { columns: t("import.preview.notUsed", { column: "managerEmail" }) })).toBe("Ignored columns: managerEmail (not used).");
   });
 });
 
 describe("importer validation (Spanish)", () => {
   it("translates row, mapping and file messages", () => {
-    const row = { email: "nope", displayName: "", role: "", teams: [], department: "", jobTitle: "", workLocation: "", managerEmail: "", startDate: "" } as const;
+    const row = { email: "nope", displayName: "", role: "", teams: [], department: "", jobTitle: "", workLocation: "" } as const;
     setLocale("es");
     expect(validateRow({ ...row, teams: [] }, "acme.com")).toEqual(["El correo no es válido."]);
     expect(mappingIssues(["skip"]).errors).toEqual(["Elige qué columna contiene correo. Es obligatorio."]);

@@ -44,7 +44,7 @@ export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
   const claimed = d.status === "claimed";
   return {
     entryId: id, email: str(d.email), displayName: str(d.displayName), role: roleOf(d.role), teamIds: strings(d.teamIds), workLocation: str(d.workLocation),
-    department: str(d.department), jobTitle: str(d.jobTitle), managerEmail: str(d.managerEmail), startDate: str(d.startDate),
+    department: str(d.department), jobTitle: str(d.jobTitle),
     state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
     ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), ...(str(d.memberPhotoURL) ? { photoURL: str(d.memberPhotoURL) } : {}), ...(str(d.memberAvatarId) ? { avatarId: str(d.memberAvatarId) } : {}), invitedAt: iso(d.createdAt),
     ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
@@ -319,8 +319,6 @@ export function employeeInput(row: ImportRow) {
     ...(row.department ? { department: row.department } : {}),
     ...(row.jobTitle ? { jobTitle: row.jobTitle } : {}),
     ...(row.workLocation ? { workLocation: row.workLocation } : {}),
-    ...(row.managerEmail ? { managerEmail: row.managerEmail } : {}),
-    ...(row.startDate ? { startDate: row.startDate } : {}),
   };
 }
 
@@ -517,6 +515,7 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
         rows: data.rows.map((r) => ({
           ...r, changes: (r.changes ?? []).map((c) => ({ field: c.field, before: c.before ?? "", after: c.after ?? "" })),
         })),
+        ...(data.newTeams?.length ? { newTeams: data.newTeams } : {}), ...(data.skippedTeams?.length ? { skippedTeams: data.skippedTeams } : {}),
       };
     }),
     applyImportStep: (jobId, planHash) => run(async () => {

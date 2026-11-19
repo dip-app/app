@@ -56,11 +56,11 @@ describe("csv", () => {
 
 describe("import file", () => {
   const header = ["Email", "Name", "Role", "Teams", "Department", "Job title", "Location"];
-  it("reads aliases, flags bad rows locally and keeps spreadsheet lines", () => {
+  it("reads aliases, flags bad rows locally and keeps spreadsheet row numbers", () => {
     const parsed = rowsFromTable([header, ["Sam@Acme.com", "Sam", "", "Platform;Design", "Eng", "Dev", "Remote"], ["bad", "X", "", "", "", "", ""], ["sam@acme.com", "Dup", "", "", "", "", ""], ["x@other.com", "Out", "", "", "", "", ""]], "acme.com");
     expect(parsed.rows[0]).toMatchObject({ email: "sam@acme.com", role: "", teams: ["Platform", "Design"], workLocation: "Remote" });
     expect(parsed.localErrors.get(3)).toBeTruthy();
-    expect(parsed.localErrors.get(4)?.join()).toContain("Duplicate of line 2");
+    expect(parsed.localErrors.get(4)?.join()).toContain("Duplicate of row 2");
     expect(parsed.localErrors.get(5)?.join()).toContain("@acme.com");
     expect(parsed.localErrors.has(2)).toBe(false);
   });
@@ -86,24 +86,27 @@ describe("import flow (mock callables)", () => {
     ["new.person@acme.com", "New Person", "member", "Platform", "Eng", "Dev", "Remote"], // create
     ["pat@acme.com", "Pat Member", "", "", "", "", "Berlin"], // update location
     ["casey.novak@acme.com", "", "", "", "", "", ""], // blank cells keep everything: unchanged
-    ["new.two@acme.com", "Two", "member", "Nope", "", "", ""], // unknown team
+    ["new.two@acme.com", "Two", "member", "Book Club; book  club; mentors", "", "", ""], // unknown team: created once, not an error
     ["bad-email", "X", "", "", "", "", ""], // rejected in the browser
   ];
   it("previews without writing, then applies chunk by chunk and idempotently", async () => {
     const api = await as("admin");
     const parsed = rowsFromTable(sheet, "acme.com");
     const plan = await planAll(api, parsed, "request-0001", "people.csv");
-    expect(planCounts(plan.rows)).toEqual({ create: 1, update: 1, unchanged: 1, invalid: 2 });
+    expect(planCounts(plan.rows)).toEqual({ create: 2, update: 1, unchanged: 1, invalid: 1 });
     expect(plan.rows.find((r) => r.email === "pat@acme.com")).toMatchObject({ line: 3, changes: [{ field: "workLocation", after: "Berlin" }] });
-    expect(plan.rows.find((r) => r.email === "new.two@acme.com")?.errors[0]).toMatch(/Unknown team/);
+    expect(plan.newTeams.map((team) => team.name)).toEqual(["Book Club"]);
+    expect(plan.rows.find((r) => r.email === "new.two@acme.com")?.errors).toEqual([]);
     expect((await api.listRosterPage({ query: "new.person", state: "all" })).rows).toHaveLength(0);
     // Same request and rows returns the same job; the same request with other rows is refused.
     expect((await planAll(api, parsed, "request-0001", "people.csv")).jobId).toBe(plan.jobId);
     await expect(planAll(api, rowsFromTable([["email", "name"], ["x@acme.com", "X"]], "acme.com"), "request-0001", "other.csv")).rejects.toMatchObject({ reason: "REQUEST_REUSED" });
 
     const steps: number[] = [];
-    await applyAll(api, plan.jobId, plan.planHash, (step) => steps.push(step.results.length));
+    let teamsCreated = 0;
+    await applyAll(api, plan.jobId, plan.planHash, (step) => { steps.push(step.results.length); teamsCreated = step.progress.teamsCreated ?? 0; });
     expect(steps).toEqual([4]);
+    expect(teamsCreated).toBe(1);
     const roster = await api.listRosterPage({ query: "new.person", state: "all" });
     expect(roster.rows.find((r) => r.email === "new.person@acme.com")?.state).toBe("invited");
     expect((await api.getMember("uid-member")).workLocation).toBe("Berlin");

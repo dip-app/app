@@ -50,13 +50,11 @@ public struct AppUser: Codable, Equatable, Sendable {
     public var workLocation: String?
     public var teamIds: [String]?
     public var status: String?
-    public var managerEmail: String?
-    public var startDate: String?
     public var revision: Int?
     public var statusUpdatedAt: Date?
     public var locale: String?
 
-    public init(id: String? = nil, companyId: String, displayName: String, email: String, photoURL: String, avatarId: String, department: String, jobTitle: String, city: String, role: String, interestTagIds: [String], travelRadiusMiles: Int, availability: [String], friendIds: [String], favoritePhotoIds: [String], pointsBalance: Int, createdAt: Date, workLocation: String? = nil, teamIds: [String]? = nil, status: String? = nil, managerEmail: String? = nil, startDate: String? = nil, revision: Int? = nil, statusUpdatedAt: Date? = nil, locale: String? = nil) {
+    public init(id: String? = nil, companyId: String, displayName: String, email: String, photoURL: String, avatarId: String, department: String, jobTitle: String, city: String, role: String, interestTagIds: [String], travelRadiusMiles: Int, availability: [String], friendIds: [String], favoritePhotoIds: [String], pointsBalance: Int, createdAt: Date, workLocation: String? = nil, teamIds: [String]? = nil, status: String? = nil, revision: Int? = nil, statusUpdatedAt: Date? = nil, locale: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.displayName = displayName
@@ -77,8 +75,6 @@ public struct AppUser: Codable, Equatable, Sendable {
         self.workLocation = workLocation
         self.teamIds = teamIds
         self.status = status
-        self.managerEmail = managerEmail
-        self.startDate = startDate
         self.revision = revision
         self.statusUpdatedAt = statusUpdatedAt
         self.locale = locale
@@ -1255,8 +1251,6 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var workLocation: String
     public var department: String
     public var jobTitle: String
-    public var managerEmail: String?
-    public var startDate: String?
     public var status: String
     public var source: String
     public var importJobId: String?
@@ -1275,7 +1269,7 @@ public struct RosterEntry: Codable, Equatable, Sendable {
     public var inviteEmailCount: Int?
     public var lastInviteEmailAt: Date?
 
-    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, managerEmail: String? = nil, startDate: String? = nil, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, memberPhotoURL: String? = nil, memberAvatarId: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil, inviteEmailCount: Int? = nil, lastInviteEmailAt: Date? = nil) {
+    public init(id: String? = nil, companyId: String, email: String, displayName: String, role: String, teamIds: [String], workLocation: String, department: String, jobTitle: String, status: String, source: String, importJobId: String? = nil, claimedBy: String? = nil, memberPhotoURL: String? = nil, memberAvatarId: String? = nil, claimedAt: Date? = nil, invitedBy: String? = nil, createdAt: Date, updatedAt: Date, revision: Int, memberStatus: String? = nil, resendCount: Int? = nil, lastResentAt: Date? = nil, lastResentBy: String? = nil, inviteEmailCount: Int? = nil, lastInviteEmailAt: Date? = nil) {
         self.id = id
         self.companyId = companyId
         self.email = email
@@ -1285,8 +1279,6 @@ public struct RosterEntry: Codable, Equatable, Sendable {
         self.workLocation = workLocation
         self.department = department
         self.jobTitle = jobTitle
-        self.managerEmail = managerEmail
-        self.startDate = startDate
         self.status = status
         self.source = source
         self.importJobId = importJobId
@@ -1320,13 +1312,11 @@ public struct AdminMemberSummary: Codable, Equatable, Sendable {
     public var city: String
     public var workLocation: String
     public var teamIds: [String]
-    public var managerEmail: String?
-    public var startDate: String?
     public var pointsBalance: Int?
     public var revision: Int
     public var createdAt: Date
 
-    public init(userId: String, email: String, displayName: String, avatarId: String, photoURL: String, role: String, status: String, department: String, jobTitle: String, city: String, workLocation: String, teamIds: [String], managerEmail: String? = nil, startDate: String? = nil, pointsBalance: Int? = nil, revision: Int, createdAt: Date) {
+    public init(userId: String, email: String, displayName: String, avatarId: String, photoURL: String, role: String, status: String, department: String, jobTitle: String, city: String, workLocation: String, teamIds: [String], pointsBalance: Int? = nil, revision: Int, createdAt: Date) {
         self.userId = userId
         self.email = email
         self.displayName = displayName
@@ -1339,8 +1329,6 @@ public struct AdminMemberSummary: Codable, Equatable, Sendable {
         self.city = city
         self.workLocation = workLocation
         self.teamIds = teamIds
-        self.managerEmail = managerEmail
-        self.startDate = startDate
         self.pointsBalance = pointsBalance
         self.revision = revision
         self.createdAt = createdAt
@@ -1378,14 +1366,36 @@ public struct ImportRowPlan: Codable, Equatable, Sendable {
     public var target: String
     public var changes: [ImportFieldChange]
     public var errors: [ImportRowError]
+    public var notices: [ImportRowError]?
 
-    public init(rowNumber: Int, email: String, action: String, target: String, changes: [ImportFieldChange], errors: [ImportRowError]) {
+    public init(rowNumber: Int, email: String, action: String, target: String, changes: [ImportFieldChange], errors: [ImportRowError], notices: [ImportRowError]? = nil) {
         self.rowNumber = rowNumber
         self.email = email
         self.action = action
         self.target = target
         self.changes = changes
         self.errors = errors
+        self.notices = notices
+    }
+}
+
+public struct ImportNewTeam: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct ImportSkippedTeam: Codable, Equatable, Sendable {
+    public var name: String
+    public var reason: String
+
+    public init(name: String, reason: String) {
+        self.name = name
+        self.reason = reason
     }
 }
 
@@ -1412,14 +1422,16 @@ public struct ImportProgress: Codable, Equatable, Sendable {
     public var updated: Int
     public var unchanged: Int
     public var failed: Int
+    public var teamsCreated: Int?
 
-    public init(processed: Int, total: Int, created: Int, updated: Int, unchanged: Int, failed: Int) {
+    public init(processed: Int, total: Int, created: Int, updated: Int, unchanged: Int, failed: Int, teamsCreated: Int? = nil) {
         self.processed = processed
         self.total = total
         self.created = created
         self.updated = updated
         self.unchanged = unchanged
         self.failed = failed
+        self.teamsCreated = teamsCreated
     }
 }
 
@@ -1451,11 +1463,12 @@ public struct ImportJob: Codable, Equatable, Sendable {
     public var nextChunk: Int
     public var errors: [ImportRowResult]
     public var errorsTruncated: Bool
+    public var newTeams: [ImportNewTeam]?
     public var createdBy: String
     public var createdAt: Date
     public var updatedAt: Date
 
-    public init(id: String? = nil, companyId: String, status: String, fileName: String? = nil, totals: ImportTotals, progress: ImportProgress, planHash: String, chunkCount: Int, nextChunk: Int, errors: [ImportRowResult], errorsTruncated: Bool, createdBy: String, createdAt: Date, updatedAt: Date) {
+    public init(id: String? = nil, companyId: String, status: String, fileName: String? = nil, totals: ImportTotals, progress: ImportProgress, planHash: String, chunkCount: Int, nextChunk: Int, errors: [ImportRowResult], errorsTruncated: Bool, newTeams: [ImportNewTeam]? = nil, createdBy: String, createdAt: Date, updatedAt: Date) {
         self.id = id
         self.companyId = companyId
         self.status = status
@@ -1467,6 +1480,7 @@ public struct ImportJob: Codable, Equatable, Sendable {
         self.nextChunk = nextChunk
         self.errors = errors
         self.errorsTruncated = errorsTruncated
+        self.newTeams = newTeams
         self.createdBy = createdBy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -1935,8 +1949,10 @@ public struct ImportEmployeesResponse: Codable, Equatable, Sendable {
     public var rows: [ImportRowPlan]
     public var planHash: String
     public var chunkCount: Int
+    public var newTeams: [ImportNewTeam]?
+    public var skippedTeams: [ImportSkippedTeam]?
 
-    public init(contractVersion: Int, jobId: String, status: String, totals: ImportTotals, rows: [ImportRowPlan], planHash: String, chunkCount: Int) {
+    public init(contractVersion: Int, jobId: String, status: String, totals: ImportTotals, rows: [ImportRowPlan], planHash: String, chunkCount: Int, newTeams: [ImportNewTeam]? = nil, skippedTeams: [ImportSkippedTeam]? = nil) {
         self.contractVersion = contractVersion
         self.jobId = jobId
         self.status = status
@@ -1944,6 +1960,8 @@ public struct ImportEmployeesResponse: Codable, Equatable, Sendable {
         self.rows = rows
         self.planHash = planHash
         self.chunkCount = chunkCount
+        self.newTeams = newTeams
+        self.skippedTeams = skippedTeams
     }
 }
 

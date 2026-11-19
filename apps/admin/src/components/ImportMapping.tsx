@@ -7,7 +7,7 @@ import type { KeyValueStore } from "@/lib/api";
 import { type ParsedImport, type RawFile, fieldLabel } from "@/lib/importFile";
 import { t } from "@/lib/i18n";
 import {
-  type Target, applyMapping, dataRowsOf, forgetMapping, guessHeaderRow, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues,
+  type Target, applyMapping, dataRowsOf, forgetMapping, guessHeaderRow, isRetiredHeader, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues,
   columnLetter, saveMapping, suggestMapping,
 } from "@/lib/importMapping";
 import { TableRegion } from "./TableRegion";
@@ -121,10 +121,9 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
                   <td>
                     <label className="sr-only" htmlFor={`map-${i}`}>{t("import.map.fieldFor", { letter: columnLetter(i), header })}</label>
                     <select id={`map-${i}`} value={target} onChange={(e) => change(i, e.target.value as Target)} aria-invalid={target !== "skip" && full.filter((t) => t === target).length > 1}>
-                      <option value="skip">{t("import.map.skip")}</option>
+                      <option value="skip">{isRetiredHeader(header) ? t("import.map.skipNotUsed") : t("import.map.skip")}</option>
                       {IMPORT_FIELDS.map((field) => <option key={field} value={field}>{field === "email" ? t("import.map.required", { field: fieldLabel(field) }) : fieldLabel(field)}</option>)}
-                    </select>
-                  </td>
+                    </select>                  </td>
                 </tr>
               );
             })}
@@ -146,7 +145,7 @@ export function ImportMapping({ raw, domain, companyId, store, onBack, onContinu
           </dl>
         )}
         <p className="muted"><Info>{t("import.map.rowsFound", { count: data.length })}</Info> {t("import.map.columnsUsed", { mapped: mappedCount, total: columnCount })}</p>
-        <p className="hint">{t("import.map.dates")}</p>
+        <p className="hint">{t("import.map.teamsHint")}</p>
       </div>
 
       <Toggle checked={remember} onChange={setRemember} label={t("import.map.remember")} hint={t("import.map.rememberHint")} />

@@ -29,7 +29,10 @@ const rsvp = {companyId: 'acme', eventId: 'e', userId: 'u', userName: 'Ada', use
 
 test('additive fields keep existing AppUser, Company, RSVP and attendance documents valid', () => {
   accepts('AppUser', user);
-  accepts('AppUser', {...user, workLocation: 'HQ', teamIds: ['t1'], status: 'deactivated', revision: 3, managerEmail: 'boss@acme.com', startDate: '2026-01-05', statusUpdatedAt: '2026-11-10T12:00:00Z'});
+  accepts('AppUser', {...user, workLocation: 'HQ', teamIds: ['t1'], status: 'deactivated', revision: 3, statusUpdatedAt: '2026-11-10T12:00:00Z'});
+  // Removed (docs/design/roster-data-minimization.md): never stored; legacy values are deleted by gcp/scripts/remove-unused-roster-fields.ts.
+  rejects('AppUser', {...user, managerEmail: 'boss@acme.com'}, 'managerEmail is no longer stored');
+  rejects('AppUser', {...user, startDate: '2026-01-05'}, 'startDate is no longer stored');
   rejects('AppUser', {...user, status: 'banned'});
   rejects('AppUser', {...user, teamIds: Array(21).fill('t')});
   accepts('Company', company);
@@ -75,8 +78,19 @@ test('documents: Team, AuditEntry, RosterEntry and ImportJob are strict', () => 
     progress: {processed: 0, total: 1, created: 0, updated: 0, unchanged: 0, failed: 0}, planHash: 'a'.repeat(64), chunkCount: 1, nextChunk: 0,
     errors: [], errorsTruncated: false, createdBy: 'u', createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z'};
   accepts('ImportJob', job);
-  accepts('ImportJob', {...job, errors: [{rowNumber: 2, email: 'x@acme.com', outcome: 'failed', errorCode: 'TEAM_NOT_FOUND', message: 'Unknown team'}]});
+  accepts('ImportJob', {...job, errors: [{rowNumber: 2, email: 'x@acme.com', outcome: 'failed', errorCode: 'EMAIL_DOMAIN_MISMATCH', message: 'Email is outside the company domain.'}]});
   rejects('ImportJob', {...job, planHash: 'short'});
+  // Team creation by import is additive: older jobs without these fields stay valid.
+  accepts('ImportJob', {...job, newTeams: [{id: 'team_' + 'a'.repeat(32), name: 'Mentors'}], progress: {...job.progress, teamsCreated: 1}});
+  rejects('ImportJob', {...job, newTeams: [{id: 'bad id', name: 'Mentors'}]});
+  rejects('ImportRowPlan', {rowNumber: 1, email: 'a@acme.com', action: 'create', target: 'roster', changes: [], errors: [], notices: [{field: 'teamIds', code: 'TEAM_ARCHIVED'}]});
+  accepts('ImportRowPlan', {rowNumber: 1, email: 'a@acme.com', action: 'create', target: 'roster', changes: [], errors: [],
+    notices: [{field: 'managerEmail', code: 'FIELD_IGNORED', message: "This column isn't used, so it was ignored."}]});
+  accepts('ImportSkippedTeam', {name: 'Mentors', reason: 'TEAM_IMPORT_LIMIT'});
+  rejects('ImportSkippedTeam', {name: 'Mentors', reason: 'TEAM_NOT_FOUND'});
+  // Older portals may still send the removed columns: the input schema keeps them (deprecated, ignored).
+  accepts('EmployeeRecordInput', {email: 'a@acme.com', managerEmail: 'boss@acme.com', startDate: '2026-01-05'});
+  rejects('RosterEntry', {...entry, managerEmail: 'boss@acme.com'});
 });
 
 test('every mutating admin request needs a requestId and rejects unknown fields', () => {

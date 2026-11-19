@@ -3,7 +3,7 @@ import type { AdminOpsApi } from "./adminApi";
 import { MAX_INVITE_EMAILS, MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type DipbotIdeas, type SuggestThemeResult, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
+  type DipbotIdeas, type SuggestThemeResult, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type PlanNewTeam, type PlanSkippedTeam, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   type EmailSwitches, IMPORT_FIELDS, IMPORT_LIMITS, can, emailSwitchesFrom,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -44,11 +44,23 @@ export interface MockOpsDeps {
 type Stored<T> = T & { companyId: string };
 type StoredMember = Stored<Omit<Member, "pointsBalance"> & { pointsBalance: number }>;
 type StoredRoster = Stored<RosterRow>;
-interface PlanInternal { rowNumber: number; email: string; action: PlanAction; target: "member" | "roster" | "none"; changes: FieldChange[]; errors: { code: string; message: string }[] }
+interface PlanInternal {
+  rowNumber: number; email: string; action: PlanAction; target: "member" | "roster" | "none"; changes: FieldChange[]; errors: { code: string; message: string }[];
+  /** Resolved team ids, the teams this row creates and the names it leaves out (mirrors importEmployeesV1). */
+  teamIds?: string[]; newTeams?: PlanNewTeam[]; skippedTeams?: PlanSkippedTeam[];
+}
 interface Job {
   companyId: string; planHash: string; rows: ImportRow[]; plans: PlanInternal[]; nextChunk: number; chunkCount: number;
-  results: ApplyRowResult[]; status: "planned" | "running" | "completed" | "completed_with_errors";
+  results: ApplyRowResult[]; status: "planned" | "running" | "completed" | "completed_with_errors"; teamsCreated?: number;
 }
+
+/** Same matching as the server (teamNames.ts): trimmed, whitespace collapsed, case and accents ignored. */
+const cleanTeam = (name: string) => name.replace(/\s+/g, " ").trim();
+const teamKey = (name: string) => cleanTeam(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
+const MOCK_NEW_TEAMS_PER_IMPORT = 50;
+const MOCK_COMPANY_TEAMS = 500;
+/** One import's team plan: each new name is planned once; the caps count distinct names. */
+interface TeamPlan { planned: Map<string, PlanNewTeam> }
 interface OpsState {
   /** Invitation email is on for the demo company unless set to false (listRosterV1 `inviteEmail`). */
   inviteEmail?: boolean;
@@ -119,12 +131,12 @@ export function seedOps(now: Date): OpsState {
   const invite = (first: string, last: string, days: number, teamIndex: number): StoredRoster => ({
     companyId: "acme", entryId: `${slug(first)}.${slug(last)}@acme.com`, email: `${slug(first)}.${slug(last)}@acme.com`, displayName: `${first} ${last}`, role: "member",
     teamIds: [teams[teamIndex].id], workLocation: LOCATIONS[teamIndex % 4], department: DEPARTMENTS[teamIndex % 5], jobTitle: "Specialist",
-    managerEmail: "", startDate: "", state: "invited", invitedAt: isoAgo(now, days),
+    state: "invited", invitedAt: isoAgo(now, days),
   });
   // Everyone who signed in has a claimed entry, except the last five: they joined before the roster listed everyone (the backfill adds them).
   const claimed = members.filter((m) => m.companyId === "acme").slice(0, -5).map((m): StoredRoster => ({
     companyId: "acme", entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
-    jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
+    jobTitle: m.jobTitle, state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
   }));
   const roster: StoredRoster[] = [...claimed, invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
   const photos: Stored<AlbumPhoto>[] = [];
@@ -350,41 +362,75 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       target: m ? "member" : "roster",
       values: {
         displayName: source.displayName, role: source.role, teams: teamNames(state, session, source.teamIds), department: source.department,
-        jobTitle: source.jobTitle, workLocation: source.workLocation, managerEmail: r?.managerEmail ?? "", startDate: r?.startDate ?? "",
+        jobTitle: source.jobTitle, workLocation: source.workLocation,
       },
     };
   }
-  function planRow(state: OpsState, session: Session, row: ImportRow, rowNumber: number): PlanInternal {
+  /** Team names to ids: existing teams by name (case and accents ignored) or id, unknown names become new teams within the caps. */
+  function resolveTeams(state: OpsState, session: Session, names: string[], plan: TeamPlan) {
+    const info = company(state, session);
+    const teamIds: string[] = [];
+    const newTeams: PlanNewTeam[] = [];
+    const skippedTeams: PlanSkippedTeam[] = [];
+    for (const raw of names) {
+      const name = cleanTeam(raw);
+      if (!name) continue;
+      const known = info.teams.find((t) => t.id === raw.trim() || teamKey(t.name) === teamKey(name));
+      let id = known?.id;
+      if (!id && name.length > 80) skippedTeams.push({ name: `${name.slice(0, 60).trimEnd()}…`, reason: "TEAM_NAME_TOO_LONG" });
+      else if (!id) {
+        const planned = plan.planned.get(teamKey(name));
+        if (planned) id = planned.id;
+        else if (plan.planned.size >= MOCK_NEW_TEAMS_PER_IMPORT) skippedTeams.push({ name, reason: "TEAM_IMPORT_LIMIT" });
+        else if (info.teams.length + plan.planned.size >= MOCK_COMPANY_TEAMS) skippedTeams.push({ name, reason: "TEAM_COMPANY_LIMIT" });
+        else {
+          const team = { id: `team-${teamKey(name).replace(/[^a-z0-9]+/g, "-")}`, name };
+          plan.planned.set(teamKey(name), team);
+          id = team.id;
+        }
+        const created = id ? plan.planned.get(teamKey(name)) : undefined;
+        if (created && !newTeams.some((t) => t.id === created.id)) newTeams.push(created);
+      }
+      if (id && !teamIds.includes(id)) teamIds.push(id);
+    }
+    return { teamIds, newTeams, skippedTeams };
+  }
+  function planRow(state: OpsState, session: Session, row: ImportRow, rowNumber: number, teamPlan: TeamPlan = { planned: new Map() }): PlanInternal {
     const info = company(state, session);
     const errors = validateRow(row, info.emailDomain).map((message) => ({ code: "VALIDATION_FAILED", message }));
-    const teamIds: string[] = [];
-    for (const name of row.teams) {
-      const team = info.teams.find((t) => t.id === name || t.name.toLowerCase() === name.toLowerCase());
-      if (team) teamIds.push(team.id); else errors.push({ code: "TEAM_NOT_FOUND", message: `Unknown team “${name}”.` });
-    }
     const current = currentValues(state, session, row.email);
     if (!current && !row.displayName) errors.push({ code: "VALIDATION_FAILED", message: "New people need a name." });
     const existingMember = state.members.find((m) => m.companyId === session.companyId && m.email === row.email);
     if (existingMember?.role === "admin" && row.role && row.role !== "admin") errors.push({ code: "ADMIN_ROLE_PROTECTED", message: "An admin’s role can’t be changed by import." });
     if (errors.length) return { rowNumber, email: row.email, action: "invalid", target: "none", changes: [], errors };
+    // Unknown team names never fail a row: they become new teams (only valid rows take a slot under the caps).
+    const { teamIds, newTeams, skippedTeams } = resolveTeams(state, session, row.teams, teamPlan);
+    const nameOf = (id: string) => info.teams.find((t) => t.id === id)?.name ?? newTeams.find((t) => t.id === id)?.name ?? teamPlan.planned.get(id)?.name ?? id;
+    const teams = { teamIds, ...(newTeams.length ? { newTeams } : {}), ...(skippedTeams.length ? { skippedTeams } : {}) };
     const wanted: Record<string, string> = {
-      displayName: row.displayName, role: row.role || (current ? "" : "member"), teams: teamIds.map((id) => info.teams.find((t) => t.id === id)!.name).join("; "),
-      department: row.department, jobTitle: row.jobTitle, workLocation: row.workLocation, managerEmail: row.managerEmail, startDate: row.startDate,
+      displayName: row.displayName, role: row.role || (current ? "" : "member"), teams: teamIds.map(nameOf).join("; "),
+      department: row.department, jobTitle: row.jobTitle, workLocation: row.workLocation,
     };
     if (!current) {
-      return { rowNumber, email: row.email, action: "create", target: "roster", errors: [], changes: IMPORT_FIELDS.filter((f) => f !== "email" && wanted[f]).map((field) => ({ field, before: "", after: wanted[field] })) };
+      return { rowNumber, email: row.email, action: "create", target: "roster", errors: [], changes: IMPORT_FIELDS.filter((f) => f !== "email" && wanted[f]).map((field) => ({ field, before: "", after: wanted[field] })), ...teams };
     }
     // Blank cells keep the current value; existing members keep their Google display name.
     const changes: FieldChange[] = IMPORT_FIELDS.filter((f) => f !== "email" && !(f === "displayName" && current.target === "member") && wanted[f] && wanted[f] !== current.values[f])
       .map((field) => ({ field, before: current.values[field], after: wanted[field] }));
-    return { rowNumber, email: row.email, action: changes.length ? "update" : "unchanged", target: current.target, changes, errors: [] };
+    return { rowNumber, email: row.email, action: changes.length ? "update" : "unchanged", target: current.target, changes, errors: [], ...teams };
   }
-  function applyPlanned(state: OpsState, session: Session, row: ImportRow, plan: PlanInternal): ApplyRowResult {
+  function applyPlanned(state: OpsState, session: Session, row: ImportRow, plan: PlanInternal, job?: Job): ApplyRowResult {
     const base = { rowNumber: plan.rowNumber, email: row.email };
     if (plan.action === "invalid") return { ...base, outcome: "failed", message: plan.errors.map((e) => e.message).join(" ") };
     if (plan.action === "unchanged") return { ...base, outcome: "unchanged" };
     const info = company(state, session);
-    const ids = row.teams.map((name) => info.teams.find((t) => t.id === name || t.name.toLowerCase() === name.toLowerCase())?.id).filter((x): x is string => !!x);
+    for (const team of plan.newTeams ?? []) {
+      if (info.teams.some((t) => t.id === team.id)) continue;
+      info.teams.push({ id: team.id, name: team.name });
+      if (job) job.teamsCreated = (job.teamsCreated ?? 0) + 1;
+      log(state, session, { action: "team.upsert", targetType: "team", targetId: team.id, summary: `Created team ${team.name}`, changes: [{ field: "name", before: "", after: team.name }] });
+    }
+    const ids = plan.teamIds ?? [];
     const existingMember = state.members.find((m) => m.companyId === session.companyId && m.email === row.email);
     const entry = state.roster.find((r) => r.companyId === session.companyId && r.email === row.email && r.state === "invited");
     const patch = {
@@ -394,12 +440,12 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     if (existingMember) {
       Object.assign(existingMember, patch, { revision: existingMember.revision + 1 });
     } else if (entry) {
-      Object.assign(entry, patch, row.displayName ? { displayName: row.displayName } : {}, { managerEmail: row.managerEmail || entry.managerEmail, startDate: row.startDate || entry.startDate });
+      Object.assign(entry, patch, row.displayName ? { displayName: row.displayName } : {});
     } else {
       state.roster = state.roster.filter((r) => !(r.companyId === session.companyId && r.email === row.email));
       state.roster.push({
         companyId: session.companyId, entryId: row.email, email: row.email, displayName: row.displayName, role: row.role || "member", teamIds: ids,
-        workLocation: row.workLocation, department: row.department, jobTitle: row.jobTitle, managerEmail: row.managerEmail, startDate: row.startDate,
+        workLocation: row.workLocation, department: row.department, jobTitle: row.jobTitle,
         state: "invited", invitedAt: now().toISOString(),
       });
     }
@@ -710,7 +756,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         if (!dryRun) {
           state.roster.push({
             companyId: session.companyId, entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation,
-            department: m.department, jobTitle: m.jobTitle, managerEmail: "", startDate: "", state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
+            department: m.department, jobTitle: m.jobTitle, state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
           });
         }
       }
@@ -768,16 +814,25 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (existing && existing.companyId !== session.companyId) throw new ApiError("permission-denied", "That import belongs to another company.", {}, "COMPANY_MISMATCH");
       if (existing && existing.planHash !== planHash) throw new ApiError("failed-precondition", "This request ID was already used with different rows.", {}, "REQUEST_REUSED");
       const seen = new Set<string>();
-      const plans = request.rows.map((row, i) => {
-        const plan = planRow(state, session, row, i + 1);
-        if (row.email && seen.has(row.email)) return { ...plan, action: "invalid" as const, target: "none" as const, changes: [], errors: [...plan.errors, { code: "DUPLICATE_EMAIL", message: "Duplicate email in this file." }] };
+      const teamPlan: TeamPlan = { planned: new Map() };
+      const plans = request.rows.map((row, i): PlanInternal => {
+        if (row.email && seen.has(row.email)) {
+          return { rowNumber: i + 1, email: row.email, action: "invalid", target: "none", changes: [], errors: [{ code: "DUPLICATE_EMAIL", message: "Duplicate email in this file." }] };
+        }
         seen.add(row.email);
-        return plan;
+        return planRow(state, session, row, i + 1, teamPlan);
       });
       const chunkCount = Math.ceil(plans.length / IMPORT_LIMITS.serverChunk);
       state.jobs[jobId] = existing ?? { companyId: session.companyId, planHash, rows: request.rows, plans, nextChunk: 0, chunkCount, results: [], status: "planned" };
       save(state);
-      return { jobId, planHash, chunkCount, rows: plans.map((p) => ({ ...p })) } satisfies ImportPlanResponse;
+      const used = plans.filter((p) => p.action !== "invalid");
+      const newTeams = [...new Map(used.flatMap((p) => p.newTeams ?? []).map((t) => [t.id, t] as const)).values()];
+      const skippedTeams = [...new Map(used.flatMap((p) => p.skippedTeams ?? []).map((s) => [`${s.reason}:${s.name}`, s] as const)).values()];
+      return {
+        jobId, planHash, chunkCount,
+        rows: plans.map((p) => ({ rowNumber: p.rowNumber, email: p.email, action: p.action, target: p.target, changes: p.changes, errors: p.errors })),
+        ...(newTeams.length ? { newTeams } : {}), ...(skippedTeams.length ? { skippedTeams } : {}),
+      } satisfies ImportPlanResponse;
     },
     async applyImportStep(jobId, planHash) {
       const state = load();
@@ -787,12 +842,15 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (job.planHash !== planHash) throw new ApiError("failed-precondition", "The preview is out of date. Run it again.", {}, "IMPORT_PLAN_MISMATCH");
       const progress = () => {
         const count = (o: string) => job.results.filter((r) => r.outcome === o).length;
-        return { processed: job.results.length, total: job.rows.length, created: count("created"), updated: count("updated"), unchanged: count("unchanged"), failed: count("failed") };
+        return {
+          processed: job.results.length, total: job.rows.length, created: count("created"), updated: count("updated"), unchanged: count("unchanged"), failed: count("failed"),
+          ...(job.teamsCreated ? { teamsCreated: job.teamsCreated } : {}),
+        };
       };
       if (job.nextChunk >= job.chunkCount) return { status: job.status === "planned" ? "completed" : job.status, done: true, progress: progress(), results: [] };
       const start = job.nextChunk * IMPORT_LIMITS.serverChunk;
       // Each row is planned again against current data, so a row changed since the preview is never applied blindly.
-      const results = job.rows.slice(start, start + IMPORT_LIMITS.serverChunk).map((row, i) => applyPlanned(state, session, row, planRow(state, session, row, start + i + 1)));
+      const results = job.rows.slice(start, start + IMPORT_LIMITS.serverChunk).map((row, i) => applyPlanned(state, session, row, planRow(state, session, row, start + i + 1), job));
       job.results.push(...results);
       job.nextChunk += 1;
       const done = job.nextChunk >= job.chunkCount;

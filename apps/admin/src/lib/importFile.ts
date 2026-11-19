@@ -10,22 +10,26 @@ export function fieldLabel(field: string): string {
 }
 
 export const TEMPLATE_HEADER: string[] = [...IMPORT_FIELDS];
-const TEMPLATE_EXAMPLE = ["sam.rivera@example.com", "Sam Rivera", "member", "Platform;Mentors", "Engineering", "Software engineer", "Pittsburgh", "lee.chen@example.com", "2026-01-12"];
+const TEMPLATE_EXAMPLE = ["sam.rivera@example.com", "Sam Rivera", "member", "Platform;Mentors", "Engineering", "Software engineer", "Pittsburgh"];
 
 export function templateCsv(domain: string): string {
   const example = [...TEMPLATE_EXAMPLE];
   example[0] = `sam.rivera@${domain || "example.com"}`;
-  example[7] = `lee.chen@${domain || "example.com"}`;
   return toCsv([TEMPLATE_HEADER, example]);
 }
 
 export interface ParsedImport {
   rows: ImportRow[];
-  /** Spreadsheet line (header = 1) of each row. */
+  /** Spreadsheet row number (as the spreadsheet app shows it) of each row. */
   lines: number[];
   /** Rows the browser already knows are invalid (never sent to the server). */
   localErrors: Map<number, string[]>;
+  /** Skipped columns the admin left out (header text). */
   unknownColumns: string[];
+  /** Columns of older templates DIP no longer stores (header text): never sent, shown as "not used". */
+  retiredColumns?: string[];
+  /** Spreadsheet row number of the header row (rows are numbered as the spreadsheet app shows them). */
+  headerLine?: number;
   fatal?: string;
 }
 
@@ -37,10 +41,8 @@ export function validateRow(row: ImportRow, domain: string): string[] {
   const email = row.email;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push(t("import.err.email"));
   else if (domain && !(email.endsWith(`@${domain}`) || email.endsWith(`.${domain}`))) errors.push(t("import.err.domain", { domain }));
-  if (row.managerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.managerEmail)) errors.push(t("import.err.manager"));
   if (row.displayName.length > 80) errors.push(t("import.err.name"));
   if (row.role !== "" && !ROLES.includes(row.role)) errors.push(t("import.err.role"));
-  if (row.startDate && (!/^\d{4}-\d{2}-\d{2}$/.test(row.startDate) || Number.isNaN(Date.parse(row.startDate)))) errors.push(t("import.err.startDate"));
   for (const [field, max] of [["department", 120], ["jobTitle", 120], ["workLocation", 120]] as const) {
     if (row[field].length > max) errors.push(t("import.err.tooLong", { field: fieldLabel(field), max }));
   }
@@ -88,8 +90,9 @@ export function validRows(parsed: ParsedImport): { rows: ImportRow[]; lines: num
   return { rows, lines };
 }
 
+/** The downloadable problem list; `row` is the spreadsheet row number, as in the preview. */
 export function errorCsv(rows: { line: number; email: string; errors: string[] }[]): string {
-  return toCsv([["line", "email", "problem"], ...rows.map((r) => [r.line, r.email, r.errors.join(" ")])]);
+  return toCsv([["row", "email", "problem"], ...rows.map((r) => [r.line, r.email, r.errors.join(" ")])]);
 }
 
 export function planCounts(rows: PlanRow[]): Record<PlanRow["action"], number> {

@@ -5,6 +5,7 @@ import { applyEmployeeImport, getEmployeeImport, importEmployees } from "../../f
 import { revokeRosterEntry, upsertRosterEntry } from "../../functions/src/modules/admin/application/roster";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { emailHash, normalizeEmployee } from "../../functions/src/modules/admin/domain/employee";
+import { teamIdFor } from "../../functions/src/modules/admin/domain/teamNames";
 import { caller, makeDeps, NOW, rid, seedCompany, type FakeAdminStore } from "./helpers/adminFakes";
 
 const base = { contractVersion: 1, companyId: "alpha" };
@@ -56,17 +57,29 @@ describe("roster", () => {
     assert.equal(store.get(`companies/alpha/roster/${entryId}`)!.revision, 2);
   });
 
-  test("an existing member's email, a foreign domain, an unknown or archived team and bad fields are refused", async () => {
+  test("an existing member's email, a foreign domain and bad fields are refused", async () => {
     const { deps, store } = makeDeps();
     seedCompany(store); seedTeams(store);
     await fails(upsertRosterEntry(deps, admin, upsert(entry({ email: "mia@alpha.test" }))), "failed-precondition", "EMAIL_ALREADY_MEMBER");
     await fails(upsertRosterEntry(deps, admin, upsert(entry({ email: "someone@beta.test" }))), "invalid-argument", "EMAIL_DOMAIN_MISMATCH");
-    await fails(upsertRosterEntry(deps, admin, upsert(entry({ teamIds: ["Nope"] }))), "invalid-argument", "TEAM_NOT_FOUND");
-    await fails(upsertRosterEntry(deps, admin, upsert(entry({ teamIds: ["Legacy"] }))), "invalid-argument", "TEAM_NOT_FOUND");
-    for (const patch of [{ role: "root" }, { startDate: "2030-02-31" }, { email: "not-an-email" }, { unknown: 1 }]) {
+    for (const patch of [{ role: "root" }, { email: "not-an-email" }, { unknown: 1 }]) {
       await assert.rejects(upsertRosterEntry(deps, admin, upsert(entry(patch))), (e: AdminError) => e.code === "invalid-argument");
     }
     assert.equal(store.children("companies/alpha/roster").length, 0);
+  });
+
+  test("an unknown team is created with the entry, an archived one is left out, and removed fields are ignored", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store); seedTeams(store);
+    const { entryId } = await upsertRosterEntry(deps, admin, upsert(entry({ teamIds: ["Mentors", "Legacy", "platform"], managerEmail: "not even an email", startDate: "2030-02-31" })));
+    const doc = store.get(`companies/alpha/roster/${entryId}`)!;
+    assert.deepEqual(doc.teamIds, [teamIdFor("Mentors"), "t-platform"]);
+    assert.equal(doc.managerEmail, undefined);
+    assert.equal(doc.startDate, undefined);
+    const team = store.get(`companies/alpha/teams/${teamIdFor("Mentors")}`)!;
+    assert.deepEqual([team.companyId, team.name, team.archived, team.revision], ["alpha", "Mentors", false, 1]);
+    assert.equal(store.get("companies/alpha/teams/t-old")!.archived, true, "an archived team is never revived or overwritten");
+    assert.ok(audits(store).some(a => a.action === "team.upsert" && a.summaryKey === "team.create" && a.targetId === teamIdFor("Mentors")));
   });
 
   test("subdomain addresses of the company's root domain are accepted", async () => {
@@ -107,15 +120,18 @@ describe("roster", () => {
 describe("employee normalization", () => {
   const ctx = { companyDomain: "alpha.test", teams: [{ id: "t1", name: "Platform", archived: false }] };
   test("trims cells, treats blanks as absent, lower-cases emails and resolves team names or ids", () => {
-    const { record, issues } = normalizeEmployee({ email: "  A@Alpha.test ", displayName: "  Ann   Lee ", role: " Admin ", workLocation: "", teamIds: [" platform ", "t1"], managerEmail: "BOSS@alpha.test", startDate: "2030-05-01" }, ctx);
+    const { record, issues, notices } = normalizeEmployee({ email: "  A@Alpha.test ", displayName: "  Ann   Lee ", role: " Admin ", workLocation: "", teamIds: [" platform ", "t1"], managerEmail: "BOSS@alpha.test", startDate: "2030-05-01" }, ctx);
     assert.deepEqual(issues, []);
-    assert.deepEqual(record, { email: "a@alpha.test", displayName: "Ann Lee", role: "admin", teamIds: ["t1"], managerEmail: "boss@alpha.test", startDate: "2030-05-01" });
+    assert.deepEqual(record, { email: "a@alpha.test", displayName: "Ann Lee", role: "admin", teamIds: ["t1"] });
+    assert.deepEqual(notices.map(n => `${n.field}:${n.code}`), ["managerEmail:FIELD_IGNORED", "startDate:FIELD_IGNORED"]);
   });
-  test("reports every problem with a stable code", () => {
-    const { issues } = normalizeEmployee({ email: "x@other.test", role: "ceo", startDate: "05/01/2030", teamIds: ["Ghost"], jobTitle: "x".repeat(121), zzz: 1 }, ctx);
-    assert.deepEqual(issues.map(i => `${i.field}:${i.code}`).sort(),
-      ["email:EMAIL_DOMAIN_MISMATCH", "jobTitle:TOO_LONG", "role:ROLE_INVALID", "startDate:DATE_INVALID", "teamIds:TEAM_NOT_FOUND", "zzz:UNKNOWN_FIELD"]);
+  test("reports every problem with a stable code; removed columns and unknown teams are never problems", () => {
+    const { issues } = normalizeEmployee({ email: "x@other.test", role: "ceo", startDate: "05/01/2030", managerEmail: "nope", teamIds: ["Ghost"], jobTitle: "x".repeat(121), zzz: 1 }, ctx);
+    assert.deepEqual(issues.map(i => `${i.field}:${i.code}`).sort(), ["email:EMAIL_DOMAIN_MISMATCH", "jobTitle:TOO_LONG", "role:ROLE_INVALID", "zzz:UNKNOWN_FIELD"]);
     assert.equal(normalizeEmployee("nope", ctx).issues[0]!.code, "VALIDATION_FAILED");
+    const fine = normalizeEmployee({ email: "y@alpha.test", teamIds: ["Ghost"] }, ctx);
+    assert.deepEqual(fine.issues, []);
+    assert.deepEqual(fine.newTeams, [{ id: teamIdFor("Ghost"), name: "Ghost" }]);
   });
 });
 

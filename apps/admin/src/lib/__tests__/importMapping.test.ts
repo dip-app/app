@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { KeyValueStore } from "../api";
-import { applyMapping, columnLetter, dataRowsOf, forgetMapping, guessHeaderRow, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues, saveMapping, suggestMapping } from "../importMapping";
+import {
+  applyMapping, columnLetter, dataRowsOf, forgetMapping, guessHeaderRow, isRetiredHeader, loadSavedMapping, mapRow, mappingFromSaved, mappingIssues, saveMapping, suggestMapping,
+} from "../importMapping";
+import { errorCsv } from "../importFile";
 
 const memory = (): KeyValueStore => {
   const map = new Map<string, string>();
@@ -10,8 +13,23 @@ const memory = (): KeyValueStore => {
 describe("column suggestions", () => {
   it("matches headers by name and skips what it doesn't know", () => {
     expect(suggestMapping(["Work Email", "Full Name", "Dept", "Office", "Employee ID", "Reports To", "Hire Date", "Job Title", "Squad"])).toEqual([
-      "email", "displayName", "department", "workLocation", "skip", "managerEmail", "startDate", "jobTitle", "teams",
+      "email", "displayName", "department", "workLocation", "skip", "skip", "skip", "jobTitle", "teams",
     ]);
+  });
+  it("recognizes the retired manager email and start date columns and lists them as not used, never as data", () => {
+    expect(isRetiredHeader("Manager email")).toBe(true);
+    expect(isRetiredHeader("startDate")).toBe(true);
+    expect(isRetiredHeader("Notes")).toBe(false);
+    const old = [
+      ["email", "displayName", "role", "teams", "department", "jobTitle", "workLocation", "managerEmail", "startDate", "Notes"],
+      ["sam@acme.com", "Sam", "member", "Platform", "", "", "", "lee@acme.com", "not a date", "x"],
+    ];
+    const parsed = applyMapping(old, 0, suggestMapping(old[0]), "acme.com");
+    expect(parsed.retiredColumns).toEqual(["managerEmail", "startDate"]);
+    expect(parsed.unknownColumns).toEqual(["Notes"]);
+    expect(parsed.localErrors.size).toBe(0);
+    expect(Object.keys(parsed.rows[0]).sort()).toEqual(["department", "displayName", "email", "jobTitle", "role", "teams", "workLocation"]);
+    expect(parsed.headerLine).toBe(1);
   });
   it("suggests each field once", () => {
     expect(suggestMapping(["Email", "Email Address", "Name"])).toEqual(["email", "skip", "displayName"]);
@@ -52,7 +70,14 @@ describe("applying a mapping", () => {
     expect(applyMapping(big, 0, ["email"], "acme.com").fatal).toMatch(/2000/);
   });
   it("maps one row with blanks left empty", () => {
-    expect(mapRow(["A@Acme.com", "Ann"], ["email", "displayName"])).toMatchObject({ email: "a@acme.com", displayName: "Ann", role: "", teams: [], startDate: "" });
+    expect(mapRow(["A@Acme.com", "Ann"], ["email", "displayName"])).toEqual({ email: "a@acme.com", displayName: "Ann", role: "", teams: [], department: "", jobTitle: "", workLocation: "" });
+  });
+  it("numbers rows as the spreadsheet does: the header row and the error report use the same row numbers", () => {
+    const parsed = applyMapping(sheet, 2, ["displayName", "email", "teams", "skip"], "acme.com");
+    expect(parsed.headerLine).toBe(3);
+    expect(errorCsv([{ line: 6, email: "lee@other.com", errors: ["Email must end in @acme.com."] }]).split(/\r?\n/)[0]).toBe("row,email,problem");
+    const dup = applyMapping([["email", "name"], ["a@acme.com", "A"], ["a@acme.com", "B"]], 0, ["email", "displayName"], "acme.com");
+    expect(dup.localErrors.get(3)).toEqual(["Duplicate of row 2."]);
   });
 });
 

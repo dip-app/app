@@ -1,7 +1,7 @@
 import { invalid } from "./errors";
 import { ROLES, type Role } from "./permissions";
 import { Reader, validWireId } from "./reader";
-import { MAX_TEAMS_PER_MEMBER, validDate } from "./employee";
+import { IGNORED_EMPLOYEE_KEYS, MAX_TEAMS_PER_MEMBER } from "./employee";
 import { IMPORT_MAX_ROWS } from "./importPlan";
 import { AdminError } from "./errors";
 import { BUG_CATEGORIES, BUG_STATUSES, MAX_NOTE, decodeCursor, validDay } from "./bugReports";
@@ -11,7 +11,6 @@ const MUTATING = [...BASE, "requestId"];
 const REQUIRED_ROLES = ROLES as readonly Role[];
 const STATUSES = ["invited", "active", "deactivated"] as const;
 const MEMBER_STATUS = ["active", "deactivated"] as const;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Photo ids are `{uid}_{slot}`; validated as wire ids here, the slot is only used to derive the Storage path. */
 function photoId(reader: Reader): string {
@@ -87,20 +86,19 @@ export function parseGetCompanyInsights(data: unknown) {
 
 export interface UpdateMemberRequest {
   companyId: string; requestId: string; userId: string; expectedRevision?: number | undefined; role?: Role | undefined; teamIds?: string[] | undefined;
-  workLocation?: string | undefined; department?: string | undefined; jobTitle?: string | undefined; managerEmail?: string | undefined; startDate?: string | undefined;
+  workLocation?: string | undefined; department?: string | undefined; jobTitle?: string | undefined;
 }
 
+/**
+ * `managerEmail` and `startDate` are no longer stored (docs/design/roster-data-minimization.md). An older portal may still send
+ * them, so the keys stay allowed and are ignored without validation.
+ */
 export function parseUpdateMember(data: unknown): UpdateMemberRequest {
-  const r = Reader.from(data, [...MUTATING, "userId", "expectedRevision", "role", "teamIds", "workLocation", "department", "jobTitle", "managerEmail", "startDate"]);
-  const managerEmail = r.optText("managerEmail", 254);
-  if (managerEmail !== undefined && managerEmail !== "" && !EMAIL.test(managerEmail)) r.fail("managerEmail");
-  const startDate = r.optText("startDate", 10);
-  if (startDate !== undefined && startDate !== "" && !validDate(startDate)) r.fail("startDate");
+  const r = Reader.from(data, [...MUTATING, "userId", "expectedRevision", "role", "teamIds", "workLocation", "department", "jobTitle", ...IGNORED_EMPLOYEE_KEYS]);
   const req: UpdateMemberRequest = {
     companyId: r.id("companyId"), requestId: r.requestId(), userId: r.id("userId"), expectedRevision: r.optInt("expectedRevision", 0, 1_000_000_000),
     role: r.optEnum("role", REQUIRED_ROLES), teamIds: r.idList("teamIds", MAX_TEAMS_PER_MEMBER),
     workLocation: r.optText("workLocation", 120), department: r.optText("department", 120), jobTitle: r.optText("jobTitle", 120),
-    managerEmail: managerEmail?.toLowerCase(), startDate,
   };
   r.finish();
   return req;
