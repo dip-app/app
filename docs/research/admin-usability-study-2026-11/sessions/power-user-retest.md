@@ -1,0 +1,56 @@
+# Session: power-user (re-test) (simulated participant)
+Persona: Tom, 44, IT-adjacent admin, wants speed and control, skeptical of AI and credit costs. Setup: Desktop 1440x900, English.
+## T3: Get ideas from the assistant
+Start: 21:52:19, end: 21:52:38, driver commands: 8
+Outcome in my own words: Found "Dipbot" in the left nav. The page already showed two ideas ("Thursday Trivia Showdown", "Lunch Break 5K Jog") with "Use this idea" buttons, no credits spent. Clicked "Use this idea" on the trivia one and landed on a prefilled New event form with the banner "Dipbot filled this in. Nothing is saved yet. Pick a venue and time, check the details, then press Create event." Done: draft is a prefilled, unsaved form.
+### Think-aloud log
+- [21:52:19] (think-aloud) Overview. The assistant is probably "Dipbot" in the sidebar; the name alone is not self-explanatory, but it has a cloud icon. -> `goto /overview/` + `shot` + `list` -> overview. Screenshot: scratchpad/r2/power-user/shots/002-t3a.png
+- [21:52:27] (think-aloud) Clicking Dipbot. -> `click 4` -> /ideas/ "Dipbot".
+- [21:52:29] (think-aloud) Good: ideas already shown, "Credits: 412 of 500 this month" visible, and costs are labelled ("Refresh ideas 3 credits"). I like that costs are explicit. The wizard below (Interests, Goal, Group, Budget, Ask) is not needed. I will not spend credits; "Use this idea" has no cost label so I assume free. -> `shot` -> Screenshot: scratchpad/r2/power-user/shots/003-t3b.png
+- [21:52:35] (think-aloud) "Use this idea" on Thursday Trivia Showdown. -> `click 18` -> /events/new/?from=ai
+- [21:52:38] (think-aloud) Form prefilled, banner says nothing is saved, and I must pick venue and time. Reassuring. Note "Generate suggestions 10 credits" top right and "Let Dipbot choose 1 credit" are clearly priced. Tags Social and Games preselected. -> `shot` -> Screenshot: scratchpad/r2/power-user/shots/004-t3c.png
+### Questionnaire
+Ease: 6/7. Confidence: 6/7. Confusing: Idea cards: unclear whether "Use this idea" costs credits (no label while neighbours show credits); "Perfect fit" / "Great choice" badges look like marketing. Would change: state "Free" next to Use this idea, or say the draft is saved vs not on the card itself; add a link from Overview to Dipbot.
+## T4: Office location and venue
+Start: 21:52:49, end: 21:53:42, driver commands: 17
+Outcome in my own words: The office setting is a small "Dipbot venues" box at the very bottom of the new-event form ("Set your office address to find venues nearby."). Typed 600 Grant Street, Pittsburgh, picked the single Google Maps suggestion, then had to type a Title (button was greyed with "Add a title so Dipbot knows what to look for.") before "Find venues near your office" (1 credit) worked. Got 5 venues with distance and type; chose Smallman Galley (Food hall, 1.6 mi); Venue name and City filled. I did not press Create event (not asked). Not sure the office is saved company-wide or only for this form; nothing said.
+### Think-aloud log
+- [21:52:49] (think-aloud) New event page with ?office=unset. I expect a banner or setting about the office. -> `goto` -> New event form; no banner at the top.
+- [21:52:55] (think-aloud) Scrolling down the long form; the office has to be somewhere, "Where" section has Street address only. -> `scroll down` x2 + `shot` -> Screenshot: scratchpad/r2/power-user/shots/005-t4a.png, 006-t4b.png
+- [21:53:04] (think-aloud) At the bottom there is a "Dipbot venues" box: "Set your office address to find venues nearby." Field "Search your office address". Odd it is below, after the street address field; I nearly mistook "Street address" for the office. -> `type` -> combobox shows one suggestion "600 Grant Street Pittsburgh", footer "Google Maps". Screenshot: 007-t4c.png
+- [21:53:11] (think-aloud) Pick it. -> `click "600 Grant Street"` -> "Near 600 Grant Street, Pittsburgh, within 5 mi" and "Find venues near your office | 1 credit", greyed, with "Add a title so Dipbot knows what to look for." Screenshot: 008-t4d.png
+- [21:53:19] (think-aloud) Annoying: I must scroll back up for the title; the hint did not say where. I will type Title via label. -> `type "Title" "Team lunch"` -> ok (I scrolled automatically).
+- [21:53:24] (think-aloud) Spends 1 credit, which I accept since it was labelled. -> `click "Find venues near your office"` -> 5 results. Screenshot: 009-t4e.png, 010-t4f.png
+- [21:53:39] (think-aloud) Lunch: Smallman Galley, food hall, indoor. "Use" is a small text link in the card corner; looks weak but the whole card is highlighted. -> `list` + `click 63` -> card shows "Selected", fields filled. Screenshot: 011-t4g.png
+### Questionnaire
+Ease: 5/7. Confidence: 6/7. Confusing: office box is at the very bottom of a long form; the ?office=unset state gives no top-of-page hint; button disabled until a title is typed, hint does not point to the Title field; unclear if the office is saved for the company or just this event; "Street address" vs "office address" naming close together. Would change: show an "Office not set" notice at the top with a jump link; make the disabled button explain/focus the Title; say "Office saved" after choosing.
+## T6: Add a coworker, resend an invite
+Start: 21:53:55, end: 21:55:22, driver commands: 21
+Outcome in my own words: Added Jordan Lee (jordan.lee@acme.com, role Member) via Roster > "Add person"; toast "Added Jordan Lee to the roster as Invited. Use Get invite message on their row to send the invite." Jordan shows under Invited (4). For the resend, opened Invited tab, chose Nico Farrow (oldest invite, Nov 6), "Get invite message" > "Copy message"; toast "Invite message copied. Send it to Nico Farrow yourself." I did not actually send anything since DIP does not email; I take "resend" as copying the message to send myself. Did not send Jordan's invite message (task only said resend to someone else).
+### Think-aloud log
+- [21:53:59] (think-aloud) "Members" is where I'd add people. -> `click "Members"` -> stayed on Overview (matched the stat tile text, not the nav). Minor misclick by my own text targeting.
+- [21:54:06] (think-aloud) -> `click 7` -> Members page. Dense table, search "(press / to focus)" which I like. But only "Export CSV": no Add button. Screenshot: 012-t6a.png
+- [21:54:18] (think-aloud) Maybe Roster. Members vs Roster is two pages for people; 30 vs 29 counts and a banner "5 people have signed in but aren't on the roster" which I do not understand and leave alone. -> `click 8` -> Roster, has "Add person" and "Import people". Screenshot: 013-t6b.png
+- [21:54:26] (think-aloud) -> `click "Add person"` -> dialog "Add a person", text: "DIP doesn't email them; you send the invite message yourself." Good to know. Screenshot: 014-t6c.png
+- [21:54:34] (think-aloud) Keyboard fill: name, Tab, email, Enter to submit. -> `keys`, `press Tab`, `keys`, `press Enter` -> Enter did nothing visible; dialog stayed open. Screenshot: 015-t6d.png. Slightly annoying.
+- [21:54:53] (think-aloud) Click the dialog button. -> `click 36` -> dialog closes, toast about Added as Invited. Counts update. Screenshot: 016-t6e.png
+- [21:55:02] (think-aloud) Resend: look in Invited tab. -> `click "Invited (4)"` -> list, each row "Get invite message" and "Revoke". No word "Resend"; I infer. Screenshot: 017-t6f.png
+- [21:55:12] (think-aloud) Nico Farrow. -> `click 26` -> dialog "Invite message for Nico Farrow", bold "DIP doesn't send email, so share this message with nico.farrow@acme.com yourself. Message shared 1x so far." Editable text. Screenshot: 018-t6g.png
+- [21:55:19] (think-aloud) -> `click "Copy message"` -> dialog closes, toast "Invite message copied. Send it to Nico Farrow yourself." Row now reads "Message shared 1x, last Nov 18, 2026". The dialog said 1x before I copied; unclear what counts. Screenshot: 019-t6h.png
+### Questionnaire
+Ease: 5/7. Confidence: 6/7. Confusing: Members page has no add button, Roster does; two people lists with 30 vs 29 and the "5 people have signed in but aren't on the roster" banner; "resend" is called "Get invite message" and the "shared 1x" count was already 1 before I copied; Enter does not submit the Add person dialog. Would change: add "Add person" on Members too (or link to Roster); make Enter submit; label the button "Resend invite (copy message)"; explain the roster banner or hide it from the main flow.
+## T10: Recover from an error
+Start: 21:55:37, end: 21:56:25, driver commands: 11
+Outcome in my own words: Error banner "Dipbot is busy right now. Nothing was counted against your limit. Try again in a moment." with "Back to choices" and "Try again". "Try again" x2 and "Generate drafts" (10 credits) after "Back to choices" all returned the same error; credits stayed at 411, so the "nothing counted" claim held. I could not get newly generated ideas. I got ideas anyway from the already-saved "Ideas for you" cards: "Use this idea" on Lunch Break 5K Jog opened a prefilled New event form. Partly succeeded (ideas yes, generation no).
+### Think-aloud log
+- [21:55:41] (think-aloud) Plain-language error, reassuring about the credits. I see two buttons; "Try again" is the primary. Credits 411. Saved ideas still show above. -> `shot` -> Screenshot: 020-t10a.png
+- [21:55:46] (think-aloud) -> `click "Try again"` -> looks identical, no spinner, no message that it retried. I cannot tell if anything happened. Screenshot: 021-t10b.png
+- [21:55:54] (think-aloud) Try once more. -> `click "Try again"` + `read` -> same error. Page text lists 5 ideas but only 2 visible on screen (the other 3 are off-screen/hidden: unclear how to reach them). Screenshot: 022-t10c.png
+- [21:56:07] (think-aloud) -> `click "Back to choices"` -> last wizard step with my earlier answers kept as a summary line (Interests Fitness, Games; Goal Team bonding; ...), "Generate drafts | 10 credits". Screenshot: 023-t10d.png
+- [21:56:17] (think-aloud) A 10-credit button is a bit scary right after a failure, but the error said no charge. -> `click "Generate drafts"` -> same error, credits still 411. Screenshot: 024-t10e.png
+- [21:56:25] (think-aloud) Giving up on generation; use saved ideas. -> `click "Use this idea: Lunch Break 5K Jog"` -> New event form (from=ai).
+### Questionnaire
+Ease: 4/7. Confidence: 5/7. Confusing: "Try again in a moment" with no sign a retry ran (no spinner, no timestamp, no count); "Try again" and "Generate drafts" both fail with identical text so I cannot tell whether the cause is transient or persistent; the saved ideas above the error are the real fallback but nothing points to them; only 2 of 5 saved ideas visible. Would change: show a spinner and "Tried again just now"; after 2 failures say "Still busy. You can use the saved ideas above" and link to them; show all saved ideas or a "show more".
+## Overall
+Most annoying: Retrying a failed Dipbot request gave no feedback at all, and the office setting being at the very bottom of a long event form (with a disabled button hint that did not say what to fill in). Also Enter not submitting the Add person dialog.
+Liked: Credit costs labelled on every Dipbot button, the credits counter staying correct after a failed request, plain "DIP doesn't send email, so share this message yourself" wording, and "/" to focus search on the list pages.
