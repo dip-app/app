@@ -42,6 +42,7 @@ export const review = {
   // Toasts
   "review.toast.approved": "Approved {who}. {points} points awarded.",
   "review.toast.rejected": "Requested changes from {who}. They can resubmit while the week is open.",
+  "review.nowShowing": "Now showing {who}’s submission.",
 
   // Queue
   "review.queue.progress": "{progress} of {goal} {unit} · {when}",

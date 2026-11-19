@@ -147,16 +147,19 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
     const before = modelRef.current;
     const range = clickDay(before.range, day);
     setFocusDay(day);
-    if (range.phase === "picking") {
-      modelRef.current = { ...before, range, rolled: false, pinnedSingle: false };
-      setModel(modelRef.current);
-      setNotes([]);
-      setIssue(null);
-      setAnnounce(t("editor.when.announcePicking", { date: short(range.start) }));
-      return;
-    }
-    setHover(null);
+    // A first click is already a one-day event on that day (the form gets it at once); the range stays open so a click
+    // on a later day makes it longer. Leaving the calendar or touching the time closes it again (see `closeRange`).
     apply({ ...before, range, rolled: false, pinnedSingle: before.range.phase === "picking" && range.start === range.end }, true);
+    if (range.phase !== "picking") setHover(null);
+  }
+
+  /** Ends the "click a later day" step without changing the dates. */
+  function closeRange() {
+    const m = modelRef.current;
+    if (m.range.phase !== "picking") return;
+    modelRef.current = { ...m, range: { ...m.range, phase: "done" } };
+    setModel(modelRef.current);
+    setHover(null);
   }
 
   function moveView(months: number) {
@@ -194,6 +197,7 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
   const duration = durationMinutes(model);
   const multiDay = model.range.start !== model.range.end;
   const setHandle = (handle: Handle, minutes: number, final: boolean) => {
+    closeRange();
     const m = modelRef.current;
     apply(handle === "start" ? { ...m, startMin: minutes } : { ...m, endMin: minutes }, final);
   };
@@ -292,7 +296,8 @@ export function WhenPicker({ startTime, endTime, onChange, onPreview, disabled =
             <button type="button" className="when-iconbtn" onClick={() => moveView(1)} aria-label={t("editor.when.nextMonth")}><Chevron size={16} /></button>
           </div>
         </div>
-        <div className="when-grid" role="grid" aria-labelledby={`${uid}-month`} aria-describedby={`${uid}-summary`} ref={gridRef} onKeyDown={onGridKey} onMouseLeave={() => setHover(null)}>
+        <div className="when-grid" role="grid" aria-labelledby={`${uid}-month`} aria-describedby={`${uid}-summary`} ref={gridRef} onKeyDown={onGridKey} onMouseLeave={() => setHover(null)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeRange(); }}>
           <div role="row" className="when-week head">
             {weekdayNames().map((name, i) => <div key={i} role="columnheader" aria-label={name} className="when-dow">{name.slice(0, 1).toUpperCase() + name.slice(1, 2)}</div>)}
           </div>

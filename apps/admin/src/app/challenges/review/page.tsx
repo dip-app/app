@@ -177,13 +177,27 @@ function Review() {
     return () => window.removeEventListener("keydown", onKey);
   }, [go, selected, shortcuts]);
 
+  // Runs after the dialog has closed and returned focus to its opener, so this wins: the next person's name, or the
+  // empty state's heading, gets focus and the change is announced.
+  const [advanced, setAdvanced] = useState<{ name: string | null; n: number } | null>(null);
+  useEffect(() => {
+    if (!advanced) return;
+    const heading = document.querySelector<HTMLElement>("#main .review-detail h2, #main .empty h2");
+    if (!heading) return;
+    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    heading.focus();
+  }, [advanced]);
+
   /** After a review the entry leaves the pending list; the next one opens so reviewing can keep going. */
   function removeAndAdvance(done: Submission) {
     if (!items) return;
     const at = items.findIndex((s) => s.id === done.id);
     const rest = items.filter((s) => s.id !== done.id);
     setItems(rest);
-    setSelectedId(rest[Math.min(at, rest.length - 1)]?.id ?? null);
+    const nextUp = rest[Math.min(at, rest.length - 1)];
+    setSelectedId(nextUp?.id ?? null);
+    // Focus follows to the next person (or the empty queue), not the old Approve button, which now acts on someone else.
+    setAdvanced({ name: nextUp?.userName ?? null, n: (advanced?.n ?? 0) + 1 });
     // The visible page is used up but the server has more: fetch the next ones instead of showing an empty queue.
     if (rest.length === 0 && cursor) void loadMore(rest);
   }
@@ -266,6 +280,7 @@ function Review() {
 
   return (
     <>
+      <span className="sr-only" role="status">{advanced?.name ? t("review.nowShowing", { who: advanced.name }) : ""}</span>
       <div className="toolbar">
         <Button href="/challenges/">{t("review.allThemes")}</Button>
         {theme && <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" /><strong className="theme-name">{theme.title}</strong><span className="muted">{t("review.themeMeta", { window: formatWindow(theme.startDate, theme.endDate), goal: formatGoal(theme.goal, theme.goalUnit) })}</span></>}
@@ -301,7 +316,7 @@ function Review() {
             {selected && theme && (
               <article className="review-detail panel" ref={detail} aria-label={t("review.detail.label", { who: selected.userName })}>
                 <div className="review-head">
-                  <div className="person big"><Avatar name={selected.userName} userId={selected.userId} photoURL={selected.photoURL} avatarId={selected.avatarId} /><div><h2>{selected.userName}</h2><p className="muted">{selected.updatedAt !== selected.createdAt ? t("review.detail.submittedUpdated", { created: formatDateTime(selected.createdAt), updated: formatDateTime(selected.updatedAt) }) : t("review.detail.submitted", { created: formatDateTime(selected.createdAt) })}</p></div></div>
+                  <div className="person big"><Avatar name={selected.userName} userId={selected.userId} photoURL={selected.photoURL} avatarId={selected.avatarId} /><div><h2 tabIndex={-1}>{selected.userName}</h2><p className="muted">{selected.updatedAt !== selected.createdAt ? t("review.detail.submittedUpdated", { created: formatDateTime(selected.createdAt), updated: formatDateTime(selected.updatedAt) }) : t("review.detail.submitted", { created: formatDateTime(selected.createdAt) })}</p></div></div>
                   <div className="review-pills">
                     <Info tone={selected.status === "approved" ? "ok" : selected.status === "rejected" ? "warn" : undefined}>{statusLabel(selected.status)}</Info>
                     {selected.attempt > 1 && <Info>{t("review.attempt", { n: selected.attempt })}</Info>}

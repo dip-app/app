@@ -48,7 +48,7 @@ export const shell: Record<keyof typeof source, string> = {
   "shell.ask.members.reset": "restablecer el perfil de un participante",
   "shell.ask.points.adjust": "ajustar los puntos de alguien",
   "shell.ask.import.run": "importar personas desde una hoja de cálculo",
-  "shell.ask.roster.manage": "invitar a alguien, reenviar una invitación o revocarla",
+  "shell.ask.roster.manage": "invitar a alguien, obtener un mensaje de invitación o revocar una invitación",
   "shell.ask.audit.view": "consultar algo en el registro de auditoría",
   "shell.ask.bugreports.manage": "ver los reportes de errores de la app",
 };

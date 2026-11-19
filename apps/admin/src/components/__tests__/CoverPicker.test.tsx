@@ -242,4 +242,22 @@ describe("CoverPicker", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
   });
+
+  describe("on phones", () => {
+    const original = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) => ({ matches: query.includes("max-width"), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    });
+    afterEach(() => { window.matchMedia = original; });
+
+    it("shows a few tiles in the page flow (always with the selected one) and adds more on request", async () => {
+      render(<Harness />);
+      await waitFor(() => expect(tiles().length).toBeLessThan(COVER_LIBRARY.length));
+      expect(tiles().length).toBeLessThanOrEqual(7); // 6, plus the selected cover when it is further down
+      expect(checked()).toEqual(["Mountain trail hike"]);
+      const before = tiles().length;
+      fireEvent.click(screen.getByRole("button", { name: "Show 12 more covers" }));
+      expect(tiles().length).toBeGreaterThanOrEqual(before + 11);
+    });
+  });
 });

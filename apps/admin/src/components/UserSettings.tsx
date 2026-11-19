@@ -19,8 +19,9 @@ interface SettingsSection {
 
 /** Per-user settings, in page order (title and description are catalog keys). Add a section here to extend the page; company-wide settings do not belong in this list. */
 export const USER_SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: "email", title: "account.email.title", description: "account.email.description", requires: "ai.generate", Body: SuggestionsEmail },
+  // Language first: it is short and everyone has it; in the usability study people scrolled past the email section to find it.
   { id: "language", title: "account.language.title", description: "account.language.description", Body: LanguageSettings },
+  { id: "email", title: "account.email.title", description: "account.email.description", requires: "ai.generate", Body: SuggestionsEmail },
 ];
 
 export function UserSettings() {

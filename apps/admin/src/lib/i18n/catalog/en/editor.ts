@@ -6,7 +6,7 @@ export const editor = {
   "editor.when.prevMonth": "Previous month",
   "editor.when.nextMonth": "Next month",
   "editor.when.today": "Today",
-  "editor.when.help": "Click a start date, then an end date. Click the same day twice for a one-day event. Arrow keys move, Page Up and Page Down change month.",
+  "editor.when.help": "Click a day for a one-day event. Click a later day to make it longer. Arrow keys move, Page Up and Page Down change month.",
   "editor.when.starts": "Starts",
   "editor.when.ends": "Ends",
   "editor.when.zone": "Your time zone",
@@ -21,7 +21,6 @@ export const editor = {
   "editor.when.issue": "End has to be after the start on a one-day event. We set it 15 minutes after the start; pick a later end date for a longer one.",
   "editor.when.rolled": "Ends the next day, {date}.",
   "editor.when.announce": "Starts {start} at {startTime}, ends {end} at {endTime}. Duration {duration}.",
-  "editor.when.announcePicking": "Start date {date}. Choose the end date.",
   // Spoken state of a calendar day, joined with commas after the date
   "editor.when.state.today": "today",
   "editor.when.state.startAndEnd": "start and end date",
@@ -29,7 +28,7 @@ export const editor = {
   "editor.when.state.end": "end date",
   "editor.when.state.inRange": "in the selected range",
   "editor.when.state.past": "unavailable, in the past",
-  "editor.when.summary.picking": "{date} chosen as the start. Now choose the end date, or click it again for a one-day event.",
+  "editor.when.summary.picking": "{date}, one day. Click a later day to make it longer.",
   "editor.when.summary.oneDay": "{date}, one day",
   "editor.when.summary.range": "{start} to {end}, {count, plural, one {# day} other {# days}}",
   // Durations: short ("1d 2h 5m") in the dial centre, spelled out for screen readers
@@ -75,6 +74,7 @@ export const editor = {
   "editor.cover.noMatch.queryTheme": "No covers match “{query}” in {theme}.",
   "editor.cover.noMatch.theme": "No covers match these filters in {theme}.",
   "editor.cover.clear": "Clear search",
+  "editor.cover.showMore": "{count, plural, one {Show # more cover} other {Show # more covers}}",
   "editor.cover.searchMore": "Search more photos",
   "editor.cover.searching": "Searching…",
   "editor.cover.searchingMore": "Searching for more photos…",

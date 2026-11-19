@@ -106,7 +106,8 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .admin-only { display: grid; gap: 16px; justify-items: center; }
 .admin-only .actions { justify-content: center; }
 .admin-only .admin-block { width: 100%; max-width: 480px; display: grid; gap: 8px; }
-.pill-btn[disabled] { opacity: .55; }
+.pill-btn[disabled], .pill-btn[aria-disabled="true"] { opacity: .55; }
+.pill-btn[aria-disabled="true"] { cursor: not-allowed; }
 .photo-tile { transition: transform .12s ease; &:hover { transform: translateY(-2px); } &:focus-visible { outline: 3px solid $ink; outline-offset: 3px; } }
 
 // Narrow screens: a .responsive table turns each row into a card so actions never fall off screen.

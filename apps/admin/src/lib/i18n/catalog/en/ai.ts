@@ -214,7 +214,7 @@ export const ai = {
   "quick.waiting.one": "{ai} is choosing for you and writing 1 draft. This can take up to a minute.",
   "quick.waiting.other": "{ai} is choosing for you and writing {n} drafts. This can take up to a minute.",
   "quick.manual": "Choose manually",
-  "editor.fromAi": "Filled from a {ai} draft. Pick a venue and time, review everything, then save.",
+  "editor.fromAi": "{ai} filled this in. Nothing is saved yet. Pick a venue and time, check the details, then press Create event.",
 
   // Where: address search and Dipbot venues in the event editor
   "where.address": "Street address",
@@ -222,6 +222,7 @@ export const ai = {
   "where.searchHint": "Pick a result to fill the venue and city. You can also type the address yourself.",
   "where.loading": "Searching…",
   "where.empty": "No matches. Keep typing or enter the address yourself.",
+  "where.emptyPickOnly": "No matches. Try the street number and name, then pick your office from the list.",
   "where.error": "Address search isn’t available right now. You can enter the address yourself.",
   "where.results.one": "1 address found. Use the arrow keys to choose.",
   "where.results.other": "{n} addresses found. Use the arrow keys to choose.",
@@ -251,7 +252,7 @@ export const ai = {
   "venues.find": "Find venues near your office",
   "venues.use": "Use",
   "venues.changeOffice": "Change office",
-  "venues.needTitle": "Add a title so {ai} knows what to look for.",
+  "venues.needTitle": "Add a title at the top of the form so {ai} knows what to look for.",
   "venues.loading": "{ai} is looking nearby…",
   "venues.found.one": "1 venue within {r} mi",
   "venues.found.other": "{n} venues within {r} mi",

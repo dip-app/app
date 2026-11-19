@@ -4,6 +4,7 @@
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant, type LinkProps } from "./Button";
 export { Chip, ChipToggle, type ChipTone } from "./Chip";
 export { EmptyState } from "./EmptyState";
+export { ErrorSummary, type ErrorSummaryItem } from "./ErrorSummary";
 export { ErrorIcon, ErrorNotice, InlineNotice, type NoticeTone } from "./InlineNotice";
 export { PageHeader } from "./PageHeader";
 export { Panel } from "./Panel";

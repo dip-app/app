@@ -24,7 +24,7 @@ import { WhereSection } from "./WhereSection";
 import { WhenPicker } from "./WhenPicker";
 import { t as tAi } from "@/lib/aiStrings";
 import { t } from "@/lib/i18n";
-import { Button, ChipToggle, InlineNotice } from "@/components/kit";
+import { Button, ChipToggle, ErrorSummary, type ErrorSummaryItem, InlineNotice } from "@/components/kit";
 import { saveFailureMessage } from "@/lib/userError";
 
 interface Props {
@@ -37,15 +37,39 @@ interface Props {
 /** The New event form as kept while the admin visits Dipbot. */
 interface Stash { draft: EventDraft; price: string; coverBy: string | null }
 
+/** Field key to the control a fix starts at, in page order (the error summary lists them in this order). */
 const FIELD_IDS: Record<string, string> = {
-  title: "title", description: "description", coverImageURL: "cover-first", startTime: "start", endTime: "end",
+  title: "title", description: "description", tagIds: "tags-first", coverImageURL: "cover-first", startTime: "start", endTime: "end",
   "venue.address": "vaddr", "venue.coordinates": "vaddr", "venue.latitude": "vaddr", "venue.longitude": "vaddr", "venue.name": "vname", "venue.locality": "vloc", costCents: "price", capacity: "capacity",
 };
 
-/** Moves focus to the first invalid control, in page order, so keyboard and screen reader users land on it. */
-function focusFirstInvalid(found: FieldErrors) {
-  const first = Object.keys(FIELD_IDS).find((key) => found[key]);
-  if (first) document.getElementById(FIELD_IDS[first])?.focus();
+/** The field's name as the form shows it, for the error summary. */
+function fieldLabel(key: string): string {
+  switch (key) {
+    case "title": return t("events.form.title");
+    case "description": return t("events.form.description");
+    case "tagIds": return t("events.form.tags");
+    case "coverImageURL": return t("events.form.coverImage");
+    case "startTime": return t("editor.when.startTime");
+    case "endTime": return t("editor.when.endTime");
+    case "venue.name": return tAi("where.venueName");
+    case "venue.locality": return tAi("where.locality");
+    case "costCents": return t("events.form.price");
+    case "capacity": return t("events.form.capacity");
+    default: return tAi("where.address");
+  }
+}
+
+/** Every error in page order; a field the form doesn't know (a new server field) is listed last, linked to the title. */
+function summaryItems(found: FieldErrors): ErrorSummaryItem[] {
+  const known = Object.keys(FIELD_IDS).filter((key) => found[key]);
+  const other = Object.keys(found).filter((key) => !(key in FIELD_IDS));
+  return [
+    ...known.map((key) => ({ target: FIELD_IDS[key], label: fieldLabel(key), message: found[key] ?? "" })).map((item) =>
+      // "Title: Title must be 1 to 120 characters." reads the name twice: the message alone already names the field.
+      (item.message.toLocaleLowerCase().startsWith(item.label.toLocaleLowerCase()) ? { ...item, label: "" } : item)),
+    ...other.map((key) => ({ target: "title", label: key, message: found[key] ?? "" })),
+  ];
 }
 
 export function EventForm({ event, onReload }: Props) {
@@ -64,6 +88,11 @@ export function EventForm({ event, onReload }: Props) {
   useEffect(() => {
     if (failure && Object.keys(failure.fields).length === 0) failureRef.current?.focus();
   }, [failure]);
+  // Each submit that finds something to fix focuses the error summary, which lists every field at once.
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => { if (attempt) summaryRef.current?.focus(); }, [attempt]);
+  const showSummary = (found: FieldErrors) => { setErrors(found); setAttempt((n) => n + 1); };
   const [saving, setSaving] = useState(false);
   // IDs are opaque in production: the selector writes IDs and shows the catalog's names.
   const catalog = useTags();
@@ -136,7 +165,15 @@ export function EventForm({ event, onReload }: Props) {
     return () => registerEditorStash(null);
   }, [editing]);
 
-  const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
+  /** Editing a field clears its error (and its summary line): a red message under a fixed field read as still wrong. */
+  const clearErrors = (...keys: string[]) => setErrors((current) => {
+    if (!keys.some((key) => current[key])) return current;
+    const next = { ...current };
+    for (const key of keys) delete next[key];
+    return next;
+  });
+  const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => { setDraft((current) => ({ ...current, [key]: value })); clearErrors(key); };
+  const VENUE_KEYS: Record<string, string[]> = { address: ["venue.address", "venue.coordinates", "venue.latitude", "venue.longitude"], name: ["venue.name"], locality: ["venue.locality"] };
 
   async function submit(submitEvent: React.FormEvent) {
     submitEvent.preventDefault();
@@ -152,7 +189,7 @@ export function EventForm({ event, onReload }: Props) {
     setErrors(found);
     setFailure(null);
     if (Object.keys(found).length) {
-      focusFirstInvalid(found);
+      showSummary(found);
       return;
     }
     // Map position: kept, or resolved from the typed address now (never typed by the admin).
@@ -162,8 +199,7 @@ export function EventForm({ event, onReload }: Props) {
       const applied = applyOutcome(plan, await resolveTyped((request) => api.resolvePlace(request), candidate.venue), candidate.venue);
       setSaving(false);
       if (applied.error) {
-        setErrors({ "venue.address": applied.error });
-        focusFirstInvalid({ "venue.address": applied.error });
+        showSummary({ "venue.address": applied.error });
         return;
       }
       candidate.venue = applied.venue;
@@ -194,7 +230,7 @@ export function EventForm({ event, onReload }: Props) {
           : t("events.form.createFailed"),
       );
       setFailure(apiError);
-      if (apiError.fields) { setErrors(apiError.fields); focusFirstInvalid(apiError.fields); }
+      if (Object.keys(apiError.fields ?? {}).length) showSummary(apiError.fields);
     } finally {
       setSaving(false);
     }
@@ -202,16 +238,23 @@ export function EventForm({ event, onReload }: Props) {
 
   const err = (key: string) => errors[key];
   const invalid = (key: string) => (errors[key] ? true : undefined);
+  // Enter in a text field never submits (it nearly published half-filled events in the usability study); the form is
+  // sent only from Create event or Save changes. Text areas, buttons and widgets that handle Enter themselves are left alone.
+  function blockImplicitSubmit(keyEvent: React.KeyboardEvent<HTMLFormElement>) {
+    const target = keyEvent.target as HTMLElement;
+    if (keyEvent.key === "Enter" && target instanceof HTMLInputElement && !["button", "submit", "checkbox", "radio"].includes(target.type)) keyEvent.preventDefault();
+  }
 
   return (
     <div className="form-layout">
-    <form className="form" onSubmit={submit} noValidate>
+    <form className="form" onSubmit={submit} noValidate onKeyDown={blockImplicitSubmit}>
       {fromAi && <p className="notice form-notice" role="status">{tAi("editor.fromAi")}</p>}
-      {Object.keys(errors).length > 0 && !failure && (
-        <InlineNotice tone="error">{t("events.form.fixFields", { count: Object.keys(errors).length })}</InlineNotice>
+      <p className="hint form-required-note">{t("events.form.requiredNote")}</p>
+      {Object.keys(errors).length > 0 && (
+        <ErrorSummary ref={summaryRef} title={editing ? t("events.form.fixToSave") : t("events.form.fixToCreate")} items={summaryItems(errors)} />
       )}
-      {failure && (
-        <InlineNotice tone="error" ref={failureRef} announce={Object.keys(failure.fields).length > 0} title={t("failure.title.save")}
+      {failure && Object.keys(failure.fields).length === 0 && (
+        <InlineNotice tone="error" ref={failureRef} announce={false} title={t("failure.title.save")}
           action={failure.code === "aborted" && onReload ? <Button variant="plain" onClick={onReload}>{t("events.form.reloadLatest")}</Button> : undefined}>
           {saveFailureMessage(failure, Boolean(onReload))}
         </InlineNotice>
@@ -228,12 +271,12 @@ export function EventForm({ event, onReload }: Props) {
           {err("description") && <span className="error" id="description-error">{err("description")}</span>}
         </div>
         <fieldset className="field">
-          <legend>{t("events.form.tags")}</legend>
+          <legend>{t("events.form.optional", { label: t("events.form.tags") })}</legend>
           <div className="chips">
             {catalog.status === "loading" && <span className="hint">{t("events.form.tagsLoading")}</span>}
             {catalog.status === "error" && <span className="hint">{t("events.form.tagsFailed")} <button type="button" className="link-btn" onClick={catalog.reload}>{t("common.tryAgain")}</button></span>}
-            {tags.map((tag) => (
-              <ChipToggle key={tag.id} pressed={draft.tagIds.includes(tag.id)}
+            {tags.map((tag, index) => (
+              <ChipToggle key={tag.id} id={index === 0 ? "tags-first" : undefined} pressed={draft.tagIds.includes(tag.id)}
                 aria-label={tagCounts ? `${tag.name}, ${interestLabel(tagCounts.get(tag.id) ?? 0)}` : undefined}
                 count={tagCounts ? (tagCounts.get(tag.id) ?? 0) : undefined} countTitle={tagCounts ? interestLabel(tagCounts.get(tag.id) ?? 0) : undefined}
                 onClick={() => set("tagIds", draft.tagIds.includes(tag.id) ? draft.tagIds.filter((id) => id !== tag.id) : [...draft.tagIds, tag.id])}>
@@ -257,7 +300,7 @@ export function EventForm({ event, onReload }: Props) {
         <h2>{t("events.form.when")}</h2>
         <WhenPicker startTime={draft.startTime} endTime={draft.endTime} disabled={timesLocked} allowPast={editing} presets={presets}
           startError={err("startTime")} endError={err("endTime")}
-          onChange={(startTime, endTime) => setDraft((current) => ({ ...current, startTime, endTime }))} />
+          onChange={(startTime, endTime) => { setDraft((current) => ({ ...current, startTime, endTime })); clearErrors("startTime", "endTime"); }} />
         <span className="hint">
           {timesLocked
             ? t("events.form.timesLocked")
@@ -265,15 +308,15 @@ export function EventForm({ event, onReload }: Props) {
         </span>
       </div>
 
-      <WhereSection venue={draft.venue} isOutdoor={draft.isOutdoor} errors={errors} onResolvedFor={(r) => { resolvedFor.current = r; }} onVenue={(patch) => setDraft((current) => ({ ...current, venue: { ...current.venue, ...patch } }))}
+      <WhereSection venue={draft.venue} isOutdoor={draft.isOutdoor} errors={errors} onResolvedFor={(r) => { resolvedFor.current = r; }} onVenue={(patch) => { setDraft((current) => ({ ...current, venue: { ...current.venue, ...patch } })); clearErrors(...Object.keys(patch).flatMap((key) => VENUE_KEYS[key] ?? [])); }}
         onOutdoor={(next) => set("isOutdoor", next)}
         event={{ title: draft.title, description: draft.description, tagIds: draft.tagIds, capacity: draft.capacity, costCents: dollarsToCents(price) }} />
 
       <div className="section">
         <h2>{t("events.form.costAndSpots")}</h2>
         <div className="row">
-          <div className="field"><label htmlFor="price">{t("events.form.price")}</label>
-            <input id="price" aria-describedby={err("costCents") ? "price-error" : undefined} inputMode="decimal" placeholder={t("events.form.pricePlaceholder")} value={price} aria-invalid={invalid("costCents")} onChange={(e) => setPrice(e.target.value)} />
+          <div className="field"><label htmlFor="price">{t("events.form.optional", { label: t("events.form.price") })}</label>
+            <input id="price" aria-describedby={err("costCents") ? "price-error" : undefined} inputMode="decimal" placeholder={t("events.form.pricePlaceholder")} value={price} aria-invalid={invalid("costCents")} onChange={(e) => { setPrice(e.target.value); clearErrors("costCents"); }} />
             {err("costCents") && <span className="error" id="price-error">{err("costCents")}</span>}</div>
           <div className="field"><label htmlFor="capacity">{t("events.form.capacity")}</label>
             <input id="capacity" aria-describedby={err("capacity") ? "capacity-error" : undefined} type="number" min={LIMITS.capacityMin} max={LIMITS.capacityMax} value={Number.isNaN(draft.capacity) ? "" : draft.capacity} aria-invalid={invalid("capacity")} onChange={(e) => set("capacity", e.target.valueAsNumber)} />
@@ -300,6 +343,7 @@ export function EventForm({ event, onReload }: Props) {
       <div className="actions">
         <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("common.saving") : editing ? t("events.form.save") : t("events.form.create")}</button>
         <button className="big-pill gray" type="button" disabled={saving} onClick={() => (dirty ? setDiscarding(true) : router.push("/events/"))}>{t("common.cancel")}</button>
+        {!editing && <p className="hint actions-note">{t("events.form.createNote")}</p>}
       </div>
     </form>
     <EventPreview draft={draft} price={price} dipbotCover={!!draft.coverImageURL && coverBy === draft.coverImageURL} />

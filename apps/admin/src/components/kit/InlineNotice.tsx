@@ -50,7 +50,7 @@ export function InlineNotice({ tone = "info", title, action, className, children
           <ErrorIcon />
           <div className="alert-main">
             {title && <strong className="alert-title">{title}</strong>}
-            <span className="alert-text">{children}</span>
+            <div className="alert-text">{children}</div>
           </div>
         </div>
         {action && <div className="alert-actions">{action}</div>}

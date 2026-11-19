@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
+import { AddPersonDialog } from "@/components/AddPersonDialog";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
@@ -48,6 +49,7 @@ function Roster() {
   const [revoking, setRevoking] = useState<RosterRow | null>(null);
   const [resent, setResent] = useState<{ row: RosterRow; result: ResendResult } | null>(null);
   const [backfill, setBackfill] = useState<Backfill>(null);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const query = useDebounced(search.trim());
@@ -71,8 +73,7 @@ function Roster() {
     try {
       const result = await api.resendInvite(row);
       list.mutate((rows) => rows.map((r) => (r.entryId === row.entryId ? { ...r, resendCount: result.resendCount, lastResentAt: result.lastResentAt } : r)));
-      setResent({ row, result });
-      toast(t("roster.toast.resent", { name: row.displayName }));
+      setResent({ row, result }); // the message dialog is the outcome: no toast behind it
     } catch (failure) {
       setError(describe(failure));
     } finally {
@@ -123,7 +124,7 @@ function Roster() {
   const hold = useSkeletonGate(list.loading && empty);
   return (
     <Shell title={t("roster.title")} subtitle={t("roster.subtitle")} requires="roster.manage"
-      action={<Button variant="primary" href="/import/">{t("roster.import")}</Button>}>
+      action={<><Button variant="primary" onClick={() => setAdding(true)}>{t("roster.add")}</Button><Button href="/import/">{t("roster.import")}</Button></>}>
       {unlisted > 0 && (
         <div className="review-banner ok" role="status">
           <span><strong>{t("roster.unlisted.headline", { count: unlisted })}</strong> {t("roster.unlisted.detail")}</span>
@@ -198,6 +199,10 @@ function Roster() {
         </Dialog>
       )}
       {resent && <ResendDialog row={resent.row} result={resent.result} onClose={() => setResent(null)} />}
+      {adding && (
+        <AddPersonDialog api={api} domain={company.data?.emailDomain ?? ""} onClose={() => setAdding(false)}
+          onAdded={(name) => { setAdding(false); toast(t("roster.toast.addedPerson", { name })); list.reload(); }} />
+      )}
       {backfill?.phase === "ready" && (
         <Dialog title={t("roster.backfill.title")} confirmLabel={t("roster.backfill.confirm", { count: backfill.created })} busyLabel={t("roster.backfill.busy")} onClose={() => setBackfill(null)}
           onConfirm={async () => {
@@ -230,7 +235,7 @@ function ResendDialog({ row, result, onClose }: { row: RosterRow; result: Resend
           document.querySelector<HTMLTextAreaElement>("#invite-message")?.select(); // clipboard blocked: leave the text selected to copy by hand
           throw new Error(t("roster.message.copyFailed"));
         }
-        toast(t("roster.toast.copied"));
+        toast(t("roster.toast.copied", { name: row.displayName }));
         onClose();
       }}>
       <p><strong>{t("roster.message.intro", { email: row.email })}</strong> {t("roster.message.recorded", { count: result.resendCount })}</p>

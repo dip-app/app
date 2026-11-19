@@ -41,9 +41,10 @@ describe("name block in the nav", () => {
 });
 
 describe("UserSettings", () => {
-  it("shows the weekly email section first for admins", () => {
+  it("shows Language first, then the weekly email section for admins", () => {
     render(<UserSettings />);
-    expect(screen.getByRole("heading", { level: 2, name: "Weekly ideas email" })).toBeTruthy();
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Language", "Weekly ideas email"]);
     expect(screen.getByTestId("email-settings")).toBeTruthy();
   });
 

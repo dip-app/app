@@ -48,7 +48,11 @@ export const events = {
   "events.edit.backToEvents": "Back to events",
 
   // Form
-  "events.form.fixFields": "Fix {count, plural, one {# field} other {# fields}} to continue.",
+  "events.form.fixToCreate": "Fix these to create the event",
+  "events.form.fixToSave": "Fix these to save your changes",
+  "events.form.requiredNote": "Everything is required unless it says optional.",
+  "events.form.optional": "{label} (optional)",
+  "events.form.createNote": "Members see it in the app as soon as you create it. You can edit or cancel it later.",
   "events.form.reloadLatest": "Reload latest",
   "events.form.title": "Title",
   "events.form.description": "Description",
@@ -75,7 +79,7 @@ export const events = {
   "events.form.saved": "Saved changes to “{title}”.",
   "events.form.created": "Created “{title}”.",
   "events.form.saveUnconfirmed": "We couldn’t confirm whether your changes were saved. Reload the latest version to check before saving again.",
-  "events.form.createFailed": "Couldn’t create the event. Your draft is kept; trying again is safe and won’t create a duplicate.",
+  "events.form.createFailed": "Couldn’t create the event. What you entered is kept; trying again is safe and won’t create a duplicate.",
   "events.form.priceInvalid": "Enter a price like 12.50, or leave blank for free.",
   "events.form.cancelDialog.title": "Cancel this event?",
   "events.form.cancelDialog.confirm": "Cancel event",

@@ -42,6 +42,24 @@ type Note = { kind: "picked"; text: string; badge: string; dipbot: boolean; fres
 
 /** Thumbnails above this index lazy-load inside the scroll region; the first screenful loads eagerly so tiles are never blank. */
 const EAGER_THUMBS = 16;
+/** Phones show the library in the page flow (no inner scroller, which trapped the page scroll): this many tiles, then "Show more". */
+export const PHONE_FIRST = 6;
+export const PHONE_STEP = 12;
+const PHONE_QUERY = "(max-width: 699px)";
+
+/** True on phone widths (the same breakpoint as the picker's phone styles). */
+function usePhoneWidth(): boolean {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const media = window.matchMedia(PHONE_QUERY);
+    const update = () => setPhone(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return phone;
+}
 
 function CheckMark() {
   return (
@@ -68,7 +86,18 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
   const searchRef = useRef<HTMLInputElement>(null);
 
   const selected = coverByURL(value);
-  const shown = useMemo(() => searchCovers({ query, theme }), [query, theme]);
+  const matches = useMemo(() => searchCovers({ query, theme }), [query, theme]);
+  // Phones: the first tiles plus the selected one, then "Show more covers". A new search or filter starts short again.
+  const phone = usePhoneWidth();
+  const [limit, setLimit] = useState(PHONE_FIRST);
+  useEffect(() => setLimit(PHONE_FIRST), [query, theme]);
+  const shown = useMemo(() => {
+    if (!phone || matches.length <= limit) return matches;
+    const first = matches.slice(0, limit);
+    const pick = matches.find((c) => c.url === selected?.url);
+    return pick && !first.includes(pick) ? [...first, pick] : first;
+  }, [phone, matches, limit, selected?.url]);
+  const hidden = matches.length - shown.length;
   const themeCounts = useMemo(() => THEMES.map((th) => ({ ...th, count: searchCovers({ query, theme: th.key }).length })), [query]);
   const total = useMemo(() => searchCovers({ query }).length, [query]);
   const stop = shown.find((c) => c.url === selected?.url)?.url ?? shown[0]?.url;
@@ -168,7 +197,7 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
   const clear = () => { setQuery(""); setTheme(""); searchRef.current?.focus(); };
   const noteId = `${uid}-note`;
   const resultsId = `${uid}-results`;
-  const count = shown.length === COVER_LIBRARY.length ? t("editor.cover.count", { count: shown.length }) : t("editor.cover.countOf", { shown: shown.length, total: COVER_LIBRARY.length });
+  const count = matches.length === COVER_LIBRARY.length ? t("editor.cover.count", { count: matches.length }) : t("editor.cover.countOf", { shown: matches.length, total: COVER_LIBRARY.length });
 
   return (
     <div className={`cover-picker${compact ? " compact" : ""}`}>
@@ -241,6 +270,11 @@ export function CoverPicker({ value, onChange, dipbotURL, event, excludeURLs, la
               );
             })}
           </div>
+        )}
+        {hidden > 0 && (
+          <Button size="sm" className="cp-show-more" onClick={() => setLimit((n) => n + PHONE_STEP)}>
+            {t("editor.cover.showMore", { count: Math.min(PHONE_STEP, hidden) })}
+          </Button>
         )}
       </div>
       </div>

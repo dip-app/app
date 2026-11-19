@@ -50,7 +50,11 @@ export const events: Record<keyof typeof source, string> = {
   "events.edit.backToEvents": "Volver a eventos",
 
   // Form
-  "events.form.fixFields": "Corrige {count, plural, one {# campo} other {# campos}} para continuar.",
+  "events.form.fixToCreate": "Corrige esto para crear el evento",
+  "events.form.fixToSave": "Corrige esto para guardar los cambios",
+  "events.form.requiredNote": "Todo es obligatorio salvo lo que diga opcional.",
+  "events.form.optional": "{label} (opcional)",
+  "events.form.createNote": "Los miembros lo ven en la app en cuanto lo creas. Puedes editarlo o cancelarlo después.",
   "events.form.reloadLatest": "Recargar la última versión",
   "events.form.title": "Título",
   "events.form.description": "Descripción",
@@ -77,7 +81,7 @@ export const events: Record<keyof typeof source, string> = {
   "events.form.saved": "Se guardaron los cambios de “{title}”.",
   "events.form.created": "Se creó “{title}”.",
   "events.form.saveUnconfirmed": "No pudimos confirmar si se guardaron tus cambios. Recarga la última versión para comprobarlo antes de volver a guardar.",
-  "events.form.createFailed": "No se pudo crear el evento. Tu borrador se conserva; puedes reintentar sin problema y no se creará un duplicado.",
+  "events.form.createFailed": "No se pudo crear el evento. Lo que escribiste se conserva; puedes reintentar sin problema y no se creará un duplicado.",
   "events.form.priceInvalid": "Escribe un precio como 12.50, o déjalo vacío para que sea gratis.",
   "events.form.cancelDialog.title": "¿Cancelar este evento?",
   "events.form.cancelDialog.confirm": "Cancelar evento",

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Button, Chip, ChipToggle, EmptyState, ErrorNotice, InlineNotice, PageHeader, Panel, SegmentedControl } from "../kit";
+import { Button, Chip, ChipToggle, EmptyState, ErrorNotice, ErrorSummary, InlineNotice, PageHeader, Panel, SegmentedControl } from "../kit";
 
 afterEach(cleanup);
 
@@ -101,6 +101,34 @@ describe("ErrorNotice", () => {
     expect(screen.queryByRole("button")).toBeNull();
     rerender(<ErrorNotice error={sdk("unauthenticated", "unauthenticated [401]")} onRetry={retry} />);
     expect(screen.getByRole("link", { name: "Sign in" })).toBeTruthy();
+  });
+});
+
+describe("ErrorSummary", () => {
+  it("lists each field once as a link that focuses it, and can take focus itself", () => {
+    const ref = createRef<HTMLDivElement>();
+    render(<>
+      <ErrorSummary ref={ref} title="Fix these to create the event" items={[
+        { target: "cover", label: "Cover image", message: "Pick a cover image." },
+        { target: "vaddr", label: "Street address", message: "Add the street address." },
+        { target: "vaddr", label: "Street address", message: "Coordinates are off." },
+      ]} />
+      <input id="cover" aria-label="cover" /><input id="vaddr" aria-label="street" />
+    </>);
+    const alert = ref.current!;
+    expect(alert.getAttribute("role")).toBeNull(); // focus announces it once; not a live region
+    expect(alert.tabIndex).toBe(-1);
+    expect(screen.getByText("Fix these to create the event")).toBeTruthy();
+    const links = screen.getAllByRole("link");
+    expect(links.map((a) => a.textContent)).toEqual(["Cover image: Pick a cover image.", "Street address: Add the street address."]);
+    Element.prototype.scrollIntoView ??= () => undefined;
+    fireEvent.click(links[1]);
+    expect(document.activeElement?.id).toBe("vaddr");
+  });
+
+  it("renders nothing without items", () => {
+    const { container } = render(<ErrorSummary title="Fix" items={[]} />);
+    expect(container.innerHTML).toBe("");
   });
 });
 

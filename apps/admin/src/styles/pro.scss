@@ -51,7 +51,7 @@ $ctl-h: 36px;
   .titles { display: grid; gap: 2px; }
   .page-title { font-family: var(--font-figtree), sans-serif; font-weight: 600; font-size: 22px; line-height: 1.2; letter-spacing: -.01em; }
   .subtitle { font-size: 14px; color: var(--muted); }
-  .header-action { padding: 0; }
+  .header-action { padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
 
   // ---------- Buttons
   .pill-btn, .big-pill { border-radius: $r-ctl; min-height: $ctl-h; padding: 0 14px; font-size: 14px; font-weight: 500; font-family: var(--font-figtree), sans-serif; &:active { transform: none; } }
@@ -153,6 +153,10 @@ $ctl-h: 36px;
   .banner.error .alert-main { flex: 1; min-width: 0; display: grid; gap: 2px; overflow-wrap: anywhere; }
   .banner.error .alert-title { font-weight: 600; }
   .banner.error .alert-actions { flex: none; display: flex; gap: 8px; align-self: center; }
+  // ErrorSummary: one link per field to fix, under the alert title.
+  .error-summary-list { margin: 2px 0 0; padding-left: 18px; display: grid; gap: 2px;
+    a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+    a:focus-visible { outline: 2px solid var(--error-ink); outline-offset: 1px; border-radius: 2px; } }
   // Field errors and the small status lines inside widgets: red text with the same mark, no box.
   :is(p, span, div, li).error:not(.banner):not(:empty) {
     &::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; background: currentColor; flex: none;

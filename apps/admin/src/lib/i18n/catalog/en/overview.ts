@@ -28,7 +28,8 @@ export const overview = {
   // Key number tiles
   "overview.stats.label": "Key numbers",
   "overview.stats.members.label": "Members",
-  "overview.stats.members.note": "{count} active accounts",
+  // Accounts that aren't deactivated. Not "active": the next tile's "Active, last 30 days" uses that word.
+  "overview.stats.members.note": "{count} can sign in",
   "overview.stats.active.label": "Active, last 30 days",
   "overview.stats.active.capped": "At least this many",
   "overview.stats.active.note": "Members who joined an event",
@@ -70,7 +71,7 @@ export const overview = {
   "overview.pending.reviews": "{count, plural, one {Submission to review} other {Submissions to review}}",
   "overview.pending.recentThemes": "Recent weekly themes",
   "overview.pending.invited": "Invited, not joined yet",
-  "overview.pending.resend": "Resend the invite message from the roster",
+  "overview.pending.resend": "Get their invite message from the roster",
   // One line per theme group; the "groupFrom" forms are used when the reviews span several themes.
   "overview.pending.group.current": "Current theme: {title}",
   "overview.pending.group.past": "Past theme: {title}, {range}",

@@ -37,6 +37,7 @@ export const review: Record<keyof typeof source, string> = {
 
   "review.toast.approved": "Aprobaste a {who}. Se otorgaron {points} puntos.",
   "review.toast.rejected": "Solicitaste cambios a {who}. Puede reenviar mientras la semana siga abierta.",
+  "review.nowShowing": "Ahora ves la participación de {who}.",
 
   "review.queue.progress": "{progress} de {goal} {unit} · {when}",
   "review.attempt": "Intento {n}",

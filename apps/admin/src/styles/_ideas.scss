@@ -49,7 +49,8 @@ $r-box: 8px;
   // Five equal 100px tabs. Where 500px does not fit (phones) the row scrolls sideways instead of clipping or shrinking unevenly.
   .stepper { list-style: none; display: flex; margin: 0; padding: 0; border-bottom: 1px solid $line; gap: 0; overflow-x: auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
   @media (max-width: 719px) { .stepper-compact { display: none !important; } }
-  .stepper li { display: block; flex: 0 0 100px; width: 100px; }
+  // At least 100 px, wider when the label needs it ("Presupuesto" was cut to "Presupuest" in Spanish).
+  .stepper li { display: block; flex: 0 0 auto; min-width: 100px; }
   .stepper-label { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
   .stepper-item { box-sizing: border-box; width: 100%; justify-content: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
     &[disabled] { cursor: default; }

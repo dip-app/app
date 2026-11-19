@@ -4,7 +4,7 @@ import type { account as source } from "../en/account";
 
 export const account: Record<keyof typeof source, string> = {
   "account.title": "Tus ajustes",
-  "account.subtitle": "Preferencias que son tuyas, no de tu empresa.",
+  "account.subtitle": "Tus preferencias de idioma y de correo.",
   "account.empty.title": "Nada que configurar todavía",
   "account.empty.body": "Los ajustes de tu cuenta aparecerán aquí.",
   "account.email.title": "Correo semanal de ideas",
