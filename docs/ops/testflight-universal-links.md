@@ -62,3 +62,10 @@ Opt-in on-device calendar read ([design](../design/stretch/calendar.md#privacy-a
 ## Publishing a build
 
 `scripts/testflight.sh` archives Release and uploads to App Store Connect (`--dry-run` archives only, `--version X.Y.Z` overrides the marketing version). It needs a release Xcode (a beta is rejected by App Store Connect), the paid team signed in under Xcode Settings, and the gitignored `GoogleService-Info.plist` and `Local.xcconfig`. `--use-secrets` instead fetches the plist, `Local.xcconfig` and an App Store Connect API key from the encrypted secrets repo and signs through the API key without an Xcode account ([secrets](secrets.md)). App Store Connect assigns the build number. After about 10 to 30 minutes of processing the build appears in TestFlight. App Store Connect URLs: privacy policy `https://letsdip.work/privacy/`, support `https://letsdip.work/support/` (pages in `apps/landing/`; the contact address `support@letsdip.work` must exist).
+
+## Cutting a TestFlight build (scripted)
+
+1. Bump `MARKETING_VERSION` in `ui/project.yml` (new 0.1.N for every upload) in a small PR and merge it.
+2. From the repo root with Node 24 and a release Xcode selected: `scripts/testflight.sh --use-secrets` (archives Release and uploads with the encrypted App Store Connect key; about 15 minutes; it runs no tests). Build numbers are assigned by App Store Connect.
+3. Processing takes 10 to 30 minutes. Check it with `scripts/testflight-distribute.sh --version 0.1.N --list`.
+4. Tester access: the app has one internal beta group (`team05`) with access to all builds, so a processed build is available automatically. For an external group run `scripts/testflight-distribute.sh --version 0.1.N --group "Group name"` (add `--dry-run` to preview). External groups can also need Beta App Review, which this script does not submit.
