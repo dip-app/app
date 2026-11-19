@@ -26,6 +26,10 @@ import { ThemePreview } from "./ThemePreview";
 import { toast } from "./Toast";
 import { Button, ChipToggle, InlineNotice } from "@/components/kit";
 import { saveFailureMessage, userErrorMessage } from "@/lib/userError";
+import type { ThemeSuggestField } from "@/lib/adminTypes";
+import { applySuggestion, fieldList } from "@/lib/themeSuggest";
+import { t as tAi } from "@/lib/aiStrings";
+import { type PanelState, type SuggestRun, SuggestedTag, ThemeSuggestPanel, useThemeSuggest } from "./ThemeSuggest";
 
 interface Props {
   /** Present when editing. */
@@ -33,6 +37,13 @@ interface Props {
   /** Called when the user asks to discard local edits and reload the latest saved theme. */
   onReload?: () => void;
 }
+
+/** Which Suggest theme field a draft key belongs to (the admin's own edits are never overwritten without asking). */
+const SUGGEST_FIELD_OF: Partial<Record<keyof ThemeDraft, ThemeSuggestField>> = {
+  title: "title", description: "description", tagIds: "tags", startDate: "week", endDate: "week", coverImageURL: "illustration",
+};
+
+interface SuggestUndo { draft: ThemeDraft; mine: Set<ThemeSuggestField>; dipbot: Set<ThemeSuggestField>; touched: { tags: boolean; weeks: boolean }; edited: boolean }
 
 const FIELD_IDS: Record<string, string> = {
   coverImageURL: "theme-first", title: "title", description: "description", goal: "goal", goalUnit: "unit",
@@ -111,6 +122,12 @@ export function ThemeForm({ theme, onReload }: Props) {
     }
     touched.current.tags = true;
     touched.current.weeks = true;
+    // A restored draft is the admin's own work: Dipbot never fills over it without asking, and its Undo no longer applies.
+    mine.current = new Set(SUGGEST_FIELDS);
+    setDipbot(new Set());
+    undo.current = null;
+    setPanel(null);
+    if (suggest) setClosedAttempt(suggest.attempt);
     setEdited(true);
     setDraft(restored);
     setErrors({});
@@ -123,6 +140,21 @@ export function ThemeForm({ theme, onReload }: Props) {
     autosave.clear({ keepOffer: true });
     router.push("/themes/");
   }
+
+  // Suggest theme (New theme page only): fields the admin changed by hand, fields Dipbot filled, the card and Undo.
+  const suggest = useThemeSuggest();
+  const mine = useRef(new Set<ThemeSuggestField>());
+  const [dipbot, setDipbot] = useState<ReadonlySet<ThemeSuggestField>>(new Set());
+  const [panel, setPanel] = useState<PanelState | null>(null);
+  const [closedRun, setClosedRun] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
+  const undo = useRef<SuggestUndo | null>(null);
+  const markMine = (key: keyof ThemeDraft) => {
+    const field = SUGGEST_FIELD_OF[key];
+    if (!field) return;
+    mine.current.add(field);
+    setDipbot((current) => (current.has(field) ? new Set([...current].filter((f) => f !== field)) : current));
+  };
 
   // A new theme starts with its picked theme's tag, once the shared catalog is in.
   useEffect(() => {
@@ -149,7 +181,7 @@ export function ThemeForm({ theme, onReload }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
 
-  const set = <K extends keyof ThemeDraft>(key: K, value: ThemeDraft[K]) => { setEdited(true); setDraft((current) => ({ ...current, [key]: value })); };
+  const set = <K extends keyof ThemeDraft>(key: K, value: ThemeDraft[K]) => { markMine(key); setEdited(true); setDraft((current) => ({ ...current, [key]: value })); };
 
   const startOptions = useMemo(
     () => startWeekOptions(others, new Date(), { currentStart: theme?.startDate ?? draft.startDate }),
@@ -164,6 +196,7 @@ export function ThemeForm({ theme, onReload }: Props) {
 
   function pickStart(monday: string) {
     touched.current.weeks = true;
+    markMine("startDate");
     const weeks = endValue && startValue && endValue > addDays(startValue, 6) ? 2 : 1;
     // Picking the saved week again restores the saved instants exactly, even if they aren't week-aligned.
     const startDate = theme && monday === mondayOfIso(theme.startDate) ? theme.startDate : weekStartIso(monday);
@@ -173,14 +206,63 @@ export function ThemeForm({ theme, onReload }: Props) {
     setDraft((current) => ({ ...current, startDate, endDate }));
   }
 
+  /** A free Monday for a suggestion: its own week when the list still shows it free, else the first free week from next Monday. */
+  function freeMonday(preferred: string | undefined): string | null {
+    const from = nextMonday();
+    const open = startOptions.filter((option) => !option.takenBy && option.value >= from);
+    return (preferred ? open.find((option) => option.value === preferred)?.value : undefined) ?? open[0]?.value ?? null;
+  }
+
+  /** Fills the form from suggestion `index` of `run`: untouched fields only unless `replaceMine`. Undo goes back to before the first fill. */
+  function applyRun(run: SuggestRun, index: number, replaceMine = false) {
+    const suggestion = run.list[index];
+    if (!suggestion) return;
+    undo.current ??= { draft, mine: new Set(mine.current), dipbot: new Set(dipbot), touched: { ...touched.current }, edited };
+    const result = applySuggestion(draft, suggestion, { mine: mine.current, replaceMine, knownTagIds: tags.length ? tags.map((tag) => tag.id) : null, freeMonday });
+    if (replaceMine) for (const field of result.filled) mine.current.delete(field);
+    if (result.filled.includes("tags")) touched.current.tags = true;
+    if (result.filled.includes("week")) touched.current.weeks = true;
+    const owned = new Set([...dipbot, ...result.filled].filter((field) => !mine.current.has(field)));
+    const filled = (["illustration", "title", "description", "tags", "week"] as const).filter((field) => owned.has(field));
+    setDraft(result.draft);
+    setEdited(true);
+    setErrors({});
+    setDipbot(owned);
+    setPanel({ index, applied: true, filled, kept: result.kept });
+    setAnnouncement(filled.length ? tAi("themeSuggest.announceFilled", { fields: fieldList(filled) }) : "");
+  }
+
+  function undoSuggestion() {
+    const saved = undo.current;
+    if (!saved) return;
+    undo.current = null;
+    setDraft(saved.draft);
+    mine.current = saved.mine;
+    touched.current = saved.touched;
+    setDipbot(saved.dipbot);
+    setEdited(saved.edited);
+    setPanel((current) => (current ? { ...current, applied: false, filled: [], kept: [] } : current));
+    setAnnouncement(tAi("themeSuggest.announceUndone"));
+  }
+
+  // Each new answer fills the form once (its first suggestion); Another idea moves through the rest.
+  const runId = suggest?.run?.id ?? 0;
+  useEffect(() => {
+    if (suggest?.run) applyRun(suggest.run, 0);
+    // Applies once per answer; the handlers read the latest draft through this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
+
   function pickEnd(sunday: string) {
     touched.current.weeks = true;
+    markMine("endDate");
     set("endDate", theme && sunday === lastDayOfIso(theme.endDate) ? theme.endDate : weekEndIso(sunday));
   }
 
   function pickTheme(url: string) {
     const previous = resolveTheme(draft.coverImageURL);
     const next = resolveTheme(url);
+    markMine("coverImageURL");
     setEdited(true);
     // Carry the catalog defaults over only where the organizer kept the previous theme's defaults.
     setDraft((current) => ({
@@ -273,6 +355,15 @@ export function ThemeForm({ theme, onReload }: Props) {
             {t(restoreNote === "weeksReset" ? "drafts.restored.weeksReset" : "drafts.restored")}
           </InlineNotice>
         )}
+        {suggest && suggest.phase !== "idle" && !(suggest.phase === "done" && closedRun === runId) && (
+          <ThemeSuggestPanel ctl={suggest} state={panel}
+            onAnother={() => suggest.run && panel && applyRun(suggest.run, (panel.index + 1) % suggest.run.list.length)}
+            onUndo={undoSuggestion}
+            onReapply={() => suggest.run && panel && applyRun(suggest.run, panel.index)}
+            onReplaceKept={() => suggest.run && panel && applyRun(suggest.run, panel.index, true)}
+            onClose={() => setClosedRun(runId)} />
+        )}
+        {suggest && <p className="sr-only" role="status" aria-live="polite">{announcement}</p>}
         {Object.keys(errors).length > 0 && !failure && (
           <InlineNotice tone="error">{t("themeForm.fixFields", { count: Object.keys(errors).length })}</InlineNotice>
         )}
@@ -285,7 +376,7 @@ export function ThemeForm({ theme, onReload }: Props) {
 
         <div className="section wide">
           <fieldset className="field">
-            <legend>{t("themeForm.theme")}</legend>
+            <legend>{t("themeForm.theme")}{dipbot.has("illustration") && <SuggestedTag />}</legend>
             <span className="hint">{t("themeForm.themeHint")}</span>
             <RadioGrid label={t("themeForm.theme")} value={draft.coverImageURL} onChange={pickTheme} optionClassName="theme-option"
               describedBy={err("coverImageURL") ? "theme-first-error" : undefined} invalid={!!err("coverImageURL")}
@@ -299,18 +390,18 @@ export function ThemeForm({ theme, onReload }: Props) {
             {err("coverImageURL") && <span className="error" id="theme-first-error">{err("coverImageURL")}</span>}
           </fieldset>
           <div className="field">
-            <label htmlFor="title">{t("themeForm.titleLabel")}</label>
+            <label htmlFor="title">{t("themeForm.titleLabel")}{dipbot.has("title") && <SuggestedTag />}</label>
             <input id="title" aria-describedby={describedBy("title", "title-hint")} value={draft.title} maxLength={THEME_LIMITS.titleMax} aria-invalid={invalid("title")} onChange={(e) => set("title", e.target.value)} />
             <span className="hint" id="title-hint">{t("themeForm.titleHint")}</span>
             {err("title") && <span className="error" id="title-error">{err("title")}</span>}
           </div>
           <div className="field">
-            <label htmlFor="description">{t("themeForm.description")}</label>
+            <label htmlFor="description">{t("themeForm.description")}{dipbot.has("description") && <SuggestedTag />}</label>
             <textarea id="description" aria-describedby={describedBy("description")} value={draft.description} maxLength={THEME_LIMITS.descriptionMax} aria-invalid={invalid("description")} onChange={(e) => set("description", e.target.value)} />
             {err("description") && <span className="error" id="description-error">{err("description")}</span>}
           </div>
           <fieldset className="field">
-            <legend>{t("themeForm.tags")}</legend>
+            <legend>{t("themeForm.tags")}{dipbot.has("tags") && <SuggestedTag />}</legend>
             <div className="chips">
               {catalog.status === "loading" && <span className="hint">{t("themeForm.tagsLoading")}</span>}
               {catalog.status === "error" && <span className="hint">{t("themeForm.tagsError")} <button type="button" className="link-btn" onClick={catalog.reload}>{t("themeForm.tagsRetry")}</button></span>}
@@ -331,7 +422,7 @@ export function ThemeForm({ theme, onReload }: Props) {
         <div className="section">
           <h2>{t("themeForm.weeks")}</h2>
           <div className="field">
-            <label htmlFor="start-week">{t("themeForm.firstWeek")}</label>
+            <label htmlFor="start-week">{t("themeForm.firstWeek")}{dipbot.has("week") && <SuggestedTag />}</label>
             <select id="start-week" value={startValue} disabled={startLocked} aria-invalid={invalid("startDate")} aria-describedby={describedBy("startDate", "weeks-hint")}
               onChange={(e) => pickStart(e.target.value)}>
               {!startValue && <option value="">{t("themeForm.chooseWeek")}</option>}

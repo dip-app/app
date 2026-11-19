@@ -1,0 +1,56 @@
+@use "@/styles/variables.scss" as *;
+
+// Suggest theme on the New theme form (components/ThemeSuggest.tsx): one calm card above the fields with what Dipbot
+// filled and why, Another idea, Undo and a hint to try again; a small "Dipbot suggested this" tag beside filled fields.
+// Follows pro.scss: hairlines, 6-8px radii, 36px controls (44px on phones), one tint for Dipbot.
+$line: #e2e4ec;
+$line-strong: #c4c8d6;
+$ctl-border: #8a8fa5;
+$tint: #eef0ff;
+$dipbot: #3f4bc4;   // 7.6:1 on white, 6.9:1 on the card tint
+$card: #f7f8ff;
+$card-line: #ccd1fb;
+$sg-line: #8f99f6;
+
+.content .form {
+  .dipbot-tag { display: inline-flex; align-items: center; gap: 4px; height: 20px; margin-left: 8px; padding: 0 8px 0 5px; border-radius: 999px; background: $tint; color: $dipbot; font-size: 11.5px; font-weight: 600; line-height: 1; vertical-align: middle; white-space: nowrap; svg { flex: none; } }
+  legend .dipbot-tag { vertical-align: baseline; }
+}
+
+.content .theme-suggest {
+  grid-column: 1 / -1; display: grid; gap: 10px; margin: 0; padding: 12px 14px; background: $card; border: 1px solid $card-line; border-radius: 8px; color: $ink; min-width: 0;
+
+  .ts-loading { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; line-height: 1.4; color: $ink; }
+  .ts-spin { display: inline-flex; color: $dipbot; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ts-spin { animation: ts-pulse 1.1s ease-in-out infinite; }
+    @keyframes ts-pulse { 0%, 100% { opacity: 1; transform: none; } 50% { opacity: .45; transform: scale(.92); } }
+  }
+
+  .ts-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; color: $dipbot; svg { flex: none; } }
+  .ts-title { flex: 1 1 240px; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: $ink; overflow-wrap: anywhere; }
+  .ts-count { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .ts-close { font-size: 13px; color: $ink; white-space: nowrap; }
+  .sg-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid $sg-line; border-radius: 999px; color: $dipbot; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap;
+    &[data-level="perfect"] { border-color: $purple; } }
+
+  .ts-why { display: grid; gap: 2px; min-width: 0;
+    ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; } }
+  .ts-label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .ts-note { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; .link-btn { color: $ink; } }
+  .ts-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ts-notice { margin: 0; }
+
+  .ts-hint { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid $card-line; min-width: 0;
+    label { font-size: 13px; font-weight: 600; } }
+  .ts-hint-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0;
+    input { flex: 1 1 240px; max-width: 560px; min-width: 0; height: 36px; box-sizing: border-box; background: $white; }
+    .dip-action { flex: none; } }
+
+  @media (max-width: 600px) {
+    padding: 12px;
+    .ts-close, .ts-actions .pill-btn { min-height: 44px; }
+    .ts-close { display: inline-flex; align-items: center; }
+    .ts-hint-row { input { flex-basis: 100%; height: 44px; } .dip-action { width: 100%; justify-content: center; } }
+  }
+}

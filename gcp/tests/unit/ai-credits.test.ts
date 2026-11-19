@@ -15,7 +15,7 @@ import { JEV_USAGE, SETTINGS, MemoryCatalog, MemoryInterests, MemoryThemes } fro
 
 describe("credit price table", () => {
   test("fixed per-tool prices and the default allowance", () => {
-    assert.deepEqual({ ...CREDIT_COSTS }, { suggestPanel: 1, generateDrafts: 10, regenerateDrafts: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1, ideas: 3 });
+    assert.deepEqual({ ...CREDIT_COSTS }, { suggestPanel: 1, generateDrafts: 10, regenerateDrafts: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1, ideas: 3, themeSuggest: 2 });
     assert.equal(DEFAULT_MONTHLY_CREDITS, 500);
     assert.equal(DEFAULT_MONTHLY_CREDITS / CREDIT_COSTS.generateDrafts, 50);
   });

@@ -70,7 +70,7 @@ export function InlineNotice({ tone = "info", title, action, className, children
  * An error alert for anything thrown. The copy comes from `userError()`: plain language, never a status code or a
  * reason key. "Try again" shows when `onRetry` is given and retrying can help; a signed-out session offers Sign in.
  */
-export function ErrorNotice({ error, onRetry, retryLabel, action, title, fallback, notFound, className, announce, ref }: {
+export function ErrorNotice({ error, onRetry, retryLabel, action, title, fallback, notFound, dipbot, className, announce, ref }: {
   error: unknown;
   onRetry?: () => void;
   retryLabel?: string;
@@ -80,8 +80,8 @@ export function ErrorNotice({ error, onRetry, retryLabel, action, title, fallbac
   className?: string;
   announce?: boolean;
   ref?: Ref<HTMLDivElement>;
-} & Pick<UserErrorOptions, "fallback" | "notFound">) {
-  const shown = userError(error, { fallback, notFound });
+} & Pick<UserErrorOptions, "fallback" | "notFound" | "dipbot">) {
+  const shown = userError(error, { fallback, notFound, dipbot });
   const auto = shown.kind === "signedOut"
     ? <Button variant="plain" href="/login/">{t("failure.signIn")}</Button>
     : onRetry && shown.retryable ? <Button variant="plain" onClick={onRetry}>{retryLabel ?? t("common.tryAgain")}</Button> : null;

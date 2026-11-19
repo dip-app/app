@@ -7,7 +7,7 @@ import { getBlob, getStorage, ref } from "firebase/storage";
 import type { AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
-  type AiBucket, type AiConsiderationRank, type AiEventChoices, type DipbotIdea, type DipbotIdeas, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
+  type AiBucket, type AiConsiderationRank, type AiEventChoices, type DipbotIdea, type DipbotIdeas, type SuggestThemeResult, type ThemeSuggestion, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
   type Submission,
 } from "./adminTypes";
 import type { Session } from "./api";
@@ -77,7 +77,7 @@ export function creditsFromWire(value: unknown): AiCredits {
   const price = (key: keyof typeof DEFAULT_CREDIT_COST) => (typeof cost[key] === "number" ? n(cost[key]) : DEFAULT_CREDIT_COST[key]);
   return {
     creditsAllowance: n(c.creditsAllowance), creditsUsed: n(c.creditsUsed), creditsRemaining: n(c.creditsRemaining), resetsAt: str(c.resetsAt),
-    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick"), venueSearch: price("venueSearch"), ...(typeof cost.ideas === "number" ? { ideas: n(cost.ideas) } : {}) },
+    creditCost: { suggest: price("suggest"), generate: price("generate"), regenerate: price("regenerate"), weeklyEmail: price("weeklyEmail"), coverPick: price("coverPick"), venueSearch: price("venueSearch"), ...(typeof cost.ideas === "number" ? { ideas: n(cost.ideas) } : {}), ...(typeof cost.themeSuggest === "number" ? { themeSuggest: n(cost.themeSuggest) } : {}) },
   };
 }
 /** GetEventIdeaContextResponse -> EventIdeaContext. */
@@ -90,6 +90,7 @@ export function ideaContextFromWire(d: DocumentData): EventIdeaContext {
     ...(theme && str(theme.title) ? { currentTheme: { title: str(theme.title), tagIds: strings(theme.tagIds) } } : {}),
     usage: usageFromWire(d.usage),
     credits: creditsFromWire(d.credits),
+    themeSuggestEnabled: d.themeSuggestEnabled === true,
   };
 }
 const SUGGEST_QUESTIONS: readonly string[] = ["interest", "goal", "groupSize", "setting", "budget", "timing"];
@@ -157,6 +158,29 @@ export function dipbotIdeasFromWire(d: DocumentData): DipbotIdeas {
     ...(d.outcome === "updated" || d.outcome === "unchanged" || d.outcome === "extended" || d.outcome === "skipped" || d.outcome === "failed" ? { outcome: d.outcome } : {}),
     credits: creditsFromWire(d.credits),
     creditsCharged: typeof d.creditsCharged === "number" ? d.creditsCharged : 0,
+  };
+}
+const THEME_KEYS: readonly string[] = ["fitness", "outdoors", "food", "arts", "games", "music", "learning", "volunteering", "wellness"];
+/** One ThemeSuggestion from the wire; null when a required field is missing (the server already validated it). */
+export function themeSuggestionFromWire(value: unknown): ThemeSuggestion | null {
+  const d = obj(value);
+  if (!str(d.id) || !str(d.title) || !str(d.description) || !THEME_KEYS.includes(str(d.themeKey))) return null;
+  const fit = d.fitLabel === "perfect" || d.fitLabel === "great" || d.fitLabel === "good" ? d.fitLabel : undefined;
+  return {
+    id: str(d.id), title: str(d.title).slice(0, 60), description: str(d.description).slice(0, 400), tagIds: strings(d.tagIds).slice(0, 4), themeKey: str(d.themeKey),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(str(d.weekStart)) ? { weekStart: str(d.weekStart) } : {}),
+    why: strings(d.why).filter(Boolean).slice(0, 3), reasonBasis: d.reasonBasis === "company_data" ? "company_data" : "generic",
+    ...(fit ? { fitLabel: fit } : {}), source: d.source === "agent" ? "agent" : "catalog",
+  };
+}
+/** SuggestThemeResponse -> SuggestThemeResult. A response without a usable suggestion is an error (nothing to fill). */
+export function suggestThemeFromWire(d: DocumentData): SuggestThemeResult {
+  const suggestion = themeSuggestionFromWire(d.suggestion);
+  if (!suggestion) throw new Error("No theme suggestion in the response.");
+  return {
+    suggestion, alternatives: list(d.alternatives).map(themeSuggestionFromWire).filter((x): x is ThemeSuggestion => x !== null).slice(0, 3),
+    outcome: d.outcome === "suggested" ? "suggested" : "fallback", replay: d.replay === true, credits: creditsFromWire(d.credits),
+    creditsCharged: typeof d.creditsCharged === "number" && d.creditsCharged > 0 ? d.creditsCharged : 0,
   };
 }
 /** GenerateEventDraftsResponse -> GenerateDraftsResult. */
@@ -572,6 +596,13 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
       // Only `refresh` carries a requestId (the caller's); load and auto are not commands the server replays.
       const payload = { mode: input.mode, ...(input.mode === "refresh" ? { requestId: input.requestId ?? crypto.randomUUID() } : {}) };
       return dipbotIdeasFromWire(await call<DocumentData>(ADMIN_CALLABLES.dipbotIdeas, session, payload, false));
+    }),
+    // The caller owns the requestId (one per press, reused on a retry), so a lost response is never charged twice.
+    suggestTheme: (input) => run(async () => {
+      const session = await organizer();
+      return suggestThemeFromWire(await call<DocumentData>(ADMIN_CALLABLES.suggestTheme, session, {
+        requestId: input.requestId, ...(input.hint ? { hint: input.hint.slice(0, 200) } : {}), ...(input.fields ? { fields: input.fields } : {}), ...(input.locale ? { locale: input.locale } : {}),
+      }));
     }),
     pickEventCover: (input) => run(async () => {
       const session = await organizer();

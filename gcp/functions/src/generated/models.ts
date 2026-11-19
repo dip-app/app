@@ -1361,6 +1361,7 @@ export interface AiCreditCosts {
   coverPick: number;
   venueSearch?: number;
   ideas?: number;
+  themeSuggest?: number;
 }
 
 export interface AiCredits {
@@ -1393,6 +1394,7 @@ export interface GetEventIdeaContextResponse {
   currentTheme?: AiIdeaTheme;
   usage: AiUsageSummary;
   credits: AiCredits;
+  themeSuggestEnabled?: boolean;
 }
 
 export interface GetEventIdeaSuggestionsRequest {
@@ -1721,4 +1723,36 @@ export interface ResolvePlaceRequest {
 export interface ResolvePlaceResponse {
   contractVersion: number;
   place?: ResolvedPlace;
+}
+
+export interface SuggestThemeRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  hint?: string;
+  fields?: Array<"title" | "description" | "tags" | "week" | "illustration">;
+  locale?: "en" | "es";
+}
+
+export interface ThemeSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  tagIds: Array<string>;
+  themeKey: "fitness" | "outdoors" | "food" | "arts" | "games" | "music" | "learning" | "volunteering" | "wellness";
+  weekStart?: string;
+  why: Array<string>;
+  reasonBasis: "company_data" | "generic";
+  fitLabel?: "perfect" | "great" | "good";
+  source: "agent" | "catalog";
+}
+
+export interface SuggestThemeResponse {
+  contractVersion: number;
+  suggestion: ThemeSuggestion;
+  alternatives: Array<ThemeSuggestion>;
+  outcome: "suggested" | "fallback";
+  replay: boolean;
+  credits: AiCredits;
+  creditsCharged: number;
 }

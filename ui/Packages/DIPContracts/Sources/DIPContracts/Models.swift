@@ -2721,8 +2721,9 @@ public struct AiCreditCosts: Codable, Equatable, Sendable {
     public var coverPick: Int
     public var venueSearch: Int?
     public var ideas: Int?
+    public var themeSuggest: Int?
 
-    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int, venueSearch: Int? = nil, ideas: Int? = nil) {
+    public init(suggest: Int, generate: Int, regenerate: Int, weeklyEmail: Int, coverPick: Int, venueSearch: Int? = nil, ideas: Int? = nil, themeSuggest: Int? = nil) {
         self.suggest = suggest
         self.generate = generate
         self.regenerate = regenerate
@@ -2730,6 +2731,7 @@ public struct AiCreditCosts: Codable, Equatable, Sendable {
         self.coverPick = coverPick
         self.venueSearch = venueSearch
         self.ideas = ideas
+        self.themeSuggest = themeSuggest
     }
 }
 
@@ -2784,8 +2786,9 @@ public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
     public var currentTheme: AiIdeaTheme?
     public var usage: AiUsageSummary
     public var credits: AiCredits
+    public var themeSuggestEnabled: Bool?
 
-    public init(contractVersion: Int, enabled: Bool, interestDataAvailable: Bool, topInterests: [AiInterestTag], thinInterestTagIds: [String], currentTheme: AiIdeaTheme? = nil, usage: AiUsageSummary, credits: AiCredits) {
+    public init(contractVersion: Int, enabled: Bool, interestDataAvailable: Bool, topInterests: [AiInterestTag], thinInterestTagIds: [String], currentTheme: AiIdeaTheme? = nil, usage: AiUsageSummary, credits: AiCredits, themeSuggestEnabled: Bool? = nil) {
         self.contractVersion = contractVersion
         self.enabled = enabled
         self.interestDataAvailable = interestDataAvailable
@@ -2794,6 +2797,7 @@ public struct GetEventIdeaContextResponse: Codable, Equatable, Sendable {
         self.currentTheme = currentTheme
         self.usage = usage
         self.credits = credits
+        self.themeSuggestEnabled = themeSuggestEnabled
     }
 }
 
@@ -3458,5 +3462,69 @@ public struct ResolvePlaceResponse: Codable, Equatable, Sendable {
     public init(contractVersion: Int, place: ResolvedPlace? = nil) {
         self.contractVersion = contractVersion
         self.place = place
+    }
+}
+
+public struct SuggestThemeRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var companyId: String
+    public var requestId: String
+    public var hint: String?
+    public var fields: [String]?
+    public var locale: String?
+
+    public init(contractVersion: Int, companyId: String, requestId: String, hint: String? = nil, fields: [String]? = nil, locale: String? = nil) {
+        self.contractVersion = contractVersion
+        self.companyId = companyId
+        self.requestId = requestId
+        self.hint = hint
+        self.fields = fields
+        self.locale = locale
+    }
+}
+
+public struct ThemeSuggestion: Codable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var description: String
+    public var tagIds: [String]
+    public var themeKey: String
+    public var weekStart: String?
+    public var why: [String]
+    public var reasonBasis: String
+    public var fitLabel: String?
+    public var source: String
+
+    public init(id: String, title: String, description: String, tagIds: [String], themeKey: String, weekStart: String? = nil, why: [String], reasonBasis: String, fitLabel: String? = nil, source: String) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.tagIds = tagIds
+        self.themeKey = themeKey
+        self.weekStart = weekStart
+        self.why = why
+        self.reasonBasis = reasonBasis
+        self.fitLabel = fitLabel
+        self.source = source
+    }
+}
+
+public struct SuggestThemeResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var suggestion: ThemeSuggestion
+    public var alternatives: [ThemeSuggestion]
+    public var outcome: String
+    public var replay: Bool
+    public var credits: AiCredits
+    public var creditsCharged: Int
+
+    public init(contractVersion: Int, suggestion: ThemeSuggestion, alternatives: [ThemeSuggestion], outcome: String, replay: Bool, credits: AiCredits, creditsCharged: Int) {
+        self.contractVersion = contractVersion
+        self.suggestion = suggestion
+        self.alternatives = alternatives
+        self.outcome = outcome
+        self.replay = replay
+        self.credits = credits
+        self.creditsCharged = creditsCharged
     }
 }

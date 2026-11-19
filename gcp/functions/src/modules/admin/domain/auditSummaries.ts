@@ -51,6 +51,8 @@ export const AUDIT_SUMMARY_KEYS = [
   "cover.import",
   "ai.ideasUpdated",
   "ai.ideasFailed",
+  "ai.themeSuggested",
+  "ai.themeSuggestFailed",
   "ai.generated",
   "ai.noteDeclined",
   "ai.generateFailed",

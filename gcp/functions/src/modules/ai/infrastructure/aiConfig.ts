@@ -38,6 +38,8 @@ export interface AiConfig {
   moderation: { model: string };
   /** Dipbot daily ideas: the tool-using agent (OpenAI Responses API, function calling and strict structured output). */
   ideas: { model: string; effort: Effort; temperature: number };
+  /** Dipbot Suggest theme: the same kind of tool-using agent (function calling and strict structured output). */
+  themeSuggest: { model: string; effort: Effort; temperature: number };
 }
 
 /**
@@ -138,6 +140,9 @@ export function aiConfig(env: NodeJS.ProcessEnv): AiConfig {
     },
     moderation: { model: text(env.AI_MODEL_MODERATION, "omni-moderation-latest") },
     ideas: { model: text(env.AI_MODEL_IDEAS, DEFAULT_DECISION_MODEL), effort: effort(env.AI_EFFORT_IDEAS, "low"), temperature: IDEAS_TEMPERATURE },
+    themeSuggest: {
+      model: text(env.AI_MODEL_THEME_SUGGEST, DEFAULT_DECISION_MODEL), effort: effort(env.AI_EFFORT_THEME_SUGGEST, "low"), temperature: IDEAS_TEMPERATURE,
+    },
   };
 }
 

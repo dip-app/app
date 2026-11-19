@@ -76,6 +76,7 @@ export const ADMIN_CALLABLES = {
   resolvePlace: "resolvePlaceV1",
   setCompanyOffice: "setCompanyOfficeV1",
   dipbotIdeas: "getDipbotIdeasV1",
+  suggestTheme: "suggestThemeV1",
   setMyLocale: "setMyLocaleV1",
 } as const;
 
@@ -426,7 +427,7 @@ export interface AiCredits {
   creditsRemaining: number;
   /** ISO instant the allowance resets (start of next month in the company's time zone). */
   resetsAt: string;
-  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number; venueSearch?: number; ideas?: number };
+  creditCost: { suggest: number; generate: number; regenerate: number; weeklyEmail: number; coverPick: number; venueSearch?: number; ideas?: number; themeSuggest?: number };
 }
 export interface EventIdeaContext {
   enabled: boolean;
@@ -436,6 +437,34 @@ export interface EventIdeaContext {
   currentTheme?: AiIdeaTheme;
   usage: AiUsage;
   credits: AiCredits;
+  /** Suggest theme is on for this company (absent from older servers: off). */
+  themeSuggestEnabled?: boolean;
+}
+
+// ----- Suggest theme (suggestThemeV1)
+export type ThemeSuggestField = "title" | "description" | "tags" | "week" | "illustration";
+export interface ThemeSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  tagIds: string[];
+  /** Illustration key: `catalog://theme/<themeKey>`. */
+  themeKey: string;
+  /** Monday "YYYY-MM-DD" (Eastern weeks) of a free week. */
+  weekStart?: string;
+  why: string[];
+  reasonBasis: "company_data" | "generic";
+  fitLabel?: "perfect" | "great" | "good";
+  source: "agent" | "catalog";
+}
+export interface SuggestThemeInput { requestId: string; hint?: string; fields?: ThemeSuggestField[]; locale?: "en" | "es" }
+export interface SuggestThemeResult {
+  suggestion: ThemeSuggestion;
+  alternatives: ThemeSuggestion[];
+  outcome: "suggested" | "fallback";
+  replay: boolean;
+  credits: AiCredits;
+  creditsCharged: number;
 }
 
 export type AiGoal = "team_bonding" | "wellness" | "learning" | "give_back" | "celebrate" | "competition";

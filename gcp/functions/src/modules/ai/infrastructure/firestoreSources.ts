@@ -1,6 +1,6 @@
 import { FirestoreTagStatsStore } from "../../tags/infrastructure/firestoreTagStats";
 import type { Firestore } from "firebase-admin/firestore";
-import type { CatalogTag, CurrentTheme, InterestSource, InterestStat, TagCatalog, ThemeSource } from "../application/ports";
+import type { CatalogTag, CurrentTheme, InterestSource, InterestStat, TagCatalog, ThemeHistoryRecord, ThemeHistorySource, ThemeSource } from "../application/ports";
 
 /** The default tags seeded by the admin portal (apps/admin/src/lib/catalog.ts). */
 export const DEFAULT_TAGS: readonly CatalogTag[] = [
@@ -76,5 +76,35 @@ export class FirestoreThemeSource implements ThemeSource {
       return { title, tagIds };
     }
     return null;
+  }
+}
+
+/**
+ * Weekly themes in a window for Suggest theme (`companies/{c}/challenges`): one single-field range on `startDate`, so no
+ * composite index; non-weekly and malformed documents are skipped. Only title, tags, illustration, window and the
+ * participant count are read (the count is bucketed before the model sees it).
+ */
+export class FirestoreThemeHistory implements ThemeHistorySource {
+  constructor(private readonly db: Firestore) {}
+
+  async between(companyId: string, from: Date, to: Date): Promise<ThemeHistoryRecord[]> {
+    const snap = await this.db.collection(`companies/${companyId}/challenges`)
+      .where("startDate", ">=", from).where("startDate", "<=", to).orderBy("startDate").limit(200).get();
+    const out: ThemeHistoryRecord[] = [];
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if (data.type !== "weekly") continue;
+      const startDate = toDate(data.startDate);
+      const endDate = toDate(data.endDate);
+      const title = typeof data.title === "string" ? data.title.trim().slice(0, 120) : "";
+      if (!startDate || !endDate || title === "") continue;
+      out.push({
+        title, startDate, endDate,
+        tagIds: Array.isArray(data.tagIds) ? data.tagIds.filter((id): id is string => typeof id === "string").slice(0, 10) : [],
+        coverImageURL: typeof data.coverImageURL === "string" ? data.coverImageURL : "",
+        participantCount: typeof data.participantCount === "number" && Number.isSafeInteger(data.participantCount) && data.participantCount >= 0 ? data.participantCount : 0,
+      });
+    }
+    return out;
   }
 }

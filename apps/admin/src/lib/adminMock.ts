@@ -3,7 +3,7 @@ import type { AdminOpsApi } from "./adminApi";
 import { MAX_RESENDS, inviteMessage } from "./inviteMessage";
 import {
   type AlbumComment, type AlbumPhoto, type ApplyRowResult, type Attendee, type AuditEntry, type Capability, type CompanyInfo,
-  type DipbotIdeas, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
+  type DipbotIdeas, type SuggestThemeResult, type EventIdeaContext, type EventIdeaSuggestions, type GenerateDraftsResult, type BackfillStep, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type FieldChange, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type PlanAction, type Role, type RosterCounts, type RosterQuery, type RosterRow, type Submission,
   IMPORT_FIELDS, IMPORT_LIMITS, can,
 } from "./adminTypes";
 import type { KeyValueStore, Session } from "./api";
@@ -22,6 +22,7 @@ import {
   MOCK_CREDITS_USED, MOCK_CREDIT_ALLOWANCE, MOCK_CREDIT_COSTS, MOCK_DAILY_LIMIT, MOCK_MONTHLY_LIMIT, cacheScenarioFromSearch, creditsOf, aiScenarioFromSearch, buildMockDrafts, mockIdeaContext, mockSuggestions, promptRejected, suggestScenarioFromSearch, usageOf,
 } from "./ideasMock";
 import { buildMockIdeas, ideasScenarioFromSearch } from "./ideasForYouMock";
+import { buildMockThemeSuggestions, themeSuggestScenarioFromSearch } from "./themeSuggestMock";
 
 /** What the ops mock needs to know about an event; supplied by createMockApi so counts stay consistent. */
 export interface MockEventView {
@@ -273,6 +274,8 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
   /** "Ideas for you" in this page load: runs so far, refreshes used today and the stored answers by requestId. */
   const ideasRun: { at: number | null; generation: number; refreshes: number; autoDone: boolean; receipts: Map<string, DipbotIdeas> } = { at: null, generation: 0, refreshes: 0, autoDone: false, receipts: new Map() };
   const aiScenario = () => (typeof window === "undefined" ? "default" as const : aiScenarioFromSearch(window.location.search));
+  /** Suggest theme in this page load: presses so far and the answers by requestId (a replay is free). */
+  const themeRuns: { generation: number; receipts: Map<string, SuggestThemeResult> } = { generation: 0, receipts: new Map() };
   /** `?places=disabled|limit|notfound` preview scenarios: disabled and limit make every Places call fail like the server does. */
   const placesScenario = (): string | null => {
     const value = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("places");
@@ -992,6 +995,38 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
         if (requestId) ideasRun.receipts.set(requestId, out);
         return out;
       }
+    },
+    // Local stand-in for suggestThemeV1 (`?themeSuggest=` picks a scenario). Same policy as the server: 2 credits when a
+    // "model" answered, free for the catalog fallback, replayed free by requestId, refused before any work without credits.
+    async suggestTheme(input): Promise<SuggestThemeResult> {
+      const session = staff("ai.generate");
+      const scenario = themeSuggestScenarioFromSearch(typeof window === "undefined" ? "" : window.location.search);
+      if (aiScenario() === "off") throw new ApiError("failed-precondition", "Theme suggestions are turned off for this company.", {}, "AI_THEME_SUGGEST_DISABLED");
+      const replay = themeRuns.receipts.get(input.requestId);
+      await aiDelay(replay ? 300 : scenario === "slow" ? 6000 : 1400);
+      if (replay) return { ...replay, replay: true, creditsCharged: 0 };
+      const cost = MOCK_CREDIT_COSTS.themeSuggest;
+      if (MOCK_CREDIT_ALLOWANCE - aiCreditsUsed(session.companyId) < cost) throw new ApiError("resource-exhausted", "This company has used this month's Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
+      if (scenario === "limit") throw new ApiError("resource-exhausted", "You have used today's theme suggestions. Try again tomorrow.", {}, "AI_THEME_SUGGEST_LIMIT");
+      if (scenario === "busy") throw Object.assign(new Error("unavailable [503]"), { name: "FirebaseError", code: "functions/unavailable" });
+      if (scenario === "error") throw Object.assign(new Error("internal"), { name: "FirebaseError", code: "functions/internal" });
+      if (input.hint && /@|https?:/i.test(input.hint)) throw new ApiError("invalid-argument", "Leave out links, email addresses and phone numbers.", { hint: "Leave out links, email addresses and phone numbers." }, "AI_PROMPT_REJECTED");
+      const list = buildMockThemeSuggestions(scenario, input.locale === "es" ? "es" : "en", themeRuns.generation, now())
+        .map((s) => ({ ...s, tagIds: s.tagIds.map(previewTagId) }));
+      themeRuns.generation += 1;
+      const charged = scenario === "fallback" ? 0 : cost;
+      const before = aiCreditsUsed(session.companyId);
+      if (charged > 0) {
+        const ai = aiLoad();
+        ai.credits = { ...ai.credits, [session.companyId]: before + charged };
+        aiSave(ai);
+      }
+      const out: SuggestThemeResult = {
+        suggestion: list[0]!, alternatives: list.slice(1, 4), outcome: charged > 0 ? "suggested" : "fallback", replay: false,
+        credits: creditsOf(before + charged, now()), creditsCharged: charged,
+      };
+      themeRuns.receipts.set(input.requestId, out);
+      return out;
     },
     // Local stand-in for pickEventCoverV1: the deterministic lexical pick. No model answers, so the 1 credit the server
     // charges is refunded: the mock checks the balance (`?ai=nocredits` shows the exhausted state) and leaves it unchanged.

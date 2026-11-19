@@ -20,7 +20,7 @@ export const MOCK_DAILY_LIMIT = 10;
 export const MOCK_CREDIT_ALLOWANCE = 500;
 /** The preview month already has some credits spent (412 of 500 left); `?ai=lowcredits` and `?ai=nocredits` show the other states. */
 export const MOCK_CREDITS_USED = 88;
-export const MOCK_CREDIT_COSTS = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1, ideas: 3 };
+export const MOCK_CREDIT_COSTS = { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1, ideas: 3, themeSuggest: 2 };
 
 /** First day of next month at local midnight (the mock's reset date). */
 export function mockResetsAt(now: Date): string {
@@ -64,6 +64,7 @@ export function mockIdeaContext(scenario: AiScenario, monthlyUsed: number, daily
     currentTheme: { title: "Fall Fitness Week", tagIds: ["tag-fitness"] },
     usage,
     credits: creditsOf(creditsUsed, now),
+    themeSuggestEnabled: scenario !== "off",
   };
 }
 

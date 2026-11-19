@@ -20,6 +20,10 @@ export const aiPaths = {
   venueSearch: (companyId: string, key: string) => `companies/${companyId}/aiVenueSearches/${key}`,
   /** Provider searches of one company on one UTC day (the daily cap that protects the places quota). */
   venueUsage: (companyId: string, dayKey: string) => `companies/${companyId}/aiVenueUsage/${dayKey}`,
+  /** One Suggest theme press (24 h, TTL on expireAt): status, input hash, lease and the validated answer for a replay. Never the hint. */
+  themeRequest: (companyId: string, uid: string, requestId: string) => `companies/${companyId}/aiThemeSuggestions/${uid}_${requestId}`,
+  /** Suggest theme runs of one company on one UTC day: the company count and a per-admin count (3 days, TTL on expireAt). */
+  themeUsage: (companyId: string, dayKey: string) => `companies/${companyId}/aiThemeUsage/${dayKey}`,
 };
 
 const two = (value: number) => String(value).padStart(2, "0");

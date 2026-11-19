@@ -132,3 +132,28 @@ export class DemoAgentModel implements AgentModelPort {
     return parsed.success ? { kind: "final", value: parsed.data, usage, model: DEMO_MODEL } : { kind: "malformed", usage, model: DEMO_MODEL };
   }
 }
+
+const DEMO_THEMES = [
+  { title: "Lunch Walk Club", description: "Take a 20 minute walk at lunch on three days this week, alone or with a coworker. Post a photo from your route.", themeKey: "fitness", tagIds: ["tag-fitness", "tag-outdoors"], weekStart: null, why: ["A low-key way to move that fits a busy week."], catalogThemeId: null },
+  { title: "Recipe Swap", description: "Cook something from a coworker's family recipe and share your own. Post a photo of the dish and its name.", themeKey: "food", tagIds: ["tag-food", "tag-cooking"], weekStart: null, why: ["Food themes get people talking across teams."], catalogThemeId: null },
+  { title: "Five Minute Sketch", description: "Draw something on your desk for five minutes a day. No skills needed. Post your favorite sketch.", themeKey: "arts", tagIds: ["tag-arts", "tag-chill"], weekStart: null, why: ["A calm creative break anyone can try."], catalogThemeId: null },
+  { title: "Song of the Day", description: "Share one song a day that gets you through the afternoon. Post the song and why you picked it.", themeKey: "music", tagIds: ["tag-music", "tag-social"], weekStart: null, why: ["Easy to join from any desk."], catalogThemeId: null },
+];
+
+/**
+ * Deterministic offline tool-using model for Suggest theme in the Firebase emulator: the first turn reads the past themes
+ * and the interest buckets, the second answers with four canned themes (the server still validates, de-duplicates and ranks).
+ */
+export class DemoThemeAgentModel implements AgentModelPort {
+  async turn<T>(request: AgentTurnRequest<T>): Promise<AgentTurnOutcome<T>> {
+    if (request.items.length === 0 && request.toolChoice === "auto") {
+      return {
+        kind: "calls", usage: { inputTokens: 700, cachedInputTokens: 0, outputTokens: 50, reasoningTokens: 0 }, model: DEMO_MODEL,
+        calls: [{ id: "demo-1", name: "getPastThemes", arguments: "{}" }, { id: "demo-2", name: "getTagUsage", arguments: "{}" }],
+      };
+    }
+    const usage = { inputTokens: 2000, cachedInputTokens: 0, outputTokens: 500, reasoningTokens: 0 };
+    const parsed = request.schema.safeParse({ themes: DEMO_THEMES });
+    return parsed.success ? { kind: "final", value: parsed.data, usage, model: DEMO_MODEL } : { kind: "malformed", usage, model: DEMO_MODEL };
+  }
+}

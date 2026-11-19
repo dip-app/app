@@ -29,6 +29,8 @@ export const AUDIT_ACTIONS = [
   "ai.generateFailed",
   "ai.ideasGenerated",
   "ai.ideasFailed",
+  "ai.themeSuggested",
+  "ai.themeSuggestFailed",
   "suggestions.setSchedule",
   "company.office.update",
   "event.create",

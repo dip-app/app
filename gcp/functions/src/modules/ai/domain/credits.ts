@@ -11,7 +11,7 @@ import { AdminError, stored } from "../../admin/domain/errors";
  * To add a tool: add a row here, charge it with `chargeCredits` where the action starts, refund it when no result is
  * produced, and add a price to `creditCost` in the contract only if the UI shows one.
  */
-export type CreditTool = "suggestPanel" | "generateDrafts" | "regenerateDrafts" | "weeklyEmail" | "coverPick" | "venueSearch" | "ideas";
+export type CreditTool = "suggestPanel" | "generateDrafts" | "regenerateDrafts" | "weeklyEmail" | "coverPick" | "venueSearch" | "ideas" | "themeSuggest";
 
 export const CREDIT_COSTS: Readonly<Record<CreditTool, number>> = {
   /** One Dipbot Suggest panel visit: the per-step decision calls for the visit (free when cached). */
@@ -41,6 +41,13 @@ export const CREDIT_COSTS: Readonly<Record<CreditTool, number>> = {
    * unchanged-inputs check are free.
    */
   ideas: 3,
+  /**
+   * One Dipbot theme suggestion (suggestThemeV1, "Suggest theme" on the New theme page): a few cheap model turns over the
+   * company's read-only data tools (interest buckets, past themes and events, free weeks, the theme catalog) plus one
+   * ranking call, returning one theme and 2 to 3 alternatives. Reserved when the run starts and refunded exactly once when
+   * no model suggestion survives validation (the free catalog suggestions are shown instead). A replay of a requestId is free.
+   */
+  themeSuggest: 2,
 };
 
 /** About 50 draft generations a month. A company can override it with `monthlyCredits` in its aiSettings document. */
@@ -165,6 +172,7 @@ export function creditsSummary(ledger: CreditLedger): AiCredits {
       coverPick: CREDIT_COSTS.coverPick,
       venueSearch: CREDIT_COSTS.venueSearch,
       ideas: CREDIT_COSTS.ideas,
+      themeSuggest: CREDIT_COSTS.themeSuggest,
     },
   };
 }
