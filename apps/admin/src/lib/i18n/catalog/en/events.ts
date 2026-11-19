@@ -88,7 +88,6 @@ export const events = {
   "events.form.discardDialog.title": "Discard your changes?",
   "events.form.discardDialog.confirm": "Discard changes",
   "events.form.discardDialog.bodyEdit": "The changes you made to this event won’t be saved.",
-  "events.form.discardDialog.bodyNew": "The event you started won’t be saved.",
 
   // Preview
   "events.preview.label": "Preview",

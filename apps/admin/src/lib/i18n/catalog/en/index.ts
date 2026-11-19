@@ -23,6 +23,7 @@ import { review } from "./review";
 import { bugs } from "./bugs";
 import { roster } from "./roster";
 import { importer } from "./importer";
+import { drafts } from "./drafts";
 
 export type Prefixed<T, P extends string> = { [K in keyof T & string as `${P}${K}`]: T[K] };
 
@@ -51,6 +52,7 @@ export const en = {
   ...review,
   ...bugs,
   ...roster,
+  ...drafts,
   ...importer,
   ...prefixed("ai.", ai),
 };

@@ -57,7 +57,6 @@ export const themeForm = {
   "themeForm.discard.title": "Discard your changes?",
   "themeForm.discard.confirm": "Discard changes",
   "themeForm.discard.bodyEdit": "The changes you made to this theme won’t be saved.",
-  "themeForm.discard.bodyNew": "The theme you started won’t be saved.",
   "themeForm.toast.saved": "Saved changes to “{title}”.",
   "themeForm.toast.created": "Created “{title}”.",
 

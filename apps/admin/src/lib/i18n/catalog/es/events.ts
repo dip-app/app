@@ -90,7 +90,6 @@ export const events: Record<keyof typeof source, string> = {
   "events.form.discardDialog.title": "¿Descartar tus cambios?",
   "events.form.discardDialog.confirm": "Descartar cambios",
   "events.form.discardDialog.bodyEdit": "Los cambios que hiciste en este evento no se guardarán.",
-  "events.form.discardDialog.bodyNew": "El evento que empezaste no se guardará.",
 
   // Preview
   "events.preview.label": "Vista previa",

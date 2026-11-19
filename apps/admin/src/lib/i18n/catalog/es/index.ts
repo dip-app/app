@@ -25,6 +25,7 @@ import { review } from "./review";
 import { bugs } from "./bugs";
 import { roster } from "./roster";
 import { importer } from "./importer";
+import { drafts } from "./drafts";
 
 export const es: Record<MessageKey, string> = {
   ...common,
@@ -47,6 +48,7 @@ export const es: Record<MessageKey, string> = {
   ...review,
   ...bugs,
   ...roster,
+  ...drafts,
   ...importer,
   ...prefixed("ai.", ai),
 };

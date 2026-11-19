@@ -21,6 +21,14 @@
 .content .form > .error-summary { grid-column: 1 / -1; margin: 0; }
 .content .actions-note { flex-basis: 100%; margin: 0; }
 
+// ---------- Autosaved drafts (New event, New theme): the restore banner, the note after a restore and the quiet status line
+.content .form > .draft-offer, .content .form > .draft-restored { grid-column: 1 / -1; margin: 0; }
+.draft-offer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.draft-offer-text { margin: 0; flex: 1 1 280px; }
+.draft-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 700px), (pointer: coarse) { .draft-offer-actions { flex: 1 1 100%; .pill-btn { flex: 1 1 0; min-height: 44px; justify-content: center; } } }
+.draft-status { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--muted); min-height: 20px; &.problem { color: var(--error); } }
+
 // ---------- Keyboard shortcuts switch next to the review hint
 .content .keys-toggle { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 
