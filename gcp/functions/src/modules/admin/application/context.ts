@@ -1,3 +1,4 @@
+import { isLocale, type Locale } from "../../i18n";
 import { auditDocument, type AuditActor, type AuditInput } from "../domain/audit";
 import { AdminError, stored } from "../domain/errors";
 import { paths } from "../domain/ops";
@@ -6,7 +7,11 @@ import { payloadHash } from "../domain/reader";
 import { isDeactivated } from "../domain/member";
 import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
-export interface Actor extends AuditActor { companyId: string }
+export interface Actor extends AuditActor {
+  companyId: string;
+  /** The actor's own `users/{uid}.locale` when set (renders admin previews in their language); absent means English. */
+  locale?: Locale;
+}
 
 const RECEIPT_RETENTION_DAYS = 30;
 
@@ -31,7 +36,7 @@ export async function authorize(tx: AdminTransaction, caller: Caller, companyId:
   if (!can(member.role, permission)) throw new AdminError("permission-denied", "INSUFFICIENT_ROLE", "You don't have permission to do this.");
   if (member.companyId !== companyId) throw new AdminError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company.");
   stored(isRole(member.role) && typeof member.displayName === "string", "membership");
-  return { uid: caller.uid, name: member.displayName, role: member.role as Role, companyId };
+  return { uid: caller.uid, name: member.displayName, role: member.role as Role, companyId, ...(isLocale(member.locale) ? { locale: member.locale } : {}) };
 }
 
 /**

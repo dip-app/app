@@ -1,3 +1,4 @@
+import type { Locale } from "../../i18n";
 import type { RateClass } from "../domain/rateLimit";
 
 /**
@@ -24,6 +25,12 @@ export interface PushRateLimiter {
 export interface MembershipReader {
   /** The subset of `uids` whose `users/{uid}` document belongs to `companyId` and is not deactivated. */
   activeIn(companyId: string, uids: readonly string[]): Promise<Set<string>>;
+}
+
+/** Resolves recipients' server-owned `users/{uid}.locale` (missing or unsupported means "en"). */
+export interface LocaleReader {
+  /** One entry per requested uid. */
+  localesFor(uids: readonly string[]): Promise<Map<string, Locale>>;
 }
 
 /** Minimal structured logger; implementations must never receive tokens, emails, names or message text. */

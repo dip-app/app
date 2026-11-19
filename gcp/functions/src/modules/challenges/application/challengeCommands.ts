@@ -132,7 +132,7 @@ export async function createChallenge(
     const auditId = `challenge_create_${authenticated.uid}_${request.requestId}`;
     tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
       id: auditId, action: "challenge.create", targetType: "challenge", targetId: challengeId, requestId: request.requestId,
-      summary: `Created the weekly theme "${request.draft.title}"`,
+      summary: `Created the weekly theme "${request.draft.title}"`, summaryKey: "challenge.create", summaryParams: { title: request.draft.title },
       changes: [change("title", null, request.draft.title), change("startDate", null, iso(request.draft.startDate)), change("endDate", null, iso(request.draft.endDate)), change("pointsReward", null, request.draft.pointsReward)],
     }));
     return { contractVersion: 1, challengeId, revision: 1, challenge: toChallengeDto(challengeId, stored), replayed: false };
@@ -174,7 +174,7 @@ export async function updateChallenge(
     const auditId = `challenge_update_${request.challengeId}_r${nextRevision}`;
     tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
       id: auditId, action: "challenge.update", targetType: "challenge", targetId: request.challengeId,
-      summary: `Edited the weekly theme "${request.draft.title}"`, changes: challengeChanges(current, request.draft),
+      summary: `Edited the weekly theme "${request.draft.title}"`, summaryKey: "challenge.update", summaryParams: { title: request.draft.title }, changes: challengeChanges(current, request.draft),
     }));
     const next: StoredChallenge = { ...current, ...request.draft, tagIds: [...request.draft.tagIds], revision: nextRevision, updatedAt };
     return { contractVersion: 1, challengeId: request.challengeId, revision: nextRevision, challenge: toChallengeDto(request.challengeId, next) };

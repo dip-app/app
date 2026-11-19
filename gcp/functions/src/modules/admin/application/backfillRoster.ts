@@ -71,6 +71,7 @@ export async function backfillRosterCallable(deps: AdminDeps, caller: Caller | n
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "roster.backfill", targetType: "roster", targetId: req.pageToken ?? "start",
         summary: `Added existing members to the roster: ${page.created} added, ${page.existing} already listed, ${page.skipped} skipped`,
+        summaryKey: "roster.backfill", summaryParams: { added: page.created, existing: page.existing, skipped: page.skipped },
         changes: [change("created", null, page.created), change("existing", null, page.existing), change("skipped", null, page.skipped)], requestId: req.requestId,
       });
       return wire(page);

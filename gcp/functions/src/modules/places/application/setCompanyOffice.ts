@@ -78,6 +78,7 @@ export async function setCompanyOffice(deps: SetCompanyOfficeDeps, rawCaller: Ca
     writeAudit(tx, actor, {
       id: `${actor.uid}_office_${deps.newId()}`, action: "company.office.update", targetType: "company", targetId: companyId,
       summary: before ? "Changed the office location" : "Set the office location",
+      summaryKey: before ? "office.change" : "office.set",
       changes: [change("office", before ? "set" : "not set", "set"), change("city", before?.locality ?? null, office.locality)],
     });
   });

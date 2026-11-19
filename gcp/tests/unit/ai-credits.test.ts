@@ -85,7 +85,7 @@ describe("credit charges", () => {
     assert.deepEqual(error.details, { creditsRemaining: 5, resetsAt: "2030-02-01T00:00:00.000Z" });
     const wire = toHttpsError(error);
     assert.equal(wire.code, "resource-exhausted");
-    assert.deepEqual(wire.details, { reason: "AI_CREDITS_EXHAUSTED", creditsRemaining: 5, resetsAt: "2030-02-01T00:00:00.000Z" });
+    assert.deepEqual(wire.details, { reason: "AI_CREDITS_EXHAUSTED", creditsRemaining: 5, resetsAt: "2030-02-01T00:00:00.000Z", messageKey: "errors.aiCreditsExhausted" });
     assert.ok(!/\$|usd|dollar/i.test(JSON.stringify(wire.details) + wire.message));
   });
 

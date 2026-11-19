@@ -3,6 +3,7 @@ import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
+import { errorMessageDetails } from "../../i18n";
 import { routedPushNotifier } from "../../notifications/transport/routedPush";
 import { callerFromRequest } from "../../organizer/transport/organizerCallables";
 import type { PhotoObjects } from "../../photos/application/ports";
@@ -18,10 +19,10 @@ const GENERIC_INTERNAL_MESSAGE = "Something went wrong. Try again later.";
 export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof SubmissionError && error.code !== "internal") {
     return new HttpsError(error.code, error.message, {
-      reason: error.reason, ...(error.fields.length ? { fields: [...error.fields] } : {}),
+      reason: error.reason, ...(error.fields.length ? { fields: [...error.fields] } : {}), ...errorMessageDetails(error.message),
     });
   }
-  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
+  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE, { messageKey: "errors.generic" });
 }
 
 async function run<T>(name: string, request: Pick<CallableRequest, "auth">, work: () => Promise<T>): Promise<T> {

@@ -345,6 +345,7 @@ function auditRun(tx: AdminTransaction, actor: Actor, token: string, answered: b
     targetType: "company",
     targetId: actor.companyId,
     summary: answered ? "Dipbot daily ideas updated" : "Dipbot daily ideas failed",
+    summaryKey: answered ? "ai.ideasUpdated" : "ai.ideasFailed",
     // Tool names, model, tokens and credits only: never prompts, tool results or idea text, and never money.
     changes: [
       change("tools", null, agent.traces.map(t => t.name)),

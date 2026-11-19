@@ -23,6 +23,8 @@ export interface Session {
   email: string;
   companyId: string;
   role: Role;
+  /** The member's saved language (`users/{uid}.locale`, server-owned), when they chose one. */
+  locale?: "en" | "es";
 }
 
 export interface CommandResult {

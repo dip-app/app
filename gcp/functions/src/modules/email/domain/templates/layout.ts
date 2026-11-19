@@ -97,6 +97,8 @@ export interface ShellInput {
   ctx: Pick<RenderContext, "openPixelURL">;
   /** Card table is `width:100%;max-width:600px` (keeps the width attribute) so it stays fluid when a client strips `<style>`. Default false. */
   fluid?: boolean;
+  /** `<html lang>` of the recipient language ("en", "es"). Default "en". */
+  lang?: string;
 }
 
 /** Wraps template content in the shared document: header band, white card, footer rows, footer band (last visible image). */
@@ -116,7 +118,7 @@ export function layoutShell(input: ShellInput): string {
   const footerArt = artCell(`${pair("footer", "", "")}${pixel}`);
 
   return `<!doctype html>
-<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="${input.lang ?? "en"}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

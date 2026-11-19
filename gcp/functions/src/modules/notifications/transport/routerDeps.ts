@@ -8,7 +8,7 @@ import { routerEmailChannel } from "../../email/application/routerChannel";
 import { emailChannelDependencies } from "../../email/transport/emailFunctions";
 import type { EmailChannelPort, RouterDependencies } from "../application/router";
 import type { DeliveryLog } from "../application/routerPorts";
-import { FirestoreDeliveryReceipts, FirestoreMembership, FirestorePushRateLimiter } from "../infrastructure/firestoreDelivery";
+import { FirestoreDeliveryReceipts, FirestoreLocales, FirestoreMembership, FirestorePushRateLimiter } from "../infrastructure/firestoreDelivery";
 import { FirestoreNotificationsStore } from "../infrastructure/firestoreNotificationsStore";
 import { FirestorePreferences } from "../infrastructure/firestorePreferences";
 import { EmulatorOutboxMessaging, FcmMessaging } from "../infrastructure/messaging";
@@ -72,6 +72,7 @@ export function routerDependencies(app: App): RouterDependencies & { store: Fire
     receipts: new FirestoreDeliveryReceipts(db),
     rateLimiter: new FirestorePushRateLimiter(db),
     members: new FirestoreMembership(db),
+    locales: new FirestoreLocales(db),
     logger: deliveryLog,
     inbox: store,
     clock: { now: () => new Date() },

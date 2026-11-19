@@ -159,7 +159,7 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
     const auditId = `submission_approve_${challengeId}_${userId}`;
     tx.writeAudit(companyId, auditId, auditEntry(companyId, { uid: reviewer.uid, displayName: member.displayName, role: text(member.role) }, {
       id: auditId, action: "submission.approve", targetType: "submission", targetId: `${challengeId}/${userId}`,
-      summary: `Approved an entry for "${challenge.title}"`, changes: [change("status", submission.status, "approved"), change("pointsAwarded", 0, points)],
+      summary: `Approved an entry for "${challenge.title}"`, summaryKey: "submission.approve", summaryParams: { title: challenge.title }, changes: [change("status", submission.status, "approved"), change("pointsAwarded", 0, points)],
     }));
     push = { companyId, challengeId, submissionId: id, userId, challengeTitle: challenge.title, notificationId: `challenge_approved_${challengeId}` };
     return { contractVersion: 1, submissionId: id, pointsAwarded: points, replayed: false } satisfies ApproveChallengeResponse;
@@ -193,7 +193,7 @@ export async function rejectChallenge(store: SubmissionStore, caller: Submission
     const auditId = `submission_reject_${challengeId}_${userId}_a${submission.attempt}`;
     tx.writeAudit(companyId, auditId, auditEntry(companyId, { uid: reviewer.uid, displayName: member.displayName, role: text(member.role) }, {
       id: auditId, action: "submission.reject", targetType: "submission", targetId: `${challengeId}/${userId}`,
-      summary: `Asked for changes on an entry for "${challenge.title}"`, changes: [change("status", submission.status, "rejected")],
+      summary: `Asked for changes on an entry for "${challenge.title}"`, summaryKey: "submission.reject", summaryParams: { title: challenge.title }, changes: [change("status", submission.status, "rejected")],
     }));
     push = { companyId, challengeId, submissionId: id, userId, challengeTitle: challenge.title, notificationId: `challenge_changes_${challengeId}_${submission.attempt}` };
     return { contractVersion: 1, submissionId: id, status: "rejected", replayed: false } satisfies RejectChallengeResponse;

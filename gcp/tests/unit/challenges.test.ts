@@ -332,7 +332,7 @@ describe("challenge transport", () => {
     assert.equal(internal.message, "Something went wrong. Try again later.");
     const unknown = toHttpsError(new Error("boom"));
     assert.equal(unknown.code, "internal");
-    assert.equal(unknown.details, undefined);
+    assert.deepEqual(unknown.details, { messageKey: "errors.generic" });
   });
   test("handlers derive the caller only from the Auth token", async () => {
     const store = new FakeStore();

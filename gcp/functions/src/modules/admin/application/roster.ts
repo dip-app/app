@@ -3,6 +3,7 @@ import type {
 } from "../../../generated/models";
 import { inviteMessage, matchesRoster, MAX_RESENDS, toRosterEntry } from "../domain/rosterView";
 import { change } from "../domain/audit";
+import { named } from "../domain/auditSummaries";
 import { assertValid, emailHash, entryChanges, newEntryFields, normalizeEmployee, type EmployeeContext } from "../domain/employee";
 import { AdminError, stored } from "../domain/errors";
 import { paths, SERVER_TIME } from "../domain/ops";
@@ -51,7 +52,7 @@ export async function upsertRosterEntry(deps: AdminDeps, caller: Caller | null, 
           createdAt: SERVER_TIME, updatedAt: SERVER_TIME, revision: 1,
         });
         writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "roster.upsert", targetType: "roster", targetId: id,
-          summary: `Invited ${record.email}`, changes: [change("email", null, record.email), change("role", null, record.role ?? "member")], requestId: req.requestId });
+          summary: `Invited ${record.email}`, summaryKey: "roster.invite", summaryParams: { email: record.email }, changes: [change("email", null, record.email), change("role", null, record.role ?? "member")], requestId: req.requestId });
         return { contractVersion: 1, entryId: id, created: true, status: "invited" } satisfies UpsertRosterEntryResponse;
       }
       const { patch, changes } = entryChanges(existing, record);
@@ -61,7 +62,7 @@ export async function upsertRosterEntry(deps: AdminDeps, caller: Caller | null, 
       const revision = typeof existing.revision === "number" ? existing.revision : 1;
       tx.update(paths.rosterEntry(actor.companyId, id), { ...patch, updatedAt: now, revision: revision + 1 });
       writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "roster.upsert", targetType: "roster", targetId: id,
-        summary: `Updated roster entry ${record.email}`, changes, requestId: req.requestId });
+        summary: `Updated roster entry ${record.email}`, summaryKey: "roster.update", summaryParams: { email: record.email }, changes, requestId: req.requestId });
       return { contractVersion: 1, entryId: id, created: false, status: "invited" } satisfies UpsertRosterEntryResponse;
     }, now);
   })).value;
@@ -83,7 +84,8 @@ export async function revokeRosterEntry(deps: AdminDeps, caller: Caller | null, 
       const revision = typeof entry.revision === "number" ? entry.revision : 1;
       tx.update(paths.rosterEntry(actor.companyId, req.entryId), { status: "revoked", updatedAt: now, revision: revision + 1 });
       writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "roster.revoke", targetType: "roster", targetId: req.entryId,
-        summary: `Revoked the invitation for ${typeof entry.email === "string" ? entry.email : "a person"}`, changes: [change("status", "invited", "revoked")], requestId: req.requestId });
+        summary: `Revoked the invitation for ${typeof entry.email === "string" ? entry.email : "a person"}`,
+        summaryKey: "roster.revoke", summaryParams: named(entry.email, "email"), changes: [change("status", "invited", "revoked")], requestId: req.requestId });
       return { contractVersion: 1, entryId: req.entryId, status: "revoked", changed: true } satisfies RevokeRosterEntryResponse;
     }, now);
   })).value;
@@ -115,7 +117,8 @@ export async function resendRosterInvite(deps: AdminDeps, caller: Caller | null,
       const revision = typeof entry.revision === "number" ? entry.revision : 1;
       tx.update(paths.rosterEntry(actor.companyId, req.entryId), { resendCount: sent + 1, lastResentAt: now, lastResentBy: actor.uid, updatedAt: now, revision: revision + 1 });
       writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "roster.resend", targetType: "roster", targetId: req.entryId,
-        summary: `Resent the invite for ${email || "a person"} (#${sent + 1})`, changes: [change("resendCount", sent, sent + 1)], requestId: req.requestId });
+        summary: `Resent the invite for ${email || "a person"} (#${sent + 1})`,
+        summaryKey: "roster.resend", summaryParams: { ...named(email || undefined, "email"), number: sent + 1 }, changes: [change("resendCount", sent, sent + 1)], requestId: req.requestId });
       return { contractVersion: 1, entryId: req.entryId, status: "invited", resendCount: sent + 1, lastResentAt: now.toISOString(), signInUrl, message } satisfies ResendRosterInviteResponse;
     }, now);
   })).value;

@@ -75,7 +75,7 @@ export class FirestoreMembershipStore implements MembershipStore {
             transaction.update(entry, claimed);
             transaction.create(db.collection("companies").doc(companyId).collection("auditLog").doc(`claim_${entryId}`), {
               ...auditDocument(companyId, { uid, name: profile.displayName, role: profile.role }, {
-                id: `claim_${entryId}`, action: "roster.claim", targetType: "roster", targetId: entryId, summary: "Claimed a roster invitation on first sign-in",
+                id: `claim_${entryId}`, action: "roster.claim", targetType: "roster", targetId: entryId, summary: "Claimed a roster invitation on first sign-in", summaryKey: "roster.claim",
                 changes: [{ field: "status", before: "invited", after: "claimed" }],
               }),
               createdAt: FieldValue.serverTimestamp(),

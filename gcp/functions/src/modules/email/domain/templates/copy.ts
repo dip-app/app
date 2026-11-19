@@ -1,5 +1,7 @@
 import { SHARE_ORIGIN, collapseWhitespace } from "../../../share/domain/sharePage";
+import { intlTag, splitAround, type Locale } from "../../../i18n";
 import type { EmailCategory } from "../categories";
+import { tEmail, type EmailMessageKey } from "./i18n";
 import type { EventFacts, TemplateId, TemplateVariables } from "./types";
 
 /** Deep link to one event; the Hosting rewrite opens the app or the share page. */
@@ -9,15 +11,20 @@ export function eventURL(eventId: string): string {
 
 export const SUBJECT_MAX = 78;
 
-/** Category noun for the footer sentence "You are getting this because <noun> emails are on." */
+/** Category noun for the footer sentence "You are getting this because <noun> emails are on." (catalog `email.reason.*`). */
+export function categoryReason(category: EmailCategory, locale: Locale = "en"): string {
+  return tEmail(locale, `email.reason.${category}`);
+}
+
+/** English category nouns (kept for callers that predate the catalog). */
 export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
-  invites: "invite",
-  event_updates: "event update",
-  reminders: "reminder",
-  challenges: "challenge",
-  discovery: "event suggestion",
-  calendar_invites: "calendar invite",
-  admin_suggestions: "weekly event idea",
+  invites: categoryReason("invites"),
+  event_updates: categoryReason("event_updates"),
+  reminders: categoryReason("reminders"),
+  challenges: categoryReason("challenges"),
+  discovery: categoryReason("discovery"),
+  calendar_invites: categoryReason("calendar_invites"),
+  admin_suggestions: categoryReason("admin_suggestions"),
 };
 
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */
@@ -41,8 +48,9 @@ export interface EmailCopy {
 }
 
 
-/** "time", "time and location", "time, location, and title". */
-export function joinWords(words: readonly string[]): string {
+/** "time", "time and location", "time, location, and title"; other languages use Intl.ListFormat ("la hora y el lugar"). */
+export function joinWords(words: readonly string[], locale: Locale = "en"): string {
+  if (locale !== "en") return new Intl.ListFormat(intlTag(locale), { style: "long", type: "conjunction" }).format(words);
   if (words.length <= 1) return words[0] ?? "";
   if (words.length === 2) return `${words[0]} and ${words[1]}`;
   return `${words.slice(0, -1).join(", ")}, and ${words[words.length - 1]}`;
@@ -113,130 +121,148 @@ export function hasVisibleChange(v: ChangedVars): boolean {
   return c.time || c.title || c.venue;
 }
 
-function changedWords(v: ChangedVars, zone: string, subject = false): string[] {
+/** Builds a subject from a catalog message with a `{title}` slot, shortening only the title (server content). */
+function subject(locale: Locale, key: EmailMessageKey, title: string, vars: Record<string, string | number> = {}): string {
+  const [prefix, suffix] = splitAround(tEmail, locale, key, "title", vars);
+  return fitSubject(prefix, title, suffix);
+}
+
+function changedWords(v: ChangedVars, zone: string, locale: Locale, subjectLine = false): string[] {
   const c = changeSummary(v, zone);
-  const timeWord = c.date ? (subject ? "date" : "date and time") : "time";
-  const words = [c.time ? timeWord : "", c.venue ? "location" : "", c.title ? "title" : ""].filter(Boolean);
-  return words.length ? words : ["details"];
+  const timeWord: EmailMessageKey = c.date ? (subjectLine ? "email.change.date" : "email.change.dateAndTime") : "email.change.time";
+  const keys = [c.time ? timeWord : null, c.venue ? "email.change.location" : null, c.title ? "email.change.title" : null]
+    .filter((k): k is EmailMessageKey => k !== null);
+  return (keys.length ? keys : ["email.change.details" as const]).map((k) => tEmail(locale, k));
 }
 
-function withEvent(facts: EventFacts, rest: Pick<EmailCopy, "subject" | "heading" | "preheader" | "lead" | "note"> & { badge?: string }): EmailCopy {
-  return { badge: null, highlight: null, ...rest, event: facts, ctaLabel: "Open in DIP", ctaURL: eventURL(facts.eventId) };
+function withEvent(facts: EventFacts, locale: Locale, rest: Pick<EmailCopy, "subject" | "heading" | "preheader" | "lead" | "note"> & { badge?: string }): EmailCopy {
+  return { badge: null, highlight: null, ...rest, event: facts, ctaLabel: tEmail(locale, "email.cta.open"), ctaURL: eventURL(facts.eventId) };
 }
 
-export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T], zone = "America/New_York"): EmailCopy {
+/**
+ * Plain-text copy of one template in the recipient's language. English is the source and renders byte-identically to
+ * the pre-catalog templates (golden snapshots); server content (titles, names) is never translated.
+ */
+export function buildCopy<T extends TemplateId>(template: T, variables: TemplateVariables[T], zone = "America/New_York", locale: Locale = "en"): EmailCopy {
   const id: TemplateId = template;
+  const t = (key: EmailMessageKey, vars: Record<string, string | number> = {}) => tEmail(locale, key, vars);
   switch (id) {
     case "admin_suggestions":
       throw new Error("admin_suggestions has its own renderer (adminSuggestions.ts)");
     case "invite_received": {
       const e = variables as TemplateVariables["invite_received"];
       const who = clean(e.inviterFirstName);
-      return withEvent(e, {
-        heading: "New invitation",
-        subject: fitSubject(`${who} invited you to `, clean(e.eventTitle)),
-        preheader: `${who} invited you to ${clean(e.eventTitle)}.`,
-        lead: `${who} invited you to join an event on DIP.`,
-        note: "See who is going and respond.",
+      const title = clean(e.eventTitle);
+      return withEvent(e, locale, {
+        heading: t("email.inviteReceived.heading"),
+        subject: subject(locale, "email.inviteReceived.subject", title, { who }),
+        preheader: t("email.inviteReceived.preheader", { who, title }),
+        lead: t("email.inviteReceived.lead", { who }),
+        note: t("email.inviteReceived.note"),
       });
     }
     case "invite_answered": {
       const e = variables as TemplateVariables["invite_answered"];
       const who = clean(e.inviteeFirstName);
-      const verb = e.answer === "accepted" ? "accepted" : "declined";
-      return withEvent(e, {
-        heading: e.answer === "accepted" ? "Invitation accepted" : "Invitation declined",
-        subject: fitSubject(`${who} ${verb} your invite to `, clean(e.eventTitle)),
-        preheader: `${who} ${verb} your invite to ${clean(e.eventTitle)}.`,
-        lead: `${who} ${verb} your invite to this event.`,
+      const title = clean(e.eventTitle);
+      const answer = e.answer === "accepted" ? "accepted" : "declined";
+      return withEvent(e, locale, {
+        heading: t("email.inviteAnswered.heading", { answer }),
+        subject: subject(locale, "email.inviteAnswered.subject", title, { who, answer }),
+        preheader: t("email.inviteAnswered.preheader", { who, answer, title }),
+        lead: t("email.inviteAnswered.lead", { who, answer }),
         note: null,
       });
     }
     case "event_changed": {
       const e = variables as TemplateVariables["event_changed"];
-      const what = joinWords(changedWords(e, zone));
-      const subjectWhat = joinWords(changedWords(e, zone, true));
-      return withEvent(e, {
-        heading: "Event updated",
-        subject: fitSubject("Updated: ", clean(e.eventTitle), ` (${subjectWhat} changed)`),
-        preheader: `The ${what} changed for ${clean(e.eventTitle)}.`,
-        lead: `the ${what} changed for this event.`,
-        note: "To add it to your calendar, open the event in DIP.",
-        badge: "Updated",
+      const title = clean(e.eventTitle);
+      const what = joinWords(changedWords(e, zone, locale), locale);
+      const subjectWhat = joinWords(changedWords(e, zone, locale, true), locale);
+      return withEvent(e, locale, {
+        heading: t("email.eventChanged.heading"),
+        subject: subject(locale, "email.eventChanged.subject", title, { what: subjectWhat }),
+        preheader: t("email.eventChanged.preheader", { what, title }),
+        lead: t("email.eventChanged.lead", { what }),
+        note: t("email.note.calendar"),
+        badge: t("email.badge.updated"),
       });
     }
     case "event_canceled": {
       const e = variables as TemplateVariables["event_canceled"];
-      return withEvent(e, {
-        heading: "Event canceled",
-        subject: fitSubject("Canceled: ", clean(e.eventTitle)),
-        preheader: `${clean(e.eventTitle)} was canceled.`,
-        lead: "this event was canceled.",
-        note: "Browse other events.",
+      const title = clean(e.eventTitle);
+      return withEvent(e, locale, {
+        heading: t("email.eventCanceled.heading"),
+        subject: subject(locale, "email.eventCanceled.subject", title),
+        preheader: t("email.eventCanceled.preheader", { title }),
+        lead: t("email.eventCanceled.lead"),
+        note: t("email.eventCanceled.note"),
       });
     }
     case "attendee_added": {
       const e = variables as TemplateVariables["attendee_added"];
-      return withEvent(e, {
-        heading: "You were added",
-        subject: fitSubject("You were added to ", clean(e.eventTitle)),
-        preheader: `You are on the guest list for ${clean(e.eventTitle)}.`,
-        lead: "you were added to this event.",
+      const title = clean(e.eventTitle);
+      return withEvent(e, locale, {
+        heading: t("email.attendeeAdded.heading"),
+        subject: subject(locale, "email.attendeeAdded.subject", title),
+        preheader: t("email.attendeeAdded.preheader", { title }),
+        lead: t("email.attendeeAdded.lead"),
         note: null,
       });
     }
     case "event_reminder": {
       const e = variables as TemplateVariables["event_reminder"];
-      const day = e.window === "24h";
-      return withEvent(e, {
-        heading: day ? "Starts tomorrow" : "Starts in about an hour",
-        subject: fitSubject(day ? "Tomorrow: " : "Starting in about an hour: ", clean(e.eventTitle)),
-        preheader: day ? `${clean(e.eventTitle)} is tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
-        lead: day ? `${clean(e.eventTitle)} starts tomorrow.` : `${clean(e.eventTitle)} starts in about an hour.`,
-        note: "To add it to your calendar, open the event in DIP.",
+      const title = clean(e.eventTitle);
+      const window = e.window === "24h" ? "day" : "hour";
+      return withEvent(e, locale, {
+        heading: t("email.reminder.heading", { window }),
+        subject: subject(locale, "email.reminder.subject", title, { window }),
+        preheader: t("email.reminder.preheader", { window, title }),
+        lead: t("email.reminder.lead", { window, title }),
+        note: t("email.note.calendar"),
       });
     }
     case "calendar_invite": {
       const e = variables as TemplateVariables["calendar_invite"];
-      const updated = e.reason === "updated";
-      return withEvent(e, {
-        heading: updated ? "Calendar updated" : "Add it to your calendar",
-        subject: fitSubject(updated ? "Updated invite: " : "Calendar invite: ", clean(e.eventTitle)),
-        preheader: updated ? `The details changed for ${clean(e.eventTitle)}.` : `Add ${clean(e.eventTitle)} to your calendar.`,
-        lead: updated ? "the time or place changed for this event." : "you joined this event.",
-        note: updated
-          ? "Open the attached calendar invite to update your calendar."
-          : "Open the attached invite (invite.ics) and choose Add to calendar. If the time or place changes, we will send an updated invite.",
-        ...(updated ? { badge: "Updated" } : {}),
+      const title = clean(e.eventTitle);
+      const reason = e.reason === "updated" ? "updated" : "joined";
+      return withEvent(e, locale, {
+        heading: t("email.calendarInvite.heading", { reason }),
+        subject: subject(locale, "email.calendarInvite.subject", title, { reason }),
+        preheader: t("email.calendarInvite.preheader", { reason, title }),
+        lead: t("email.calendarInvite.lead", { reason }),
+        note: t("email.calendarInvite.note", { reason }),
+        ...(reason === "updated" ? { badge: t("email.badge.updated") } : {}),
       });
     }
     case "calendar_cancel": {
       const e = variables as TemplateVariables["calendar_cancel"];
-      const left = e.reason === "left";
-      return withEvent(e, {
-        heading: left ? "Removed from your calendar" : "Event canceled",
-        subject: fitSubject(left ? "Removed from your calendar: " : "Canceled: ", clean(e.eventTitle)),
-        preheader: left ? `${clean(e.eventTitle)} was removed from your calendar.` : `${clean(e.eventTitle)} was canceled.`,
-        lead: left ? "you are no longer going to this event." :"this event was canceled.",
-        note: "The attached calendar message removes it from your calendar.",
-        ...(left ? {} : { badge: "Canceled" }),
+      const title = clean(e.eventTitle);
+      const reason = e.reason === "left" ? "left" : "canceled";
+      return withEvent(e, locale, {
+        heading: t("email.calendarCancel.heading", { reason }),
+        subject: subject(locale, "email.calendarCancel.subject", title, { reason }),
+        preheader: t("email.calendarCancel.preheader", { reason, title }),
+        lead: t("email.calendarCancel.lead", { reason }),
+        note: t("email.calendarCancel.note"),
+        ...(reason === "left" ? {} : { badge: t("email.badge.canceled") }),
       });
     }
     case "challenge_reviewed": {
       const e = variables as TemplateVariables["challenge_reviewed"];
       const title = clean(e.challengeTitle);
-      const approved = e.outcome === "approved";
-      const points = approved && typeof e.points === "number" && e.points > 0 ? e.points : null;
+      const outcome = e.outcome === "approved" ? "approved" : "changes_requested";
+      const points = outcome === "approved" && typeof e.points === "number" && e.points > 0 ? e.points : null;
       return {
-        heading: approved ? "Submission approved" : "Changes requested",
-        subject: fitSubject(approved ? "Approved: " : "Changes requested: ", title),
-        preheader: approved ? `Your submission for ${title} was approved.` : `A reviewer asked for changes to ${title}.`,
-        lead: approved ? `your submission for \u201C${title}\u201D was approved.` : `a reviewer asked for changes to your submission for \u201C${title}\u201D.`,
+        heading: t("email.challenge.heading", { outcome }),
+        subject: subject(locale, "email.challenge.subject", title, { outcome }),
+        preheader: t("email.challenge.preheader", { outcome, title }),
+        lead: t("email.challenge.lead", { outcome, title }),
         badge: null,
         event: null,
-        highlight: points !== null ? `+${points} ${points === 1 ? "point" : "points"}` : null,
-        note: approved ? null : "See the feedback and resubmit.",
-        ctaLabel: "Open in DIP",
+        highlight: points !== null ? t("email.challenge.points", { points }) : null,
+        note: outcome === "approved" ? null : t("email.challenge.note"),
+        ctaLabel: t("email.cta.open"),
         ctaURL: `${SHARE_ORIGIN}/`,
       };
     }

@@ -120,7 +120,7 @@ export async function createEvent(
     // The audit id derives from the request, and the receipt check above returns before this point on a replay: one entry per event.
     tx.writeAudit(request.companyId, `event_create_${authenticated.uid}_${request.requestId}`, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
       id: `event_create_${authenticated.uid}_${request.requestId}`, action: "event.create", targetType: "event", targetId: eventId,
-      summary: `Created the event "${request.event.title}"`, requestId: request.requestId,
+      summary: `Created the event "${request.event.title}"`, summaryKey: "event.create", summaryParams: { title: request.event.title }, requestId: request.requestId,
       changes: [change("title", null, request.event.title), change("startTime", null, iso(request.event.startTime)), change("capacity", null, request.event.capacity)],
     }));
     return { contractVersion: 1, eventId, revision: 1 };
@@ -175,6 +175,9 @@ export async function updateEvent(
       targetType: "event", targetId: request.eventId,
       summary: statusChanged && request.status === "cancelled" ? `Cancelled the event "${request.event.title}"`
         : statusChanged ? `Marked the event "${request.event.title}" ${request.status}` : `Edited the event "${request.event.title}"`,
+      ...(statusChanged && request.status === "cancelled" ? { summaryKey: "event.cancel" as const, summaryParams: { title: request.event.title } }
+        : statusChanged ? { summaryKey: "event.status" as const, summaryParams: { title: request.event.title, status: request.status } }
+        : { summaryKey: "event.update" as const, summaryParams: { title: request.event.title } }),
       changes, ...(request.statusReason ? { reason: request.statusReason } : {}),
     }));
     return { contractVersion: 1, eventId: request.eventId, revision: nextRevision };

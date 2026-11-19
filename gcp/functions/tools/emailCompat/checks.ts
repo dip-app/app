@@ -10,6 +10,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { parseDocument } from "htmlparser2";
+import { emailCatalogs } from "../../src/modules/email/domain/templates/i18n";
 
 export type Level = "error" | "warning";
 export interface Finding {
@@ -313,7 +314,9 @@ function checkOwn(email: EmailUnderTest): Finding[] {
   if (!text.trim()) add("error", "text-part", "Plain-text alternative is empty.");
   else {
     if (/<\/?[a-z][^>]*>/i.test(text)) add("error", "text-part", "Plain-text alternative contains HTML tags.");
-    if (!/Unsubscribe: https:\/\/letsdip\.work\//.test(text)) add("error", "text-part", "Plain-text alternative lacks the unsubscribe link.");
+    // "Unsubscribe: https://letsdip.work/..." in any shipped language ("Cancelar suscripción: ..." in Spanish).
+    const unsubscribeWords = Object.values(emailCatalogs).map((c) => c["email.footer.unsubscribe"]);
+    if (!unsubscribeWords.some((w) => text.includes(`${w}: https://letsdip.work/`))) add("error", "text-part", "Plain-text alternative lacks the unsubscribe link.");
     const htmlLinks = new Set(els.filter((e) => e.name === "a" && e.attribs?.href?.startsWith("https://")).map((e) => e.attribs!.href!));
     const missing = [...htmlLinks].filter((h) => !text.includes(h.replace(/&amp;/g, "&")));
     for (const m of missing) add("warning", "text-part", `Link ${m} is in the HTML but not in the plain-text part.`);

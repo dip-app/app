@@ -1,5 +1,7 @@
 import { SHARE_ORIGIN, collapseWhitespace, escapeHtml } from "../../../share/domain/sharePage";
+import { intlTag, localeOrDefault, splitAround, type Locale } from "../../../i18n";
 import { truncate, fitSubject } from "./copy";
+import { storedText, tEmail } from "./i18n";
 import {
   EMAIL_ASSET_BASE, FINE, FONT, HAIRLINE, HEAD_FONT, INK, MUTED, SUPPORT_EMAIL, ACCENT, layoutShell, primaryButton,
 } from "./layout";
@@ -27,7 +29,13 @@ const THEME_ACCENT: Readonly<Record<SuggestionTheme, string>> = {
   music: "#66D9FF", learning: "#6BFF9B", volunteering: "#1E212B", wellness: "#FF7C73",
 };
 
-export const FIT_TEXT: Readonly<Record<SuggestionFitLabel, string>> = { perfect: "Perfect fit", great: "Great choice", good: "Good match" };
+/** Fit label text in the recipient language (catalog `email.ideas.fit.*`). */
+export function fitText(label: SuggestionFitLabel, locale: Locale = "en"): string {
+  return tEmail(locale, `email.ideas.fit.${label}`);
+}
+
+/** English fit labels (kept for callers that predate the catalog). */
+export const FIT_TEXT: Readonly<Record<SuggestionFitLabel, string>> = { perfect: fitText("perfect"), great: fitText("great"), good: fitText("good") };
 
 // ---------------------------------------------------------------------------------------------
 // Validation (strict allow-list)
@@ -92,27 +100,47 @@ export function validateAdminSuggestions(value: unknown): Vars | null {
 // Copy
 // ---------------------------------------------------------------------------------------------
 
-function greetingLine(v: Vars, ctx: RenderContext): string {
+function greetingLine(v: Vars, ctx: RenderContext, locale: Locale): string {
   const name = ctx.recipientFirstName ? collapseWhitespace(ctx.recipientFirstName).slice(0, 80) : "";
-  const hi = name ? `Hi ${name},` : "Hi,";
-  const n = v.ideas.length;
-  const count = n === 1 ? "here is 1 idea" : `here are ${n} ideas`;
-  return v.dataNote === null
-    ? `${hi} ${count} for the coming weeks, picked from what your team likes and how past events went.`
-    : `${hi} ${count} for the coming weeks.`;
+  const hi = name ? tEmail(locale, "email.ideas.hi.named", { name }) : tEmail(locale, "email.ideas.hi.anonymous");
+  const count = v.ideas.length;
+  return tEmail(locale, v.dataNote === null ? "email.ideas.lead.withHistory" : "email.ideas.lead.short", { hi, count });
 }
 
-function subjectFor(v: Vars): string {
-  const label = v.weekLabel.charAt(0).toLowerCase() + v.weekLabel.slice(1);
-  return fitSubject("Your event ideas for the ", label);
+/**
+ * "week of Dec 1" for the subject. English keeps the stored label (lower-cased first letter); other languages derive it
+ * from the ISO week key, since the stored `weekLabel` is English text ("semana del 1 de diciembre").
+ */
+function weekPhrase(v: Vars, locale: Locale): string {
+  if (locale === "en") return v.weekLabel.charAt(0).toLowerCase() + v.weekLabel.slice(1);
+  const monday = mondayOfIsoWeek(v.weekKey);
+  if (monday === null) return v.weekLabel;
+  return `semana del ${new Intl.DateTimeFormat(intlTag(locale), { day: "numeric", month: "long", timeZone: "UTC" }).format(monday)}`;
 }
 
-function preheaderFor(v: Vars): string {
+/** Monday (UTC midnight) of an ISO week key `YYYY-Www`, or null when malformed. */
+export function mondayOfIsoWeek(weekKey: string): Date | null {
+  const m = /^(\d{4})-W(\d{2})$/.exec(weekKey);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  if (week < 1 || week > 53) return null;
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const week1Monday = Date.UTC(year, 0, 4 - ((jan4.getUTCDay() + 6) % 7));
+  return new Date(week1Monday + (week - 1) * 7 * 24 * 60 * 60 * 1000);
+}
+
+function subjectFor(v: Vars, locale: Locale): string {
+  const [prefix, suffix] = splitAround(tEmail, locale, "email.ideas.subject", "week");
+  return fitSubject(prefix, weekPhrase(v, locale), suffix);
+}
+
+function preheaderFor(v: Vars, locale: Locale): string {
   const top = v.ideas[0]!;
-  const prefix = "Top pick: ";
+  const [prefix] = splitAround(tEmail, locale, "email.ideas.topPick", "title");
   const title = truncate(top.title, 110 - prefix.length);
   const budget = 110 - prefix.length - title.length - 3;
-  const second = top.fitLabel ? FIT_TEXT[top.fitLabel] : budget >= 12 ? truncate(top.pitch, budget) : "";
+  const second = top.fitLabel ? fitText(top.fitLabel, locale) : budget >= 12 ? truncate(top.pitch, budget) : "";
   return second && prefix.length + title.length + 3 + second.length <= 110 ? `${prefix}${title} · ${second}` : `${prefix}${title}`;
 }
 
@@ -149,13 +177,13 @@ function tileURL(theme: SuggestionTheme): string {
   return `${EMAIL_ASSET_BASE}ideas/${theme}.png`;
 }
 
-function ideaCard(i: SuggestionIdeaVariables, last: boolean): string {
+function ideaCard(i: SuggestionIdeaVariables, last: boolean, locale: Locale): string {
   const accent = THEME_ACCENT[i.theme];
   const pill = i.fitLabel
-    ? `<div style="margin:0 0 8px 0;"><span class="fit-pill" style="display:inline-block;padding:3px 10px;background-color:#E8EAF8;border-radius:999px;font-family:${FONT};font-size:12px;line-height:16px;font-weight:700;color:${INK};">${e(FIT_TEXT[i.fitLabel])}</span></div>`
+    ? `<div style="margin:0 0 8px 0;"><span class="fit-pill" style="display:inline-block;padding:3px 10px;background-color:#E8EAF8;border-radius:999px;font-family:${FONT};font-size:12px;line-height:16px;font-weight:700;color:${INK};">${e(fitText(i.fitLabel, locale))}</span></div>`
     : "";
   const why = i.reasons.length
-    ? `<div class="text-muted" style="margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">Why this idea</div>
+    ? `<div class="text-muted" style="margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};">${e(tEmail(locale, "email.ideas.why"))}</div>
 <ul style="margin:0 0 8px 0;padding:0 0 0 18px;">${i.reasons
         .map((r) => `<li dir="auto" class="text-main" style="margin:0 0 2px 0;font-family:${FONT};font-size:14px;line-height:20px;color:${INK};">${e(r)}</li>`)
         .join("")}</ul>`
@@ -163,7 +191,7 @@ function ideaCard(i: SuggestionIdeaVariables, last: boolean): string {
   const when = i.whenHint
     ? `<p dir="auto" class="text-muted" style="margin:0 0 12px 0;font-family:${FONT};font-size:14px;line-height:20px;color:${MUTED};">${e(i.whenHint)}</p>`
     : "";
-  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td class="btn2-td" align="center" height="40" style="height:40px;border:2px solid ${ACCENT};border-radius:8px;"><a class="btn2-a" href="${e(i.linkURL)}" aria-label="Start this event: ${e(i.title)}" title="${e(i.title)}" style="display:inline-block;padding:0 18px;mso-padding-alt:0 18px;height:36px;font-family:${FONT};font-size:15px;line-height:36px;font-weight:700;color:${INK};text-decoration:none;"><!--[if mso]>&nbsp;&nbsp;<![endif]-->Start this event<!--[if mso]>&nbsp;&nbsp;<![endif]--></a></td></tr></table>`;
+  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td class="btn2-td" align="center" height="40" style="height:40px;border:2px solid ${ACCENT};border-radius:8px;"><a class="btn2-a" href="${e(i.linkURL)}" aria-label="${e(tEmail(locale, "email.ideas.startLabel", { title: i.title }))}" title="${e(i.title)}" style="display:inline-block;padding:0 18px;mso-padding-alt:0 18px;height:36px;font-family:${FONT};font-size:15px;line-height:36px;font-weight:700;color:${INK};text-decoration:none;"><!--[if mso]>&nbsp;&nbsp;<![endif]-->${e(tEmail(locale, "email.ideas.start"))}<!--[if mso]>&nbsp;&nbsp;<![endif]--></a></td></tr></table>`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="idea-card border" style="margin:0 0 ${last ? "20px" : "16px"} 0;background-color:${CARD_BG};border:1px solid ${HAIRLINE};border-radius:12px;border-collapse:separate;">
 <tr>
 <td class="stack tile-col" width="112" valign="top" style="width:112px;padding:16px 0 16px 16px;">
@@ -179,49 +207,53 @@ ${why}${when}${button}
 </table>`;
 }
 
-function plainText(v: Vars, lead: string, unsubscribeURL: string): string {
-  const lines: string[] = ["YOUR WEEKLY EVENT IDEAS", "", lead, ""];
-  if (v.dataNote) lines.push(v.dataNote, "");
+function plainText(v: Vars, lead: string, unsubscribeURL: string, locale: Locale): string {
+  const t = (key: Parameters<typeof tEmail>[1], vars: Record<string, string | number> = {}) => tEmail(locale, key, vars);
+  const lines: string[] = [t("email.ideas.heading").toLocaleUpperCase(intlTag(locale)), "", lead, ""];
+  if (v.dataNote) lines.push(storedText(locale, v.dataNote), "");
   v.ideas.forEach((i, n) => {
-    lines.push(`${n + 1}. ${i.title}${i.fitLabel ? ` [${FIT_TEXT[i.fitLabel]}]` : ""}`);
+    lines.push(`${n + 1}. ${i.title}${i.fitLabel ? ` [${fitText(i.fitLabel, locale)}]` : ""}`);
     lines.push(`   ${i.pitch}`, `   ${i.facts}`);
     if (i.reasons.length) {
-      lines.push("   Why this idea:");
+      lines.push(`   ${t("email.ideas.why")}:`);
       for (const r of i.reasons) lines.push(`   - ${r}`);
     }
-    if (i.whenHint) lines.push(`   When: ${i.whenHint}`);
-    lines.push("   Start this event:", `   ${i.linkURL}`, "");
+    if (i.whenHint) lines.push(`   ${t("email.ideas.text.when", { hint: i.whenHint })}`);
+    lines.push(`   ${t("email.ideas.start")}:`, `   ${i.linkURL}`, "");
   });
-  lines.push(`Open event ideas: ${IDEAS_URL}`, "", "--");
-  lines.push("You get this because you turned on weekly event ideas for admins.");
-  lines.push(`Unsubscribe: ${unsubscribeURL}`);
-  lines.push(`Manage in the admin portal: ${MANAGE_URL}`);
-  lines.push(`Sent by DIP · Questions? ${SUPPORT_EMAIL}`);
+  lines.push(`${t("email.ideas.open")}: ${IDEAS_URL}`, "", "--");
+  lines.push(t("email.ideas.footer.reason"));
+  lines.push(`${t("email.footer.unsubscribe")}: ${unsubscribeURL}`);
+  lines.push(`${t("email.ideas.footer.manage")}: ${MANAGE_URL}`);
+  lines.push(`${t("email.footer.sentBy")} · ${t("email.footer.questions")} ${SUPPORT_EMAIL}`);
   return `${lines.join("\n")}\n`;
 }
 
 /** Renders the admin weekly ideas email to subject, preheader, table-based HTML and a plain-text alternative. */
 export function renderAdminSuggestions(variables: Vars, ctx: RenderContext): RenderedEmail {
-  const subject = subjectFor(variables);
-  const preheader = preheaderFor(variables);
-  const lead = greetingLine(variables, ctx);
+  const locale = localeOrDefault(ctx.locale);
+  const t = (key: Parameters<typeof tEmail>[1]) => tEmail(locale, key);
+  const subject = subjectFor(variables, locale);
+  const preheader = preheaderFor(variables, locale);
+  const lead = greetingLine(variables, ctx, locale);
   const note = variables.dataNote
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;"><tr><td dir="auto" class="tint-box text-main" bgcolor="#F2F3FC" style="padding:12px 16px;background-color:#F2F3FC;border-radius:8px;font-family:${FONT};font-size:15px;line-height:22px;color:${INK};">${e(variables.dataNote)}</td></tr></table>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;"><tr><td dir="auto" class="tint-box text-main" bgcolor="#F2F3FC" style="padding:12px 16px;background-color:#F2F3FC;border-radius:8px;font-family:${FONT};font-size:15px;line-height:22px;color:${INK};">${e(storedText(locale, variables.dataNote))}</td></tr></table>`
     : "";
-  const cards = variables.ideas.map((i, n) => ideaCard(i, n === variables.ideas.length - 1)).join("\n");
+  const cards = variables.ideas.map((i, n) => ideaCard(i, n === variables.ideas.length - 1, locale)).join("\n");
   const html = layoutShell({
     title: subject,
     preheader,
     ctx,
     extraStyle: EXTRA_STYLE,
     fluid: true,
-    main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">Your weekly event ideas</h1>
+    lang: locale,
+    main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(t("email.ideas.heading"))}</h1>
 <p class="text-main" style="margin:0 0 20px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(lead)}</p>
 ${note}${cards}
-${primaryButton(IDEAS_URL, "Open event ideas")}`,
-    footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">You get this because you turned on weekly event ideas for admins.</td></tr>
-<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">Unsubscribe</a> &middot; <a class="link" href="${MANAGE_URL}" style="color:${INK};text-decoration:underline;">Manage in the admin portal</a></td></tr>
-<tr><td class="text-muted" style="padding:0;${FINE}">Sent by DIP &middot; Questions? <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
+${primaryButton(IDEAS_URL, t("email.ideas.open"))}`,
+    footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">${e(t("email.ideas.footer.reason"))}</td></tr>
+<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(t("email.footer.unsubscribe"))}</a> &middot; <a class="link" href="${MANAGE_URL}" style="color:${INK};text-decoration:underline;">${e(t("email.ideas.footer.manage"))}</a></td></tr>
+<tr><td class="text-muted" style="padding:0;${FINE}">${e(t("email.footer.sentBy"))} &middot; ${e(t("email.footer.questions"))} <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
   });
-  return { subject, preheader, html, text: plainText(variables, lead, ctx.unsubscribeURL) };
+  return { subject, preheader, html, text: plainText(variables, lead, ctx.unsubscribeURL, locale) };
 }

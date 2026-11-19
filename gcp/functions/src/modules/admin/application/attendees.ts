@@ -48,7 +48,7 @@ export async function cancelAttendance(tx: AdminTransaction, actor: Actor, event
   }
   writeAudit(tx, actor, {
     id: options.auditId, action: "attendee.remove", targetType: "attendee", targetId: `${eventId}/${uid}`,
-    summary: `Removed a member from ${event.title}`, changes: [change("status", "going", "cancelled"), change("attendeeCount", event.attendeeCount, attendeeCount)],
+    summary: `Removed a member from ${event.title}`, summaryKey: "attendee.remove", summaryParams: { event: event.title }, changes: [change("status", "going", "cancelled"), change("attendeeCount", event.attendeeCount, attendeeCount)],
     reason: options.reason, requestId: options.requestId,
   });
   return { removed: true, attendeeCount, notified: options.notify };
@@ -116,7 +116,8 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
       if (overridden) changes.push(change("capacity", event.capacity, capacity));
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "attendee.add", targetType: "attendee", targetId: `${req.eventId}/${req.userId}`,
-        summary: `Added a member to ${event.title}${overridden ? " beyond capacity" : ""}`, changes,
+        summary: `Added a member to ${event.title}${overridden ? " beyond capacity" : ""}`,
+        summaryKey: overridden ? "attendee.addOverCapacity" : "attendee.add", summaryParams: { event: event.title }, changes,
         reason: req.capacityOverrideReason, requestId: req.requestId,
       });
       return {
@@ -181,7 +182,7 @@ export async function recordAttendance(deps: AdminDeps, caller: Caller | null, d
       if (!rsvp.checkedIn) return respond(0, false);
       tx.update(paths.rsvp(actor.companyId, req.eventId, req.userId), { checkedIn: false, checkedInAt: null, managedBy: actor.uid });
       writeAudit(tx, actor, { id: auditId, action: "attendance.record", targetType: "attendee", targetId: `${req.eventId}/${req.userId}`,
-        summary: `Marked a member as not attended at ${event.title}`, changes: [change("checkedIn", true, false)], ...(actor.uid === req.userId ? { selfTarget: true as const } : {}) });
+        summary: `Marked a member as not attended at ${event.title}`, summaryKey: "attendance.unmark", summaryParams: { event: event.title }, changes: [change("checkedIn", true, false)], ...(actor.uid === req.userId ? { selfTarget: true as const } : {}) });
       return respond(0, true);
     }
     const award = !ledger && points > 0;
@@ -196,6 +197,7 @@ export async function recordAttendance(deps: AdminDeps, caller: Caller | null, d
     }
     writeAudit(tx, actor, { id: auditId, action: "attendance.record", targetType: "attendee", targetId: `${req.eventId}/${req.userId}`,
       summary: `Checked in a member at ${event.title}${award ? ` (+${points} points)` : ""}`,
+      summaryKey: award ? "attendance.checkInPoints" : "attendance.checkIn", summaryParams: { event: event.title, points },
       changes: [change("checkedIn", rsvp.checkedIn, true), ...(award ? [change("pointsBalance", member.pointsBalance, (member.pointsBalance as number) + points)] : [])],
       ...(actor.uid === req.userId ? { selfTarget: true as const } : {}) });
     return respond(award ? points : 0, !rsvp.checkedIn || award);

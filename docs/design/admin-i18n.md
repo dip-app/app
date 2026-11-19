@@ -35,10 +35,15 @@ To add an area, create `en/<area>.ts` and `es/<area>.ts` and spread both into th
 
 ## Language selection
 
-There is no profile field yet (a member locale on the server is the backend phase of #259). The portal picks:
+The portal picks:
 
-1. The choice in Your settings > Language, stored in this browser (`localStorage["dip.admin.locale"]`).
-2. Otherwise the first browser language the portal ships (`es-MX` and `es` pick Spanish), else English.
+1. The signed-in member's saved language (`users/{uid}.locale`, server-owned), applied at load and sign-in.
+2. Otherwise the choice in Your settings > Language, stored in this browser (`localStorage["dip.admin.locale"]`).
+3. Otherwise the first browser language the portal ships (`es-MX` and `es` pick Spanish), else English.
+
+Picking English or Español in Your settings while signed in live also saves it on the profile through `setMyLocaleV1`
+([backend-i18n.md](backend-i18n.md)), so emails and pushes follow it. "Same as this browser" and the pseudo-locale are
+never sent, and a failed save keeps the local choice silently.
 
 `AppProvider` calls `initLocale()` before any signed-in content renders, and the static HTML is only the boot screen,
 so there is no flash of English and no hydration mismatch. `setLocalePreference()` updates `<html lang>` and
@@ -114,8 +119,9 @@ that wraps to three lines grows the row instead of overlapping the next one. Eng
 
 ## Known limitations
 
-- Backend content stays English in every language: audit summaries ("Invited Nico Farrow"), ApiError messages, mock
-  data. Building these from action keys and parameters is part of the backend phase.
+- Audit summaries and callable error messages are translated from server keys (`summaryKey`/`summaryParams`,
+  `details.messageKey`; area `errors` and `audit.summary.*`, see [backend-i18n.md](backend-i18n.md)). English shows the
+  server text unchanged; entries and errors without a key, mock data and the CSV export stay English.
 - `<head>` metadata and the static boot HTML are English.
 - Interest names and theme names are catalog or company content and are not translated.
-- No RTL, no Klingon, no per-member server locale yet.
+- No RTL, no Klingon.

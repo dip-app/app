@@ -1,4 +1,6 @@
 import type { NotificationCategory } from "./categories";
+import type { Locale } from "../../i18n";
+import { tPush } from "./i18n";
 import type { PushKind } from "./subscription";
 
 /** Push kinds: the subscription-driven kinds plus `invite`, which targets one recipient and ignores subscriptions. */
@@ -49,8 +51,8 @@ function base(kind: PushType, companyId: string, eventId: string, suffix = ""): 
   return { type: kind, companyId, eventId, deepLink: `dip://events/${eventId}${suffix}` };
 }
 
-export function chatPush(companyId: string, eventId: string, eventTitle: string, messageId: string, authorName: string, text: string): PushMessage {
-  const author = shorten(authorName, 40) || "Someone";
+export function chatPush(companyId: string, eventId: string, eventTitle: string, messageId: string, authorName: string, text: string, locale: Locale = "en"): PushMessage {
+  const author = shorten(authorName, 40) || tPush(locale, "push.chat.fallbackAuthor");
   return {
     title: shorten(eventTitle, TITLE_MAX),
     body: `${author}: ${shorten(text, CHAT_PREVIEW_MAX)}`,
@@ -61,7 +63,7 @@ export function chatPush(companyId: string, eventId: string, eventTitle: string,
 }
 
 /** `endTime` (when known) makes APNs drop the change push once the activity is over. */
-export function changePush(companyId: string, eventId: string, eventTitle: string, revision: number, summary: string, endTime?: Date): PushMessage {
+export function changePush(companyId: string, eventId: string, eventTitle: string, revision: number, summary: string, endTime?: Date, _locale: Locale = "en"): PushMessage {
   return {
     title: shorten(eventTitle, TITLE_MAX),
     body: summary,
@@ -75,14 +77,14 @@ export function changePush(companyId: string, eventId: string, eventTitle: strin
 
 export type ReminderWindow = "24h" | "1h";
 
-export function reminderPush(companyId: string, eventId: string, eventTitle: string, window: ReminderWindow, leadMs: number, startTime: Date): PushMessage {
+export function reminderPush(companyId: string, eventId: string, eventTitle: string, window: ReminderWindow, leadMs: number, startTime: Date, locale: Locale = "en"): PushMessage {
   const minutes = Math.max(1, Math.round(leadMs / 60_000));
   const when = window === "1h"
-    ? (minutes >= 55 ? "in about an hour" : `in ${minutes} minutes`)
-    : (minutes >= 22 * 60 ? "tomorrow" : `in about ${Math.round(minutes / 60)} hours`);
+    ? (minutes >= 55 ? tPush(locale, "push.reminder.when.hour") : tPush(locale, "push.reminder.when.minutes", { minutes }))
+    : (minutes >= 22 * 60 ? tPush(locale, "push.reminder.when.tomorrow") : tPush(locale, "push.reminder.when.hours", { hours: Math.round(minutes / 60) }));
   return {
     title: shorten(eventTitle, TITLE_MAX),
-    body: `Starts ${when}.`,
+    body: tPush(locale, "push.reminder.body", { when }),
     data: { ...base("reminder", companyId, eventId), window, category: "reminders" },
     threadId: `event-${eventId}`,
     collapseId: `reminder-${eventId}`,
@@ -93,11 +95,11 @@ export function reminderPush(companyId: string, eventId: string, eventTitle: str
 }
 
 /** A coworker invited the recipient; the tap opens the event page (`dip://events/{id}`), where the invite is answered. */
-export function invitePush(companyId: string, eventId: string, eventTitle: string, inviteId: string, fromName: string): PushMessage {
-  const from = shorten(fromName, 40) || "A coworker";
+export function invitePush(companyId: string, eventId: string, eventTitle: string, inviteId: string, fromName: string, locale: Locale = "en"): PushMessage {
+  const from = shorten(fromName, 40) || tPush(locale, "push.invite.fallbackFrom");
   return {
-    title: "New invitation",
-    body: `${from} invited you to ${shorten(eventTitle, TITLE_MAX)}.`,
+    title: tPush(locale, "push.invite.title"),
+    body: tPush(locale, "push.invite.body", { from, title: shorten(eventTitle, TITLE_MAX) }),
     data: { ...base("invite", companyId, eventId), inviteId, category: "invites" },
     threadId: "invites",
     collapseId: `invite-${inviteId}`,
@@ -106,10 +108,10 @@ export function invitePush(companyId: string, eventId: string, eventTitle: strin
 }
 
 /** An organizer added the recipient to an activity. Gated by the `event_updates` switch only, never by the per-event level. */
-export function attendeeAddedPush(companyId: string, eventId: string, eventTitle: string): PushMessage {
+export function attendeeAddedPush(companyId: string, eventId: string, eventTitle: string, locale: Locale = "en"): PushMessage {
   return {
-    title: "You were added to an activity",
-    body: `An organizer added you to ${shorten(eventTitle, TITLE_MAX)}.`,
+    title: tPush(locale, "push.attendeeAdded.title"),
+    body: tPush(locale, "push.attendeeAdded.body", { title: shorten(eventTitle, TITLE_MAX) }),
     data: { ...base("attendee_added", companyId, eventId), category: "event_updates" },
     threadId: `event-${eventId}`,
     collapseId: `attendee-added-${eventId}`,
@@ -118,11 +120,11 @@ export function attendeeAddedPush(companyId: string, eventId: string, eventTitle
 }
 
 /** The sender's invitation was accepted (declines are silent). Opens the event page. */
-export function inviteAnsweredPush(companyId: string, eventId: string, eventTitle: string, inviteId: string, responderName: string): PushMessage {
-  const who = shorten(responderName, 40) || "A coworker";
+export function inviteAnsweredPush(companyId: string, eventId: string, eventTitle: string, inviteId: string, responderName: string, locale: Locale = "en"): PushMessage {
+  const who = shorten(responderName, 40) || tPush(locale, "push.inviteAnswered.fallbackWho");
   return {
-    title: "Invitation accepted",
-    body: `${who} accepted your invite to ${shorten(eventTitle, TITLE_MAX)}.`,
+    title: tPush(locale, "push.inviteAnswered.title"),
+    body: tPush(locale, "push.inviteAnswered.body", { who, title: shorten(eventTitle, TITLE_MAX) }),
     data: { ...base("invite_answered", companyId, eventId), inviteId, category: "invites" },
     threadId: "invites",
     collapseId: `invite-answered-${inviteId}`,
@@ -135,10 +137,10 @@ function challengeBase(kind: PushType, companyId: string, challengeId: string): 
 }
 
 /** A reviewer decided on the recipient's submission. The body names the weekly theme, never the reviewer's note. */
-export function challengeReviewedPush(companyId: string, challengeId: string, submissionId: string, approved: boolean, challengeTitle: string): PushMessage {
+export function challengeReviewedPush(companyId: string, challengeId: string, submissionId: string, approved: boolean, challengeTitle: string, locale: Locale = "en"): PushMessage {
   return {
-    title: approved ? "Your submission was approved" : "Changes requested on your submission",
-    body: shorten(challengeTitle, TITLE_MAX) || "Weekly challenge",
+    title: tPush(locale, approved ? "push.challenge.approved.title" : "push.challenge.changesRequested.title"),
+    body: shorten(challengeTitle, TITLE_MAX) || tPush(locale, "push.challenge.fallbackTitle"),
     data: { ...challengeBase(approved ? "challenge_approved" : "challenge_changes_requested", companyId, challengeId), submissionId },
     threadId: `challenge-${challengeId}`,
     collapseId: `challenge-review-${submissionId}`,
@@ -147,10 +149,10 @@ export function challengeReviewedPush(companyId: string, challengeId: string, su
 }
 
 /** A new weekly theme started. `windowEnd` (when known) makes APNs drop the push once the theme is over. */
-export function weeklyThemePush(companyId: string, challengeId: string, themeTitle: string, windowEnd?: Date): PushMessage {
+export function weeklyThemePush(companyId: string, challengeId: string, themeTitle: string, windowEnd?: Date, locale: Locale = "en"): PushMessage {
   return {
-    title: "New weekly challenge",
-    body: shorten(themeTitle, TITLE_MAX) || "A new theme just started.",
+    title: tPush(locale, "push.weeklyTheme.title"),
+    body: shorten(themeTitle, TITLE_MAX) || tPush(locale, "push.weeklyTheme.fallbackBody"),
     data: challengeBase("weekly_theme", companyId, challengeId),
     threadId: `challenge-${challengeId}`,
     collapseId: `weekly-theme-${challengeId}`,

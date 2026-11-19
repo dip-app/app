@@ -116,6 +116,7 @@ export async function importEmployees(deps: AdminDeps, caller: Caller | null, da
     writeAudit(tx, actor, {
       id: `${actor.uid}_${req.requestId}`, action: "import.plan", targetType: "import", targetId: jobId,
       summary: `Planned an employee import of ${rows.length} rows (${totals.create} new, ${totals.update} updates, ${totals.invalid} invalid)`,
+      summaryKey: "import.plan", summaryParams: { rows: rows.length, create: totals.create, update: totals.update, invalid: totals.invalid },
       changes: [change("rows", null, rows.length), change("invalid", null, totals.invalid)], requestId: req.requestId,
     });
     return { contractVersion: 1, jobId, status: "planned", totals, rows: rows.map(wirePlanRow), planHash, chunkCount: chunks.length } satisfies ImportEmployeesResponse;
@@ -159,7 +160,7 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
         tx.update(paths.user(member.id), { ...decision.patch, revision: revisionOf(member.data) + 1 });
         if (entry) tx.update(paths.rosterEntry(actor.companyId, hash), { ...decision.patch, updatedAt: SERVER_TIME }); // roster lists everyone
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "member", targetId: member.id,
-          summary: `Import updated ${record.email}`, changes: decision.changes, requestId: jobId });
+          summary: `Import updated ${record.email}`, summaryKey: "import.update", summaryParams: { email: record.email }, changes: decision.changes, requestId: jobId });
         return recorded("updated");
       }
       if (decision.kind === "roster" && decision.action === "create") {
@@ -168,13 +169,13 @@ async function applyRow(deps: AdminDeps, actor: Actor, jobId: string, row: Plann
           createdAt: SERVER_TIME, updatedAt: SERVER_TIME, revision: 1,
         });
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "roster", targetId: hash,
-          summary: `Import invited ${record.email}`, changes: decision.changes, requestId: jobId });
+          summary: `Import invited ${record.email}`, summaryKey: "import.invite", summaryParams: { email: record.email }, changes: decision.changes, requestId: jobId });
         return recorded("created");
       }
       if (decision.kind === "roster") {
         tx.update(paths.rosterEntry(actor.companyId, hash), { ...decision.patch, importJobId: jobId, updatedAt: SERVER_TIME, revision: (entry && typeof entry.revision === "number" ? entry.revision : 1) + 1 });
         writeAudit(tx, actor, { id: auditId, action: "import.apply", targetType: "roster", targetId: hash,
-          summary: `Import updated the invitation for ${record.email}`, changes: decision.changes, requestId: jobId });
+          summary: `Import updated the invitation for ${record.email}`, summaryKey: "import.updateInvite", summaryParams: { email: record.email }, changes: decision.changes, requestId: jobId });
         return recorded("updated");
       }
       return fail("INVALID_ROW", "Row could not be applied.");
@@ -246,6 +247,7 @@ export async function applyEmployeeImport(deps: AdminDeps, caller: Caller | null
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.jobId}_done`, action: "import.apply", targetType: "import", targetId: req.jobId,
         summary: `Applied an employee import: ${progress.created} invited, ${progress.updated} updated, ${progress.failed} failed`,
+        summaryKey: "import.apply", summaryParams: { invited: progress.created, updated: progress.updated, failed: progress.failed },
         changes: [change("created", null, progress.created), change("updated", null, progress.updated), change("failed", null, progress.failed)], requestId: req.jobId,
       });
     }

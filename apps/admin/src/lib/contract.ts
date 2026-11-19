@@ -63,6 +63,9 @@ export class ApiError extends Error {
     readonly reason?: string,
     /** CHALLENGE_WINDOW_OVERLAP only: the same-company theme whose window is in the way (`details.conflict`). */
     readonly conflict?: WindowConflict,
+    /** Stable catalog key from `details.messageKey` (e.g. "errors.memberNotFound"), when the server sent one. */
+    readonly messageKey?: string,
+    readonly messageParams?: Readonly<Record<string, string | number>>,
   ) {
     super(message);
   }

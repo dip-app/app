@@ -3,7 +3,7 @@
 // auditLabels.test.ts fails when the backend list and this map drift apart.
 // @i18n-migrated
 
-import { t, type MessageKey } from "./i18n";
+import { getLocale, hasMessage, t, type MessageKey } from "./i18n";
 
 export type AuditCategory = "People" | "Events" | "Challenges" | "AI" | "Email" | "Settings" | "Security";
 
@@ -126,3 +126,22 @@ export function aiFacts(changes: readonly { field: string; before: string; after
 }
 
 export const isAiAction = (key: string) => key.startsWith("ai.");
+
+/** Decimal strings the server sends for numbers become numbers (plural arguments); other text, "007" included, stays as sent. */
+function paramValue(value: string): string | number {
+  return /^-?\d+$/.test(value) && String(Number(value)) === value ? Number(value) : value;
+}
+
+/**
+ * The summary sentence to show. English (and older entries, unknown keys) show the stored English `summary` unchanged;
+ * other languages render `audit.summary.<summaryKey>` with the entry's params. Params are server and user content
+ * (names, titles, emails) and are never translated.
+ */
+export function auditSummary(entry: { summary: string; summaryKey?: string; summaryParams?: Readonly<Record<string, string>> }): string {
+  if (getLocale() === "en" || !entry.summaryKey) return entry.summary;
+  const key = `audit.summary.${entry.summaryKey}`;
+  if (!hasMessage(key)) return entry.summary;
+  const vars: Record<string, string | number> = {};
+  for (const [name, value] of Object.entries(entry.summaryParams ?? {})) vars[name] = paramValue(value);
+  return t(key, vars);
+}

@@ -20,6 +20,7 @@ export function attendeeAddedRequest(input: AttendeeAddedInput): NotificationReq
     id: input.notificationId, kind: "attendee_added", companyId: input.companyId,
     recipients: [{ uid: input.userId }],
     push: attendeeAddedPush(input.companyId, input.eventId, input.eventTitle),
+    pushFor: (locale) => attendeeAddedPush(input.companyId, input.eventId, input.eventTitle, locale),
     email: attendeeAddedEmail(input.eventId, input.notificationId,
       eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
   };
@@ -35,6 +36,7 @@ export function inviteAnsweredRequest(input: InviteAcceptedInput): NotificationR
   return {
     id: `invite_answered_${input.inviteId}`, kind: "invite_answered", companyId: input.companyId,
     recipients: [{ uid: input.senderId }], push,
+    pushFor: (locale) => inviteAnsweredPush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.responderName, locale),
     inApp: { title: push.title, body: push.body, targetType: "event", targetId: input.eventId },
     email: inviteAnsweredEmail(input.inviteId, input.responderName,
       eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
@@ -50,6 +52,7 @@ export function challengeReviewedRequest(input: ChallengeReviewedInput): Notific
     id: input.notificationId, kind: input.approved ? "challenge_approved" : "challenge_changes_requested", companyId: input.companyId,
     recipients: [{ uid: input.userId }],
     push: challengeReviewedPush(input.companyId, input.challengeId, input.submissionId, input.approved, input.challengeTitle),
+    pushFor: (locale) => challengeReviewedPush(input.companyId, input.challengeId, input.submissionId, input.approved, input.challengeTitle, locale),
     email: challengeReviewedEmail(input.challengeId, input.challengeTitle, input.approved, input.notificationId),
   };
 }
@@ -59,6 +62,7 @@ export function weeklyThemeRequest(theme: WeeklyTheme, uids: readonly string[]):
     id: `weekly_theme_${theme.companyId}_${theme.challengeId}`, kind: "weekly_theme", companyId: theme.companyId,
     recipients: uids.map((uid) => ({ uid })),
     push: weeklyThemePush(theme.companyId, theme.challengeId, theme.title, theme.endDate),
+    pushFor: (locale) => weeklyThemePush(theme.companyId, theme.challengeId, theme.title, theme.endDate, locale),
   };
 }
 

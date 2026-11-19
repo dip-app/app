@@ -3,13 +3,15 @@
  * Renders every preview case through renderEmail and runs the compatibility checks. Exit code 1 on any error.
  */
 import { renderEmail } from "../../src/modules/email/domain/templates/render";
-import { PREVIEW_CASES } from "../../src/modules/email/scripts/previewCases";
+import { PREVIEW_CASES, PREVIEW_CASES_ES } from "../../src/modules/email/scripts/previewCases";
 import { checkEmail, checkOnline, groupFindings, type EmailUnderTest, type Finding } from "./checks";
 
+/** Every preview case in English, then every Spanish twin (named `es_<case>`). */
 export function renderAll(): EmailUnderTest[] {
-  return PREVIEW_CASES.map((c) => {
+  const cases = [...PREVIEW_CASES.map((c) => ({ c, name: c.name })), ...PREVIEW_CASES_ES.map((c) => ({ c, name: `es_${c.name}` }))];
+  return cases.map(({ c, name }) => {
     const r = renderEmail(c.template, c.variables as never, c.ctx);
-    return { name: c.name, subject: r.subject, html: r.html, text: r.text };
+    return { name, subject: r.subject, html: r.html, text: r.text };
   });
 }
 

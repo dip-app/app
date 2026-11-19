@@ -17,6 +17,7 @@ import type { AdminDeps, Caller } from "../application/ports";
 import { backfillRosterCallable } from "../application/backfillRoster";
 import { listRoster, resendRosterInvite, revokeRosterEntry, upsertRosterEntry } from "../application/roster";
 import { AdminError, errorDiagnostics } from "../domain/errors";
+import { errorMessageDetails } from "../../i18n";
 import {
   AuthSessions, FirestoreAdminRateLimiter, FirestoreAdminStore, randomId, StorageObjects,
 } from "../infrastructure/firestoreAdminStore";
@@ -26,10 +27,11 @@ const GENERIC_INTERNAL_MESSAGE = "Something went wrong. Try again later.";
 /** Maps domain failures to callable errors with `{ reason, fields? }` details and no internals. */
 export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof AdminError) {
-    const details = { reason: error.reason, ...(error.fields.length > 0 ? { fields: [...error.fields] } : {}), ...error.details };
-    return new HttpsError(error.code, error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message, details);
+    const message = error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message;
+    const details = { reason: error.reason, ...(error.fields.length > 0 ? { fields: [...error.fields] } : {}), ...error.details, ...errorMessageDetails(message) };
+    return new HttpsError(error.code, message, details);
   }
-  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
+  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE, { messageKey: "errors.generic" });
 }
 
 type Command<T> = (deps: AdminDeps, caller: Caller | null, data: unknown) => Promise<T>;

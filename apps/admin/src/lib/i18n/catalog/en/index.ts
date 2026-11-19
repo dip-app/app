@@ -4,6 +4,7 @@
 import { account } from "./account";
 import { ai } from "./ai";
 import { audit } from "./audit";
+import { errors } from "./errors";
 import { challenges } from "./challenges";
 import { common } from "./common";
 import { dipbot } from "./dipbot";
@@ -40,6 +41,7 @@ export const en = {
   ...overview,
   ...members,
   ...audit,
+  ...errors,
   ...challenges,
   ...themeForm,
   ...attendees,

@@ -185,6 +185,9 @@ export async function updateBugReport(deps: AdminDeps, caller: Caller | null, da
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "bugreport.update", targetType: "bugReport", targetId: req.reportId,
         summary: `Updated bug report ${req.reportId.slice(0, 8)}${req.status && req.status !== current.status ? ` (${current.status} to ${req.status})` : ""}`,
+        ...(req.status && req.status !== current.status
+          ? { summaryKey: "bugReport.updateStatus" as const, summaryParams: { id: req.reportId.slice(0, 8), from: String(current.status), to: req.status } }
+          : { summaryKey: "bugReport.update" as const, summaryParams: { id: req.reportId.slice(0, 8) } }),
         changes, requestId: req.requestId,
       });
       return response(req.reportId, next, true);

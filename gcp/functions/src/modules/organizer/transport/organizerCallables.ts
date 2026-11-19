@@ -3,6 +3,7 @@ import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/
 import { logger } from "firebase-functions/v2";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
 import type { CoverKeySource } from "../../covers/domain/coverCatalog";
+import { errorMessageDetails } from "../../i18n";
 import { dynamicCoverCatalog } from "../../covers/transport/liveWiring";
 import { createEvent, updateEvent, type Caller, type Clock, type IdGenerator } from "../application/organizerCommands";
 import type { OrganizerStore } from "../application/ports";
@@ -26,10 +27,11 @@ const GENERIC_INTERNAL_MESSAGE = "Something went wrong. Try again later.";
 /** Maps domain failures to callable errors with `{ reason, fields? }` details and no internals. */
 export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof OrganizerError) {
-    const details = error.fields.length > 0 ? { reason: error.reason, fields: [...error.fields] } : { reason: error.reason };
-    return new HttpsError(error.code, error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message, details);
+    const message = error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message;
+    const details = { reason: error.reason, ...(error.fields.length > 0 ? { fields: [...error.fields] } : {}), ...errorMessageDetails(message) };
+    return new HttpsError(error.code, message, details);
   }
-  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
+  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE, { messageKey: "errors.generic" });
 }
 
 async function run<T>(name: string, request: Pick<CallableRequest, "auth">, work: () => Promise<T>): Promise<T> {

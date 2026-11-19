@@ -1,6 +1,7 @@
 import type { RemoveEventPhotoCommentResponse, RemoveEventPhotoResponse } from "../../../generated/models";
 import { logger } from "firebase-functions/v2";
 import { change } from "../domain/audit";
+import { named } from "../domain/auditSummaries";
 import { AdminError, stored } from "../domain/errors";
 import { paths } from "../domain/ops";
 import { parseRemoveComment, parseRemovePhoto } from "../domain/requests";
@@ -44,6 +45,7 @@ export async function removeEventPhoto(deps: AdminDeps, caller: Caller | null, d
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "photo.remove", targetType: "photo", targetId: `${eventId}/${photoId}`,
         summary: `Removed photo by ${typeof photo.uploaderName === "string" ? photo.uploaderName : "a member"} from ${typeof photo.eventTitle === "string" ? photo.eventTitle : "an event"}`,
+        summaryKey: "photo.remove", summaryParams: { ...named(photo.uploaderName, "uploader"), ...named(photo.eventTitle, "event") },
         changes: [change("uploaderId", photo.uploaderId, null), change("captionLength", caption ? [...caption].length : null, null), change("comments", comments.length, 0)],
         reason: req.reason, requestId: req.requestId,
       });
@@ -99,6 +101,7 @@ export async function removeEventPhotoComment(deps: AdminDeps, caller: Caller | 
       writeAudit(tx, actor, {
         id: `${actor.uid}_${req.requestId}`, action: "photo.comment.remove", targetType: "comment", targetId: `${eventId}/${photoId}/${commentId}`,
         summary: `Removed a comment by ${typeof comment.authorName === "string" ? comment.authorName : "a member"}`,
+        summaryKey: "comment.remove", summaryParams: named(comment.authorName, "author"),
         changes: [change("authorId", comment.authorId, null), change("textLength", textLength, null), change("commentCount", total, commentCount)],
         reason: req.reason, requestId: req.requestId,
       });

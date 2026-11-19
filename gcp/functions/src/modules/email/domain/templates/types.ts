@@ -1,4 +1,5 @@
 import type { NotificationKind } from "../../../notifications/domain/categories";
+import type { Locale } from "../../../i18n";
 import type { EmailCategory } from "../categories";
 
 /**
@@ -138,6 +139,11 @@ export interface RenderContext {
    * approximate signal (Apple Mail Privacy Protection and Gmail's image proxy prefetch images).
    */
   openPixelURL?: string | null;
+  /**
+   * Recipient language (`users/{uid}.locale`, server-owned; missing means en). Our copy, dates and times follow it;
+   * server content (event titles, names, idea text) never changes. Absent means English.
+   */
+  locale?: Locale;
 }
 
 export interface RenderedEmail {

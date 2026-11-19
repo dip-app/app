@@ -30,7 +30,9 @@ service cloud.firestore {
           'jobTitle', 'city', 'role', 'interestTagIds', 'travelRadiusMiles',
           'availability', 'friendIds', 'favoritePhotoIds', 'pointsBalance', 'createdAt',
           // Server-owned admin fields (updateMemberV1, roster claim); never client-writable (see the update allow-list).
-          'workLocation', 'teamIds', 'status', 'managerEmail', 'startDate', 'revision', 'statusUpdatedAt'
+          'workLocation', 'teamIds', 'status', 'managerEmail', 'startDate', 'revision', 'statusUpdatedAt',
+          // Server-owned language of email and push (setMyLocaleV1, issue #259); kept out of the update allow-list.
+          'locale'
         ])
         && data.displayName is string && data.displayName.size() <= 80
         && data.displayName.matches('^[^\\s](.*[^\\s])?$')

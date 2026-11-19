@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type AdminApi, type KeyValueStore, createMockApi } from "@/lib/api";
 
@@ -132,6 +132,12 @@ describe("Use suggestions", () => {
     const off = screen.getByRole("button", { name: /^Use suggestions/ }) as HTMLButtonElement;
     expect(off.disabled).toBe(true);
     expect(off.getAttribute("title")).toMatch(/no suggestions to apply/);
-    expect(screen.queryByText(/Applied|Picked|selected below|match/)).toBeNull();
+    // The "Ideas for you" daily ideas load next to the steps (mock delay 450 ms vs 400 ms for the suggestions) and rightly
+    // show fit labels such as "Good match". Wait until they are in, so the check never depends on which request finished
+    // first, then hold the no-data step (the panel this claim is about) to it.
+    await waitFor(() => expect(document.querySelector(".ifu")?.getAttribute("data-state")).toBe("ready"));
+    const step = document.querySelector<HTMLElement>("section.step-panel")!;
+    expect(step).toBeTruthy();
+    expect(within(step).queryByText(/Applied|Picked|selected below|match/)).toBeNull();
   });
 });

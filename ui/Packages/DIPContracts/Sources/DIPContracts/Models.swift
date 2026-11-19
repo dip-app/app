@@ -54,8 +54,9 @@ public struct AppUser: Codable, Equatable, Sendable {
     public var startDate: String?
     public var revision: Int?
     public var statusUpdatedAt: Date?
+    public var locale: String?
 
-    public init(id: String? = nil, companyId: String, displayName: String, email: String, photoURL: String, avatarId: String, department: String, jobTitle: String, city: String, role: String, interestTagIds: [String], travelRadiusMiles: Int, availability: [String], friendIds: [String], favoritePhotoIds: [String], pointsBalance: Int, createdAt: Date, workLocation: String? = nil, teamIds: [String]? = nil, status: String? = nil, managerEmail: String? = nil, startDate: String? = nil, revision: Int? = nil, statusUpdatedAt: Date? = nil) {
+    public init(id: String? = nil, companyId: String, displayName: String, email: String, photoURL: String, avatarId: String, department: String, jobTitle: String, city: String, role: String, interestTagIds: [String], travelRadiusMiles: Int, availability: [String], friendIds: [String], favoritePhotoIds: [String], pointsBalance: Int, createdAt: Date, workLocation: String? = nil, teamIds: [String]? = nil, status: String? = nil, managerEmail: String? = nil, startDate: String? = nil, revision: Int? = nil, statusUpdatedAt: Date? = nil, locale: String? = nil) {
         self.id = id
         self.companyId = companyId
         self.displayName = displayName
@@ -80,6 +81,7 @@ public struct AppUser: Codable, Equatable, Sendable {
         self.startDate = startDate
         self.revision = revision
         self.statusUpdatedAt = statusUpdatedAt
+        self.locale = locale
     }
 }
 
@@ -330,6 +332,28 @@ public struct UnregisterDeviceResponse: Codable, Equatable, Sendable {
     public init(contractVersion: Int, removed: Bool) {
         self.contractVersion = contractVersion
         self.removed = removed
+    }
+}
+
+public struct SetMyLocaleRequest: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var locale: String
+
+    public init(contractVersion: Int, locale: String) {
+        self.contractVersion = contractVersion
+        self.locale = locale
+    }
+}
+
+public struct SetMyLocaleResponse: Codable, Equatable, Sendable {
+    public var contractVersion: Int
+    public var locale: String
+    public var changed: Bool
+
+    public init(contractVersion: Int, locale: String, changed: Bool) {
+        self.contractVersion = contractVersion
+        self.locale = locale
+        self.changed = changed
     }
 }
 
@@ -1143,6 +1167,16 @@ public struct AuditFieldChange: Codable, Equatable, Sendable {
     }
 }
 
+public struct AuditSummaryParam: Codable, Equatable, Sendable {
+    public var name: String
+    public var value: String
+
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = value
+    }
+}
+
 public struct AuditEntry: Codable, Equatable, Sendable {
     public var id: String?
     public var companyId: String
@@ -1157,8 +1191,10 @@ public struct AuditEntry: Codable, Equatable, Sendable {
     public var reason: String?
     public var requestId: String?
     public var createdAt: Date
+    public var summaryKey: String?
+    public var summaryParams: [AuditSummaryParam]?
 
-    public init(id: String? = nil, companyId: String, actorId: String, actorName: String, actorRole: String, action: String, targetType: String, targetId: String, summary: String, changes: [AuditFieldChange], reason: String? = nil, requestId: String? = nil, createdAt: Date) {
+    public init(id: String? = nil, companyId: String, actorId: String, actorName: String, actorRole: String, action: String, targetType: String, targetId: String, summary: String, changes: [AuditFieldChange], reason: String? = nil, requestId: String? = nil, createdAt: Date, summaryKey: String? = nil, summaryParams: [AuditSummaryParam]? = nil) {
         self.id = id
         self.companyId = companyId
         self.actorId = actorId
@@ -1172,6 +1208,8 @@ public struct AuditEntry: Codable, Equatable, Sendable {
         self.reason = reason
         self.requestId = requestId
         self.createdAt = createdAt
+        self.summaryKey = summaryKey
+        self.summaryParams = summaryParams
     }
 }
 

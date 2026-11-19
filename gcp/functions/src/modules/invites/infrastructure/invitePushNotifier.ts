@@ -34,6 +34,7 @@ export class PushInviteNotifier implements InviteNotifier {
       await deliverNotification(routerDependencies(this.app), {
         id: `invite_${input.inviteId}`, kind: "invite", companyId: input.companyId, recipients: [{ uid: input.toUserId }],
         push: invitePush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.fromName),
+        pushFor: (locale) => invitePush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.fromName, locale),
         email: inviteReceivedEmail(input.inviteId, input.fromName,
           eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
       });

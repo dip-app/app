@@ -135,8 +135,9 @@ For demos there is a hidden override: on Profile, long-press the "Favorite Memor
 offers System, English, Español and tlhIngan Hol, writes the per-app `AppleLanguages` preference and asks you to relaunch
 DIP. It adds no visible UI.
 
-Sending emails and push notifications in each member's language is a later backend phase of #259. That phase needs a
-member locale on the profile, server-side catalogs, and push payloads with localization keys.
+Emails and push notifications follow the member's server-owned `users/{uid}.locale` (backend phase of #259, see
+[backend-i18n.md](backend-i18n.md)). The app does not set it yet; the admin portal does. A later change can call
+`setMyLocaleV1` when the app language changes (the generated `AppUser.locale` is already in DIPContracts).
 
 ## Testing
 
@@ -173,5 +174,5 @@ member locale on the profile, server-side catalogs, and push payloads with local
   there was no RTL audit or pseudolanguage pass.
 - Duo layouts were only checked for English regressions.
 - Other languages.
-- Email and push copy, which are a separate phase of #259. The admin portal is covered in [admin-i18n.md](admin-i18n.md).
+- Email and push copy are covered in [backend-i18n.md](backend-i18n.md), the admin portal in [admin-i18n.md](admin-i18n.md).
 - Translating server or catalog content, such as interest names and theme descriptions.

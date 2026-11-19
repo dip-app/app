@@ -4,7 +4,8 @@ import type { PushMessage } from "../domain/push";
 import type { SubscriptionLevel } from "../domain/subscription";
 import type { Clock, DeviceDirectory, DeviceToken, InboxWriter, MessagingPort, PreferencesReader } from "./ports";
 import { rateClassOf } from "../domain/rateLimit";
-import type { DeliveryLog, DeliveryReceipts, MembershipReader, PushRateLimiter } from "./routerPorts";
+import type { Locale } from "../../i18n";
+import type { DeliveryLog, DeliveryReceipts, LocaleReader, MembershipReader, PushRateLimiter } from "./routerPorts";
 import { sendToDevices, type PushStats } from "./sendPush";
 
 export interface NotificationRecipient { uid: string; eventLevel?: SubscriptionLevel | null }
@@ -17,6 +18,8 @@ export interface NotificationRequest {
   /** Derived server-side by the trigger, never from client payloads. */
   recipients: readonly NotificationRecipient[];
   push: PushMessage;
+  /** Optional localized builder; `push` must equal `pushFor("en")`. Used per recipient locale when `deps.locales` is wired. */
+  pushFor?: (locale: Locale) => PushMessage;
   inApp?: { title: string; body: string; targetType: string; targetId: string };
   /**
    * Optional email payload (email workstream, docs/contracts/email.md). Opaque to the router: the email channel
@@ -43,6 +46,8 @@ export interface RouterDependencies {
   email?: EmailChannelPort;
   /** Send-time membership check (same company, not deactivated). Production always wires it; absent skips the check. */
   members?: MembershipReader;
+  /** Recipient locales for localized push copy; absent means every push is sent as `request.push` (English). */
+  locales?: LocaleReader;
   /** Structured, PII-free logging of swallowed failures and send outcomes. Absent means silent. */
   logger?: DeliveryLog;
   clock: Clock;
@@ -67,6 +72,44 @@ const safeLog = (log: DeliveryLog | undefined, level: "warn" | "error", message:
 const errorName = (error: unknown): string => (error instanceof Error ? error.name : "UnknownError");
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,200}$/;
+
+/**
+ * Sends to the resolved devices, one multicast group per recipient locale when the request has a localized builder and
+ * the locale reader is wired. A locale read failure never fails delivery: everyone gets the English `request.push`.
+ */
+async function sendLocalized(
+  deps: RouterDependencies, request: NotificationRequest, toSend: readonly DeviceToken[], context: { notificationId: string; kind: string; companyId: string },
+): Promise<PushStats> {
+  const { pushFor } = request;
+  if (!pushFor || !deps.locales) return sendToDevices(deps, toSend, request.push, context);
+  let locales: Map<string, Locale>;
+  try {
+    locales = await deps.locales.localesFor([...new Set(toSend.map((device) => device.uid))]);
+  } catch (error) {
+    safeLog(deps.logger, "warn", "locale read failed; sending English", { ...context, recipients: new Set(toSend.map((device) => device.uid)).size, error: errorName(error) });
+    return sendToDevices(deps, toSend, request.push, context);
+  }
+  const groups = new Map<Locale, DeviceToken[]>();
+  for (const device of toSend) {
+    const locale = locales.get(device.uid) ?? "en";
+    const list = groups.get(locale);
+    if (list) list.push(device); else groups.set(locale, [device]);
+  }
+  if (groups.size === 1 && groups.has("en")) return sendToDevices(deps, toSend, request.push, context);
+  const merged: PushStats = { recipients: new Set(toSend.map((device) => device.uid)).size, tokens: 0, sent: 0, failed: 0, removed: 0 };
+  for (const [locale, devices] of groups) {
+    let message = request.push;
+    if (locale !== "en") {
+      try { message = pushFor(locale); } catch (error) {
+        // A copy bug must never cost the push: that group gets English.
+        safeLog(deps.logger, "warn", "localized push failed; sending English", { ...context, locale, error: errorName(error) });
+      }
+    }
+    const part = await sendToDevices(deps, devices, message, context);
+    merged.tokens += part.tokens; merged.sent += part.sent; merged.failed += part.failed; merged.removed += part.removed;
+  }
+  return merged;
+}
 
 /**
  * Single delivery path for server notifications: in-app write, exactly-once claim, preference precedence
@@ -161,7 +204,7 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
     toSend.push(...(tokensByUid.get(uid) ?? []));
   }
   let result: DeliveryStats = stats;
-  if (toSend.length > 0) result = { ...stats, ...(await sendToDevices(deps, toSend, request.push, context)) };
+  if (toSend.length > 0) result = { ...stats, ...(await sendLocalized(deps, request, toSend, context)) };
   await deps.receipts.complete(receiptKey);
   return result;
 }

@@ -28,6 +28,8 @@ export const DYNAMIC_PREFIXES = [
   "ai.consider.group.", "ai.venue.kind.", "ai.venue.reason.", "ai.venue.setting.", "ai.suggest.by.", "ai.suggest.spoken.",
   "ai.ideasForYou.day.", "ai.ideasForYou.daypart.", "ai.step.",
   "common.role.", "shell.ask.",
+  // Server message keys (typed errors, audit summaries): the key arrives from the backend with the response.
+  "errors.", "audit.summary.",
 ];
 
 type Catalog = Readonly<Record<string, string>>;

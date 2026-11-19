@@ -2,6 +2,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import { defaultAdminApp } from "../../accounts/transport/resolveMembershipV1";
+import { errorMessageDetails } from "../../i18n";
 import { callerFromRequest } from "../../organizer/transport/organizerCallables";
 import { createChallenge, updateChallenge, type ChallengeIdGenerator, type Clock } from "../application/challengeCommands";
 import type { ChallengeStore } from "../application/ports";
@@ -19,9 +20,11 @@ export function toHttpsError(error: unknown): HttpsError {
     const details: Record<string, unknown> = { reason: error.reason };
     if (error.fields.length > 0) details.fields = [...error.fields];
     if (error.conflict) details.conflict = { ...error.conflict };
-    return new HttpsError(error.code, error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message, details);
+    const message = error.code === "internal" ? GENERIC_INTERNAL_MESSAGE : error.message;
+    Object.assign(details, errorMessageDetails(message));
+    return new HttpsError(error.code, message, details);
   }
-  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE);
+  return new HttpsError("internal", GENERIC_INTERNAL_MESSAGE, { messageKey: "errors.generic" });
 }
 
 async function run<T>(name: string, request: Pick<CallableRequest, "auth">, work: () => Promise<T>): Promise<T> {
