@@ -15,6 +15,8 @@ struct DIPMyEventsScreen: View {
     @State private var pageID: Section?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dipDuoOpen) private var duoOpen
+    /// Duo display whose tabs are in the sensor-column rail: no floating bar to keep clear of.
+    @Environment(\.dipDuoTabsInRail) private var tabsInRail
     @Environment(\.dipDuoSelectedEvent) private var duoSelectedEvent
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let activeEvents: [DIPEventSummary]
@@ -111,7 +113,7 @@ struct DIPMyEventsScreen: View {
         ScrollView(.vertical) {
             VStack(spacing: 18) { content() }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen))
+                .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
         }
         .scrollIndicators(.hidden)
         .frame(width: width)

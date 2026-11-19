@@ -300,6 +300,10 @@ struct DIPPrototypeApp: View {
     /// The sensor column the rail lives in (side from the safe area, so it follows rotation); nil outside the open Duo.
     @Environment(\.dipDuoSensor) private var duoSensor
     @Environment(\.dipDuoRailSlot) private var railSlot
+    /// True on a Duo display with a sensor column (open inner or folded outer): the tabs are in the rail, not the bar.
+    @Environment(\.dipDuoTabsInRail) private var tabsInRail
+    /// Where page content starts: 60 pt on phones, less on a Duo display whose status lives in the sensor column.
+    @Environment(\.dipTopInset) private var topInset
     /// The route the shell itself put in the detail pane (the first event listed), not one the member or a link chose.
     /// Folding the Duo clears it, and only it, so a deliberate selection or deep link survives.
     @State private var duoAutoRoute: Route?
@@ -345,16 +349,23 @@ struct DIPPrototypeApp: View {
                                     .toolbar(.hidden, for: .navigationBar)
                             }
                     }
-                    DIPFloatingNavigation(
-                        selected: selectedTab, action: bottomAction,
-                        onSelect: selectTab, onAction: performBottomAction
-                    )
-                    .disabled(isRSVPPending)
-                    .padding(.horizontal, 20)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                    if tabsInRail {
+                        // Folded Duo: the tabs are in the sensor-column rail; only an action (Join, Chat…) uses the bar.
+                        duoActionBar.frame(maxHeight: .infinity, alignment: .bottom)
+                    } else {
+                        DIPFloatingNavigation(
+                            selected: selectedTab, action: bottomAction,
+                            onSelect: selectTab, onAction: performBottomAction
+                        )
+                        .disabled(isRSVPPending)
+                        .padding(.horizontal, 20)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
+                    }
                 }
                 avatarFlyer
             }
+            .onChange(of: duoRailState, initial: true) { _, _ in railSlot?.rail = AnyView(duoRail) }
+            .onDisappear { railSlot?.rail = nil }
             .environment(\.challengeEntryBar, challengeBar)
             .background(.white)
             .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { shellOrigin = $0 }
@@ -639,14 +650,14 @@ struct DIPPrototypeApp: View {
     // MARK: Avatar flight
 
     private func headerAvatarFrame(in size: CGSize) -> CGRect {
-        // Corner capsule: 20pt screen inset, 5pt capsule padding, 40pt avatar, header 60pt from the top.
-        CGRect(x: size.width - 20 - 5 - 40, y: 60 + 5, width: 40, height: 40)
+        // Corner capsule: 20pt screen inset, 5pt capsule padding, 40pt avatar, header `topInset` (60pt on phones) from the top.
+        CGRect(x: size.width - 20 - 5 - 40, y: topInset + 5, width: 40, height: 40)
     }
 
     private func idleAvatarFrame(for tab: DIPHomeTab, in size: CGSize) -> CGRect {
         guard tab == .profile else { return headerAvatarFrame(in: size) }
         // Profile page space is screen-aligned; express it in the overlay's space.
-        return (badgeFrame ?? ProfileBadgeLink.fallbackFrame()).offsetBy(dx: -shellOrigin.x, dy: -shellOrigin.y)
+        return (badgeFrame ?? ProfileBadgeLink.fallbackFrame(top: topInset)).offsetBy(dx: -shellOrigin.x, dy: -shellOrigin.y)
     }
 
     /// The Profile page reports the badge frame in its own space, which stays correct while the page
@@ -720,7 +731,7 @@ struct DIPPrototypeApp: View {
             onNotifications: openNotifications, onProfile: { selectTab(.profile) }
         )
         .environment(\.dipHeaderHosted, false)
-        .padding(.horizontal, 20).padding(.top, 60)
+        .padding(.horizontal, 20).padding(.top, topInset)
         .opacity(away ? 0 : 1)
         .offset(y: away ? -16 : 0)
         .allowsHitTesting(!away)
@@ -1139,20 +1150,32 @@ struct DIPPrototypeApp: View {
     }
 
     /// What the rail shows; the rail is republished to the sensor column whenever this changes.
-    private struct DuoRailState: Equatable { var selected: DIPHomeTab; var unread: Int; var disabled: Bool }
+    private struct DuoRailState: Equatable {
+        var selected: DIPHomeTab; var unread: Int; var disabled: Bool
+        var open: Bool; var sensor: DIPDuoSensor?; var hasSlot: Bool
+    }
+
+    private var duoRailState: DuoRailState {
+        DuoRailState(selected: selectedTab, unread: model.snapshot.map(bellCount) ?? 0, disabled: isRSVPPending,
+                     open: duoOpen, sensor: duoSensor, hasSlot: railSlot != nil)
+    }
+
+    /// The rail, drawn by the window in the sensor column below the status pill (`DIPDuoRailSlot`). Open: tabs and bell.
+    /// Folded: tabs only, because the phone header keeps the bell and the profile.
+    private var duoRail: some View {
+        DIPDuoRail(
+            columnWidth: duoSensor?.width ?? DIPDuoPaneLayout.railWidth,
+            topInset: duoSensor?.topClearance ?? DIPDuoPaneLayout.topInset,
+            selected: selectedTab, unreadCount: model.snapshot.map(bellCount) ?? 0,
+            onSelect: selectTab, onNotifications: openNotifications, showsNotifications: duoOpen)
+            .disabled(isRSVPPending)
+    }
 
     private var duoShell: some View {
-        let rail = DIPDuoRail(
-            columnWidth: duoSensor?.width ?? DIPDuoPaneLayout.railWidth,
-            topInset: duoSensor == nil ? DIPDuoPaneLayout.topInset : DIPDuoSensor.pillClearance,
-            selected: selectedTab, unreadCount: model.snapshot.map(bellCount) ?? 0,
-            onSelect: selectTab, onNotifications: openNotifications)
-            .disabled(isRSVPPending)
-        let state = DuoRailState(selected: selectedTab, unread: model.snapshot.map(bellCount) ?? 0, disabled: isRSVPPending)
-        return HStack(spacing: 0) {
+        HStack(spacing: 0) {
             // Without a sensor inset the rail stays at the leading edge of the shell; on a Duo it is drawn in the sensor
             // column, below the status pill, by the window (`DIPDuoRailSlot`), so the panes use the whole free width.
-            if railSlot == nil { rail }
+            if railSlot == nil { duoRail }
             if let snapshot = model.snapshot {
                 duoPages(snapshot)
             } else {
@@ -1160,8 +1183,6 @@ struct DIPPrototypeApp: View {
             }
         }
         .background(Color.white)
-        .onChange(of: state, initial: true) { _, _ in railSlot?.rail = AnyView(rail) }
-        .onDisappear { railSlot?.rail = nil }
     }
 
     private func duoPage(_ tab: DIPHomeTab, _ pages: (DIPHomeTab) -> AnyView) -> some View {

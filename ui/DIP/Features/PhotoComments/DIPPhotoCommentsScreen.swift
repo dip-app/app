@@ -27,6 +27,7 @@ struct DIPPhotoCommentsScreen: View {
     @State private var showsPermissionAlert = false
     @Environment(\.openURL) private var openURL
     @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipTopInset) private var topInset
     @State private var draft = ""
     @State private var retryIntent: SendIntent?
     @State private var isSending = false
@@ -69,10 +70,10 @@ struct DIPPhotoCommentsScreen: View {
                     .padding(.bottom, belowComposer)
             }
             .overlay(alignment: .topLeading) {
-                closeButton.padding(.leading, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen))
+                closeButton.padding(.leading, 20).padding(.top, topInset)
             }
             .overlay(alignment: .topTrailing) {
-                if position != nil || saver != nil { controlBar.padding(.trailing, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)) }
+                if position != nil || saver != nil { controlBar.padding(.trailing, 20).padding(.top, topInset) }
             }
             .overlay(alignment: .top) {
                 if let toast { toastView(toast).padding(.top, 118).transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top))) }

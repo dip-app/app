@@ -16,8 +16,8 @@ struct DIPDetailHeader: View {
     var onCalendar: () -> Void = {}
     /// Keeps the calendar glyph on the informational (outlined) pill so the header does not jump between states.
     var showsCalendarIcon = false
-    /// Open Duo: the detail pane's root page has no Back, and the 60 pt status-bar allowance shrinks.
-    @Environment(\.dipDuoOpen) private var duoOpen
+    /// Duo: the 60 pt status-bar allowance shrinks (status is in the sensor column); open Duo detail root has no Back.
+    @Environment(\.dipTopInset) private var topInset
     @Environment(\.dipDuoHidesBack) private var hidesBack
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -63,7 +63,7 @@ struct DIPDetailHeader: View {
                 .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
             }
         }
-        .padding(.horizontal, 20).padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen)).padding(.bottom, 10)
+        .padding(.horizontal, 20).padding(.top, topInset).padding(.bottom, 10)
     }
 }
 

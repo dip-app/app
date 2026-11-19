@@ -31,6 +31,9 @@ struct DIPProfileScreen: View {
     @State private var isChoosingDraftInterests = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipTopInset) private var topInset
+    /// Duo display whose tabs are in the sensor-column rail: no floating bar to keep clear of.
+    @Environment(\.dipDuoTabsInRail) private var tabsInRail
     @State private var draftDepartment = ""
     @State private var draftCity = ""
     @State private var draftInterests: Set<String> = []
@@ -75,13 +78,14 @@ struct DIPProfileScreen: View {
                 ScrollView {
                     profileLayout
                     .padding(.horizontal, 20)
-                    .padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen))
-                    .padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen, phone: 150))
+                    .padding(.top, topInset)
+                    .padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail, phone: 150))
                 }
                 .scrollIndicators(.hidden)
                 .padding(.bottom, 22)
-                // The fade hides content scrolling under the phone status bar; the Duo has none.
-                if !duoOpen {
+                // The fade hides content scrolling under the phone status bar; Duo displays (status in the side
+                // column) have none.
+                if !duoOpen && !tabsInRail {
                     LinearGradient(
                         stops: [
                             .init(color: .white, location: 0.35),

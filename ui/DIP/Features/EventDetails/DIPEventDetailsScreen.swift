@@ -30,6 +30,7 @@ struct DIPEventDetailsScreen: View {
     @State private var calendarResult: DIPCalendarAddResult?
     @Environment(\.eventCalendarAdder) private var calendarAdder
     @Environment(\.dipDuoOpen) private var duoOpen
+    @Environment(\.dipTopInset) private var topInset
     @Environment(\.openURL) private var openURL
     /// True while the calendar editor is being presented, so a second tap (row or pill) cannot open another one.
     @State private var addingToCalendar = false
@@ -111,7 +112,7 @@ struct DIPEventDetailsScreen: View {
                 .overlay(alignment: .top) {
                     if let toast {
                         calendarToastView(toast)
-                            .padding(.top, DIPDuoPaneLayout.topInset(open: duoOpen) + 66)
+                            .padding(.top, topInset + 66)
                             .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
                     }
                 }
