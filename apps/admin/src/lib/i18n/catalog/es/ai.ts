@@ -11,7 +11,7 @@ export const ai: Record<keyof typeof source, string> = {
   "page.loading": "Cargando {ai}",
   "access.capability": "planear eventos con {ai}",
   "off.title": "{ai} está desactivado para tu empresa",
-  "off.body": "Un propietario puede activarlo. Mientras tanto, crea eventos de la forma habitual.",
+  "off.body": "Se desactivó para tu empresa o está en pausa para todos por ahora. Crea eventos de la forma habitual.",
   "off.action": "Nuevo evento",
   "privacy.link": "¿Qué ve {ai}?",
   "privacy": "{ai} ve conteos redondeados de intereses, totales de eventos pasados y tus elecciones. Nunca ve nombres ni datos personales.",

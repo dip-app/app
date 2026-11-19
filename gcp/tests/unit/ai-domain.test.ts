@@ -19,7 +19,7 @@ import {
   DAYPARTS_FOR_TIMING, GENERATE_SYSTEM_PROMPT, VENUES_FOR_SETTING, buildGenerateUserContent, choiceLimits, modelDraftsSchema,
 } from "../../functions/src/modules/ai/domain/prompt";
 import {
-  RESERVATION_TTL_MS, addSpend, checkReservation, dayOfMonth, effectiveLimits, monthDocument, readDay, readMonth, usageSummary,
+  RESERVATION_TTL_MS, addSpend, checkReservation, companyAiEnabled, dayOfMonth, effectiveLimits, monthDocument, readDay, readMonth, usageSummary,
   type DayState, type Limits, type MonthState,
 } from "../../functions/src/modules/ai/domain/quota";
 import {
@@ -697,8 +697,16 @@ describe("quota", () => {
     assert.equal(dayOfMonth(new Date(Date.UTC(2030, 0, 31, 23, 59))), "31");
   });
   test("effective limits and overrides", () => {
-    assert.equal(effectiveLimits(settings, null).enabled, false);
+    // Rollout policy: a missing document or field is ON; only an explicit false (or a malformed value) is off.
+    assert.equal(effectiveLimits(settings, null).enabled, true);
+    assert.equal(effectiveLimits(settings, {}).enabled, true);
+    assert.equal(effectiveLimits(settings, { monthlyCredits: 5 }).enabled, true);
     assert.equal(effectiveLimits(settings, { enabled: false }).enabled, false);
+    for (const bad of ["true", "false", 1, 0, null]) assert.equal(effectiveLimits(settings, { enabled: bad }).enabled, false);
+    assert.equal(companyAiEnabled(null), true);
+    assert.equal(companyAiEnabled({ enabled: true }), true);
+    assert.equal(companyAiEnabled({ enabled: false }), false);
+    assert.equal(effectiveLimits({ ...settings, enabled: false }, null).enabled, false);
     assert.equal(effectiveLimits({ ...settings, enabled: false }, { enabled: true }).enabled, false);
     const base = effectiveLimits(settings, { enabled: true });
     assert.deepEqual(base, {
