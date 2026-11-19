@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { addEventAttendee, recordAttendance, removeEventAttendee } from "../../functions/src/modules/admin/application/attendees";
 import { photoObjectPath, removeEventPhoto, removeEventPhotoComment } from "../../functions/src/modules/admin/application/moderation";
-import type { AdminPushNotifier, AttendeeAddedPush } from "../../functions/src/modules/admin/application/ports";
+import type { AdminPushNotifier, AttendeeAddedPush, AttendeeRemovedPush } from "../../functions/src/modules/admin/application/ports";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
 import { caller, makeDeps, NOW, rid, seedCompany, type FakeAdminStore } from "./helpers/adminFakes";
 
@@ -319,5 +319,47 @@ describe("addEventAttendeeV1 push", () => {
     assert.equal(result.added, true);
     assert.equal(store.get("companies/alpha/events/soon/rsvps/m1")!.status, "going");
     assert.ok(store.get("users/m1/notifications/admin_push-req-0002"));
+  });
+});
+
+describe("removeEventAttendeeV1 push", () => {
+  const add = (extra: Record<string, unknown> = {}) => ({ ...base, requestId: rid(), eventId: "soon", userId: "m1", ...extra });
+  const remove = (extra: Record<string, unknown> = {}) => ({ ...base, requestId: rid(), eventId: "soon", userId: "m1", notify: true, ...extra });
+  const recorder = (fail = false) => {
+    const calls: AttendeeRemovedPush[] = [];
+    const notifier: AdminPushNotifier = {
+      attendeeAdded: async () => undefined,
+      attendeeRemoved: async input => { if (fail) throw new Error("down"); calls.push(input); },
+    };
+    return { calls, notifier };
+  };
+
+  test("pushes once to the removed member with the in-app notice id; silent removal and replays push nothing", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    const { calls, notifier } = recorder();
+    deps.pushes = notifier;
+    await addEventAttendee(deps, admin, add());
+    await removeEventAttendee(deps, organizer, remove({ notify: false, requestId: "silent-req-0001" }));
+    assert.equal(calls.length, 0);
+    await addEventAttendee(deps, admin, add());
+    const body = remove({ requestId: "remove-req-0001" });
+    await removeEventAttendee(deps, organizer, body);
+    await removeEventAttendee(deps, organizer, body);
+    await removeEventAttendee(deps, organizer, remove());
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0], { companyId: "alpha", eventId: "soon", eventTitle: calls[0]!.eventTitle, userId: "m1", notificationId: "admin_remove-req-0001" });
+    assert.ok(calls[0]!.eventTitle.length > 0);
+    assert.ok(store.get("users/m1/notifications/admin_remove-req-0001"));
+  });
+
+  test("a failing push never fails the removal", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    deps.pushes = recorder(true).notifier;
+    await addEventAttendee(deps, admin, add());
+    const result = await removeEventAttendee(deps, organizer, remove({ requestId: "remove-req-0002" }));
+    assert.equal(result.removed, true);
+    assert.equal(store.get("companies/alpha/events/soon/rsvps/m1")!.status, "cancelled");
   });
 });

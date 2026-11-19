@@ -5,7 +5,8 @@ import type { PushKind } from "./subscription";
 
 /** Push kinds: the subscription-driven kinds plus `invite`, which targets one recipient and ignores subscriptions. */
 export type PushType =
-  | PushKind | "invite" | "attendee_added" | "invite_answered" | "challenge_approved" | "challenge_changes_requested" | "weekly_theme";
+  | PushKind | "invite" | "attendee_added" | "attendee_removed" | "invite_answered" | "challenge_approved" | "challenge_changes_requested" | "weekly_theme"
+  | "photo_comment" | "photo_added";
 
 /** Chat pushes carry at most this many characters of the message; other kinds carry no user text. */
 export const CHAT_PREVIEW_MAX = 80;
@@ -41,6 +42,9 @@ export interface PushMessage {
   /** `aps.category` for actionable notifications; only set once the app registers that UNNotificationCategory. */
   apnsCategory?: string;
 }
+
+/** `aps.category` of invite pushes (PUSH-8). The iOS actions are `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE` (docs/design/push-client.md). */
+export const INVITE_APNS_CATEGORY = "DIP_INVITE";
 
 export function shorten(text: string, max: number): string {
   const single = text.replace(/\s+/g, " ").trim();
@@ -104,6 +108,8 @@ export function invitePush(companyId: string, eventId: string, eventTitle: strin
     threadId: "invites",
     collapseId: `invite-${inviteId}`,
     category: "invites",
+    // PUSH-8: the app shows Accept and Decline once it registers this UNNotificationCategory; iOS ignores it until then.
+    apnsCategory: INVITE_APNS_CATEGORY,
   };
 }
 
@@ -115,6 +121,18 @@ export function attendeeAddedPush(companyId: string, eventId: string, eventTitle
     data: { ...base("attendee_added", companyId, eventId), category: "event_updates" },
     threadId: `event-${eventId}`,
     collapseId: `attendee-added-${eventId}`,
+    category: "event_updates",
+  };
+}
+
+/** An organizer released the recipient's spot (admin removed them). Gated by the `event_updates` switch only. */
+export function attendeeRemovedPush(companyId: string, eventId: string, eventTitle: string, locale: Locale = "en"): PushMessage {
+  return {
+    title: tPush(locale, "push.attendeeRemoved.title"),
+    body: tPush(locale, "push.attendeeRemoved.body", { title: shorten(eventTitle, TITLE_MAX) }),
+    data: { ...base("attendee_removed", companyId, eventId), category: "event_updates" },
+    threadId: `event-${eventId}`,
+    collapseId: `attendee-removed-${eventId}`,
     category: "event_updates",
   };
 }
@@ -158,5 +176,31 @@ export function weeklyThemePush(companyId: string, challengeId: string, themeTit
     collapseId: `weekly-theme-${challengeId}`,
     category: "challenges",
     ...(windowEnd ? { expiresAt: windowEnd } : {}),
+  };
+}
+
+/** Someone commented on the recipient's album photo. Carries a short snippet like chat; opens the event page. */
+export function photoCommentPush(companyId: string, eventId: string, photoId: string, commentId: string, authorName: string, text: string, locale: Locale = "en"): PushMessage {
+  const who = shorten(authorName, 40) || tPush(locale, "push.chat.fallbackAuthor");
+  return {
+    title: tPush(locale, "push.photoComment.title"),
+    body: `${who}: ${shorten(text, CHAT_PREVIEW_MAX)}`,
+    data: { ...base("photo_comment", companyId, eventId), photoId, commentId, category: "social" },
+    threadId: `photos-${eventId}`,
+    collapseId: `photo-comment-${photoId}`,
+    category: "social",
+  };
+}
+
+/** A new photo was added to an activity album the recipient attended. One push per uploader and activity per hour. */
+export function photoAddedPush(companyId: string, eventId: string, eventTitle: string, photoId: string, uploaderName: string, locale: Locale = "en"): PushMessage {
+  const who = shorten(uploaderName, 40) || tPush(locale, "push.photoAdded.fallbackWho");
+  return {
+    title: shorten(eventTitle, TITLE_MAX),
+    body: tPush(locale, "push.photoAdded.body", { who }),
+    data: { ...base("photo_added", companyId, eventId), photoId, category: "social" },
+    threadId: `photos-${eventId}`,
+    collapseId: `photo-added-${eventId}`,
+    category: "social",
   };
 }

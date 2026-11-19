@@ -563,12 +563,17 @@ describe("failure logging", () => {
     const h = new Harness();
     h.tokens.set("u1", ["tok1"]); h.failing.add("tok1");
     await deliverNotification(h.deps(), request());
-    assert.equal(h.logs.length, 0);
+    assert.deepEqual(h.logs.map((entry) => entry.level), ["info"]);
+    assert.equal(h.logs[0]!.message, "notification delivered");
+    assert.equal(h.logs[0]!.fields.notificationId, "n1");
+    assert.equal(h.logs[0]!.fields.sent, 0);
+    assert.equal(JSON.stringify(h.logs).includes("tok1"), false);
     const h2 = new Harness();
     h2.tokens.set("u1", ["tok1"]);
     h2.messaging = { sendMulticast: async () => { throw Object.assign(new Error("tok1 leaked?"), { code: "app/network-error" }); } };
     await deliverNotification(h2.deps(), request());
     assert.equal(h2.logs[0]!.level, "error");
+    assert.equal(h2.logs.at(-1)!.message, "notification delivered");
     assert.equal(JSON.stringify(h2.logs).includes("tok1"), false);
   });
 

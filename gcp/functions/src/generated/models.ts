@@ -208,7 +208,7 @@ export interface NotificationPreferences {
 }
 
 export interface PushNotificationData {
-  type: "chat" | "event_changed" | "reminder" | "invite" | "invite_answered" | "attendee_added" | "event_cancelled" | "challenge_approved" | "challenge_changes_requested" | "weekly_theme" | "event_interest";
+  type: "chat" | "event_changed" | "reminder" | "invite" | "invite_answered" | "attendee_added" | "attendee_removed" | "event_cancelled" | "challenge_approved" | "challenge_changes_requested" | "weekly_theme" | "event_interest" | "photo_comment" | "photo_added";
   companyId: string;
   eventId?: string;
   deepLink: string;
@@ -219,6 +219,8 @@ export interface PushNotificationData {
   inviteId?: string;
   submissionId?: string;
   challengeId?: string;
+  photoId?: string;
+  commentId?: string;
 }
 
 export interface RSVP {

@@ -116,8 +116,11 @@ export interface AttendeeAddedPush {
   /** Event times, used only for the optional email. */
   eventStartTime?: Date; eventEndTime?: Date;
 }
+export interface AttendeeRemovedPush { companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string }
 export interface AdminPushNotifier {
   attendeeAdded(input: AttendeeAddedPush): Promise<void>;
+  /** Optional so older fakes still satisfy the port; production wires it (RoutedPushNotifier). */
+  attendeeRemoved?(input: AttendeeRemovedPush): Promise<void>;
 }
 
 /** Trusted caller identity, derived only from the verified Auth token. */

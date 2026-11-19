@@ -67,7 +67,10 @@ function readState(data: Record<string, unknown> | undefined): RateLimitState | 
   const raw = (data?.buckets ?? {}) as Record<string, unknown>;
   const chat = readCounter(raw.chat);
   const changes = readCounter(raw.changes);
-  return chat || changes ? { ...base, buckets: { ...(chat ? { chat } : {}), ...(changes ? { changes } : {}) } } : base;
+  const social = readCounter(raw.social);
+  return chat || changes || social
+    ? { ...base, buckets: { ...(chat ? { chat } : {}), ...(changes ? { changes } : {}), ...(social ? { social } : {}) } }
+    : base;
 }
 
 /** `pushRateLimits/{uid}`: one transaction per user (server-only; enable a TTL policy on `expireAt`). */

@@ -50,10 +50,15 @@ export const NOTIFICATION_KINDS = {
   invite: { category: "invites", eventLevel: null, inAppType: "invite" },
   invite_answered: { category: "invites", eventLevel: null, inAppType: "invite_answered" },
   attendee_added: { category: "event_updates", eventLevel: null, inAppType: "attendee_added" },
+  attendee_removed: { category: "event_updates", eventLevel: null, inAppType: "attendee_removed" },
   challenge_approved: { category: "challenges", eventLevel: null, inAppType: "challenge_approved" },
   challenge_changes_requested: { category: "challenges", eventLevel: null, inAppType: "challenge_changes_requested" },
   weekly_theme: { category: "challenges", eventLevel: null, inAppType: null },
   event_interest: { category: "discovery", eventLevel: null, inAppType: null },
+  /** Someone commented on the recipient's album photo (push default off: `social`). */
+  photo_comment: { category: "social", eventLevel: null, inAppType: "comment" },
+  /** A new photo landed in the album of an activity the recipient attended (push default off: `social`). */
+  photo_added: { category: "social", eventLevel: null, inAppType: "photo_added" },
   /** Calendar invite emails (METHOD:REQUEST and METHOD:CANCEL .ics); email only, no push or in-app twin. */
   calendar_invite: { category: "calendar_invites", eventLevel: null, inAppType: null },
   admin_suggestions: { category: "admin_suggestions", eventLevel: null, inAppType: null },

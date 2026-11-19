@@ -11,8 +11,9 @@ Status: implemented in code, not deployed, device-unverified (see the [runbook](
 | PUSH-3, PUSH-4, PUSH-7 Trigger migration, new triggers, iOS settings | Follow-up PR |
 | Router hardening (audit) | Rate classes (chat, event_changed own buckets; cancel and reminder exempt), two-phase receipts with a 5-minute lease, send-time membership check (`blocked.inactive`), structured send and failure logs, per-event reminder isolation with a receipt pre-check, bounded-parallel email, explicit function limits, `retry: true` on the chat, change and RSVP triggers (idempotent through receipts and revision-keyed changeLog) |
 | Email channel in the router | Wired (`routerDependencies` adds `routerEmailChannel(emailChannelDependencies())`; triggers pass `request.email` for event change and cancel, reminder, invite, invite answered, attendee added and challenge reviewed; chat and weekly theme send none). No email goes out until `EMAIL_ENABLED` is set and a company is enabled |
-| PUSH-8 Invite action buttons | Optional, not started (see Work breakdown) |
-| PUSH-9 Device verification | Blocked on the APNs key (owner); script in the [runbook](../../ops/push-apns-runbook.md) |
+| PUSH-8 Invite action buttons | Server payload done: invite pushes carry `aps.category` `DIP_INVITE`; the iOS category and actions are a follow-up ([catalog](../push-catalog.md#push-8-invite-action-buttons)) |
+| PUSH-9 Device verification | Blocked on the APNs key (owner); script in the [runbook](../../ops/push-apns-runbook.md) and the [device verification guide](../../ops/push-device-verification.md) (smoke test, log lines, rows 22 to 30) |
+| Trigger audit and additions (November 19) | The [push catalog](../push-catalog.md) lists every trigger with recipient, category, default, status and value judgment. New: admin removed you (`attendee_removed`, `event_updates`), comment on your photo (`photo_comment`) and new photo in an album you attended (`photo_added`), both `social`, default off with their own cap bucket (10 per hour, 40 per day). Router now logs one `notification delivered` line per delivery (ids and counts only). Deferred: event interest match, points awarded, theme ending soon |
 
 ## Decisions (assumptions while owner questions are open)
 
@@ -67,7 +68,7 @@ One registry shared by push, email and the in-app center. Stored in code (`gcp/f
 | `reminders` | Starts in about 24 h, starts in about 1 h | yes (`reminders`) | on | off (open question 2) |
 | `chat` | New message in an activity chat | yes (`all`) | on | not offered |
 | `challenges` | Submission approved or changes requested; new weekly theme | no | on | on |
-| `social` | Comment or photo on your photos or albums | no | off | off |
+| `social` | Comment on your photo, new photo in an album you attended | no | off | off |
 | `discovery` | New event matching your interests (weekly digest at most) | no | off | off |
 
 Precedence for one candidate notification of category C to member M: (1) category C enabled in M's preferences for the channel; (2) for event-scoped categories, the per-event level allows it; (3) a device token exists and the system permission was granted (push) or a deliverable email exists (email). All three must pass. The per-event level stays authoritative for event-scoped kinds, so existing behavior does not change when preferences are absent.

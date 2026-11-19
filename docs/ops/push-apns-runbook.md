@@ -1,6 +1,6 @@
 # Push notifications: APNs key, deploy checklist and device test script
 
-Prepares PUSH-9 (#213, stretch issue #204). Nothing here has been run: the code is implemented but not deployed, the APNs key is not uploaded, and delivery is unverified on a device. Owner steps are marked **(owner)**; deploys are human-only ([deploy runbook](deploy-runbook.md)). Never put the key file, its contents or its Key ID in the repository, a session log, a chat or a screenshot.
+Prepares PUSH-9 (#213, stretch issue #204). A shorter smoke test, the log lines to read and the rows for the newest triggers are in the [device verification guide](push-device-verification.md). Nothing here has been run: the code is implemented but not deployed, the APNs key is not uploaded, and delivery is unverified on a device. Owner steps are marked **(owner)**; deploys are human-only ([deploy runbook](deploy-runbook.md)). Never put the key file, its contents or its Key ID in the repository, a session log, a chat or a screenshot.
 
 Related: [push client](../design/push-client.md), [push triggers](../design/stretch/push-triggers.md), [notification preferences](../design/stretch/notification-preferences.md), [TestFlight and Universal Links](testflight-universal-links.md).
 
@@ -64,6 +64,8 @@ Read the plan first; no deletion is expected. Subset while iterating: `--only fu
 | `respondToInviteV1` | Callable | Changed. Notifies the sender on accept only; declines are silent |
 | `addEventAttendeeV1` | Callable | Changed. Admin-added push to the member |
 | `approveChallengeV1`, `rejectChallengeV1` | Callables | Changed. Submission approved and changes requested pushes |
+| `removeEventAttendeeV1` | Callable | Changed. "Your spot was released" push when the admin chose to notify |
+| `onPhotoCommentPush`, `onPhotoAddedPush` | Firestore triggers | New. Comment on your photo and new photo in an album you attended (category `social`, default off). Always through the router |
 
 Cloud Scheduler job count for this codebase: three (`sendEventReminders`, `pruneStaleDeviceTokens`, `sendWeeklyThemePushes`); two are new. Confirm in the Cloud Scheduler console after the deploy that all three exist and show a next run time. The first deploy of a scheduler may need the Cloud Scheduler API enabled (the CLI offers to).
 
