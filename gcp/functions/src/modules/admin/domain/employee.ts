@@ -1,8 +1,9 @@
 import { rootDomainOfEmail } from "../../accounts/domain/emailDomain";
-import { AdminError, invalid } from "./errors";
+import { invalid, AdminError } from "./errors";
 import { isRole, type Role } from "./permissions";
 import { length, sha256 } from "./reader";
 import { diffFields, type AuditChange } from "./audit";
+import { TEAM_SKIP_MESSAGES, TeamResolver, type NewTeam, type SkippedTeam, type TeamRefLike } from "./teamNames";
 
 /** One normalized employee row (roster entry or import row). Absent optional fields mean "leave unchanged". */
 export interface EmployeeRecord {
@@ -13,16 +14,26 @@ export interface EmployeeRecord {
   workLocation?: string;
   department?: string;
   jobTitle?: string;
-  managerEmail?: string;
-  startDate?: string;
 }
 
-export interface TeamRef { id: string; name: string; archived: boolean }
+export type TeamRef = TeamRefLike;
 export interface RowIssue { field: string; code: string; message: string }
-export interface EmployeeContext { companyDomain: string; teams: readonly TeamRef[] }
+export interface EmployeeContext {
+  companyDomain: string;
+  teams: readonly TeamRef[];
+  /** Shared across the rows of one import so each new team is planned once and the caps count distinct names. */
+  teamResolver?: TeamResolver;
+}
 
 export const MAX_TEAMS_PER_MEMBER = 20;
-export const EMPLOYEE_KEYS = ["email", "displayName", "role", "teamIds", "workLocation", "department", "jobTitle", "managerEmail", "startDate"] as const;
+export const EMPLOYEE_KEYS = ["email", "displayName", "role", "teamIds", "workLocation", "department", "jobTitle"] as const;
+/**
+ * Fields DIP no longer stores (docs/design/roster-data-minimization.md): nothing read them. An old file or an old portal tab
+ * may still send them; they are accepted and ignored (never validated, never stored) instead of failing the row.
+ */
+export const IGNORED_EMPLOYEE_KEYS = ["managerEmail", "startDate"] as const;
+/** Stored fields removed from users/{uid} and roster entries; a guard test fails if any write sets one. */
+export const REMOVED_STORED_FIELDS: readonly string[] = IGNORED_EMPLOYEE_KEYS;
 export const MAX_ROW_KEYS = 16;
 const MAX_FIELD_NAME = 60;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,26 +48,49 @@ export function validDate(value: string): boolean {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+export interface NormalizedEmployee {
+  record: EmployeeRecord;
+  email: string;
+  /** Problems that make the row unusable. */
+  issues: RowIssue[];
+  /** Informational notes that never block the row (a team left out, an ignored column). */
+  notices: RowIssue[];
+  /** Teams this row needs that do not exist yet (created when the row is applied). */
+  newTeams: NewTeam[];
+  /** Team names left out of this row (archived, too long, over a cap); the row still imports. */
+  skippedTeams: SkippedTeam[];
+}
+
+const filled = (value: unknown) => (typeof value === "string" ? value.trim() !== "" : value !== undefined && value !== null);
+
 /**
  * Validates and normalizes one raw row. Cells are trimmed and blank cells are treated as not supplied (spreadsheet
- * friendly). Every problem is reported with a stable code; the row is usable only when `issues` is empty.
+ * friendly). Every problem is reported with a stable code; the row is usable only when `issues` is empty. Team names never
+ * make a row invalid: unknown names become new teams, archived or over-the-limit names are left out with a notice.
  */
-export function normalizeEmployee(raw: unknown, ctx: EmployeeContext): { record: EmployeeRecord; email: string; issues: RowIssue[] } {
+export function normalizeEmployee(raw: unknown, ctx: EmployeeContext): NormalizedEmployee {
   const issues: RowIssue[] = [];
+  const notices: RowIssue[] = [];
+  const newTeams: NewTeam[] = [];
+  const skippedTeams: SkippedTeam[] = [];
   const issue = (field: string, code: string, message: string) => { issues.push({ field, code, message }); };
   const record: EmployeeRecord = { email: "" };
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     issue("row", "VALIDATION_FAILED", "Row must be an object.");
-    return { record, email: "", issues };
+    return { record, email: "", issues, notices, newTeams, skippedTeams };
   }
   const input = raw as Record<string, unknown>;
   const keys = Object.keys(input);
   if (keys.length > MAX_ROW_KEYS) {
     // A row with thousands of keys would otherwise inflate the stored plan chunk past Firestore's 1 MiB document limit.
     issue("row", "VALIDATION_FAILED", `At most ${MAX_ROW_KEYS} columns per row.`);
-    return { record, email: "", issues };
+    return { record, email: "", issues, notices, newTeams, skippedTeams };
   }
-  for (const key of keys) if (!(EMPLOYEE_KEYS as readonly string[]).includes(key)) issue(key.slice(0, MAX_FIELD_NAME), "UNKNOWN_FIELD", "Unknown column.");
+  for (const key of keys) {
+    if ((IGNORED_EMPLOYEE_KEYS as readonly string[]).includes(key)) {
+      if (filled(input[key])) notices.push({ field: key, code: "FIELD_IGNORED", message: "This column isn't used, so it was ignored." });
+    } else if (!(EMPLOYEE_KEYS as readonly string[]).includes(key)) issue(key.slice(0, MAX_FIELD_NAME), "UNKNOWN_FIELD", "Unknown column.");
+  }
   const cell = (key: string, max: number): string | undefined => {
     const value = input[key];
     if (value === undefined || value === null) return undefined;
@@ -85,30 +119,30 @@ export function normalizeEmployee(raw: unknown, ctx: EmployeeContext): { record:
     const value = cell(key, 120);
     if (value !== undefined) record[key] = value;
   }
-  const manager = cell("managerEmail", 254);
-  if (manager !== undefined) {
-    if (EMAIL.test(manager)) record.managerEmail = normalizeEmail(manager); else issue("managerEmail", "EMAIL_INVALID", "Not a valid email address.");
-  }
-  const start = cell("startDate", 10);
-  if (start !== undefined) {
-    if (validDate(start)) record.startDate = start; else issue("startDate", "DATE_INVALID", "Use YYYY-MM-DD.");
-  }
   const rawTeams = input.teamIds;
   if (rawTeams !== undefined && rawTeams !== null) {
     if (!Array.isArray(rawTeams) || rawTeams.length > MAX_TEAMS_PER_MEMBER || !rawTeams.every(t => typeof t === "string")) {
       issue("teamIds", "VALIDATION_FAILED", `Up to ${MAX_TEAMS_PER_MEMBER} team names.`);
-    } else {
+    } else if (issues.length === 0) {
+      // Only a usable row resolves teams, so an invalid row never takes a slot under the new-team caps.
+      const resolver = ctx.teamResolver ?? new TeamResolver(ctx.teams);
       const resolved: string[] = [];
-      for (const name of (rawTeams as string[]).map(t => t.trim()).filter(Boolean)) {
-        const team = ctx.teams.find(t => t.id === name) ?? ctx.teams.find(t => t.name.toLowerCase() === name.toLowerCase());
-        if (!team) issue("teamIds", "TEAM_NOT_FOUND", `Unknown team "${name.slice(0, 60)}".`);
-        else if (team.archived) issue("teamIds", "TEAM_ARCHIVED", `Team "${team.name.slice(0, 60)}" is archived.`);
-        else if (!resolved.includes(team.id)) resolved.push(team.id);
+      for (const name of rawTeams as string[]) {
+        const team = resolver.resolve(name);
+        if (!team) continue;
+        if (team.kind === "skipped") {
+          notices.push({ field: "teamIds", code: team.reason, message: TEAM_SKIP_MESSAGES[team.reason](team.name) });
+          if (!skippedTeams.some(s => s.name === team.name && s.reason === team.reason)) skippedTeams.push({ name: team.name, reason: team.reason });
+          continue;
+        }
+        if (resolved.includes(team.id)) continue;
+        resolved.push(team.id);
+        if (team.kind === "new") newTeams.push({ id: team.id, name: team.name });
       }
       record.teamIds = resolved;
     }
   }
-  return { record, email: record.email, issues };
+  return { record, email: record.email, issues, notices, newTeams, skippedTeams };
 }
 
 /** Throws the matching AdminError for single-record commands (roster upsert). Fields are prefixed with `prefix`. */
@@ -118,16 +152,13 @@ export function assertValid(issues: readonly RowIssue[], prefix: string): void {
   if (issues.some(i => i.code === "EMAIL_DOMAIN_MISMATCH")) {
     throw new AdminError("invalid-argument", "EMAIL_DOMAIN_MISMATCH", "Email is outside the company's domain.", [...new Set(fields)].sort());
   }
-  if (issues.some(i => i.code === "TEAM_NOT_FOUND" || i.code === "TEAM_ARCHIVED")) {
-    throw new AdminError("invalid-argument", "TEAM_NOT_FOUND", "Choose teams from the catalog.", [...new Set(fields)].sort());
-  }
   throw invalid(fields);
 }
 
 /** Document fields an employee record may set on users/{uid} (displayName, email and points never). */
 export function memberPatch(record: EmployeeRecord): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
-  for (const key of ["role", "teamIds", "workLocation", "department", "jobTitle", "managerEmail", "startDate"] as const) {
+  for (const key of ["role", "teamIds", "workLocation", "department", "jobTitle"] as const) {
     if (record[key] !== undefined) patch[key] = record[key];
   }
   return patch;
@@ -148,8 +179,6 @@ export function newEntryFields(record: EmployeeRecord): Record<string, unknown> 
   return {
     email: record.email, displayName: record.displayName ?? "", role: record.role ?? "member", teamIds: record.teamIds ?? [],
     workLocation: record.workLocation ?? "", department: record.department ?? "", jobTitle: record.jobTitle ?? "",
-    ...(record.managerEmail !== undefined ? { managerEmail: record.managerEmail } : {}),
-    ...(record.startDate !== undefined ? { startDate: record.startDate } : {}),
   };
 }
 

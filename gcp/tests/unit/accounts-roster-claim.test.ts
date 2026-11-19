@@ -38,7 +38,8 @@ const request = { contractVersion: 1 };
 describe("roster on first sign-in", () => {
   test("an invited entry creates the member with its role, teams, location, department and title, and is claimed", async () => {
     const store = new Store();
-    store.invite("pat@alpha.test", { managerEmail: "boss@alpha.test", startDate: "2030-03-01" });
+    // A legacy entry may still carry the removed fields until the cleanup script runs: they are never copied to the profile.
+    store.invite("pat@alpha.test", { managerEmail: "boss@alpha.test", startDate: "2030-03-01" } as Partial<RosterClaim>);
     const response = await resolveMembership(store, identity(), request);
     assert.deepEqual(response, { contractVersion: 1, companyId: "alpha", role: "organizer" });
     const [, profile] = store.created[0]!;
@@ -48,7 +49,8 @@ describe("roster on first sign-in", () => {
     assert.equal(profile.department, "Ops");
     assert.equal(profile.jobTitle, "Lead");
     assert.equal(profile.status, "active");
-    assert.equal(profile.managerEmail, "boss@alpha.test");
+    assert.ok(!("managerEmail" in profile) && !("startDate" in profile), "removed fields are never copied onto the profile");
+    assert.ok(!("managerEmail" in store.joins[0]!.profile) && !("startDate" in store.joins[0]!.profile));
     assert.equal(profile.pointsBalance, 0, "points always start at zero");
     assert.equal(profile.displayName, "Pat Lee", "Google's name wins over the roster hint");
     assert.deepEqual(store.joins.map(j => [j.entryId, j.action, j.uid]), [[hash("pat@alpha.test"), "claim", "u1"]]);

@@ -131,8 +131,6 @@ export interface RosterRow {
   workLocation: string;
   department: string;
   jobTitle: string;
-  managerEmail: string;
-  startDate: string;
   /** invited: no account yet; active/deactivated: the member exists; revoked: invite withdrawn. */
   state: "invited" | "active" | "deactivated" | "revoked";
   memberId?: string;
@@ -262,16 +260,23 @@ export interface ImportRow {
   displayName: string;
   /** Blank keeps the current role (new people become members). */
   role: Role | "";
-  /** Team names (or ids); the server resolves them against the company's teams catalog. */
+  /** Team names (or ids); the server matches them to the company's teams (case and accents ignored) and creates unknown names. */
   teams: string[];
   department: string;
   jobTitle: string;
   workLocation: string;
-  managerEmail: string;
-  startDate: string;
 }
-export const IMPORT_FIELDS = ["email", "displayName", "role", "teams", "department", "jobTitle", "workLocation", "managerEmail", "startDate"] as const;
+/** Every column DIP stores and uses (docs/design/roster-data-minimization.md). */
+export const IMPORT_FIELDS = ["email", "displayName", "role", "teams", "department", "jobTitle", "workLocation"] as const;
 export type ImportField = (typeof IMPORT_FIELDS)[number];
+/** Columns of older templates that DIP no longer stores: recognized, never sent, and listed as "not used" in the preview. */
+export const RETIRED_IMPORT_FIELDS = ["managerEmail", "startDate"] as const;
+export type RetiredImportField = (typeof RETIRED_IMPORT_FIELDS)[number];
+
+/** A team the import creates; `reason` says why a name is left out instead. */
+export interface PlanNewTeam { id: string; name: string }
+export type TeamSkipReason = "TEAM_ARCHIVED" | "TEAM_NAME_TOO_LONG" | "TEAM_IMPORT_LIMIT" | "TEAM_COMPANY_LIMIT";
+export interface PlanSkippedTeam { name: string; reason: TeamSkipReason }
 
 /** The server limit (importEmployeesV1 maxItems) and the size of its apply chunks. */
 export const IMPORT_LIMITS = { maxRows: 2000, maxBytes: 2 * 1024 * 1024, serverChunk: 100 } as const;
@@ -279,7 +284,7 @@ export const IMPORT_LIMITS = { maxRows: 2000, maxBytes: 2 * 1024 * 1024, serverC
 export type PlanAction = "create" | "update" | "unchanged" | "invalid";
 export interface FieldChange { field: string; before: string; after: string }
 export interface PlanRow {
-  /** 1-based spreadsheet line (the header is line 1). */
+  /** 1-based spreadsheet row number, as the spreadsheet app shows it (the header row has its own number, usually 1). */
   line: number;
   email: string;
   action: PlanAction;
@@ -299,11 +304,15 @@ export interface ImportPlanResponse {
   planHash: string;
   chunkCount: number;
   rows: { rowNumber: number; email: string; action: PlanAction; target: "member" | "roster" | "none"; changes: FieldChange[]; errors: { field?: string; code: string; message: string }[] }[];
+  /** Teams applying the plan creates (absent: none). */
+  newTeams?: PlanNewTeam[];
+  /** Team names left out; their rows still import. */
+  skippedTeams?: PlanSkippedTeam[];
 }
 
 export type ApplyOutcome = "created" | "updated" | "unchanged" | "failed";
 export interface ApplyRowResult { rowNumber: number; email: string; outcome: ApplyOutcome; message?: string }
-export interface ImportProgress { processed: number; total: number; created: number; updated: number; unchanged: number; failed: number }
+export interface ImportProgress { processed: number; total: number; created: number; updated: number; unchanged: number; failed: number; teamsCreated?: number }
 export interface ApplyStepResponse {
   status: "planned" | "running" | "completed" | "completed_with_errors";
   done: boolean;

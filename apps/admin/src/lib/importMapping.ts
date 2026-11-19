@@ -1,5 +1,5 @@
 // @i18n-migrated
-import { type ImportField, type ImportRow, IMPORT_FIELDS, IMPORT_LIMITS, type Role } from "./adminTypes";
+import { type ImportField, type ImportRow, IMPORT_FIELDS, IMPORT_LIMITS, type RetiredImportField, type Role } from "./adminTypes";
 import { fieldLabel, type ParsedImport, validateRow } from "./importFile";
 import { t } from "./i18n";
 import type { KeyValueStore } from "./api";
@@ -20,6 +20,13 @@ const HEADER_ALIASES: Record<string, ImportField> = {
   department: "department", dept: "department", division: "department", businessunit: "department",
   jobtitle: "jobTitle", title: "jobTitle", position: "jobTitle", jobposition: "jobTitle",
   worklocation: "workLocation", location: "workLocation", office: "workLocation", site: "workLocation", city: "workLocation",
+};
+
+/**
+ * Headers of columns older templates had and DIP no longer stores (docs/design/roster-data-minimization.md). They are never
+ * mapped or sent; the preview lists them as "not used" so an old file still imports without a fuss.
+ */
+const RETIRED_ALIASES: Record<string, RetiredImportField> = {
   manageremail: "managerEmail", manager: "managerEmail", managersemail: "managerEmail", reportsto: "managerEmail", supervisor: "managerEmail",
   startdate: "startDate", start: "startDate", hiredate: "startDate", datehired: "startDate", joindate: "startDate", datejoined: "startDate",
 };
@@ -32,6 +39,13 @@ const headerKey = (value: string) => value.trim().toLowerCase();
 export function suggestTarget(header: string): Target {
   return HEADER_ALIASES[normHeader(header)] ?? "skip";
 }
+
+/** True for a header of a column DIP used to take and no longer stores (manager email, start date). */
+export function isRetiredHeader(header: string): boolean {
+  return normHeader(header) in RETIRED_ALIASES;
+}
+
+const isTarget = (value: unknown): value is Target => value === "skip" || (IMPORT_FIELDS as readonly unknown[]).includes(value);
 
 /** A suggestion per column; a field is suggested at most once (later duplicates are skipped). */
 export function suggestMapping(headers: string[]): Target[] {
@@ -64,7 +78,7 @@ export function guessHeaderRow(rows: string[][]): number {
   let best = -1;
   let bestScore = 0;
   rows.slice(0, 10).forEach((row, i) => {
-    const score = row.filter((cell) => suggestTarget(cell) !== "skip").length;
+    const score = row.filter((cell) => suggestTarget(cell) !== "skip" || isRetiredHeader(cell)).length;
     if (score > bestScore) { best = i; bestScore = score; }
   });
   if (best >= 0) return best;
@@ -91,15 +105,16 @@ export function mapRow(cells: string[], mapping: Target[]): ImportRow {
     email: get("email").toLowerCase(), displayName: get("displayName"), role: get("role").toLowerCase() as Role | "",
     teams: get("teams").split(/[;|]/).map((team) => team.trim()).filter(Boolean),
     department: get("department"), jobTitle: get("jobTitle"), workLocation: get("workLocation"),
-    managerEmail: get("managerEmail").toLowerCase(), startDate: get("startDate"),
   };
 }
 
 /** Maps every data row, runs the browser-side checks and flags duplicates; the server re-validates everything. */
 export function applyMapping(rows: string[][], headerRow: number, mapping: Target[], domain: string): ParsedImport {
   const headers = rows[headerRow] ?? [];
-  const unknownColumns = headers.filter((_, i) => mapping[i] === "skip" || mapping[i] === undefined).map((cell) => cell.trim()).filter(Boolean);
-  const empty: ParsedImport = { rows: [], lines: [], localErrors: new Map(), unknownColumns };
+  const skipped = headers.filter((_, i) => mapping[i] === "skip" || mapping[i] === undefined).map((cell) => cell.trim()).filter(Boolean);
+  const retiredColumns = skipped.filter(isRetiredHeader);
+  const unknownColumns = skipped.filter((cell) => !isRetiredHeader(cell));
+  const empty: ParsedImport = { rows: [], lines: [], localErrors: new Map(), unknownColumns, retiredColumns, headerLine: headerRow + 1 };
   const issues = mappingIssues(mapping);
   if (issues.errors.length) return { ...empty, fatal: issues.errors[0] };
   const data = dataRowsOf(rows, headerRow);
@@ -113,13 +128,13 @@ export function applyMapping(rows: string[][], headerRow: number, mapping: Targe
     const row = mapRow(cells, mapping);
     const errors = validateRow(row, domain);
     const first = seen.get(row.email);
-    if (row.email && first !== undefined) errors.push(t("import.err.duplicateLine", { line: first }));
+    if (row.email && first !== undefined) errors.push(t("import.err.duplicateRow", { row: first }));
     else if (row.email) seen.set(row.email, line);
     mapped.push(row);
     lines.push(line);
     if (errors.length) localErrors.set(line, errors);
   }
-  return { rows: mapped, lines, localErrors, unknownColumns };
+  return { rows: mapped, lines, localErrors, unknownColumns, retiredColumns, headerLine: headerRow + 1 };
 }
 
 /** Header row 0 with suggested columns: what a file that follows the template gets without a mapping step. */
@@ -174,8 +189,9 @@ export function mappingFromSaved(headers: string[], saved: SavedMapping): Target
   const used = new Set<Target>();
   const mapping = headers.map((header, column): Target => {
     const key = headerKey(header);
+    // A mapping saved before a column was retired may still name it: such a target falls back to "skip".
     const target = key in saved.byHeader ? saved.byHeader[key] : suggested[column];
-    if (target === "skip" || used.has(target)) return "skip";
+    if (!isTarget(target) || target === "skip" || used.has(target)) return "skip";
     used.add(target);
     return target;
   });

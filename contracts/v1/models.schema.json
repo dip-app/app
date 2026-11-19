@@ -152,16 +152,6 @@
           ],
           "description": "Server-owned. Missing means active. deactivated blocks sign-in access and company reads."
         },
-        "managerEmail": {
-          "type": "string",
-          "maxLength": 254,
-          "description": "Server-owned, optional (import)."
-        },
-        "startDate": {
-          "type": "string",
-          "maxLength": 10,
-          "description": "Server-owned, optional (import). YYYY-MM-DD."
-        },
         "revision": {
           "type": "integer",
           "minimum": 1,
@@ -2691,12 +2681,13 @@
         },
         "managerEmail": {
           "type": "string",
-          "maxLength": 254
+          "maxLength": 254,
+          "description": "Deprecated: accepted from older clients and files, ignored and never stored."
         },
         "startDate": {
           "type": "string",
           "maxLength": 10,
-          "description": "YYYY-MM-DD"
+          "description": "Deprecated: accepted from older clients and files, ignored and never stored."
         }
       },
       "required": [
@@ -2756,14 +2747,6 @@
         "jobTitle": {
           "type": "string",
           "maxLength": 120
-        },
-        "managerEmail": {
-          "type": "string",
-          "maxLength": 254
-        },
-        "startDate": {
-          "type": "string",
-          "maxLength": 10
         },
         "status": {
           "type": "string",
@@ -2935,14 +2918,6 @@
           },
           "maxItems": 20
         },
-        "managerEmail": {
-          "type": "string",
-          "maxLength": 254
-        },
-        "startDate": {
-          "type": "string",
-          "maxLength": 10
-        },
         "pointsBalance": {
           "type": "integer",
           "description": "Present for admins only."
@@ -3073,6 +3048,14 @@
             "$ref": "#/$defs/ImportRowError"
           },
           "maxItems": 20
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportRowError"
+          },
+          "maxItems": 20,
+          "description": "Optional, informational, never blocks the row: FIELD_IGNORED (a column DIP no longer stores), TEAM_ARCHIVED, TEAM_NAME_TOO_LONG, TEAM_IMPORT_LIMIT, TEAM_COMPANY_LIMIT (the team is left out)."
         }
       },
       "required": [
@@ -3082,6 +3065,53 @@
         "target",
         "changes",
         "errors"
+      ]
+    },
+    "ImportNewTeam": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A team an import creates (deterministic id from the normalized name).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "ImportSkippedTeam": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A team name an import leaves out; the row still imports without it.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "TEAM_ARCHIVED",
+            "TEAM_NAME_TOO_LONG",
+            "TEAM_IMPORT_LIMIT",
+            "TEAM_COMPANY_LIMIT"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "reason"
       ]
     },
     "ImportTotals": {
@@ -3144,6 +3174,11 @@
         "failed": {
           "type": "integer",
           "minimum": 0
+        },
+        "teamsCreated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional. Teams this import created so far (absent on jobs planned before team creation)."
         }
       },
       "required": [
@@ -3246,6 +3281,14 @@
         },
         "errorsTruncated": {
           "type": "boolean"
+        },
+        "newTeams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportNewTeam"
+          },
+          "maxItems": 50,
+          "description": "Optional. Teams the plan creates when their rows are applied."
         },
         "createdBy": {
           "type": "string",
@@ -3837,11 +3880,13 @@
         },
         "managerEmail": {
           "type": "string",
-          "maxLength": 254
+          "maxLength": 254,
+          "description": "Deprecated: accepted from older clients, ignored and never stored."
         },
         "startDate": {
           "type": "string",
-          "maxLength": 10
+          "maxLength": 10,
+          "description": "Deprecated: accepted from older clients, ignored and never stored."
         }
       },
       "required": [
@@ -4417,6 +4462,22 @@
         "chunkCount": {
           "type": "integer",
           "minimum": 0
+        },
+        "newTeams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportNewTeam"
+          },
+          "maxItems": 50,
+          "description": "Optional. Team names that match no existing team (case and accents ignored); applying creates each once."
+        },
+        "skippedTeams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportSkippedTeam"
+          },
+          "maxItems": 200,
+          "description": "Optional. Team names left out (archived, too long, over the per-import or company limit). Their rows still import."
         }
       },
       "required": [

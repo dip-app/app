@@ -14,6 +14,7 @@ import { paths, SERVER_TIME } from "../domain/ops";
 import { parseListRoster, parseResendRoster, parseRevokeRoster, parseUpsertRoster } from "../domain/requests";
 import { authorize, once, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminTransaction, Caller, Doc, Entry } from "./ports";
+import { createTeams } from "./teams";
 
 /** The company's email domain and active team catalog: the context every employee record is validated against. */
 export async function loadEmployeeContext(tx: AdminTransaction, actor: Actor): Promise<EmployeeContext> {
@@ -43,13 +44,16 @@ export async function upsertRosterEntry(deps: AdminDeps, caller: Caller | null, 
     const actor = await authorize(tx, authenticated, req.companyId, "roster.manage");
     return once(tx, actor, "upsertRosterEntryV1", req.requestId, { entry: req.entry }, async () => {
       const ctx = await loadEmployeeContext(tx, actor);
-      const { record, issues } = normalizeEmployee(req.entry, ctx);
+      // Unknown team names become new teams (created below, in this transaction); archived or over-the-limit names are left out.
+      const { record, issues, newTeams } = normalizeEmployee(req.entry, ctx);
       assertValid(issues, "entry.");
       if (await findMemberByEmail(tx, actor, record.email)) {
         throw new AdminError("failed-precondition", "EMAIL_ALREADY_MEMBER", "This person already has an account. Edit them as a member.", ["entry.email"]);
       }
       const id = emailHash(record.email);
       const existing = await tx.get(paths.rosterEntry(actor.companyId, id));
+      // All reads are done: create the new teams first (they only exist if the entry write below happens too).
+      createTeams(tx, actor, newTeams, `${actor.uid}_${req.requestId}`, req.requestId);
       if (!existing) {
         tx.create(paths.rosterEntry(actor.companyId, id), {
           companyId: actor.companyId, ...newEntryFields(record), status: "invited", source: "manual", invitedBy: actor.uid,

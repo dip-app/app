@@ -34,7 +34,7 @@ export function AddPersonDialog({ api, domain, inviteEmail = false, onAdded, onC
   const [emailNow, setEmailNow] = useState(true);
 
   async function add() {
-    const row: ImportRow = { email: email.trim().toLowerCase(), displayName: name.trim(), role, teams: [], department: "", jobTitle: "", workLocation: "", managerEmail: "", startDate: "" };
+    const row: ImportRow = { email: email.trim().toLowerCase(), displayName: name.trim(), role, teams: [], department: "", jobTitle: "", workLocation: "" };
     const found: { name?: string; email?: string } = {};
     if (!row.displayName) found.name = t("roster.add.nameRequired");
     const local = validateRow(row, domain);

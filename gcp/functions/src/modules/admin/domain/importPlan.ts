@@ -3,6 +3,7 @@ import {
   emailHash, entryChanges, memberChanges, memberPatch, normalizeEmployee, type EmployeeContext, type EmployeeRecord, type RowIssue,
 } from "./employee";
 import { payloadHash } from "./reader";
+import { TeamResolver, type NewTeam, type SkippedTeam } from "./teamNames";
 
 export const IMPORT_MAX_ROWS = 2000;
 export const IMPORT_CHUNK_SIZE = 100;
@@ -20,8 +21,14 @@ export interface PlannedRow {
   target: RowTarget;
   changes: AuditChange[];
   errors: RowIssue[];
+  /** Informational notes (ignored columns, teams left out); absent on chunks planned before notices existed. */
+  notices?: RowIssue[];
   /** Normalized, team-resolved record (null for invalid rows). */
   record: EmployeeRecord | null;
+  /** Teams this row needs that did not exist at planning time; applying the row creates them (deterministic ids). */
+  newTeams?: NewTeam[];
+  /** Team names this row leaves out. */
+  skippedTeams?: SkippedTeam[];
 }
 
 /** What applying a row would do against the current member and roster state. */
@@ -59,22 +66,50 @@ export interface PlanContext extends EmployeeContext {
   roster: ReadonlyMap<string, Doc>;
 }
 
+/** Team ids in a preview change read as names (existing catalog names, or the name a new team will get). */
+function teamNamesIn(changes: AuditChange[], names: ReadonlyMap<string, string>): AuditChange[] {
+  const named = (value: string | null) => (value === null ? null : value.split(", ").map(id => names.get(id) ?? id).join(", "));
+  return changes.map(c => (c.field === "teamIds" ? { ...c, before: named(c.before), after: named(c.after) } : c));
+}
+
 export function planImport(rows: readonly unknown[], ctx: PlanContext): PlannedRow[] {
   const seen = new Set<string>();
+  // One resolver for the whole file: a new team is planned once and the caps count distinct names.
+  const teamCtx: EmployeeContext = { ...ctx, teamResolver: ctx.teamResolver ?? new TeamResolver(ctx.teams) };
+  const names = new Map(ctx.teams.map(t => [t.id, t.name] as const));
   return rows.map((raw, index): PlannedRow => {
     const rowNumber = index + 1;
-    const { record, email, issues } = normalizeEmployee(raw, ctx);
-    const invalid = (errors: RowIssue[]): PlannedRow => ({ rowNumber, email, action: "invalid", target: "none", changes: [], errors, record: null });
+    const { record, email, issues, notices, newTeams, skippedTeams } = normalizeEmployee(raw, teamCtx);
+    const invalid = (errors: RowIssue[]): PlannedRow => ({ rowNumber, email, action: "invalid", target: "none", changes: [], errors, notices, record: null });
     if (issues.length > 0) return invalid(issues);
     if (seen.has(email)) return invalid([{ field: "email", code: "DUPLICATE_EMAIL", message: "Email appears more than once in the file." }]);
     seen.add(email);
     const decision = decideRow(record, ctx.members.get(email), ctx.roster.get(emailHash(email)));
     if (decision.kind === "error") return invalid([decision.issue]);
+    for (const team of newTeams) names.set(team.id, team.name);
     return {
       rowNumber, email, action: decision.action, target: decision.kind === "member" ? "member" : "roster",
-      changes: decision.changes.slice(0, 20), errors: [], record,
+      changes: teamNamesIn(decision.changes, names).slice(0, 20), errors: [], notices, record,
+      ...(newTeams.length ? { newTeams } : {}), ...(skippedTeams.length ? { skippedTeams } : {}),
     };
   });
+}
+
+/** Teams the plan creates (from rows that will be applied), each once, in order of first appearance. */
+export function newTeamsOf(rows: readonly PlannedRow[]): NewTeam[] {
+  const out = new Map<string, NewTeam>();
+  for (const row of rows) if (row.action !== "invalid") for (const team of row.newTeams ?? []) if (!out.has(team.id)) out.set(team.id, team);
+  return [...out.values()];
+}
+
+/** Team names left out of rows that will be applied, once per name and reason. */
+export function skippedTeamsOf(rows: readonly PlannedRow[]): SkippedTeam[] {
+  const out = new Map<string, SkippedTeam>();
+  for (const row of rows) {
+    if (row.action === "invalid") continue;
+    for (const team of row.skippedTeams ?? []) out.set(`${team.reason}:${team.name}`, team);
+  }
+  return [...out.values()];
 }
 
 export function totalsOf(rows: readonly PlannedRow[]) {
@@ -85,7 +120,7 @@ export function totalsOf(rows: readonly PlannedRow[]) {
 
 /** Hash of what would be applied; the apply step must present it (guards against a swapped or stale plan). */
 export const planHashOf = (rows: readonly PlannedRow[]) =>
-  payloadHash(rows.map(r => [r.rowNumber, r.email, r.action, r.target, r.record]));
+  payloadHash(rows.map(r => (r.newTeams?.length ? [r.rowNumber, r.email, r.action, r.target, r.record, r.newTeams] : [r.rowNumber, r.email, r.action, r.target, r.record])));
 
 export function chunkRows<T>(rows: readonly T[], size = IMPORT_CHUNK_SIZE): T[][] {
   const chunks: T[][] = [];
@@ -94,7 +129,7 @@ export function chunkRows<T>(rows: readonly T[], size = IMPORT_CHUNK_SIZE): T[][
 }
 
 /** Outcome counters of one chunk, stored per chunk on the job so progress is derived from state, never incremented. */
-export interface ChunkTally { created: number; updated: number; unchanged: number; failed: number }
+export interface ChunkTally { created: number; updated: number; unchanged: number; failed: number; teamsCreated?: number }
 export type Tallies = Record<string, ChunkTally>;
 
 export function tallyOf(results: ReadonlyArray<{ outcome: "created" | "updated" | "unchanged" | "failed" }>): ChunkTally {
@@ -110,7 +145,11 @@ const num = (value: unknown) => (typeof value === "number" && Number.isSafeInteg
  * (rows applied by the first attempt keep their stored outcome), so counters stay exact however often a chunk is retried.
  */
 export function progressFromTallies(tallies: Tallies, total: number) {
-  const sum: ChunkTally = { created: 0, updated: 0, unchanged: 0, failed: 0 };
-  for (const t of Object.values(tallies)) for (const key of Object.keys(sum) as Array<keyof ChunkTally>) sum[key] += num(t[key]);
-  return { processed: sum.created + sum.updated + sum.unchanged + sum.failed, total, ...sum };
+  const sum = { created: 0, updated: 0, unchanged: 0, failed: 0 };
+  let teamsCreated = 0;
+  for (const t of Object.values(tallies)) {
+    for (const key of Object.keys(sum) as Array<keyof typeof sum>) sum[key] += num(t[key]);
+    teamsCreated += num(t.teamsCreated);
+  }
+  return { processed: sum.created + sum.updated + sum.unchanged + sum.failed, total, ...sum, ...(teamsCreated > 0 ? { teamsCreated } : {}) };
 }

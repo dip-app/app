@@ -1,8 +1,12 @@
 import type { AdminOpsApi } from "./adminApi";
-import type { ApplyStepResponse, PlanRow } from "./adminTypes";
+import type { ApplyStepResponse, PlanNewTeam, PlanRow, PlanSkippedTeam } from "./adminTypes";
 import { type ParsedImport, validRows } from "./importFile";
 
-export interface PlannedImport { jobId: string; planHash: string; chunkCount: number; rows: PlanRow[] }
+export interface PlannedImport {
+  jobId: string; planHash: string; chunkCount: number; rows: PlanRow[];
+  /** Teams applying the plan creates; team names left out (their rows still import). */
+  newTeams: PlanNewTeam[]; skippedTeams: PlanSkippedTeam[];
+}
 
 /**
  * Dry run: rows the browser already rejected become invalid plan rows; the rest go to importEmployeesV1 in one
@@ -21,14 +25,18 @@ export async function planAll(api: Pick<AdminOpsApi, "planImport">, parsed: Pars
   let jobId = "";
   let planHash = "";
   let chunkCount = 0;
+  let newTeams: PlanNewTeam[] = [];
+  let skippedTeams: PlanSkippedTeam[] = [];
   if (valid.rows.length > 0) {
     const plan = await api.planImport({ requestId, fileName, rows: valid.rows });
     ({ jobId, planHash, chunkCount } = plan);
+    newTeams = plan.newTeams ?? [];
+    skippedTeams = plan.skippedTeams ?? [];
     for (const row of plan.rows) {
       rows.push({ line: valid.lines[row.rowNumber - 1] ?? row.rowNumber, email: row.email, action: row.action, changes: row.changes, errors: row.errors.map((e) => e.message) });
     }
   }
-  return { jobId, planHash, chunkCount, rows: rows.sort((a, b) => a.line - b.line) };
+  return { jobId, planHash, chunkCount, rows: rows.sort((a, b) => a.line - b.line), newTeams, skippedTeams };
 }
 
 /**

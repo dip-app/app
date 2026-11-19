@@ -35,8 +35,6 @@ export interface AppUser {
   workLocation?: string;
   teamIds?: Array<string>;
   status?: "invited" | "active" | "deactivated";
-  managerEmail?: string;
-  startDate?: string;
   revision?: number;
   statusUpdatedAt?: string;
   locale?: "en" | "es";
@@ -629,8 +627,6 @@ export interface RosterEntry {
   workLocation: string;
   department: string;
   jobTitle: string;
-  managerEmail?: string;
-  startDate?: string;
   status: "invited" | "claimed" | "revoked";
   source: "manual" | "import" | "signup";
   importJobId?: string;
@@ -663,8 +659,6 @@ export interface AdminMemberSummary {
   city: string;
   workLocation: string;
   teamIds: Array<string>;
-  managerEmail?: string;
-  startDate?: string;
   pointsBalance?: number;
   revision: number;
   createdAt: string;
@@ -689,6 +683,17 @@ export interface ImportRowPlan {
   target: "member" | "roster" | "none";
   changes: Array<ImportFieldChange>;
   errors: Array<ImportRowError>;
+  notices?: Array<ImportRowError>;
+}
+
+export interface ImportNewTeam {
+  id: string;
+  name: string;
+}
+
+export interface ImportSkippedTeam {
+  name: string;
+  reason: "TEAM_ARCHIVED" | "TEAM_NAME_TOO_LONG" | "TEAM_IMPORT_LIMIT" | "TEAM_COMPANY_LIMIT";
 }
 
 export interface ImportTotals {
@@ -706,6 +711,7 @@ export interface ImportProgress {
   updated: number;
   unchanged: number;
   failed: number;
+  teamsCreated?: number;
 }
 
 export interface ImportRowResult {
@@ -728,6 +734,7 @@ export interface ImportJob {
   nextChunk: number;
   errors: Array<ImportRowResult>;
   errorsTruncated: boolean;
+  newTeams?: Array<ImportNewTeam>;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -968,6 +975,8 @@ export interface ImportEmployeesResponse {
   rows: Array<ImportRowPlan>;
   planHash: string;
   chunkCount: number;
+  newTeams?: Array<ImportNewTeam>;
+  skippedTeams?: Array<ImportSkippedTeam>;
 }
 
 export interface ApplyEmployeeImportRequest {

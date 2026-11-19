@@ -10,6 +10,7 @@ Scripts that write data (seeds, backfills, migrations) are operator tools. They 
 | `scripts/seed-weekly-theme.mjs` | The "Fitness" weekly theme (a `Challenge`) per company | Real project through Application Default Credentials, or an emulator through `FIRESTORE_EMULATOR_HOST`. |
 | `gcp/scripts/backfill-event-shares.mjs`, `backfill-roster.ts`, `backfill-rsvp-profile.mjs` | Backfills of server-owned data after a schema addition | Same as above. |
 | `gcp/scripts/backfill-tag-stats.ts` | Tag stats backfill and repair (see below) | Emulator, or `--project` with owner approval. |
+| `gcp/scripts/remove-unused-roster-fields.ts` | Deletes the retired `managerEmail` and `startDate` from profiles and roster entries ([roster-data-minimization.md](../design/roster-data-minimization.md)); counts only, last-update-time preconditions, idempotent, not undoable (export first) | Emulator, or `--project` dry run; `--apply --yes-owner-approved` with owner approval. |
 | `scripts/migrate-company-domains.mjs` | One-off company domain migration | Same as above. |
 
 New operator scripts go in `gcp/scripts/` (backend data) or `scripts/` (cross-cutting), as ES modules (`.mjs`) that load `firebase-admin` through `createRequire(new URL("../functions/package.json", import.meta.url))` so they use the Functions workspace's dependency.

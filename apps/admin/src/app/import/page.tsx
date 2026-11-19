@@ -9,7 +9,7 @@ import { Shell } from "@/components/Shell";
 import { TableRegion } from "@/components/TableRegion";
 import { Empty, Info, LoadMore, Loading } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
-import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanRow } from "@/lib/adminTypes";
+import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanNewTeam, type PlanRow, type PlanSkippedTeam, type TeamSkipReason } from "@/lib/adminTypes";
 import { browserStore } from "@/lib/api";
 import { ApiError } from "@/lib/contract";
 import { downloadText } from "@/lib/csv";
@@ -34,6 +34,19 @@ const jobKey = (companyId: string) => `dip-admin-import-job-v1:${companyId}`;
 const ACTION_KEY: Record<PlanAction, MessageKey> = { create: "import.action.create", update: "import.action.update", unchanged: "import.action.unchanged", invalid: "import.action.invalid" };
 const STAT_KEY = { create: "import.stat.create", update: "import.stat.update", unchanged: "import.stat.unchanged", invalid: "import.stat.invalid" } as const;
 const PREVIEW_PAGE = 50;
+/** Why a team name is left out; every reason keeps the row (only the team is skipped). */
+const SKIP_KEY: Record<TeamSkipReason, MessageKey> = {
+  TEAM_ARCHIVED: "import.teams.skipArchived", TEAM_NAME_TOO_LONG: "import.teams.skipTooLong",
+  TEAM_IMPORT_LIMIT: "import.teams.skipImportLimit", TEAM_COMPANY_LIMIT: "import.teams.skipCompanyLimit",
+};
+const SKIP_ORDER: TeamSkipReason[] = ["TEAM_IMPORT_LIMIT", "TEAM_COMPANY_LIMIT", "TEAM_ARCHIVED", "TEAM_NAME_TOO_LONG"];
+/** At most this many names are spelled out in a notice; the rest are counted. */
+const NAMES_SHOWN = 6;
+/** Team names are quoted so they read as the admin's data inside the sentence. */
+function nameList(names: string[]): string {
+  const shown = names.slice(0, NAMES_SHOWN).map((name) => `“${name}”`).join(", ");
+  return names.length > NAMES_SHOWN ? t("import.teams.more", { names: shown, count: names.length - NAMES_SHOWN }) : shown;
+}
 interface ResultRow { line: number; email: string; outcome: "created" | "updated" | "unchanged" | "failed"; message?: string }
 
 export default function ImportPage() {
@@ -49,6 +62,9 @@ export default function ImportPage() {
   const [resumeNote, setResumeNote] = useState("");
   const store = useMemo(() => (typeof window === "undefined" ? null : browserStore()), []);
   const [rows, setRows] = useState<PlanRow[]>([]);
+  const [newTeams, setNewTeams] = useState<PlanNewTeam[]>([]);
+  const [skippedTeams, setSkippedTeams] = useState<PlanSkippedTeam[]>([]);
+  const [teamsCreated, setTeamsCreated] = useState(0);
   const [jobId, setJobId] = useState("");
   const [planHash, setPlanHash] = useState("");
   const [finished, setFinished] = useState(false);
@@ -108,6 +124,7 @@ export default function ImportPage() {
 
   function startOver() {
     setPhase("choose"); setParsed(null); setRaw(null); setRows([]); setResults([]); setFinished(false); setError(""); setFilter("all"); setShown(PREVIEW_PAGE); setFileName("");
+    setNewTeams([]); setSkippedTeams([]); setTeamsCreated(0);
     if (input.current) input.current.value = "";
   }
 
@@ -132,6 +149,8 @@ export default function ImportPage() {
       // One requestId per attempt: a retry with the same rows returns the same job.
       const planned = await planAll(api, result, crypto.randomUUID(), fileName);
       setRows(planned.rows);
+      setNewTeams(planned.newTeams);
+      setSkippedTeams(planned.skippedTeams);
       setJobId(planned.jobId);
       setPlanHash(planned.planHash);
       setLines(validRows(result).lines);
@@ -155,6 +174,7 @@ export default function ImportPage() {
         setResults((previous) => [...previous, ...step.results.map((r) => ({ line: job.lines[r.rowNumber - 1] ?? r.rowNumber, email: r.email, outcome: r.outcome, message: r.message && presentable(r.message) ? r.message : undefined }))]);
         setProgress({ done: step.progress.processed, total: step.progress.total });
         setServerCounts({ created: step.progress.created, updated: step.progress.updated, unchanged: step.progress.unchanged });
+        setTeamsCreated(step.progress.teamsCreated ?? 0);
       });
       setFinished(true);
       try { sessionJobs()?.removeItem(jobKey(companyId)); } catch { /* ignore */ }
@@ -266,7 +286,22 @@ export default function ImportPage() {
             {counts.invalid > 0 && <Button onClick={() => downloadText("import-errors.csv", errorCsv(rows.filter((r) => r.action === "invalid")))}>{t("import.preview.errorCsv")}</Button>}
             <Button variant="primary" disabled={changes === 0} onClick={() => setConfirming(true)}>{t("import.apply", { count: changes })}</Button>
           </div>
-          {parsed.unknownColumns.length > 0 && <InlineNotice>{t("import.preview.ignored", { columns: parsed.unknownColumns.join(", ") })}</InlineNotice>}
+          {newTeams.length > 0 && (
+            <InlineNotice announce={false}>{t("import.teams.new", { count: newTeams.length, names: nameList(newTeams.map((team) => team.name)) })}</InlineNotice>
+          )}
+          {SKIP_ORDER.filter((reason) => skippedTeams.some((s) => s.reason === reason)).map((reason) => (
+            <InlineNotice key={reason} tone="warn" announce={false}>
+              {(() => {
+                const names = skippedTeams.filter((s) => s.reason === reason).map((s) => s.name);
+                return t(SKIP_KEY[reason], { count: names.length, names: nameList(names) });
+              })()}
+            </InlineNotice>
+          ))}
+          {(parsed.unknownColumns.length > 0 || (parsed.retiredColumns?.length ?? 0) > 0) && (
+            <InlineNotice announce={false}>{t("import.preview.ignored", {
+              columns: [...parsed.unknownColumns, ...(parsed.retiredColumns ?? []).map((column) => t("import.preview.notUsed", { column }))].join(", "),
+            })}</InlineNotice>
+          )}
           <div className="stats" role="group" aria-label={t("import.preview.summary")}>
             {(["create", "update", "unchanged", "invalid"] as const).map((a) => (
               <button key={a} className="stat" aria-pressed={filter === a} onClick={() => { setFilter(filter === a ? "all" : a); setShown(PREVIEW_PAGE); }}>
@@ -276,14 +311,15 @@ export default function ImportPage() {
           </div>
           {visible.length === 0 ? <Empty title={t("import.preview.emptyTitle")} body={t("import.preview.emptyBody")} action={<Button variant="primary" onClick={() => setFilter("all")}>{t("import.preview.showAll")}</Button>} /> : (
             <>
+              {parsed.headerLine !== undefined && <p className="hint">{t("import.preview.rowHint", { header: parsed.headerLine })}</p>}
               <TableRegion label={t("import.preview.table")}>
                 <table className="table responsive">
                   <caption className="sr-only">{t("import.preview.table")}</caption>
-                  <thead><tr><th scope="col">{t("import.preview.line")}</th><th scope="col">{t("import.preview.email")}</th><th scope="col">{t("import.preview.result")}</th><th scope="col">{t("import.preview.changes")}</th></tr></thead>
+                  <thead><tr><th scope="col">{t("import.preview.row")}</th><th scope="col">{t("import.preview.email")}</th><th scope="col">{t("import.preview.result")}</th><th scope="col">{t("import.preview.changes")}</th></tr></thead>
                   <tbody>
                     {visible.slice(0, shown).map((r) => (
                       <tr key={r.line}>
-                        <td data-label={t("import.preview.line")}>{r.line}</td>
+                        <td data-label={t("import.preview.row")}>{r.line}</td>
                         <td data-label={t("import.preview.email")}>{r.email || <span className="muted">{t("import.preview.blank")}</span>}</td>
                         <td data-label={t("import.preview.result")}><Info tone={r.action === "invalid" ? "warn" : r.action === "unchanged" ? undefined : "ok"}>{t(ACTION_KEY[r.action])}</Info></td>
                         <td data-label={t("import.preview.changes")}>
@@ -333,6 +369,13 @@ export default function ImportPage() {
             <div className="stat"><span className="stat-n">{serverCounts?.unchanged ?? outcome("unchanged")}</span><span>{t("import.stat.unchanged")}</span></div>
             <div className="stat"><span className="stat-n">{failed.length + previewInvalid.size}</span><span>{t("import.done.skipped")}</span></div>
           </div>
+          {teamsCreated > 0 && (
+            <InlineNotice tone="success" announce={false}>
+              {newTeams.length > 0 && newTeams.length === teamsCreated
+                ? t("import.teams.createdNamed", { count: teamsCreated, names: nameList(newTeams.map((team) => team.name)) })
+                : t("import.teams.created", { count: teamsCreated })}
+            </InlineNotice>
+          )}
           {!finished && <InlineNotice>{t("import.done.stoppedEarly")}</InlineNotice>}
           <div className="actions">
             <Button variant="primary" href="/roster/">{t("import.done.seeRoster")}</Button>
@@ -362,6 +405,7 @@ export default function ImportPage() {
         <Dialog title={t("import.confirm.title")} confirmLabel={t("import.apply", { count: changes })} busyLabel={t("import.confirm.busy")} onClose={() => setConfirming(false)} onConfirm={async () => { void apply(false); }}>
           <p>{[
             t("import.confirm.added", { create: counts.create, update: counts.update }),
+            newTeams.length > 0 && t("import.confirm.teams", { count: newTeams.length }),
             counts.invalid > 0 && t("import.confirm.skipped", { count: counts.invalid }),
             t("import.confirm.audit"),
           ].filter(Boolean).join(" ")}</p>

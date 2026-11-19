@@ -20,7 +20,7 @@ export const revisionOf = (member: Doc) => (typeof member.revision === "number" 
 export interface MemberSummary {
   userId: string; email: string; displayName: string; avatarId: string; photoURL: string; role: Role; status: MemberStatus;
   department: string; jobTitle: string; city: string; workLocation: string; teamIds: string[];
-  managerEmail?: string; startDate?: string; pointsBalance?: number; revision: number; createdAt: string;
+  pointsBalance?: number; revision: number; createdAt: string;
 }
 
 /** Admin directory projection of users/{uid}. Points are admin-only; interests, friends and favorites are never exposed. */
@@ -31,8 +31,6 @@ export function toSummary(userId: string, member: Doc, includePoints: boolean): 
     department: text(member.department), jobTitle: text(member.jobTitle), city: text(member.city), workLocation: text(member.workLocation),
     teamIds: strings(member.teamIds), revision: revisionOf(member), createdAt: toIso(member.createdAt),
   };
-  if (typeof member.managerEmail === "string") summary.managerEmail = member.managerEmail;
-  if (typeof member.startDate === "string") summary.startDate = member.startDate;
   if (includePoints && typeof member.pointsBalance === "number") summary.pointsBalance = member.pointsBalance;
   return summary;
 }

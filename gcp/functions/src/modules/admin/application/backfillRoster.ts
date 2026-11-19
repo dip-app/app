@@ -34,7 +34,6 @@ export async function backfillRosterPage(tx: AdminTransaction, companyId: string
     tx.create(paths.rosterEntry(companyId, emailHash(email)), {
       companyId, email, displayName: text(data.displayName), role: text(data.role) || "member", teamIds: Array.isArray(data.teamIds) ? data.teamIds : [],
       workLocation: text(data.workLocation), department: text(data.department), jobTitle: text(data.jobTitle),
-      ...(text(data.managerEmail) ? { managerEmail: text(data.managerEmail) } : {}), ...(text(data.startDate) ? { startDate: text(data.startDate) } : {}),
       status: "claimed", memberStatus: statusOf(data) === "deactivated" ? "deactivated" : "active", source: "signup", claimedBy: member.id,
       claimedAt: data.createdAt instanceof Date ? data.createdAt : options.now, createdAt: SERVER_TIME, updatedAt: SERVER_TIME, revision: 1,
     });

@@ -51,8 +51,6 @@ export interface RosterClaim {
   workLocation: string;
   department: string;
   jobTitle: string;
-  managerEmail?: string;
-  startDate?: string;
 }
 
 /** What the join does to the company roster (everyone who joins is listed there). */
@@ -80,8 +78,6 @@ export interface NewMemberProfile {
   workLocation?: string;
   teamIds?: string[];
   status?: "active";
-  managerEmail?: string;
-  startDate?: string;
 }
 
 /** Documented default travel radius for new profiles (miles). */
@@ -172,8 +168,6 @@ export function decideMembership(
         displayName: identity.name && identity.name.trim() ? identity.displayName : (hint || identity.displayName),
         role: entry.role as MembershipRole, department: entry.department, jobTitle: entry.jobTitle,
         workLocation: entry.workLocation, teamIds: entry.teamIds, status: "active",
-        ...(entry.managerEmail !== undefined ? { managerEmail: entry.managerEmail } : {}),
-        ...(entry.startDate !== undefined ? { startDate: entry.startDate } : {}),
       },
     };
   }
