@@ -6,9 +6,9 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { TableRegion } from "@/components/TableRegion";
-import { toast } from "@/components/Toast";
+import { toast, toastError } from "@/components/Toast";
 import { Avatar, Empty, Info, LoadError, LoadMore, Loading, ResultCount, SearchBox } from "@/components/Ui";
-import { describe, useLoad } from "@/components/useLoad";
+import { useLoad } from "@/components/useLoad";
 import { useDebounced, usePaged } from "@/components/usePaged";
 import { LIST_PAGE_SIZE, ROLE_LABEL, type Member, type MemberQuery, type MemberStatus, type Role } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
@@ -16,7 +16,7 @@ import { membersCsv } from "@/lib/exports";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, InlineNotice } from "@/components/kit";
+import { Button, ErrorNotice } from "@/components/kit";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
 const STATUSES: { id: MemberStatus | "all"; labelKey: MessageKey }[] = [
@@ -72,7 +72,7 @@ function Members() {
       downloadText("members.csv", membersCsv(everyone, teams));
       toast(t("members.export.done", { count: everyone.length }));
     } catch (failure) {
-      toast(describe(failure, t("common.exportFailed")), { tone: "error" });
+      toastError(failure, t("common.exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -131,7 +131,7 @@ function Members() {
                   </tbody>
                 </table>
               </TableRegion>
-              {list.error && <InlineNotice tone="error">{list.error.message}</InlineNotice>}
+              {list.error && <ErrorNotice error={list.error} />}
               {list.hasMore && <LoadMore shown={list.items.length} total={total ?? undefined} loading={list.loadingMore} onClick={list.loadMore} />}
             </>
           )}

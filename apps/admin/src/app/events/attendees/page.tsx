@@ -7,7 +7,7 @@ import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
 import { TableRegion } from "@/components/TableRegion";
-import { toast } from "@/components/Toast";
+import { toast, toastError } from "@/components/Toast";
 import { Toggle } from "@/components/Toggle";
 import { Avatar, Empty, Info, LoadError, Loading, ResultCount, SearchBox, formatDate } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
@@ -83,7 +83,7 @@ function Attendees() {
       toast(t("attendees.toast.undone", { name: attendee.name }));
       attendees.reload();
     } catch (failure) {
-      toast(describe(failure), { tone: "error" });
+      toastError(failure, t("common.actionFailed"));
     }
   }
 

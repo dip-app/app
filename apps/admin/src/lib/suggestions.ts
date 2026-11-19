@@ -6,6 +6,7 @@
 import type { GeneratedEventDraft } from "./adminTypes";
 import { ApiError } from "./contract";
 import { formatDate, intlLocale, t } from "./i18n";
+import { userErrorMessage } from "./userError";
 
 export type SuggestionsAction = "status" | "preview" | "sendTest" | "subscribe" | "unsubscribe" | "setSchedule";
 export type SuggestionsEngine = "jev" | "openai" | "heuristic";
@@ -142,7 +143,7 @@ export function linkProblem(error: unknown): LinkProblem {
 export function manageFailureMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "permission-denied") return t("dipbot.email.error.adminsOnly");
-    return error.message;
+    return userErrorMessage(error, undefined, { dipbot: true });
   }
   return t("dipbot.email.error.unreachable");
 }

@@ -17,6 +17,7 @@ import { type ParsedImport, fieldLabel, type RawFile, errorCsv, planCounts, read
 import { applyAll, planAll } from "@/lib/importRun";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
+import { presentable } from "@/lib/userError";
 import { Button, InlineNotice, Panel } from "@/components/kit";
 
 type Phase = "choose" | "map" | "checking" | "preview" | "applying" | "done";
@@ -151,7 +152,7 @@ export default function ImportPage() {
     } catch { /* resume after reload just won't be offered */ }
     try {
       await applyAll(api, job.jobId, job.planHash, (step) => {
-        setResults((previous) => [...previous, ...step.results.map((r) => ({ line: job.lines[r.rowNumber - 1] ?? r.rowNumber, email: r.email, outcome: r.outcome, message: r.message }))]);
+        setResults((previous) => [...previous, ...step.results.map((r) => ({ line: job.lines[r.rowNumber - 1] ?? r.rowNumber, email: r.email, outcome: r.outcome, message: r.message && presentable(r.message) ? r.message : undefined }))]);
         setProgress({ done: step.progress.processed, total: step.progress.total });
         setServerCounts({ created: step.progress.created, updated: step.progress.updated, unchanged: step.progress.unchanged });
       });

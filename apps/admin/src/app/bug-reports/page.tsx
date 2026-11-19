@@ -18,7 +18,7 @@ import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { BUG_CATEGORIES, BUG_STATUSES, issueText } from "@/lib/bugReports";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, EmptyState, InlineNotice } from "@/components/kit";
+import { Button, EmptyState, ErrorNotice, InlineNotice } from "@/components/kit";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
 type StatusFilter = BugStatus | "all";
@@ -357,7 +357,7 @@ function BugReports() {
                     </li>
                   ))}
                 </ul>
-                {list.error && <InlineNotice tone="error" action={<Button variant="plain" onClick={list.loadMore}>{t("bugs.item.tryAgain")}</Button>}>{list.error.message}</InlineNotice>}
+                {list.error && <ErrorNotice error={list.error} action={<Button variant="plain" onClick={list.loadMore}>{t("bugs.item.tryAgain")}</Button>} />}
                 {list.hasMore && <LoadMore shown={list.items.length} total={!filtered && counts && !counts.capped ? counts[status] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
               </section>
               <div ref={detailTop} className="bug-detail-wrap">

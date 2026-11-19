@@ -28,7 +28,7 @@ import the catalogs and the message parser directly.
 | `scripts/admin-i18n-allowlist.txt` | Reviewed guardrail exceptions (`file<TAB>text`) |
 
 Areas: `common`, `shell`, `ui`, `login`, `account`, `events`, `editor`, `dipbot`, `overview`, `members`, `audit`,
-`challenges`, `importer` (`import.*`), `roster`, `bugs`, `review`, `memberDetail`, `attendees` (`attendees.*` and
+`challenges`, `importer` (`import.*`), `roster`, `bugs`, `review`, `memberDetail`, `failure` (plain error copy, read through `userError()`), `attendees` (`attendees.*` and
 `album.*`), `themeForm`, `ai`. 1,842 keys in total (337 of them `ai.*`).
 
 To add an area, create `en/<area>.ts` and `es/<area>.ts` and spread both into the two `index.ts` files.

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/contract";
 import { Dialog } from "../Dialog";
 
 // jsdom has <dialog> but not showModal/close.
@@ -52,9 +53,17 @@ describe("Dialog", () => {
     fireEvent.click(confirmButton("Apply"));
     expect(confirmButton("Applying…").disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
-    await act(async () => { fail(new Error("Nope, try again.")); });
+    await act(async () => { fail(new ApiError("failed-precondition", "Nope, try again.")); });
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Nope, try again."));
     expect(confirmButton("Apply").disabled).toBe(false);
+  });
+
+  it("never shows the SDK's raw text: a status-0 callable failure reads as a connection problem", async () => {
+    const sdkError = Object.assign(new Error("internal [0]"), { code: "functions/internal" });
+    render(<Dialog title="Go" confirmLabel="Apply" onConfirm={() => Promise.reject(sdkError)} onClose={() => {}} />);
+    fireEvent.click(confirmButton("Apply"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Can’t reach DIP. Check your connection and try again."));
+    expect(screen.getByRole("alert").textContent).not.toMatch(/\[0\]|internal/);
   });
 
   it("honors confirmDisabled and closes through Cancel", () => {

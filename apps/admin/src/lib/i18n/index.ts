@@ -151,6 +151,20 @@ export function hasMessage(key: string): key is MessageKey {
   return Object.prototype.hasOwnProperty.call(en, key);
 }
 
+const plainTexts = new Map<Locale, Set<string>>();
+/**
+ * True when `text` is a whole catalog message without slots in the current locale: a sentence of ours, such as the
+ * one in `new Error(t("roster.message.copyFailed"))`. `userError()` shows a plain Error's text only when this holds.
+ */
+export function isCatalogText(text: string): boolean {
+  let texts = plainTexts.get(current);
+  if (!texts) {
+    texts = new Set(Object.values(catalog(current)).filter((value) => !value.includes("{")));
+    plainTexts.set(current, texts);
+  }
+  return texts.has(text);
+}
+
 // Formatting. Each takes the same options as Intl and uses the current locale.
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {

@@ -17,6 +17,7 @@ import { SectionHeader } from "./kit";
 import { CoverPicker } from "./CoverPicker";
 import { Disclosure } from "./Disclosure";
 import { ApiError } from "@/lib/contract";
+import { userErrorMessage } from "@/lib/userError";
 import {
   type Answers, type Attempt, type StepId, BUDGETS, GOALS, GROUP_SIZES, MAX_FOCUS, MAX_PROMPT, RETRYABLE_REASONS, SETTINGS, STEPS, TIMINGS,
   bucketLevel, bucketText, capacityLabel, choicesOf, costLabel, daypartLabel, draftText, durationLabel, emptyAnswers,
@@ -54,9 +55,9 @@ function failureMessage(error: unknown, ctx: EventIdeaContext | null): string {
   if (error instanceof ApiError) {
     const n = error.reason === "AI_DAILY_LIMIT" ? ctx?.usage.dailyGenerationLimit : ctx?.usage.monthlyGenerationLimit;
     const known = error.reason ? tMaybe(`limit.${error.reason}`, { n: n ?? "", date: ctx ? resetDate(ctx.credits.resetsAt) : "" }) : null;
-    return known ? known.replace("all  of", "all of") : error.message;
+    if (known) return known.replace("all  of", "all of");
   }
-  return t("error.offline");
+  return userErrorMessage(error, t("error.offline"), { dipbot: true });
 }
 
 const isNoteStep = (id: StepId) => id === "note";
@@ -269,7 +270,7 @@ export function Ideas() {
       const reason = error instanceof ApiError ? error.reason : undefined;
       attempt.current = { requestId, signature, retryable: !(error instanceof ApiError) || (reason !== undefined && RETRYABLE_REASONS.includes(reason)) };
       if (reason === "AI_PROMPT_REJECTED") {
-        setNoteError(error instanceof ApiError ? (error.fields.prompt ?? error.message) : "");
+        setNoteError(error instanceof ApiError ? (error.fields.prompt ?? userErrorMessage(error)) : "");
         setStep(STEPS.length - 1);
         setPhase("edit");
         requestAnimationFrame(() => noteField.current?.focus());

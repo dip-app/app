@@ -143,7 +143,27 @@ $ctl-h: 36px;
     h2 { font-size: 15px; font-weight: 600; } }
   .notice { background: #f3f4ff; color: $ink; border: 1px solid #c9cff9; border-radius: $r-ctl; padding: 8px 12px; margin-bottom: 12px; &.success { background: #f1faf5; border-color: #b5e0c9; } &.warn { background: #fff9eb; border-color: #f0dca0; } }
   .banner { border-radius: $r-ctl; padding: 10px 14px; gap: 10px;
-    &.error { background: #fff4f9; color: $ink; border: 1px solid #f0a8c9; .pill-btn, a.pill-btn { background: $white; color: $ink; min-height: $ctl-h; font-size: 14px; box-shadow: inset 0 0 0 1px $ctl-border; } } }
+    // The one error alert (kit InlineNotice / ErrorNotice): soft pink, dark red text 7.5:1, icon on the first line.
+    &.error { background: #fff4f9; color: var(--error-ink); border: 1px solid #f0a8c9; padding: 10px 12px; gap: 8px 10px; align-items: center; flex-wrap: nowrap; font-size: 14px; line-height: 20px;
+      .pill-btn, a.pill-btn { background: $white; color: $ink; min-height: $ctl-h; font-size: 14px; box-shadow: inset 0 0 0 1px $ctl-border; } }
+    &.error:focus { outline: 2px solid var(--error-ink); outline-offset: 2px; } }
+  // The row is centered (text against a 36 px button); inside the text block the mark stays on the first line.
+  .banner.error .alert-body { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: flex-start; }
+  .banner.error .alert-icon { flex: none; margin-top: 2px; }
+  .banner.error .alert-main { flex: 1; min-width: 0; display: grid; gap: 2px; overflow-wrap: anywhere; }
+  .banner.error .alert-title { font-weight: 600; }
+  .banner.error .alert-actions { flex: none; display: flex; gap: 8px; align-self: center; }
+  // Field errors and the small status lines inside widgets: red text with the same mark, no box.
+  :is(p, span, div, li).error:not(.banner):not(:empty) {
+    &::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; background: currentColor; flex: none;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.75' fill='none' stroke='black' stroke-width='1.5'/%3E%3Cpath d='M8 4.6v4.1' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11.2' r='.95'/%3E%3C/svg%3E") center / contain no-repeat; } }
+  @media (max-width: 700px) {
+    // Phones: the action drops under the text, lined up with it, at 44 px.
+    .banner.error { flex-wrap: wrap; }
+    .banner.error { align-items: flex-start; }
+    .banner.error .alert-body { flex-basis: 100%; }
+    .banner.error .alert-actions { flex-basis: 100%; padding-left: 26px; align-self: auto; .pill-btn { min-height: 44px; } }
+  }
   .empty { background: $white; border: 1px dashed $line-strong; border-radius: $r-box; padding: 40px 20px;
     h2 { font-family: var(--font-figtree), sans-serif; text-transform: none; font-size: 16px; font-weight: 600; margin-bottom: 4px; } p { font-size: 14px; max-width: 52ch; margin: 0 auto; } }
   .empty-action { margin-top: 14px; }
