@@ -35,6 +35,8 @@ export function toRosterEntry(id: string, entry: Doc): RosterEntry {
   if (typeof entry.resendCount === "number") out.resendCount = entry.resendCount;
   if (toIso(entry.lastResentAt)) out.lastResentAt = toIso(entry.lastResentAt);
   if (typeof entry.lastResentBy === "string") out.lastResentBy = entry.lastResentBy;
+  if (typeof entry.inviteEmailCount === "number" && entry.inviteEmailCount >= 0) out.inviteEmailCount = entry.inviteEmailCount;
+  if (toIso(entry.lastInviteEmailAt)) out.lastInviteEmailAt = toIso(entry.lastInviteEmailAt);
   return out;
 }
 
@@ -51,6 +53,9 @@ export function matchesRoster(entry: RosterEntry, filter: RosterFilter): boolean
 }
 
 export const MAX_RESENDS = 10;
+/** Invitation emails per roster entry, and the minimum gap between two of them (sendRosterInviteEmailV1). */
+export const MAX_INVITE_EMAILS = 5;
+export const INVITE_EMAIL_GAP_MS = 60 * 60 * 1000;
 export const SIGN_IN_URL_MEMBER = "https://letsdip.work";
 export const SIGN_IN_URL_ADMIN = "https://letsdip.work/admin/";
 

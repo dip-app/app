@@ -1,3 +1,4 @@
+import type { Locale } from "../../i18n";
 import type { EmailCategory } from "../domain/categories";
 import type { OutboxDocument, OutboxStatus, SkipReason } from "../domain/outbox";
 import type { TemplateId, TemplateVariables } from "../domain/templates/types";
@@ -77,6 +78,8 @@ export interface NewOutboxEntry<T extends TemplateId = TemplateId> {
   template: T;
   variables: TemplateVariables[T];
   notAfter: Date | null;
+  /** Language for a recipient without a stored locale (roster invitee); see `OutboxDocument.locale`. */
+  locale?: Locale;
 }
 
 export type ClaimResult =
@@ -183,6 +186,27 @@ export interface RecipientDirectory {
   get(uid: string): Promise<Recipient | null>;
   /** Members whose stored email equals this address (normalized compare is the adapter's job). At most 5. */
   uidsByEmail(email: string): Promise<string[]>;
+}
+
+/** A roster entry as the invitation email needs it; the address is read here at send time and never stored in the outbox. */
+export interface RosterInvitee {
+  entryId: string;
+  companyId: string | null;
+  email: string | null;
+  displayName: string | null;
+  /** `invited` | `claimed` | `revoked`. Only `invited` entries get an invitation. */
+  status: string | null;
+}
+
+export interface RosterInviteeDirectory {
+  get(companyId: string, entryId: string): Promise<RosterInvitee | null>;
+}
+
+/** Opt-outs of roster invitation emails (`emailInviteOptOuts/{emailHash}`), written by the unsubscribe link in the email. */
+export interface InviteOptOutStore {
+  isOptedOut(emailHash: string): Promise<boolean>;
+  /** Idempotent. */
+  optOut(emailHash: string, now: Date): Promise<void>;
 }
 
 export interface CompanyEmailSettings { enabled: boolean; dailyCap: number; timeZone: string | null }

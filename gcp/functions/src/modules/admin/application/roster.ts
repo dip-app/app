@@ -1,7 +1,11 @@
 import type {
-  ListRosterResponse, ResendRosterInviteResponse, RevokeRosterEntryResponse, RosterCounts, RosterEntry, UpsertRosterEntryResponse,
+  ListRosterResponse, ResendRosterInviteResponse, RevokeRosterEntryResponse, RosterCounts, RosterEntry, SendRosterInviteEmailResponse,
+  UpsertRosterEntryResponse,
 } from "../../../generated/models";
-import { inviteMessage, matchesRoster, MAX_RESENDS, toRosterEntry } from "../domain/rosterView";
+import { INVITE_OPT_OUTS_COLLECTION, SUPPRESSIONS_COLLECTION } from "../../email/domain/outbox";
+import { rosterRecipientKey } from "../../email/domain/templates/types";
+import { INVITE_EMAIL_GAP_MS, inviteMessage, matchesRoster, MAX_INVITE_EMAILS, MAX_RESENDS, toRosterEntry } from "../domain/rosterView";
+import { companyEmailOn, queueEmailInTx } from "./accountEmails";
 import { change } from "../domain/audit";
 import { named } from "../domain/auditSummaries";
 import { assertValid, emailHash, entryChanges, newEntryFields, normalizeEmployee, type EmployeeContext } from "../domain/employee";
@@ -124,6 +128,69 @@ export async function resendRosterInvite(deps: AdminDeps, caller: Caller | null,
   })).value;
 }
 
+/**
+ * sendRosterInviteEmailV1: emails an invitation to an invited roster entry (docs/design/email-catalog.md, roster_invite):
+ * the company name, the inviting admin's first name and the sign-in link for their role, in the admin's language. The
+ * outbox entry is created in this transaction with the id `account_<entryId>_roster-<entryId>_invite<N>`, so a retried
+ * or replayed request queues one email. Only `invited` entries, only while email is on for the company, never to an
+ * address that opted out of invitations or bounced, at most MAX_INVITE_EMAILS per entry and INVITE_EMAIL_GAP_MS apart.
+ * The address is the entry's own (validated against the company domain when it was added), never caller input.
+ */
+export async function sendRosterInviteEmail(deps: AdminDeps, caller: Caller | null, data: unknown): Promise<SendRosterInviteEmailResponse> {
+  const authenticated = requireCaller(caller);
+  const req = parseResendRoster(data);
+  await consumeAfterAuth(deps, authenticated, req.companyId, "roster.manage");
+  const now = deps.now();
+  return (await deps.store.runTransaction(async tx => {
+    const actor = await authorize(tx, authenticated, req.companyId, "roster.manage");
+    return once(tx, actor, "sendRosterInviteEmailV1", req.requestId, { entryId: req.entryId }, async () => {
+      const entry = await tx.get(paths.rosterEntry(actor.companyId, req.entryId));
+      if (!entry || entry.companyId !== actor.companyId) throw new AdminError("not-found", "ROSTER_ENTRY_NOT_FOUND", "Roster entry not found.");
+      if (entry.status === "claimed") throw new AdminError("failed-precondition", "ROSTER_ENTRY_CLAIMED", "This person already signed in.");
+      if (entry.status !== "invited") throw new AdminError("failed-precondition", "ROSTER_ENTRY_NOT_INVITED", "Invite this person again before resending.");
+      const email = typeof entry.email === "string" ? entry.email : "";
+      stored(email !== "" && emailHash(email) === req.entryId, "roster entry");
+      if (!(await companyEmailOn(tx, deps, actor.companyId))) {
+        throw new AdminError("failed-precondition", "EMAIL_NOT_ENABLED", "Email isn't turned on for your company yet. Copy the invite message instead.");
+      }
+      if (await tx.get(`${INVITE_OPT_OUTS_COLLECTION}/${req.entryId}`)) {
+        throw new AdminError("failed-precondition", "INVITE_EMAIL_OPTED_OUT", "This person asked not to get invitation emails. Reach out to them directly.");
+      }
+      if (await tx.get(`${SUPPRESSIONS_COLLECTION}/${req.entryId}`)) {
+        throw new AdminError("failed-precondition", "INVITE_EMAIL_UNDELIVERABLE", "Email to this address can't be delivered. Check the address or reach out to them directly.");
+      }
+      const sent = typeof entry.inviteEmailCount === "number" && entry.inviteEmailCount >= 0 ? entry.inviteEmailCount : 0;
+      if (sent >= MAX_INVITE_EMAILS) throw new AdminError("resource-exhausted", "INVITE_EMAIL_LIMIT", "This person already got several invitation emails. Reach out to them directly.");
+      const last = entry.lastInviteEmailAt instanceof Date ? entry.lastInviteEmailAt.getTime() : null;
+      if (last !== null && now.getTime() - last < INVITE_EMAIL_GAP_MS) {
+        throw new AdminError("resource-exhausted", "INVITE_EMAIL_TOO_SOON", "An invitation email went out less than an hour ago. Try again later.");
+      }
+      const company = await tx.get(paths.company(actor.companyId));
+      const companyName = typeof company?.name === "string" && company.name.trim() !== "" ? company.name.trim().slice(0, 120) : "";
+      stored(companyName !== "", "company");
+      const inviter = actor.name.trim().split(/\s+/)[0]?.slice(0, 80) ?? "";
+      const role = entry.role === "admin" || entry.role === "organizer" ? entry.role : "member";
+      await queueEmailInTx(tx, {
+        template: "roster_invite",
+        variables: { entryId: req.entryId, companyName, role, reminder: sent > 0, ...(inviter ? { inviterFirstName: inviter } : {}) },
+        uid: rosterRecipientKey(req.entryId), companyId: actor.companyId, objectId: req.entryId, revisionOrWindow: `invite${sent + 1}`,
+        notAfter: new Date(now.getTime() + INVITE_EMAIL_TTL_MS), ...(actor.locale ? { locale: actor.locale } : {}),
+      }, now);
+      const revision = typeof entry.revision === "number" ? entry.revision : 1;
+      tx.update(paths.rosterEntry(actor.companyId, req.entryId), {
+        inviteEmailCount: sent + 1, lastInviteEmailAt: now, lastInviteEmailBy: actor.uid, updatedAt: now, revision: revision + 1,
+      });
+      writeAudit(tx, actor, { id: `${actor.uid}_${req.requestId}`, action: "roster.inviteEmail", targetType: "roster", targetId: req.entryId,
+        summary: `Emailed an invite to ${email} (#${sent + 1})`,
+        summaryKey: "roster.inviteEmail", summaryParams: { ...named(email, "email"), number: sent + 1 }, changes: [change("inviteEmailCount", sent, sent + 1)], requestId: req.requestId });
+      return { contractVersion: 1, entryId: req.entryId, status: "invited", inviteEmailCount: sent + 1, lastInviteEmailAt: now.toISOString() } satisfies SendRosterInviteEmailResponse;
+    }, now);
+  })).value;
+}
+
+/** An unsent invitation is useless after a week (the admin can send another). */
+const INVITE_EMAIL_TTL_MS = 7 * 86_400_000;
+
 const SCAN_BATCH = 250;
 const MAX_SCAN = 500;
 
@@ -179,7 +246,8 @@ export async function listRoster(deps: AdminDeps, caller: Caller | null, data: u
       ]);
       counts = { all, invited, revoked, deactivated, active: Math.max(0, claimed - deactivated) };
     }
-    return { contractVersion: 1, entries, ...(nextPageToken ? { nextPageToken } : {}), ...(counts ? { counts } : {}) } satisfies ListRosterResponse;
+    const inviteEmail = await companyEmailOn(tx, deps, actor.companyId);
+    return { contractVersion: 1, entries, ...(nextPageToken ? { nextPageToken } : {}), ...(counts ? { counts } : {}), inviteEmail } satisfies ListRosterResponse;
   });
 }
 

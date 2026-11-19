@@ -19,6 +19,7 @@ export const AUDIT_ACTIONS = [
   "roster.upsert",
   "roster.revoke",
   "roster.resend",
+  "roster.inviteEmail",
   "roster.backfill",
   "roster.claim",
   "import.plan",

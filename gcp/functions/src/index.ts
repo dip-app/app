@@ -4,7 +4,7 @@ export { setRsvpV1, onUserProfileUpdated } from "./modules/participation";
 export { registerDeviceV1, unregisterDeviceV1, onEventMessageCreated, onEventChanged, onRsvpChanged, sendEventReminders, pruneStaleDeviceTokens, sendWeeklyThemePushes, onPhotoCommentPush, onPhotoAddedPush } from "./modules/notifications";
 export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
-export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1, emailOpenV1, emailOutboxReaper, calendarInviteOnRsvp, calendarInviteOnEventUpdated } from "./modules/email";
+export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1, emailOpenV1, emailOutboxReaper, calendarInviteOnRsvp, calendarInviteOnEventUpdated, welcomeEmailOnMemberCreated } from "./modules/email";
 export { getEventIdeaContextV1, generateEventDraftsV1, getEventIdeaSuggestionsV1, getDipbotIdeasV1, suggestThemeV1 } from "./modules/ai";
 export { coverImageV1, importCoverPhotoV1, pickEventCoverV1, searchCoverPhotosV1 } from "./modules/covers";
 export { sendAdminSuggestionsEmails, manageSuggestionsEmailV1, resolveSuggestedIdeaV1 } from "./modules/suggestions";
@@ -15,7 +15,7 @@ export { submitChallengeV1, approveChallengeV1, rejectChallengeV1, listChallenge
 export {
   removeEventPhotoV1, removeEventPhotoCommentV1, addEventAttendeeV1, removeEventAttendeeV1, recordAttendanceV1, listMembersV1, getMemberV1,
   updateMemberV1, resetMemberProfileV1, setMemberStatusV1, adjustMemberPointsV1, upsertTeamV1,
-  upsertRosterEntryV1, revokeRosterEntryV1, resendRosterInviteV1, listRosterV1, backfillRosterV1, importEmployeesV1, applyEmployeeImportV1, getEmployeeImportV1,
+  upsertRosterEntryV1, revokeRosterEntryV1, resendRosterInviteV1, sendRosterInviteEmailV1, listRosterV1, backfillRosterV1, importEmployeesV1, applyEmployeeImportV1, getEmployeeImportV1,
   listBugReportsV1, getBugReportV1, updateBugReportV1, getCompanyInsightsV1,
 } from "./modules/admin";
 export { autocompletePlacesV1, findVenuesV1, refreshPlaceLocations, resolvePlaceV1, setCompanyOfficeV1 } from "./modules/places";

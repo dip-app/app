@@ -20,3 +20,16 @@ export function resolveEmailPreferences(storedEmailMap: Readonly<Record<string, 
   for (const category of EMAIL_CATEGORIES) out[category] = resolved[category];
   return out;
 }
+
+/**
+ * Outbox categories: the member-controlled email categories plus `account`, the transactional account emails (roster
+ * invitation, welcome, problem report resolved; docs/design/email-catalog.md). `account` is not in the shared preference
+ * registry and has no switch of its own: a member who turned every email category off gets no account email either, and
+ * a roster invitee opts out of invitation emails from the link in the email (`emailInviteOptOuts/{emailHash}`).
+ */
+export const ACCOUNT_CATEGORY = "account" as const;
+export type OutboxCategory = EmailCategory | typeof ACCOUNT_CATEGORY;
+
+export function isOutboxCategory(value: unknown): value is OutboxCategory {
+  return value === ACCOUNT_CATEGORY || isEmailCategory(value);
+}

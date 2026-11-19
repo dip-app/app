@@ -1,0 +1,15 @@
+TE DAMOS LA BIENVENIDA A DIP
+
+¡Hola, Sam! Te uniste a DIP en Acme Robotics. Así puedes empezar:
+
+- Planea eventos y temas semanales en el portal de administración.
+- Únete a un evento que te guste o invita a un compañero.
+- Elige tus intereses en Perfil para ver primero los eventos que van contigo.
+
+Abrir el portal de administración: https://letsdip.work/admin/
+
+--
+Recibes este correo porque te uniste a DIP en Acme Robotics.
+Cancelar suscripción: https://letsdip.work/u/sample-token
+Administrar en DIP: Perfil > Notificaciones
+Enviado por DIP · ¿Preguntas? support@letsdip.work

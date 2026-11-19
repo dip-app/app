@@ -14,6 +14,7 @@ import { handleOpenPixel } from "../application/openPixel";
 import { handleUnsubscribe } from "../application/unsubscribe";
 import { handleWebhook } from "../application/webhook";
 import { onEventUpdatedForInvites, onRsvpForInvite, type CalendarInviteDeps } from "../application/calendarInvites";
+import { onMemberCreatedForWelcome } from "../application/welcome";
 import { icsAttachmentFor } from "../domain/ics";
 import { OUTBOX_COLLECTION } from "../domain/outbox";
 import { renderEmail, validateVariables } from "../domain/templates/render";
@@ -151,6 +152,26 @@ export const calendarInviteOnEventUpdated = onDocumentUpdated(
     if (stats.recipients > 0) logger.info("calendar invite event update", { companyId, eventId, ...stats });
   });
 
+/**
+ * Member created (first membership resolve writes `users/{uid}` once) -> one welcome email (account category). A no-op
+ * while EMAIL_ENABLED is off or the company has no `emailSettings` switch on; never retried into a second email (the
+ * outbox id is deterministic).
+ */
+export const welcomeEmailOnMemberCreated = onDocumentCreated(
+  { document: "users/{userId}", region: REGION, retry: true, timeoutSeconds: 30, memory: "256MiB", maxInstances: 10 },
+  async (event) => {
+    if (!event.data) return;
+    const { db, store } = stores();
+    const outcome = await onMemberCreatedForWelcome({
+      ...emailChannelDependencies(), companies: store.companies,
+      companyName: async (companyId) => {
+        const name: unknown = (await db.collection("companies").doc(companyId).get()).get("name");
+        return typeof name === "string" ? name : null;
+      },
+    }, { uid: event.params.userId, data: event.data.data() });
+    if (outcome.enqueued) logger.info("welcome email queued", { outboxId: outcome.id });
+  });
+
 /** Outbox document created -> run every send-time gate and send at most once. */
 export const onEmailOutboxCreated = onDocumentCreated(
   {
@@ -162,7 +183,7 @@ export const onEmailOutboxCreated = onDocumentCreated(
     const { db, store, calendar } = stores();
     try {
       await sendOutboxEmail({
-        inviteSequences: calendar.sequences, inviteEligibility: calendar.eligibility,
+        inviteSequences: calendar.sequences, inviteEligibility: calendar.eligibility, invitees: store.invitees, inviteOptOuts: store.invitees,
         outbox: store.outbox, recipients: store.recipients, companies: store.companies, suppressions: store.suppressions,
         caps: store.caps, preferences: store.preferences, provider: provider(db), renderer, clock: { now: () => new Date() },
         config: emailConfig(),
@@ -194,7 +215,7 @@ export const emailUnsubscribeV1 = onRequest(
     const response = res as unknown as HttpResponseLike;
     try {
       const result = await handleUnsubscribe(
-        { preferences: stores().store.preferences, clock: { now: () => new Date() }, key: unsubscribeKey(), publicOrigin: SHARE_ORIGIN },
+        { preferences: stores().store.preferences, inviteOptOuts: stores().store.invitees, clock: { now: () => new Date() }, key: unsubscribeKey(), publicOrigin: SHARE_ORIGIN },
         { method: req.method, path: req.path, body: req.body, contentType: req.get("content-type") },
       );
       response.status(result.status).set(result.headers).send(result.body);

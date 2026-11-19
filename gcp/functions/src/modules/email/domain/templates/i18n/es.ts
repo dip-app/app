@@ -94,6 +94,36 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.challenge.points": "{points, plural, one {+{points} punto} other {+{points} puntos}}",
   "email.challenge.note": "Revisa los comentarios y vuelve a enviarla.",
 
+  "email.cta.getApp": "Obtener DIP",
+  "email.cta.openApp": "Abrir DIP",
+  "email.cta.portal": "Abrir el portal de administración",
+  "email.footer.unsubscribeInvites": "Dejar de recibir invitaciones",
+
+  "email.rosterInvite.heading": "{reminder, select, yes {Tu invitación a DIP} other {Te invitaron a DIP}}",
+  "email.rosterInvite.subject": "{reminder, select, yes {Recordatorio: únete a {title} en DIP} other {{named, select, yes {{who} te invitó a unirte a {title} en DIP} other {Te invitaron a unirte a {title} en DIP}}}}",
+  "email.rosterInvite.preheader": "{named, select, yes {{who} te dio acceso a DIP en {company}.} other {Ya tienes acceso a DIP en {company}.}}",
+  "email.rosterInvite.lead": "{named, select, yes {{who} te dio acceso a DIP, donde {company} organiza eventos y actividades de equipo.} other {Ya tienes acceso a DIP, donde {company} organiza eventos y actividades de equipo.}}",
+  "email.rosterInvite.note": "{staff, select, yes {Abre el portal de administración e inicia sesión con Google usando {address}. Tu rol ya está asignado.} other {Descarga la app DIP e inicia sesión con Google usando {address}. Tus equipos y datos ya están listos.}}",
+  "email.rosterInvite.thisAddress": "esta dirección de correo",
+  "email.rosterInvite.ignore": "¿No esperabas este correo? Puedes ignorarlo.",
+  "email.rosterInvite.reason": "{named, select, yes {Recibes este correo porque {who} te agregó a DIP en {company}.} other {Recibes este correo porque {company} te agregó a DIP.}}",
+
+  "email.welcome.heading": "Te damos la bienvenida a DIP",
+  "email.welcome.subject": "Te damos la bienvenida a DIP en {title}",
+  "email.welcome.preheader": "Te uniste a DIP en {company}. Así puedes empezar.",
+  "email.welcome.lead": "Te uniste a DIP en {company}. Así puedes empezar:",
+  "email.welcome.step.portal": "Planea eventos y temas semanales en el portal de administración.",
+  "email.welcome.step.join": "Únete a un evento que te guste o invita a un compañero.",
+  "email.welcome.step.interests": "Elige tus intereses en Perfil para ver primero los eventos que van contigo.",
+  "email.welcome.reason": "Recibes este correo porque te uniste a DIP en {company}.",
+
+  "email.bugResolved.heading": "Gracias por tu reporte",
+  "email.bugResolved.subject": "Se resolvió el problema que reportaste",
+  "email.bugResolved.preheader": "El problema que reportaste el {day} se marcó como resuelto.",
+  "email.bugResolved.lead": "El problema que reportaste el {day} se marcó como resuelto. Gracias por ayudarnos a mejorar DIP.",
+  "email.bugResolved.note": "¿Lo sigues viendo? Repórtalo de nuevo desde la app: agita tu teléfono o ve a Perfil > Reportar un problema.",
+  "email.bugResolved.reason": "Recibes este correo porque enviaste un reporte de problema en DIP.",
+
   "email.ics.description": "Abrir en DIP: {url}",
   "email.ics.alarm": "{title} empieza pronto",
 

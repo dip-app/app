@@ -1,0 +1,14 @@
+TU INVITACIÓN A DIP
+
+¡Hola! Ya tienes acceso a DIP, donde Acme Robotics organiza eventos y actividades de equipo.
+
+Abre el portal de administración e inicia sesión con Google usando jordan.lee@acme.com. Tu rol ya está asignado.
+
+Abrir el portal de administración: https://letsdip.work/admin/
+
+¿No esperabas este correo? Puedes ignorarlo.
+
+--
+Recibes este correo porque Acme Robotics te agregó a DIP.
+Dejar de recibir invitaciones: https://letsdip.work/u/sample-token
+Enviado por DIP · ¿Preguntas? support@letsdip.work

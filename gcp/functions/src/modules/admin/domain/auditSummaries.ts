@@ -11,6 +11,7 @@ export const AUDIT_SUMMARY_KEYS = [
   "roster.update",
   "roster.revoke",
   "roster.resend",
+  "roster.inviteEmail",
   "roster.backfill",
   "roster.claim",
   "attendee.remove",

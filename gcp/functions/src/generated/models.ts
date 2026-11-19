@@ -644,6 +644,8 @@ export interface RosterEntry {
   resendCount?: number;
   lastResentAt?: string;
   lastResentBy?: string;
+  inviteEmailCount?: number;
+  lastInviteEmailAt?: string;
 }
 
 export interface AdminMemberSummary {
@@ -1111,6 +1113,21 @@ export interface ResendRosterInviteResponse {
   message: string;
 }
 
+export interface SendRosterInviteEmailRequest {
+  contractVersion: number;
+  companyId: string;
+  requestId: string;
+  entryId: string;
+}
+
+export interface SendRosterInviteEmailResponse {
+  contractVersion: number;
+  entryId: string;
+  status: "invited";
+  inviteEmailCount: number;
+  lastInviteEmailAt: string;
+}
+
 export interface BackfillRosterRequest {
   contractVersion: number;
   companyId: string;
@@ -1152,6 +1169,7 @@ export interface ListRosterResponse {
   entries: Array<RosterEntry>;
   nextPageToken?: string;
   counts?: RosterCounts;
+  inviteEmail?: boolean;
 }
 
 export interface AdminBugReportDiagnostics {

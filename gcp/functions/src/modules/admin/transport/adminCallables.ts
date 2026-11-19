@@ -15,7 +15,8 @@ import { getCompanyInsights } from "../application/insights";
 import { removeEventPhoto, removeEventPhotoComment } from "../application/moderation";
 import type { AdminDeps, Caller } from "../application/ports";
 import { backfillRosterCallable } from "../application/backfillRoster";
-import { listRoster, resendRosterInvite, revokeRosterEntry, upsertRosterEntry } from "../application/roster";
+import { listRoster, resendRosterInvite, revokeRosterEntry, sendRosterInviteEmail, upsertRosterEntry } from "../application/roster";
+import { EMAIL_ENABLED } from "../../email/transport/emailFunctions";
 import { AdminError, errorDiagnostics } from "../domain/errors";
 import { errorMessageDetails } from "../../i18n";
 import {
@@ -58,6 +59,8 @@ function defaultDeps(): AdminDeps {
   return {
     store: new FirestoreAdminStore(db), objects: new StorageObjects(getStorage(app)), sessions: new AuthSessions(app),
     limiter: new FirestoreAdminRateLimiter(db), now: () => new Date(), newId: randomId, pushes: routedPushNotifier(app),
+    // The emulator never reaches a provider (emulatorEmailOutbox), so email counts as on there, like the email module.
+    email: { enabled: () => EMAIL_ENABLED.value() || process.env.FUNCTIONS_EMULATOR === "true" },
   };
 }
 
@@ -84,6 +87,7 @@ export const upsertTeamV1 = onCall(base, command("upsertTeamV1", upsertTeam));
 export const upsertRosterEntryV1 = onCall(base, command("upsertRosterEntryV1", upsertRosterEntry));
 export const revokeRosterEntryV1 = onCall(base, command("revokeRosterEntryV1", revokeRosterEntry));
 export const resendRosterInviteV1 = onCall(base, command("resendRosterInviteV1", resendRosterInvite));
+export const sendRosterInviteEmailV1 = onCall(base, command("sendRosterInviteEmailV1", sendRosterInviteEmail));
 export const listRosterV1 = onCall(base, command("listRosterV1", listRoster));
 export const backfillRosterV1 = onCall(heavy, command("backfillRosterV1", backfillRosterCallable));
 export const importEmployeesV1 = onCall(heavy, command("importEmployeesV1", importEmployees));

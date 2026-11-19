@@ -1,7 +1,8 @@
 import { escapeHtml } from "../../share/domain/sharePage";
-import { EMAIL_CATEGORIES, type EmailCategory } from "../domain/categories";
+import { ACCOUNT_CATEGORY, EMAIL_CATEGORIES, type EmailCategory } from "../domain/categories";
+import { rosterEntryOf } from "../domain/templates/types";
 import { MAX_TOKEN_LENGTH, verifyUnsubscribeToken } from "../domain/unsubscribeToken";
-import type { Clock, EmailPreferencesStore } from "./ports";
+import type { Clock, EmailPreferencesStore, InviteOptOutStore } from "./ports";
 
 /**
  * Unsubscribe endpoint logic (docs/design/stretch/email.md, Preferences and unsubscribe). Framework free so it is
@@ -9,7 +10,11 @@ import type { Clock, EmailPreferencesStore } from "./ports";
  * preferences (RFC 8058 one-click or the page form). No redirects, no cookies, no auth, one body for every failure.
  */
 
-export interface UnsubscribeDeps { preferences: EmailPreferencesStore; clock: Clock; key: string; publicOrigin: string }
+export interface UnsubscribeDeps {
+  preferences: EmailPreferencesStore; clock: Clock; key: string; publicOrigin: string;
+  /** Roster invitation opt-outs; without it an invitation link changes nothing (still answers the same page). */
+  inviteOptOuts?: InviteOptOutStore;
+}
 export interface UnsubscribeRequest { method: string; path: string; body: unknown; contentType: string | undefined }
 export interface UnsubscribeResponse { status: number; headers: Record<string, string>; body: string }
 
@@ -61,6 +66,22 @@ function confirmPage(category: EmailCategory, token: string): string {
     `<button class="secondary" type="submit" name="scope" value="all">Unsubscribe from all DIP emails</button></form>${SETTINGS_NOTE}`);
 }
 
+/** Account emails to a member (welcome, problem report resolved) have no switch of their own: the link stops all DIP emails. */
+function accountConfirmPage(token: string): string {
+  return page("Unsubscribe", `<h1>Unsubscribe from DIP emails</h1><p>Stop receiving all emails from DIP?</p>` +
+    `<form method="post" action="/u/${escapeHtml(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click">` +
+    `<button class="primary" type="submit" name="scope" value="all">Unsubscribe from all DIP emails</button></form>${SETTINGS_NOTE}`);
+}
+
+/** Roster invitations go to people without an account: the link stops invitation emails to this address. */
+function invitationConfirmPage(token: string): string {
+  return page("Unsubscribe", `<h1>Stop DIP invitations</h1><p>Stop receiving emails inviting you to join DIP?</p>` +
+    `<form method="post" action="/u/${escapeHtml(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click">` +
+    `<button class="primary" type="submit">Stop invitation emails</button></form>`);
+}
+
+const INVITATIONS_DONE_PAGE = page("You are unsubscribed", `<h1>You are unsubscribed</h1><p>We will not send you DIP invitation emails anymore.</p>`);
+
 function extractToken(path: string): string | null {
   if (typeof path !== "string") return null;
   const segments = path.split("?")[0]!.split("/").filter((s) => s.length > 0);
@@ -98,13 +119,27 @@ export async function handleUnsubscribe(deps: UnsubscribeDeps, req: UnsubscribeR
   const verified = token === null ? null : verifyUnsubscribeToken(deps.key, token, Math.floor(deps.clock.now().getTime() / 1000));
   if (token === null || verified === null || !verified.ok) return respond(400, INVALID_PAGE);
   const { uid, category } = verified.claims;
-  if (method !== "POST") return respond(200, confirmPage(category, token));
+  const rosterEntry = rosterEntryOf(uid);
+  if (rosterEntry !== null && category !== ACCOUNT_CATEGORY) return respond(400, INVALID_PAGE);
+  if (method !== "POST") {
+    if (rosterEntry !== null) return respond(200, invitationConfirmPage(token));
+    return respond(200, category === ACCOUNT_CATEGORY ? accountConfirmPage(token) : confirmPage(category, token));
+  }
 
   const form = parseForm(req.body);
   const all = form.get("scope") === "all";
   const oneClick = form.get("List-Unsubscribe") === "One-Click";
   // A POST must be an explicit unsubscribe action; anything else changes nothing.
   if (!all && !oneClick) return respond(400, INVALID_PAGE);
+  if (rosterEntry !== null) {
+    // The entry id is the address hash, so the opt-out follows the address (and survives a revoke and re-invite).
+    await deps.inviteOptOuts?.optOut(rosterEntry, deps.clock.now());
+    return respond(200, INVITATIONS_DONE_PAGE);
+  }
+  if (category === ACCOUNT_CATEGORY) {
+    await deps.preferences.disable(uid, EMAIL_CATEGORIES);
+    return respond(200, DONE_PAGE);
+  }
   // The result (member missing) is deliberately ignored so account existence is not revealed.
   await deps.preferences.disable(uid, all ? EMAIL_CATEGORIES : [category]);
   return respond(200, DONE_PAGE);
