@@ -277,7 +277,7 @@ struct DIPDetailActionRow: View {
             if !joinInRow {
                 if showsParticipation, let invite {
                     Button(action: invite.action) {
-                        label(String(localized: "detail.invite.title", defaultValue: "Invite Coworker", comment: "Pill that opens the coworker picker to invite someone to the activity"), background: DIPTokens.Color.actionPrimary.swiftUIColor) {
+                        label(String(localized: "detail.invite.title", defaultValue: "Invite Others", comment: "Pill that opens the coworker picker to invite someone to the activity"), background: DIPTokens.Color.actionPrimary.swiftUIColor) {
                             Image(systemName: "person.badge.plus").resizable().scaledToFit()
                                 .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
                         }
@@ -334,8 +334,8 @@ struct DIPDetailActionRow: View {
         .onChange(of: invite != nil) { _, available in
             // The first pill swaps in place; tell VoiceOver users, who cannot see the cross-fade.
             AccessibilityNotification.Announcement(available
-                ? String(localized: "detail.invite.announce.available", defaultValue: "Invite Coworker is available", comment: "VoiceOver announcement when the invite pill appears")
-                : String(localized: "detail.invite.announce.unavailable", defaultValue: "Invite Coworker is no longer available. Directions is shown instead.", comment: "VoiceOver announcement when the invite pill is replaced by Directions")).post()
+                ? String(localized: "detail.invite.announce.available", defaultValue: "Invite Others is available", comment: "VoiceOver announcement when the invite pill appears")
+                : String(localized: "detail.invite.announce.unavailable", defaultValue: "Invite Others is no longer available. Directions is shown instead.", comment: "VoiceOver announcement when the invite pill is replaced by Directions")).post()
         }
     }
 
@@ -361,6 +361,6 @@ struct DIPDetailActionRow: View {
     }
 
     private func label<Icon: View>(_ title: String, background: Color, @ViewBuilder icon: @escaping () -> Icon) -> some View {
-        DIPActionPill(title: title, color: background, style: .solid, icon: icon)
+        DIPActionPill(title: title, color: background, style: .solid, whiteLabel: background == shareColor, icon: icon)
     }
 }

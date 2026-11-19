@@ -8638,13 +8638,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Invite Coworker is available"
+            "value" : "Invite Others is available"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invitar a un colega está disponible"
+            "value" : "Invitar a otros está disponible"
           }
         },
         "tlh" : {
@@ -8662,13 +8662,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Invite Coworker is no longer available. Directions is shown instead."
+            "value" : "Invite Others is no longer available. Directions is shown instead."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invitar a un colega ya no está disponible. Se muestra Cómo llegar en su lugar."
+            "value" : "Invitar a otros ya no está disponible. Se muestra Cómo llegar en su lugar."
           }
         },
         "tlh" : {
@@ -8686,13 +8686,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Invite Coworker"
+            "value" : "Invite Others"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invitar a un colega"
+            "value" : "Invitar a otros"
           }
         },
         "tlh" : {
