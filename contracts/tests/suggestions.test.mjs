@@ -35,6 +35,14 @@ test('EmailCategoryPreferences accepts admin_suggestions as a boolean only', () 
   rejects('PushCategoryPreferences', {admin_suggestions: true});
 });
 
+test('EmailCategoryPreferences accepts weekly_themes and admin_digest as booleans only, never as push categories', () => {
+  accepts('EmailCategoryPreferences', {weekly_themes: true, admin_digest: false});
+  rejects('EmailCategoryPreferences', {weekly_themes: 'yes'});
+  rejects('EmailCategoryPreferences', {admin_digest: 1});
+  rejects('PushCategoryPreferences', {weekly_themes: true});
+  rejects('PushCategoryPreferences', {admin_digest: true});
+});
+
 test('SuggestionsEmailAction and SuggestionsEmailSchedule are strict', () => {
   for (const action of ['status', 'preview', 'sendTest', 'subscribe', 'unsubscribe', 'setSchedule']) accepts('SuggestionsEmailAction', action);
   for (const action of ['send', 'Status', '']) rejects('SuggestionsEmailAction', action);

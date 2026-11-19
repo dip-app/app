@@ -47,6 +47,9 @@ export interface EventSummary {
   status: string;
   startTime: Date;
   endTime: Date;
+  /** Venue display name and one-line address, when the event has them (reminder emails show them). */
+  venueName?: string;
+  venueAddress?: string;
 }
 
 export interface EventReader {

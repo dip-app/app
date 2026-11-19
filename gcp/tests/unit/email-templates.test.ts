@@ -15,9 +15,10 @@ function render(c: (typeof PREVIEW_CASES)[number]) {
 
 /**
  * Cases of the event and challenge emails; the admin weekly ideas email has its own footer and layout
- * (email-admin-suggestions.test.ts) and the account emails their own footer and button (email-account.test.ts).
+ * (email-admin-suggestions.test.ts), the account emails their own footer and button (email-account.test.ts), and the
+ * opt-in weekly theme and admin digest emails have no event card (email-optin.test.ts).
  */
-const ACCOUNT_TEMPLATES = new Set(["admin_suggestions", "roster_invite", "welcome", "bug_report_resolved"]);
+const ACCOUNT_TEMPLATES = new Set(["admin_suggestions", "roster_invite", "welcome", "bug_report_resolved", "weekly_theme", "admin_digest"]);
 const LEGACY_CASES = PREVIEW_CASES.filter((c) => !ACCOUNT_TEMPLATES.has(c.template));
 
 const EVIL = '<script>alert("x")</script> & "q"';

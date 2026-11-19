@@ -41,7 +41,11 @@ export interface DeliveryLog {
 }
 
 /** A weekly theme (`companies/{c}/challenges/{id}`, `type: "weekly"`) as the scheduler sees it. */
-export interface WeeklyTheme { companyId: string; challengeId: string; title: string; startDate: Date; endDate: Date }
+export interface WeeklyTheme {
+  companyId: string; challengeId: string; title: string; startDate: Date; endDate: Date;
+  /** Optional theme details for the announcement email (the push uses only the title and end date). */
+  description?: string; coverImageURL?: string; pointsReward?: number;
+}
 
 export interface WeeklyThemeReader {
   /** Weekly challenges (all companies) whose startDate is in (from, to]. */

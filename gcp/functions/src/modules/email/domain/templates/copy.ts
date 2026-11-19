@@ -2,7 +2,7 @@ import { SHARE_ORIGIN, collapseWhitespace } from "../../../share/domain/sharePag
 import { intlTag, splitAround, type Locale } from "../../../i18n";
 import type { EmailCategory } from "../categories";
 import { tEmail, type EmailMessageKey } from "./i18n";
-import type { EventFacts, TemplateId, TemplateVariables } from "./types";
+import type { EventFacts, SuggestionTheme, TemplateId, TemplateVariables } from "./types";
 
 /** Deep link to one event; the Hosting rewrite opens the app or the share page. */
 export function eventURL(eventId: string): string {
@@ -25,6 +25,8 @@ export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
   discovery: categoryReason("discovery"),
   calendar_invites: categoryReason("calendar_invites"),
   admin_suggestions: categoryReason("admin_suggestions"),
+  weekly_themes: categoryReason("weekly_themes"),
+  admin_digest: categoryReason("admin_digest"),
 };
 
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */
@@ -54,13 +56,58 @@ export interface EmailCopy {
   /**
    * Account emails only: the footer reason sentence (replaces "You are getting this because <category> emails are on.")
    * and whether the "Manage in DIP: Profile > Notifications" path is shown (a roster invitee has no account yet).
+   * `manageLink` replaces that path with a link (the admin digest is managed in the admin portal).
    */
-  footer?: { reason: string; manage: boolean; unsubscribeLabel?: string };
+  footer?: { reason: string; manage: boolean; unsubscribeLabel?: string; manageLink?: { label: string; url: string } };
+  /**
+   * Theme card (weekly_theme): catalog art tile on the theme accent, the title in the heading font, the description and
+   * up to two short lines (dates, points). `artURL` null renders the card without art.
+   */
+  theme?: { artURL: string | null; accent: string; title: string; body: string | null; lines: string[] };
+  /** Labeled bullet lists after the lead (admin_digest). */
+  sections?: Array<{ label: string; items: string[] }>;
 }
 
 /** Sign-in links of the account emails: members use the app (the site links the App Store), organizers and admins the portal. */
 export const APP_URL = `${SHARE_ORIGIN}/`;
 export const PORTAL_URL = `${SHARE_ORIGIN}/admin/`;
+/** Admin digest links: the roster page and Your settings, where the digest is switched on and off. */
+export const ROSTER_URL = `${SHARE_ORIGIN}/admin/roster/`;
+export const SETTINGS_URL = `${SHARE_ORIGIN}/admin/account/`;
+
+/** Weekly theme accents (apps/admin/public/img/themes/ACCENTS.md), also the art tile background while images load. */
+export const THEME_ACCENT: Readonly<Record<SuggestionTheme, string>> = {
+  fitness: "#FB72E4", outdoors: "#6BE5D0", food: "#FF7C73", arts: "#7B88FA", games: "#FFCC3E",
+  music: "#66D9FF", learning: "#6BFF9B", volunteering: "#1E212B", wellness: "#FF7C73",
+};
+/** Neutral tile color for a theme without known art. */
+const NEUTRAL_ACCENT = "#E8EAF8";
+
+/** Art tile of a catalog theme (the same 224x224 tiles as the ideas email, `ideas/<key>.png`). */
+export function themeArtURL(key: SuggestionTheme): string {
+  return `${SHARE_ORIGIN}/img/email/ideas/${key}.png`;
+}
+
+/** "Thursday, November 19" for a `YYYY-MM-DD` day key (a calendar day, so formatted in UTC). */
+export function dayLabel(dayKey: string, locale: Locale): string {
+  const date = new Date(`${dayKey}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return dayKey;
+  return new Intl.DateTimeFormat(intlTag(locale), { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }).format(date);
+}
+
+/** "2:15 PM EST" (Spanish "2:15 p.m. EST"): a clock time in the zone with the US zone abbreviation, as the event emails show it. */
+function clockWithZone(iso: string, zone: string, locale: Locale): string {
+  const date = new Date(iso);
+  const clock = new Intl.DateTimeFormat(intlTag(locale), { hour: "numeric", minute: "2-digit", timeZone: zone }).format(date);
+  const abbr = new Intl.DateTimeFormat("en-US", { timeZoneName: "short", hour: "numeric", timeZone: zone }).formatToParts(date).find((p) => p.type === "timeZoneName")?.value ?? zone;
+  return `${clock} ${abbr}`.replace(/[\u00a0\u202f]/g, " ");
+}
+
+/** "Mon, Nov 23" in the zone; the end is exclusive, so a midnight end shows the day before. */
+function themeDay(iso: string, zone: string, locale: Locale, exclusiveEnd = false): string {
+  const date = new Date(new Date(iso).getTime() - (exclusiveEnd ? 1 : 0));
+  return new Intl.DateTimeFormat(intlTag(locale), { weekday: "short", month: "short", day: "numeric", timeZone: zone }).format(date).replace(/[\u00a0\u202f]/g, " ");
+}
 
 const isStaff = (role: string): boolean => role === "organizer" || role === "admin";
 
@@ -326,6 +373,68 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         ctaLabel: staff ? t("email.cta.portal") : t("email.cta.openApp"),
         ctaURL: staff ? PORTAL_URL : APP_URL,
         footer: { reason: t("email.welcome.reason", { company }), manage: true },
+      };
+    }
+    case "weekly_theme": {
+      const e = variables as TemplateVariables["weekly_theme"];
+      const title = clean(e.themeTitle);
+      const lines = [t("email.weeklyTheme.dates", { start: themeDay(e.startDate, zone, locale), end: themeDay(e.endDate, zone, locale, true) })];
+      if (typeof e.pointsReward === "number" && e.pointsReward > 0) lines.push(t("email.weeklyTheme.points", { points: e.pointsReward }));
+      return {
+        heading: t("email.weeklyTheme.heading"),
+        subject: subject(locale, "email.weeklyTheme.subject", title),
+        preheader: t("email.weeklyTheme.preheader", { title }),
+        lead: t("email.weeklyTheme.lead"),
+        badge: null,
+        event: null,
+        highlight: null,
+        theme: {
+          artURL: e.themeKey ? themeArtURL(e.themeKey) : null,
+          accent: e.themeKey ? THEME_ACCENT[e.themeKey] : NEUTRAL_ACCENT,
+          title,
+          body: e.themeDescription ? clean(e.themeDescription) : null,
+          lines,
+        },
+        note: t("email.weeklyTheme.note"),
+        ctaLabel: t("email.cta.openApp"),
+        ctaURL: APP_URL,
+      };
+    }
+    case "admin_digest": {
+      const e = variables as TemplateVariables["admin_digest"];
+      const day = dayLabel(e.dayKey, locale);
+      const summaryParts: string[] = [];
+      if (e.joined.count > 0) summaryParts.push(t("email.adminDigest.summary.joined", { count: e.joined.count }));
+      if (e.importCount > 0) summaryParts.push(t("email.adminDigest.summary.imports", { count: e.importCount }));
+      const summary = joinWords(summaryParts, locale);
+      const sections: NonNullable<EmailCopy["sections"]> = [];
+      if (e.joined.count > 0) {
+        const names = e.joined.names.map(clean);
+        const rest = e.joined.count - names.length;
+        const items = names.length > 0
+          ? [...names, ...(rest > 0 ? [t("email.adminDigest.joined.more", { count: rest })] : [])]
+          : [t("email.adminDigest.joined.unnamed", { count: e.joined.count })];
+        sections.push({ label: t("email.adminDigest.joined.label", { count: e.joined.count }), items });
+      }
+      if (e.importCount > 0) {
+        const items = e.imports.map((i) => t("email.adminDigest.import", { time: clockWithZone(i.finishedAt, zone, locale), invited: i.invited, updated: i.updated, failed: i.failed }));
+        const rest = e.importCount - e.imports.length;
+        if (rest > 0) items.push(t("email.adminDigest.imports.more", { count: rest }));
+        sections.push({ label: t("email.adminDigest.imports.label", { count: e.importCount }), items });
+      }
+      return {
+        heading: t("email.adminDigest.heading"),
+        subject: fitSubject(t("email.adminDigest.subject", { day }), ""),
+        preheader: t("email.adminDigest.preheader", { summary: summary.charAt(0).toLocaleUpperCase(intlTag(locale)) + summary.slice(1), day }),
+        lead: t("email.adminDigest.lead", { day }),
+        badge: null,
+        event: null,
+        highlight: null,
+        note: null,
+        sections,
+        ctaLabel: t("email.adminDigest.cta"),
+        ctaURL: ROSTER_URL,
+        footer: { reason: t("email.adminDigest.reason"), manage: false, manageLink: { label: t("email.adminDigest.manage"), url: SETTINGS_URL } },
       };
     }
     case "bug_report_resolved": {

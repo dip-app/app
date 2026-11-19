@@ -3,13 +3,14 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
+  api: { listBugReports: () => Promise.resolve({ counts: null }), emailSwitches: () => Promise.resolve({ weekly_themes: false, admin_digest: false }) },
   pathname: "/overview/",
   session: { uid: "u1", name: "Ada Lovelace", email: "ada@example.com", companyId: "c", role: "admin" } as { uid: string; name: string; email: string; companyId: string; role: string },
 }));
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname, useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock("../AppProvider", () => ({ useApp: () => ({ session: state.session, signOut: vi.fn(), api: { listBugReports: vi.fn().mockResolvedValue({ counts: null }) } }) }));
+vi.mock("../AppProvider", () => ({ useApp: () => ({ session: state.session, signOut: vi.fn(), api: state.api }) }));
 vi.mock("../SuggestionsEmail", () => ({ SuggestionsEmail: () => <div data-testid="email-settings" /> }));
 
 import { Shell } from "../Shell";

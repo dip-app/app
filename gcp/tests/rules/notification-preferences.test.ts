@@ -92,6 +92,22 @@ test("email.calendar_invites accepts a boolean only and is never a push category
   await assertFails(setDoc(doc(client, path), prefs({ push: { calendar_invites: true } })));
 });
 
+test("email.weekly_themes and email.admin_digest accept a boolean only, from the owner only, and are never push categories", async () => {
+  const client = db("alice");
+  await assertSucceeds(setDoc(doc(client, path), { contractVersion: 1, email: { weekly_themes: true }, updatedAt: serverTimestamp() }, { merge: true }));
+  await assertSucceeds(setDoc(doc(client, path), { contractVersion: 1, email: { admin_digest: true }, updatedAt: serverTimestamp() }, { merge: true }));
+  await assertSucceeds(updateDoc(doc(client, path), { "email.weekly_themes": false, "email.admin_digest": false, updatedAt: serverTimestamp() }));
+  for (const key of ["weekly_themes", "admin_digest"]) {
+    await assertFails(setDoc(doc(client, path), prefs({ email: { [key]: "yes" } })));
+    await assertFails(setDoc(doc(client, path), prefs({ email: { [key]: 1 } })));
+    await assertFails(setDoc(doc(client, path), prefs({ push: { [key]: true } })));
+    // Nobody else can switch it on for the owner: same company, other company, unverified or signed out.
+    for (const other of [db("bob"), db("carol"), db("alice", false), env.unauthenticatedContext().firestore()]) {
+      await assertFails(setDoc(doc(other, path), { contractVersion: 1, email: { [key]: true }, updatedAt: serverTimestamp() }, { merge: true }));
+    }
+  }
+});
+
 test("other settings documents, delete and list are denied", async () => {
   const client = db("alice");
   await assertFails(getDoc(doc(client, "users/alice/settings/other")));

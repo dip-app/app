@@ -826,7 +826,7 @@
     "EmailCategoryPreferences": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Per-category email switches for the categories email offers (never chat or social); a missing key means the server-side default.",
+      "description": "Per-category email switches for the categories email offers (never chat or social); a missing key means the server-side default (off for reminders, discovery, admin_suggestions, weekly_themes and admin_digest).",
       "properties": {
         "invites": {
           "type": "boolean"
@@ -848,6 +848,14 @@
         },
         "admin_suggestions": {
           "type": "boolean"
+        },
+        "weekly_themes": {
+          "type": "boolean",
+          "description": "Weekly theme announcement email when a new weekly theme starts. Default off: only members who turned it on get it."
+        },
+        "admin_digest": {
+          "type": "boolean",
+          "description": "Daily roster digest for admins (invited people who joined, imports that finished). Default off; admins only."
         }
       },
       "required": []

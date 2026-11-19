@@ -9,25 +9,31 @@ import { LEVELS_FOR, type PushKind } from "./subscription";
  */
 export const NOTIFICATION_CATEGORIES = [
   "invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "calendar_invites", "admin_suggestions",
+  "weekly_themes", "admin_digest",
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
 export const NOTIFICATION_CHANNELS = ["push", "email"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
-/** Categories each channel offers. `chat` and `social` are never emailed; `calendar_invites` and `admin_suggestions` are email only. */
+/**
+ * Categories each channel offers. `chat` and `social` are never emailed; `calendar_invites`, `admin_suggestions`,
+ * `weekly_themes` (weekly theme announcement email) and `admin_digest` (daily roster digest for admins) are email only.
+ */
 export const CHANNEL_CATEGORIES: Readonly<Record<NotificationChannel, readonly NotificationCategory[]>> = {
   push: ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery"],
-  email: ["invites", "event_updates", "reminders", "challenges", "discovery", "calendar_invites", "admin_suggestions"],
+  email: ["invites", "event_updates", "reminders", "challenges", "discovery", "calendar_invites", "admin_suggestions", "weekly_themes", "admin_digest"],
 };
 
 /**
  * Defaults applied when the member has no preference document or no key for a category. Evaluated
- * server-side on every read, so changing a default needs no data migration.
+ * server-side on every read, so changing a default needs no data migration. Company-wide fan-outs (`weekly_themes`)
+ * and admin digests (`admin_suggestions`, `admin_digest`) are opt-in: false here, and a category missing from this
+ * map also resolves to false (`=== true` in resolvePreferences).
  */
 export const DEFAULT_PREFERENCES: Readonly<Record<NotificationChannel, Readonly<Partial<Record<NotificationCategory, boolean>>>>> = {
   push: { invites: true, event_updates: true, reminders: true, chat: true, challenges: true, social: false, discovery: false },
-  email: { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, calendar_invites: true, admin_suggestions: false },
+  email: { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, calendar_invites: true, admin_suggestions: false, weekly_themes: false, admin_digest: false },
 };
 
 /**
@@ -62,6 +68,10 @@ export const NOTIFICATION_KINDS = {
   /** Calendar invite emails (METHOD:REQUEST and METHOD:CANCEL .ics); email only, no push or in-app twin. */
   calendar_invite: { category: "calendar_invites", eventLevel: null, inAppType: null },
   admin_suggestions: { category: "admin_suggestions", eventLevel: null, inAppType: null },
+  /** Weekly theme announcement email (email only; the `weekly_theme` push stays under `challenges`). */
+  weekly_theme_email: { category: "weekly_themes", eventLevel: null, inAppType: null },
+  /** Daily roster digest for admins (email only). */
+  admin_digest: { category: "admin_digest", eventLevel: null, inAppType: null },
 } as const satisfies Record<string, NotificationKindSpec>;
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;
 

@@ -215,8 +215,9 @@ export async function sendDueRemindersViaRouter(
       const stats = await deliverNotification(deps, {
         id, kind: "reminder", companyId: event.companyId, recipients, push, pushFor: build,
         inApp: { title: shorten(event.title, 60), body: push.body, targetType: "event", targetId: event.eventId },
+        // Venue name and address as the event card's Where row; the button opens the event (`/e/<eventId>`).
         email: reminderEmail(event.eventId, window, event.startTime,
-          eventFacts({ eventId: event.eventId, title: event.title, startTime: event.startTime, endTime: event.endTime })),
+          eventFacts({ eventId: event.eventId, title: event.title, startTime: event.startTime, endTime: event.endTime, venueName: event.venueName, venueAddress: event.venueAddress })),
       });
       if (stats.duplicate) skipped++;
       sent += stats.sent;

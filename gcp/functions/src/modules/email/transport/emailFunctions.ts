@@ -15,6 +15,10 @@ import { handleUnsubscribe } from "../application/unsubscribe";
 import { handleWebhook } from "../application/webhook";
 import { onEventUpdatedForInvites, onRsvpForInvite, type CalendarInviteDeps } from "../application/calendarInvites";
 import { onMemberCreatedForWelcome } from "../application/welcome";
+import { runWeeklyThemeEmails } from "../application/weeklyThemeEmails";
+import { runAdminDigests } from "../application/adminDigest";
+import { FirestoreDigestSource } from "../infrastructure/firestoreDigestSource";
+import { FirestoreThemes } from "../../notifications/infrastructure/firestoreThemes";
 import { icsAttachmentFor } from "../domain/ics";
 import { OUTBOX_COLLECTION } from "../domain/outbox";
 import { renderEmail, validateVariables } from "../domain/templates/render";
@@ -170,6 +174,44 @@ export const welcomeEmailOnMemberCreated = onDocumentCreated(
       },
     }, { uid: event.params.userId, data: event.data.data() });
     if (outcome.enqueued) logger.info("welcome email queued", { outboxId: outcome.id });
+  });
+
+/**
+ * Weekly theme announcement email (opt-in `weekly_themes`, default off). Same schedule, lookback and member pager as
+ * `sendWeeklyThemePushes` (Monday 09:00 America/New_York; themes that started in the last 24 hours). A no-op while
+ * EMAIL_ENABLED is off; per company only while `emailSettings/{companyId}.enabled`. Outbox ids make retries send once.
+ */
+export const sendWeeklyThemeEmails = onSchedule(
+  { schedule: "every monday 09:00", timeZone: "America/New_York", region: REGION, retryCount: 1, timeoutSeconds: 540, memory: "512MiB", maxInstances: 1 },
+  async () => {
+    const { db, store } = stores();
+    const themes = new FirestoreThemes(db);
+    const config = emailConfig();
+    const stats = await runWeeklyThemeEmails({
+      themes, members: themes, companies: store.companies, preferences: store.preferences,
+      enqueue: { outbox: store.outbox, clock: { now: () => new Date() }, validate: renderer.validate },
+      config: { enabled: config.enabled }, now: () => new Date(),
+      log: (event, fields) => logger.info(event, fields),
+    });
+    if (stats.failed > 0) logger.warn("weekly theme emails finished with failures", { failed: stats.failed });
+  });
+
+/**
+ * Daily roster digest for admins (opt-in `admin_digest`, default off). Hourly (UTC) like the weekly ideas job; each
+ * company is due from 08:00 to 11:59 in its own zone (`emailSettings/{companyId}.timeZone`) and reports the previous day.
+ */
+export const sendAdminDigestEmails = onSchedule(
+  { schedule: "0 * * * *", timeZone: "Etc/UTC", region: REGION, retryCount: 0, timeoutSeconds: 300, memory: "256MiB", maxInstances: 1 },
+  async () => {
+    const { db, store } = stores();
+    const config = emailConfig();
+    const summary = await runAdminDigests({
+      source: new FirestoreDigestSource(db), companies: store.companies, preferences: store.preferences,
+      enqueue: { outbox: store.outbox, clock: { now: () => new Date() }, validate: renderer.validate },
+      config: { enabled: config.enabled, defaultTimeZone: config.defaultTimeZone },
+      log: (event, fields) => logger.info(event, fields),
+    }, new Date());
+    if (summary.failed > 0) logger.warn("admin digest finished with failures", { failed: summary.failed });
   });
 
 /** Outbox document created -> run every send-time gate and send at most once. */

@@ -26,7 +26,12 @@ export class FirestoreThemes implements WeeklyThemeReader, MemberPager {
       const start = data.startDate instanceof Timestamp ? data.startDate.toDate() : null;
       const end = data.endDate instanceof Timestamp ? data.endDate.toDate() : null;
       if (!start || !end) continue;
-      themes.push({ companyId, challengeId: doc.id, title: data.title, startDate: start, endDate: end });
+      themes.push({
+        companyId, challengeId: doc.id, title: data.title, startDate: start, endDate: end,
+        ...(typeof data.description === "string" ? { description: data.description } : {}),
+        ...(typeof data.coverImageURL === "string" ? { coverImageURL: data.coverImageURL } : {}),
+        ...(typeof data.pointsReward === "number" ? { pointsReward: data.pointsReward } : {}),
+      });
     }
     return themes;
   }

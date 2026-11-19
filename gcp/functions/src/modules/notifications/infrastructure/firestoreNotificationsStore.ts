@@ -1,3 +1,4 @@
+import { venueAddressOf, venueNameOf } from "../application/emailPayload";
 import { FieldPath, FieldValue, Timestamp, type DocumentReference, type Firestore } from "firebase-admin/firestore";
 import type {
   ChangeLogStore, ClaimStore, DeviceDirectory, DeviceRegistry, DeviceRegistryTransaction, DeviceToken, EventReader,
@@ -6,6 +7,15 @@ import type {
 import { mergeChangeLog } from "../domain/changeLog";
 import { isSubscriptionLevel, DEFAULT_LEVEL_ON_JOIN, type SubscriptionLevel } from "../domain/subscription";
 import { MAX_DEVICES_PER_USER } from "../domain/device";
+
+/** Reminder emails show the venue name; the template accepts at most 120 characters (events allow 500), so shorten instead of losing the email. */
+const VENUE_NAME_MAX = 120;
+function shortenVenue(name: string): string {
+  if (name.length <= VENUE_NAME_MAX) return name;
+  const cut = name.slice(0, VENUE_NAME_MAX - 3);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > VENUE_NAME_MAX / 2 ? cut.slice(0, space) : cut).trimEnd()}...`;
+}
 
 const PAGE = 500;
 const GET_ALL_CHUNK = 100;
@@ -146,7 +156,14 @@ export class FirestoreNotificationsStore implements
     const startTime = toDate(data.startTime);
     const endTime = toDate(data.endTime);
     if (!startTime || !endTime || typeof data.status !== "string") return null;
-    return { companyId, eventId, title: typeof data.title === "string" ? data.title : "", status: data.status, startTime, endTime };
+    const rawName = venueNameOf(data);
+    const venueName = typeof rawName === "string" ? shortenVenue(rawName.replace(/\s+/g, " ").trim()) : undefined;
+    const venueAddress = venueAddressOf(data);
+    return {
+      companyId, eventId, title: typeof data.title === "string" ? data.title : "", status: data.status, startTime, endTime,
+      ...(typeof venueName === "string" && venueName.trim().length > 0 ? { venueName } : {}),
+      ...(venueAddress ? { venueAddress } : {}),
+    };
   }
 
   async get(companyId: string, eventId: string): Promise<EventSummary | null> {

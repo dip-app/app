@@ -25,3 +25,6 @@
 .settings-section { display: grid; gap: 16px; min-width: 0; }
 .settings-section-head { display: grid; gap: 4px; h2 { font-size: 22px; margin: 0; } .muted { margin: 0; font-size: 15px; } }
 .settings-notes { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; line-height: 1.5; li { padding-left: 2px; } }
+// Your settings > Other emails: opt-in switches above the notes.
+.other-emails { display: grid; gap: 20px; }
+.settings-switches { display: grid; gap: 12px; }

@@ -56,7 +56,7 @@ The registry has nine categories; seven are offered for push and all seven exist
 | `social` | Comments and photos | off | `photo_comment`, `photo_added` |
 | `discovery` | Suggestions | off | `event_interest` (not built) |
 
-`calendar_invites` and `admin_suggestions` are email only. The admin portal's Your settings page offers language only. It has no push settings because the web portal has no push channel; members set push categories in the iOS app. Email categories in the portal belong to the email workstream.
+`calendar_invites`, `admin_suggestions`, `weekly_themes` (weekly theme announcement email) and `admin_digest` (daily roster digest for admins) are email only; the last two default off. The admin portal's Your settings page offers language and the admin email switches only. It has no push settings because the web portal has no push channel; members set push categories in the iOS app. Email categories in the portal belong to the email workstream.
 
 ## PUSH-8: invite action buttons
 
