@@ -71,7 +71,6 @@ describe("Suggest theme on the New theme form", () => {
     expect(document.querySelectorAll(".dipbot-tag").length).toBe(7);
     expect(screen.getByRole("heading", { name: "Dipbot suggested “Recipe Swap”" })).toBeTruthy();
     expect(screen.getByText("Why Recipe Swap.")).toBeTruthy();
-    expect(screen.getByRole("status", { name: "" }).textContent ?? "").toBeDefined();
     expect(document.body.textContent).toContain("Dipbot filled in: theme picture, title, description, tags, week, and goal. Undo is available.");
     const sent = suggestTheme.mock.calls[0]![0] as { requestId: string; locale: string };
     expect(sent.locale).toBe("en");

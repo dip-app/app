@@ -17,7 +17,7 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | A filter or choice that toggles | `ChipToggle` | `pressed`, optional `count` and `icon`. |
 | A message that stays on the page | `InlineNotice` | tone `info`, `success`, `warn`, `error` (the error alert: icon, optional `title`, `action` slot, `announce`, `ref`). |
 | A form's list of what to fix after a submit | `ErrorSummary` | `title`, `items` (`target` id, `label`, `message`; an empty label when the message already names the field), `ref`. The error alert with one link per field; the form focuses it on submit (not a live region). Field messages stay under each field, and editing a field clears its line. Used by the event editor. |
-| Anything that was thrown | `ErrorNotice` (inline), `toastError` (toast), `describe` / `userErrorMessage` (text) | See "Errors" below. Never render `error.message`. |
+| Anything that was thrown | `ErrorNotice` (inline), `toastError` (toast), `describe` / `userErrorMessage` (text) | See "Errors" below. Never render `error.message`. `ErrorNotice` takes `dipbot` on Dipbot surfaces ("Dipbot is busy"). |
 | A titled section card | `Panel` | `title`, `description`, `actions`, `loading`, `empty`, `error`, `headingLevel`. |
 | Nothing here yet | `EmptyState` | `title`, `body`, one `action`, optional `art`. `Empty` in `Ui.tsx` is the same component. |
 | The page title row | `PageHeader` | `title`, `description`, `actions`. `Shell` renders it. |

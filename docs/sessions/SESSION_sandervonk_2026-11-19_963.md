@@ -22,12 +22,14 @@ Built Dipbot "Suggest theme" for the admin New theme page end to end: a new admi
 
 - `npx tsc --noEmit` in `gcp/functions` and `apps/admin`: clean.
 - `node --import tsx --test` on `ai-suggest-theme`, `ai-ideas-application`, `ai-ideas-domain`, `ai-credits`, `ai-infra`, `ai-application`, `i18n-audit-errors`: all pass.
-- `npx vitest run` on `ThemeSuggest.test.tsx`, `themeForm.i18n.test.tsx`, `kit.guard.test.ts`, `userError.test.ts`, `auditLabels.test.ts`, `credits.test.ts`: all pass.
-- `npx eslint` on the touched portal files: clean. `npm run check:admin-i18n` (and `--remaining` at 0), `npm run check:backend-i18n`, `npm run check:generated`, `npm run test:docs`: pass.
+- `npx vitest run` on `ThemeSuggest.test.tsx`, `formDrafts.test.tsx`, `useFormDraft.test.tsx`, `formDraft.test.ts`, `themeForm.i18n.test.tsx`, `kit.guard.test.ts`, `userError.test.ts`, `auditLabels.test.ts`, `credits.test.ts`: all pass.
+- `npx eslint` on the touched portal files: clean. `npm run check:admin-i18n` (and `--remaining` at 0), `npm run check:backend-i18n`, `npm run check:generated`, `npm run test:docs`, `python3 scripts/session-log.py check --base origin/main`: pass (re-run after the rebase on #337 and #339).
 - `npm run test:contracts` could not run in this worktree: the shared root `node_modules` symlink lacks `ajv-formats` (environment, not this change).
 - Mock-mode screenshots at 1440, 768, 390 and 320 in en and es (idle, loading, filled, kept, undone, error, out of credits, long text) reviewed by fresh design reviewers; rounds below.
 
 ## Decisions
+
+- Rebased on #337 (AI on by default, `companyAiEnabled` through `effectiveLimits`, which Suggest theme already reads) and #339 (autosaved drafts): the draft offer and restore banner stay above the Dipbot card; a Dipbot fill sets `edited` so the draft autosaves; restoring a draft marks every field as the admin's own and drops the Dipbot card and Undo. This log was renumbered from 947 to 963 because main already had a 947 log.
 
 - Overwrite rule: fill only fields the admin has not changed by hand; changed fields are kept and listed with an explicit "Replace mine too"; Undo restores the form as it was before the first fill. A fill marks the form as edited (unsaved guard and autosave).
 - Only on the New theme page (an existing theme's fields are all the admin's own).
