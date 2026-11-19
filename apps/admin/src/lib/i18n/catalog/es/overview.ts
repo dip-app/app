@@ -27,7 +27,7 @@ export const overview: Record<keyof typeof source, string> = {
 
   "overview.stats.label": "Cifras clave",
   "overview.stats.members.label": "Miembros",
-  "overview.stats.members.note": "{count} cuentas activas",
+  "overview.stats.members.note": "Pueden iniciar sesión: {count}",
   "overview.stats.active.label": "Activos, últimos 30 días",
   "overview.stats.active.capped": "Al menos esta cantidad",
   "overview.stats.active.note": "Miembros que se unieron a un evento",
@@ -67,7 +67,7 @@ export const overview: Record<keyof typeof source, string> = {
   "overview.pending.reviews": "{count, plural, one {Participación por revisar} other {Participaciones por revisar}}",
   "overview.pending.recentThemes": "Temas semanales recientes",
   "overview.pending.invited": "Invitados, aún sin unirse",
-  "overview.pending.resend": "Reenvía el mensaje de invitación desde la lista de personal",
+  "overview.pending.resend": "Obtén su mensaje de invitación desde la lista de personal",
   "overview.pending.group.current": "Tema actual: {title}",
   "overview.pending.group.past": "Tema pasado: {title}, {range}",
   "overview.pending.group.upcoming": "Tema próximo: {title}, {range}",

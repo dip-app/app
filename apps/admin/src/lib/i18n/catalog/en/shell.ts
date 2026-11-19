@@ -48,7 +48,7 @@ export const shell = {
   "shell.ask.members.reset": "reset a participant’s profile",
   "shell.ask.points.adjust": "adjust someone’s points",
   "shell.ask.import.run": "import people from a spreadsheet",
-  "shell.ask.roster.manage": "invite someone, resend an invite or revoke one",
+  "shell.ask.roster.manage": "invite someone, get an invite message or revoke an invite",
   "shell.ask.audit.view": "look something up in the audit log",
   "shell.ask.bugreports.manage": "look at bug reports from the app",
 };

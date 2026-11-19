@@ -1129,13 +1129,24 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const state = load();
       const nowDate = now();
       const theme = deps.themes(session.companyId).find((t) => Date.parse(t.startDate) <= nowDate.getTime() && Date.parse(t.endDate) >= nowDate.getTime()) ?? null;
-      // Reviews stay open after a week ends, so the total spans this week and past weeks. Without a stored queue the demo has
-      // 3 on this week's theme and 1 on the most recent past theme.
+      // Reviews stay open after a week ends, so the total spans this week and past weeks.
       const started = deps.themes(session.companyId).filter((t) => Date.parse(t.startDate) <= nowDate.getTime()).sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate));
+      // Count the stored review queue, seeding this week's theme and the most recent past one the way Review submissions
+      // does on first open, so the Overview and the review pages agree (the usability study saw "4 to review" next to
+      // "13 pending"). Older themes count once someone opens them.
+      state.submissions ??= [];
+      state.seededThemes ??= [];
       const latestPast = started.find((t) => t.id !== theme?.id);
+      for (const t of [theme, latestPast]) {
+        if (!t) continue;
+        if (state.seededThemes.includes(`${session.companyId}:${t.id}`)) continue;
+        state.seededThemes.push(`${session.companyId}:${t.id}`);
+        seedSubmissions(state, session.companyId, t, nowDate);
+      }
+      save(state);
       const openReviews = started.map((t) => ({
         challengeId: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate,
-        count: state.submissions ? state.submissions.filter((s) => s.companyId === session.companyId && s.challengeId === t.id && s.status === "submitted").length : t.id === theme?.id ? 3 : t.id === latestPast?.id ? 1 : 0,
+        count: state.submissions!.filter((s) => s.companyId === session.companyId && s.challengeId === t.id && s.status === "submitted").length,
       })).filter((r) => r.count > 0);
       return buildMockInsights({
         members: state.members.filter((m) => m.companyId === session.companyId),

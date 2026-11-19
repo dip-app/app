@@ -2,7 +2,7 @@
 
 export const account = {
   "account.title": "Your settings",
-  "account.subtitle": "Preferences that belong to you, not to your company.",
+  "account.subtitle": "Your language and email preferences.",
   "account.empty.title": "Nothing to set yet",
   "account.empty.body": "Settings for your account will show up here.",
   "account.email.title": "Weekly ideas email",

@@ -51,25 +51,39 @@ export const roster = {
   "roster.table.added": "Added",
   "roster.table.actions": "Actions",
   "roster.table.noTeams": "None",
-  "roster.table.resent": "Resent {count}×",
-  "roster.table.resentLast": "Resent {count}×, last {date}",
+  "roster.table.resent": "Message shared {count}×",
+  "roster.table.resentLast": "Message shared {count}×, last {date}",
 
-  // Row actions
-  "roster.action.resend": "Resend invite",
-  "roster.action.resending": "Resending…",
-  "roster.action.resendAria": "Resend invite to {name}",
+  // Row actions. DIP sends no email: the action opens the invite message for the admin to send (and records it).
+  "roster.action.resend": "Get invite message",
+  "roster.action.resending": "Opening…",
+  "roster.action.resendAria": "Get the invite message for {name}",
   "roster.action.revoke": "Revoke",
   "roster.action.revokeAria": "Revoke invite for {name}",
   "roster.action.inviteAgain": "Invite again",
   "roster.action.inviteAgainAria": "Invite again: {name}",
 
   // Toasts
-  "roster.toast.resent": "Resend recorded for {name}. Copy the message to share it.",
   "roster.toast.reinvited": "{name} is invited again. They get the role and teams set here when they sign up.",
   "roster.toast.nothingToAdd": "Everyone who has signed in is already on the roster. Nothing to add.",
   "roster.toast.revoked": "Invite for {email} revoked. They won’t get the role and teams set here when they sign up.",
   "roster.toast.added": "{count, plural, one {Added # person to the roster.} other {Added # people to the roster.}}",
-  "roster.toast.copied": "Invite message copied.",
+  "roster.toast.copied": "Invite message copied. Send it to {name} yourself.",
+  "roster.toast.addedPerson": "Added {name} to the roster as Invited. Use Get invite message on their row to send the invite.",
+
+  // Add one person (the import's dry run and apply for a single row)
+  "roster.add": "Add person",
+  "roster.add.title": "Add a person",
+  "roster.add.intro": "They’re added as Invited and get this role when they sign in with this email. DIP doesn’t email them; you send the invite message yourself.",
+  "roster.add.name": "Name",
+  "roster.add.email": "Work email",
+  "roster.add.emailHint": "Must end in @{domain}.",
+  "roster.add.role": "Role",
+  "roster.add.confirm": "Add person",
+  "roster.add.busy": "Adding…",
+  "roster.add.nameRequired": "Add their name.",
+  "roster.add.checkDetails": "Check the details above.",
+  "roster.add.exists": "That email is already on the roster. Search for it to see or change their entry.",
 
   // Revoke dialog
   "roster.revoke.title": "Revoke {name}’s invite?",
@@ -90,7 +104,7 @@ export const roster = {
   "roster.message.copy": "Copy message",
   "roster.message.copying": "Copying…",
   "roster.message.intro": "DIP doesn’t send email, so share this message with {email} yourself.",
-  "roster.message.recorded": "The resend is recorded ({count}×).",
+  "roster.message.recorded": "Message shared {count}× so far.",
   "roster.message.label": "Message",
   "roster.message.link": "Link: {url}",
   "roster.message.copyFailed": "Couldn’t copy automatically. The message is selected: copy it with Ctrl+C or Cmd+C.",

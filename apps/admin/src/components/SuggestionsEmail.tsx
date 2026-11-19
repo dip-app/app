@@ -13,6 +13,7 @@ import { creditsText } from "@/lib/credits";
 import { useApp } from "./AppProvider";
 import { CreditsMeter } from "./CreditsMeter";
 import { DipbotAction } from "./DipbotAction";
+import { toast } from "./Toast";
 import { Loading } from "./Ui";
 import { Toggle } from "./Toggle";
 import { useLoad } from "./useLoad";
@@ -36,7 +37,6 @@ export function SuggestionsEmail() {
   const [busy, setBusy] = useState<Busy>(null);
   const [failure, setFailure] = useState<string>("");
   const [message, setMessage] = useState<Message>(null);
-  const [testResult, setTestResult] = useState<Message>(null);
   const [preview, setPreview] = useState<SuggestionsPreview | null>(null);
   const [view, setView] = useState<"html" | "text">("html");
   const [width, setWidth] = useState<keyof typeof PREVIEW_WIDTHS>("desktop");
@@ -93,11 +93,15 @@ export function SuggestionsEmail() {
     setPreview(next.preview ?? null);
     setView("html");
   });
+  // The result is a toast: the line under the button was below the fold for most people in the usability study.
   const sendTest = () => run("test", async () => {
     const next = await api2.manage("sendTest");
     state.setData({ ...next, testQueued: undefined, testReason: undefined });
-    setTestResult(testMessage(next));
+    const result = testMessage(next);
+    toast(result.text, { tone: next.testQueued ? "success" : "error" });
   });
+  // Only the action that is running is busy; it keeps focus (kit `loading`). The others wait, disabled.
+  const othersBusy = (kind: Exclude<Busy, null>) => busy !== null && busy !== kind;
 
   return (
     <div className="suggestions">
@@ -133,7 +137,9 @@ export function SuggestionsEmail() {
         </div>
         <p className="muted">{t("dipbot.email.schedule.zone", { timeZone: current.timeZone })}</p>
         <div className="actions inline">
-          <Button variant="primary" disabled={disabled || !dirty} onClick={() => void saveSchedule()}>
+          {/* Nothing to save reads as unavailable (aria-disabled) but keeps focus after a save. */}
+          <Button variant="primary" disabled={othersBusy("schedule")} loading={busy === "schedule"} aria-disabled={!dirty || undefined}
+            onClick={() => { if (dirty) void saveSchedule(); }}>
             {t(busy === "schedule" ? "dipbot.email.schedule.saving" : "dipbot.email.schedule.save")}
           </Button>
         </div>
@@ -143,7 +149,7 @@ export function SuggestionsEmail() {
       <Panel id="sug-preview" title={t("dipbot.email.preview.title")}>
         <p className="muted">{t("dipbot.email.preview.intro")}</p>
         <div className="actions inline">
-          <DipbotAction label={t("dipbot.email.preview.button")} loadingLabel={t("dipbot.email.preview.building")} loading={busy === "preview"} disabled={disabled} onClick={() => void showPreview()} />
+          <DipbotAction label={t("dipbot.email.preview.button")} loadingLabel={t("dipbot.email.preview.building")} loading={busy === "preview"} disabled={othersBusy("preview")} onClick={() => void showPreview()} />
         </div>
         {preview && (
           <div className="sug-preview">
@@ -170,9 +176,8 @@ export function SuggestionsEmail() {
       <Panel id="sug-test" title={t("dipbot.email.test.title")}>
         <p className="muted">{t("dipbot.email.test.intro")}</p>
         <div className="actions inline">
-          <DipbotAction label={t("dipbot.email.test.button")} loadingLabel={t("dipbot.email.test.sending")} loading={busy === "test"} disabled={disabled} onClick={() => void sendTest()} />
+          <DipbotAction label={t("dipbot.email.test.button")} loadingLabel={t("dipbot.email.test.sending")} loading={busy === "test"} disabled={othersBusy("test")} onClick={() => void sendTest()} />
         </div>
-        {testResult && <InlineNotice>{testResult.text}</InlineNotice>}
       </Panel>
     </div>
   );

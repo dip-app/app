@@ -32,23 +32,33 @@ describe("WhenPicker calendar", () => {
     expect(screen.getByText(/Wed, Nov 18 to Fri, Nov 20, 3 days/)).toBeTruthy();
   });
 
-  it("two clicks pick a range and emit once, on the second click", () => {
+  it("one click sets a one-day event at once; a later day makes it longer", () => {
     const { onChange } = setup();
     fireEvent.click(day("2026-11-24"));
-    expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByText(/Now choose the end date/)).toBeTruthy();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(localToIso("2026-11-24", 11 * 60), localToIso("2026-11-24", 12 * 60));
+    expect(screen.getByText(/Tue, Nov 24, one day\. Click a later day to make it longer\./)).toBeTruthy();
     fireEvent.mouseEnter(day("2026-11-26"));
     expect(day("2026-11-25").parentElement!.getAttribute("aria-selected")).toBe("true"); // hover preview
     fireEvent.click(day("2026-11-26"));
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith(localToIso("2026-11-24", 11 * 60), localToIso("2026-11-26", 12 * 60));
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith(localToIso("2026-11-24", 11 * 60), localToIso("2026-11-26", 12 * 60));
   });
 
   it("the same day twice is a one-day event", () => {
     const { onChange } = setup();
     fireEvent.click(day("2026-11-24"));
     fireEvent.click(day("2026-11-24"));
-    expect(onChange).toHaveBeenCalledWith(localToIso("2026-11-24", 11 * 60), localToIso("2026-11-24", 12 * 60));
+    expect(onChange).toHaveBeenLastCalledWith(localToIso("2026-11-24", 11 * 60), localToIso("2026-11-24", 12 * 60));
+    expect(screen.getByText(/Tue, Nov 24, one day$/)).toBeTruthy();
+  });
+
+  it("leaving the calendar ends the range step, so a later click starts a new one-day event", () => {
+    const { onChange } = setup();
+    fireEvent.click(day("2026-11-24"));
+    fireEvent.blur(day("2026-11-24"), { relatedTarget: document.body });
+    fireEvent.click(day("2026-11-27"));
+    expect(onChange).toHaveBeenLastCalledWith(localToIso("2026-11-27", 11 * 60), localToIso("2026-11-27", 12 * 60));
   });
 
   it("dims and blocks past days on new events, but allows them when editing", () => {
@@ -61,7 +71,8 @@ describe("WhenPicker calendar", () => {
     const second = setup({ allowPast: true });
     fireEvent.click(day("2026-11-10"));
     fireEvent.click(day("2026-11-12"));
-    expect(second.onChange).toHaveBeenCalledTimes(1);
+    expect(second.onChange).toHaveBeenCalledTimes(2);
+    expect(second.onChange).toHaveBeenLastCalledWith(localToIso("2026-11-10", 11 * 60), localToIso("2026-11-12", 12 * 60));
   });
 
   it("moves focus with the keyboard and changes month with PageDown", () => {

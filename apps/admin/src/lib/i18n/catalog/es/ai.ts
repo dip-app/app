@@ -215,7 +215,7 @@ export const ai: Record<keyof typeof source, string> = {
   "quick.waiting.one": "{ai} está eligiendo por ti y escribiendo 1 borrador. Esto puede tardar hasta un minuto.",
   "quick.waiting.other": "{ai} está eligiendo por ti y escribiendo {n} borradores. Esto puede tardar hasta un minuto.",
   "quick.manual": "Elegir manualmente",
-  "editor.fromAi": "Rellenado con un borrador de {ai}. Elige un lugar y una hora, revisa todo y luego guarda.",
+  "editor.fromAi": "{ai} rellenó esto. Todavía no se guarda nada. Elige un lugar y una hora, revisa los detalles y luego pulsa Crear evento.",
 
   // Where: address search and Dipbot venues in the event editor
   "where.address": "Dirección",
@@ -223,6 +223,7 @@ export const ai: Record<keyof typeof source, string> = {
   "where.searchHint": "Elige un resultado para rellenar el lugar y la ciudad. También puedes escribir la dirección tú mismo.",
   "where.loading": "Buscando…",
   "where.empty": "Sin coincidencias. Sigue escribiendo o ingresa la dirección tú mismo.",
+  "where.emptyPickOnly": "Sin coincidencias. Prueba con el número y el nombre de la calle, y luego elige tu oficina de la lista.",
   "where.error": "La búsqueda de direcciones no está disponible ahora. Puedes ingresar la dirección tú mismo.",
   "where.results.one": "1 dirección encontrada. Usa las flechas para elegir.",
   "where.results.other": "{n} direcciones encontradas. Usa las flechas para elegir.",
@@ -252,7 +253,7 @@ export const ai: Record<keyof typeof source, string> = {
   "venues.find": "Buscar lugares cerca de tu oficina",
   "venues.use": "Usar",
   "venues.changeOffice": "Cambiar oficina",
-  "venues.needTitle": "Agrega un título para que {ai} sepa qué buscar.",
+  "venues.needTitle": "Agrega un título arriba en el formulario para que {ai} sepa qué buscar.",
   "venues.loading": "{ai} está buscando cerca…",
   "venues.found.one": "1 lugar a menos de {r} mi",
   "venues.found.other": "{n} lugares a menos de {r} mi",

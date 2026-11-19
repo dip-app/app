@@ -19,6 +19,11 @@ describe("fake provider and fake data", () => {
     expect(rows[0]).toEqual({ placeId: "fake-schenley", primary: "Schenley Park", secondary: "Panther Hollow Rd, Pittsburgh, PA", isPlace: true });
     expect(fakeAutocomplete("412 forbes")[0]).toMatchObject({ primary: "412 Forbes Avenue", secondary: "Pittsburgh, PA", isPlace: false });
     expect(fakeAutocomplete("zzzz")).toEqual([]);
+    // A typed street address no canned place matches comes back as one suggestion that resolves by id (like Places).
+    const [typed] = fakeAutocomplete("600 grant street, Pittsburgh, PA");
+    expect(typed).toMatchObject({ primary: "600 Grant Street", secondary: "Pittsburgh, PA", isPlace: false });
+    expect(fakeResolve({ placeId: typed.placeId })).toMatchObject({ address: "600 Grant Street", locality: "Pittsburgh, PA" });
+    expect(fakeAutocomplete("grant street")).toEqual([]);
     expect(await createFakeProvider().autocomplete("schenley", { sessionToken: "t" })).toHaveLength(2); // Schenley Park and Phipps (1 Schenley Dr)
   });
   it("resolves by id and by typed text, and says not found otherwise", () => {

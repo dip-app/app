@@ -167,7 +167,7 @@ describe("DipbotVenues", () => {
     const button = await find();
     expect(button.getAttribute("aria-disabled")).toBe("true");
     const hint = document.getElementById(button.getAttribute("aria-describedby")!)!;
-    expect(hint.textContent).toBe("Add a title so Dipbot knows what to look for.");
+    expect(hint.textContent).toBe("Add a title at the top of the form so Dipbot knows what to look for.");
     fireEvent.click(button);
     expect(api.findVenues).not.toHaveBeenCalled();
   });
@@ -205,7 +205,7 @@ describe("DipbotVenues", () => {
   it("asks for a title first and sends nothing without one", async () => {
     render(<Harness title="  " />);
     fireEvent.click(await find());
-    expect(screen.getAllByText("Add a title so Dipbot knows what to look for.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Add a title at the top of the form so Dipbot knows what to look for.").length).toBeGreaterThan(0);
     expect(api.findVenues).not.toHaveBeenCalled();
   });
 

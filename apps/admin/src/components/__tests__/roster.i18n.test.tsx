@@ -21,7 +21,7 @@ describe("roster (Spanish)", () => {
   it("fills slots", () => {
     setLocale("es");
     expect(t("roster.revoke.title", { name: "Ada" })).toBe("¿Revocar la invitación de Ada?");
-    expect(t("roster.table.resentLast", { count: 2, date: "9 nov 2026" })).toBe("Reenviada 2×, última 9 nov 2026");
+    expect(t("roster.table.resentLast", { count: 2, date: "9 nov 2026" })).toBe("Mensaje compartido 2×, último 9 nov 2026");
     expect(t("roster.message.intro", { email: "a@x.co" })).toContain("a@x.co");
   });
 
@@ -32,7 +32,8 @@ describe("roster (Spanish)", () => {
     expect(t("roster.count.matches", { count: 1 })).toBe("1 person matches");
     expect(t("roster.backfill.confirm", { count: 1 })).toBe("Add 1 person");
     expect(t("roster.revoke.title", { name: "Ada" })).toBe("Revoke Ada’s invite?");
-    expect(t("roster.table.resent", { count: 3 })).toBe("Resent 3×");
-    expect(t("roster.message.recorded", { count: 2 })).toBe("The resend is recorded (2×).");
+    expect(t("roster.table.resent", { count: 3 })).toBe("Message shared 3×");
+    expect(t("roster.add.emailHint", { domain: "acme.com" })).toBe("Must end in @acme.com.");
+    expect(t("roster.message.recorded", { count: 2 })).toBe("Message shared 2× so far.");
   });
 });

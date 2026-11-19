@@ -24,18 +24,38 @@ export const toSuggestion = (p: ResolvedPlace): PlaceSuggestion => ({
   placeId: p.placeId, primary: p.name ?? p.address, secondary: p.name ? `${p.address}, ${p.locality}` : p.locality, isPlace: p.name !== null,
 });
 
-/** Every typed word must start a word of the result ("pitt park" matches Schenley Park, Pittsburgh). At most 5. */
+/** Street addresses typed into the autocomplete, kept so a pick of one resolves by id (like a Places id would). */
+const typedPlaces = new Map<string, ResolvedPlace>();
+
+/** A typed "number street[, city]" address as Places would offer it: one suggestion, a deterministic downtown point. */
+function typedAddress(input: string): ResolvedPlace | null {
+  const [street = "", ...rest] = input.split(",");
+  if (!/^\s*\d+[a-z]?\s+[a-z]{2,}/i.test(street)) return null;
+  const address = street.trim().replace(/\s+/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  const locality = rest.join(",").trim() || "Pittsburgh, PA";
+  const found = place("typed", null, address, { placeId: `fake-typed-${words(`${address} ${locality}`).join("-")}`, locality, latitude: 40.4406, longitude: -79.9959 });
+  typedPlaces.set(found.placeId, found);
+  return found;
+}
+
+/**
+ * Every typed word must start a word of the result ("pitt park" matches Schenley Park, Pittsburgh). At most 5. When no
+ * canned place matches, a typed street address ("600 Grant Street") comes back as one suggestion, as Google would.
+ */
 export function fakeAutocomplete(input: string, limit = 5): PlaceSuggestion[] {
   const typed = words(input);
   if (!typed.length) return [];
-  return FAKE_PLACES.map(toSuggestion)
+  const canned = FAKE_PLACES.map(toSuggestion)
     .filter((s) => { const have = words(`${s.primary} ${s.secondary}`); return typed.every((w) => have.some((h) => h.startsWith(w))); })
     .slice(0, limit);
+  if (canned.length) return canned;
+  const street = typedAddress(input);
+  return street ? [toSuggestion(street)] : [];
 }
 
 /** By id, or by a free-typed "street, city" query. Null when nothing matches. */
 export function fakeResolve(request: ResolveRequest): ResolvedPlace | null {
-  if ("placeId" in request) return FAKE_PLACES.find((p) => p.placeId === request.placeId) ?? null;
+  if ("placeId" in request) return FAKE_PLACES.find((p) => p.placeId === request.placeId) ?? typedPlaces.get(request.placeId) ?? null;
   const query = request.query.toLowerCase();
   const canned = FAKE_PLACES.find((p) => query.includes(p.address.toLowerCase()) || (p.name !== null && query.includes(p.name.toLowerCase())));
   if (canned) return canned;

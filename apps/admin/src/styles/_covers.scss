@@ -71,7 +71,10 @@ $subtle: #f6f7fa;
     .cp-selected-label { font-size: 14px; }
     .cp-toolbar { grid-template-columns: minmax(0, 1fr) 156px; }
     .cp-theme { padding: 0 4px; font-size: 13px; }
-    .cp-region, &.compact .cp-region { height: 260px; }
+    // No inner scroller on phones (it swallowed the page scroll): the grid is in the page flow, a few tiles at a time.
+    .cp-region, &.compact .cp-region { height: auto; overflow: visible; display: grid; gap: 8px; }
+    .cp-region-wrap::after { content: none; }
+    .cp-show-more { width: 100%; min-height: 44px; justify-content: center; }
     .cp-grid, .cp-more-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (prefers-reduced-motion: reduce) { .cp-thumb img { transition: none; } }

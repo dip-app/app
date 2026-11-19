@@ -141,8 +141,10 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
         return;
       }
       case "Enter":
-        // A picked option wins; with the list open and nothing active, Enter never submits the form by accident.
-        if (showOptions) { event.preventDefault(); if (active >= 0 && results[active]) void pick(results[active]); }
+        // A picked option wins. With the popup open (results, no matches, an error) or in pick-only mode (the office:
+        // typed text can't be used), Enter never submits the surrounding form.
+        if (showOptions && active >= 0 && results[active]) void pick(results[active]);
+        if (showPopup || onSelect) event.preventDefault();
         return;
       case "Escape":
         if (showPopup) { event.preventDefault(); event.stopPropagation(); setOpen(false); setActive(-1); }
@@ -151,7 +153,9 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
     }
   }
 
-  const announcement = status === "loading" ? t("where.loading") : status === "results" ? tn("where.results", results.length) : status === "empty" ? t("where.empty") : status === "limit" ? t("where.limit") : status === "gone" ? t("where.notFound") : status === "error" ? t("where.error") : "";
+  // Pick-only (the office) can't take typed text, so its "no matches" asks for a pick instead of "enter it yourself".
+  const emptyMessage = onSelect ? t("where.emptyPickOnly") : t("where.empty");
+  const announcement = status === "loading" ? t("where.loading") : status === "results" ? tn("where.results", results.length) : status === "empty" ? emptyMessage :status === "limit" ? t("where.limit") : status === "gone" ? t("where.notFound") : status === "error" ? t("where.error") : "";
 
   return (
     <div className="ac">
@@ -202,7 +206,7 @@ export function AddressCombobox({ id, label, value, onChange, onPick, onSelect, 
           ))}
         </ul>
         {open && status === "loading" && <p className="ac-msg">{t("where.loading")}</p>}
-        {open && status === "empty" && <p className="ac-msg">{t("where.empty")}</p>}
+        {open && status === "empty" && <p className="ac-msg">{emptyMessage}</p>}
         {open && status === "error" && <p className="ac-msg error">{t("where.error")}</p>}
         {open && status === "limit" && <p className="ac-msg">{t("where.limit")}</p>}
         {open && status === "gone" && <p className="ac-msg error">{t("where.notFound")}</p>}

@@ -236,4 +236,35 @@ describe("AddressCombobox", () => {
     await act(async () => { calls[0].reject(new LocationError("disabled")); await Promise.resolve(); });
     expect(off).toHaveBeenCalledTimes(1);
   });
+
+  it("never submits the surrounding form on Enter while the popup shows no matches", async () => {
+    const { provider, calls } = makeProvider();
+    const submitted = vi.fn((e: React.FormEvent) => e.preventDefault());
+    render(<form onSubmit={submitted}><Harness provider={provider} /><button type="submit">Save</button></form>);
+    type("600 grant");
+    await settle();
+    await answer(calls[0], []);
+    const enter = fireEvent.keyDown(input(), { key: "Enter" });
+    expect(enter).toBe(false); // default prevented: no implicit submit
+  });
+
+  it("pick-only mode (the office) asks for a pick on no matches and blocks Enter even when closed", async () => {
+    const { provider, calls } = makeProvider();
+    const select = vi.fn();
+    function Office() {
+      const [value, setValue] = useState("");
+      return <AddressCombobox id="office" label="Office address" value={value} provider={provider} onChange={setValue} onSelect={select} />;
+    }
+    render(<Office />);
+    const office = () => screen.getByRole("combobox", { name: "Office address" });
+    fireEvent.focus(office());
+    fireEvent.change(office(), { target: { value: "600 grant" } });
+    await settle();
+    await answer(calls[0], []);
+    expect(screen.getAllByText("No matches. Try the street number and name, then pick your office from the list.").length).toBeGreaterThan(0);
+    expect(screen.queryByText("No matches. Keep typing or enter the address yourself.")).toBeNull();
+    fireEvent.keyDown(office(), { key: "Escape" });
+    expect(fireEvent.keyDown(office(), { key: "Enter" })).toBe(false);
+    expect(select).not.toHaveBeenCalled();
+  });
 });

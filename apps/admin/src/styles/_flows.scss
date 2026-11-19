@@ -16,6 +16,10 @@
 
 // ---------- Notice that sits directly above a form grid (replaces an inline margin hack)
 .content .form-notice { grid-column: 1 / -1; margin-bottom: -12px; }
+// Event editor: "Everything is required unless it says optional.", the error summary, and the line under Create event.
+.content .form-required-note { grid-column: 1 / -1; margin: 0 0 -12px; }
+.content .form > .error-summary { grid-column: 1 / -1; margin: 0; }
+.content .actions-note { flex-basis: 100%; margin: 0; }
 
 // ---------- Keyboard shortcuts switch next to the review hint
 .content .keys-toggle { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }

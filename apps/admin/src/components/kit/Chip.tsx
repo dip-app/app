@@ -18,7 +18,7 @@ export function Chip({ children, tone, full = false, className }: { children: Re
  */
 export function ChipToggle({ pressed, onClick, count, countTitle, icon, className, children, ...rest }: {
   pressed: boolean; onClick: () => void; count?: number | string; countTitle?: string; icon?: ReactNode; className?: string; children: ReactNode;
-  disabled?: boolean; title?: string; "aria-describedby"?: string; "aria-label"?: string;
+  disabled?: boolean; title?: string; id?: string; "aria-describedby"?: string; "aria-label"?: string;
 }) {
   return (
     <button type="button" className={`chip${className ? ` ${className}` : ""}`} aria-pressed={pressed} onClick={onClick} {...rest}>
