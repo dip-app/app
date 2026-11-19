@@ -73,6 +73,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const main = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!session) router.replace("/login/");
@@ -102,11 +103,20 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   // Navigating closes the drawer (the new page is the destination, so focus stays with it).
   useEffect(() => { setOpen(false); }, [pathname]);
 
+  // The page scrolls inside <main>, not the window: a new route starts at the top, and when nothing has focus the scroller does, so
+  // Space, PageDown and the arrow keys scroll without a click first (browsers only scroll the focused element's scroller).
+  // Only `body` focus is replaced, so a page that focuses its own field keeps it.
+  useEffect(() => {
+    const el = main.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    const active = document.activeElement;
+    if (!active || active === document.body) el.focus({ preventScroll: true });
+  }, [pathname, session]);
+
   useEffect(() => {
     if (!open) return;
-    // Drawer open: lock page scroll, start inside the drawer, keep Tab inside it, close on Escape.
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Drawer open (`.app[data-nav-open]` stops the page scroller): start inside the drawer, keep Tab inside it, close on Escape.
     closeButton.current?.focus();
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") { event.preventDefault(); close(); return; }
@@ -126,7 +136,6 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
     document.addEventListener("keydown", onKey);
     media.addEventListener("change", onChange);
     return () => {
-      document.body.style.overflow = previous;
       document.removeEventListener("keydown", onKey);
       media.removeEventListener("change", onChange);
     };
@@ -137,10 +146,10 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   const visible = NAV.map((group) => ({ ...group, items: group.items.filter((item) => !item.requires || can(session.role, item.requires)) })).filter((group) => group.items.length > 0);
 
   return (
-    <div className="app">
+    <div className="app" data-nav-open={open ? "true" : undefined}>
       {/* Each page names itself in the tab and history (React hoists <title> into the head). */}
       <title>{t("shell.docTitle", { title, brand: BRAND })}</title>
-      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById("main"); main?.focus(); main?.scrollIntoView(); }}>{t("shell.skip")}</a>
+      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const target = document.getElementById("main"); target?.focus(); target?.scrollTo?.({ top: 0 }); }}>{t("shell.skip")}</a>
       <header className="topbar" inert={open}>
         <button type="button" ref={menuButton} className="menu-btn" aria-label={t("shell.openMenu")} aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
@@ -185,7 +194,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
           </button>
         </div>
       </aside>
-      <main id="main" tabIndex={-1} className="content" inert={open}>
+      <main id="main" ref={main} tabIndex={-1} className="content" inert={open}>
         {!isStaff(session.role) ? (
           <EmptyState title={t("shell.noAccess.title")} body={t("shell.noAccess.body")} />
         ) : requires && !can(session.role, requires) ? (

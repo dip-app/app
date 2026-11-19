@@ -241,8 +241,10 @@ export function Ideas() {
     if (phase !== "edit" || typeof window === "undefined") return;
     const card = panelRef.current?.querySelector<HTMLElement>(".opt[data-suggested]");
     if (!card) return;
+    // The page scrolls inside <main>, so "on screen" means inside that scroller's box, not the window's.
     const box = card.getBoundingClientRect();
-    if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+    const view = card.closest("main")?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
+    if (box.top >= view.top && box.bottom <= view.bottom) return;
     card.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [step, phase, suggest, flashing]);
 

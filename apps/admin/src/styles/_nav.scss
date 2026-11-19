@@ -6,12 +6,18 @@ $sidebar-width: 232px;
 $nav-muted: #b9bccb; // 9:1 on ink
 $nav-text: #e6e8f0;
 
-.app { min-height: 100dvh; display: grid; grid-template-columns: $sidebar-width minmax(0, 1fr); align-content: start; }
+// App shell: while the signed-in frame is on screen the document itself never scrolls (it is exactly one viewport tall and
+// `overscroll-behavior: none` keeps the browser from rubber-banding it), so the sidebar and the mobile top bar cannot be
+// pulled or moved. `<main class="content">` is the one scroll container; it keeps the native overscroll bounce.
+// `html:has(.app)` scopes this to the signed-in frame; the login and boot screens still scroll the document.
+html:has(.app) { overflow: hidden; overscroll-behavior: none; scrollbar-gutter: auto; }
+// `overflow: clip` (not hidden): the shell is not a scroll container, so focus() or scrollIntoView() can never shift it.
+.app { height: 100dvh; overflow: clip; display: grid; grid-template-columns: $sidebar-width minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .topbar, .scrim, .menu-btn.close-btn { display: none; }
 
 .sidebar {
-  position: sticky; top: 0; height: 100dvh; align-self: start; z-index: 40; overflow-y: auto; overscroll-behavior: contain;
-  // The sidebar still scrolls (wheel, touch, keyboard); only its scrollbar track is hidden.
+  position: relative; z-index: 40; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: none;
+  // The sidebar still scrolls when a short window cuts it off (wheel, touch, keyboard) but never bounces or chains; only its scrollbar track is hidden.
   scrollbar-width: none; -ms-overflow-style: none; &::-webkit-scrollbar { display: none; }
   background: $ink; color: $white; display: flex; flex-direction: column; padding: 14px 12px 12px;
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 14px 8px; min-height: 52px; }
@@ -45,12 +51,19 @@ $nav-text: #e6e8f0;
 .menu-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 6px; color: $white; background: transparent;
   &:hover { background: rgba(255, 255, 255, .1); } &:focus-visible { outline: 2px solid $white; outline-offset: -2px; box-shadow: none; } }
 
-.content { padding: 24px clamp(20px, 3.5vw, 64px) 72px; }
+.content { padding: 24px clamp(20px, 3.5vw, 64px) 72px;
+  // The page scroller. `relative` makes it the containing block of absolutely positioned descendants (visually hidden text, popups),
+  // so they are clipped here instead of growing the document's scrollable overflow. The tabindex=-1 focus (skip link, Escape from a dialog) draws no ring.
+  position: relative; min-height: 0; height: 100%; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: auto; scrollbar-gutter: stable;
+  &:focus, &:focus-visible { outline: none; } }
+// Mobile drawer open: the page behind it stays where it is (also set `inert`; this stops wheel and touch scrolling).
+.app[data-nav-open="true"] .content { overflow-y: hidden; }
 
 @media (max-width: 900px) {
-  // Block flow on narrow screens: the sticky top bar stays put and short pages start at the top (a stretched grid row pushed them down).
-  .app { display: block; }
-  .topbar { display: flex; align-items: center; gap: 4px; position: sticky; top: 0; z-index: 30; height: 56px; padding: 0 12px 0 6px; background: $ink; color: $white; }
+  // Narrow screens: a column. The top bar is a fixed-height row and the content fills the rest and scrolls on its own, so the bar never moves.
+  .app { display: flex; flex-direction: column; }
+  .content { flex: 1 1 0; height: auto; }
+  .topbar { display: flex; align-items: center; gap: 4px; flex: none; position: relative; z-index: 30; height: 56px; padding: 0 12px 0 6px; background: $ink; color: $white; }
   .menu-btn.close-btn { display: grid; }
   .sidebar {
     position: fixed; inset: 0 auto 0 0; width: min(280px, 86vw); height: 100dvh; visibility: hidden; transform: translateX(-100%);
@@ -61,6 +74,5 @@ $nav-text: #e6e8f0;
     &[data-open="true"] { opacity: 1; pointer-events: auto; } }
   .content { padding: 24px 16px 56px; }
   .nav-item { min-height: 44px; }
-  .review-detail { top: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar, .scrim, .nav-item { transition: none !important; } }
