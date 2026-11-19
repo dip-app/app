@@ -2832,6 +2832,15 @@
         "lastResentBy": {
           "type": "string",
           "maxLength": 128
+        },
+        "inviteEmailCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many invitation emails DIP sent to this person (sendRosterInviteEmailV1)."
+        },
+        "lastInviteEmailAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [
@@ -5113,6 +5122,78 @@
         "message"
       ]
     },
+    "SendRosterInviteEmailRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "sendRosterInviteEmailV1: emails an invitation to an invited roster entry (company name, who invited them, the sign-in link). At most 5 per entry, at least 1 hour apart. roster.manage.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "companyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Caller-generated idempotency key (a UUID is recommended), retained across retries."
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "contractVersion",
+        "companyId",
+        "requestId",
+        "entryId"
+      ]
+    },
+    "SendRosterInviteEmailResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The invitation email is queued; it is sent within a minute unless the person signed in, opted out or the address bounces.",
+      "properties": {
+        "contractVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "entryId": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited"
+          ]
+        },
+        "inviteEmailCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lastInviteEmailAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "entryId",
+        "status",
+        "inviteEmailCount",
+        "lastInviteEmailAt"
+      ]
+    },
     "BackfillRosterRequest": {
       "type": "object",
       "additionalProperties": false,
@@ -5299,6 +5380,10 @@
         },
         "counts": {
           "$ref": "#/$defs/RosterCounts"
+        },
+        "inviteEmail": {
+          "type": "boolean",
+          "description": "True when DIP can email invitations for this company (email switched on for it); the portal then offers Send invite email."
         }
       },
       "required": [

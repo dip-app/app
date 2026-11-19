@@ -314,8 +314,9 @@ function checkOwn(email: EmailUnderTest): Finding[] {
   if (!text.trim()) add("error", "text-part", "Plain-text alternative is empty.");
   else {
     if (/<\/?[a-z][^>]*>/i.test(text)) add("error", "text-part", "Plain-text alternative contains HTML tags.");
-    // "Unsubscribe: https://letsdip.work/..." in any shipped language ("Cancelar suscripción: ..." in Spanish).
-    const unsubscribeWords = Object.values(emailCatalogs).map((c) => c["email.footer.unsubscribe"]);
+    // "Unsubscribe: https://letsdip.work/..." in any shipped language ("Cancelar suscripción: ..." in Spanish); roster
+    // invitations say "Stop invitation emails: ..." (the person has no account to manage).
+    const unsubscribeWords = Object.values(emailCatalogs).flatMap((c) => [c["email.footer.unsubscribe"], c["email.footer.unsubscribeInvites"]]);
     if (!unsubscribeWords.some((w) => text.includes(`${w}: https://letsdip.work/`))) add("error", "text-part", "Plain-text alternative lacks the unsubscribe link.");
     const htmlLinks = new Set(els.filter((e) => e.name === "a" && e.attribs?.href?.startsWith("https://")).map((e) => e.attribs!.href!));
     const missing = [...htmlLinks].filter((h) => !text.includes(h.replace(/&amp;/g, "&")));

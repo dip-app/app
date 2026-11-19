@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { isEmailCategory, type EmailCategory } from "./categories";
+import { isOutboxCategory, type OutboxCategory } from "./categories";
 
 /**
  * Stateless unsubscribe tokens (docs/design/stretch/email.md, Preferences and unsubscribe):
@@ -15,7 +15,7 @@ const UID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 /** Upper bound on accepted input so a hostile path cannot make us hash megabytes. */
 export const MAX_TOKEN_LENGTH = 512;
 
-export interface UnsubscribeClaims { uid: string; category: EmailCategory; expiresAt: number }
+export interface UnsubscribeClaims { uid: string; category: OutboxCategory; expiresAt: number }
 
 export type VerifyResult =
   | { ok: true; claims: UnsubscribeClaims }
@@ -32,10 +32,10 @@ function mac(key: Buffer, payloadPart: string): Buffer {
   return createHmac("sha256", key).update(`dip-email-unsubscribe.${payloadPart}`, "utf8").digest();
 }
 
-export function signUnsubscribeToken(key: string | Buffer, uid: string, category: EmailCategory, nowSeconds: number,
+export function signUnsubscribeToken(key: string | Buffer, uid: string, category: OutboxCategory, nowSeconds: number,
   ttlSeconds = UNSUBSCRIBE_TOKEN_TTL_SECONDS): string {
   if (!UID_PATTERN.test(uid)) throw new Error("invalid uid for unsubscribe token");
-  if (!isEmailCategory(category)) throw new Error("invalid category for unsubscribe token");
+  if (!isOutboxCategory(category)) throw new Error("invalid category for unsubscribe token");
   const expiresAt = Math.floor(nowSeconds) + ttlSeconds;
   const payloadPart = Buffer.from(`${VERSION}:${uid}:${category}:${expiresAt}`, "utf8").toString("base64url");
   return `${payloadPart}.${mac(keyBytes(key), payloadPart).toString("base64url")}`;
@@ -53,7 +53,7 @@ export function verifyUnsubscribeToken(key: string | Buffer, token: unknown, now
   const fields = Buffer.from(payloadPart, "base64url").toString("utf8").split(":");
   if (fields.length !== 4) return { ok: false, reason: "malformed" };
   const [version, uid, category, expiry] = fields as [string, string, string, string];
-  if (version !== VERSION || !UID_PATTERN.test(uid) || !isEmailCategory(category) || !/^\d{1,12}$/.test(expiry)) return { ok: false, reason: "malformed" };
+  if (version !== VERSION || !UID_PATTERN.test(uid) || !isOutboxCategory(category) || !/^\d{1,12}$/.test(expiry)) return { ok: false, reason: "malformed" };
   const expiresAt = Number(expiry);
   if (nowSeconds > expiresAt) return { ok: false, reason: "expired" };
   return { ok: true, claims: { uid, category, expiresAt } };

@@ -184,6 +184,20 @@ PREVIEW_CASES.push(
   }, { ...SAMPLE_CTX, recipientFirstName: null }),
 );
 
+// Account emails (docs/design/email-catalog.md). Appended so the earlier cases and their golden files are untouched.
+const ENTRY_ID = "5f2b8c1e9a7d4b3c6e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d";
+const INVITEE_CTX: RenderContext = { ...SAMPLE_CTX, recipientFirstName: "Jordan", recipientAddress: "jordan.lee@acme.com" };
+PREVIEW_CASES.push(
+  make("roster_invite", "roster_invite", { entryId: ENTRY_ID, companyName: "Acme Robotics", inviterFirstName: "Priya", role: "member", reminder: false }, INVITEE_CTX),
+  make("roster_invite_admin_reminder", "roster_invite", { entryId: ENTRY_ID, companyName: "Acme Robotics", role: "organizer", reminder: true }, { ...INVITEE_CTX, recipientFirstName: null }),
+  make("roster_invite_long_company", "roster_invite", {
+    entryId: ENTRY_ID, companyName: "International Consolidated Widgets, Sprockets and Precision Components Manufacturing Company of North America", inviterFirstName: "Alexandria", role: "member", reminder: false,
+  }, INVITEE_CTX),
+  make("welcome", "welcome", { companyName: "Acme Robotics", role: "member" }),
+  make("welcome_admin", "welcome", { companyName: "Acme Robotics", role: "admin" }),
+  make("bug_report_resolved", "bug_report_resolved", { reportId: "rep_7c1d2e", submittedAt: "2026-11-12T15:04:00Z" }),
+);
+
 /**
  * Spanish twins of every case, plus one without a first name (issue #259). Golden snapshots live in
  * `__snapshots__/email/es/`, and `npm run check:email` checks them too (as `es_<name>`).

@@ -1,0 +1,14 @@
+YOUR DIP INVITATION
+
+Hi there, you are set up on DIP, where Acme Robotics plans team events and activities.
+
+Open the admin portal and sign in with Google using jordan.lee@acme.com. Your role is already assigned.
+
+Open the admin portal: https://letsdip.work/admin/
+
+Not expecting this? You can ignore this email.
+
+--
+You are getting this because Acme Robotics added you to DIP.
+Stop invitation emails: https://letsdip.work/u/sample-token
+Sent by DIP · Questions? support@letsdip.work

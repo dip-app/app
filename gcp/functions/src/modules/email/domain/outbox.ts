@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import type { EmailCategory } from "./categories";
+import type { OutboxCategory } from "./categories";
+import type { Locale } from "../../i18n";
 import { TEMPLATE_CATEGORY, type TemplateId, type TemplateVariables } from "./templates/types";
 
 /**
@@ -46,13 +47,23 @@ export type OutboxStatus = "queued" | "sending" | "sent" | "failed" | "skipped" 
 export type SkipReason =
   | "disabled" | "company_disabled" | "config_incomplete" | "no_member" | "tenant_mismatch" | "inactive_member" | "no_email"
   | "preference_off" | "not_admin" | "suppressed" | "member_cap" | "company_cap" | "invalid_variables"
-  | "not_going" | "event_canceled" | "never_invited" | "rejoined" | "event_ended";
+  | "not_going" | "event_canceled" | "never_invited" | "rejoined" | "event_ended"
+  | "not_invited" | "opted_out" | "all_off";
+
+/** Opt-outs of roster invitation emails, keyed by the address hash (server-only, deny-all rules). */
+export const INVITE_OPT_OUTS_COLLECTION = "emailInviteOptOuts";
 
 export interface OutboxDocument<T extends TemplateId = TemplateId> {
   id: string;
+  /** Member uid, or `roster-<entryId>` for a roster invitation (see `rosterRecipientKey`). */
   uid: string;
   companyId: string;
-  category: EmailCategory;
+  category: OutboxCategory;
+  /**
+   * Language for a recipient who has no `users/{uid}.locale` yet (a roster invitee): the inviting admin's language.
+   * Members always get their own stored language.
+   */
+  locale?: Locale;
   template: T;
   variables: TemplateVariables[T];
   status: OutboxStatus;
@@ -77,12 +88,34 @@ function idPart(value: string): string {
 }
 
 /** Builds the create-once id `{category}_{objectId}_{uid}_{revisionOrWindow}`. */
-export function outboxId(category: EmailCategory, objectId: string, uid: string, revisionOrWindow: string): string {
+export function outboxId(category: OutboxCategory, objectId: string, uid: string, revisionOrWindow: string): string {
   return `${category}_${idPart(objectId)}_${idPart(uid)}_${idPart(revisionOrWindow)}`;
 }
 
-export function categoryOf(template: TemplateId): EmailCategory {
+export function categoryOf(template: TemplateId): OutboxCategory {
   return TEMPLATE_CATEGORY[template];
+}
+
+/**
+ * The stored shape of a new `queued` outbox document (dates as Date; the Admin SDK stores them as Timestamps). Shared by
+ * the outbox store and by commands that enqueue inside their own transaction (the roster invitation and the problem
+ * report email are written in the same transaction as the admin command and its idempotency receipt).
+ */
+export function newOutboxData(entry: { uid: string; companyId: string; template: TemplateId; variables: unknown; notAfter: Date | null; locale?: Locale }, now: Date): Record<string, unknown> {
+  return {
+    uid: entry.uid,
+    companyId: entry.companyId,
+    category: categoryOf(entry.template),
+    template: entry.template,
+    variables: entry.variables,
+    status: "queued",
+    attempts: 0,
+    notAfter: entry.notAfter,
+    createdAt: now,
+    expireAt: new Date(now.getTime() + OUTBOX_TTL_DAYS * 24 * 60 * 60 * 1000),
+    leaseUntil: null,
+    ...(entry.locale ? { locale: entry.locale } : {}),
+  };
 }
 
 /** Address normalization for suppression lookups: trim and lowercase the whole address. */

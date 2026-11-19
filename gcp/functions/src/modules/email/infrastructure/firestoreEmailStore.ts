@@ -1,12 +1,13 @@
 import { FieldValue, Timestamp, type DocumentData, type Firestore } from "firebase-admin/firestore";
+import { isLocale } from "../../i18n";
 import type {
-  CapStore, ClaimResult, CompanyEmailSettings, CompanySettingsReader, EmailPreferencesStore, NewOutboxEntry, OutboxReaper, OutboxStore,
-  Recipient, RecipientDirectory, SuppressionStore,
+  CapStore, ClaimResult, CompanyEmailSettings, CompanySettingsReader, EmailPreferencesStore, InviteOptOutStore, NewOutboxEntry, OutboxReaper,
+  OutboxStore, Recipient, RecipientDirectory, RosterInvitee, RosterInviteeDirectory, SuppressionStore,
 } from "../application/ports";
 import type { EmailCategory } from "../domain/categories";
 import {
-  CAPS_COLLECTION, COMPANY_DAILY_CAP_DEFAULT, canCountOpen, COMPANY_SETTINGS_COLLECTION, OUTBOX_COLLECTION, OUTBOX_TTL_DAYS,
-  SUPPRESSIONS_COLLECTION, categoryOf, type OutboxDocument, type OutboxStatus,
+  CAPS_COLLECTION, COMPANY_DAILY_CAP_DEFAULT, canCountOpen, COMPANY_SETTINGS_COLLECTION, INVITE_OPT_OUTS_COLLECTION, OUTBOX_COLLECTION,
+  OUTBOX_TTL_DAYS, SUPPRESSIONS_COLLECTION, newOutboxData, type OutboxDocument, type OutboxStatus,
 } from "../domain/outbox";
 
 const ALREADY_EXISTS = 6;
@@ -44,6 +45,7 @@ function toOutbox(id: string, data: DocumentData): OutboxDocument {
   if (typeof data["reason"] === "string") doc.reason = data["reason"];
   if (typeof data["providerMessageId"] === "string") doc.providerMessageId = data["providerMessageId"];
   if (typeof data["toHash"] === "string") doc.toHash = data["toHash"];
+  if (isLocale(data["locale"])) doc.locale = data["locale"];
   return doc;
 }
 
@@ -52,18 +54,12 @@ class FirestoreOutboxStore implements OutboxStore {
 
   async create(entry: NewOutboxEntry, now: Date): Promise<boolean> {
     try {
+      const data = newOutboxData(entry, now);
       await this.db.collection(OUTBOX_COLLECTION).doc(entry.id).create({
-        uid: entry.uid,
-        companyId: entry.companyId,
-        category: categoryOf(entry.template),
-        template: entry.template,
-        variables: entry.variables,
-        status: "queued",
-        attempts: 0,
+        ...data,
         notAfter: entry.notAfter === null ? null : Timestamp.fromDate(entry.notAfter),
         createdAt: Timestamp.fromDate(now),
         expireAt: Timestamp.fromDate(new Date(now.getTime() + OUTBOX_TTL_DAYS * DAY_MS)),
-        leaseUntil: null,
       });
       return true;
     } catch (error) {
@@ -204,6 +200,33 @@ class FirestoreRecipientDirectory implements RecipientDirectory {
   }
 }
 
+/** Roster entries as the invitation email needs them (`companies/{c}/roster/{entryId}`), plus the invitation opt-outs. */
+class FirestoreRosterInvitees implements RosterInviteeDirectory, InviteOptOutStore {
+  constructor(private readonly db: Firestore) {}
+
+  async get(companyId: string, entryId: string): Promise<RosterInvitee | null> {
+    const snap = await this.db.collection("companies").doc(companyId).collection("roster").doc(entryId).get();
+    if (!snap.exists) return null;
+    return {
+      entryId,
+      companyId: str(snap.get("companyId")),
+      email: str(snap.get("email")),
+      displayName: str(snap.get("displayName")),
+      status: str(snap.get("status")),
+    };
+  }
+
+  async isOptedOut(emailHash: string): Promise<boolean> {
+    return (await this.db.collection(INVITE_OPT_OUTS_COLLECTION).doc(emailHash).get()).exists;
+  }
+
+  async optOut(emailHash: string, now: Date): Promise<void> {
+    // Idempotent: a second opt-out keeps the first time.
+    await this.db.collection(INVITE_OPT_OUTS_COLLECTION).doc(emailHash).create({ createdAt: Timestamp.fromDate(now) })
+      .catch((error: { code?: unknown }) => { if (error.code !== ALREADY_EXISTS) throw error; });
+  }
+}
+
 class FirestoreCompanySettings implements CompanySettingsReader {
   constructor(private readonly db: Firestore) {}
 
@@ -298,8 +321,10 @@ export class FirestoreEmailStore {
   readonly suppressions: SuppressionStore;
   readonly caps: CapStore;
   readonly preferences: EmailPreferencesStore;
+  readonly invitees: RosterInviteeDirectory & InviteOptOutStore;
 
   constructor(db: Firestore) {
+    this.invitees = new FirestoreRosterInvitees(db);
     this.outbox = new FirestoreOutboxStore(db);
     this.reaper = new FirestoreOutboxReaper(db);
     this.recipients = new FirestoreRecipientDirectory(db);

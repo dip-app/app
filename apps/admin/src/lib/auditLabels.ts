@@ -30,6 +30,7 @@ export const AUDIT_LABELS: Record<string, AuditLabel> = {
   "roster.upsert": entry("audit.action.rosterUpsert", "People"),
   "roster.revoke": entry("audit.action.rosterRevoke", "Security"),
   "roster.resend": entry("audit.action.rosterResend", "People"),
+  "roster.inviteEmail": entry("audit.action.rosterInviteEmail", "People"),
   "roster.backfill": entry("audit.action.rosterBackfill", "People"),
   "roster.claim": entry("audit.action.rosterClaim", "People"),
   "import.plan": entry("audit.action.importPlan", "People"),

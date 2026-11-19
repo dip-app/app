@@ -107,6 +107,40 @@ export const en = {
   "email.challenge.points": "{points, plural, one {+{points} point} other {+{points} points}}",
   "email.challenge.note": "See the feedback and resubmit.",
 
+  // Account emails (roster_invite, welcome, bug_report_resolved): transactional, with their own footer reason.
+  "email.cta.getApp": "Get DIP",
+  "email.cta.openApp": "Open DIP",
+  "email.cta.portal": "Open the admin portal",
+  "email.footer.unsubscribeInvites": "Stop invitation emails",
+
+  // roster_invite: `named` is yes when the inviting admin's first name is known; {title} is the company name.
+  "email.rosterInvite.heading": "{reminder, select, yes {Your DIP invitation} other {You are invited to DIP}}",
+  "email.rosterInvite.subject": "{reminder, select, yes {Reminder: join {title} on DIP} other {{named, select, yes {{who} invited you to join {title} on DIP} other {You are invited to join {title} on DIP}}}}",
+  "email.rosterInvite.preheader": "{named, select, yes {{who} set you up on DIP at {company}.} other {You are set up on DIP at {company}.}}",
+  "email.rosterInvite.lead": "{named, select, yes {{who} set you up on DIP, where {company} plans team events and activities.} other {you are set up on DIP, where {company} plans team events and activities.}}",
+  "email.rosterInvite.note": "{staff, select, yes {Open the admin portal and sign in with Google using {address}. Your role is already assigned.} other {Get the DIP app and sign in with Google using {address}. Your teams and details are already filled in.}}",
+  "email.rosterInvite.thisAddress": "this email address",
+  "email.rosterInvite.ignore": "Not expecting this? You can ignore this email.",
+  "email.rosterInvite.reason": "{named, select, yes {You are getting this because {who} added you to DIP at {company}.} other {You are getting this because {company} added you to DIP.}}",
+
+  // welcome: {title} is the company name.
+  "email.welcome.heading": "Welcome to DIP",
+  "email.welcome.subject": "Welcome to DIP at {title}",
+  "email.welcome.preheader": "You joined DIP at {company}. Here is how to get started.",
+  "email.welcome.lead": "you joined DIP at {company}. Here is how to get started:",
+  "email.welcome.step.portal": "Plan events and weekly themes in the admin portal.",
+  "email.welcome.step.join": "Join an event that looks fun, or invite a coworker to one.",
+  "email.welcome.step.interests": "Pick your interests in Profile so events that fit you show up first.",
+  "email.welcome.reason": "You are getting this because you joined DIP at {company}.",
+
+  // bug_report_resolved
+  "email.bugResolved.heading": "Thanks for your report",
+  "email.bugResolved.subject": "Your problem report was resolved",
+  "email.bugResolved.preheader": "The problem you reported on {day} was marked resolved.",
+  "email.bugResolved.lead": "the problem you reported on {day} was marked resolved. Thank you for helping us make DIP better.",
+  "email.bugResolved.note": "Still seeing it? Report it again from the app: shake your phone, or go to Profile > Report a problem.",
+  "email.bugResolved.reason": "You are getting this because you sent a problem report in DIP.",
+
   // Calendar file text (invite.ics)
   "email.ics.description": "Open in DIP: {url}",
   "email.ics.alarm": "{title} starts soon",

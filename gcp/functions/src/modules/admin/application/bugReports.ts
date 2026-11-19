@@ -9,6 +9,7 @@ import {
 import { AdminError, stored } from "../domain/errors";
 import { DELETE_FIELD, paths, SERVER_TIME } from "../domain/ops";
 import { parseGetBugReport, parseListBugReports, parseUpdateBugReport } from "../domain/requests";
+import { companyEmailOn, queueEmailInTx } from "./accountEmails";
 import { authorize, once, requireCaller, writeAudit, type Actor, consumeAfterAuth } from "./context";
 import type { AdminDeps, AdminTransaction, Caller, Doc } from "./ports";
 
@@ -145,7 +146,7 @@ export async function updateBugReport(deps: AdminDeps, caller: Caller | null, da
     return once(tx, actor, "updateBugReportV1", req.requestId, {
       reportId: req.reportId, status: req.status, note: req.note, assigneeId: req.assigneeId, expectedRevision: req.expectedRevision,
     }, async () => {
-      const { triageDoc } = await loadReport(tx, actor, req.reportId);
+      const { report, triageDoc } = await loadReport(tx, actor, req.reportId);
       const current = readTriage(triageDoc);
       if (req.expectedRevision !== undefined && req.expectedRevision !== current.revision) {
         throw new AdminError("aborted", "REVISION_CONFLICT", "Someone else updated this report. Reload it and try again.");
@@ -190,7 +191,22 @@ export async function updateBugReport(deps: AdminDeps, caller: Caller | null, da
           : { summaryKey: "bugReport.update" as const, summaryParams: { id: req.reportId.slice(0, 8) } }),
         changes, requestId: req.requestId,
       });
+      if (next.status === "resolved" && current.status !== "resolved") await queueResolvedEmail(tx, deps, actor.companyId, req.reportId, report, now);
       return response(req.reportId, next, true);
     }, now);
   })).value;
+}
+
+/**
+ * Tells the reporter their problem report was resolved (account email, docs/design/email-catalog.md). Queued in this
+ * command's transaction with the id `account_<reportId>_<uid>_resolved`, so resolving a reopened report again never
+ * emails twice. Nothing from the report or the triage note is included. Skipped while email is off for the company.
+ */
+async function queueResolvedEmail(tx: AdminTransaction, deps: AdminDeps, companyId: string, reportId: string, report: Doc, now: Date): Promise<void> {
+  const submitted = report.createdAt instanceof Date && Number.isFinite(report.createdAt.getTime()) ? report.createdAt : null;
+  if (!submitted || !(await companyEmailOn(tx, deps, companyId))) return;
+  await queueEmailInTx(tx, {
+    template: "bug_report_resolved", variables: { reportId, submittedAt: submitted.toISOString() }, uid: report.uid as string, companyId,
+    objectId: reportId, revisionOrWindow: "resolved", notAfter: new Date(now.getTime() + 7 * 86_400_000),
+  }, now);
 }
