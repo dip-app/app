@@ -5,6 +5,7 @@
 @use "@/styles/when";
 @use "@/styles/skeleton";
 @use "@/styles/interests";
+@use "@/styles/theme-suggest";
 
 // Professional, dense content area for the signed-in portal (everything inside <main class="content">).
 // Loaded after globals.scss so it wins at equal specificity. The sidebar, top bar, login page and the public landing

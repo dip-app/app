@@ -120,3 +120,15 @@ export function ideaOutputCeiling(model: string): number {
 export function ideasWorstCaseMicros(model: string): number {
   return (IDEA_LIMITS.maxTurns + 1) * callCost(model, IDEA_LIMITS.maxInputTokensPerTurn, ideaOutputCeiling(model));
 }
+
+/** Per-turn ceilings of one Suggest theme run (THEME_LIMITS in themeTools.ts; a test keeps them equal). */
+export const THEME_PRICED = { turns: 5, inputPerTurn: 8000, outputPerTurn: 1500 } as const;
+
+/**
+ * Upper bound of one Suggest theme run on `model`: every turn (4 plus the one bounded retry) at the input and output
+ * ceilings (3x output for reasoning models). The ranking call is priced by the caller; moderation is free.
+ */
+export function themeWorstCaseMicros(model: string): number {
+  const output = isReasoningModel(model) ? 3 * THEME_PRICED.outputPerTurn : THEME_PRICED.outputPerTurn;
+  return THEME_PRICED.turns * callCost(model, THEME_PRICED.inputPerTurn, output);
+}

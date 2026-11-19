@@ -63,5 +63,10 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv, secrets: { openai: strin
       manualPerDay: int(env.AI_IDEAS_MANUAL_PER_DAY, 3),
       model: config.ideas.model,
     },
+    themeSuggest: {
+      enabled: enabled && env.AI_THEME_SUGGEST_ENABLED?.trim().toLowerCase() !== "false",
+      model: config.themeSuggest.model,
+      companyDailyLimit: int(env.AI_THEME_SUGGEST_DAILY_LIMIT, 40),
+    },
   };
 }

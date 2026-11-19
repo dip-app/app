@@ -41,6 +41,8 @@ export const AUDIT_LABELS: Record<string, AuditLabel> = {
   "ai.generateFailed": entry("audit.action.aiGenerateFailed", "AI"),
   "ai.ideasGenerated": entry("audit.action.aiIdeasGenerated", "AI"),
   "ai.ideasFailed": entry("audit.action.aiIdeasFailed", "AI"),
+  "ai.themeSuggested": entry("audit.action.aiThemeSuggested", "AI"),
+  "ai.themeSuggestFailed": entry("audit.action.aiThemeSuggestFailed", "AI"),
   "company.office.update": entry("audit.action.companyOfficeUpdate", "Settings"),
   "suggestions.setSchedule": entry("audit.action.suggestionsSetSchedule", "Email"),
   "suggestions.sendTest": entry("audit.action.suggestionsSendTest", "Email"),

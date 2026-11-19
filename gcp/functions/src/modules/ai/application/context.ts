@@ -9,6 +9,7 @@ import { effectiveLimits, readDay, readMonth, usageSummary } from "../domain/quo
 import { parseContextRequest } from "../domain/request";
 import { bestEffort } from "./generate";
 import type { AiDeps, Caller } from "./ports";
+import { themeSuggestOn } from "./suggestTheme";
 
 /**
  * getEventIdeaContextV1: the starting point of the idea flow. Admin only (`ai.generate`), read-only. Interest counts
@@ -26,7 +27,7 @@ export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null
     ]);
     const limits = effectiveLimits(deps.settings, settingsDoc ?? null);
     const { ledger } = await loadLedger(tx, companyId, settingsDoc ?? null, now);
-    return { enabled: limits.enabled, credits: creditsSummary(ledger), summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst, now) };
+    return { enabled: limits.enabled, themeSuggest: themeSuggestOn(deps.settings, settingsDoc ?? null), credits: creditsSummary(ledger), summary: usageSummary(readMonth(monthDoc ?? null, now), readDay(dayDoc ?? null), caller.uid, limits, worst, now) };
   });
   const [stats, catalog, theme] = await Promise.all([
     bestEffort(deps, "interests", () => deps.interests.countsFor(companyId), null), deps.catalog.list(),
@@ -37,6 +38,7 @@ export async function getEventIdeaContext(deps: AiDeps, rawCaller: Caller | null
   return {
     contractVersion: 1,
     enabled: usage.enabled,
+    themeSuggestEnabled: usage.themeSuggest,
     interestDataAvailable: interests.available,
     topInterests: interests.top,
     thinInterestTagIds: interests.thinTagIds,

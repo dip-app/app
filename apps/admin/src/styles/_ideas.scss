@@ -333,7 +333,7 @@ $r-box: 8px;
 // "Generate suggestions" in the New event header is a DipbotAction (collapses to "Suggest" on phones).
 // Phones: the title and the button share the first row, the subtitle runs full width under them.
 @media (max-width: 700px) {
-  .content .page-header:has(.quick-btn) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;
+  .content .page-header:has(.quick-btn, .theme-suggest-btn) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;
     .titles { display: contents; }
     .titles .subtitle { grid-column: 1 / -1; grid-row: 2; }
     .header-action { grid-column: 2; grid-row: 1; } }

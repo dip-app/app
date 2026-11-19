@@ -92,7 +92,7 @@ const REASON_COPY: Readonly<Record<string, () => string>> = {
 };
 const AI_REASONS = [
   "AI_BUDGET_EXHAUSTED", "AI_FLAG_LIMIT", "AI_OUTPUT_INVALID", "AI_UNAVAILABLE", "REQUEST_IN_PROGRESS", "REQUEST_REUSED",
-  "INSUFFICIENT_ROLE", "VENUE_SEARCH_LIMIT", "OFFICE_NOT_SET",
+  "INSUFFICIENT_ROLE", "VENUE_SEARCH_LIMIT", "OFFICE_NOT_SET", "AI_THEME_SUGGEST_LIMIT", "AI_THEME_SUGGEST_DISABLED",
 ];
 
 /** Server messages that say nothing a person can act on: the code's copy replaces them. */

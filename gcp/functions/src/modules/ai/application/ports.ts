@@ -1,5 +1,4 @@
 import type { z } from "zod";
-import type { IdeaToolDefinition } from "../domain/ideaTypes";
 import type { CoverPickLimits } from "../../covers/domain/shortlist";
 import type { AdminStore, Caller, RateLimiter } from "../../admin/application/ports";
 
@@ -113,13 +112,16 @@ export type AgentItem =
   /** Opaque provider items (for example encrypted reasoning) that the adapter needs back on the next turn. */
   | { type: "opaque"; item: unknown };
 
+/** A read-only tool as the provider sees it: name, description and a strict zod object of arguments. */
+export interface AgentToolDefinition { name: string; description: string; args: z.ZodObject<z.ZodRawShape> }
+
 /** One model turn of a tool-using agent: it either calls tools or returns the final structured answer. */
 export interface AgentTurnRequest<T> {
   instructions: string;
   input: string;
   /** Everything after `input` so far: earlier tool calls, their results and extra user turns. */
   items: readonly AgentItem[];
-  tools: readonly IdeaToolDefinition[];
+  tools: readonly AgentToolDefinition[];
   /** "none" forces the final answer. */
   toolChoice: "auto" | "none";
   schema: z.ZodType<T>;
@@ -161,6 +163,21 @@ export interface ThemeSource {
   current(companyId: string, now: Date): Promise<CurrentTheme | null>;
 }
 
+/** A weekly theme of the company as Suggest theme reads it (title, tags, illustration key, window, participants). */
+export interface ThemeHistoryRecord {
+  title: string;
+  tagIds: string[];
+  coverImageURL: string;
+  startDate: Date;
+  endDate: Date;
+  participantCount: number;
+}
+
+export interface ThemeHistorySource {
+  /** Weekly themes of the company whose start falls in [from, to], oldest first, at most 200. */
+  between(companyId: string, from: Date, to: Date): Promise<ThemeHistoryRecord[]>;
+}
+
 /** Deployment-wide settings (environment and secrets presence); a company document can change limits and must opt in. */
 export interface AiSettings {
   /** AI_EVENTS_ENABLED and the OpenAI key present. False makes the whole feature a clean no-op (AI_DISABLED). */
@@ -186,6 +203,18 @@ export interface AiSettings {
   dailyFlagLimit: number;
   /** Dipbot daily ideas switches and limits. Absent means the defaults (on, 24 hours, 3 manual refreshes a day). */
   ideas?: IdeasSettings;
+  /** Dipbot Suggest theme switches and limits. Absent means on (with AI), gpt-4o-mini and 40 runs per company a day. */
+  themeSuggest?: ThemeSuggestSettings;
+}
+
+/** Deployment settings of Dipbot Suggest theme (AI_THEME_SUGGEST_*, AI_MODEL_THEME_SUGGEST). */
+export interface ThemeSuggestSettings {
+  /** AI_THEME_SUGGEST_ENABLED is not "false" and AI events are enabled. */
+  enabled: boolean;
+  /** Model id of the tool-using agent, used for pricing; the adapter reads the same config. */
+  model: string;
+  /** Runs per company per UTC day (AI_THEME_SUGGEST_DAILY_LIMIT, default 40). The per-admin cap is `dailyGenerationLimit`. */
+  companyDailyLimit: number;
 }
 
 /** Deployment settings of Dipbot daily ideas (AI_IDEAS_*, AI_MODEL_IDEAS). */

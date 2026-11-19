@@ -5,7 +5,7 @@ export { registerDeviceV1, unregisterDeviceV1, onEventMessageCreated, onEventCha
 export { createChallengeV1, updateChallengeV1 } from "./modules/challenges";
 export { eventSharePageV1 } from "./modules/share";
 export { onEmailOutboxCreated, emailUnsubscribeV1, emailWebhookV1, emailOpenV1, emailOutboxReaper, calendarInviteOnRsvp, calendarInviteOnEventUpdated, welcomeEmailOnMemberCreated } from "./modules/email";
-export { getEventIdeaContextV1, generateEventDraftsV1, getEventIdeaSuggestionsV1, getDipbotIdeasV1 } from "./modules/ai";
+export { getEventIdeaContextV1, generateEventDraftsV1, getEventIdeaSuggestionsV1, getDipbotIdeasV1, suggestThemeV1 } from "./modules/ai";
 export { coverImageV1, importCoverPhotoV1, pickEventCoverV1, searchCoverPhotosV1 } from "./modules/covers";
 export { sendAdminSuggestionsEmails, manageSuggestionsEmailV1, resolveSuggestedIdeaV1 } from "./modules/suggestions";
 export { finalizeEventPhotoV1, onPhotoCommentCreated } from "./modules/photos";

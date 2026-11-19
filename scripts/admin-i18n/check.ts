@@ -270,6 +270,7 @@ export const SERVER_CONTENT_FILES: ReadonlySet<string> = new Set([
   "apps/admin/src/lib/firebaseAdapter.ts",
   "apps/admin/src/lib/ideasMock.ts",
   "apps/admin/src/lib/ideasForYouMock.ts",
+  "apps/admin/src/lib/themeSuggestMock.ts",
   "apps/admin/src/lib/considerations.ts",
   // Language names are shown in their own language on purpose (LOCALE_NAMES).
   "apps/admin/src/lib/i18n/index.ts",

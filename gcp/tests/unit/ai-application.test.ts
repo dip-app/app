@@ -1104,7 +1104,7 @@ describe("Dipbot credits (generate)", () => {
     assert.equal(CREDIT_COSTS.generateDrafts, 10);
     assert.deepEqual(response.credits, {
       creditsAllowance: 500, creditsUsed: 10, creditsRemaining: 490, resetsAt: "2030-02-01T00:00:00.000Z",
-      creditCost: { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1, ideas: 3 },
+      creditCost: { suggest: 1, generate: 10, regenerate: 10, weeklyEmail: 3, coverPick: 1, venueSearch: 1, ideas: 3, themeSuggest: 2 },
     });
     assert.ok(!/usd|dollar|cents|micros|spent|\$/i.test(JSON.stringify({ usage: response.usage, credits: response.credits })));
   });

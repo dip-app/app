@@ -2,7 +2,7 @@ import type {
   AddAttendeeInput, AlbumComment, AlbumPhoto, ApplyStepResponse, Attendee, AuditEntry, CompanyInfo,
   BackfillStep, ImportJobInfo, ImportPlanRequest, ImportPlanResponse, Member, MemberPage, MemberPatch, MemberQuery, MemberStatus, ResendResult, InviteEmailResult,
   CompanyInsights, BugReportDetail, BugReportPage, BugReportPatch, BugReportQuery, BugReportUpdate,
-  DipbotIdeas, DipbotIdeasInput, EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
+  DipbotIdeas, DipbotIdeasInput, SuggestThemeInput, SuggestThemeResult, EventIdeaContext, EventIdeaSuggestions, EventIdeaSuggestionsInput, GenerateDraftsInput, GenerateDraftsResult, RosterPage, RosterQuery, RosterRow, Submission, SubmissionPage, SubmissionStatus,
 } from "./adminTypes";
 import type { ImportCoverPhotoResult, PickEventCoverInput, PickEventCoverResult, SearchCoverPhotosResult } from "./covers";
 import type { TagStat } from "./tagStats";
@@ -117,6 +117,8 @@ export interface AdminOpsApi {
 
   /** getDipbotIdeasV1: "Ideas for you". `load` returns the stored ideas (free), `auto` the one background refresh, `refresh` the button (3 credits). */
   dipbotIdeas(input: DipbotIdeasInput): Promise<DipbotIdeas>;
+  /** suggestThemeV1: Dipbot suggests a weekly theme (and 2 to 3 alternatives) for the New theme form. 2 credits when a model answered; a replay of the requestId is free. */
+  suggestTheme(input: SuggestThemeInput): Promise<SuggestThemeResult>;
 
   // ----- Audit (#121)
   listAudit(): Promise<AuditEntry[]>;
