@@ -23,7 +23,13 @@ Notification follow-ups for issues #204 and #214. (1) The weekly theme push and 
 - `node --import tsx --test` (from gcp/functions) on weekly-theme-audience, notification-text-i18n, notifications-new-triggers, email-optin, push-i18n, notificationEmailPayloads, invites, challenge-submissions, admin-events, admin-members and `tests/unit/notification*.test.ts`: all pass (35 + 185 + 51 tests across the runs, 0 failures).
 - `npx tsc --noEmit` (functions), `npm run check:backend-i18n`, `npm run check:email`, `npm run check:generated`, `npm run check:ios-i18n`: pass.
 - `swift test --package-path ui/Packages/DIPCore --filter "DIPNotificationCategoryTests|DIPNotificationSettingsModelTests"`: 11 + 30 tests pass.
-- App: `xcodebuild build-for-testing` (DIP scheme, simulator Claude-DIP, own DerivedData, deleted afterwards). `-only-testing:DIPUITests/NotificationSettingsUITests` ran once: all 5 tests failed at the shared `openSettings` helper ("Profile has no Notifications row"), including the 4 existing tests this change does not touch; the row is present on screen in manual runs, so this is a pre-existing UI-test navigation problem, not a regression from this branch. Not rerun (owner rule: once each).
+- App: `xcodebuild build-for-testing` (DIP scheme, simulator Claude-DIP, own DerivedData, deleted afterwards). `-only-testing:DIPUITests/NotificationSettingsUITests`:
+  - first branch run: 5 of 5 failed at the shared `openSettings` helper ("Profile has no Notifications row");
+  - clean `origin/main` (dfbd2d45, temporary detached worktree, deleted afterwards): 4 of 4 failed the same way, so the failure predates this branch;
+  - root cause (UI hierarchy in the result bundle): a fresh mock member starts on the onboarding tour, which covers the shell and swallows the Profile tab tap;
+  - fix in the helper: skip the tour like a member, then tap `home.tab.Profile` until it is selected (at most 3 tries) and assert it; no assertion loosened;
+  - branch run after the skip step only: 4 of 5 passed; the first test on a fresh install lost the tap to the tour's closing reveal;
+  - final branch run on a fresh install: 5 of 5 passed (0 failures), including the new opt-in rows test.
 - Design review (docs/design/design-review.md), simulator screenshots en and es, light: round 1 FAIL (P2: email save error shown only at the top of the sheet; Challenges email summary overlapped the new weekly theme row), both fixed; round 2 FAIL on a stale screenshot plus out-of-scope shared parts; round 3 PASS (P3 only).
 
 ## Decisions
@@ -36,5 +42,6 @@ Notification follow-ups for issues #204 and #214. (1) The weekly theme push and 
 ## Handoff
 
 - Not verified on a device: per-recipient in-app language, the weekly theme push to an organizer, and the iOS rows against live Firestore (runbook steps updated).
-- Pre-existing: `NotificationSettingsUITests` fail at `openSettings` on this simulator (iOS 27.2); needs a look by the iOS UI test owner. iOS `MembershipContext` accepts only `member` and `admin` roles, so organizers cannot sign in to the app; out of scope here.
+- Other UI test classes that launch `--mock-member` on a fresh install and tap tabs (for example `DuoLayoutUITests`) may hit the same onboarding-tour overlay; not checked here.
+- iOS accepts only `member` and `admin` roles, so organizers cannot sign in to the app (`ui/Packages/DIPAccounts/Sources/DIPAccounts/Accounts.swift:17`, `ui/DIP/Data/Accounts/FirebaseAccountsRepository.swift:67`); coordinator to decide on a follow-up.
 - Remaining English-only texts are listed in docs/design/push-catalog.md (Notification text language).

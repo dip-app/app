@@ -14,9 +14,23 @@ final class NotificationSettingsUITests: XCTestCase {
     }
 
     private func openSettings(_ app: XCUIApplication) {
-        let profile = app.buttons["Profile"]
+        // A fresh install (the mock member has no finished tour record) opens on the onboarding tour, which covers the
+        // shell and takes its taps; skip it the way a member would before using the tab bar.
+        let profile = app.buttons["home.tab.Profile"]
         XCTAssertTrue(profile.waitForExistence(timeout: 20))
-        profile.tap()
+        let skipTour = app.buttons["onboarding.tour.skip"]
+        if skipTour.waitForExistence(timeout: 5) {
+            skipTour.tap()
+            XCTAssertTrue(skipTour.waitForNonExistence(timeout: 10), "the onboarding tour did not close")
+        }
+        // The tour's closing reveal still holds the shell's taps for a moment after Skip disappears, so a tap can be
+        // swallowed: tap until the Profile tab is selected (bounded), then require it.
+        let selected = NSPredicate(format: "isSelected == true")
+        for _ in 0..<3 where !profile.isSelected {
+            profile.tap()
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: selected, object: profile)], timeout: 3)
+        }
+        XCTAssertTrue(profile.isSelected, "the Profile tab did not open")
         let row = app.buttons["profile.notifications"]
         XCTAssertTrue(row.waitForExistence(timeout: 10), "Profile has no Notifications row")
         row.tap()
