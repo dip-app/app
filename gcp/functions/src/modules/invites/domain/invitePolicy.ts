@@ -1,3 +1,5 @@
+import type { Locale } from "../../i18n";
+import { inviteNotice } from "../../notifications/domain/notices";
 import { InviteError } from "./errors";
 
 export const MESSAGE_MAX = 200;
@@ -120,8 +122,7 @@ export function nextBudget(stored: unknown, nowMs: number, limit: number, window
   return { windowStart, count: count + 1 };
 }
 
-const clip = (text: string, max: number) => (text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`);
-
-export function inviteNotificationText(fromName: string, eventTitle: string): { title: string; body: string } {
-  return { title: "New invitation", body: `${clip(fromName || "A coworker", 40)} invited you to ${clip(eventTitle, 60)}.` };
+/** In the invitee's language (`users/{uid}.locale`, English when missing); English is unchanged. */
+export function inviteNotificationText(fromName: string, eventTitle: string, locale: Locale = "en"): { title: string; body: string } {
+  return inviteNotice(fromName, eventTitle, locale);
 }

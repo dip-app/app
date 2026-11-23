@@ -41,6 +41,7 @@ export function photoCommentRequest(input: {
     id: `photo_comment_${input.commentId}`, kind: "photo_comment", companyId: input.companyId,
     recipients: [{ uid: input.uploaderId }], push, pushFor: build,
     inApp: { title: push.title, body: push.body, targetType: "event", targetId: input.eventId },
+    inAppFor: (locale) => { const localized = build(locale); return { title: localized.title, body: localized.body }; },
   };
 }
 
@@ -77,6 +78,7 @@ export function photoAddedRequest(input: {
     id: photoAddedId(input.eventId, input.uploaderId, input.createdAt), kind: "photo_added", companyId: input.companyId,
     recipients: input.recipients.filter((uid) => uid !== input.uploaderId).map((uid) => ({ uid })), push, pushFor: build,
     inApp: { title: shorten(input.eventTitle, TITLE_MAX_FOR_INAPP), body: push.body, targetType: "event", targetId: input.eventId },
+    inAppFor: (locale) => ({ title: shorten(input.eventTitle, TITLE_MAX_FOR_INAPP), body: build(locale).body }),
   };
 }
 

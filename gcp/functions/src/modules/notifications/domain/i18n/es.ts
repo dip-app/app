@@ -40,4 +40,9 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "push.change.label.spots": "cupos",
   "push.change.label.indoorOutdoor": "interior/exterior",
   "push.change.label.status": "estado",
+  "push.change.fallbackTitle": "Actualización de actividad",
+  "push.notice.attendeeAdded.title": "¡Ya tienes tu lugar!",
+  "push.notice.challengeApproved.title": "Reto aprobado",
+  "push.notice.challengeApproved.points": "Ganaste {points, plural, one {{points} punto} other {{points} puntos}}.",
+  "push.notice.challengeApproved.body": "Tu participación fue aprobada.",
 };
