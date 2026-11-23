@@ -4,6 +4,12 @@ import Foundation
 // Push client (DEVICE-UNVERIFIED): real delivery needs the paid Apple team's APNs key and the `aps-environment`
 // entitlement (see docs/design/push-client.md). Everything here is behind `PushFeature.isEnabled` and tested with fakes.
 
+// Lives here (not in PushNotificationActions.swift) because the ComponentPreview target compiles this file but not the actions file.
+/// Which local notification to post when a quick action pressed in the background could not finish.
+enum PushActionFallback: Equatable, Sendable {
+    case invite, leave, reply
+}
+
 /// registerDeviceV1 / unregisterDeviceV1.
 @MainActor protocol PushDeviceAPI: AnyObject {
     func register(token: String, appVersion: String) async throws

@@ -136,11 +136,6 @@ enum PushResponseAction: Equatable, Sendable {
     }
 }
 
-/// Which local notification to post when a quick action pressed in the background could not finish.
-enum PushActionFallback: Equatable, Sendable {
-    case invite, leave, reply
-}
-
 /// The member-side calls behind the quick actions, for the signed-in member in one company. The Firebase adapter
 /// (`FirebasePushMemberActions`) reuses the sources the in-app UI calls, so the server applies the same rules.
 @MainActor protocol PushMemberActions: AnyObject {
