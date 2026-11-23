@@ -54,5 +54,9 @@ $da-off: #eceef4;
     &[data-short="true"] { .dip-action-label, .dip-action-cost { display: none; } .dip-action-short { display: inline; } }
   }
 }
+// Narrow phones (320 px): a long translated label wraps inside the button instead of pushing the page wider.
+@media (max-width: 420px) {
+  .dip-action { max-width: 100%; white-space: normal; text-align: center; &:not([data-variant="link"]) { padding-block: 6px; } .dip-action-label { min-width: 0; overflow-wrap: anywhere; } }
+}
 @keyframes dip-action-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .dip-action { transition: none; } .dip-action .dip-action-spin { animation: none; border-right-color: currentColor; opacity: .6; } }

@@ -9,7 +9,7 @@ import { LEVELS_FOR, type PushKind } from "./subscription";
  */
 export const NOTIFICATION_CATEGORIES = [
   "invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "calendar_invites", "admin_suggestions",
-  "weekly_themes", "admin_digest",
+  "weekly_themes", "admin_digest", "day_before_reminders",
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
@@ -18,11 +18,22 @@ export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
 /**
  * Categories each channel offers. `chat` and `social` are never emailed; `calendar_invites`, `admin_suggestions`,
- * `weekly_themes` (weekly theme announcement email) and `admin_digest` (daily roster digest for admins) are email only.
+ * `weekly_themes` (weekly theme announcement email), `admin_digest` (daily roster digest for admins) and
+ * `day_before_reminders` (the about-24-hour reminder email) are email only.
+ *
+ * Reminder emails (owner decision, November 22, 2026, docs/design/email-coverage.md): the about-24-hour reminder email
+ * has its own email-only switch `day_before_reminders`, default ON, so it "just works" for members who joined an event.
+ * The email `reminders` switch now governs only the about-1-hour reminder email and stays default off (opt in). Push
+ * `reminders` still covers both push windows. A separate key (instead of flipping `reminders`) because iOS writes the
+ * whole resolved email map on save, so many stored documents carry an explicit `reminders: false` that is the old
+ * default, not a choice; an app version that predates the new key never writes it, so the server default applies.
  */
 export const CHANNEL_CATEGORIES: Readonly<Record<NotificationChannel, readonly NotificationCategory[]>> = {
   push: ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery"],
-  email: ["invites", "event_updates", "reminders", "challenges", "discovery", "calendar_invites", "admin_suggestions", "weekly_themes", "admin_digest"],
+  email: [
+    "invites", "event_updates", "reminders", "challenges", "discovery", "calendar_invites", "admin_suggestions", "weekly_themes", "admin_digest",
+    "day_before_reminders",
+  ],
 };
 
 /**
@@ -33,7 +44,10 @@ export const CHANNEL_CATEGORIES: Readonly<Record<NotificationChannel, readonly N
  */
 export const DEFAULT_PREFERENCES: Readonly<Record<NotificationChannel, Readonly<Partial<Record<NotificationCategory, boolean>>>>> = {
   push: { invites: true, event_updates: true, reminders: true, chat: true, challenges: true, social: false, discovery: false },
-  email: { invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, calendar_invites: true, admin_suggestions: false, weekly_themes: false, admin_digest: false },
+  email: {
+    invites: true, event_updates: true, reminders: false, challenges: true, discovery: false, calendar_invites: true, admin_suggestions: false,
+    weekly_themes: false, admin_digest: false, day_before_reminders: true,
+  },
 };
 
 /**
@@ -53,6 +67,11 @@ export const NOTIFICATION_KINDS = {
   event_changed: { category: "event_updates", eventLevel: "event_changed", inAppType: "event_updated" },
   event_cancelled: { category: "event_updates", eventLevel: "event_changed", inAppType: "event_cancelled" },
   reminder: { category: "reminders", eventLevel: "reminder", inAppType: "reminder" },
+  /**
+   * Email twin of the about-24-hour `reminder` (email only, default on). The router delivers the `reminder` kind; the
+   * email channel maps a 24 h `event_reminder` email to this kind, so the same per-event level gate applies.
+   */
+  reminder_day_before: { category: "day_before_reminders", eventLevel: "reminder", inAppType: null },
   invite: { category: "invites", eventLevel: null, inAppType: "invite" },
   invite_answered: { category: "invites", eventLevel: null, inAppType: "invite_answered" },
   attendee_added: { category: "event_updates", eventLevel: null, inAppType: "attendee_added" },

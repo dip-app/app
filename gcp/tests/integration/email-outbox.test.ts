@@ -70,7 +70,7 @@ test("email outbox trigger, unsubscribe and webhook against the emulators", { ti
     // The other company the mismatch case claims to belong to is enabled from the start, so only the tenant check can skip it.
     await db.doc(`emailSettings/${stamp}-someone-else`).set({ enabled: true, dailyCap: 100 });
 
-    await t.test("happy path sends once, hashes the address, adds unsubscribe headers and an .ics", async () => {
+    await t.test("happy path sends once, hashes the address and adds unsubscribe headers", async () => {
       const user = await addUser("happy", `Happy.${stamp}@Synthetic.test`);
       const result = await invite(user.uid, companyId, "r1");
       assert.equal(result.enqueued, true);
@@ -83,7 +83,8 @@ test("email outbox trigger, unsubscribe and webhook against the emulators", { ti
       assert.equal(sent["toHash"], user.hash);
       assert.match(sent["headers"]["List-Unsubscribe"], /^<https:\/\/letsdip\.work\/u\/.+>$/);
       assert.equal(sent["headers"]["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
-      assert.ok((sent["attachmentNames"] as string[]).some((n) => n.endsWith(".ics")), "ics attachment");
+      // Only calendar invite emails carry an .ics (the informational attachment was removed: it duplicated the entry).
+      assert.deepEqual(sent["attachmentNames"], [], "no .ics on an invitation email");
       for (const snapshot of [JSON.stringify(sent), JSON.stringify(done.data())]) {
         assert.ok(!snapshot.toLowerCase().includes(user.email.toLowerCase()), "no plain address stored");
       }

@@ -48,14 +48,15 @@ export function rosterEntryOf(recipientKey: string): string | null {
  * Shared notification kind per template (notifications/domain/categories.ts); decides the per-event level gate. Account
  * templates never pass through the shared router and have no kind (null).
  */
-export function templateKind(template: TemplateId, variables?: { outcome?: string }): NotificationKind | null {
+export function templateKind(template: TemplateId, variables?: { outcome?: string; window?: string }): NotificationKind | null {
   switch (template) {
     case "invite_received": return "invite";
     case "invite_answered": return "invite_answered";
     case "event_changed": return "event_changed";
     case "event_canceled": return "event_cancelled";
     case "attendee_added": return "attendee_added";
-    case "event_reminder": return "reminder";
+    // The about-24-hour reminder email has its own default-on switch (`day_before_reminders`); the 1 h one stays `reminders`.
+    case "event_reminder": return variables?.window === "24h" ? "reminder_day_before" : "reminder";
     case "calendar_invite":
     case "calendar_cancel": return "calendar_invite";
     case "challenge_reviewed": return variables?.outcome === "changes_requested" ? "challenge_changes_requested" : "challenge_approved";
@@ -68,6 +69,18 @@ export function templateKind(template: TemplateId, variables?: { outcome?: strin
   }
 }
 export const TEMPLATE_IDS = Object.keys(TEMPLATE_CATEGORY) as TemplateId[];
+
+/**
+ * The switch that governs one email: the template's category, except the about-24-hour `event_reminder`, which is
+ * governed by `day_before_reminders` (default on) while the 1 h reminder stays under `reminders` (default off). Used for
+ * the outbox id and stored category, the send-time preference check, the unsubscribe link and the footer reason.
+ */
+export function templateCategory(template: TemplateId, variables?: unknown): OutboxCategory {
+  if (template === "event_reminder" && variables !== null && typeof variables === "object" && (variables as { window?: unknown }).window === "24h") {
+    return "day_before_reminders";
+  }
+  return TEMPLATE_CATEGORY[template];
+}
 
 export function isTemplateId(value: unknown): value is TemplateId {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(TEMPLATE_CATEGORY, value);

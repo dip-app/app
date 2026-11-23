@@ -14,6 +14,8 @@ export interface AttendeeAddedInput {
   companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string;
   /** Optional event times for the email; without both, no email is requested. */
   eventStartTime?: Date; eventEndTime?: Date;
+  /** Optional venue for the email's Where row. */
+  venueName?: string; venueAddress?: string;
 }
 export function attendeeAddedRequest(input: AttendeeAddedInput): NotificationRequest {
   return {
@@ -22,7 +24,8 @@ export function attendeeAddedRequest(input: AttendeeAddedInput): NotificationReq
     push: attendeeAddedPush(input.companyId, input.eventId, input.eventTitle),
     pushFor: (locale) => attendeeAddedPush(input.companyId, input.eventId, input.eventTitle, locale),
     email: attendeeAddedEmail(input.eventId, input.notificationId,
-      eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
+      eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime,
+        venueName: input.venueName, venueAddress: input.venueAddress })),
   };
 }
 
@@ -41,6 +44,8 @@ export interface InviteAcceptedInput {
   companyId: string; eventId: string; eventTitle: string; inviteId: string; senderId: string; responderName: string;
   /** Optional event times for the email; without both, no email is requested. */
   eventStartTime?: Date; eventEndTime?: Date;
+  /** Optional venue for the email's Where row. */
+  venueName?: string; venueAddress?: string;
 }
 export function inviteAnsweredRequest(input: InviteAcceptedInput): NotificationRequest {
   const push = inviteAnsweredPush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.responderName);
@@ -54,7 +59,8 @@ export function inviteAnsweredRequest(input: InviteAcceptedInput): NotificationR
       return { title: localized.title, body: localized.body };
     },
     email: inviteAnsweredEmail(input.inviteId, input.responderName,
-      eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
+      eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime,
+        venueName: input.venueName, venueAddress: input.venueAddress })),
   };
 }
 

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { OutboxCategory } from "./categories";
 import type { Locale } from "../../i18n";
-import { TEMPLATE_CATEGORY, type TemplateId, type TemplateVariables } from "./templates/types";
+import { templateCategory, type TemplateId, type TemplateVariables } from "./templates/types";
 
 /**
  * Server-only outbox (`emailOutbox/{id}`, deny-all rules, Firestore TTL on `expireAt`).
@@ -92,8 +92,9 @@ export function outboxId(category: OutboxCategory, objectId: string, uid: string
   return `${category}_${idPart(objectId)}_${idPart(uid)}_${idPart(revisionOrWindow)}`;
 }
 
-export function categoryOf(template: TemplateId): OutboxCategory {
-  return TEMPLATE_CATEGORY[template];
+/** The outbox category of one email; the variables matter only for the 24 h reminder (`templateCategory`). */
+export function categoryOf(template: TemplateId, variables?: unknown): OutboxCategory {
+  return templateCategory(template, variables);
 }
 
 /**
@@ -105,7 +106,7 @@ export function newOutboxData(entry: { uid: string; companyId: string; template:
   return {
     uid: entry.uid,
     companyId: entry.companyId,
-    category: categoryOf(entry.template),
+    category: categoryOf(entry.template, entry.variables),
     template: entry.template,
     variables: entry.variables,
     status: "queued",

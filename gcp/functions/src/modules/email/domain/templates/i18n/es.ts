@@ -37,6 +37,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.reason.admin_suggestions": "ideas semanales de eventos",
   "email.reason.weekly_themes": "temas semanales",
   "email.reason.admin_digest": "resumen diario de la lista de personal",
+  "email.reason.day_before_reminders": "recordatorios del día anterior",
 
   "email.inviteReceived.heading": "Nueva invitación",
   "email.inviteReceived.subject": "{who} te invitó a {title}",

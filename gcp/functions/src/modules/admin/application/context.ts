@@ -1,4 +1,5 @@
 import { isLocale, type Locale } from "../../i18n";
+import { venueFieldsOf } from "../../notifications/application/emailPayload";
 import { auditDocument, type AuditActor, type AuditInput } from "../domain/audit";
 import { AdminError, stored } from "../domain/errors";
 import { paths } from "../domain/ops";
@@ -88,6 +89,8 @@ export async function loadMember(tx: AdminTransaction, actor: Actor, uid: string
 
 export interface StoredEvent {
   title: string; status: "scheduled" | "cancelled" | "completed"; capacity: number; attendeeCount: number; revision: number; pointsValue: number; startTime: Date; endTime: Date;
+  /** Venue name and one-line address, only for notification emails; absent when the event has none. */
+  venueName?: string; venueAddress?: string;
 }
 
 const isDate = (value: unknown): value is Date => value instanceof Date && Number.isFinite(value.getTime());
@@ -102,5 +105,6 @@ export async function loadEvent(tx: AdminTransaction, actor: Actor, eventId: str
   return {
     title: event.title, status: event.status as StoredEvent["status"], capacity: event.capacity as number, attendeeCount: event.attendeeCount as number,
     revision: isInt(event.revision) ? event.revision : 1, pointsValue: isInt(event.pointsValue) && event.pointsValue > 0 ? event.pointsValue : 0, startTime: event.startTime as Date, endTime: event.endTime as Date,
+    ...venueFieldsOf(event),
   };
 }

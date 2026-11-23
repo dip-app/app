@@ -200,16 +200,19 @@ export default function ImportPage() {
   const failed = results.filter((r) => r.outcome === "failed" && !previewInvalid.has(r.line));
   const outcome = (name: ResultRow["outcome"]) => results.filter((r) => r.outcome === name).length;
 
+  const currentStep = STEPS.findIndex((step) => step.phases.includes(phase));
+
   return (
     <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run"
       action={<Button href="/roster/">{t("import.roster")}</Button>}>
       <ol className="steps" aria-label={t("import.steps.label")}>
         {STEPS.map((step, i) => (
           <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>
-            <span className="step-n">{i + 1}</span><span className="step-label">{t(step.labelKey)}</span>
+            <span className="step-n">{i + 1}</span><span className="step-label" data-text={t(step.labelKey)}>{t(step.labelKey)}</span>
           </li>
         ))}
       </ol>
+      {currentStep >= 0 && <p className="steps-progress" aria-hidden="true">{t("import.steps.progress", { current: currentStep + 1, total: STEPS.length, label: t(STEPS[currentStep].labelKey) })}</p>}
       {phase === "choose" && (
         <>
           {resumeNote && <InlineNotice>{resumeNote}</InlineNotice>}
@@ -234,7 +237,7 @@ export default function ImportPage() {
                 onDrop={(e) => { e.preventDefault(); setDragging(false); void choose(e.dataTransfer.files[0]); }}
               >
                 <p>{t("import.choose.drop")}</p>
-                <label className="pill-btn dark file-btn">
+                <label className="pill-btn purple file-btn">
                   {t("import.choose.button")}
                   <input ref={input} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => void choose(e.target.files?.[0])} />
                 </label>
@@ -244,7 +247,7 @@ export default function ImportPage() {
             <aside className="stack">
               <Panel id="tpl" title={t("import.template.title")}>
                 <p className="muted">{t("import.template.body")}</p>
-                <Button variant="primary" onClick={() => downloadText("dip-people-template.csv", templateCsv(domain))}>{t("import.template.download")}</Button>
+                <Button onClick={() => downloadText("dip-people-template.csv", templateCsv(domain))}>{t("import.template.download")}</Button>
 </Panel>
               <Panel id="rules" title={t("import.rules.title")}>
                 <ul className="plain">

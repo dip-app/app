@@ -36,7 +36,8 @@ export class PushInviteNotifier implements InviteNotifier {
         push: invitePush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.fromName),
         pushFor: (locale) => invitePush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.fromName, locale),
         email: inviteReceivedEmail(input.inviteId, input.fromName,
-          eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime })),
+          eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime,
+            venueName: input.venueName, venueAddress: input.venueAddress })),
       });
       return;
     }

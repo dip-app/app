@@ -117,6 +117,8 @@ export interface AttendeeAddedPush {
   companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string;
   /** Event times, used only for the optional email. */
   eventStartTime?: Date; eventEndTime?: Date;
+  /** Venue name and one-line address for the email's Where row. */
+  venueName?: string; venueAddress?: string;
 }
 export interface AttendeeRemovedPush { companyId: string; eventId: string; eventTitle: string; userId: string; notificationId: string }
 export interface AdminPushNotifier {

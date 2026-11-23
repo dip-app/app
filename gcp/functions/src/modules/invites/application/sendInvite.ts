@@ -4,6 +4,7 @@ import { InviteError } from "../domain/errors";
 import {
   isActiveMember, SEND_LIMIT, SEND_WINDOW_MS, inviteIdFor, inviteNotificationText, nextBudget, notificationIdFor, parseSend, validWireId,
 } from "../domain/invitePolicy";
+import { venueFieldsOf } from "../../notifications/application/emailPayload";
 import type { InviteCaller, InviteNotifier, InviteStore } from "./ports";
 
 const date = (value: unknown): value is Date => value instanceof Date && Number.isFinite(value.getTime());
@@ -88,7 +89,8 @@ export async function sendInvite(store: InviteStore, notifier: InviteNotifier | 
       targetType: "invite", targetId: inviteId, isRead: false,
     });
     pushInput = { companyId, eventId, eventTitle: event.title as string, inviteId, toUserId, fromName: sender.displayName as string,
-      ...(event.startTime instanceof Date ? { eventStartTime: event.startTime } : {}), ...(event.endTime instanceof Date ? { eventEndTime: event.endTime } : {}) };
+      ...(event.startTime instanceof Date ? { eventStartTime: event.startTime } : {}), ...(event.endTime instanceof Date ? { eventEndTime: event.endTime } : {}),
+      ...venueFieldsOf(event) };
     return { contractVersion: 1, inviteId, status: "pending", created: true } satisfies SendInviteResponse;
   });
   if (response.created && pushInput && notifier) {

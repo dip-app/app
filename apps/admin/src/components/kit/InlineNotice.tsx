@@ -70,12 +70,14 @@ export function InlineNotice({ tone = "info", title, action, className, children
  * An error alert for anything thrown. The copy comes from `userError()`: plain language, never a status code or a
  * reason key. "Try again" shows when `onRetry` is given and retrying can help; a signed-out session offers Sign in.
  */
-export function ErrorNotice({ error, onRetry, retryLabel, action, title, fallback, notFound, dipbot, className, announce, ref }: {
+export function ErrorNotice({ error, onRetry, retryLabel, action, extraAction, title, fallback, notFound, dipbot, className, announce, ref }: {
   error: unknown;
   onRetry?: () => void;
   retryLabel?: string;
   /** Replaces the automatic Try again / Sign in action. */
   action?: ReactNode;
+  /** Shown after the automatic or given action, inside the alert (a Close for a dismissible alert). */
+  extraAction?: ReactNode;
   title?: string;
   className?: string;
   announce?: boolean;
@@ -86,7 +88,7 @@ export function ErrorNotice({ error, onRetry, retryLabel, action, title, fallbac
     ? <Button variant="plain" href="/login/">{t("failure.signIn")}</Button>
     : onRetry && shown.retryable ? <Button variant="plain" onClick={onRetry}>{retryLabel ?? t("common.tryAgain")}</Button> : null;
   return (
-    <InlineNotice tone="error" title={title} action={action ?? auto} className={className} announce={announce} ref={ref}>
+    <InlineNotice tone="error" title={title} action={extraAction ? <>{action ?? auto}{extraAction}</> : action ?? auto} className={className} announce={announce} ref={ref}>
       {shown.message}
     </InlineNotice>
   );

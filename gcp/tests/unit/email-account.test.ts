@@ -119,7 +119,7 @@ class FakeOutbox implements OutboxStore {
   async create(entry: NewOutboxEntry, now: Date) {
     if (this.docs.has(entry.id)) return false;
     this.docs.set(entry.id, {
-      id: entry.id, uid: entry.uid, companyId: entry.companyId, category: categoryOf(entry.template), template: entry.template,
+      id: entry.id, uid: entry.uid, companyId: entry.companyId, category: categoryOf(entry.template, entry.variables), template: entry.template,
       variables: entry.variables, status: "queued", attempts: 0, notAfter: entry.notAfter, createdAt: now, expireAt: now, leaseUntil: null,
       ...(entry.locale ? { locale: entry.locale } : {}),
     });

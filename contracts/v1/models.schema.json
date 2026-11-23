@@ -816,7 +816,7 @@
     "EmailCategoryPreferences": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Per-category email switches for the categories email offers (never chat or social); a missing key means the server-side default (off for reminders, discovery, admin_suggestions, weekly_themes and admin_digest).",
+      "description": "Per-category email switches for the categories email offers (never chat or social); a missing key means the server-side default (on for invites, event_updates, challenges, calendar_invites and day_before_reminders; off for reminders, discovery, admin_suggestions, weekly_themes and admin_digest).",
       "properties": {
         "invites": {
           "type": "boolean"
@@ -825,7 +825,8 @@
           "type": "boolean"
         },
         "reminders": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "The about-1-hour reminder email before an event the member joined. Default off (opt in). The about-24-hour email is day_before_reminders."
         },
         "challenges": {
           "type": "boolean"
@@ -846,6 +847,10 @@
         "admin_digest": {
           "type": "boolean",
           "description": "Daily roster digest for admins (invited people who joined, imports that finished). Default off; admins only."
+        },
+        "day_before_reminders": {
+          "type": "boolean",
+          "description": "The about-24-hour reminder email before an event the member joined (email only). Default on; the per-event notification level still applies."
         }
       },
       "required": []
