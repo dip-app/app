@@ -84,19 +84,23 @@ struct DIPPrototypeApp: View {
          invitesRepository: (any DIPInvitesRepository)? = nil,
          notificationsRepository: (any DIPNotificationsRepository)? = nil,
          notificationPreferencesRepository: (any DIPNotificationPreferencesRepository)? = nil,
-         pushPermission: PushPermissionControl? = nil) {
+         pushPermission: PushPermissionControl? = nil,
+         isAdmin: Bool = false) {
         #if DEBUG
         // The fixture needs `--notifications-push=` (also in `--mock-member` mode, where a repository is passed).
         let resolvedPermission = pushPermission ?? PushPermissionControl.fixture()
+        // `--notification-settings-admin` (Debug) shows the admin-only email switch for review and UI tests.
+        let showsAdminSettings = isAdmin || MockLaunch.Flags.contains("--notification-settings-admin")
         #else
         let resolvedPermission = pushPermission
+        let showsAdminSettings = isAdmin
         #endif
         self.pushPermission = resolvedPermission
         // Settings need a preferences adapter. Push controls need the push client (flag) and the permission seam; without
         // them the screen still opens with the Email section, because email preferences do not depend on push.
         if let source = notificationPreferencesRepository ?? (repository == nil ? Self.fixtureNotificationPreferences() : nil) {
             let permission = PushFeature.isEnabled ? resolvedPermission.map { PushPermissionProvider(control: $0) } : nil
-            _notificationSettings = State(initialValue: DIPNotificationSettingsModel(repository: source, permission: permission))
+            _notificationSettings = State(initialValue: DIPNotificationSettingsModel(repository: source, permission: permission, isAdmin: showsAdminSettings))
         }
         self.deepLinkOpensChat = deepLinkOpensChat
         self.onJoined = onJoined

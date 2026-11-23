@@ -42,10 +42,16 @@ public final class DIPNotificationSettingsModel {
     public private(set) var authorization: DIPPushAuthorization = .notDetermined
     public private(set) var preferences: DIPNotificationPreferences = .defaults
     public private(set) var saveError: String?
+    /// The channel whose save failed while `saveError` is shown, so the screen can show the message next to that section.
+    public var saveErrorChannel: DIPNotificationChannel? { saveError == nil ? nil : failedChange?.channel }
+    /// The switch whose save failed while `saveError` is shown.
+    public var saveErrorCategory: DIPNotificationCategory? { saveError == nil ? nil : failedChange?.category }
 
     @ObservationIgnored private let repository: any DIPNotificationPreferencesRepository
     /// nil when the push client is off in this build: the screen then offers email only.
     @ObservationIgnored private let permission: (any DIPNotificationPermissionProviding)?
+    /// Admins also see the admin-only email switch (`adminDigest`). Display only: the server re-checks the role.
+    @ObservationIgnored private let isAdmin: Bool
     @ObservationIgnored private var saveChain: Task<Void, Never>?
     /// Counts every accepted toggle, and the saves not finished yet; `load()` uses both to avoid clobbering newer state.
     @ObservationIgnored private var edits = 0
@@ -54,8 +60,9 @@ public final class DIPNotificationSettingsModel {
 
     /// - Parameter permission: the iOS permission seam; pass nil when push is unavailable (flag off). Email preferences
     ///   do not depend on push, so the screen stays reachable and shows the Email section only.
-    public init(repository: any DIPNotificationPreferencesRepository, permission: (any DIPNotificationPermissionProviding)?) {
-        self.repository = repository; self.permission = permission
+    /// - Parameter isAdmin: the member's company role is `admin`; shows the admin-only email switch.
+    public init(repository: any DIPNotificationPreferencesRepository, permission: (any DIPNotificationPermissionProviding)?, isAdmin: Bool = false) {
+        self.repository = repository; self.permission = permission; self.isAdmin = isAdmin
     }
 
     /// False when the push client is off in this build: no permission row and no Push section.
@@ -145,8 +152,8 @@ public final class DIPNotificationSettingsModel {
     }
 
     public func rows(in section: Section) -> [Row] {
-        Self.visibleCategories(on: section.channel).map {
-            Row(category: $0, title: $0.title, summary: $0.summary, isOn: preferences.isEnabled($0, on: section.channel))
+        Self.visibleCategories(on: section.channel, isAdmin: isAdmin).map {
+            Row(category: $0, title: $0.title, summary: $0.summary(on: section.channel), isOn: preferences.isEnabled($0, on: section.channel))
         }
     }
 
@@ -154,10 +161,11 @@ public final class DIPNotificationSettingsModel {
     public var emailRows: [Row] { rows(in: .email) }
 
     /// Categories shown per channel. `discovery` stays hidden on email: no discovery email exists yet, so a switch
-    /// would promise something the server never sends. Show it when that email ships.
-    static func visibleCategories(on channel: DIPNotificationChannel) -> [DIPNotificationCategory] {
+    /// would promise something the server never sends. Show it when that email ships. `adminDigest` is for admins only.
+    static func visibleCategories(on channel: DIPNotificationChannel, isAdmin: Bool = false) -> [DIPNotificationCategory] {
         let offered = DIPNotificationCategory.offered(on: channel)
-        return channel == .email ? offered.filter { $0 != .discovery } : offered
+        guard channel == .email else { return offered }
+        return offered.filter { $0 != .discovery && (isAdmin || $0 != .adminDigest) }
     }
 
     // MARK: Toggling
@@ -169,7 +177,7 @@ public final class DIPNotificationSettingsModel {
 
     public func toggle(_ category: DIPNotificationCategory, on channel: DIPNotificationChannel, to value: Bool) async {
         let section: Section = channel == .push ? .push : .email
-        guard areSwitchesEnabled(in: section), Self.visibleCategories(on: channel).contains(category),
+        guard areSwitchesEnabled(in: section), Self.visibleCategories(on: channel, isAdmin: isAdmin).contains(category),
               preferences.isEnabled(category, on: channel) != value else { return }
         saveError = nil
         failedChange = nil

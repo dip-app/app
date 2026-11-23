@@ -29,7 +29,7 @@ Priority: P1 must have, P2 should have, P3 nice. "Built" means implemented and u
 | 8 | An organizer removed you from an activity | The member (only when the admin chose to notify) | `event_updates` | on | none | **Built (new)** | P1 | admin request id | shared | High. Otherwise the member still believes they are going. In-app notice already existed; the push was missing. |
 | 9 | Submission approved | The submitter | `challenges` | on | none | Built | P2 | notice id | shared | Medium to high. Closes the loop on effort. |
 | 10 | Changes requested on a submission | The submitter | `challenges` | on | none | Built | P1 | notice id | shared | High. The member has to act. The reviewer's note is never in the push. |
-| 11 | New weekly theme | Every active member of the company | `challenges` | on | none | Built | P2 | `weekly_theme_{company}_{challengeId}` (pages `_p{n}`) | shared | Medium. One push a week, Monday 09:00 New York. Expires at the window end. Disable-able in the category. |
+| 11 | New weekly theme | Every active member of the company, whatever the role (member, organizer, admin); invited and deactivated users excluded | `challenges` | on | none | Built | P2 | `weekly_theme_{company}_{challengeId}` (pages `_p{n}`) | shared | Medium. One push a week, Monday 09:00 New York. Expires at the window end. Disable-able in the category. Until November 22 the member pager skipped organizers (bug, fixed with `isCompanyAudienceMember`). |
 | 12 | New message in an activity chat | Going members at level All, except the author | `chat` | on | All | Built | P2 | `chat_{messageId}` | chat | Medium. The level All requirement makes it opt-in per activity; own cap bucket. |
 | 13 | Comment on your album photo | The uploader (never the commenter) | `social` | **off** | none | **Built (new)** | P3 | `photo_comment_{commentId}` | social | Medium for the uploader, low overall. Off by default, own small cap. There are no comment replies (no thread model), so only the uploader is notified. |
 | 14 | New photo in the album of an activity you attended | The other members who went | `social` | **off** | none | **Built (new)** | P3 | hash of event, uploader and UTC hour | social | Low to medium. One push per uploader, activity and hour, so a burst of 20 uploads is one push. Off by default. |
@@ -57,7 +57,7 @@ The registry has nine categories; seven are offered for push and all seven exist
 | `social` | Comments and photos | off | `photo_comment`, `photo_added` |
 | `discovery` | Suggestions | off | `event_interest` (not built) |
 
-`calendar_invites`, `admin_suggestions`, `weekly_themes` (weekly theme announcement email) and `admin_digest` (daily roster digest for admins) are email only; the last two default off. The admin portal's Your settings page offers language and the admin email switches only. It has no push settings because the web portal has no push channel; members set push categories in the iOS app. Email categories in the portal belong to the email workstream.
+`calendar_invites`, `admin_suggestions`, `weekly_themes` (weekly theme announcement email) and `admin_digest` (daily roster digest for admins) are email only; the last two default off. The iOS Email list (Profile > Notifications) shows **Weekly theme email** to every member and **Daily admin digest** to admins only; `admin_suggestions` stays portal-only. The admin portal's Your settings page offers language and the admin email switches only. It has no push settings because the web portal has no push channel; members set push categories in the iOS app. Email categories in the portal belong to the email workstream.
 
 ## PUSH-8: invite action buttons
 
@@ -119,3 +119,20 @@ Done after 0.1.2 (device-unverified): the quick action categories above.
 Open:
 
 1. Optional: open the album instead of the event page for social pushes once an album deep link exists.
+
+## Notification text language (November 22, 2026)
+
+Push copy and in-app notices (`users/{uid}/notifications` title and body, shown as stored by the app) follow each
+recipient's `users/{uid}.locale` (en or es; missing means English). English is byte-identical to before.
+
+| Text | Language |
+| --- | --- |
+| Push titles and bodies of every router kind (chat, change, cancel, reminder, invite, invite answered, attendee added and removed, challenge reviewed, weekly theme, photo comment, photo added) | Recipient locale (`pushFor`) |
+| In-app notices written by the router: change, cancel, reminder, invite answered, photo comment, photo added | Recipient locale (`NotificationRequest.inAppFor`; the router reads the locales of every in-app recipient, falls back to English on a failed read or builder) |
+| In-app notices written by commands: invite (`sendInviteV1`), attendee added (`addEventAttendeeV1`), challenge approved (`approveChallengeV1`) | Recipient locale, from the recipient document the command already reads (`notifications/domain/notices.ts`) |
+| Event change fallback title "Activity update" (event without a title) | Recipient locale (`push.change.fallbackTitle`) |
+| In-app notice attendee removed (`removeEventAttendeeV1` and deactivation) | **English.** The removal transaction does not read the member document; localizing needs one more read per removal. |
+| In-app notice changes requested (`rejectChallengeV1`) | **English** title "Changes needed" and fallback body (the body is normally the reviewer's own note, which is never translated). Same reason: the reject transaction does not read the submitter. |
+| Legacy push path (`PUSH_ROUTER_ENABLED=false`, rollback only) | English |
+
+Notices written before this change keep their stored English text.

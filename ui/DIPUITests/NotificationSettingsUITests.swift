@@ -70,6 +70,24 @@ final class NotificationSettingsUITests: XCTestCase {
         XCTAssertEqual(reminders.value as? String, "1")
     }
 
+    func testOptInEmailRowsAreOffAndTheDigestIsForAdminsOnly() {
+        let member = launch(permission: "authorized")
+        openSettings(member)
+        let weekly = member.switches["notificationSettings.email.toggle.weekly_themes"]
+        XCTAssertTrue(weekly.waitForExistence(timeout: 10))
+        XCTAssertEqual(weekly.value as? String, "0", "the weekly theme email is opt in")
+        XCTAssertFalse(member.switches["notificationSettings.email.toggle.admin_digest"].exists, "members never see the admin digest")
+        XCTAssertFalse(member.switches["notificationSettings.toggle.weekly_themes"].exists, "email only")
+        member.terminate()
+
+        let admin = launch(permission: "authorized", extra: ["--notification-settings-admin"])
+        openSettings(admin)
+        let digest = admin.switches["notificationSettings.email.toggle.admin_digest"]
+        XCTAssertTrue(digest.waitForExistence(timeout: 10))
+        XCTAssertEqual(digest.value as? String, "0", "the admin digest is opt in")
+        XCTAssertTrue(admin.switches["notificationSettings.email.toggle.weekly_themes"].exists)
+    }
+
     func testFailedSaveRevertsTheSwitchAndShowsAnError() {
         let app = launch(permission: "authorized", extra: ["--notification-settings=save-failed"])
         openSettings(app)

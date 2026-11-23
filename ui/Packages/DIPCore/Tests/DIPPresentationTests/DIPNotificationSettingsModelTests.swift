@@ -49,7 +49,7 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
     @Test func loadsDefaultsInRegistryOrder() async {
         let (model, _, _) = await loaded()
         #expect(model.phase == .ready)
-        #expect(model.pushRows.map(\.category) == DIPNotificationCategory.allCases.filter { $0 != .calendarInvites })
+        #expect(model.pushRows.map(\.category) == [.invites, .eventUpdates, .reminders, .chat, .challenges, .social, .discovery])
         #expect(model.pushRows.map(\.isOn) == [true, true, true, true, true, false, false])
         #expect(model.pushRows.first?.title == "Invites")
         #expect(model.pushRows.allSatisfy { !$0.summary.isEmpty })
@@ -181,8 +181,68 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
 
     @Test func emailRowsExcludeChatSocialAndDiscovery() async {
         let (model, _, _) = await loaded()
-        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges, .calendarInvites])
-        #expect(model.emailRows.map(\.isOn) == [true, true, false, true, true])
+        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges, .calendarInvites, .weeklyThemes])
+        #expect(model.emailRows.map(\.isOn) == [true, true, false, true, true, false])
+    }
+
+    @Test func weeklyThemeEmailIsOffWhenMissingAndShownToEveryMember() async {
+        let (member, _, _) = await loaded()
+        let row = member.emailRows.first { $0.category == .weeklyThemes }
+        #expect(row?.isOn == false)
+        #expect(row?.title == "Weekly theme email")
+        #expect(!member.pushRows.contains { $0.category == .weeklyThemes || $0.category == .adminDigest })
+        let admin = DIPNotificationSettingsModel(repository: DIPMockNotificationPreferencesRepository(), permission: FakePermission(.authorized), isAdmin: true)
+        await admin.load()
+        #expect(admin.emailRows.first { $0.category == .weeklyThemes }?.isOn == false)
+    }
+
+    @Test func adminDigestRowIsForAdminsOnlyAndOffWhenMissing() async {
+        let (member, memberRepository, _) = await loaded()
+        #expect(!member.emailRows.contains { $0.category == .adminDigest })
+        await member.toggle(.adminDigest, on: .email, to: true)
+        #expect(await memberRepository.saves.isEmpty, "A member cannot turn on the hidden admin switch")
+
+        let repository = DIPMockNotificationPreferencesRepository()
+        let admin = DIPNotificationSettingsModel(repository: repository, permission: FakePermission(.authorized), isAdmin: true)
+        await admin.load()
+        #expect(admin.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges, .calendarInvites, .weeklyThemes, .adminDigest])
+        let digest = admin.emailRows.first { $0.category == .adminDigest }
+        #expect(digest?.isOn == false)
+        #expect(digest?.title == "Daily admin digest")
+        // Admin-only also without the push client (email-only screen).
+        let emailOnly = DIPNotificationSettingsModel(repository: repository, permission: nil, isAdmin: true)
+        await emailOnly.load()
+        #expect(emailOnly.sections == [.email])
+        #expect(emailOnly.emailRows.contains { $0.category == .adminDigest })
+    }
+
+    @Test func optInTogglesWriteOnlyTheEmailChannelThroughTheRepository() async {
+        let repository = DIPMockNotificationPreferencesRepository()
+        let model = DIPNotificationSettingsModel(repository: repository, permission: FakePermission(.denied), isAdmin: true)
+        await model.load()
+        await model.toggle(.weeklyThemes, on: .email, to: true)
+        await model.toggle(.adminDigest, on: .email, to: true)
+        #expect(await repository.savedChannels == [.email, .email])
+        let saved = await repository.saves.last
+        #expect(saved?.isEnabled(.weeklyThemes, on: .email) == true)
+        #expect(saved?.isEnabled(.adminDigest, on: .email) == true)
+        // Push switches untouched by an email save.
+        #expect(saved?.firestoreFields()["push"] as? [String: Bool] == DIPNotificationPreferences.defaults.firestoreFields()["push"] as? [String: Bool])
+        let reopened = DIPNotificationSettingsModel(repository: repository, permission: FakePermission(.authorized), isAdmin: true)
+        await reopened.load()
+        #expect(reopened.emailRows.first { $0.category == .weeklyThemes }?.isOn == true)
+        #expect(reopened.emailRows.first { $0.category == .adminDigest }?.isOn == true)
+    }
+
+    @Test func failedOptInToggleRevertsAndRetrySaves() async {
+        let (model, repository, _) = await loaded(behavior: .init(failingSaves: 1))
+        await model.toggle(.weeklyThemes, on: .email, to: true)
+        #expect(model.emailRows.first { $0.category == .weeklyThemes }?.isOn == false)
+        #expect(model.saveError == DIPNotificationSettingsModel.saveFailureMessage)
+        await model.retryFailedChange()
+        #expect(model.emailRows.first { $0.category == .weeklyThemes }?.isOn == true)
+        #expect(model.saveError == nil)
+        #expect(await repository.savedChannels == [.email])
     }
 
     @Test func emailToggleWritesOnlyTheEmailChannel() async {
@@ -227,6 +287,29 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
         #expect(model.emailRows.first { $0.category == .challenges }?.isOn == false)
         #expect(model.saveError == nil)
         #expect(await repository.savedChannels == [.email])
+    }
+
+    @Test func saveErrorNamesTheChannelThatFailed() async {
+        let (model, _, _) = await loaded(behavior: .init(failingSaves: 1))
+        #expect(model.saveErrorChannel == nil)
+        await model.toggle(.weeklyThemes, on: .email, to: true)
+        #expect(model.saveErrorChannel == .email)
+        #expect(model.saveErrorCategory == .weeklyThemes)
+        model.dismissSaveError()
+        #expect(model.saveErrorChannel == nil)
+        #expect(model.saveErrorCategory == nil)
+        let (push, _, _) = await loaded(behavior: .init(failingSaves: 1))
+        await push.toggle(.chat, to: false)
+        #expect(push.saveErrorChannel == .push)
+    }
+
+    @Test func challengesEmailSummaryLeavesWeeklyThemesToTheirOwnSwitch() async {
+        let (model, _, _) = await loaded()
+        let push = model.pushRows.first { $0.category == .challenges }?.summary
+        let email = model.emailRows.first { $0.category == .challenges }?.summary
+        #expect(push == "Submission reviews and new weekly themes")
+        #expect(email == "Reviews of your weekly theme submissions")
+        #expect(model.emailRows.first { $0.category == .invites }?.summary == DIPNotificationCategory.invites.summary)
     }
 
     @Test func reloadDuringAnInFlightSaveKeepsTheOptimisticSwitch() async {

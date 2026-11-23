@@ -27,7 +27,7 @@ Sources: [email design (S5)](stretch/email.md) template catalog, [calendar email
 | **Roster invitation (`roster_invite`)** | admin clicks **Send invite email** (`sendRosterInviteEmailV1`), or leaves "Email them an invitation now" on in Add person | the invited person (no account yet), at the roster entry's address | `account` (opt out per address) | sent only on an admin action | **built in this pass** | P1 |
 | **Welcome (`welcome`)** | `users/{uid}` created by the first membership resolve (`welcomeEmailOnMemberCreated`) | the new member | `account` | on (once per member) | **built in this pass** | P2 |
 | **Problem report resolved (`bug_report_resolved`)** | `updateBugReportV1` sets a report to Resolved for the first time | the reporter | `account` | on (once per report) | **built in this pass** | P3 |
-| **Weekly theme announcement (`weekly_theme`)** | `sendWeeklyThemeEmails`, Monday 09:00 America/New_York, themes that started in the last 24 hours (same schedule, lookback and member pager as the `weekly_theme` push) | active members who turned it on | `weekly_themes` (new, email only) | **off** (opt in) | **built in the follow-up pass** | P3 |
+| **Weekly theme announcement (`weekly_theme`)** | `sendWeeklyThemeEmails`, Monday 09:00 America/New_York, themes that started in the last 24 hours (same schedule, lookback and member pager as the `weekly_theme` push) | active members of any role (member, organizer, admin) who turned it on | `weekly_themes` (new, email only) | **off** (opt in) | **built in the follow-up pass** | P3 |
 | Event suggestions (`discovery`) | new event matching interests (`event_interest` push, not built) | members with matching interests | `discovery` | off | deferred (no trigger exists) | P3 |
 | **Admin roster digest (`admin_digest`)**: invited people who joined, imports that finished | `sendAdminDigestEmails`, hourly; per company from 08:00 local, reports the previous local day | admins who turned it on | `admin_digest` (new, email only) | **off** (opt in) | **built in the follow-up pass** (replaces per-join and per-import notices) | P3 |
 | Points and achievements | points awarded, attendance recorded | the member | none fits | would be off | not built (too frequent) | none |
@@ -66,10 +66,10 @@ Owner decision: build every planned email that is valuable. Both new emails use 
 
 ### Weekly theme announcement
 
-- **Audience and timing:** mirrors `runWeeklyThemePushes`: the same `FirestoreThemes` reader (weekly challenges whose start is in the last 24 hours), the same member pager (active `member` and `admin` roles; organizers are not in the push audience either) and the same Monday 09:00 America/New_York schedule, as its own scheduled function so a push failure never blocks email and the reverse.
+- **Audience and timing:** mirrors `runWeeklyThemePushes`: the same `FirestoreThemes` reader (weekly challenges whose start is in the last 24 hours), the same member pager: every active member whatever the role (`member`, `organizer`, `admin`), invited and deactivated users excluded (`isCompanyAudienceMember`; organizers were wrongly left out of both until November 22) and the same Monday 09:00 America/New_York schedule, as its own scheduled function so a push failure never blocks email and the reverse.
 - **Once per member per theme:** outbox id `weekly_themes_<challengeId>_<uid>_announce` (create-once); a retry or a second run enqueues nothing. `notAfter` is the theme end.
 - **Content:** "This week's theme" with the catalog art tile on the theme accent (`img/email/ideas/<key>.png`, the same tiles as the ideas email; no tile for an unknown key), the title, the description (shortened to 400 characters), the dates in the company zone and the points. One button, **Open DIP** (`https://letsdip.work/`): the app has no theme link yet, so a note says the theme is on the Home screen.
-- **Switch:** admins and organizers in the portal (Your settings > Other emails from DIP). The iOS Profile > Notifications switch is an iOS follow-up.
+- **Switch:** admins and organizers in the portal (Your settings > Other emails from DIP); every member in the iOS app under Profile > Notifications > Email (**Weekly theme email**, off until turned on). The admin digest switch (**Daily admin digest**) is shown in iOS to admins only.
 
 ### Admin roster digest
 

@@ -97,7 +97,7 @@ Needs the APNs key (section 1) and the deploy (section 2) first. Two physical iP
 | 10 | B posts in the activity chat (A level All) | Push to A with sender and snippet; B gets none; tap opens the chat | |
 | 11 | A submits a challenge; admin approves | Approved push to A | |
 | 12 | A submits again; admin requests changes | Changes-requested push to A | |
-| 13 | Weekly theme (Monday 09:00 New York, or the coordinator runs the job once from the Cloud Scheduler console) | Push to A and B with the theme title | |
+| 13 | Weekly theme (Monday 09:00 New York, or the coordinator runs the job once from the Cloud Scheduler console) | Push to A and B with the theme title, also to an organizer of the company (organizers are in the audience since November 22); an invited or deactivated user gets nothing. A Spanish-language member gets "Nuevo reto semanal" | |
 | 14 | A: Profile > Notifications, switch each category off in turn (invites, activity updates, reminders, chat, challenges) and repeat the matching trigger | Only that category is suppressed; the others still arrive; the in-app notice still appears | |
 | 15 | Per-activity bell: set None, Reminders, Changes, All in turn; repeat chat, change and reminder | None gets nothing; Reminders only reminders; Changes changes and cancel; All also chat; category on with level None gives no push | |
 | 16 | iOS Settings > DIP > Notifications off; reopen Profile > Notifications | "Notifications are off in iOS Settings" row with an Open Settings button that works; switches disabled | |

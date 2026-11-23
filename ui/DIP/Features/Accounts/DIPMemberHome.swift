@@ -270,7 +270,9 @@ struct DIPMemberHome: View {
             invitesRepository: live ? liveInvites : DIPPrototypeApp.fixtureInvites(),
             notificationsRepository: live ? liveNotifications : DIPPrototypeApp.fixtureNotifications(),
             notificationPreferencesRepository: live ? liveNotificationPreferences : DIPPrototypeApp.fixtureNotificationPreferences(),
-            pushPermission: pushPermission)
+            pushPermission: pushPermission,
+            // Display only (the admin digest switch); the server re-checks the role before any admin email.
+            isAdmin: context.role == "admin")
     }
 
     private var catalogIsLoading: Bool {
