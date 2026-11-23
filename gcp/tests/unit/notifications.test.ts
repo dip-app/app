@@ -157,7 +157,7 @@ describe("APNs payload polish", () => {
     const aps = fcm.apns?.payload?.aps as Record<string, unknown>;
     assert.equal(aps["interruption-level"], "active");
     assert.equal(aps.sound, "default");
-    assert.equal("category" in aps, false);
+    assert.equal(aps.category, "DIP_REMINDER");
     assert.equal("contentAvailable" in aps || "content-available" in aps, false);
   });
 
@@ -168,6 +168,7 @@ describe("APNs payload polish", () => {
     assert.equal("apns-expiration" in (toMulticast(["t"], plain).apns?.headers ?? {}), false);
     const end = new Date("2026-11-20T11:00:00.000Z");
     assert.equal(changePush("alpha", "event", "Run", 2, "Moved", end).expiresAt, end);
+    assert.equal("category" in (toMulticast(["t"], { ...plain, apnsCategory: undefined }).apns?.payload?.aps ?? {}), false);
     const actionable = toMulticast(["t"], { ...plain, apnsCategory: "EVENT_REMINDER" });
     assert.equal((actionable.apns?.payload?.aps as Record<string, unknown>).category, "EVENT_REMINDER");
   });
