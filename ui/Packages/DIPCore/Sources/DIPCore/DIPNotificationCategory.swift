@@ -13,6 +13,13 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
     case reminders, chat, challenges, social, discovery
     /// Email only: calendar invite emails (`.ics` that add the activity to the member's calendar).
     case calendarInvites = "calendar_invites"
+    /// Email only, opt in: the weekly theme announcement email. (`admin_suggestions` is portal-only and not mirrored.)
+    case weeklyThemes = "weekly_themes"
+    /// Email only, opt in, admins only: the daily roster digest. The server re-checks the admin role at send time.
+    case adminDigest = "admin_digest"
+    /// Email only, default ON: the about-24-hour reminder email. The email `reminders` switch then covers only the
+    /// about-1-hour reminder email (server registry, November 22). Push `reminders` still covers both windows.
+    case dayBeforeReminders = "day_before_reminders"
 
     public var title: String {
         switch self {
@@ -24,6 +31,9 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .social: String(localized: "notif.category.social.title", defaultValue: "Comments and photos", bundle: .module, comment: "Notification preference category title")
         case .discovery: String(localized: "notif.category.discovery.title", defaultValue: "Suggestions", bundle: .module, comment: "Notification preference category title")
         case .calendarInvites: String(localized: "notif.category.calendarInvites.title", defaultValue: "Calendar invites", bundle: .module, comment: "Notification preference category title (email only)")
+        case .weeklyThemes: String(localized: "notif.category.weeklyThemes.title", defaultValue: "Weekly theme email", bundle: .module, comment: "Notification preference category title (email only, off by default): an email when a new weekly theme starts")
+        case .adminDigest: String(localized: "notif.category.adminDigest.title", defaultValue: "Daily admin digest", bundle: .module, comment: "Notification preference category title (email only, admins only, off by default): a daily email about who joined and finished imports")
+        case .dayBeforeReminders: String(localized: "notif.category.dayBeforeReminders.title", defaultValue: "Day-before reminder", bundle: .module, comment: "Notification preference category title (email only, on by default): a reminder email about a day before an activity the member joined")
         }
     }
 
@@ -37,6 +47,24 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .social: String(localized: "notif.category.social.summary", defaultValue: "Comments on your photos and new photos from activities you went to", bundle: .module, comment: "Notification preference category description: comments on the member's album photos and new photos in albums of activities they attended")
         case .discovery: String(localized: "notif.category.discovery.summary", defaultValue: "New activities that match your interests", bundle: .module, comment: "Notification preference category description")
         case .calendarInvites: String(localized: "notif.category.calendarInvites.summary", defaultValue: "An email that adds activities you join to your calendar, and keeps it up to date", bundle: .module, comment: "Notification preference category description (email only)")
+        case .weeklyThemes: String(localized: "notif.category.weeklyThemes.summary", defaultValue: "An email on Monday when a new weekly theme starts", bundle: .module, comment: "Notification preference category description (email only): the weekly theme announcement email, sent Monday morning")
+        case .adminDigest: String(localized: "notif.category.adminDigest.summary", defaultValue: "Who joined your company and which imports finished, once a day", bundle: .module, comment: "Notification preference category description (email only, admins only): daily roster digest")
+        case .dayBeforeReminders: String(localized: "notif.category.dayBeforeReminders.summary", defaultValue: "About a day before activities you joined", bundle: .module, comment: "Notification preference category description (email only): the reminder email sent about 24 hours before an activity the member joined")
+        }
+    }
+
+    /// Description for one channel. On email, `reminders` covers the about-1-hour email only (the day-before email has
+    /// its own switch), and `challenges` covers submission reviews only: the weekly theme
+    /// announcement has its own email switch (`weeklyThemes`). Every other category reads the same on both channels.
+    public func summary(on channel: DIPNotificationChannel) -> String {
+        guard channel == .email else { return summary }
+        switch self {
+        case .challenges:
+            return String(localized: "notif.category.challenges.emailSummary", defaultValue: "Reviews of your weekly theme submissions", bundle: .module, comment: "Email preference description of the Challenges category: emails when a reviewer approves or asks for changes on the member's submission (the weekly theme email has its own switch)")
+        case .reminders:
+            return String(localized: "notif.category.reminders.emailSummary", defaultValue: "About an hour before activities you joined", bundle: .module, comment: "Email preference description of the Reminders category: the reminder email about an hour before an activity (the day-before reminder email has its own switch)")
+        default:
+            return summary
         }
     }
 
@@ -48,20 +76,22 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         }
     }
 
-    /// Categories a channel offers, in registry order. Chat and social are never emailed.
+    /// Categories a channel offers, in registry order. Chat and social are never emailed; calendar invites, weekly
+    /// themes and the admin digest are email only.
     public static func offered(on channel: DIPNotificationChannel) -> [DIPNotificationCategory] {
         switch channel {
-        case .push: allCases.filter { $0 != .calendarInvites }
-        case .email: [.invites, .eventUpdates, .reminders, .challenges, .discovery, .calendarInvites]
+        case .push: [.invites, .eventUpdates, .reminders, .chat, .challenges, .social, .discovery]
+        case .email: [.invites, .eventUpdates, .dayBeforeReminders, .reminders, .challenges, .discovery, .calendarInvites, .weeklyThemes, .adminDigest]
         }
     }
 
-    /// Default switch when the member has no stored value. Categories a channel does not offer are false.
+    /// Default switch when the member has no stored value. Categories a channel does not offer are false, and the opt-in
+    /// emails (`weeklyThemes`, `adminDigest`) are off until the member turns them on.
     public static func defaultEnabled(_ category: DIPNotificationCategory, channel: DIPNotificationChannel) -> Bool {
         guard offered(on: channel).contains(category) else { return false }
         switch channel {
         case .push: return category != .social && category != .discovery
-        case .email: return category == .invites || category == .eventUpdates || category == .challenges || category == .calendarInvites
+        case .email: return [.invites, .eventUpdates, .challenges, .calendarInvites, .dayBeforeReminders].contains(category)
         }
     }
 }

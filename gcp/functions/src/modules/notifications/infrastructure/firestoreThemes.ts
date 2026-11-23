@@ -1,8 +1,8 @@
 import { FieldPath, Timestamp, type Firestore } from "firebase-admin/firestore";
 import type { MemberPager, WeeklyTheme, WeeklyThemeReader } from "../application/routerPorts";
+import { isCompanyAudienceMember } from "../domain/audience";
 
 const MAX_THEMES = 200;
-const ACTIVE_ROLES = ["member", "admin"];
 
 /** Admin SDK adapter: weekly themes across companies and paged company members (server-side only). */
 export class FirestoreThemes implements WeeklyThemeReader, MemberPager {
@@ -41,7 +41,8 @@ export class FirestoreThemes implements WeeklyThemeReader, MemberPager {
       .orderBy(FieldPath.documentId()).select("role", "status").limit(limit);
     if (afterUid) query = query.startAfter(afterUid);
     const snapshot = await query.get();
-    const uids = snapshot.docs.filter((doc) => doc.get("status") !== "deactivated" && ACTIVE_ROLES.includes(doc.get("role"))).map((doc) => doc.id);
+    // Every active member whatever the role (organizers included); invited and deactivated users are left out.
+    const uids = snapshot.docs.filter((doc) => isCompanyAudienceMember({ role: doc.get("role"), status: doc.get("status") })).map((doc) => doc.id);
     const last = snapshot.size < limit ? null : snapshot.docs[snapshot.size - 1]!.id;
     return { uids, last };
   }

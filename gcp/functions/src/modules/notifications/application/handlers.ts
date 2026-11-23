@@ -1,6 +1,7 @@
 import { buildEntry, summarizeChanges } from "../domain/changeLog";
 import { eventChangeEmail, eventFacts, reminderEmail, venueAddressOf, venueNameOf } from "./emailPayload";
 import { changePush, chatPush, reminderPush, shorten } from "../domain/push";
+import { tPush } from "../domain/i18n";
 import type { Locale } from "../../i18n";
 import { dueWindow, reminderKey, REMINDER_WINDOWS } from "../domain/reminders";
 import { LEVELS_FOR } from "../domain/subscription";
@@ -60,7 +61,8 @@ export async function onEventDocumentUpdated(
   const wasAndIsCancelled = before.status === "cancelled" && after.status === "cancelled";
   if (ended || wasAndIsCancelled) return { appended, push: emptyStats() };
   const recipients = (await deps.recipients.subscribers(companyId, eventId, LEVELS_FOR.event_changed)).filter((uid) => uid !== entry.by);
-  const title = typeof after.title === "string" ? after.title : "Activity update";
+  const titleFor = (locale: Locale) => (typeof after.title === "string" ? after.title : tPush(locale, "push.change.fallbackTitle"));
+  const title = titleFor("en");
   const summary = summarizeChanges(entry.changes);
   const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
   const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined, "en", cancelled));
@@ -172,15 +174,17 @@ export async function onEventDocumentUpdatedViaRouter(
   const recipients = (await deps.recipients.subscribersWithLevels(companyId, eventId, LEVELS_FOR.event_changed))
     .filter((s) => s.uid !== entry.by).map((s) => ({ uid: s.uid, eventLevel: s.level }));
   if (recipients.length === 0) return { appended, push: emptyDelivery() };
-  const title = typeof after.title === "string" ? after.title : "Activity update";
+  const titleFor = (locale: Locale) => (typeof after.title === "string" ? after.title : tPush(locale, "push.change.fallbackTitle"));
+  const title = titleFor("en");
   const summary = summarizeChanges(entry.changes);
   const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
   const facts = eventFacts({ eventId, title, startTime: after.startTime, endTime, venueName: venueNameOf(after), venueAddress: venueAddressOf(after), revision: entry.revision });
   const push = await deliverNotification(deps, {
     id: `event_${eventId}_${entry.revision}`, kind: cancelled ? "event_cancelled" : "event_changed", companyId, recipients,
     push: changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined, "en", cancelled),
-    pushFor: (locale) => changePush(companyId, eventId, title, entry.revision, summarizeChanges(entry.changes, locale), endTime ?? undefined, locale, cancelled),
+    pushFor: (locale) => changePush(companyId, eventId, titleFor(locale), entry.revision, summarizeChanges(entry.changes, locale), endTime ?? undefined, locale, cancelled),
     inApp: { title: shorten(title, 60), body: summary, targetType: "event", targetId: eventId },
+    inAppFor: (locale) => ({ title: shorten(titleFor(locale), 60), body: summarizeChanges(entry.changes, locale) }),
     email: eventChangeEmail(eventId, entry.revision, cancelled, entry.changes.map((change) => change.field), facts, entry.changes, after),
   });
   return { appended, push };
@@ -215,6 +219,7 @@ export async function sendDueRemindersViaRouter(
       const stats = await deliverNotification(deps, {
         id, kind: "reminder", companyId: event.companyId, recipients, push, pushFor: build,
         inApp: { title: shorten(event.title, 60), body: push.body, targetType: "event", targetId: event.eventId },
+        inAppFor: (locale) => ({ title: shorten(event.title, 60), body: build(locale).body }),
         // Venue name and address as the event card's Where row; the button opens the event (`/e/<eventId>`).
         email: reminderEmail(event.eventId, window, event.startTime,
           eventFacts({ eventId: event.eventId, title: event.title, startTime: event.startTime, endTime: event.endTime, venueName: event.venueName, venueAddress: event.venueAddress })),

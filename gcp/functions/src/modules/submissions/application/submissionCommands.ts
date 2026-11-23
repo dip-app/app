@@ -3,6 +3,8 @@ import type {
 } from "../../../generated/models";
 import type { PhotoObjects } from "../../photos/application/ports";
 import { auditEntry, change } from "../../admin/domain/audit";
+import { localeOrDefault } from "../../i18n";
+import { challengeApprovedNotice } from "../../notifications/domain/notices";
 import { validWireId, validateUpload, type PhotoContentType } from "../../photos/domain/photoPolicy";
 import { SubmissionError } from "../domain/errors";
 import {
@@ -146,9 +148,10 @@ export async function approveChallenge(store: SubmissionStore, caller: Submissio
     const points = alreadyAwarded ? 0 : challenge.pointsReward;
     tx.reviewSubmission(companyId, challengeId, id, { status: "approved", reviewedBy: reviewer.uid, reviewNote: null, pointsAwarded: points });
     tx.incrementCompleted(companyId, challengeId);
+    // In the submitter's language (`users/{uid}.locale`, read above); English is unchanged.
+    const notice = challengeApprovedNotice(points, localeOrDefault(submitter.locale));
     tx.createNotice(userId, `challenge_approved_${challengeId}`, {
-      companyId, type: "challenge_approved", title: "Challenge approved",
-      body: points > 0 ? `You earned ${points} ${points === 1 ? "point" : "points"}.` : "Your entry was approved.",
+      companyId, type: "challenge_approved", title: notice.title, body: notice.body,
       targetType: "challenge", targetId: challengeId,
     });
     if (points > 0) {

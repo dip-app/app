@@ -59,7 +59,7 @@ Each module that sends copy has typed catalogs. English is declared `as const`, 
 | Catalog | Keys | Used by |
 | --- | --- | --- |
 | `modules/email/domain/templates/i18n/{en,es}.ts` | 93 `email.*` | every template (`copy.ts`, `render.ts`, `adminSuggestions.ts`) and the calendar file (`ics.ts`) |
-| `modules/notifications/domain/i18n/{en,es}.ts` | 33 `push.*` | the push builders (`domain/push.ts`) and the change summary (`summarizeChanges`) |
+| `modules/notifications/domain/i18n/{en,es}.ts` | 43 `push.*` | the push builders (`domain/push.ts`), the change summary (`summarizeChanges`) and the in-app notice copy (`domain/notices.ts`, `push.notice.*`) |
 
 ## Email
 
@@ -165,11 +165,12 @@ fallback, plurals, and that sending uses each recipient's locale, including mixe
 
 ## What remains
 
-- **In-app notices** (`users/{uid}/notifications`) are still written in English. The router knows each recipient's
-  locale, so they could follow, but iOS shows them as stored text.
+- **In-app notices** (`users/{uid}/notifications`) follow the recipient's locale since November 22 (router notices
+  through `inAppFor`; invite, attendee added and challenge approved from their commands). Still English: the attendee
+  removed notice, the "Changes needed" notice and notices written before the change. Details in
+  [push-catalog.md](push-catalog.md#notification-text-language-november-22-2026).
 - **The legacy push path** (`PUSH_ROUTER_ENABLED=false`, a rollback switch) and its invite push stay English.
-- **Weekly ideas content** (idea titles, pitches, facts, reasons and when-hints) is English catalog content. The
-  "Activity update" fallback title for an event without a title is English too.
+- **Weekly ideas content** (idea titles, pitches, facts, reasons and when-hints) is English catalog content.
 - **Error keys are not yet sent** by the accounts (`resolveMembershipV1`), invites, participation, photos and
   notifications callables. The iOS app reads its own copy for those reasons. The `INVALID_STORED_*` internals also have
   no keys, because they are always shown as the generic message.

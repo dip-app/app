@@ -1,6 +1,8 @@
 import type {
   AddEventAttendeeResponse, RecordAttendanceResponse, RemoveEventAttendeeResponse,
 } from "../../../generated/models";
+import { localeOrDefault } from "../../i18n";
+import { attendeeAddedNotice } from "../../notifications/domain/notices";
 import { change } from "../domain/audit";
 import { AdminError, stored } from "../domain/errors";
 import { isDeactivated } from "../domain/member";
@@ -110,8 +112,10 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
       }
       // No "you were added" notice (in-app, push or email) to an admin who adds themself: they are the actor.
       if (req.notify && req.userId !== actor.uid) {
+        // In the attendee's language (`users/{uid}.locale`, already read above); English is unchanged.
+        const notice = attendeeAddedNotice(event.title, localeOrDefault(member.locale));
         tx.create(paths.notification(req.userId, `admin_${req.requestId}`),
-          notification(actor, req.userId, "attendee_added", "You're going!", `An organizer added you to ${event.title}.`, req.eventId));
+          notification(actor, req.userId, "attendee_added", notice.title, notice.body, req.eventId));
         // The in-app notice stays in this transaction; the push follows the commit and reuses its id (receipt key).
         push = { companyId: actor.companyId, eventId: req.eventId, eventTitle: event.title, userId: req.userId, notificationId: `admin_${req.requestId}`,
           eventStartTime: event.startTime, eventEndTime: event.endTime,

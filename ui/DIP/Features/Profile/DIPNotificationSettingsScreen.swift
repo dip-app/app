@@ -50,7 +50,8 @@ struct DIPNotificationSettingsScreen: View {
         case .ready:
             // Without the push client (flag off) only the Email section exists: email does not depend on push.
             if model.isPushAvailable { master }
-            if let error = model.saveError { saveError(error) }
+            // A failed push save shows here, as before; a failed email save shows under its switch in the Email section.
+            if let error = model.saveError, model.saveErrorChannel != .email { saveError(error) }
             ForEach(model.sections, id: \.self) { section in
                 switches(section)
             }
@@ -118,7 +119,13 @@ struct DIPNotificationSettingsScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("notificationSettings.footnote")
             }
-            ForEach(model.rows(in: section)) { row in toggleRow(row, channel: section.channel, enabled: model.areSwitchesEnabled(in: section)) }
+            ForEach(model.rows(in: section)) { row in
+                toggleRow(row, channel: section.channel, enabled: model.areSwitchesEnabled(in: section))
+                // A failed email save shows right under its switch (the Email list sits far below the top of the sheet).
+                if section == .email, model.saveErrorChannel == .email, model.saveErrorCategory == row.category, let error = model.saveError {
+                    saveError(error)
+                }
+            }
         }
     }
 

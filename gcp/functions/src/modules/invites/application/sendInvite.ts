@@ -1,4 +1,5 @@
 import type { SendInviteResponse } from "../../../generated/models";
+import { localeOrDefault } from "../../i18n";
 import { InviteError } from "../domain/errors";
 import {
   isActiveMember, SEND_LIMIT, SEND_WINDOW_MS, inviteIdFor, inviteNotificationText, nextBudget, notificationIdFor, parseSend, validWireId,
@@ -82,7 +83,7 @@ export async function sendInvite(store: InviteStore, notifier: InviteNotifier | 
       toUserId, toUserName: recipient.displayName, toUserAvatarId: text(recipient.avatarId),
       message, status: "pending", requestId,
     });
-    const notice = inviteNotificationText(sender.displayName as string, event.title as string);
+    const notice = inviteNotificationText(sender.displayName as string, event.title as string, localeOrDefault(recipient.locale));
     tx.createNotification(toUserId, notificationIdFor(inviteId), {
       userId: toUserId, companyId, type: "invite", title: notice.title, body: notice.body,
       targetType: "invite", targetId: inviteId, isRead: false,

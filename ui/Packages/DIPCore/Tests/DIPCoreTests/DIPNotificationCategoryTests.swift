@@ -5,21 +5,53 @@ import Testing
 @Suite struct DIPNotificationCategoryTests {
     @Test func idsMatchServerRegistryInOrder() {
         #expect(DIPNotificationCategory.allCases.map(\.rawValue)
-            == ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "calendar_invites"])
+            == ["invites", "event_updates", "reminders", "chat", "challenges", "social", "discovery", "calendar_invites", "weekly_themes", "admin_digest", "day_before_reminders"])
         #expect(DIPNotificationChannel.allCases.map(\.rawValue) == ["push", "email"])
     }
 
     @Test func offeredLists() {
-        #expect(DIPNotificationCategory.offered(on: .push) == DIPNotificationCategory.allCases.filter { $0 != .calendarInvites })
-        #expect(DIPNotificationCategory.offered(on: .email) == [.invites, .eventUpdates, .reminders, .challenges, .discovery, .calendarInvites])
+        #expect(DIPNotificationCategory.offered(on: .push) == [.invites, .eventUpdates, .reminders, .chat, .challenges, .social, .discovery])
+        #expect(DIPNotificationCategory.offered(on: .email) == [.invites, .eventUpdates, .dayBeforeReminders, .reminders, .challenges, .discovery, .calendarInvites, .weeklyThemes, .adminDigest])
     }
 
     @Test func defaultsArePinned() {
         let push = DIPNotificationCategory.allCases.filter { DIPNotificationCategory.defaultEnabled($0, channel: .push) }
         #expect(push == [.invites, .eventUpdates, .reminders, .chat, .challenges])
         let email = DIPNotificationCategory.allCases.filter { DIPNotificationCategory.defaultEnabled($0, channel: .email) }
-        #expect(email == [.invites, .eventUpdates, .challenges, .calendarInvites])
+        #expect(email == [.invites, .eventUpdates, .challenges, .calendarInvites, .dayBeforeReminders])
         #expect(!DIPNotificationCategory.defaultEnabled(.chat, channel: .email))
+        // Opt-in emails: off until the member turns them on; never offered on push.
+        #expect(!DIPNotificationCategory.defaultEnabled(.weeklyThemes, channel: .email))
+        #expect(!DIPNotificationCategory.defaultEnabled(.adminDigest, channel: .email))
+        #expect(!DIPNotificationCategory.defaultEnabled(.weeklyThemes, channel: .push))
+        // Day-before reminder email: on by default; email only.
+        #expect(DIPNotificationCategory.defaultEnabled(.dayBeforeReminders, channel: .email))
+        #expect(!DIPNotificationCategory.defaultEnabled(.dayBeforeReminders, channel: .push))
+    }
+
+    @Test func dayBeforeReminderParsesAndRoundTrips() {
+        #expect(DIPNotificationPreferences(firestore: nil).isEnabled(.dayBeforeReminders, on: .email))
+        // An older app wrote `reminders: false` without the new key: the day-before email stays on.
+        let old = DIPNotificationPreferences(firestore: ["email": ["reminders": false]])
+        #expect(old.isEnabled(.dayBeforeReminders, on: .email))
+        #expect(!old.isEnabled(.reminders, on: .email))
+        #expect(!DIPNotificationPreferences(firestore: ["email": ["day_before_reminders": false]]).isEnabled(.dayBeforeReminders, on: .email))
+        let email = DIPNotificationPreferences.defaults.firestoreFields()["email"] as? [String: Bool]
+        #expect(email?["day_before_reminders"] == true)
+        #expect(email?["reminders"] == false)
+    }
+
+    @Test func optInEmailsParseAndRoundTrip() {
+        #expect(!DIPNotificationPreferences(firestore: nil).isEnabled(.weeklyThemes, on: .email))
+        #expect(!DIPNotificationPreferences(firestore: ["email": ["invites": true]]).isEnabled(.adminDigest, on: .email))
+        let stored = DIPNotificationPreferences(firestore: ["email": ["weekly_themes": true, "admin_digest": true], "push": ["weekly_themes": true]])
+        #expect(stored.isEnabled(.weeklyThemes, on: .email))
+        #expect(stored.isEnabled(.adminDigest, on: .email))
+        #expect(!stored.isEnabled(.weeklyThemes, on: .push))
+        let email = DIPNotificationPreferences.defaults.setting(.weeklyThemes, on: .email, to: true).firestoreFields()["email"] as? [String: Bool]
+        #expect(email?["weekly_themes"] == true)
+        #expect(email?["admin_digest"] == false)
+        #expect(DIPNotificationPreferences.defaults.firestoreFields()["push"].flatMap { ($0 as? [String: Bool])?["weekly_themes"] } == nil)
     }
 
     @Test func activityLevelGate() {
@@ -74,7 +106,7 @@ import Testing
         let fields = prefs.firestoreFields()
         #expect(fields["contractVersion"] as? Int == 1)
         #expect((fields["push"] as? [String: Bool])?.count == 7)
-        #expect((fields["email"] as? [String: Bool])?.count == 6)
+        #expect((fields["email"] as? [String: Bool])?.count == 9)
         let parsed = DIPNotificationPreferences(firestore: fields)
         for channel in DIPNotificationChannel.allCases {
             for category in DIPNotificationCategory.allCases {

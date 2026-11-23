@@ -22,6 +22,11 @@ export interface NotificationRequest {
   pushFor?: (locale: Locale) => PushMessage;
   inApp?: { title: string; body: string; targetType: string; targetId: string };
   /**
+   * Optional localized in-app copy; `inApp` title and body must equal `inAppFor("en")`. Used per recipient locale when
+   * `deps.locales` is wired; a failed read or builder falls back to the English `inApp`.
+   */
+  inAppFor?: (locale: Locale) => { title: string; body: string };
+  /**
    * Optional email payload (email workstream, docs/contracts/email.md). Opaque to the router: the email channel
    * validates it against its template allow-list. Without it no email is considered.
    */
@@ -112,6 +117,39 @@ async function sendLocalized(
 }
 
 /**
+ * Per-recipient in-app copy for recipients whose locale is not English. Empty (everyone English) without `inAppFor` or a
+ * locale reader, or when the read fails (a warning with ids and counts only). A failing builder leaves that language English.
+ */
+async function localizedInApp(
+  deps: RouterDependencies, request: NotificationRequest, uids: readonly string[], context: { notificationId: string; kind: string; companyId: string },
+): Promise<Map<string, { title: string; body: string }>> {
+  const out = new Map<string, { title: string; body: string }>();
+  const { inAppFor } = request;
+  if (!inAppFor || !deps.locales) return out;
+  let locales: Map<string, Locale>;
+  try {
+    locales = await deps.locales.localesFor(uids);
+  } catch (error) {
+    safeLog(deps.logger, "warn", "locale read failed; in-app notice in English", { ...context, recipients: uids.length, error: errorName(error) });
+    return out;
+  }
+  const built = new Map<Locale, { title: string; body: string } | null>();
+  for (const uid of uids) {
+    const locale = locales.get(uid) ?? "en";
+    if (locale === "en") continue;
+    if (!built.has(locale)) {
+      try { built.set(locale, inAppFor(locale)); } catch (error) {
+        safeLog(deps.logger, "warn", "localized in-app notice failed; writing English", { ...context, locale, error: errorName(error) });
+        built.set(locale, null);
+      }
+    }
+    const text = built.get(locale);
+    if (text) out.set(uid, { title: text.title, body: text.body });
+  }
+  return out;
+}
+
+/**
  * Single delivery path for server notifications: in-app write, exactly-once claim, preference precedence
  * (category, per-event level, destination), per-user rate cap, then FCM. Never logs tokens or message text.
  */
@@ -144,7 +182,8 @@ export async function deliverNotification(deps: RouterDependencies, request: Not
   if (inAppType !== null && request.inApp && deps.inbox) {
     const { title, body, targetType, targetId } = request.inApp;
     try {
-      stats.inApp = await deps.inbox.createMany(uids.map((uid) => ({ uid, id: request.id, companyId: request.companyId, type: inAppType, title, body, targetType, targetId })));
+      const localized = await localizedInApp(deps, request, uids, context);
+      stats.inApp = await deps.inbox.createMany(uids.map((uid) => ({ uid, id: request.id, companyId: request.companyId, type: inAppType, title, body, ...localized.get(uid), targetType, targetId })));
     } catch (error) {
       // Best-effort: the push below must not depend on the in-app write.
       safeLog(deps.logger, "warn", "in-app write failed", { ...context, recipients: uids.length, error: errorName(error) });

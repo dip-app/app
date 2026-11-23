@@ -54,6 +54,6 @@ export interface WeeklyThemeReader {
 
 /** Active company members, paged by uid so a large company never loads at once. */
 export interface MemberPager {
-  /** Active member uids (roles member/admin, not deactivated) among the next `limit` users after `afterUid`, ascending. `last` is the cursor for the next page, or null when no more users remain. */
+  /** Active member uids (roles member, organizer and admin; not invited or deactivated: `isCompanyAudienceMember`) among the next `limit` users after `afterUid`, ascending. `last` is the cursor for the next page, or null when no more users remain. */
   page(companyId: string, afterUid: string | null, limit: number): Promise<{ uids: string[]; last: string | null }>;
 }

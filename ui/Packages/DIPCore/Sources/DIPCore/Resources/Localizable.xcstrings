@@ -3168,6 +3168,42 @@
         }
       }
     },
+    "notif.category.adminDigest.summary" : {
+      "comment" : "Notification preference category description (email only, admins only): daily roster digest",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Who joined your company and which imports finished, once a day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quién se unió a tu empresa y qué importaciones terminaron, una vez al día"
+          }
+        }
+      }
+    },
+    "notif.category.adminDigest.title" : {
+      "comment" : "Notification preference category title (email only, admins only, off by default): a daily email about who joined and finished imports",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Daily admin digest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resumen diario para administradores"
+          }
+        }
+      }
+    },
     "notif.category.calendarInvites.summary" : {
       "comment" : "Notification preference category description (email only)",
       "extractionState" : "extracted_with_value",
@@ -3212,6 +3248,24 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "jajmey rItmey"
+          }
+        }
+      }
+    },
+    "notif.category.challenges.emailSummary" : {
+      "comment" : "Email preference description of the Challenges category: emails when a reviewer approves or asks for changes on the member's submission (the weekly theme email has its own switch)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reviews of your weekly theme submissions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisiones de tus envíos al tema semanal"
           }
         }
       }
@@ -3308,6 +3362,42 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "ja'chuq"
+          }
+        }
+      }
+    },
+    "notif.category.dayBeforeReminders.summary" : {
+      "comment" : "Notification preference category description (email only): the reminder email sent about 24 hours before an activity the member joined",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "About a day before activities you joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aproximadamente un día antes de las actividades a las que te uniste"
+          }
+        }
+      }
+    },
+    "notif.category.dayBeforeReminders.title" : {
+      "comment" : "Notification preference category title (email only, on by default): a reminder email about a day before an activity the member joined",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Day-before reminder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordatorio del día anterior"
           }
         }
       }
@@ -3456,6 +3546,24 @@
         }
       }
     },
+    "notif.category.reminders.emailSummary" : {
+      "comment" : "Email preference description of the Reminders category: the reminder email about an hour before an activity (the day-before reminder email has its own switch)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "About an hour before activities you joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aproximadamente una hora antes de las actividades a las que te uniste"
+          }
+        }
+      }
+    },
     "notif.category.reminders.summary" : {
       "comment" : "Notification preference category description",
       "extractionState" : "extracted_with_value",
@@ -3548,6 +3656,42 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "QInmey mIlloghmey je"
+          }
+        }
+      }
+    },
+    "notif.category.weeklyThemes.summary" : {
+      "comment" : "Notification preference category description (email only): the weekly theme announcement email, sent Monday morning",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "An email on Monday when a new weekly theme starts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un correo el lunes cuando empieza un nuevo tema semanal"
+          }
+        }
+      }
+    },
+    "notif.category.weeklyThemes.title" : {
+      "comment" : "Notification preference category title (email only, off by default): an email when a new weekly theme starts",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Weekly theme email"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo del tema semanal"
           }
         }
       }

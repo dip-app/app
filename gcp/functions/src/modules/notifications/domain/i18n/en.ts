@@ -38,4 +38,9 @@ export const en = {
   "push.change.label.spots": "spots",
   "push.change.label.indoorOutdoor": "indoor/outdoor",
   "push.change.label.status": "status",
+  "push.change.fallbackTitle": "Activity update",
+  "push.notice.attendeeAdded.title": "You're going!",
+  "push.notice.challengeApproved.title": "Challenge approved",
+  "push.notice.challengeApproved.points": "You earned {points, plural, one {{points} point} other {{points} points}}.",
+  "push.notice.challengeApproved.body": "Your entry was approved.",
 } as const;

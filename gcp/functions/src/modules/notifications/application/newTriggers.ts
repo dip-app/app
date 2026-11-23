@@ -54,6 +54,10 @@ export function inviteAnsweredRequest(input: InviteAcceptedInput): NotificationR
     recipients: [{ uid: input.senderId }], push,
     pushFor: (locale) => inviteAnsweredPush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.responderName, locale),
     inApp: { title: push.title, body: push.body, targetType: "event", targetId: input.eventId },
+    inAppFor: (locale) => {
+      const localized = inviteAnsweredPush(input.companyId, input.eventId, input.eventTitle, input.inviteId, input.responderName, locale);
+      return { title: localized.title, body: localized.body };
+    },
     email: inviteAnsweredEmail(input.inviteId, input.responderName,
       eventFacts({ eventId: input.eventId, title: input.eventTitle, startTime: input.eventStartTime, endTime: input.eventEndTime,
         venueName: input.venueName, venueAddress: input.venueAddress })),
