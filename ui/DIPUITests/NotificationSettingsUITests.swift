@@ -16,13 +16,20 @@ final class NotificationSettingsUITests: XCTestCase {
     private func openSettings(_ app: XCUIApplication) {
         // A fresh install (the mock member has no finished tour record) opens on the onboarding tour, which covers the
         // shell and takes its taps; skip it the way a member would before using the tab bar.
-        let profile = app.buttons["home.tab.Profile"]
-        XCTAssertTrue(profile.waitForExistence(timeout: 20))
+        // Skip can land on the interests step ("Skip for now"), and the tour draws its own copy of the tab bar, so keep
+        // skipping (bounded) until the tour's title is gone.
+        XCTAssertTrue(app.buttons["home.tab.Profile"].firstMatch.waitForExistence(timeout: 20))
+        let tourTitle = app.staticTexts["onboarding.tour.title"]
         let skipTour = app.buttons["onboarding.tour.skip"]
-        if skipTour.waitForExistence(timeout: 5) {
-            skipTour.tap()
-            XCTAssertTrue(skipTour.waitForNonExistence(timeout: 10), "the onboarding tour did not close")
+        let skipInterests = app.buttons["onboarding.interests.skip"]
+        if skipTour.waitForExistence(timeout: 5) || skipInterests.exists {
+            for _ in 0..<4 where tourTitle.exists {
+                if skipInterests.exists { skipInterests.tap() } else if skipTour.exists { skipTour.tap() }
+                _ = tourTitle.waitForNonExistence(timeout: 4)
+            }
+            XCTAssertTrue(tourTitle.waitForNonExistence(timeout: 10), "the onboarding tour did not close")
         }
+        let profile = app.buttons["home.tab.Profile"]
         // The tour's closing reveal still holds the shell's taps for a moment after Skip disappears, so a tap can be
         // swallowed: tap until the Profile tab is selected (bounded), then require it.
         let selected = NSPredicate(format: "isSelected == true")
@@ -90,6 +97,10 @@ final class NotificationSettingsUITests: XCTestCase {
         let weekly = member.switches["notificationSettings.email.toggle.weekly_themes"]
         XCTAssertTrue(weekly.waitForExistence(timeout: 10))
         XCTAssertEqual(weekly.value as? String, "0", "the weekly theme email is opt in")
+        let dayBefore = member.switches["notificationSettings.email.toggle.day_before_reminders"]
+        XCTAssertTrue(dayBefore.exists)
+        XCTAssertEqual(dayBefore.value as? String, "1", "the day-before reminder email is on by default")
+        XCTAssertFalse(member.switches["notificationSettings.toggle.day_before_reminders"].exists, "email only")
         XCTAssertFalse(member.switches["notificationSettings.email.toggle.admin_digest"].exists, "members never see the admin digest")
         XCTAssertFalse(member.switches["notificationSettings.toggle.weekly_themes"].exists, "email only")
         member.terminate()

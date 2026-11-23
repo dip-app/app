@@ -3366,6 +3366,42 @@
         }
       }
     },
+    "notif.category.dayBeforeReminders.summary" : {
+      "comment" : "Notification preference category description (email only): the reminder email sent about 24 hours before an activity the member joined",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "About a day before activities you joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aproximadamente un día antes de las actividades a las que te uniste"
+          }
+        }
+      }
+    },
+    "notif.category.dayBeforeReminders.title" : {
+      "comment" : "Notification preference category title (email only, on by default): a reminder email about a day before an activity the member joined",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Day-before reminder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordatorio del día anterior"
+          }
+        }
+      }
+    },
     "notif.category.discovery.summary" : {
       "comment" : "Notification preference category description",
       "extractionState" : "extracted_with_value",
@@ -3506,6 +3542,24 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "rItmey"
+          }
+        }
+      }
+    },
+    "notif.category.reminders.emailSummary" : {
+      "comment" : "Email preference description of the Reminders category: the reminder email about an hour before an activity (the day-before reminder email has its own switch)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "About an hour before activities you joined"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aproximadamente una hora antes de las actividades a las que te uniste"
           }
         }
       }

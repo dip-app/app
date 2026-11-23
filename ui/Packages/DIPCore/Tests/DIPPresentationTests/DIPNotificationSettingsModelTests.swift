@@ -181,8 +181,8 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
 
     @Test func emailRowsExcludeChatSocialAndDiscovery() async {
         let (model, _, _) = await loaded()
-        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges, .calendarInvites, .weeklyThemes])
-        #expect(model.emailRows.map(\.isOn) == [true, true, false, true, true, false])
+        #expect(model.emailRows.map(\.category) == [.invites, .eventUpdates, .dayBeforeReminders, .reminders, .challenges, .calendarInvites, .weeklyThemes])
+        #expect(model.emailRows.map(\.isOn) == [true, true, true, false, true, true, false])
     }
 
     @Test func weeklyThemeEmailIsOffWhenMissingAndShownToEveryMember() async {
@@ -205,7 +205,7 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
         let repository = DIPMockNotificationPreferencesRepository()
         let admin = DIPNotificationSettingsModel(repository: repository, permission: FakePermission(.authorized), isAdmin: true)
         await admin.load()
-        #expect(admin.emailRows.map(\.category) == [.invites, .eventUpdates, .reminders, .challenges, .calendarInvites, .weeklyThemes, .adminDigest])
+        #expect(admin.emailRows.map(\.category) == [.invites, .eventUpdates, .dayBeforeReminders, .reminders, .challenges, .calendarInvites, .weeklyThemes, .adminDigest])
         let digest = admin.emailRows.first { $0.category == .adminDigest }
         #expect(digest?.isOn == false)
         #expect(digest?.title == "Daily admin digest")
@@ -301,6 +301,33 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
         let (push, _, _) = await loaded(behavior: .init(failingSaves: 1))
         await push.toggle(.chat, to: false)
         #expect(push.saveErrorChannel == .push)
+    }
+
+    @Test func dayBeforeReminderRowIsOnByDefaultAndTogglesOptimistically() async {
+        let (model, repository, _) = await loaded()
+        let row = model.emailRows.first { $0.category == .dayBeforeReminders }
+        #expect(row?.isOn == true)
+        #expect(row?.title == "Day-before reminder")
+        #expect(row?.summary == "About a day before activities you joined")
+        #expect(model.emailRows.first { $0.category == .reminders }?.summary == "About an hour before activities you joined")
+        #expect(model.pushRows.first { $0.category == .reminders }?.summary == "About a day and an hour before activities you joined")
+        #expect(!model.pushRows.contains { $0.category == .dayBeforeReminders })
+        await model.toggle(.dayBeforeReminders, on: .email, to: false)
+        #expect(model.emailRows.first { $0.category == .dayBeforeReminders }?.isOn == false)
+        #expect(await repository.savedChannels == [.email])
+        #expect(await repository.saves.last?.isEnabled(.dayBeforeReminders, on: .email) == false)
+        #expect(await repository.saves.last?.isEnabled(.reminders, on: .email) == false, "the hour reminder is untouched")
+    }
+
+    @Test func failedDayBeforeToggleRevertsAndRetrySaves() async {
+        let (model, repository, _) = await loaded(behavior: .init(failingSaves: 1))
+        await model.toggle(.dayBeforeReminders, on: .email, to: false)
+        #expect(model.emailRows.first { $0.category == .dayBeforeReminders }?.isOn == true)
+        #expect(model.saveErrorCategory == .dayBeforeReminders)
+        await model.retryFailedChange()
+        #expect(model.emailRows.first { $0.category == .dayBeforeReminders }?.isOn == false)
+        #expect(model.saveError == nil)
+        #expect(await repository.savedChannels == [.email])
     }
 
     @Test func challengesEmailSummaryLeavesWeeklyThemesToTheirOwnSwitch() async {
