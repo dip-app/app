@@ -19,10 +19,13 @@ final class PushQuickActionTests: XCTestCase {
         var failure: Error?
         var directions: URL? = URL(string: "https://maps.apple.com/?q=Park")
         var hold = false
+        /// Called when a call starts (lets a test wait for it without spinning).
+        var onCall: (() -> Void)?
         private var gate: CheckedContinuation<Void, Never>?
 
         private func run(_ call: Call) async throws {
             calls.append(call)
+            onCall?(); onCall = nil
             if hold { await withCheckedContinuation { gate = $0 } }
             if let failure { throw failure }
         }
@@ -140,8 +143,11 @@ final class PushQuickActionTests: XCTestCase {
         actions.hold = true
         let responder = PushQuickActionResponder(makeActions: { _ in actions })
         let payload = event
-        let first = Task { await responder.leave(payload: payload) }
-        while actions.calls.isEmpty { await Task.yield() }
+        var first: Task<PushQuickActionResponder.Outcome, Never>!
+        await withCheckedContinuation { (started: CheckedContinuation<Void, Never>) in
+            actions.onCall = { started.resume() }
+            first = Task { await responder.leave(payload: payload) }
+        }
         let second = await responder.leave(payload: payload)
         XCTAssertEqual(second, .ignored)
         actions.release()

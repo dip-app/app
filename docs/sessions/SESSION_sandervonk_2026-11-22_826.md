@@ -21,7 +21,13 @@ Owner request: "accept and decline and similar actions for all other actionable 
 
 ## Validation
 
-See the PR description for the exact command list and results: functions notification unit tests (tsx), `npm run check:backend-i18n`, `npm run check:generated`, `tsc --noEmit`, `npm run check:ios-i18n`, and one simulator `xcodebuild test` with `-only-testing` for PushQuickActionTests, PushNotificationActionTests and PushRegistrarTests. No full suites (owner rule). Remote pushes with actions cannot be received on the simulator; device rows 40 to 52 are not run.
+- `node --import tsx --test` on the notification unit tests (notificationQuickActions, notificationTriggersRouter, notificationSocial, notificationRouter, notificationPreferences, gcp/tests/unit/notifications, push-i18n): 171 pass, 0 fail.
+- `npx tsc --noEmit -p gcp/functions`: clean. `npm run check:backend-i18n`: OK. `npm run check:generated`: OK.
+- `xcodebuild build-for-testing` (iOS Simulator) then `test-without-building` on iPhone 17e (iOS 27.2) with `-only-testing` PushQuickActionTests, PushNotificationActionTests, PushRegistrarTests: 47 tests, 0 failures.
+- `npm run ios:i18n-sync` from that build, Spanish filled, `npm run check:ios-i18n`: OK.
+- No full suites (owner rule); no Swift package touched, so no package `swift test`.
+- The existing invite test `testASecondPressWhileTheFirstIsRunningIsIgnored` hung on iOS 27.2 (a `Task.yield()` spin on the main actor); it and the new leave test now wait on an explicit start signal.
+- Not verifiable here: real remote pushes with actions (the simulator build has the push flag off, so the categories are never registered there; no screenshot). Device rows 40 to 52 are not run.
 
 ## Decisions
 
