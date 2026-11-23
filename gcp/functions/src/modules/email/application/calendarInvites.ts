@@ -106,7 +106,8 @@ export interface EventUpdateStats { recipients: number; enqueued: number; skippe
 
 /**
  * Event document updated. A time, place or title change re-sends the REQUEST to going members who hold the entry
- * (same UID, higher SEQUENCE); a change to `cancelled` sends the CANCEL to the same members. Anything else is ignored.
+ * (same UID, higher SEQUENCE); a change to `cancelled` sends the CANCEL to the same members; reopening a canceled event
+ * (back to `scheduled`) sends every going member the REQUEST again. Anything else is ignored.
  */
 export async function onEventUpdatedForInvites(
   deps: CalendarInviteDeps,
@@ -115,7 +116,10 @@ export async function onEventUpdatedForInvites(
   const none: EventUpdateStats = { recipients: 0, enqueued: 0, skipped: 0 };
   const changes = diffEvent(input.before, input.after);
   const cancelled = input.before.status !== "cancelled" && input.after.status === "cancelled";
-  const relevant = cancelled || changes.some((c) => CALENDAR_FIELDS.has(c.field));
+  // A canceled event that is scheduled again: going members still hold their RSVP but their calendar entry was
+  // canceled, so it is sent again (same UID, higher SEQUENCE). Found by the email end-to-end suite (November 2026).
+  const reopened = input.before.status === "cancelled" && input.after.status === "scheduled";
+  const relevant = cancelled || reopened || changes.some((c) => CALENDAR_FIELDS.has(c.field));
   if (!relevant) return none;
   const event = inviteEventFromDoc(input.eventId, input.after);
   if (event === null || event.endTime.getTime() <= deps.clock.now().getTime()) return none;
@@ -125,7 +129,7 @@ export async function onEventUpdatedForInvites(
   const key = String(input.updateTime.getTime());
   for (let i = 0; i < uids.length; i += FANOUT_PARALLELISM) {
     const outcomes = await Promise.all(uids.slice(i, i + FANOUT_PARALLELISM).map((uid) =>
-      enqueueFor(deps, input.companyId, event, uid, cancelled ? "cancel" : "update", key, cancelled ? "canceled" : "updated")));
+      enqueueFor(deps, input.companyId, event, uid, cancelled ? "cancel" : reopened ? "join" : "update", key, cancelled ? "canceled" : "updated")));
     for (const outcome of outcomes) outcome === "enqueued" ? stats.enqueued++ : stats.skipped++;
   }
   return stats;

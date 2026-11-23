@@ -108,12 +108,14 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
           eventStartTime: event.startTime, checkedIn: false, checkedInAt: null, createdAt: SERVER_TIME, source: "admin", managedBy: actor.uid,
         });
       }
-      if (req.notify) {
+      // No "you were added" notice (in-app, push or email) to an admin who adds themself: they are the actor.
+      if (req.notify && req.userId !== actor.uid) {
         tx.create(paths.notification(req.userId, `admin_${req.requestId}`),
           notification(actor, req.userId, "attendee_added", "You're going!", `An organizer added you to ${event.title}.`, req.eventId));
         // The in-app notice stays in this transaction; the push follows the commit and reuses its id (receipt key).
         push = { companyId: actor.companyId, eventId: req.eventId, eventTitle: event.title, userId: req.userId, notificationId: `admin_${req.requestId}`,
-          eventStartTime: event.startTime, eventEndTime: event.endTime };
+          eventStartTime: event.startTime, eventEndTime: event.endTime,
+          ...(event.venueName ? { venueName: event.venueName } : {}), ...(event.venueAddress ? { venueAddress: event.venueAddress } : {}) };
       }
       const changes = [change("status", rsvp?.status ?? null, "going"), change("attendeeCount", event.attendeeCount, attendeeCount)];
       if (overridden) changes.push(change("capacity", event.capacity, capacity));
@@ -124,7 +126,7 @@ export async function addEventAttendee(deps: AdminDeps, caller: Caller | null, d
         reason: req.capacityOverrideReason, requestId: req.requestId,
       });
       return {
-        contractVersion: 1, eventId: req.eventId, userId: req.userId, added: true, attendeeCount, capacity, capacityOverridden: overridden, notified: req.notify,
+        contractVersion: 1, eventId: req.eventId, userId: req.userId, added: true, attendeeCount, capacity, capacityOverridden: overridden, notified: req.notify && req.userId !== actor.uid,
       } satisfies AddEventAttendeeResponse;
     }, now);
   })).value;

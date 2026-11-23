@@ -29,7 +29,7 @@ export interface EnqueueResult { enqueued: boolean; id: string; reason?: "invali
 export async function enqueueEmail(deps: EnqueueDeps, input: EnqueueInput): Promise<EnqueueResult> {
   let id: string;
   try {
-    id = outboxId(categoryOf(input.template), input.objectId, input.uid, input.revisionOrWindow);
+    id = outboxId(categoryOf(input.template, input.variables), input.objectId, input.uid, input.revisionOrWindow);
   } catch {
     return { enqueued: false, id: "", reason: "invalid_input" };
   }
@@ -61,7 +61,7 @@ export interface ChannelResult { decision: EmailRoutingDecision; enqueue: Enqueu
 /** Email channel of the shared push router: decides per recipient with the shared precedence rule, then enqueues once. */
 export async function emailChannel(deps: ChannelDeps, candidate: EmailCandidate): Promise<ChannelResult> {
   if (!deps.config.enabled) return { decision: { send: false, reason: "disabled" }, enqueue: null };
-  const kind = templateKind(candidate.template, candidate.variables as { outcome?: string });
+  const kind = templateKind(candidate.template, candidate.variables as { outcome?: string; window?: string });
   // Account emails have no notification kind and never come through the shared router.
   if (kind === null) return { decision: { send: false, reason: "category_off" }, enqueue: null };
   const company = await deps.companies.get(candidate.companyId);

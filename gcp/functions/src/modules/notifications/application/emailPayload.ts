@@ -61,6 +61,16 @@ export function venueAddressOf(eventDoc: Doc): string | undefined {
   return addressLine((venue as Doc).address, (venue as Doc).locality);
 }
 
+/** `{ venueName?, venueAddress? }` of an event document, for push inputs that carry the email's Where row. */
+export function venueFieldsOf(eventDoc: Doc): { venueName?: string; venueAddress?: string } {
+  const name = venueNameOf(eventDoc);
+  const address = venueAddressOf(eventDoc);
+  return {
+    ...(typeof name === "string" && name.trim().length > 0 ? { venueName: name } : {}),
+    ...(address ? { venueAddress: address } : {}),
+  };
+}
+
 export type ChangedField = "time" | "venue" | "title" | "details";
 
 /** Maps tracked change-log fields to the template's coarse labels (anything else counts as details). */

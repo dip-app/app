@@ -10,7 +10,7 @@ Para agregarlo a tu calendario, abre el evento en DIP.
 Abrir en DIP: https://letsdip.work/e/evt_ar
 
 --
-Recibes este correo porque tienes activados los correos de recordatorios.
+Recibes este correo porque tienes activados los correos de recordatorios del día anterior.
 Cancelar suscripción: https://letsdip.work/u/sample-token
 Administrar en DIP: Perfil > Notificaciones
 Enviado por DIP · ¿Preguntas? support@letsdip.work

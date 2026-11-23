@@ -20,7 +20,7 @@ class FakeOutbox implements OutboxStore {
   async create(entry: NewOutboxEntry, now: Date) {
     if (this.docs.has(entry.id)) return false;
     this.docs.set(entry.id, {
-      id: entry.id, uid: entry.uid, companyId: entry.companyId, category: categoryOf(entry.template), template: entry.template,
+      id: entry.id, uid: entry.uid, companyId: entry.companyId, category: categoryOf(entry.template, entry.variables), template: entry.template,
       variables: entry.variables, status: "queued", attempts: 0, notAfter: entry.notAfter, createdAt: now, expireAt: now, leaseUntil: null,
     });
     return true;
@@ -193,14 +193,23 @@ describe("sendOutboxEmail", () => {
     assert.deepEqual(await sendOutboxEmail(w.deps, id), { status: "skipped", reason: "invalid_variables" });
   });
 
-  test("reminders default off at send time", async () => {
+  test("1 h reminders default off at send time; the 24 h reminder is governed by day_before_reminders (default on)", async () => {
     assert.equal(resolveEmailPreferences(null).reminders, false);
     const w = world();
-    const id = await enqueue(w, "reminders_e1_u1_24h", { template: "event_reminder", variables: { ...vars, window: "24h" } as never });
-    assert.equal((await sendOutboxEmail(w.deps, id)).reason, "preference_off");
-    w.emailMap = { reminders: true };
-    const id2 = await enqueue(w, "reminders_e1_u1_1h", { template: "event_reminder", variables: { ...vars, window: "1h" } as never });
-    assert.equal((await sendOutboxEmail(w.deps, id2)).status, "sent");
+    const hour = await enqueue(w, "reminders_e1_u1_1h", { template: "event_reminder", variables: { ...vars, window: "1h" } as never });
+    assert.equal((await sendOutboxEmail(w.deps, hour)).reason, "preference_off");
+    const day = await enqueue(w, "day_before_reminders_e1_u1_24h", { template: "event_reminder", variables: { ...vars, window: "24h" } as never });
+    assert.equal(w.outbox.docs.get(day)!.category, "day_before_reminders");
+    assert.equal((await sendOutboxEmail(w.deps, day)).status, "sent");
+    // Its one-click unsubscribe turns off only the day-before switch.
+    const link = w.provider.sent.at(-1)!.headers["List-Unsubscribe"]!.slice(1, -1).split("/u/")[1]!;
+    const claims = verifyUnsubscribeToken(KEY, link, Math.floor(NOW.getTime() / 1000));
+    assert.ok(claims.ok && claims.claims.category === "day_before_reminders");
+    w.emailMap = { reminders: true, day_before_reminders: false };
+    const hour2 = await enqueue(w, "reminders_e1_u1_1h2", { template: "event_reminder", variables: { ...vars, window: "1h" } as never });
+    assert.equal((await sendOutboxEmail(w.deps, hour2)).status, "sent");
+    const day2 = await enqueue(w, "day_before_reminders_e1_u1_24h2", { template: "event_reminder", variables: { ...vars, window: "24h" } as never });
+    assert.equal((await sendOutboxEmail(w.deps, day2)).reason, "preference_off");
   });
 
   test("notAfter expiry", async () => {

@@ -108,6 +108,18 @@ test("email.weekly_themes and email.admin_digest accept a boolean only, from the
   }
 });
 
+test("email.day_before_reminders (24 h reminder email) accepts a boolean only, from the owner only, and is never a push category", async () => {
+  const client = db("alice");
+  await assertSucceeds(setDoc(doc(client, path), { contractVersion: 1, email: { day_before_reminders: false }, updatedAt: serverTimestamp() }, { merge: true }));
+  await assertSucceeds(updateDoc(doc(client, path), { "email.day_before_reminders": true, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(client, path), prefs({ email: { day_before_reminders: "yes" } })));
+  await assertFails(setDoc(doc(client, path), prefs({ email: { day_before_reminders: 1 } })));
+  await assertFails(setDoc(doc(client, path), prefs({ push: { day_before_reminders: true } })));
+  for (const other of [db("bob"), db("carol"), db("alice", false), env.unauthenticatedContext().firestore()]) {
+    await assertFails(setDoc(doc(other, path), { contractVersion: 1, email: { day_before_reminders: false }, updatedAt: serverTimestamp() }, { merge: true }));
+  }
+});
+
 test("other settings documents, delete and list are denied", async () => {
   const client = db("alice");
   await assertFails(getDoc(doc(client, "users/alice/settings/other")));

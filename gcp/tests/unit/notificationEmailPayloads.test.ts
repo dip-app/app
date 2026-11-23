@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import {
-  attendeeAddedEmail, challengeReviewedEmail, changedFieldsOf, eventFacts, firstNameOf, inviteAnsweredEmail, inviteReceivedEmail,
+  attendeeAddedEmail, challengeReviewedEmail, changedFieldsOf, eventFacts, firstNameOf, inviteAnsweredEmail, inviteReceivedEmail, venueFieldsOf,
 } from "../../functions/src/modules/notifications/application/emailPayload";
 import { onChatMessageCreatedViaRouter, onEventDocumentUpdatedViaRouter, sendDueRemindersViaRouter } from "../../functions/src/modules/notifications/application/handlers";
 import {
@@ -221,6 +221,22 @@ describe("email payloads from the always-routed triggers", () => {
     assert.equal((request.email!.variables as { inviteeFirstName: string }).inviteeFirstName, "Fran");
     assert.equal(request.email!.objectId, "inv1");
     assert.equal(request.email!.revisionOrWindow, "accepted");
+  });
+
+  test("attendee added and invite answered carry the venue for the Where row", () => {
+    const venue = { venueName: "Game Room", venueAddress: "7 Dice Rd, Pittsburgh, PA" };
+    const added = attendeeAddedRequest({ companyId: C, eventId: E, eventTitle: "Board Games", userId: "u", notificationId: "admin_r2", eventStartTime: START, eventEndTime: END, ...venue });
+    assertValidEmail(added, "attendee_added");
+    assert.equal((added.email!.variables as { venueName?: string }).venueName, "Game Room");
+    assert.equal((added.email!.variables as { venueAddress?: string }).venueAddress, "7 Dice Rd, Pittsburgh, PA");
+    const answered = inviteAnsweredRequest({
+      companyId: C, eventId: E, eventTitle: "Pasta Night", inviteId: "inv2", senderId: "s", responderName: "Fran Friend", eventStartTime: START, eventEndTime: END, ...venue,
+    });
+    assertValidEmail(answered, "invite_answered");
+    assert.equal((answered.email!.variables as { venueName?: string }).venueName, "Game Room");
+    assert.deepEqual(venueFieldsOf({ venue: { name: "Game Room", address: "7 Dice Rd", locality: "Pittsburgh, PA" } }), venue);
+    assert.deepEqual(venueFieldsOf({ venue: { name: "  " } }), {});
+    assert.deepEqual(venueFieldsOf({}), {});
   });
 
   test("challenge reviewed maps the outcome from the kind", () => {

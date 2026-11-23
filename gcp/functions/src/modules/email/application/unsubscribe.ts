@@ -28,6 +28,7 @@ const CATEGORY_WORDS: Readonly<Record<EmailCategory, string>> = {
   admin_suggestions: "weekly event ideas",
   weekly_themes: "weekly theme announcements",
   admin_digest: "daily roster digests",
+  day_before_reminders: "event reminders the day before",
 };
 
 const BASE_HEADERS: Readonly<Record<string, string>> = {

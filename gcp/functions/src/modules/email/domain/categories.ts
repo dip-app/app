@@ -6,7 +6,7 @@
 import { CHANNEL_CATEGORIES, type NotificationCategory } from "../../notifications/domain/categories";
 import { resolvePreferences } from "../../notifications/domain/preferences";
 
-export type EmailCategory = Extract<NotificationCategory, "invites" | "event_updates" | "reminders" | "challenges" | "discovery" | "calendar_invites" | "admin_suggestions" | "weekly_themes" | "admin_digest">;
+export type EmailCategory = Extract<NotificationCategory, "invites" | "event_updates" | "reminders" | "challenges" | "discovery" | "calendar_invites" | "admin_suggestions" | "weekly_themes" | "admin_digest" | "day_before_reminders">;
 export const EMAIL_CATEGORIES = CHANNEL_CATEGORIES.email as readonly EmailCategory[];
 
 export function isEmailCategory(value: unknown): value is EmailCategory {

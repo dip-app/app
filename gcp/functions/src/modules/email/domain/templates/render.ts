@@ -5,7 +5,7 @@ import { intlTag, localeOrDefault, splitAround, type Locale } from "../../../i18
 import { buildCopy, categoryReason, changeSummary, eventURL, hasVisibleChange } from "./copy";
 import { tEmail } from "./i18n";
 import type { EmailCategory } from "../categories";
-import { SUGGESTION_THEMES, TEMPLATE_CATEGORY, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
+import { SUGGESTION_THEMES, templateCategory, type EventFacts, type RenderContext, type RenderedEmail, type TemplateId, type TemplateVariables } from "./types";
 
 export { eventURL, hasVisibleChange, EMAIL_ASSET_BASE };
 
@@ -393,7 +393,7 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
   const t = (key: Parameters<typeof tEmail>[1], vars: Record<string, string | number> = {}) => tEmail(locale, key, vars);
   const zone = safeZone(ctx.timeZone);
   const copy = buildCopy(template, variables, zone, locale, ctx.recipientAddress);
-  const category = TEMPLATE_CATEGORY[template];
+  const category = templateCategory(template, variables);
 
   const facts = copy.event;
   const title = facts ? collapseWhitespace(facts.eventTitle) : null;

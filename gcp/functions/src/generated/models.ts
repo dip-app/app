@@ -198,6 +198,7 @@ export interface EmailCategoryPreferences {
   admin_suggestions?: boolean;
   weekly_themes?: boolean;
   admin_digest?: boolean;
+  day_before_reminders?: boolean;
 }
 
 export interface NotificationPreferences {

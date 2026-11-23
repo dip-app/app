@@ -4,6 +4,11 @@ import { nextBudget, inviteIdFor } from "../domain/invitePolicy";
 
 const toDate = (value: unknown) => (value instanceof Timestamp ? value.toDate() : null);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
+/**
+ * Event document with both times as Dates. The end time matters too: the invite and invite-accepted emails need start
+ * and end, and a Timestamp end silently dropped both emails (found by the email end-to-end suite, November 2026).
+ */
+export const eventDates = (data: Document): Document => ({ ...data, startTime: toDate(data.startTime), endTime: toDate(data.endTime) });
 
 export class FirestoreInviteStore implements InviteStore {
   constructor(private readonly db: Firestore) {}
@@ -25,7 +30,7 @@ export class FirestoreInviteStore implements InviteStore {
         getMember: async (uid) => (await transaction.get(this.db.collection("users").doc(uid))).data() ?? null,
         getEvent: async (company, event) => {
           const data = (await transaction.get(this.event(company, event))).data();
-          return data ? { ...data, startTime: toDate(data.startTime) } : null;
+          return data ? eventDates(data) : null;
         },
         getRsvp: async (company, event, uid) => (await transaction.get(rsvp(company, event, uid))).data() ?? null,
         createRsvp: (company, event, uid, data) => { transaction.create(rsvp(company, event, uid), { ...data, createdAt: FieldValue.serverTimestamp() }); },
@@ -59,7 +64,7 @@ export class FirestoreInviteStore implements InviteStore {
 
   async getEvent(companyId: string, eventId: string): Promise<Document | null> {
     const data = (await this.event(companyId, eventId).get()).data();
-    return data ? { ...data, startTime: toDate(data.startTime) } : null;
+    return data ? eventDates(data) : null;
   }
 
   async listMembers(companyId: string, cap: number): Promise<{ members: DirectoryMember[]; complete: boolean }> {
