@@ -159,22 +159,20 @@ export function ThemeSuggestPanel({ ctl, state, onAnother, onUndo, onReapply, on
   const again = () => { if (!loading) ctl.start(hint); };
 
   return (
-    <section id="theme-suggest" className="theme-suggest" aria-labelledby={`${uid}-title`} aria-busy={loading || undefined}>
+    <section id="theme-suggest" className="theme-suggest" data-phase={phase} aria-labelledby={`${uid}-title`} aria-busy={loading || undefined}>
       {loading && (
         <div className="ts-loading" role="status">
           <span className="ts-spin" aria-hidden><DipbotMark size={16} /></span>
           <span id={`${uid}-title`}>{t("themeSuggest.loading")}</span>
         </div>
       )}
+      {phase === "error" && <h2 id={`${uid}-title`} className="sr-only">{t("themeSuggest.button")}</h2>}
       {phase === "error" && (exhausted
         ? <InlineNotice tone="warn" className="ts-notice">{t("limit.AI_CREDITS_EXHAUSTED", { date: resetDate(resetsAt) })}</InlineNotice>
-        : <ErrorNotice error={ctl.error} className="ts-notice" dipbot fallback={t("themeSuggest.error")} onRetry={ctl.retry} retryLabel={t("themeSuggest.retry")} />)}
-      {phase === "error" && (
-        <div className="ts-head ts-head-error">
-          <h2 id={`${uid}-title`} className="sr-only">{t("themeSuggest.button")}</h2>
-          <button type="button" className="ts-close link-btn" onClick={onClose}>{t("themeSuggest.close")}</button>
-        </div>
-      )}
+        : <ErrorNotice error={ctl.error} className="ts-notice" dipbot fallback={t("themeSuggest.error")} onRetry={ctl.retry} retryLabel={t("themeSuggest.retry")}
+            extraAction={<Button variant="plain" onClick={onClose}>{t("themeSuggest.close")}</Button>} />)}
+
+      {phase === "error" && exhausted && <div className="ts-head ts-head-error"><button type="button" className="ts-close link-btn" onClick={onClose}>{t("themeSuggest.close")}</button></div>}
 
       {!loading && current && state && (
         <>
