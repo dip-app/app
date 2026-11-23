@@ -62,11 +62,11 @@ export async function onEventDocumentUpdated(
   const recipients = (await deps.recipients.subscribers(companyId, eventId, LEVELS_FOR.event_changed)).filter((uid) => uid !== entry.by);
   const title = typeof after.title === "string" ? after.title : "Activity update";
   const summary = summarizeChanges(entry.changes);
-  const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined));
+  const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
+  const push = await sendPush(deps, recipients, changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined, "en", cancelled));
   // The in-app center mirrors the push for the same recipients, whether or not they have a device token. Best-effort:
   // a failure here never fails the trigger (the changeLog entry is already stored and a retry would be a duplicate).
   if (deps.inbox && recipients.length > 0) {
-    const cancelled = entry.changes.some((change) => change.field === "status" && change.to === "cancelled");
     try {
       await deps.inbox.createMany([...new Set(recipients)].map((uid) => ({
         uid, id: `event_${eventId}_${entry.revision}`, companyId, type: cancelled ? "event_cancelled" : "event_updated",
@@ -178,8 +178,8 @@ export async function onEventDocumentUpdatedViaRouter(
   const facts = eventFacts({ eventId, title, startTime: after.startTime, endTime, venueName: venueNameOf(after), venueAddress: venueAddressOf(after), revision: entry.revision });
   const push = await deliverNotification(deps, {
     id: `event_${eventId}_${entry.revision}`, kind: cancelled ? "event_cancelled" : "event_changed", companyId, recipients,
-    push: changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined),
-    pushFor: (locale) => changePush(companyId, eventId, title, entry.revision, summarizeChanges(entry.changes, locale), endTime ?? undefined, locale),
+    push: changePush(companyId, eventId, title, entry.revision, summary, endTime ?? undefined, "en", cancelled),
+    pushFor: (locale) => changePush(companyId, eventId, title, entry.revision, summarizeChanges(entry.changes, locale), endTime ?? undefined, locale, cancelled),
     inApp: { title: shorten(title, 60), body: summary, targetType: "event", targetId: eventId },
     email: eventChangeEmail(eventId, entry.revision, cancelled, entry.changes.map((change) => change.field), facts, entry.changes, after),
   });

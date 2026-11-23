@@ -10,12 +10,15 @@ final class PushNotificationActionTests: XCTestCase {
         var responses: [(inviteID: String, accept: Bool)] = []
         var failure: DIPInviteFailure?
         var hold = false
+        /// Called when a `respond` call starts (lets a test wait for it without spinning).
+        var onCall: (() -> Void)?
         private var gate: CheckedContinuation<Void, Never>?
         func observe() async -> AsyncThrowingStream<DIPInvites, Error> { AsyncThrowingStream { $0.finish() } }
         func searchCoworkers(eventID: String, query: String) async throws -> [DIPCoworker] { [] }
         func send(eventID: String, toUserID: String, message: String, requestID: String) async throws {}
         func respond(inviteID: String, accept: Bool) async throws -> DIPInviteReply {
             responses.append((inviteID, accept))
+            onCall?(); onCall = nil
             if hold { await withCheckedContinuation { gate = $0 } }
             if let failure { throw failure }
             return DIPInviteReply(status: accept ? .accepted : .declined, joined: accept)
@@ -119,8 +122,11 @@ final class PushNotificationActionTests: XCTestCase {
         invites.hold = true
         let responder = PushInviteResponder(makeRepository: { _ in invites })
         let payload = invitePayload
-        let first = Task { await responder.answer(accept: true, payload: payload) }
-        while invites.responses.isEmpty { await Task.yield() }
+        var first: Task<PushInviteResponder.Outcome, Never>!
+        await withCheckedContinuation { (started: CheckedContinuation<Void, Never>) in
+            invites.onCall = { started.resume() }
+            first = Task { await responder.answer(accept: true, payload: payload) }
+        }
         let second = await responder.answer(accept: true, payload: payload)
         XCTAssertEqual(second, .ignored)
         invites.release()

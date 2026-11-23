@@ -82,7 +82,7 @@ Record results (build number, devices, pass or fail per row) in the session log,
 
 ## Not covered
 
-Payload: every push is an alert (`apns-push-type: alert`, priority 10, `interruption-level: active`), never time-sensitive or content-available. Reminders expire at the activity start and change pushes at its end (`apns-expiration`); `data.category` carries the preference category and `aps.category` is only set once the app registers a matching UNNotificationCategory.
+Payload: every push is an alert (`apns-push-type: alert`, priority 10, `interruption-level: active`), never time-sensitive or content-available. Reminders expire at the activity start and change pushes at its end (`apns-expiration`); `data.category` carries the preference category and `aps.category` names the UNNotificationCategory the app registers (quick actions below).
 
 Token hygiene: `registerDeviceV1` refreshes `lastSeenAt` on every launch, and a daily server job deletes registry rows unseen for 60 days. Invalid tokens are still pruned on send.
 
@@ -98,4 +98,18 @@ Built in 0.1.2, unit-tested with fakes, **device-unverified** (the simulator can
 
 Device steps: rows 30 to 39 of the [device verification guide](../ops/push-device-verification.md).
 
-Background/silent pushes, badge counts, notification categories and actions other than `DIP_INVITE`, and any server change. A rich notification service extension is out of scope.
+### Quick actions on every other push
+
+Built after 0.1.2 (next TestFlight build), unit-tested with fakes, **device-unverified**. Every push now carries an `aps.category` (table: [push catalog, Quick actions](push-catalog.md#quick-actions)); the payload is otherwise byte-identical, so older builds just show the plain notification.
+
+- **Categories.** `SystemPushAdapter.categories()` registers six at launch: `DIP_INVITE` (above), `DIP_EVENT_GOING` (Open, Can't make it), `DIP_REMINDER` (Directions, Can't make it), `DIP_CHAT` (Reply), `DIP_PHOTO_COMMENT` (Reply) and `DIP_OPEN` (Open). At most two actions each, so the lock screen shows them all. Titles are String Catalog keys `push.action.*` (en, es).
+- **Options.** Anything that changes data runs in the background and needs an unlocked device (`.authenticationRequired`): Can't make it (also `.destructive`: it gives up the spot) and both Reply text fields. Open and Directions are `.foreground` (they open DIP or Maps and change nothing).
+- **Calls.** `PushQuickActionResponder` asks `FirebaseBootstrap.makePushMemberActions(companyID:)` for the signed-in Firebase user in the push's company (nil when nobody is signed in) and calls `FirebasePushMemberActions`, which reuses the in-app sources: Can't make it is `FirebaseParticipationSource.setRsvp(going: false)` (`setRsvpV1`, the event page's Leave); Reply on chat is `FirebaseParticipationSource.sendMessage` (the chat composer's write); Reply on a photo comment is `FirebasePhotoAlbumSource.addComment` on the push's `photoId`; Directions reads the event document and opens `DIPEventMetadata.directionsURL` (the event page's Directions pill) in Maps. Author name and avatar for replies come from the member's own `users/{uid}` profile (decoded like the session), which must belong to the push's company; the rules require them to match anyway.
+- **Idempotent.** A second press of the same action while the first runs is ignored. Leaving twice is a server no-op. A reply's document id is `push-` plus 40 hex characters of SHA-256(notification request id, text), so iOS delivering the same reply twice writes one message (the sources treat an already committed identical document as success); the id reveals neither.
+- **Failure.** Missing ids, nobody signed in, an activity that already started (`EVENT_CLOSED`), a closed chat, offline, a deleted item: in the background a local notification ("Couldn't leave the activity", "Couldn't send your reply") opens the item; in the foreground the item opens directly. Directions without a venue or without a session opens the activity. An empty reply sends nothing.
+- **Killed app.** The delegate is installed in `PushComposition.make()` at launch, so a background launch for an action reaches the same handler; the delegate awaits it, so iOS keeps the launch alive until the call finished. Links from foreground actions wait in the coordinator until the inbox is attached.
+- **Privacy.** Nothing is logged: no ids, names or reply text.
+
+Device steps: rows 40 to 52 of the [device verification guide](../ops/push-device-verification.md).
+
+Background/silent pushes, badge counts, a rich notification service extension, and Add to calendar from a reminder are out of scope.

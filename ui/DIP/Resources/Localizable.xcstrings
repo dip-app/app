@@ -16904,6 +16904,132 @@
         }
       }
     },
+    "push.action.directions" : {
+      "comment" : "Button on an activity reminder notification: opens Maps with directions to the venue",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Directions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo llegar"
+          }
+        }
+      }
+    },
+    "push.action.leave" : {
+      "comment" : "Button on an activity notification: leaves the activity (gives up the spot) without opening the app",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can’t make it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No puedo ir"
+          }
+        }
+      }
+    },
+    "push.action.open" : {
+      "comment" : "Button on a notification: opens the activity or weekly challenge in the app",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir"
+          }
+        }
+      }
+    },
+    "push.action.reply" : {
+      "comment" : "Button on a chat or photo comment notification: opens a text field to answer without opening the app",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reply"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responder"
+          }
+        }
+      }
+    },
+    "push.action.reply.chatPlaceholder" : {
+      "comment" : "Placeholder of the reply text field on an activity chat notification",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Message"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mensaje"
+          }
+        }
+      }
+    },
+    "push.action.reply.commentPlaceholder" : {
+      "comment" : "Placeholder of the reply text field on a photo comment notification",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add a comment"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega un comentario"
+          }
+        }
+      }
+    },
+    "push.action.reply.send" : {
+      "comment" : "Send button of the reply text field on a chat or photo comment notification",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Send"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar"
+          }
+        }
+      }
+    },
     "push.invite.accept" : {
       "comment" : "Button on an invitation notification: accepts the invitation and joins the activity",
       "extractionState" : "extracted_with_value",
@@ -16976,6 +17102,42 @@
         }
       }
     },
+    "push.leave.fallback.body" : {
+      "comment" : "Local notification body after leaving an activity from a notification failed; tapping it opens the activity",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You’re still going. Open the activity in DIP to leave it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía vas. Abre la actividad en DIP para salir."
+          }
+        }
+      }
+    },
+    "push.leave.fallback.title" : {
+      "comment" : "Local notification after the Can't make it button on an activity notification failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t leave the activity"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo salir de la actividad"
+          }
+        }
+      }
+    },
     "push.priming.accept" : {
       "comment" : "Notification priming alert button that continues to the system permission prompt",
       "extractionState" : "extracted_with_value",
@@ -17020,6 +17182,42 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "DaH ghobe'"
+          }
+        }
+      }
+    },
+    "push.reply.fallback.body" : {
+      "comment" : "Local notification body after a reply from a notification failed; tapping it opens the chat or the activity",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open DIP to try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre DIP para intentarlo de nuevo."
+          }
+        }
+      }
+    },
+    "push.reply.fallback.title" : {
+      "comment" : "Local notification after a Reply typed on a chat or photo comment notification could not be sent",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn’t send your reply"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo enviar tu respuesta"
           }
         }
       }

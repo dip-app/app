@@ -124,6 +124,18 @@ enum FirebaseBootstrap {
                                          scope: EventReadScope(uid: uid, companyID: companyID))
     }
 
+    /// Can't make it, Directions and Reply from a push (possibly a background launch): the signed-in Firebase user and the
+    /// push's company, over the same RSVP, chat, album and event sources as the in-app UI. The server and the rules check
+    /// membership, attendance and the chat window; a mismatch fails and the app falls back to opening the item.
+    @MainActor static func makePushMemberActions(companyID: String) -> (any PushMemberActions)? {
+        guard case .configured = status, let uid = Auth.auth().currentUser?.uid else { return nil }
+        let functions = Functions.functions(region: FirebaseAccountsRepository.region)
+        return FirebasePushMemberActions(
+            scope: EventReadScope(uid: uid, companyID: companyID), firestore: Firestore.firestore(),
+            participation: FirebaseParticipationSource(firestore: Firestore.firestore(), functions: functions),
+            albums: FirebasePhotoAlbumSource(firestore: Firestore.firestore(), functions: functions, storage: Storage.storage()))
+    }
+
     /// The member's own in-app notifications (users/{uid}/notifications): live list, unread count and isRead-only writes.
     @MainActor static func makeNotificationsRepository(context: MembershipContext) -> (any DIPNotificationsRepository)? {
         guard case .configured = status else { return nil }

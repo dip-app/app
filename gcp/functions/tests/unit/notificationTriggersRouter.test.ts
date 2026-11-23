@@ -149,6 +149,7 @@ describe("event change via router", () => {
     assert.equal(result.appended, true);
     assert.deepEqual(h.sent.map((s) => s.tokens), [["tok-fan"]]);
     assert.equal(h.sent[0]!.message.data.type, "event_changed");
+    assert.equal(h.sent[0]!.message.apnsCategory, "DIP_EVENT_GOING");
     assert.deepEqual(h.inbox.map((i) => ({ uid: i.uid, id: i.id, type: i.type, title: i.title, targetType: i.targetType, targetId: i.targetId })),
       [{ uid: "fan", id: "event_event_5", type: "event_updated", title: "Sunrise run", targetType: "event", targetId: E }]);
     assert.ok(h.receipts.has(`${C}/event_event_5`));
@@ -160,6 +161,9 @@ describe("event change via router", () => {
     await onEventDocumentUpdatedViaRouter(h.deps(), C, E, before, { ...before, status: "cancelled", revision: 5, updatedBy: "editor" }, NOW);
     assert.equal(h.inbox[0]!.type, "event_cancelled");
     assert.equal(h.sent.length, 1);
+    // A cancelled activity has nothing to leave: only "Open". The data keys are the same as for any change.
+    assert.equal(h.sent[0]!.message.apnsCategory, "DIP_OPEN");
+    assert.equal(h.sent[0]!.message.data.type, "event_changed");
   });
 
   test("event_updates switched off blocks the push, but the in-app notice remains", async () => {
@@ -200,6 +204,7 @@ describe("reminders via router", () => {
       ["b", `reminder_${E}_1h_${start.getTime()}`, "reminder", "Starts in 30 minutes."],
     ].map(([u, id, t, b]) => [u, id, t, b]));
     assert.equal(h.sent[0]!.message.expiresAt?.getTime(), start.getTime());
+    assert.equal(h.sent[0]!.message.apnsCategory, "DIP_REMINDER");
     const rerun = await sendDueRemindersViaRouter(h.deps());
     assert.deepEqual(rerun, { events: 1, sent: 0, skipped: 1, failed: 0 });
     assert.equal(h.sent.length, 1);

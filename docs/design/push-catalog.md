@@ -39,6 +39,7 @@ Priority: P1 must have, P2 should have, P3 nice. "Built" means implemented and u
 | 18 | Calendar conflict | The member | none | n/a | none | Not a server push | n/a | n/a | n/a | The server never sees the calendar ([calendar](stretch/calendar.md)); in-app only. |
 | 19 | Invite declined | The sender | `invites` | n/a | none | Rejected by design | n/a | n/a | n/a | A decline notification is discouraging; the invitations sheet still shows the status. |
 | 20 | Invite Accept and Decline buttons | The invitee | `invites` | on | none | Built (iOS 0.1.2) | P3 | n/a | n/a | See "PUSH-8" below. |
+| 21 | Quick actions on every other push (Can't make it, Directions, Reply, Open) | Each push's recipient | n/a | n/a | none | Built (server and iOS, after 0.1.2) | P2 | n/a | n/a | See "Quick actions" below. |
 
 Admin-facing events (a submission awaiting review, a bug report) are intentionally not pushed: admins work in the web portal, which has no push channel. Their email is the [admin suggestions email](stretch/admin-suggestions-email.md).
 
@@ -62,6 +63,48 @@ The registry has nine categories; seven are offered for push and all seven exist
 
 Server side: invite pushes carry `aps.category` `DIP_INVITE` and the data keys the app needs (`type` `invite`, `companyId`, `eventId`, `inviteId`). App side (0.1.2, device-unverified): the app registers `DIP_INVITE` with `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE` (background, unlock required) and answers through `respondToInviteV1`, the same call as the in-app buttons; on failure it posts a local notification that opens the activity. Details in [push client](push-client.md#invite-action-buttons-push-8).
 
+## Quick actions
+
+Audit of November 22, 2026 (owner request: "accept and decline and similar actions for all other actionable notifications"). Built and unit-tested on the server (`APNS_CATEGORIES` in `modules/notifications/domain/push.ts`, `notificationQuickActions.test.ts`) and in the app (`SystemPushAdapter.categories()`, `PushQuickActionResponder`, `PushQuickActionTests`); **not deployed, device-unverified**. Every push carries `aps.category`; titles, bodies and data keys are byte-identical to before (pinned per kind in the test), so a build without the categories shows the plain notification. Client details: [push client](push-client.md#quick-actions-on-every-other-push).
+
+Rules applied (Apple HIG): at most two actions per category so the lock screen shows all of them; short titles; the default tap already opens the item, so Open is only offered where it is the only choice or next to a destructive one; anything that changes data runs in the background and requires an unlocked device; leaving is styled destructive.
+
+| Push kind | `aps.category` | Actions (options) | What each calls | Idempotency | Auth and tenant |
+| --- | --- | --- | --- | --- | --- |
+| `invite` | `DIP_INVITE` | Accept, Decline (background, unlock) | `respondToInviteV1`, same as the in-app buttons | in-flight dedupe; `INVITE_ALREADY_RESPONDED` counts as done | signed-in user; server checks company and recipient |
+| `attendee_added` | `DIP_EVENT_GOING` | Open (foreground); Can't make it (background, unlock, destructive) | Open: `deepLink`. Can't make it: `setRsvpV1` status `cancelled`, the event page's Leave | in-flight dedupe; the server returns an unchanged RSVP without a count change | `setRsvpV1` derives the member from the auth and checks the company; after the start it refuses (`EVENT_CLOSED`) and the app falls back |
+| `event_changed` (time, place, back on) | `DIP_EVENT_GOING` | Open; Can't make it | as above | as above | as above |
+| `event_cancelled` (same `type` `event_changed`, status to cancelled) | `DIP_OPEN` | Open (foreground) | `deepLink` | n/a | n/a |
+| `reminder` (24 h, 1 h) | `DIP_REMINDER` | Directions (foreground); Can't make it | Directions: event document read (same-company rule), then the event page's `directionsURL` in Apple Maps. Can't make it: `setRsvpV1` as above | read only; leave as above | read rules: same company, scheduled event |
+| `chat` | `DIP_CHAT` | Reply (text, background, unlock) | the chat composer's own-author message write, author from the member's own profile | message id `push-` + SHA-256(notification id, text); create-only document, an identical committed retry counts as done | rules: going RSVP, own author equal to the server profile, chat open until 24 h after the end |
+| `photo_comment` | `DIP_PHOTO_COMMENT` | Reply (text, background, unlock) | the photo viewer's own-author comment on the push's `photoId` | same id scheme as chat | rules: same company, own author, existing photo |
+| `photo_added` | `DIP_OPEN` | Open | `deepLink` | n/a | n/a |
+| `attendee_removed` | `DIP_OPEN` | Open | `deepLink` (no Rejoin: an organizer decided) | n/a | n/a |
+| `invite_answered` | `DIP_OPEN` | Open | `deepLink` | n/a | n/a |
+| `challenge_approved`, `challenge_changes_requested`, `weekly_theme` | `DIP_OPEN` | Open | opens the app (Home shows the weekly challenge; `dip://challenges/{id}` is not routed yet, same as the tap) | n/a | n/a |
+
+Considered and left out:
+
+- **Add to calendar on reminders.** Not cheap: it needs EventKit permission in a foreground action, and a reminder 24 h or 1 h before is late for it. The event page and the calendar invite email cover it.
+- **"Still going" on changes and organizer adds.** Going is the default; an action that changes nothing only adds a button.
+- **Rejoin on "Your spot was released".** An organizer removed the member on purpose; rejoining stays a deliberate step on the event page.
+- **Accept on "Invitation accepted".** Nothing to answer.
+- **Like or react on photos.** There is no reaction model.
+
+Unknown action identifiers (a future server category on an old build) fall back to opening the payload's link.
+
+## Email quick actions: designed, deferred
+
+The coworker-invite email could carry one-tap Accept and Decline, and the reminder email a "Can't make it", through signed links. **Not built in this pass**, for three reasons: it needs a new public HTTPS function and a Hosting rewrite (`firebase.json`, a shared choke point), changes to the invite and reminder templates and their golden snapshots (owned by the email workstream, which is changing them in parallel), and a decision on the forwarded-email risk below. Exact design for the follow-up:
+
+- **Token.** Same construction as the unsubscribe token (`email/domain/unsubscribeToken.ts`) with its own domain separation string `dip-email-action.` and its own Secret Manager key (`EMAIL_ACTION_KEY`, at least 32 bytes; never the unsubscribe key, so one leak cannot do both): `base64url("v1:" + action + ":" + companyId + ":" + inviteId-or-eventId + ":" + uid + ":" + nonce + ":" + expiry) + "." + HMAC-SHA256`. `action` is `accept`, `decline` or `leave`. Expiry: the earlier of 7 days and the event start. `nonce` is 16 random bytes stored with the outbox row.
+- **Endpoint.** `emailActionV1` at `https://letsdip.work/a/<token>` (public, no cookies, no redirects, `Cache-Control: no-store`, `noindex`, the unsubscribe page's CSP). **GET and HEAD only render a confirmation page** ("Accept the invitation to Pizza night?" with one button), because mail scanners and link previews prefetch GETs. **POST performs the action**, with a form field `confirm=1`.
+- **Single use.** A transaction creates `emailActionReceipts/{sha256(token)}` (server-only, TTL 30 days) before calling the application service; an existing receipt answers the same "Done" page without acting again, so a double click is harmless.
+- **Action.** POST calls the same application services as the callables with the uid from the token: `respondToInvite` (checks the invite is in `companyId`, the uid is its recipient, still pending) and `applyRsvp` with `cancelled` for leave. The membership check runs as in the callable (an inactive or moved member is refused). Already answered and event closed show a neutral page that links to the app. Every failure (forged, expired, malformed, wrong recipient, missing invite) shows the same "Link not valid" page, so the endpoint reveals nothing.
+- **Rate limit.** Per token hash and per IP bucket (10 per minute), like the share pages.
+- **Tests required before shipping.** Forged signature, expired, reused token (second POST is a no-op), scanner GET changes nothing, HEAD changes nothing, double POST, already answered invite, wrong recipient (token for uid A on an invite to B), another company's invite id, deactivated member, event started (leave refused), oversized and malformed tokens.
+- **Risk to decide.** Anyone holding the email (a forward, a shared inbox, an assistant) can answer for the member without signing in. The confirmation page names the activity but not the member. Mitigations: short expiry, single use, only reversible actions (an accept can be undone in the app; Decline and leave free a spot that may be taken meanwhile). The owner should confirm that this trade-off is acceptable for leave before the reminder link is built.
+
 ## iOS follow-ups
 
 Done in 0.1.2 (device-unverified):
@@ -70,6 +113,8 @@ Done in 0.1.2 (device-unverified):
 2. In-app center: `comment` (speech bubble) and `photo_added` (photo) rows open the activity; `attendee_removed` has its own row icon; any unknown kind falls back to a generic bell row.
 3. The `DIP_INVITE` category and actions (PUSH-8).
 4. Every push `type`, known or not, opens its `deepLink`, else `dip://events/{eventId}`.
+
+Done after 0.1.2 (device-unverified): the quick action categories above.
 
 Open:
 

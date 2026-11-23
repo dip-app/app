@@ -25,11 +25,13 @@ final class PushCoordinator {
 
     /// Answers invitations from the Accept and Decline buttons; nil leaves the buttons opening the activity instead.
     private let inviteResponder: PushInviteResponder?
+    /// Runs Can't make it, Directions and Reply; nil leaves those buttons opening the item instead.
+    private let quickActions: PushQuickActionResponder?
 
     init(registrar: PushRegistrar, system: any PushSystem, store: any PushStateStore, enabled: Bool,
-         inviteResponder: PushInviteResponder? = nil) {
+         inviteResponder: PushInviteResponder? = nil, quickActions: PushQuickActionResponder? = nil) {
         self.registrar = registrar; self.system = system; self.store = store; self.enabled = enabled
-        self.inviteResponder = inviteResponder
+        self.inviteResponder = inviteResponder; self.quickActions = quickActions
     }
 
     func memberSignedIn(uid: String) async { await registrar.memberSignedIn(uid: uid) }
@@ -70,18 +72,38 @@ final class PushCoordinator {
 
     /// A delivered notification was tapped or one of its buttons pressed. Returns when the work is done, so a background
     /// launch for an action stays alive until the answer was sent.
-    func handleResponse(_ action: PushResponseAction, payload: PushPayload) async {
+    /// `notificationID` (the delivered notification's request identifier) makes a Reply idempotent.
+    func handleResponse(_ action: PushResponseAction, payload: PushPayload, notificationID: String = "") async {
+        let outcome: PushQuickActionResponder.Outcome
         switch action {
         case .open:
             // Any push type, known or not, opens its link (or the app only, when it has none).
-            if let link = payload.link { handleDeepLink(link.absoluteString) }
+            outcome = .openLink(payload.link)
         case .answerInvite(let accept):
-            let outcome = await inviteResponder?.answer(accept: accept, payload: payload) ?? .openInvite(payload.link)
-            guard case .openInvite(let link) = outcome else { return }
+            switch await inviteResponder?.answer(accept: accept, payload: payload) ?? .openInvite(payload.link) {
+            case .answered, .ignored: outcome = .done
+            case .openInvite(let link): outcome = .fallback(.invite, link)
+            }
+        case .leaveEvent:
+            outcome = await quickActions?.leave(payload: payload) ?? .fallback(.leave, payload.link)
+        case .directions:
+            outcome = await quickActions?.directions(payload: payload) ?? .openLink(payload.link)
+        case .replyChat(let text):
+            outcome = await quickActions?.replyChat(text: text, payload: payload, notificationID: notificationID) ?? .fallback(.reply, payload.link)
+        case .replyPhotoComment(let text):
+            outcome = await quickActions?.replyPhotoComment(text: text, payload: payload, notificationID: notificationID)
+                ?? .fallback(.reply, payload.link)
+        }
+        switch outcome {
+        case .done, .ignored: return
+        case .openExternal(let url): await system.openExternal(url)
+        case .openLink(let link): if let link { handleDeepLink(link.absoluteString) }
+        case .fallback(let kind, let link):
+            // In the foreground the item itself is the clearest fallback; in the background a local notification says so.
             if system.isForeground {
                 if let link { handleDeepLink(link.absoluteString) }
             } else {
-                await system.postInviteFallback(link: link)
+                await system.postActionFallback(kind, link: link)
             }
         }
     }

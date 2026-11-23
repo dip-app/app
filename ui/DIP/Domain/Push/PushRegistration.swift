@@ -22,9 +22,11 @@ import Foundation
     func deleteToken() async -> Bool
     /// True while DIP is in the foreground (an action pressed on a banner while the app is open).
     var isForeground: Bool { get }
-    /// An invite button pressed in the background could not answer: a local notification asks the member to answer in
-    /// the app; tapping it opens `link` (the activity), or just the app when nil.
-    func postInviteFallback(link: URL?) async
+    /// A quick action pressed in the background (Accept, Decline, Can't make it, Reply) could not finish: a local
+    /// notification asks the member to finish in the app; tapping it opens `link` (the item), or just the app when nil.
+    func postActionFallback(_ kind: PushActionFallback, link: URL?) async
+    /// Opens a link outside the app (the Directions action's Maps link).
+    func openExternal(_ url: URL) async
 }
 
 /// Small persistent flags so the app never re-prompts or re-registers needlessly.
