@@ -64,6 +64,26 @@ Where a push should have arrived but did not, check in this order: the log line 
 | 38 | Open the in-app center after rows 22 and 24 to 26 | Comment rows show a speech bubble, photo rows a photo icon, the removed row a person-minus icon; tapping opens the activity | |
 | 39 | Language: set iOS Settings > DIP > Language to Español, open DIP, then set it back to English and open DIP again | One `setMyLocaleV1` call per change, none on later launches without a change; emails and pushes follow (row 28). With the network off nothing is shown and the call is retried at the next launch | |
 
+## Quick actions on the other pushes (functions and app after 0.1.2)
+
+Needs the functions deploy that adds `aps.category` to every push and an app build after 0.1.2. On an older build the same pushes show no buttons; that is expected. "Long-press" means long-press the banner or pull it down; on the lock screen swipe left and tap Options for older iOS versions.
+
+| # | Step | Expected | Pass/Fail |
+| --- | --- | --- | --- |
+| 40 | Admin adds A to an activity with "notify" on; long-press the banner | Open and Can't make it (red). Spanish phone: "Abrir", "No puedo ir" | |
+| 41 | Tap Can't make it with A unlocked and DIP in the background (repeat once with DIP force-quit) | DIP stays closed; A is no longer going (My Events, attendee count one lower). Logs: one `setRsvpV1` | |
+| 42 | Lock A; admin changes that activity's time (A going again first); on the lock screen tap Can't make it | Face ID or the passcode first; then A leaves without DIP opening | |
+| 43 | Tap Open on an activity update banner | DIP opens on the activity page | |
+| 44 | Admin cancels an activity A is going to; long-press the banner | Only Open (no Can't make it) | |
+| 45 | A 1-hour reminder arrives (or wait for the 24-hour one); long-press | Directions and Can't make it. Directions opens Apple Maps at the venue (or a search for the activity title when it has no venue) | |
+| 46 | Airplane mode on A, then Can't make it on a reminder | A local notification "Couldn't leave the activity" ("You're still going ..."); tapping it opens the activity; no `setRsvpV1` line | |
+| 47 | Can't make it on an old reminder after the activity started | The same local notification (the server refuses with `EVENT_CLOSED`) | |
+| 48 | A at chat level All; B sends a chat message; on A long-press and tap Reply, type "On my way", Send | Reply needs an unlock on a locked phone; the message appears in the chat as A for everyone; B gets the usual chat push. DIP does not open | |
+| 49 | Reply to the same chat banner twice quickly with the same text | One message only | |
+| 50 | B comments on A's photo (A has Comments and photos on); on A tap Reply, type "Thanks", Send | The comment appears under the same photo as A; B gets nothing (comment pushes only go to the uploader) | |
+| 51 | Sign out of DIP on A; Reply to an older chat banner still in Notification Center | Local notification "Couldn't send your reply"; tapping it opens DIP; nothing is posted | |
+| 52 | Long-press an "Invitation accepted", "New photo", "Your spot was released" and a weekly challenge push | Each shows only Open; Open behaves like a tap | |
+
 ## When something fails
 
 Use the troubleshooting table in the [runbook](push-apns-runbook.md#4-troubleshooting), then this page's log table. Open an issue with the row number, the `notificationId` and the log line only. Do not attach screenshots that show tokens or settings pages with keys.

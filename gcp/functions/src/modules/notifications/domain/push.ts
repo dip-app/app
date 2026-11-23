@@ -43,8 +43,29 @@ export interface PushMessage {
   apnsCategory?: string;
 }
 
+/**
+ * `aps.category` of every push: the UNNotificationCategory the iOS app registers at launch, which decides the quick
+ * actions shown on a long press (docs/design/push-catalog.md, "Quick actions"). Additive: a build that does not know a
+ * category shows the plain notification, and every tap still opens `deepLink`.
+ */
+export const APNS_CATEGORIES = {
+  /** invite: Accept and Decline (PUSH-8). */
+  invite: "DIP_INVITE",
+  /** attendee_added, event_changed (not cancelled): "Can't make it" (leave) and "Open". */
+  eventGoing: "DIP_EVENT_GOING",
+  /** reminder (24 h and 1 h): "Directions" and "Can't make it" (leave). */
+  reminder: "DIP_REMINDER",
+  /** chat: a text "Reply" that posts to the activity chat. */
+  chat: "DIP_CHAT",
+  /** photo_comment: a text "Reply" that comments on the same photo. */
+  photoComment: "DIP_PHOTO_COMMENT",
+  /** Everything with nothing to do but look: event_cancelled, attendee_removed, invite_answered, photo_added, challenges. */
+  open: "DIP_OPEN",
+} as const;
+export type ApnsCategory = typeof APNS_CATEGORIES[keyof typeof APNS_CATEGORIES];
+
 /** `aps.category` of invite pushes (PUSH-8). The iOS actions are `DIP_INVITE_ACCEPT` and `DIP_INVITE_DECLINE` (docs/design/push-client.md). */
-export const INVITE_APNS_CATEGORY = "DIP_INVITE";
+export const INVITE_APNS_CATEGORY = APNS_CATEGORIES.invite;
 
 export function shorten(text: string, max: number): string {
   const single = text.replace(/\s+/g, " ").trim();
@@ -63,11 +84,15 @@ export function chatPush(companyId: string, eventId: string, eventTitle: string,
     data: { ...base("chat", companyId, eventId, "/chat"), messageId, category: "chat" },
     threadId: `event-${eventId}`,
     category: "chat",
+    apnsCategory: APNS_CATEGORIES.chat,
   };
 }
 
-/** `endTime` (when known) makes APNs drop the change push once the activity is over. */
-export function changePush(companyId: string, eventId: string, eventTitle: string, revision: number, summary: string, endTime?: Date, _locale: Locale = "en"): PushMessage {
+/**
+ * `endTime` (when known) makes APNs drop the change push once the activity is over. `cancelled` only picks the quick
+ * actions: a cancelled activity offers "Open", any other change "Can't make it" and "Open". The payload is otherwise identical.
+ */
+export function changePush(companyId: string, eventId: string, eventTitle: string, revision: number, summary: string, endTime?: Date, _locale: Locale = "en", cancelled = false): PushMessage {
   return {
     title: shorten(eventTitle, TITLE_MAX),
     body: summary,
@@ -75,6 +100,7 @@ export function changePush(companyId: string, eventId: string, eventTitle: strin
     threadId: `event-${eventId}`,
     collapseId: `change-${eventId}`,
     category: "event_updates",
+    apnsCategory: cancelled ? APNS_CATEGORIES.open : APNS_CATEGORIES.eventGoing,
     ...(endTime ? { expiresAt: endTime } : {}),
   };
 }
@@ -93,6 +119,7 @@ export function reminderPush(companyId: string, eventId: string, eventTitle: str
     threadId: `event-${eventId}`,
     collapseId: `reminder-${eventId}`,
     category: "reminders",
+    apnsCategory: APNS_CATEGORIES.reminder,
     // A reminder still undelivered when the activity starts is useless: APNs drops it.
     expiresAt: startTime,
   };
@@ -109,7 +136,7 @@ export function invitePush(companyId: string, eventId: string, eventTitle: strin
     collapseId: `invite-${inviteId}`,
     category: "invites",
     // PUSH-8: the app shows Accept and Decline once it registers this UNNotificationCategory; iOS ignores it until then.
-    apnsCategory: INVITE_APNS_CATEGORY,
+    apnsCategory: APNS_CATEGORIES.invite,
   };
 }
 
@@ -122,6 +149,7 @@ export function attendeeAddedPush(companyId: string, eventId: string, eventTitle
     threadId: `event-${eventId}`,
     collapseId: `attendee-added-${eventId}`,
     category: "event_updates",
+    apnsCategory: APNS_CATEGORIES.eventGoing,
   };
 }
 
@@ -134,6 +162,7 @@ export function attendeeRemovedPush(companyId: string, eventId: string, eventTit
     threadId: `event-${eventId}`,
     collapseId: `attendee-removed-${eventId}`,
     category: "event_updates",
+    apnsCategory: APNS_CATEGORIES.open,
   };
 }
 
@@ -147,6 +176,7 @@ export function inviteAnsweredPush(companyId: string, eventId: string, eventTitl
     threadId: "invites",
     collapseId: `invite-answered-${inviteId}`,
     category: "invites",
+    apnsCategory: APNS_CATEGORIES.open,
   };
 }
 
@@ -163,6 +193,7 @@ export function challengeReviewedPush(companyId: string, challengeId: string, su
     threadId: `challenge-${challengeId}`,
     collapseId: `challenge-review-${submissionId}`,
     category: "challenges",
+    apnsCategory: APNS_CATEGORIES.open,
   };
 }
 
@@ -175,6 +206,7 @@ export function weeklyThemePush(companyId: string, challengeId: string, themeTit
     threadId: `challenge-${challengeId}`,
     collapseId: `weekly-theme-${challengeId}`,
     category: "challenges",
+    apnsCategory: APNS_CATEGORIES.open,
     ...(windowEnd ? { expiresAt: windowEnd } : {}),
   };
 }
@@ -189,6 +221,7 @@ export function photoCommentPush(companyId: string, eventId: string, photoId: st
     threadId: `photos-${eventId}`,
     collapseId: `photo-comment-${photoId}`,
     category: "social",
+    apnsCategory: APNS_CATEGORIES.photoComment,
   };
 }
 
@@ -202,5 +235,6 @@ export function photoAddedPush(companyId: string, eventId: string, eventTitle: s
     threadId: `photos-${eventId}`,
     collapseId: `photo-added-${eventId}`,
     category: "social",
+    apnsCategory: APNS_CATEGORIES.open,
   };
 }

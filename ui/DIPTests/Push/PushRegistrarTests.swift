@@ -42,7 +42,10 @@ final class PushRegistrarTests: XCTestCase {
         func deleteToken() async -> Bool { deletedTokens += 1; return !failDelete }
         var isForeground = false
         var fallbacks: [URL?] = []
-        func postInviteFallback(link: URL?) async { fallbacks.append(link) }
+        var fallbackKinds: [PushActionFallback] = []
+        func postActionFallback(_ kind: PushActionFallback, link: URL?) async { fallbackKinds.append(kind); fallbacks.append(link) }
+        var external: [URL] = []
+        func openExternal(_ url: URL) async { external.append(url) }
     }
 
     final class FakeStore: PushStateStore {
