@@ -42,10 +42,10 @@ $dipbot: #3f4bc4;
   .field input[aria-invalid="true"]:focus-visible { outline-color: var(--error); }
 
   // ---------- Dipbot venues (last in the section; the section's own gap spaces it)
-  .venues { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid $line; border-radius: 8px; background: $white; min-width: 0; }
-  .venues-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .venues-title { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--font-figtree), sans-serif; font-size: 13px; font-weight: 600; color: $dipbot; svg { flex: none; } }
-  .venues-where { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .venues { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 12px; border: 1px solid $line; border-radius: 8px; background: $white; min-width: 0; }
+  .venues-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; min-width: 0; }
+  .venues-title { display: flex; min-width: 0; align-items: center; gap: 6px; margin: 0; font-family: var(--font-figtree), sans-serif; font-size: 13px; font-weight: 600; color: $dipbot; svg { flex: none; } }
+  .venues-where { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .venues-line { margin: 0; font-size: 13px; color: $ink; overflow-wrap: anywhere; }
   .venues-radius { height: 30px; padding: 0 6px; font-size: 13px; background: $white; border: 1px solid $ctl-border; border-radius: 6px; color: $ink; font-family: inherit; }
   .venues-find { justify-self: start; }
@@ -64,7 +64,8 @@ $dipbot: #3f4bc4;
   .venue-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
   .venue-meta { font-size: 12px; color: var(--muted); }
   .venue-why { font-size: 12px; color: $ink; }
-  .venue-use { flex: none; font-size: 13px; font-weight: 500; color: var(--primary); line-height: 1.3; padding-top: 1px; }
+  // "Use": the primary is 4.45:1 on the hover tint, $dipbot 5.9:1 or better.
+  .venue-use { flex: none; font-size: 13px; font-weight: 500; color: $dipbot; line-height: 1.3; padding-top: 1px; }
   .venues-credit { padding-top: 6px; border-top: 1px solid $line; }
 
   .dipbot-tag { display: inline-flex; align-items: center; gap: 4px; height: 20px; margin-left: 8px; padding: 0 8px 0 5px; border-radius: 999px; background: $tint; color: $dipbot; font-size: 11.5px; font-weight: 600; line-height: 1; vertical-align: middle; white-space: nowrap; svg { flex: none; } }

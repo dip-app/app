@@ -8,6 +8,7 @@ export const importer: Record<keyof typeof source, string> = {
   "import.subtitle": "Agrega o actualiza a muchas personas desde una hoja de cálculo. Ves exactamente qué cambia antes de guardar nada.",
   "import.roster": "Lista de personal",
   "import.steps.label": "Pasos de la importación",
+  "import.steps.progress": "Paso {current} de {total}: {label}",
   "import.step.file": "Subir",
   "import.step.map": "Asociar columnas",
   "import.step.review": "Revisar",

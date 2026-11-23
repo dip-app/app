@@ -32,9 +32,9 @@ $sg-line: #8f99f6;
   }
 
   .ts-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; color: $dipbot; svg { flex: none; } }
-  .ts-title { flex: 1 1 240px; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: $ink; overflow-wrap: anywhere; }
+  .ts-title { flex: 1 1 160px; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: $ink; overflow-wrap: anywhere; }
   .ts-count { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
-  .ts-close { font-size: 13px; color: $ink; white-space: nowrap; }
+  .ts-close { margin-left: auto; font-size: 13px; color: $ink; white-space: nowrap; }
   .sg-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid $sg-line; border-radius: 999px; color: $dipbot; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap;
     &[data-level="perfect"] { border-color: $purple; } }
 
@@ -51,6 +51,8 @@ $sg-line: #8f99f6;
     input { flex: 1 1 240px; width: auto; max-width: 560px; min-width: 0; }
     .dip-action { flex: none; } }
   .ts-head-error { justify-content: flex-end; }
+  // A failed request is one alert, not a card holding another box: the card chrome drops away and the shared error alert stands alone.
+  &[data-phase="error"] { padding: 0; background: none; border: 0; gap: 4px; }
 
   @media (max-width: 600px) {
     padding: 12px;
