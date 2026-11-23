@@ -39,6 +39,7 @@ const KIND_CLASS: Readonly<Record<NotificationKind, RateClass>> = {
   admin_suggestions: "shared",
   weekly_theme_email: "shared",
   admin_digest: "shared",
+  reminder_day_before: "exempt",
 };
 
 export const rateClassOf = (kind: NotificationKind): RateClass => KIND_CLASS[kind];

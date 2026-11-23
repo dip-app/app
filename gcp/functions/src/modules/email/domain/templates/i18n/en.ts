@@ -41,6 +41,7 @@ export const en = {
   "email.reason.admin_suggestions": "weekly event idea",
   "email.reason.weekly_themes": "weekly theme",
   "email.reason.admin_digest": "daily roster digest",
+  "email.reason.day_before_reminders": "day-before reminder",
 
   // invite_received
   "email.inviteReceived.heading": "New invitation",

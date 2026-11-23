@@ -311,6 +311,30 @@ describe("addEventAttendeeV1 push", () => {
     assert.ok(store.get("users/m2/notifications/admin_push-req-0001"));
   });
 
+  test("an admin who adds themself gets no notice, push or email, and the response says not notified", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    const { calls, notifier } = pushes();
+    deps.pushes = notifier;
+    const result = await addEventAttendee(deps, admin, add({ userId: "admin1", notify: true, requestId: "self-add-0001" }));
+    assert.equal(result.added, true);
+    assert.equal(result.notified, false);
+    assert.equal(calls.length, 0);
+    assert.equal(store.get("users/admin1/notifications/admin_self-add-0001"), undefined);
+    assert.equal(store.get("companies/alpha/events/soon/rsvps/admin1")!.status, "going");
+  });
+
+  test("the push input carries the venue for the email's Where row", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    store.seed("companies/alpha/events/soon", { ...store.get("companies/alpha/events/soon")!, venue: { name: "Game Room", address: "7 Dice Rd", locality: "Pittsburgh, PA" } });
+    const { calls, notifier } = pushes();
+    deps.pushes = notifier;
+    await addEventAttendee(deps, admin, add({ notify: true, requestId: "venue-req-0001" }));
+    assert.equal(calls[0]!.venueName, "Game Room");
+    assert.equal(calls[0]!.venueAddress, "7 Dice Rd, Pittsburgh, PA");
+  });
+
   test("a failing push never fails the command or removes the in-app notice", async () => {
     const { deps, store } = makeDeps();
     seedCompany(store);

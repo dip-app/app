@@ -27,6 +27,7 @@ export const CATEGORY_REASON: Readonly<Record<EmailCategory, string>> = {
   admin_suggestions: categoryReason("admin_suggestions"),
   weekly_themes: categoryReason("weekly_themes"),
   admin_digest: categoryReason("admin_digest"),
+  day_before_reminders: categoryReason("day_before_reminders"),
 };
 
 /** Plain-text pieces of one email, before layout. Everything here is unescaped. */

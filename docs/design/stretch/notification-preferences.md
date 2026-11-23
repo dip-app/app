@@ -8,7 +8,7 @@ Status: implemented in code (contract, rules, server helper, iOS mirror); nothin
 | --- | --- | --- | --- | --- | --- |
 | `invites` | `invite`, `invite_answered` | none | on | yes | on |
 | `event_updates` | `event_changed`, `event_cancelled` (gated), `attendee_added`, `attendee_removed` (not gated) | `changes` (`all`, `changes`) | on | yes | on |
-| `reminders` | `reminder` | `reminders` (`all`, `changes`, `reminders`) | on | yes | off |
+| `reminders` | `reminder` (push: both windows; email: the about-1-hour email only) | `reminders` (`all`, `changes`, `reminders`) | on | yes | off |
 | `chat` | `chat` | `all` | on | no | n/a |
 | `challenges` | `challenge_approved`, `challenge_changes_requested`, `weekly_theme` | none | on | yes | on |
 | `social` | `photo_comment` (comment on your album photo), `photo_added` (new photo in an album you attended) | none | off | no | n/a |
@@ -17,6 +17,7 @@ Status: implemented in code (contract, rules, server helper, iOS mirror); nothin
 | `admin_suggestions` | `admin_suggestions` (weekly ideas for admins, [design](admin-suggestions-email.md)) | none | n/a (not offered) | yes | off |
 | `weekly_themes` | `weekly_theme_email` (weekly theme announcement email, [catalog](../email-catalog.md); the `weekly_theme` push stays under `challenges`) | none | n/a (not offered) | yes | off |
 | `admin_digest` | `admin_digest` (daily roster digest for admins, [catalog](../email-catalog.md)) | none | n/a (not offered) | yes | off |
+| `day_before_reminders` | `reminder_day_before` (the about-24-hour reminder email; owner decision November 22, 2026, [coverage](../email-coverage.md)) | `reminders` (`all`, `changes`, `reminders`) | n/a (not offered) | yes | **on** |
 
 Source of truth: `gcp/functions/src/modules/notifications/domain/categories.ts` (`NOTIFICATION_CATEGORIES`, `CHANNEL_CATEGORIES`, `DEFAULT_PREFERENCES`, `NOTIFICATION_KINDS`). iOS mirror: `DIPNotificationCategory` in `ui/Packages/DIPCore`. A unit test on each side pins the ids and defaults, so a drift fails CI.
 
@@ -34,7 +35,7 @@ Source of truth: `gcp/functions/src/modules/notifications/domain/categories.ts` 
 ```
 
 - Both maps and every key are optional. A missing document, map or key means the registry default, resolved server-side on every read (changing a default needs no migration).
-- Rules: the owner may get, create and update only this document; top-level keys `contractVersion` (must be 1), `push`, `email`, `updatedAt` (must equal `request.time`); `push` keys limited to the seven categories, `email` keys limited to the offered ones (today nine: the five above plus `calendar_invites`, `admin_suggestions`, `weekly_themes` and `admin_digest`), all values booleans. No list, no delete, no other user's document. Writes are direct (no callable), like per-event levels.
+- Rules: the owner may get, create and update only this document; top-level keys `contractVersion` (must be 1), `push`, `email`, `updatedAt` (must equal `request.time`); `push` keys limited to the seven categories, `email` keys limited to the offered ones (today ten: the five above plus `calendar_invites`, `admin_suggestions`, `weekly_themes`, `admin_digest` and `day_before_reminders`), all values booleans. No list, no delete, no other user's document. Writes are direct (no callable), like per-event levels.
 - The server may write the same shape through `FirestorePreferences.setCategory` (merge write), for example an email unsubscribe or a spam complaint.
 
 ## Precedence (one rule for every channel)

@@ -56,10 +56,18 @@ describe("decideEmail matrix", () => {
     }
   });
 
-  test("reminders and discovery default off and ignore push", () => {
+  test("1 h reminders and discovery default off, the 24 h reminder email defaults on, and all ignore push", () => {
     const run = (kind: NotificationKind, p: ReturnType<typeof prefs>) =>
       decideEmail({ kind, globalEnabled: true, companyEnabled: true, preferences: p, eventLevel: "all", pushWillDeliver: true });
     assert.deepEqual(run("reminder", prefs({})), { send: false, reason: "category_off" });
+    // Owner decision (November 22, 2026): the day-before reminder email just works, even with push on.
+    assert.deepEqual(run("reminder_day_before", prefs({})), { send: true });
+    assert.deepEqual(run("reminder_day_before", prefs({ reminders: false })), { send: true });
+    assert.deepEqual(run("reminder_day_before", prefs({ day_before_reminders: false })), { send: false, reason: "category_off" });
+    for (const level of [null, "none"] as const) {
+      assert.deepEqual(decideEmail({ kind: "reminder_day_before", globalEnabled: true, companyEnabled: true, preferences: prefs({}), eventLevel: level, pushWillDeliver: false }),
+        { send: false, reason: "event_level" });
+    }
     assert.deepEqual(run("event_interest", prefs({})), { send: false, reason: "category_off" });
     assert.deepEqual(run("reminder", prefs({ reminders: true })), { send: true });
     assert.deepEqual(run("event_interest", prefs({ discovery: true })), { send: true });
@@ -127,11 +135,21 @@ describe("emailChannel", () => {
     }
   });
 
-  test("reminders follow the default-off preference", async () => {
-    const reminder = { ...candidate, template: "event_reminder" as const, variables: { ...facts, window: "24h" as const }, revisionOrWindow: "24h" };
+  test("the 24 h reminder email defaults on (day_before_reminders); the 1 h one follows the default-off reminders switch", async () => {
+    const day = { ...candidate, template: "event_reminder" as const, variables: { ...facts, window: "24h" as const }, revisionOrWindow: "24h" };
+    const hour = { ...day, variables: { ...facts, window: "1h" as const }, revisionOrWindow: "1h" };
     assert.equal(resolveEmailPreferences(null).reminders, false);
-    assert.equal((await emailChannel(deps().d, reminder)).decision.send, false);
-    assert.equal((await emailChannel(deps({ map: { reminders: true } }).d, reminder)).decision.send, true);
+    assert.equal(resolveEmailPreferences(null).day_before_reminders, true);
+    const first = await emailChannel(deps().d, day);
+    assert.equal(first.decision.send, true);
+    assert.match(first.enqueue!.id, /^day_before_reminders_/);
+    // An explicit old-default reminders:false (iOS writes the whole map) does not stop the day-before email.
+    assert.equal((await emailChannel(deps({ map: { reminders: false } }).d, day)).decision.send, true);
+    assert.equal((await emailChannel(deps({ map: { day_before_reminders: false } }).d, day)).decision.send, false);
+    assert.equal((await emailChannel(deps().d, hour)).decision.send, false);
+    const opted = await emailChannel(deps({ map: { reminders: true } }).d, hour);
+    assert.equal(opted.decision.send, true);
+    assert.match(opted.enqueue!.id, /^reminders_/);
   });
 
   test("challenge email only when push will not deliver", async () => {

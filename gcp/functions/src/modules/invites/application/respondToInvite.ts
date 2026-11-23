@@ -1,4 +1,5 @@
 import type { RespondToInviteResponse } from "../../../generated/models";
+import { venueFieldsOf } from "../../notifications/application/emailPayload";
 import { applyRsvp } from "../../participation/application/setRsvp";
 import { InviteError } from "../domain/errors";
 import { isActiveMember, parseRespond } from "../domain/invitePolicy";
@@ -63,6 +64,7 @@ export async function respondToInvite(store: InviteStore, callerIn: InviteCaller
         responderName: typeof member?.displayName === "string" ? member.displayName : (typeof invite.toUserName === "string" ? invite.toUserName : ""),
         ...(eventDoc?.startTime instanceof Date ? { eventStartTime: eventDoc.startTime } : {}),
         ...(eventDoc?.endTime instanceof Date ? { eventEndTime: eventDoc.endTime } : {}),
+        ...(eventDoc ? venueFieldsOf(eventDoc) : {}),
       };
     }
     return { contractVersion: 1, inviteId, status: "accepted", rsvpStatus: "going", attendeeCount: joined.attendeeCount } satisfies RespondToInviteResponse;

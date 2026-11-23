@@ -202,7 +202,7 @@ The [email catalog](../design/email-catalog.md) lists every email. None has been
 7. **Welcome.** Sign in to the app for the first time as B (the profile is created): one "Welcome to DIP at <company>" email arrives; signing out and in again sends nothing more (`account_<company>_<uid>_welcome` exists once). An admin's first sign-in gets the admin portal step and button.
 8. **Problem report resolved.** As B (TestFlight or Debug build), Profile > Report a problem. As A, Bug reports > that report > Status Resolved: B gets "Your problem report was resolved" with the date only (no report text). Set it to Triaged and Resolved again: no second email.
 9. **Unsubscribe from all.** In B's welcome email click Unsubscribe and confirm "Unsubscribe from all DIP emails": every email switch in Profile > Notifications is off, and a later problem report resolution sends nothing (`skipped`, `all_off`). Turn the switches back on in the app.
-10. **Existing event emails.** With B going to an event that has a venue name and address: change its time (an "Updated: <title> (time changed)" email with the old time struck through), turn on Reminders in Profile > Notifications > Email and wait for the about 24 hour and 1 hour reminders (none after the start; each shows a **Where** row with the venue name and address, and **Open in DIP** opens `https://letsdip.work/e/<id>`; an event without a venue has no Where row), have a coworker invite B to an event ("<name> invited you to <title>"), and cancel an event ("Canceled: <title>").
+10. **Existing event emails.** With B going to an event that has a venue name and address: change its place (an "Updated: <title> (location changed)" email with the old place struck through; times cannot change once anyone responded), wait for the about 24 hour reminder (on by default, `day_before_reminders`) and, after turning on Reminders in Profile > Notifications > Email, the 1 hour reminder (none after the start; each shows a **Where** row with the venue name and address, and **Open in DIP** opens `https://letsdip.work/e/<id>`; an event without a venue has no Where row), have a coworker invite B to an event ("<name> invited you to <title>", with a Where row), and cancel an event ("Canceled: <title>").
 11. **Calendar invites.** Run the section 11 checklist (join, update, leave, rejoin, cancel, unsubscribe, no-send cases) in every client of the seed list.
 12. **Weekly theme email: default off.** With `sendWeeklyThemeEmails` deployed and nobody opted in, create a weekly theme as A whose start is in the last 24 hours (or seed one with `scripts/seed-weekly-theme.mjs`) and run the job once (Cloud Scheduler > `firebase-schedule-sendWeeklyThemeEmails-us-central1` > Force run). No email arrives, no `emailOutbox/weekly_themes_*` document exists, and the `weekly_theme_email.job` log line counts everyone under `notOptedIn`.
 13. **Weekly theme email: opted in.** As A, Your settings > Other emails from DIP > turn on **Weekly theme email**. For B (no iOS switch yet), set `email.weekly_themes: true` in `users/<uid>/settings/notifications` in the console, and set B's language to Español. Force run again: exactly one "This week's theme: <title>" email per opted-in person, with the art tile, title, description, dates, points and **Open DIP**, each in that person's language. A second force run sends nothing new (`duplicates` in the log). One-click Unsubscribe turns off only `weekly_themes`.
@@ -212,3 +212,45 @@ The [email catalog](../design/email-catalog.md) lists every email. None has been
 Steps 12 to 15 can run on the emulators first: email is on there, messages land in `emulatorEmailOutbox`, and the scheduled functions can be triggered from the Functions emulator.
 
 Record the result per email and client in the PR or session log: arrived, inbox or spam, rendering (light and dark), button target, plain text, unsubscribe.
+
+## 13. Pre-release check: email end-to-end suite
+
+Run before every release that touches email, notifications, invites, participation, the organizer or admin commands, and before turning email on for a company:
+
+```sh
+npm ci            # Node 24.12+; the suite needs the root devDependencies (firebase, firebase-tools, tsx)
+npm run test:email:e2e
+```
+
+It builds the functions, starts the Auth, Firestore and Functions emulators (`firebase emulators:exec`, default ports 9099, 8080, 5001; nothing reaches a provider or a real mailbox) and runs `gcp/tests/e2e/email.e2e.test.ts` (about 3 to 5 minutes). Every email in the [coverage matrix](../design/email-coverage.md) is driven through its real trigger and each step asserts the exact set of emails, so a missing, extra or duplicate send fails. Expected result: every step passes, the last step ("whole run") confirms one message per outbox document, tenant isolation, nothing after deactivation and no failed or stuck outbox document. If ports are taken, copy `firebase.json` to a temporary file with other `emulators` ports and add `--config <file>` to the command; the suite finds the Functions emulator through the emulator hub. When a step fails, its message names the step and lists the emails that went out (`recipient:template`).
+
+## 14. Production smoke check (15 minutes)
+
+Owner-run, after section 7 (pilot company enabled, `EMAIL_ENABLED=true`, the real provider selected) and after a functions deploy that includes this release. It sends about 20 real emails to two people of the pilot company and covers every email type except the next-morning digest. Agents do not run it.
+
+**People.** A: the owner's admin account on the pilot company domain (portal and app). B: a second Google account on the same domain that has **never signed in** (a test colleague or a second mailbox), with the app on a phone. Read B's mail in Gmail (web and phone) and A's in the client you want to check. Note the time zone in `emailSettings/<company>.timeZone`.
+
+**Before you start (2 minutes).** As A in the portal, Your settings > Other emails from DIP: turn on **Weekly theme email** and **Daily roster digest**. Have Cloud Scheduler open (Console > Cloud Scheduler) to force-run `firebase-schedule-sendEventReminders-us-central1` and `firebase-schedule-sendWeeklyThemeEmails-us-central1`.
+
+| Minute | Action | What should arrive (within about a minute unless noted) |
+| --- | --- | --- |
+| 0 | Portal, Roster > Add person: B's address, role Member, "Email them an invitation now" on | B: "A invited you to join <company> on DIP" with B's address in bold and **Get DIP** |
+| 1 | B signs in to the app for the first time | B: "Welcome to DIP at <company>". The roster row shows B joined. Signing in again sends nothing |
+| 2 | A creates event **Smoke 1** starting about 23 h 30 min from now, with a venue name and street address | nothing |
+| 3 | A (app) invites B to Smoke 1 | B: "<A> invited you to Smoke 1" with When (company zone abbreviation) and Where. A: nothing |
+| 4 | B accepts the invite | A: "<B> accepted your invite to Smoke 1". B: "Calendar invite: Smoke 1" from DIP Events with `invite.ics`; add it to B's calendar |
+| 5 | A joins Smoke 1 | A: "Calendar invite: Smoke 1" |
+| 6 | A edits Smoke 1's venue (another place) | B: "Updated: Smoke 1 (location changed)" with the old place struck through, and "Updated invite: Smoke 1" that moves the existing calendar entry (no duplicate). A: only "Updated invite" |
+| 7 | Force-run `sendEventReminders` (or wait up to 15 minutes) | A and B: "Tomorrow: Smoke 1" with the Where row (on by default). Force-running again sends nothing |
+| 8 | A creates **Smoke 2** starting in about 50 minutes; B joins it; B turns on Profile > Notifications > Email > Reminders; force-run `sendEventReminders` | B: "Calendar invite: Smoke 2", then "Starting in about an hour: Smoke 2". A gets no 1 hour email (not opted in) |
+| 10 | Portal, Smoke 2 > attendees: A adds themself with "notify" on; then A creates **Smoke 3** and adds B with "notify" on | A: only "Calendar invite: Smoke 2" (no "You were added"). B: "You were added to Smoke 3" with Where, and "Calendar invite: Smoke 3" |
+| 11 | B leaves Smoke 3 | B: "Removed from your calendar: Smoke 3"; the entry disappears |
+| 12 | A cancels Smoke 1, then sets it back to Scheduled | Cancel: B gets "Canceled: Smoke 1" and a calendar cancel; A a calendar cancel. Reopen: both get "Updated invite: Smoke 1" and the entry comes back |
+| 13 | A creates a weekly theme starting today; B submits to it in the app; A approves it in the portal; force-run `sendWeeklyThemeEmails` | Approval: no email to B while B's phone has push on (push covers it; turn off DIP notifications in iOS Settings first to see "Approved: <theme>"). Weekly theme: A gets "This week's theme: <title>" with the art tile; B gets none (not opted in) |
+| 14 | B, Profile > Report a problem; A resolves it in the portal (Bug reports > Resolved) | B: "Your problem report was resolved" with the date only. Triaged then Resolved again sends nothing |
+| 15 | In B's "Tomorrow: Smoke 1" email use Gmail's **Unsubscribe** | B's day-before reminder switch turns off (only that one); other emails keep coming |
+| next morning, 08:00 to 11:59 company time | nothing to do | A: one "DIP roster update for <yesterday>" listing B under Joined |
+
+**Check on every email:** sender `DIP <notify@letsdip.work>` (calendar emails `DIP Events <events@letsdip.work>`), Reply-To `support@letsdip.work`, inbox not spam, header and footer art load, one button that opens the right page, Gmail "Show original" shows SPF, DKIM and DMARC pass and a plain-text part, and the Unsubscribe link next to the sender. In Firestore, each `emailOutbox` document of the run ends `sent` (or `skipped` with the reason the table predicts) and none is `failed` or `unknown`.
+
+**Clean up:** delete Smoke 1 to 3 and the theme (or cancel them), turn B's day-before switch back on if B is a real colleague, and record per row: arrived, inbox or spam, rendering, button, unsubscribe in the PR or session log.

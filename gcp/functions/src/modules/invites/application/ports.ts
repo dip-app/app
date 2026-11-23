@@ -48,6 +48,9 @@ export interface InvitePushInput {
   /** Event times, used only for the optional email. */
   eventStartTime?: Date;
   eventEndTime?: Date;
+  /** Venue name and one-line address for the email's Where row (members of the company see them in the app). */
+  venueName?: string;
+  venueAddress?: string;
 }
 
 /** Best-effort push for a newly created invitation (the existing push pipeline). Never fails the command. */
@@ -61,6 +64,8 @@ export interface InviteAcceptedPush {
   senderId: string; responderName: string;
   /** Event times, used only for the optional email. */
   eventStartTime?: Date; eventEndTime?: Date;
+  /** Venue name and one-line address for the email's Where row. */
+  venueName?: string; venueAddress?: string;
 }
 
 /** Best-effort push to the sender when an invite is ACCEPTED (declines are silent). Never fails the command. */

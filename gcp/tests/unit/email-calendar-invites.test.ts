@@ -155,7 +155,7 @@ class MemOutbox implements OutboxStore {
   async create(entry: NewOutboxEntry, now: Date) {
     if (this.docs.has(entry.id)) return false;
     this.docs.set(entry.id, {
-      id: entry.id, uid: entry.uid, companyId: entry.companyId, category: categoryOf(entry.template), template: entry.template,
+      id: entry.id, uid: entry.uid, companyId: entry.companyId, category: categoryOf(entry.template, entry.variables), template: entry.template,
       variables: entry.variables, status: "queued", attempts: 0, notAfter: entry.notAfter, createdAt: now, expireAt: now, leaseUntil: null,
     });
     return true;
@@ -323,6 +323,27 @@ describe("join, update and cancel flows", () => {
     const edited = { ...after, title: "Renamed", revision: 5 };
     const none = await onEventUpdatedForInvites(x.inviteDeps(), { companyId: "c1", eventId: "evt_1", before: after, after: edited, updateTime: new Date("2030-01-01T12:10:00Z") });
     assert.equal(none.enqueued, 0);
+  });
+
+  test("reopening a canceled event sends the REQUEST again (same UID, higher SEQUENCE) to going members", async () => {
+    const x = world();
+    await onRsvpForInvite(x.inviteDeps(), rsvp());
+    await x.sendAll();
+    const scheduled = { title: "Sunset hike", startTime: x.event!.startTime, endTime: x.event!.endTime, status: "scheduled", revision: 3 };
+    const cancelled = { ...scheduled, status: "cancelled", revision: 4 };
+    x.event = { ...x.event!, status: "cancelled" };
+    await onEventUpdatedForInvites(x.inviteDeps(), { companyId: "c1", eventId: "evt_1", before: scheduled, after: cancelled, updateTime: new Date("2030-01-01T12:05:00Z") });
+    await x.sendAll();
+    const reopened = { ...scheduled, revision: 5 };
+    x.event = { ...x.event!, status: "scheduled", revision: 5 };
+    const stats = await onEventUpdatedForInvites(x.inviteDeps(), { companyId: "c1", eventId: "evt_1", before: cancelled, after: reopened, updateTime: new Date("2030-01-01T12:10:00Z") });
+    assert.deepEqual(stats, { recipients: 1, enqueued: 1, skipped: 0 });
+    await x.sendAll();
+    const files = x.provider.sent.map((m) => unfold(icsOf(m)));
+    assert.equal(files.length, 3);
+    assert.deepEqual(files.map((l) => l.find((p) => p.startsWith("METHOD:"))), ["METHOD:REQUEST", "METHOD:CANCEL", "METHOD:REQUEST"]);
+    assert.deepEqual(files.map((l) => l.find((p) => p.startsWith("SEQUENCE:"))), ["SEQUENCE:0", "SEQUENCE:1", "SEQUENCE:2"]);
+    assert.equal(new Set(files.map((l) => l.find((p) => p.startsWith("UID:")))).size, 1);
   });
 
   test("changes that do not touch the entry send nothing", async () => {

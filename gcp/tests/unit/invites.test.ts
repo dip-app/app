@@ -7,6 +7,10 @@ import { sendInvite } from "../../functions/src/modules/invites/application/send
 import { InviteError } from "../../functions/src/modules/invites/domain/errors";
 import { nameMatches, nextBudget, parseRespond, parseSearch, parseSend, SEND_LIMIT, SEND_WINDOW_MS } from "../../functions/src/modules/invites/domain/invitePolicy";
 import { toHttpsError } from "../../functions/src/modules/invites/transport/inviteFunctions";
+import { eventDates } from "../../functions/src/modules/invites/infrastructure/firestoreInviteStore";
+import { createRequire } from "node:module";
+
+const { Timestamp } = createRequire(require.resolve("../../functions/package.json"))("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
 import { ParticipationError } from "../../functions/src/modules/participation/domain/errors";
 
 const NOW = new Date("2030-01-01T12:00:00Z");
@@ -346,4 +350,23 @@ test("a failing answer notifier never fails the acceptance", async () => {
   const result = await respondToInvite(store, caller("friend"), respond("accepted"), now, notifier);
   assert.equal(result.status, "accepted");
   assert.equal(store.get("companies/alpha/invites/event_friend")!.status, "accepted");
+});
+
+test("the invite push carries start, end and venue for the email", async () => {
+  const store = world();
+  store.seed("companies/alpha/events/event", { ...store.get("companies/alpha/events/event")!, venue: { name: "Trattoria", address: "5 Pasta Ln", locality: "Pittsburgh, PA" } });
+  const push = notifier();
+  await sendInvite(store, push, caller(), send, now);
+  const input = push.calls[0]!;
+  assert.deepEqual([input.eventStartTime, input.eventEndTime], [new Date("2030-01-02T18:00:00Z"), new Date("2030-01-02T20:00:00Z")]);
+  assert.deepEqual([input.venueName, input.venueAddress], ["Trattoria", "5 Pasta Ln, Pittsburgh, PA"]);
+});
+
+test("the Firestore adapter hands the application both event times as Dates (a Timestamp end time dropped every invite email)", () => {
+  const start = new Date("2030-01-02T18:00:00Z");
+  const end = new Date("2030-01-02T20:00:00Z");
+  const out = eventDates({ title: "Pasta Night", startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end) });
+  assert.ok(out.startTime instanceof Date && out.endTime instanceof Date);
+  assert.deepEqual([out.startTime, out.endTime], [start, end]);
+  assert.equal(out.title, "Pasta Night");
 });
