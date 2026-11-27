@@ -334,9 +334,9 @@ describe("reasons and facts", () => {
     const hike = signals({ pastEvents: [event("Sunset hike", ["tag-outdoors"], 20, 30, 24)] });
     const r1 = reasonsFor(idea("fall-foliage-walk"), summarize(hike), hike);
     assert.equal(r1[0], 'Your last outdoor event, "Sunset hike", filled 24 of 30 spots');
-    assert.equal(reasonsFor(idea("pottery-night"), summarize(hike), hike)[0], "No arts events yet");
+    assert.equal(reasonsFor(idea("pottery-night"), summarize(hike), hike)[0], "No arts & crafts events yet");
     const old = signals({ pastEvents: [event("Pottery", ["tag-arts"], 60, 20, 5)] });
-    assert.equal(reasonsFor(idea("improv-workshop"), summarize(old), old)[0], "No arts events in the last 8 weeks");
+    assert.equal(reasonsFor(idea("improv-workshop"), summarize(old), old)[0], "No arts & crafts events in the last 8 weeks");
 
     const weekly = signals({ weeklyThemes: [{ title: "Move more", tagIds: ["tag-fitness"], startDate: new Date(NOW.getTime() - DAY), endDate: new Date(NOW.getTime() + 6 * DAY) }] });
     const r2 = reasonsFor(idea("lunchtime-run-club"), summarize(weekly), weekly);

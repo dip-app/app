@@ -1,5 +1,7 @@
 # AI event drafts: prompt evaluation (AI-7)
 
+The newer harness for every Dipbot step (daily ideas, Suggest theme, drafts, triage, covers, venues) with a blinded judge and a cumulative spend cap is in [`dipbot/`](dipbot/README.md) (`npm run eval:dipbot`); this runner stays for the drafts-only comparison.
+
 Status: one live run was done on November 17, 2026 with the cheap defaults (`gpt-4o-mini` drafting; Jev and `gpt-4o-mini` on the decision questions). Aggregate results are in `docs/design/stretch/ai-event-creation.md`, section Evaluation. Only one live run is allowed: the runner writes `results/.live-run-lock` and refuses another live run without `--allow-rerun`.
 
 ## Purpose

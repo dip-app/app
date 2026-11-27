@@ -6,7 +6,7 @@ import {
   type ThemeHistoryRecord, type ThemeHistorySource,
 } from "../../functions/src/modules/ai/application/ports";
 import { suggestTheme, themeSuggestOn, type SuggestThemeDeps } from "../../functions/src/modules/ai/application/suggestTheme";
-import { runThemeAgent, themeInput } from "../../functions/src/modules/ai/application/themeAgent";
+import { THEME_PREFETCH_TOOLS, runThemeAgent, themeInput } from "../../functions/src/modules/ai/application/themeAgent";
 import { CREDIT_COSTS } from "../../functions/src/modules/ai/domain/credits";
 import { ideaSnapshot } from "../../functions/src/modules/ai/domain/ideaTools";
 import { THEME_PRICED, themeWorstCaseMicros } from "../../functions/src/modules/ai/domain/pricing";
@@ -91,7 +91,7 @@ class LoopAgent implements AgentModelPort {
   constructor(private readonly themes: ModelTheme[] = THEMES, private readonly fail = false) {}
   async turn<T>(request: AgentTurnRequest<T>): Promise<AgentTurnOutcome<T>> {
     if (this.fail) throw new LlmUnavailableError(503);
-    if (request.items.length === 0) {
+    if (request.items.every(item => item.type !== "call" || item.id.startsWith("prefetch_"))) {
       this.runs++;
       this.inputs.push(request.input);
       return calls(["getTagUsage", "{}"], ["getPastThemes", "{\"companyId\":\"beta\"}"]) as AgentTurnOutcome<T>;
@@ -206,6 +206,17 @@ describe("suggest theme: similarity and duplicates", () => {
   });
 });
 
+describe("suggest theme: cold start", () => {
+  test("a company without history keeps only why lines that claim nothing about it", () => {
+    const cold = snapshot([], null as never, []);
+    assert.equal(cold.idea.summary.dataLevel, "none");
+    const built = buildThemes({ snapshot: cold, locale: "en" }, [mt({ why: ["No themes recorded yet for your team", "A calm way to start the winter"] })], []);
+    const agent = built.suggestions.find(x => x.source === "agent")!;
+    assert.deepEqual(agent.why, ["A calm way to start the winter"]);
+    assert.equal(agent.reasonBasis, "generic");
+  });
+});
+
 describe("suggest theme: tools and privacy", () => {
   test("tools read the snapshot only; an invented companyId is ignored", () => {
     const snap = snapshot();
@@ -236,10 +247,22 @@ describe("suggest theme: tools and privacy", () => {
   test("the agent loop caps tool calls and forces the last turn", async () => {
     const eight = Array.from({ length: 8 }, () => ["getTagUsage", "{}"] as [string, string]);
     const model = new ScriptedAgentModel([calls(...eight), final()]);
-    const run = await runThemeAgent({ model }, { snapshot: snapshot(), locale: "en", hint: "", fields: ["title"] });
+    const run = await runThemeAgent({ model, prefetch: false }, { snapshot: snapshot(), locale: "en", hint: "", fields: ["title"] });
     assert.equal(run.traces.length, THEME_LIMITS.maxToolCalls);
     assert.equal(model.requests[1]!.toolChoice, "none");
     assert.equal(run.outcome, "ok");
+  });
+
+  test("the core tool results are in the conversation before the first turn", async () => {
+    const snap = snapshot();
+    const model = new ScriptedAgentModel([final()]);
+    const run = await runThemeAgent({ model, maxOutputTokens: 4500 }, { snapshot: snap, locale: "en", hint: "", fields: ["title"] });
+    assert.equal(run.turns, 1);
+    assert.deepEqual(run.traces.map(t => t.name), [...THEME_PREFETCH_TOOLS]);
+    const first = model.requests[0]!;
+    assert.deepEqual(first.items.map(i => i.type), THEME_PREFETCH_TOOLS.flatMap(() => ["call", "result"]));
+    assert.equal((first.items[1] as { output: string }).output, JSON.stringify(runThemeTool(snap, "getPastThemes", {}).output));
+    assert.equal(first.maxOutputTokens, 4500);
   });
 
   test("the demo agent answers through the same validation", async () => {

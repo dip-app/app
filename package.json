@@ -33,6 +33,7 @@
     "check:admin-i18n": "node --import tsx scripts/admin-i18n/check.ts",
     "test:admin-i18n": "node --import tsx --test scripts/admin-i18n/check.test.ts",
     "check:backend-i18n": "node --import tsx scripts/backend-i18n/check.ts",
+    "eval:dipbot": "node --import tsx gcp/tests/ai-eval/dipbot/run.ts",
     "test:backend-i18n": "node --import tsx --test scripts/backend-i18n/*.test.ts",
     "ios:i18n-sync": "python3 scripts/ios-i18n-sync.py",
     "check": "npm run check:generated && npm run check:ios-i18n && npm run check:admin-i18n && npm run test:admin-i18n && npm run check:backend-i18n && npm run test:backend-i18n && npm run test:sessions && npm run test:docs && npm run test:contracts && npm run build && npm run test:unit",

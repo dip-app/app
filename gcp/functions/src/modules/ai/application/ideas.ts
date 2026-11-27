@@ -17,7 +17,7 @@ import { ideaFingerprint, ideaSnapshot } from "../domain/ideaTools";
 import type { IdeaSnapshot } from "../domain/ideaTypes";
 import { applyRanking, buildIdeas, fallbackIdeas, rankingRequest } from "../domain/ideaValidate";
 import { aiPaths, dayKey, monthKey } from "../domain/paths";
-import { costMicros, ideasWorstCaseMicros } from "../domain/pricing";
+import { costMicros, ideaOutputCeiling, ideasWorstCaseMicros } from "../domain/pricing";
 import { addSpend, checkPlatform, dayOfMonth, effectiveLimits, monthDocument, platformDocument, readMonth, readPlatform } from "../domain/quota";
 import { activeLease } from "../domain/suggestionCache";
 import { loadLedger } from "./credits";
@@ -132,7 +132,9 @@ export async function getDipbotIdeas(deps: IdeasDeps, rawCaller: Caller | null, 
 
   const signals = await gatherSignals({ store: deps.signals, interests: deps.interests, catalog: deps.catalog }, companyId, now, timeZone, weekKeyOf(now, timeZone));
   const snapshot = ideaSnapshot(signals, await deps.catalog.list());
-  const fingerprint = ideaFingerprint(snapshot);
+  // Model text follows the admin who starts the run (their account language); English is the default.
+  const locale = start.actor.locale === "es" ? "es" : "en";
+  const fingerprint = ideaFingerprint(snapshot, locale);
   const day = localDayKey(now, timeZone);
 
   /** The response for the given stored state: stored ideas (fresh or stale) or the free catalog fallback. */
@@ -227,7 +229,7 @@ export async function getDipbotIdeas(deps: IdeasDeps, rawCaller: Caller | null, 
   }
 
   // We hold the lease and the reservation. Whatever happens next, settle once: spend, refund or keep, release.
-  const run = await produce(deps, snapshot, cfg.model);
+  const run = await produce(deps, snapshot, cfg.model, locale);
   const answered = run.ideas !== null;
   const spent = { micros: run.micros, tokensIn: run.tokensIn, tokensOut: run.tokensOut };
   const charged = answered ? CREDIT_COSTS.ideas : 0;
@@ -298,11 +300,13 @@ interface Produced {
 }
 
 /** Runs the agent, validates and builds the ideas, ranks them. Never throws; every failure is an unanswered run. */
-async function produce(deps: IdeasDeps, snapshot: IdeaSnapshot, model: string): Promise<Produced> {
+async function produce(deps: IdeasDeps, snapshot: IdeaSnapshot, model: string, locale: "en" | "es"): Promise<Produced> {
   const empty: IdeaAgentResult = { modelIdeas: null, traces: [], usage: { tokensIn: 0, tokensOut: 0, cachedIn: 0, reasoning: 0 }, model: "", turns: 0, outcome: "unavailable" };
   let agent = empty;
   try {
-    agent = await runIdeaAgent({ model: deps.agent!, ...(deps.agentDeadlineMs !== undefined ? { deadlineMs: deps.agentDeadlineMs } : {}) }, snapshot);
+    agent = await runIdeaAgent({
+      model: deps.agent!, maxOutputTokens: ideaOutputCeiling(model), ...(deps.agentDeadlineMs !== undefined ? { deadlineMs: deps.agentDeadlineMs } : {}),
+    }, snapshot, { locale });
   } catch {
     // Treated as an unanswered run below.
   }
@@ -314,7 +318,7 @@ async function produce(deps: IdeasDeps, snapshot: IdeaSnapshot, model: string): 
 
   try {
     const at = deps.now();
-    const built = buildIdeas(snapshot, agent.modelIdeas, agent.traces, at);
+    const built = buildIdeas(snapshot, agent.modelIdeas, agent.traces, at, locale);
     if (built.agentCount === 0) return { ideas: null, rankedBy: "heuristic", agent, micros, tokensIn, tokensOut };
     let rankedBy: Produced["rankedBy"] = "heuristic";
     let answers: Record<string, DecisionAnswer> | null = null;

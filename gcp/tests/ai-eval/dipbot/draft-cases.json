@@ -1,0 +1,13 @@
+[
+ {"id": "es-01", "locale": "es", "choices": {"goal": "team_bonding", "groupSize": "team", "setting": "indoors", "budget": "under_15", "timing": "weekday_lunch", "focusTagIds": ["tag-cooking"]}, "count": 3,
+  "note": "Algo con comida para el equipo, varios son vegetarianos.", "interests": [{"tagId": "tag-cooking", "memberCount": 16}, {"tagId": "tag-music", "memberCount": 21}, {"tagId": "tag-food", "memberCount": 19}],
+  "theme": null, "expect": {"screen": "ok"}, "focus": "Spanish admin: drafts should be in natural Latin American Spanish and honor the vegetarian note"},
+ {"id": "es-02", "locale": "es", "choices": {"goal": "celebrate", "groupSize": "company", "setting": "offsite", "budget": "from_15_to_50", "timing": "after_work", "focusTagIds": ["tag-music"]}, "count": 3,
+  "note": "", "interests": [{"tagId": "tag-music", "memberCount": 21}, {"tagId": "tag-games", "memberCount": 11}],
+  "theme": {"title": "Semana de la música", "tagIds": ["tag-music"]}, "expect": {"screen": "ok"}, "focus": "Spanish admin, year-end celebration with a Spanish weekly theme"},
+ {"id": "sparse-01", "choices": {"goal": "learning", "groupSize": "small", "setting": "indoors", "budget": "free", "timing": "weekday_lunch", "focusTagIds": []}, "count": 3,
+  "note": "", "interests": [], "theme": null, "expect": {"screen": "ok"}, "focus": "No interests, no focus, no note: should stay generic and not invent company facts"},
+ {"id": "spec-01", "choices": {"goal": "competition", "groupSize": "team", "setting": "indoors", "budget": "under_15", "timing": "after_work", "focusTagIds": ["tag-games"]}, "count": 3,
+  "note": "We did trivia and bingo already, want something new and a bit competitive.", "interests": [{"tagId": "tag-games", "memberCount": 22}, {"tagId": "tag-food", "memberCount": 30}],
+  "theme": null, "expect": {"screen": "ok"}, "focus": "Must avoid trivia and bingo and be specific"}
+]

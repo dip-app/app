@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import { z } from "zod";
 import { AdminError } from "../../functions/src/modules/admin/domain/errors";
-import { IDEA_INSTRUCTIONS, RETRY_TEXT, runIdeaAgent } from "../../functions/src/modules/ai/application/ideaAgent";
+import { IDEA_INSTRUCTIONS, PREFETCHED_EXTRA_CALLS, PREFETCH_TOOLS, RETRY_TEXT, ideaInput, runIdeaAgent } from "../../functions/src/modules/ai/application/ideaAgent";
 import { getDipbotIdeas, type IdeasDeps } from "../../functions/src/modules/ai/application/ideas";
 import {
   LlmUnavailableError, type AgentModelPort, type AgentTurnOutcome, type AgentTurnRequest, type AiSettings, type LlmUsage,
@@ -80,7 +80,7 @@ class LoopAgent implements AgentModelPort {
   async turn<T>(request: AgentTurnRequest<T>): Promise<AgentTurnOutcome<T>> {
     this.turns++;
     if (this.fail) throw new LlmUnavailableError(503);
-    if (request.items.length === 0) {
+    if (request.items.every(item => item.type !== "call" || item.id.startsWith("prefetch_"))) {
       this.runs++;
       return calls(["getTagUsage", "{}"], ["getPastEvents", "{\"limit\":3}"]) as AgentTurnOutcome<T>;
     }
@@ -100,7 +100,7 @@ describe("idea agent loop", () => {
   test("executes tool calls against the snapshot and ignores an invented companyId", async () => {
     const snap = snapshot();
     const model = new ScriptedAgentModel([calls(["getPastEvents", "{\"companyId\":\"beta\",\"limit\":3}"], ["getTagUsage", "{}"]), final()]);
-    const run = await runIdeaAgent({ model }, snap);
+    const run = await runIdeaAgent({ model, prefetch: false }, snap);
     assert.equal(run.outcome, "ok");
     assert.equal(run.turns, 2);
     assert.deepEqual(run.traces.map(t => t.name), ["getPastEvents", "getTagUsage"]);
@@ -118,7 +118,7 @@ describe("idea agent loop", () => {
   test("more than 6 tool calls are capped: the extra calls are not executed and the next turn forces the answer", async () => {
     const eight = Array.from({ length: 8 }, () => ["getTagUsage", "{}"] as [string, string]);
     const model = new ScriptedAgentModel([calls(...eight), final()]);
-    const run = await runIdeaAgent({ model }, snapshot());
+    const run = await runIdeaAgent({ model, prefetch: false }, snapshot());
     assert.equal(run.traces.length, IDEA_LIMITS.maxToolCalls);
     const results = model.requests[1]!.items.filter(i => i.type === "result") as Array<{ output: string }>;
     assert.equal(results.length, 8);
@@ -130,10 +130,20 @@ describe("idea agent loop", () => {
 
   test("the last turn forces the answer with toolChoice none", async () => {
     const model = new ScriptedAgentModel([calls(["getTagUsage", "{}"]), calls(["getAttendanceTrends", "{}"]), calls(["getIdeaCatalog", "{}"]), final()]);
-    const run = await runIdeaAgent({ model }, snapshot());
+    const run = await runIdeaAgent({ model, prefetch: false }, snapshot());
     assert.deepEqual(model.requests.map(r => r.toolChoice), ["auto", "auto", "auto", "none"]);
     assert.equal(run.turns, IDEA_LIMITS.maxTurns);
     assert.equal(run.outcome, "ok");
+  });
+
+  test("after the prefetch the model gets at most 2 more tool calls, then the answer is forced", async () => {
+    const model = new ScriptedAgentModel([calls(["getAvailableCoverLabels", "{}"]), calls(["getAvailableCoverLabels", "{}"], ["getIdeaCatalog", "{}"]), final()]);
+    const run = await runIdeaAgent({ model }, snapshot());
+    assert.equal(run.outcome, "ok");
+    assert.equal(run.traces.length, PREFETCH_TOOLS.length + PREFETCHED_EXTRA_CALLS);
+    assert.deepEqual(model.requests.map(r => r.toolChoice), ["auto", "auto", "none"]);
+    const results = model.requests[2]!.items.filter(i => i.type === "result") as Array<{ output: string }>;
+    assert.deepEqual(JSON.parse(results.at(-1)!.output), { error: "tool limit reached" });
   });
 
   test("the deadline aborts the provider call", async () => {
@@ -167,11 +177,30 @@ describe("idea agent loop", () => {
     assert.equal(refused.outcome, "refusal");
   });
 
-  test("the demo agent calls tools first and then answers with ideas the schema accepts", async () => {
+  test("the demo agent answers with ideas the schema accepts", async () => {
     const run = await runIdeaAgent({ model: new DemoAgentModel() }, snapshot());
     assert.equal(run.outcome, "ok");
-    assert.deepEqual(run.traces.map(t => t.name), ["getTagUsage", "getPastEvents"]);
+    assert.deepEqual(run.traces.map(t => t.name), [...PREFETCH_TOOLS], "with the data prefetched the demo answers on the first turn");
     assert.equal(run.modelIdeas!.length, 5);
+  });
+
+  test("the core tool results are in the conversation before the first turn, as calls the model can cite", async () => {
+    const snap = snapshot();
+    const model = new ScriptedAgentModel([final()]);
+    const run = await runIdeaAgent({ model, maxOutputTokens: 9000 }, snap, { locale: "es" });
+    assert.equal(run.outcome, "ok");
+    assert.equal(run.turns, 1, "no tool round trip needed");
+    const first = model.requests[0]!;
+    assert.deepEqual(first.items.map(i => i.type), PREFETCH_TOOLS.flatMap(() => ["call", "result"]));
+    const call = first.items[0] as { id: string; name: string; arguments: string };
+    assert.equal(call.id, "prefetch_getTagUsage");
+    assert.deepEqual(JSON.parse((first.items[2] as { arguments: string }).arguments), { sinceDays: null, theme: null, limit: null });
+    assert.equal((first.items[3] as { output: string }).output, JSON.stringify(runIdeaTool(snap, "getPastEvents", {}).output));
+    assert.deepEqual(run.traces.map(t => t.name), [...PREFETCH_TOOLS], "prefetched results ground the why lines");
+    assert.equal(first.maxOutputTokens, 9000);
+    assert.match(first.input, /Write in Latin American Spanish/);
+    assert.match(first.input, /<recent_events_do_not_repeat>[\s\S]*<\/recent_events_do_not_repeat>/);
+    assert.match(ideaInput(snap), /Write in US English/);
   });
 });
 
@@ -350,7 +379,7 @@ describe("getDipbotIdeasV1", () => {
     assert.equal(used(r), 3);
     const stored = r.store.get(CACHE)!;
     assert.equal(stored.provider, "openai");
-    assert.deepEqual(stored.tools, ["getTagUsage", "getPastEvents"]);
+    assert.deepEqual(stored.tools, [...PREFETCH_TOOLS, "getTagUsage", "getPastEvents"]);
     assert.equal(stored.leaseHolder, "");
     assert.equal(typeof stored.autoRunDay, "string");
     // Spend is metered into the month and the platform, never as a generation.
@@ -542,8 +571,8 @@ describe("getDipbotIdeasV1", () => {
     const line = r.logs.find(l => l.event === "ai.ideas")!.fields;
     assert.equal(line.companyId, "alpha");
     assert.equal(line.creditsCharged, 3);
-    assert.equal(line.tools, 2);
-    assert.equal(line.toolNames, "getTagUsage,getPastEvents");
+    assert.equal(line.tools, PREFETCH_TOOLS.length + 2);
+    assert.equal(line.toolNames, [...PREFETCH_TOOLS, "getTagUsage", "getPastEvents"].join(","));
     assert.equal(typeof line.tokensIn, "number");
     const down = rig();
     down.deps = { ...down.deps, rankers: [{ port: new ScriptedDecisions([new LlmUnavailableError(500)]), model: "jev-latest" }] };

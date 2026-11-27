@@ -39,9 +39,9 @@ export function reasonsFor(idea: IdeaTemplate, summary: CompanySummary, signals:
     push(`Your ${themeNoun(idea.theme)} event "${cut(stats.best.title, 40)}" filled ${stats.best.attendeeCount} of ${stats.best.capacity} spots`);
   }
 
-  if (stats.events === 0 && summary.eligible.length > 0) push(`No ${idea.theme} events yet`);
+  if (stats.events === 0 && summary.eligible.length > 0) push(`No ${themeNoun(idea.theme)} events yet`);
   else if (stats.lastHeldDaysAgo !== null && stats.lastHeldDaysAgo >= GAP_DAYS) {
-    push(`No ${idea.theme} events in the last ${Math.floor(stats.lastHeldDaysAgo / 7)} weeks`);
+    push(`No ${themeNoun(idea.theme)} events in the last ${Math.floor(stats.lastHeldDaysAgo / 7)} weeks`);
   }
 
   const active = new Set(activeThemeTagIds(signals));

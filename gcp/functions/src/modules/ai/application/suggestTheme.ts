@@ -12,7 +12,7 @@ import { chargeCredits, CREDIT_COSTS, creditsExhausted, creditsRemaining, credit
 import { cleanText, hasForbiddenContent } from "../domain/drafts";
 import { ideaSnapshot } from "../domain/ideaTools";
 import { aiPaths, dayKey, monthKey } from "../domain/paths";
-import { costMicros, themeWorstCaseMicros } from "../domain/pricing";
+import { THEME_PRICED, costMicros, isReasoningModel, themeWorstCaseMicros } from "../domain/pricing";
 import { addSpend, checkPlatform, dayOfMonth, effectiveLimits, monthDocument, platformDocument, readMonth, readPlatform } from "../domain/quota";
 import { THEME_LIMITS, themeKeyOfUrl, themeSnapshot, type ThemeRecord, type ThemeSnapshot } from "../domain/themeTools";
 import { buildThemes, fallbackThemes, moderationTexts, rankThemes, themeRankingRequest, type ThemeLocale } from "../domain/themeValidate";
@@ -264,7 +264,9 @@ interface Produced {
 async function produce(deps: SuggestThemeDeps, ctx: { snapshot: ThemeSnapshot; locale: ThemeLocale }, input: { hint: string; fields: readonly string[]; locale: ThemeLocale }, model: string): Promise<Produced> {
   let agent: ThemeAgentResult = { modelThemes: null, traces: [], usage: { tokensIn: 0, tokensOut: 0, cachedIn: 0, reasoning: 0 }, model: "", turns: 0, outcome: "unavailable" };
   try {
-    agent = await runThemeAgent({ model: deps.agent!, ...(deps.agentDeadlineMs !== undefined ? { deadlineMs: deps.agentDeadlineMs } : {}) }, { snapshot: ctx.snapshot, ...input });
+    // Reasoning models spend hidden output tokens: give them the same 3x room the price reservation already covers.
+    const maxOutputTokens = isReasoningModel(model) ? 3 * THEME_PRICED.outputPerTurn : THEME_PRICED.outputPerTurn;
+    agent = await runThemeAgent({ model: deps.agent!, maxOutputTokens, ...(deps.agentDeadlineMs !== undefined ? { deadlineMs: deps.agentDeadlineMs } : {}) }, { snapshot: ctx.snapshot, ...input });
   } catch {
     // Unanswered below.
   }

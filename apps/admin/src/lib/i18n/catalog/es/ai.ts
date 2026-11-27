@@ -178,8 +178,8 @@ export const ai: Record<keyof typeof source, string> = {
 
   // Generating, errors, results
   "generating.label": "Generando borradores",
-  "generating.status.one": "{ai} está escribiendo 1 borrador. Esto puede tardar hasta un minuto.",
-  "generating.status.other": "{ai} está escribiendo {n} borradores. Esto puede tardar hasta un minuto.",
+  "generating.status.one": "{ai} está escribiendo 1 borrador. Suele tardar entre 10 y 20 segundos.",
+  "generating.status.other": "{ai} está escribiendo {n} borradores. Suele tardar entre 10 y 20 segundos.",
   "error.label": "No se pudieron escribir los borradores",
   "error.backToChoices": "Volver a las elecciones",
   "error.retry": "Intentar de nuevo",
