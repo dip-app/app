@@ -151,3 +151,24 @@ listed as later because they would change callables.
 - Calendar help text in the event form names keys and "Click" on touch (S27).
 - Sorting changes and filter changes should keep focus on the control that changed them (they do today; please keep
   it when adding transitions).
+
+## Shipped: waves 1 and 2
+
+One PR (kit, lists, detail headers, Overview, mock). Before and after:
+
+| | Before | After |
+| --- | --- | --- |
+| Overview, 1440 | [overview-before.jpg](img/overview-before.jpg) | [overview-after.jpg](img/overview-after.jpg) |
+| Events, 1024 | [events-1024-before.jpg](img/events-1024-before.jpg) | [events-1024-after.jpg](img/events-1024-after.jpg) |
+| Members, 390, Spanish | [members-390-es-before.jpg](img/members-390-es-before.jpg) | [members-390-es-after.jpg](img/members-390-es-after.jpg) |
+| Attendees, 1440 | | [attendees-after.jpg](img/attendees-after.jpg) |
+
+Done: S1 (mid-width columns move into the row's sub line; actions pinned), S3, S4, S5, S6, S7, S8 (DOM order puts
+Last 7 days and Needs attention first), S9 (nav label), S12, S13, S14, S15, S18, S19, S20, S21, S22. Design review: three
+fresh Opus rounds; round 3's remaining P2s on mid-width tables were fixed and re-checked by the author; the rest is
+listed under Open.
+
+Open after this PR: S2, S10, S11, S17, S23 (wave 3); S16 and server-side sort (backend); S9 merges (decision);
+S24 to S26; phone card patterns on Challenges, Themes and Attendees still use the label grid; Members and Review tabs
+have no counts; the People card's "Total members" excludes invited people while the list above shows them; Spanish
+Overview numbers use English grouping (pre-existing `formatCount`, check the locale).

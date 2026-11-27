@@ -64,6 +64,13 @@ layout, sticky form footer, settings layout) is the next PR.
   the row's sub line at 701 to 1279 px), Spanish truncation in Coming up, dots starting wrapped lines, audit phone
   times matching desktop, the Details button in the audit card corner, the member page's second primary. Kept the
   Overview's stacked rows below 1100 px (two panels of 340 px were too narrow for Coming up rows).
+- Review round 3 (FAIL, the last allowed round): fixed key columns still covered by the pinned actions at 1024 and
+  768 (tables drop their minimum width at mid widths; Challenges moves Dates into the sub line), Audit targets
+  overflowing at 768, the Needs attention badge alignment, the Top events meta size, and the Spanish going count
+  ("asistirán" everywhere). Re-checked by the author on new 1024 and 768 captures (Events, Challenges, Themes, Audit).
+  Left open and listed in the PR: Members and Review tabs without counts and Members/Roster without sorting (server
+  paging), the People card's total (pre-existing: invited people are roster entries, not members), mixed phone card
+  patterns on Challenges, Themes and Attendees, and English number grouping in the Spanish Overview.
 - No backend contract changed. The Overview's new numbers come from data the portal already reads.
 
 ## Handoff

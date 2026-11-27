@@ -9,7 +9,7 @@ export const attendees: Record<keyof typeof source, string> = {
   "attendees.backToEvents": "Volver a eventos",
 
   // Toolbar
-  "attendees.going": "{count} de {capacity} van",
+  "attendees.going": "{count} de {capacity} asistirán",
   "attendees.checkedInCount": "{count} con llegada registrada",
   "attendees.exportCsv": "Exportar CSV",
   "attendees.addAttendee": "Agregar asistente",
