@@ -4,9 +4,10 @@
  * Privacy contract: the preview exposes ONLY an allowlisted subset of an event, to anyone holding the
  * (unguessable) link: title, a short plain-text description, a coarse date ("Thu, Nov 20") and an image.
  * Never the venue, address, locality, coordinates, time of day, tags, attendee data, cost or company id.
+ * The page body shows the same description text as the preview tags; nothing else leaves the server.
  */
 
-import { APP_STORE_ID, USE_OFFICIAL_APP_STORE_BADGE } from "../../../config/launch";
+import { APP_STORE_ID, TESTFLIGHT_URL, USE_OFFICIAL_APP_STORE_BADGE } from "../../../config/launch";
 import { coverJpegURL } from "../../covers/domain/coverCatalog";
 
 /** Public origin of the share links; must equal `DIPShareLink.baseURL` (checked by scripts/tests). */
@@ -16,15 +17,19 @@ export const SHARE_ORIGIN = "https://letsdip.work";
 export const LEGACY_SHARE_ORIGIN = "https://team05-dip.web.app";
 
 /** App Store wiring lives in config/launch.ts (docs/ops/launch-switches.md); re-exported for existing importers. */
-export { APP_STORE_ID, USE_OFFICIAL_APP_STORE_BADGE };
-/** Used in the `apple-itunes-app` banner meta while APP_STORE_ID is unset. */
-export const APP_STORE_ID_PLACEHOLDER = "0000000000";
+export { APP_STORE_ID, TESTFLIGHT_URL, USE_OFFICIAL_APP_STORE_BADGE };
 
-/** Time zone used for the coarse date; times are stored in UTC and the company has no time zone yet. */
+/** Default time zone for the coarse date when the company has none set (`emailSettings/{companyId}.timeZone`). */
 export const PREVIEW_TIME_ZONE = "America/New_York";
 
 export const GENERIC_TITLE = "DIP";
 export const GENERIC_DESCRIPTION = "Join activities with your coworkers on DIP.";
+/** Generic page for an event link: says nothing about whether the event exists, is canceled or is private. */
+export const GENERIC_EVENT_TITLE = "An event on DIP";
+export const GENERIC_EVENT_DESCRIPTION = "Open this link in the DIP app on your iPhone to see the event.";
+/** Description used when the organizer wrote none; the page body hides it (it only fills the preview). */
+export const FALLBACK_DESCRIPTION = "Join this activity on DIP.";
+const TESTFLIGHT_JOIN = /^https:\/\/testflight\.apple\.com\/join\/[A-Za-z0-9]{4,32}$/;
 export const THEME_COLOR = "#7B88FA";
 
 export const PREVIEW_IMAGE = { width: 1200, height: 630, type: "image/jpeg" } as const;
@@ -51,6 +56,8 @@ export interface ShareEvent {
   startTime: Date | null;
   coverImageURL: string;
   status: string;
+  /** The company's IANA time zone for the coarse date, when set; otherwise PREVIEW_TIME_ZONE. */
+  timeZone?: string | null;
 }
 
 export interface SharePreview {
@@ -63,6 +70,8 @@ export interface SharePreview {
   eventId: string | null;
   /** Coarse date ("Fri, Nov 20") for the page body; null when unknown or for the generic page. */
   dateLabel: string | null;
+  /** The organizer's description as shown on the page (same text and cut as the preview tags, no date); null when empty. */
+  summary: string | null;
   /** True when the preview describes a real, shareable event (false: generic DIP page). */
   isEvent: boolean;
 }
@@ -113,7 +122,14 @@ export function truncateAtWord(text: string, max: number): string {
 /** "Thu, Nov 20": weekday, month and day only. Never a time of day. */
 export function coarseDate(date: Date | null, timeZone: string = PREVIEW_TIME_ZONE): string | null {
   if (!date || Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone }).format(date);
+  let zone = PREVIEW_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    zone = timeZone;
+  } catch {
+    // Unknown zone: keep the default.
+  }
+  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: zone }).format(date);
 }
 
 /** Resolves a stored cover URL to an absolute https image URL we control or approved; else the default. */
@@ -142,13 +158,14 @@ export function resolveImage(coverImageURL: string | null | undefined): { url: s
 
 export function genericPreview(eventId: string | null): SharePreview {
   return {
-    title: GENERIC_TITLE,
-    description: GENERIC_DESCRIPTION,
+    title: eventId ? GENERIC_EVENT_TITLE : GENERIC_TITLE,
+    description: eventId ? GENERIC_EVENT_DESCRIPTION : GENERIC_DESCRIPTION,
     imageURL: `${SHARE_ORIGIN}/share/og/default.jpg`,
     imageIsStandard: true,
     imageAlt: "DIP",
     eventId,
     dateLabel: null,
+    summary: null,
     isEvent: false,
   };
 }
@@ -158,10 +175,12 @@ export function buildPreview(eventId: string | null, event: ShareEvent | null): 
   if (!event || event.status !== "scheduled") return genericPreview(eventId);
   const title = truncateAtWord(collapseWhitespace(event.title), TITLE_MAX);
   if (!title) return genericPreview(eventId);
-  const date = coarseDate(event.startTime);
+  const date = coarseDate(event.startTime, event.timeZone ?? PREVIEW_TIME_ZONE);
   const text = collapseWhitespace(event.description);
-  const body = text || "Join this activity on DIP.";
+  const body = text || FALLBACK_DESCRIPTION;
   const description = truncateAtWord(date ? `${date} · ${body}` : body, DESCRIPTION_MAX);
+  // The page body shows the organizer's text with the same overall cut, without repeating the date.
+  const summary = text ? truncateAtWord(text, DESCRIPTION_MAX - (date ? Array.from(`${date} · `).length : 0)) : null;
   const image = resolveImage(event.coverImageURL);
   return {
     title,
@@ -171,6 +190,7 @@ export function buildPreview(eventId: string | null, event: ShareEvent | null): 
     imageAlt: `Cover image for ${title}`,
     eventId,
     dateLabel: date,
+    summary,
     isEvent: true,
   };
 }
@@ -182,23 +202,46 @@ function metaProperty(property: string, content: string): string {
   return `<meta property="${property}" content="${escapeHtml(content)}">`;
 }
 
-/** Renders the complete server-side HTML page: preview tags for crawlers plus the human landing behaviour. */
+/** The launch state the page's call to action describes (docs/ops/launch-switches.md). */
+export interface ShareLaunch {
+  appStoreId: string;
+  useBadge: boolean;
+  testflightURL: string;
+}
+
+const LAUNCH: ShareLaunch = { appStoreId: APP_STORE_ID, useBadge: USE_OFFICIAL_APP_STORE_BADGE, testflightURL: TESTFLIGHT_URL };
+
+/** Self-hosted fonts and metric-matched fallbacks (the landing page's faces, served by Hosting under /img/landing/). */
+const FONT_FACES = `  @font-face { font-family:"Figtree"; src:url(/img/landing/figtree.woff2) format("woff2"); font-weight:300 900; font-display:swap; }
+  @font-face { font-family:"Fjalla One"; src:url(/img/landing/fjalla-one.woff2) format("woff2"); font-display:swap; }
+  @font-face { font-family:"Fjalla Fallback"; src:local("Impact"); size-adjust:97%; ascent-override:100.9%; descent-override:24.8%; line-gap-override:0%; }
+  @font-face { font-family:"Fjalla Fallback Arial"; src:local("Arial"); size-adjust:69.4%; ascent-override:100.9%; descent-override:24.8%; line-gap-override:0%; }
+  @font-face { font-family:"Figtree Fallback"; src:local("Arial"); size-adjust:99.9%; ascent-override:95%; descent-override:25%; line-gap-override:0%; }`;
+
+/**
+ * Renders the complete server-side HTML page: preview tags for crawlers plus the human landing behaviour.
+ * `launch` defaults to config/launch.ts; a string is read as the App Store id (with `useBadge`), as before.
+ */
 export function renderSharePage(
   preview: SharePreview,
-  appStoreId: string = APP_STORE_ID,
-  useBadge: boolean = USE_OFFICIAL_APP_STORE_BADGE,
+  launch: Partial<ShareLaunch> | string = LAUNCH,
+  useBadge?: boolean,
 ): string {
+  const state: ShareLaunch = typeof launch === "string"
+    ? { appStoreId: launch, useBadge: useBadge ?? USE_OFFICIAL_APP_STORE_BADGE, testflightURL: "" }
+    : { ...LAUNCH, ...launch };
   const pageURL = preview.eventId ? `${SHARE_ORIGIN}/e/${encodeURIComponent(preview.eventId)}` : `${SHARE_ORIGIN}/`;
   const appLink = preview.eventId && EVENT_ID.test(preview.eventId) ? `dip://events/${encodeURIComponent(preview.eventId)}` : "dip://";
-  const storeURL = /^[0-9]+$/.test(appStoreId) ? `https://apps.apple.com/app/id${appStoreId}` : "";
-  const bannerId = storeURL ? appStoreId : APP_STORE_ID_PLACEHOLDER;
+  const storeURL = /^[0-9]+$/.test(state.appStoreId) ? `https://apps.apple.com/app/id${state.appStoreId}` : "";
+  const testflightURL = !storeURL && TESTFLIGHT_JOIN.test(state.testflightURL) ? state.testflightURL : "";
   const tags = [
     `<title>${escapeHtml(preview.title)}</title>`,
     metaName("description", preview.description),
     `<link rel="canonical" href="${escapeHtml(pageURL)}">`,
     `<link rel="image_src" href="${escapeHtml(preview.imageURL)}">`,
     metaName("theme-color", THEME_COLOR),
-    metaName("apple-itunes-app", `app-id=${bannerId}, app-argument=${pageURL}`),
+    // Safari's Smart App Banner only once a real listing exists (it can never match a TestFlight build).
+    ...(storeURL ? [metaName("apple-itunes-app", `app-id=${state.appStoreId}, app-argument=${pageURL}`)] : []),
     metaProperty("og:site_name", "DIP"),
     metaProperty("og:type", "website"),
     metaProperty("og:locale", "en_US"),
@@ -221,16 +264,26 @@ export function renderSharePage(
     metaName("twitter:image", preview.imageURL),
     metaName("twitter:image:alt", preview.imageAlt),
   ];
-  const note = !storeURL
-    ? `<p class="note">Don’t have DIP yet? It’s coming to the App Store.</p>`
-    : useBadge
-      ? `<p class="note"><a class="badge" href="${escapeHtml(storeURL)}"><img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="40"></a></p>`
-      : `<p class="note">Don’t have DIP yet? <a href="${escapeHtml(storeURL)}">Get it on the App Store</a>.</p>`;
+  // One muted line for people without the app, honest about the launch state. Nothing navigates by itself.
+  const note = storeURL && state.useBadge
+    ? `<p class="note"><a class="badge" href="${escapeHtml(storeURL)}"><img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="40"></a></p>`
+    : storeURL
+      ? `<p class="note">New to DIP? <a href="${escapeHtml(storeURL)}">Get it on the App Store</a>.</p>`
+      : testflightURL
+        ? `<p class="note">New to DIP? <a href="${escapeHtml(testflightURL)}">Join the beta on TestFlight</a>.</p>`
+        : `<p class="note">New to DIP? It’s in private beta for invited companies. Ask your DIP admin how to join.</p>`;
   const card = preview.isEvent
-    ? `    <div class="cover"><img src="${escapeHtml(preview.imageURL)}" alt="${escapeHtml(preview.imageAlt)}" width="${PREVIEW_IMAGE.width}" height="${PREVIEW_IMAGE.height}"></div>
+    ? `    <div class="cover"><img src="${escapeHtml(preview.imageURL)}" alt="${escapeHtml(preview.imageAlt)}" width="${PREVIEW_IMAGE.width}" height="${PREVIEW_IMAGE.height}" fetchpriority="high"></div>
 ${preview.dateLabel ? `    <p class="date">${escapeHtml(preview.dateLabel)}</p>\n` : ""}`
     : "";
-  const lead = preview.isEvent ? "" : `    <p class="lead">${escapeHtml(preview.description)}</p>\n`;
+  const lead = preview.isEvent
+    ? (preview.summary ? `    <p class="summary" dir="auto">${escapeHtml(preview.summary)}</p>\n` : "")
+    : `    <p class="lead">${escapeHtml(preview.description)}</p>\n`;
+  // Appended to the hedged "didn't open" message; static strings only (the URLs are validated above).
+  const getLink = storeURL || testflightURL;
+  const statusLink = getLink
+    ? ` <a href="${escapeHtml(getLink)}">${storeURL ? "Get DIP on the App Store" : "Join the beta on TestFlight"}</a>.`
+    : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -242,33 +295,41 @@ ${tags.join("\n")}
 <link rel="icon" href="/img/landing/logo.svg" type="image/svg+xml">
 <link rel="icon" href="/img/landing/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/img/landing/apple-touch-icon.png" sizes="180x180">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/img/landing/fjalla-one.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/img/landing/figtree.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  :root { --purple:#7B88FA; --pink:#FB72E4; --ink:#1E212B; --yellow:#FFCC3E; --bg:#FFFFFF; --accent:#4A56D6; --text:var(--ink); --muted:rgba(30,33,43,.70); --tint:rgba(123,136,250,.10); --line:rgba(123,136,250,.45); }
-  @media (prefers-color-scheme: dark) { :root { --bg:#14161D; --accent:#7B88FA; --text:#F4F5FA; --muted:rgba(244,245,250,.72); --tint:rgba(123,136,250,.16); --line:rgba(123,136,250,.55); } }
+${FONT_FACES}
+  :root { --display:"Fjalla One","Fjalla Fallback","Fjalla Fallback Arial",sans-serif; --body:Figtree,"Figtree Fallback",-apple-system,system-ui,sans-serif; --bg:#FFFFFF; --text:#1E212B; --muted:rgba(30,33,43,.72); --accent:#4A56D6; --brand:#4A56D6; --brand-hover:#3B47C4; --on-brand:#FFFFFF; --tint:rgba(123,136,250,.10); --line:rgba(123,136,250,.45); --hairline:rgba(30,33,43,.12); }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161D; --text:#F4F5FA; --muted:rgba(244,245,250,.72); --accent:#A3ACFC; --brand:#8C97FB; --brand-hover:#A3ACFC; --on-brand:#14161D; --tint:rgba(123,136,250,.16); --line:rgba(123,136,250,.55); --hairline:rgba(244,245,250,.14); } }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { background:var(--bg); color:var(--text); font:400 17px/1.5 Figtree,-apple-system,system-ui,sans-serif; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
-  .wrap { width:min(520px,100%); margin:0 auto; padding:0 20px; }
+  body { background:var(--bg); color:var(--text); font:400 17px/1.5 var(--body); min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; -webkit-text-size-adjust:100%; }
+  a { color:var(--accent); text-underline-offset:3px; }
+  a:focus-visible { outline:3px solid var(--text); outline-offset:3px; border-radius:6px; }
+  .wrap { width:min(560px,100%); margin:0 auto; padding:0 20px; }
   header { padding:22px 0 0; }
-  .logo { display:inline-flex; align-items:center; gap:12px; font-family:"Fjalla One",Impact,sans-serif; font-size:34px; line-height:1; letter-spacing:.02em; text-decoration:none; color:var(--text); }
+  .logo { display:inline-flex; align-items:center; gap:12px; font-family:var(--display); font-size:34px; line-height:1; letter-spacing:.02em; text-decoration:none; color:var(--text); min-height:46px; }
   .logo img { width:46px; height:46px; display:block; border-radius:50%; }
   main { flex:1; padding:28px 0 48px; }
   .cover { margin:0 0 22px; border-radius:20px; overflow:hidden; border:1.5px solid var(--line); background:var(--tint); aspect-ratio:1200/630; }
   .cover img { display:block; width:100%; height:100%; object-fit:cover; }
-  .date { margin:0 0 6px; font-size:17px; font-weight:600; color:var(--accent); }
-  h1 { font-family:"Fjalla One",Impact,sans-serif; font-weight:400; font-size:clamp(34px,9vw,48px); line-height:1.08; margin:0 0 24px; text-transform:uppercase; overflow-wrap:anywhere; }
-  .lead { font-size:20px; color:var(--muted); margin:0 0 24px; }
-  .pill { display:inline-flex; align-items:center; justify-content:center; gap:12px; min-height:56px; padding:0 26px 0 18px; border-radius:28px; font:400 20px/1 Figtree,sans-serif; text-decoration:none; white-space:nowrap; background:#0071E3; color:#FFFFFF; transition:background .15s, transform .1s; }
-  .pill:hover { background:#0A84FF; }
+  .date { margin:0 0 8px; font-size:15px; line-height:20px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); }
+  h1 { font-family:var(--display); font-weight:400; font-size:clamp(34px,9vw,48px); line-height:1.08; margin:0 0 14px; text-transform:uppercase; overflow-wrap:anywhere; text-wrap:balance; }
+  .summary { margin:0 0 26px; font-size:18px; line-height:1.5; color:var(--muted); overflow-wrap:anywhere; }
+  .lead { font-size:20px; color:var(--muted); margin:0 0 26px; }
+  h1:has(+ .pill) { margin-bottom:26px; }
+  .pill { display:inline-flex; align-items:center; justify-content:center; min-height:56px; padding:0 30px; border-radius:28px; font:600 19px/1 var(--body); text-decoration:none; white-space:nowrap; background:var(--brand); color:var(--on-brand); transition:background-color .15s ease-out, transform .1s ease-out; }
+  .pill:hover { background:var(--brand-hover); }
   .pill:active { transform:scale(.97); }
-  .pill:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
-  .store-icon { display:block; flex:none; }
-  .note { margin:18px 0 0; font-size:14px; color:var(--muted); }
-  .note a { color:inherit; text-underline-offset:3px; }
-  @media (max-width:420px) { .pill { display:flex; width:100%; } }
+  .note, .status { margin:16px 0 0; font-size:15px; line-height:22px; color:var(--muted); }
+  .status { color:var(--text); }
+  .status:empty { display:none; }
+  .note a, .status a { color:var(--accent); }
+  footer { border-top:1px solid var(--hairline); }
+  footer .wrap { display:flex; flex-wrap:wrap; gap:0 20px; padding-top:6px; padding-bottom:max(10px, env(safe-area-inset-bottom)); font-size:14px; }
+  footer a { display:inline-flex; align-items:center; min-height:44px; color:var(--muted); }
+  footer a:hover { color:var(--text); }
+  @media (max-width:480px) { .pill { display:flex; width:100%; } }
   @media (prefers-reduced-motion: reduce) { .pill { transition:none; } }
 </style>
 </head>
@@ -276,26 +337,41 @@ ${tags.join("\n")}
 <header><div class="wrap"><a class="logo" href="/" aria-label="DIP home"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a></div></header>
 <main>
   <div class="wrap">
-${card}    <h1>${escapeHtml(preview.title)}</h1>
-${lead}    <a class="pill" id="open-app" href="${escapeHtml(appLink)}" role="button"><img class="store-icon" src="/img/landing/app-store.svg" alt="" width="26" height="26">Get the app</a>
+${card}    <h1 dir="auto">${escapeHtml(preview.title)}</h1>
+${lead}    <a class="pill" id="open-app" href="${escapeHtml(appLink)}">Open in DIP</a>
+    <p class="status" id="open-status" role="status"></p>
     ${note}
   </div>
 </main>
+<footer><nav class="wrap" aria-label="Site"><a href="/">About DIP</a><a href="/privacy/">Privacy</a><a href="/support/">Support</a></nav></footer>
+<template id="not-opened">If DIP didn’t open, it may not be installed on this iPhone. In another app’s browser, open this page in Safari first.${statusLink}</template>
 <script>
-// "Get the app" opens the installed app; with no app installed nothing happens (a hidden frame avoids the
-// "address is invalid" alert that iOS Safari shows when navigating straight to an unhandled scheme).
-// Universal Links open the app before this page loads; no meta refresh or redirect, so crawlers always read the tags above.
+// "Open in DIP" opens the installed app through a hidden frame (no "address is invalid" alert in iOS Safari when it is
+// missing). Universal Links open the app before this page loads; no meta refresh or redirect, so crawlers always read
+// the tags above. If the page is still in front about 2.5 s after a tap, say so (hedged: in-app browsers can block the
+// scheme even with DIP installed). Nothing ever navigates by itself.
 (function () {
   var btn = document.getElementById('open-app');
-  if (!btn) return;
+  var status = document.getElementById('open-status');
+  var message = document.getElementById('not-opened');
+  if (!btn || !status || !message) return;
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var timer = 0;
+  function cancel() { clearTimeout(timer); timer = 0; }
+  addEventListener('pagehide', cancel); addEventListener('blur', cancel);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) cancel(); });
   btn.addEventListener('click', function (e) {
     e.preventDefault();
+    status.textContent = '';
+    if (!ios) { status.textContent = 'DIP is an iPhone app. Open this link on your iPhone to see it in DIP.'; return; }
     var f = document.createElement('iframe');
     f.hidden = true; f.setAttribute('aria-hidden', 'true'); f.src = btn.getAttribute('href');
     document.body.appendChild(f);
-    setTimeout(function () { f.remove(); }, 1500);${storeURL ? `
-    // No app installed (page still visible after the tap): offer the listing. Only ever after a tap.
-    setTimeout(function () { if (!document.hidden) { location.href = ${JSON.stringify(storeURL).replace(/</g, "\\u003c")}; } }, 1500);` : ""}
+    setTimeout(function () { f.remove(); }, 1500);
+    cancel();
+    timer = setTimeout(function () {
+      if (!document.hidden) status.replaceChildren(message.content.cloneNode(true));
+    }, 2500);
   });
 })();
 </script>

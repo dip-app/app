@@ -3,7 +3,7 @@ import { describe, test } from "node:test";
 import { readFileSync } from "node:fs";
 import { getSharePage, type ShareEventStore } from "../../functions/src/modules/share/application/getSharePage";
 import {
-  APP_STORE_ID_PLACEHOLDER, SHARE_ORIGIN, buildPreview, coarseDate, escapeHtml, genericPreview, parseEventIdFromPath,
+  GENERIC_EVENT_TITLE, SHARE_ORIGIN, buildPreview, coarseDate, escapeHtml, genericPreview, parseEventIdFromPath,
   renderSharePage, resolveImage, truncateAtWord, type ShareEvent,
 } from "../../functions/src/modules/share/domain/sharePage";
 import { handleSharePage, type ShareResponse } from "../../functions/src/modules/share/transport/eventSharePageV1";
@@ -43,39 +43,66 @@ describe("share page domain", () => {
     assert.ok(metaContent(html, "twitter:image:alt"));
     assert.equal(metaContent(html, "description"), metaContent(html, "og:description"));
     assert.equal(metaContent(html, "theme-color"), "#7B88FA");
-    assert.match(metaContent(html, "apple-itunes-app")!, new RegExp(`^app-id=${APP_STORE_ID_PLACEHOLDER}, app-argument=${SHARE_ORIGIN}/e/evt_123$`));
+    assert.equal(metaContent(html, "apple-itunes-app"), null); // no Smart App Banner before a listing exists
     assert.match(html, /<title>Sunset hike<\/title>/);
     assert.ok(html.includes(`<link rel="canonical" href="${SHARE_ORIGIN}/e/evt_123">`));
     assert.ok(html.includes(`<link rel="image_src" href="${image}">`));
   });
 
-  test("event page: logo, title, coarse date, cover card, landing button, one muted line, no meta refresh", () => {
-    const html = renderSharePage(buildPreview("evt_123", EVENT));
-    assert.ok(html.includes('id="open-app" href="dip://events/evt_123"'));
-    assert.ok(html.includes(">Get the app</a>"));
-    assert.ok(html.includes('src="/img/landing/app-store.svg"'));
+  test("event page: logo, coarse date, title, description, Open in DIP, honest beta line, self-hosted fonts", () => {
+    const html = renderSharePage(buildPreview("evt_123", EVENT), { appStoreId: "", useBadge: false, testflightURL: "" });
+    assert.ok(html.includes('id="open-app" href="dip://events/evt_123">Open in DIP</a>'));
+    assert.ok(!html.includes("app-store.svg")); // no App Store glyph on a button that cannot reach the App Store
+    assert.ok(!html.includes("Get the app"));
     assert.ok(html.includes('src="/img/landing/logo.svg"'));
-    assert.ok(html.includes("<h1>Sunset hike</h1>"));
+    assert.ok(html.includes('<h1 dir="auto">Sunset hike</h1>'));
     assert.ok(html.includes('<p class="date">Fri, Nov 20</p>'));
+    assert.ok(html.includes('<p class="summary" dir="auto">Bring water. We meet at the trailhead.</p>'));
     assert.ok(html.includes(`<img src="${SHARE_ORIGIN}/share/og/hiking.jpg" alt="Cover image for Sunset hike"`));
-    assert.ok(html.includes("Don’t have DIP yet? It’s coming to the App Store."));
-    assert.ok(!html.includes("Open in DIP"));
-    assert.ok(!html.slice(html.indexOf("<body>")).includes("Bring water")); // description stays in the meta tags only
+    assert.ok(html.includes("New to DIP? It’s in private beta for invited companies. Ask your DIP admin how to join."));
+    assert.ok(html.includes('role="status"'));
+    assert.ok(html.includes("If DIP didn’t open, it may not be installed on this iPhone."));
     assert.ok(!/http-equiv/i.test(html));
     assert.ok(!html.includes("location.replace"));
+    assert.ok(!html.includes("location.href"));
     assert.equal((html.match(/<script/g) ?? []).length, 1);
-    assert.ok(html.includes("fonts.googleapis.com/css2?family=Fjalla+One&family=Figtree"));
+    assert.ok(!html.includes("fonts.googleapis.com")); // no third-party requests from the public page
+    assert.ok(html.includes("url(/img/landing/fjalla-one.woff2)"));
+    assert.ok(html.includes('<a href="/privacy/">Privacy</a>'));
   });
 
-  test("generic page: logo, DIP headline, one line, same button to dip://", () => {
+  test("the page body never repeats the date or shows the fallback description", () => {
+    const empty = renderSharePage(buildPreview("evt_123", { ...EVENT, description: "  " }));
+    assert.ok(!empty.includes('class="summary"'));
+    assert.ok(!empty.slice(empty.indexOf("<body>")).includes("Join this activity on DIP."));
+    const preview = buildPreview("evt_123", EVENT);
+    assert.equal(preview.summary, "Bring water. We meet at the trailhead.");
+    assert.ok(!preview.summary!.includes("Fri, Nov 20"));
+  });
+
+  test("a public TestFlight link fills the beta line and the didn't-open message; the App Store wins", () => {
+    const tf = "https://testflight.apple.com/join/AbC123xy";
+    const html = renderSharePage(buildPreview("evt_123", EVENT), { appStoreId: "", useBadge: false, testflightURL: tf });
+    assert.ok(html.includes(`New to DIP? <a href="${tf}">Join the beta on TestFlight</a>.`));
+    assert.ok(html.includes(`<a href="${tf}">Join the beta on TestFlight</a>.</template>`));
+    assert.equal(metaContent(html, "apple-itunes-app"), null);
+    const bogus = renderSharePage(buildPreview("evt_123", EVENT), { appStoreId: "", useBadge: false, testflightURL: "https://evil.example/join/x" });
+    assert.ok(!bogus.includes("evil.example"));
+    const store = renderSharePage(buildPreview("evt_123", EVENT), { appStoreId: "1234567890", useBadge: false, testflightURL: tf });
+    assert.ok(!store.includes("testflight"));
+  });
+
+  test("generic page: neutral headline that hides whether the event exists, same Open in DIP button", () => {
     const html = renderSharePage(genericPreview(null));
     assert.ok(html.includes('id="open-app" href="dip://"'));
-    assert.ok(html.includes("<h1>DIP</h1>"));
+    assert.ok(html.includes('<h1 dir="auto">DIP</h1>'));
     assert.ok(html.includes("Join activities with your coworkers on DIP."));
     assert.ok(!html.includes('class="cover"'));
     assert.ok(!html.includes('class="date"'));
-    assert.ok(!html.includes("Open in DIP"));
-    assert.ok(renderSharePage(genericPreview("evt_123")).includes('href="dip://events/evt_123"'));
+    const forEvent = renderSharePage(genericPreview("evt_123"));
+    assert.ok(forEvent.includes('href="dip://events/evt_123"'));
+    assert.ok(forEvent.includes(`<h1 dir="auto">${GENERIC_EVENT_TITLE}</h1>`));
+    assert.ok(forEvent.includes("Open this link in the DIP app on your iPhone to see the event."));
   });
 
   test("the official badge variant needs an App Store id and replaces the text link", () => {
@@ -85,15 +112,16 @@ describe("share page domain", () => {
     assert.ok(!withId.includes("Get it on the App Store"));
     const withoutId = renderSharePage(buildPreview("evt_123", EVENT), "", true);
     assert.ok(!withoutId.includes("app-store-badge.svg"));
-    assert.ok(withoutId.includes("It’s coming to the App Store."));
+    assert.ok(withoutId.includes("It’s in private beta for invited companies."));
   });
 
-  test("with an App Store id the muted line links to the listing and nothing redirects on load", () => {
+  test("with an App Store id the muted line links to the listing and nothing ever redirects", () => {
     const html = renderSharePage(buildPreview("evt_123", EVENT), "1234567890");
-    assert.ok(html.includes('<a href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>'));
-    assert.ok(!html.includes("coming to the App Store"));
+    assert.ok(html.includes('New to DIP? <a href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>.'));
+    assert.ok(html.includes('<a href="https://apps.apple.com/app/id1234567890">Get DIP on the App Store</a>.</template>'));
+    assert.ok(!html.includes("private beta"));
     assert.ok(!html.includes("location.replace"));
-    assert.match(html, /addEventListener\('click'[^]*document\.hidden[^]*location\.href = "https:\/\/apps\.apple\.com\/app\/id1234567890"/);
+    assert.ok(!html.includes("location.href")); // no automatic jump to the store after a tap (the system prompt may still be up)
     assert.ok(!/http-equiv/i.test(html));
     assert.ok(metaContent(html, "apple-itunes-app")!.startsWith("app-id=1234567890,"));
   });
@@ -126,8 +154,13 @@ describe("share page domain", () => {
     assert.equal(buildPreview("evt_123", { ...EVENT, startTime: null, description: "" }).description, "Join this activity on DIP.");
   });
 
-  test("coarse date has no time of day and uses the preview time zone", () => {
+  test("coarse date has no time of day and uses the company time zone, else the preview default", () => {
     assert.equal(coarseDate(new Date("2026-11-21T02:00:00Z")), "Fri, Nov 20"); // 9pm Eastern the evening before
+    assert.equal(coarseDate(new Date("2026-11-21T02:00:00Z"), "America/Los_Angeles"), "Fri, Nov 20");
+    assert.equal(coarseDate(new Date("2026-11-21T06:30:00Z"), "America/Los_Angeles"), "Fri, Nov 20"); // 10:30pm Pacific, already Saturday in New York
+    assert.equal(coarseDate(new Date("2026-11-21T06:30:00Z")), "Sat, Nov 21");
+    assert.equal(coarseDate(new Date("2026-11-21T02:00:00Z"), "Not/AZone"), "Fri, Nov 20");
+    assert.equal(buildPreview("evt_123", { ...EVENT, startTime: new Date("2026-11-21T06:30:00Z"), timeZone: "America/Los_Angeles" }).dateLabel, "Fri, Nov 20");
     assert.equal(coarseDate(null), null);
     assert.equal(coarseDate(new Date("nope")), null);
   });
@@ -143,7 +176,7 @@ describe("share page domain", () => {
     for (const event of [null, { ...EVENT, status: "cancelled" }, { ...EVENT, status: "draft" }, { ...EVENT, status: "" }]) {
       assert.equal(renderSharePage(buildPreview("evt_123", event)), generic);
     }
-    assert.equal(metaContent(generic, "og:title"), "DIP");
+    assert.equal(metaContent(generic, "og:title"), GENERIC_EVENT_TITLE);
     assert.equal(metaContent(generic, "og:image"), `${SHARE_ORIGIN}/share/og/default.jpg`);
     assert.ok(!generic.includes("Sunset"));
   });

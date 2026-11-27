@@ -4,7 +4,7 @@
 Pure helpers (unit-tested in scripts/tests/test_launch_config.py) plus a small CLI used by
 scripts/build-site.sh and scripts/set-indexing.sh. Nothing here deploys or talks to the network.
 
-  launch_config.py landing <src.html> <dst.html>    render the landing page for the current App Store config
+  launch_config.py landing <src.html> <dst.html>    render the landing page for the current launch state
   launch_config.py indexing status|on|off           read or change the search-indexing switch in firebase.json
 """
 import json
@@ -23,9 +23,11 @@ ADMIN_SOURCE = "/admin/**"
 
 _ID = re.compile(r'^export const APP_STORE_ID = "([^"]*)";', re.M)
 _BADGE = re.compile(r"^export const USE_OFFICIAL_APP_STORE_BADGE = (true|false);", re.M)
-_LANDING_PILL = re.compile(
-    r'<a class="pill store" id="open-app" href="dip://" role="button">.*?</a>', re.S
-)
+_TESTFLIGHT = re.compile(r'^export const TESTFLIGHT_URL = "([^"]*)";', re.M)
+_TESTFLIGHT_URL = re.compile(r"^https://testflight\.apple\.com/join/[A-Za-z0-9]{4,32}$")
+# The landing page marks the pre-release call to action and the beta eyebrow; both are swapped per launch state.
+_LANDING_CTA = re.compile(r"<!-- cta -->.*?<!-- /cta -->", re.S)
+_LANDING_EYEBROW = re.compile(r"<!-- cta:eyebrow -->.*?<!-- /cta:eyebrow -->", re.S)
 
 
 def read_launch_config(ts_text):
@@ -39,28 +41,53 @@ def read_launch_config(ts_text):
     return app_store_id, badge_match.group(1) == "true"
 
 
+def read_testflight_url(ts_text):
+    """Returns the public TestFlight link from launch.ts ("" when unset); rejects anything but a testflight.apple.com join link."""
+    match = _TESTFLIGHT.search(ts_text)
+    if not match:
+        raise ValueError("launch.ts must keep TESTFLIGHT_URL as a one-line literal")
+    url = match.group(1)
+    if url and not _TESTFLIGHT_URL.match(url):
+        raise ValueError("TESTFLIGHT_URL must be empty or https://testflight.apple.com/join/<code>")
+    return url
+
+
 def app_store_url(app_store_id):
     return f"https://apps.apple.com/app/id{app_store_id}" if app_store_id.isdigit() else ""
 
 
-def render_landing(html, app_store_id, use_badge=False, badge_exists=False):
-    """Landing page for the App Store config. An empty id returns the page unchanged (open-the-app pill)."""
+def render_landing(html, app_store_id, use_badge=False, badge_exists=False, testflight_url=""):
+    """Landing page for the launch state.
+
+    No App Store id and no TestFlight link: the page is returned unchanged (private beta eyebrow, "Open the app" button
+    for invited testers, beta note). TestFlight link only: the button joins the public beta. App Store id: the beta
+    eyebrow goes and the button (or Apple's official badge) opens the listing; the id wins over a TestFlight link.
+    """
     url = app_store_url(app_store_id)
-    if not url:
+    if not url and not testflight_url:
         return html
-    if not _LANDING_PILL.search(html):
-        raise ValueError("landing page no longer contains the #open-app pill")
-    if use_badge:
-        if not badge_exists:
-            raise ValueError(f"USE_OFFICIAL_APP_STORE_BADGE is on but apps/landing/{BADGE_PATH} is missing")
-        replacement = (
-            f'<a class="store-badge" id="open-app" href="{url}">'
-            '<img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="48"></a>'
-        )
+    if not _LANDING_CTA.search(html) or not _LANDING_EYEBROW.search(html):
+        raise ValueError("landing page no longer contains the cta markers")
+    if url:
+        if use_badge:
+            if not badge_exists:
+                raise ValueError(f"USE_OFFICIAL_APP_STORE_BADGE is on but apps/landing/{BADGE_PATH} is missing")
+            action = (
+                f'<a class="store-badge" id="open-app" href="{url}">'
+                '<img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="48"></a>'
+            )
+        else:
+            action = f'<a class="button" id="open-app" href="{url}">Get DIP on the App Store</a>'
+        block = f'<div class="cta">\n          {action}\n        </div>'
+        html = _LANDING_EYEBROW.sub("", html, count=1)
     else:
-        # Same pill, now opening the listing instead of dip://.
-        replacement = _LANDING_PILL.search(html).group(0).replace('href="dip://"', f'href="{url}"', 1)
-    return _LANDING_PILL.sub(lambda _m: replacement, html, count=1)
+        block = (
+            '<div class="cta">\n'
+            f'          <a class="button" id="open-app" href="{testflight_url}">Join the beta on TestFlight</a>\n'
+            '          <p class="cta-note">Opens TestFlight, Apple\'s app for beta testing. Then sign in to DIP with your work Google account.</p>\n'
+            '        </div>'
+        )
+    return _LANDING_CTA.sub(lambda _m: block, html, count=1)
 
 
 def _site(config, name):
@@ -102,11 +129,14 @@ def dump_firebase_json(config):
 
 
 def _landing(src, dst):
-    app_store_id, use_badge = read_launch_config(LAUNCH_TS.read_text())
-    html = render_landing(Path(src).read_text(), app_store_id, use_badge, (LANDING / BADGE_PATH).is_file())
+    ts = LAUNCH_TS.read_text()
+    app_store_id, use_badge = read_launch_config(ts)
+    testflight_url = read_testflight_url(ts)
+    html = render_landing(Path(src).read_text(), app_store_id, use_badge, (LANDING / BADGE_PATH).is_file(), testflight_url)
     Path(dst).write_text(html)
-    print(f"landing: App Store {'listing ' + app_store_id if app_store_id else 'not configured (open-app pill)'}"
-          f"{', official badge' if app_store_id and use_badge else ''}")
+    state = (f"App Store listing {app_store_id}{', official badge' if use_badge else ''}" if app_store_id
+             else "public TestFlight beta" if testflight_url else "private beta (open-the-app button)")
+    print(f"landing: {state}")
 
 
 def _indexing(action):

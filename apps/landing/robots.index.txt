@@ -5,4 +5,20 @@ Allow: /
 Disallow: /admin/
 Disallow: /e/
 
+# Link-preview crawlers (Slack, X, LinkedIn and others honor robots.txt when they unfurl a pasted link) may read every
+# public page, including event share pages, so links show a title, description and image. They never index anything:
+# /e/ pages send X-Robots-Tag noindex. A crawler obeys only its most specific group, so this group repeats the Disallows.
+User-agent: Twitterbot
+User-agent: LinkedInBot
+User-agent: Slackbot-LinkExpanding
+User-agent: Slackbot
+User-agent: Discordbot
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: TelegramBot
+Allow: /
+Disallow: /admin/
+Disallow: /u/
+Disallow: /o/
+
 Sitemap: https://letsdip.work/sitemap.xml
