@@ -4,7 +4,7 @@ Owner: admin structure and content (page layouts, information architecture, kit 
 content). The admin interaction and motion owner has hover/pressed/focus styling, motion, toasts, caching hooks in
 `src/lib` and keyboard shortcuts; items for them are listed under "Handoffs" at the end.
 
-Bar: [quality-bar.md](../quality-bar.md). Review protocol: [design-review.md](../design-review.md).
+Bar: the polish program quality bar (`docs/design/quality-bar.md`, added by the program lead). Review protocol: [design-review.md](../design-review.md).
 
 ## How the audit was done
 
@@ -170,5 +170,4 @@ listed under Open.
 
 Open after this PR: S2, S10, S11, S17, S23 (wave 3); S16 and server-side sort (backend); S9 merges (decision);
 S24 to S26; phone card patterns on Challenges, Themes and Attendees still use the label grid; Members and Review tabs
-have no counts; the People card's "Total members" excludes invited people while the list above shows them; Spanish
-Overview numbers use English grouping (pre-existing `formatCount`, check the locale).
+have no counts; the People card's "Total members" excludes invited people while the list above shows them.
