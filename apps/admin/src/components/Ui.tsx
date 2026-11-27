@@ -5,6 +5,7 @@ import { useId } from "react";
 import type { ApiError } from "@/lib/contract";
 import { formatDate as formatDateIn, formatTime, t } from "@/lib/i18n";
 import { userError } from "@/lib/userError";
+import { useShortcutsEnabled } from "@/lib/shortcuts";
 import { Button, Chip, InlineNotice } from "./kit";
 import { PageSkeleton, type SkeletonLayout } from "./PageSkeletons";
 
@@ -50,11 +51,14 @@ export { EmptyState as Empty } from "./kit";
 
 /**
  * The list search field. `shortcut` shows the "/" key cap inside the field (pointer devices only) for pages that focus
- * it with `useSlashFocus`, so the hint is not part of the placeholder.
+ * it with `useSlashFocus`, so the hint is not part of the placeholder. Hidden while single-key shortcuts are switched off.
  */
-export function SearchBox({ value, onChange, label, placeholder, id, shortcut = false }: { value: string; onChange: (v: string) => void; label: string; placeholder?: string; id?: string; shortcut?: boolean }) {
+export function SearchBox({ value, onChange, label, placeholder, id, shortcut: wantsKey = false }: { value: string; onChange: (v: string) => void; label: string; placeholder?: string; id?: string; shortcut?: boolean }) {
   const generated = useId();
   const inputId = id ?? generated;
+  // The key cap follows the one switch for single-key shortcuts (Keyboard shortcuts list): off means no "/" hint.
+  const [keysOn] = useShortcutsEnabled();
+  const shortcut = wantsKey && keysOn;
   return (
     <div className={`field search${shortcut ? " has-key" : ""}`}>
       <label htmlFor={inputId} className="sr-only">{label}</label>

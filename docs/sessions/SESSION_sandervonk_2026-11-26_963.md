@@ -82,6 +82,10 @@ layout, sticky form footer, settings layout) is the next PR.
   its search and sort over the cached list (no direct fetch), Attendees keeps the optimistic check-in (`rows`,
   `busyIds`, `data-member`) inside the named frame. The optimistic check-in test now uses the shared Shell stand-in
   (`useShellHeader`), and the facts line tolerates an event without a venue. Targeted vitest: 57 files, 463 tests pass.
+- Rebased again after #362 (code splitting and keyboard shortcuts): Shell keeps both the KeyboardShortcuts mount and
+  the detail header; the shell catalogs keep both the `shell.keys.*` keys and `shell.docTitleDetail`. The "/" key cap in
+  list searches (and its `aria-keyshortcuts`) now follows the one single-key shortcuts switch (`useShortcutsEnabled`),
+  so it disappears when shortcuts are off. Targeted vitest: 58 files, 470 tests pass.
 - From the interaction owner's requests (docs/design/polish-2026-11/admin-interaction.md): the Events, Members, Roster
   and Weekly themes tab panels are now keyed by the selected tab, so their shared reveal can fade a new panel in (the
   review and bug report panels are not keyed: they keep the selection and scroll). Not done here: the layout shift on
