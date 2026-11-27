@@ -74,3 +74,9 @@ Done: DYN-1 (`DIPEventDateText` relative dates on cards, absolute with the year 
 
 Still open after wave 2: A11Y-1, DUO-1 (profile), DUO-2, CON-1 (owner), VIS-4, VIS-6, VIS-7, IX-3, PERF-1 and VIS-2 (Later), reviewer P3s (points sign "Earned 25" vs "Earn +50", no time on past activity pages, three text-action styles).
 
+### Wave 3: remaining items
+
+Done: coordinator review items (the phone bar fade starts at the bar's top edge so resting pills are never washed out; Duo panes keep a short fade because content rests behind their bar; mock activities start at 6:30 PM local), A11Y-1 (card chips one line at accessibility sizes), DUO-1 (Profile columns balanced), VIS-7 (failed upload tiles), VIS-6 (onboarding interests faces), IX-3 (My Events pull to refresh; other lists have no refresh source), PERF-1 (launch screen with the app icon's mark; Release timing still unmeasured).
+
+Closed without change: VIS-4 (the name tag straddling the photo is the human-defined annotation design), DUO-2 (the carousel already bleeds to its page edge; the gap is the rail column), CON-1 and VIS-2 (owner decision: white text on the light purple and pink pills and their shades stay).
+

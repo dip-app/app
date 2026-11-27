@@ -378,13 +378,16 @@ public enum DIPBadgeCount {
                     // Nobody has joined yet: no "0 Attending" tag (and no empty avatar stack).
                     if attendeeCount > 0 {
                         HStack(spacing: -4) {
-                            avatarStack
+                            // At accessibility sizes the faces give way so the count keeps one line (it wrapped
+                            // per syllable, "16 / goi / ng", inside the narrow card).
+                            if !dynamicTypeSize.isAccessibilitySize { avatarStack }
                             Text("\(attendeeCount) going", bundle: .module)
                                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                                .foregroundStyle(.black).dipFixedFrame(height: 22).padding(.horizontal, 7)
+                                .foregroundStyle(.black)
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                                .dipFixedFrame(height: 22).padding(.horizontal, 7)
                                 .background(.white, in: Capsule())
                         }
-                        // At accessibility sizes the chip may wrap inside the card instead of overflowing it.
                         .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
                     }
                     if let rewardText {
@@ -393,6 +396,7 @@ public enum DIPBadgeCount {
                             Image(systemName: "star.fill").font(.system(size: 12))
                                 .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
                             Text(rewardText).font(DIPReferenceAssets.font("Inter-Regular", size: 14)).foregroundStyle(.black)
+                                .lineLimit(1).minimumScaleFactor(0.6)
                         }
                         .dipFixedFrame(height: 22).padding(.horizontal, 8)
                         .background(.white, in: Capsule())

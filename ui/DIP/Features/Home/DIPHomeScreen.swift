@@ -353,7 +353,8 @@ struct DIPHomeScreen: View {
     }
 }
 
-private struct MemberEventRefresh: ViewModifier {
+/// Pull to refresh on a page of member events (Home, My Events); nothing when there is no live source.
+struct MemberEventRefresh: ViewModifier {
     let action: (() async -> Void)?
     @ViewBuilder func body(content: Content) -> some View {
         if let action { content.refreshable { await action() } } else { content }

@@ -410,6 +410,18 @@ struct InterestsStrip: View {
                 .animation(reduceMotion ? .easeInOut(duration: 0.12) : OnboardingMotion.hop, value: names)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // The strip read as an empty gray card before any pick: the Crew wait at the bottom until the chips need
+        // the room. Decorative.
+        .overlay(alignment: .bottom) {
+            if !failed, names.count < 4 {
+                DIPCrewFaces(count: 4, size: 44)
+                    .padding(.bottom, 18)
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: names.count < 4)
         // ONB-Q4: the chips repeat the picker (hidden); the failure message is the one thing here VoiceOver must read.
         .accessibilityHidden(!failed)
     }

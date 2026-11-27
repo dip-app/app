@@ -34,8 +34,9 @@
 
         /// Top fade under a header or the status bar.
         public static let topLength: CGFloat = 16
-        /// Visible fade above the floating bar; the band behind the bar itself is solid.
-        public static let barFadeLength: CGFloat = 24
+        /// Fade above the floating bar's top edge. Zero: the fade starts at the bar's top edge, so resting controls
+        /// just above the bar are never washed out; only content that actually slides beside or under the bar dissolves.
+        public static let barFadeLength: CGFloat = 0
 
         public var body: some View {
             let total = length + solid
@@ -82,12 +83,25 @@
     }
 
     extension DIPEdgeFade {
-        /// The fade behind the floating navigation or action bar: content dissolves over `barFadeLength` above the
-        /// bar and is fully covered from the bar's center down, so scrolled content never collides with the bar.
+        /// The fade behind the floating navigation or action bar: it starts at the bar's top edge (nothing above the
+        /// bar is touched) and is fully covered from the bar's center down, so content scrolling beside the bar's
+        /// rounded ends and side margins dissolves instead of colliding with it.
         /// Place it bottom-aligned, ignoring the safe area, under the bar.
-        public static var floatingBar: DIPEdgeFade {
+        public static var floatingBar: DIPEdgeFade { floatingBar(fadingAbove: barFadeLength) }
+
+        /// iPhone Duo panes are short, so page content rests behind their action bar: there the fade also reaches
+        /// `paneFadeLength` above the bar, so a row cut by the bar dissolves instead of ending in a hard or half-hidden slice.
+        public static let paneFadeLength: CGFloat = 20
+        /// Opaque from the bar's top edge down (nothing peeks out beside the bar), fading over `paneFadeLength` above it.
+        public static var paneBar: DIPEdgeFade {
             DIPEdgeFade(
-                .bottom, length: barFadeLength + DIPFloatingNavigation.height / 2,
+                .bottom, length: paneFadeLength,
+                solid: DIPFloatingNavigation.barCenterInset + DIPFloatingNavigation.height / 2)
+        }
+
+        private static func floatingBar(fadingAbove: CGFloat) -> DIPEdgeFade {
+            DIPEdgeFade(
+                .bottom, length: fadingAbove + DIPFloatingNavigation.height / 2,
                 solid: DIPFloatingNavigation.barCenterInset)
         }
     }

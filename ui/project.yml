@@ -59,6 +59,11 @@ targets:
         DIPCalendarConflictsEnabled: $(DIP_CALENDAR_CONFLICTS_ENABLED)
         # Containment: FCM never starts (no token, no network) unless PushComposition turns it on for the flag.
         FirebaseMessagingAutoInitEnabled: false
+        # Launch screen: the DIP mark in brand purple on white (the first app frame is white), instead of a blank page.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: LaunchLogo
+          UIImageRespectsSafeAreaInsets: true
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
@@ -97,7 +102,6 @@ targets:
         # Free-team builds use the generated Config/DIP.entitlements (no Associated Domains). Paid-team builds set
         # DIP_ENTITLEMENTS = Config/DIP-Paid.entitlements in the untracked Local.xcconfig (docs/design/share-links.md).
         CODE_SIGN_ENTITLEMENTS: $(DIP_ENTITLEMENTS)
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
   DIPTests:
     type: bundle.unit-test
     platform: iOS

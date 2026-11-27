@@ -22,7 +22,9 @@ public enum DIPMockFixtures {
         let dateText = DIPEventDateText(now: now)
         for (index, id) in orderedIDs.enumerated() {
             guard var event = snapshot.eventDetails[id] else { continue }
-            let start = now.addingTimeInterval(Double(event.isPast ? -(index + 1) : index + 1) * 86_400)
+            // Plausible times: 6:30 PM local on a day relative to now (past events before today, upcoming after).
+            let day = Calendar.current.startOfDay(for: now.addingTimeInterval(Double(event.isPast ? -(index + 1) : index + 1) * 86_400))
+            let start = day.addingTimeInterval(18.5 * 3_600)
             let locality = snapshot.home.events.first { $0.id == id }?.locality
                 ?? snapshot.activeEvents.first { $0.id == id }?.locality
                 ?? snapshot.memories.first { $0.eventID == id }?.locality ?? "Pittsburgh, PA"
