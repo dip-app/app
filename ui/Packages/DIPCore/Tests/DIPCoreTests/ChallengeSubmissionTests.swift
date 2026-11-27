@@ -94,7 +94,7 @@ final class ChallengeSubmissionTests: XCTestCase {
         XCTAssertTrue(open.detail.contains("Organizer note: Blurry photo"))
         let closed = DIPSubmissionState.state(phase: .ended, submission: entry(.rejected, note: "Blurry photo"))
         XCTAssertNil(closed.actionTitle)
-        XCTAssertTrue(closed.detail.contains("This theme has ended."))
+        XCTAssertTrue(closed.detail.contains("This challenge has ended."))
         XCTAssertEqual(DIPSubmissionState.rejected(entry(.rejected), canResubmit: true).detail, "Update your entry and send it again.")
     }
 
@@ -122,7 +122,7 @@ final class ChallengeSubmissionTests: XCTestCase {
         let locale = Locale(identifier: "en_US")
         XCTAssertEqual(detail.statusNote(now: start.addingTimeInterval(3_600), locale: locale), DIPChallengeText.submissionsSoon)
         XCTAssertTrue(detail.statusNote(now: start.addingTimeInterval(3_600), submissionsOpen: true, locale: locale).hasPrefix("Entries close "))
-        XCTAssertEqual(detail.statusNote(now: end.addingTimeInterval(1), submissionsOpen: true, locale: locale), "This weekly theme has ended")
+        XCTAssertEqual(detail.statusNote(now: end.addingTimeInterval(1), submissionsOpen: true, locale: locale), "This weekly challenge has ended")
     }
 
     // MARK: Touch control

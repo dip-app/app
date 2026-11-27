@@ -172,7 +172,7 @@ public enum DIPSubmissionState: Equatable, Sendable {
     /// Short informational label (outline pill).
     public var statusLabel: String {
         switch self {
-        case .upcoming: String(localized: "submission.status.upcoming", defaultValue: "Not open yet", bundle: .module, comment: "Challenge entry status pill: theme has not started")
+        case .upcoming: String(localized: "submission.status.upcoming", defaultValue: "Not open yet", bundle: .module, comment: "Challenge entry status pill: challenge has not started")
         case .notStarted: String(localized: "submission.status.notStarted", defaultValue: "Not started", bundle: .module, comment: "Challenge entry status pill: no entry yet")
         case .missed: String(localized: "submission.status.missed", defaultValue: "Closed", bundle: .module, comment: "Challenge entry status pill: entries closed")
         case .pending: String(localized: "submission.status.pending", defaultValue: "Waiting for review", bundle: .module, comment: "Challenge entry status pill: awaiting organizer review")
@@ -183,9 +183,9 @@ public enum DIPSubmissionState: Equatable, Sendable {
 
     public var detail: String {
         switch self {
-        case .upcoming: String(localized: "submission.detail.upcoming", defaultValue: "You can add your entry once this theme starts.", bundle: .module, comment: "Challenge entry detail: theme not started")
+        case .upcoming: String(localized: "submission.detail.upcoming", defaultValue: "You can add your entry once this challenge starts.", bundle: .module, comment: "Challenge entry detail: challenge not started")
         case .notStarted: String(localized: "submission.detail.notStarted", defaultValue: "Add a number, a short note and optionally a photo.", bundle: .module, comment: "Challenge entry detail: no entry yet")
-        case .missed: String(localized: "submission.detail.missed", defaultValue: "This theme has ended, so entries are closed.", bundle: .module, comment: "Challenge entry detail: missed")
+        case .missed: String(localized: "submission.detail.missed", defaultValue: "This challenge has ended, so entries are closed.", bundle: .module, comment: "Challenge entry detail: missed")
         case .pending(_, let canEdit): canEdit ? String(localized: "submission.detail.pendingEditable", defaultValue: "An organizer will review it. You can still change it until the week ends.", bundle: .module, comment: "Challenge entry detail: pending, still editable") : String(localized: "submission.detail.pending", defaultValue: "An organizer will review it.", bundle: .module, comment: "Challenge entry detail: pending, locked")
         case .approved(let submission): submission.pointsAwarded > 0 ? String(localized: "submission.detail.approvedPoints", defaultValue: "You earned +\(submission.pointsAwarded) points.", bundle: .module, comment: "Challenge entry detail: approved; %lld = points earned") : String(localized: "submission.detail.approved", defaultValue: "Approved. Thanks for taking part.", bundle: .module, comment: "Challenge entry detail: approved without points")
         case .rejected(let submission, let canResubmit):
@@ -193,11 +193,11 @@ public enum DIPSubmissionState: Equatable, Sendable {
             case (let note?, true):
                 String(localized: "submission.detail.rejected.noteResubmit", defaultValue: "Organizer note: \(note) Update your entry and send it again.", bundle: .module, comment: "Challenge entry detail: changes requested; %@ = the organizer's note")
             case (let note?, false):
-                String(localized: "submission.detail.rejected.noteEnded", defaultValue: "Organizer note: \(note) This theme has ended.", bundle: .module, comment: "Challenge entry detail: changes requested but the theme ended; %@ = the organizer's note")
+                String(localized: "submission.detail.rejected.noteEnded", defaultValue: "Organizer note: \(note) This challenge has ended.", bundle: .module, comment: "Challenge entry detail: changes requested but the challenge ended; %@ = the organizer's note")
             case (nil, true):
                 String(localized: "submission.detail.rejected.resubmit", defaultValue: "Update your entry and send it again.", bundle: .module, comment: "Challenge entry detail: changes requested")
             case (nil, false):
-                String(localized: "submission.detail.rejected.ended", defaultValue: "This theme has ended.", bundle: .module, comment: "Challenge entry detail: changes requested but the theme ended")
+                String(localized: "submission.detail.rejected.ended", defaultValue: "This challenge has ended.", bundle: .module, comment: "Challenge entry detail: changes requested but the challenge ended")
             }
         }
     }
@@ -216,14 +216,14 @@ public enum DIPSubmissionFailure: Error, Equatable, Sendable {
 
     public var message: String {
         switch self {
-        case .closed: String(localized: "submission.error.closed", defaultValue: "This theme has ended, so entries are closed.", bundle: .module, comment: "Entry error")
+        case .closed: String(localized: "submission.error.closed", defaultValue: "This challenge has ended, so entries are closed.", bundle: .module, comment: "Entry error")
         case .uploadDenied: String(localized: "submission.error.uploadDenied", defaultValue: "Your photo couldn’t be uploaded. Try again later, or send your entry without it.", bundle: .module, comment: "Entry error")
-        case .notStarted: String(localized: "submission.error.notStarted", defaultValue: "This theme hasn’t started yet.", bundle: .module, comment: "Entry error")
+        case .notStarted: String(localized: "submission.error.notStarted", defaultValue: "This challenge hasn’t started yet.", bundle: .module, comment: "Entry error")
         case .locked: String(localized: "submission.error.locked", defaultValue: "This entry was already approved, so it can’t be changed.", bundle: .module, comment: "Entry error")
         case .invalidInput: String(localized: "submission.error.invalidInput", defaultValue: "Check your entry and try again.", bundle: .module, comment: "Entry error")
         case .invalidImage: String(localized: "submission.error.invalidImage", defaultValue: "This photo couldn’t be used. Choose another one.", bundle: .module, comment: "Entry error")
         case .tooLarge: String(localized: "submission.error.tooLarge", defaultValue: "This photo is too large to upload.", bundle: .module, comment: "Entry error")
-        case .noSlotsLeft: String(localized: "submission.error.noSlotsLeft", defaultValue: "You’ve used all \(DIPSubmissionPolicy.slots) photo uploads for this theme. Remove the photo and send a note only.", bundle: .module, comment: "Entry error; %lld = number of allowed photo uploads")
+        case .noSlotsLeft: String(localized: "submission.error.noSlotsLeft", defaultValue: "You’ve used all \(DIPSubmissionPolicy.slots) photo uploads for this challenge. Remove the photo and send a note only.", bundle: .module, comment: "Entry error; %lld = number of allowed photo uploads")
         case .notMember: String(localized: "submission.error.notMember", defaultValue: "Only members of this company can add an entry.", bundle: .module, comment: "Entry error")
         case .unauthenticated: String(localized: "submission.error.unauthenticated", defaultValue: "Please sign in again.", bundle: .module, comment: "Entry error")
         case .offline: String(localized: "submission.error.offline", defaultValue: "You’re offline. Check your connection and try again.", bundle: .module, comment: "Entry error")

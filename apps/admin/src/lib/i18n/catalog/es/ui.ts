@@ -17,7 +17,7 @@ export const ui: Record<keyof typeof source, string> = {
   "ui.skeleton.col.going": "Asistirán",
   "ui.skeleton.col.status": "Estado",
   "ui.skeleton.col.actions": "Acciones",
-  "ui.skeleton.col.theme": "Tema",
+  "ui.skeleton.col.theme": "Reto",
   "ui.skeleton.col.week": "Semana",
   "ui.skeleton.col.goal": "Meta",
   "ui.skeleton.col.reward": "Recompensa",

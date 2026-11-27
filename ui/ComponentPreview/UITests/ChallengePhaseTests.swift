@@ -29,7 +29,7 @@ final class ChallengePhaseTests: XCTestCase {
         button.tap()
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added to your calendar")).firstMatch.waitForExistence(timeout: 3))
         let recorded = app.staticTexts["calendar.fake.last"].label
-        XCTAssertTrue(recorded.hasPrefix("Weekly theme: Fitness|"), recorded)
+        XCTAssertTrue(recorded.hasPrefix("Weekly challenge: Fitness|"), recorded)
         XCTAssertTrue(recorded.hasSuffix("|true"), recorded)
     }
 
@@ -37,7 +37,7 @@ final class ChallengePhaseTests: XCTestCase {
         continueAfterFailure = false
         let app = launch("ended")
         XCTAssertTrue(app.descendants(matching: .any)["challenge.submissions"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.descendants(matching: .any)["challenge.submissions"].label, "This weekly theme has ended")
+        XCTAssertEqual(app.descendants(matching: .any)["challenge.submissions"].label, "This weekly challenge has ended")
         XCTAssertFalse(app.buttons["challenge.addToCalendar"].exists)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "challenge-ended"; shot.lifetime = .keepAlways; add(shot)

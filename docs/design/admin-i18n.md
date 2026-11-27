@@ -55,7 +55,7 @@ outlives the re-mount, so "Language saved." shows in the new language.
 
 - **en** (source).
 - **es** (complete draft): neutral Latin American Spanish with informal "tú". **It needs review by a native speaker
-  before release.** Glossary follows iOS (evento, actividad, reto, tema semanal, participación, puntos, Ajustes) plus:
+  before release.** Glossary follows iOS (evento, actividad, reto, reto semanal, participación, puntos, Ajustes) plus:
   miembro, organizador, administrador, lista de personal (roster), registro de auditoría, borrador (draft), créditos,
   lugar (venue), Resumen (Overview), Errores (Bug reports), Elemento (audit target), Cupo lleno (Full),
   agregar (not añadir). Notes for the reviewer: `ai.ideasForYou.fitSpoken`, `ai.consider.selected.*` (feminine),
@@ -89,9 +89,9 @@ findings (review the diff). `--remaining` lists likely UI strings in files not y
 
 Everything in the signed-in portal. Shared chrome (Shell and navigation, boot and error pages, kit components, dialogs,
 tabs, toasts, skeletons, load states, AdminOnly), sign-in, Overview, Events list and the event editor, Event attendees
-and Event album, Members list and Member detail, Roster, Import people (page, column mapping and the validation
-messages in `importFile.ts` / `importMapping.ts`), Bug reports, Review submissions, Weekly themes (list, ThemeForm,
-ThemePreview, new and edit), Challenges list, Audit log, the Dipbot wizard and Ideas for you, the weekly ideas email
+and Event album, Members (with the invitation views that were the Roster page) and Member detail, Import people (page, column mapping and the validation
+messages in `importFile.ts` / `importMapping.ts`), Bug reports, Review submissions, Challenges (Schedule and Review tabs, ThemeForm,
+ThemePreview, new and edit), Audit log, the Dipbot wizard and Ideas for you, the weekly ideas email
 settings, and Your settings with the Language section. 103 files carry the marker.
 
 `npm run check:admin-i18n -- --remaining` is at zero. It skips `SERVER_CONTENT_FILES` in `scripts/admin-i18n/check.ts`:

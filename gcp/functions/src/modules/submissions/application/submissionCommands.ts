@@ -49,7 +49,7 @@ export async function submitChallenge(store: SubmissionStore, objects: PhotoObje
       }
       if (deactivated(member)) throw new SubmissionError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
       const challenge = await tx.getChallenge(companyId, challengeId);
-      if (!challenge) throw new SubmissionError("not-found", "CHALLENGE_NOT_FOUND", "Weekly theme not found.");
+      if (!challenge) throw new SubmissionError("not-found", "CHALLENGE_NOT_FOUND", "Weekly challenge not found.");
       const existing = await tx.getSubmission(companyId, challengeId, id);
       const same = existing !== null && existing.progress === progress && existing.caption === caption
         && existing.storagePath === storagePath;
@@ -61,8 +61,8 @@ export async function submitChallenge(store: SubmissionStore, objects: PhotoObje
         throw new SubmissionError("failed-precondition", "SUBMISSION_LOCKED", "This entry was already approved.");
       }
       const time = now().getTime();
-      if (time < challenge.startDate.getTime()) throw new SubmissionError("failed-precondition", "CHALLENGE_NOT_OPEN", "This theme has not started yet.");
-      if (time > challenge.endDate.getTime()) throw new SubmissionError("failed-precondition", "CHALLENGE_CLOSED", "This theme has ended.");
+      if (time < challenge.startDate.getTime()) throw new SubmissionError("failed-precondition", "CHALLENGE_NOT_OPEN", "This challenge has not started yet.");
+      if (time > challenge.endDate.getTime()) throw new SubmissionError("failed-precondition", "CHALLENGE_CLOSED", "This challenge has ended.");
       if (progress > challenge.goal) throw new SubmissionError("invalid-argument", "VALIDATION_FAILED", "Invalid request.", ["progress"]);
       let contentType: PhotoContentType | null = existing && existing.storagePath === storagePath ? (existing.contentType as PhotoContentType | null) : null;
       let sizeBytes = existing && existing.storagePath === storagePath ? existing.sizeBytes : null;
@@ -112,7 +112,7 @@ async function loadForReview(tx: SubmissionTransaction, caller: SubmissionCaller
   const member = await requireOrganizer(uid => tx.getMember(uid), caller.uid, companyId);
   if (userId === caller.uid) throw new SubmissionError("permission-denied", "SELF_REVIEW", "You cannot review your own submission.");
   const challenge = await tx.getChallenge(companyId, challengeId);
-  if (!challenge) throw new SubmissionError("not-found", "CHALLENGE_NOT_FOUND", "Weekly theme not found.");
+  if (!challenge) throw new SubmissionError("not-found", "CHALLENGE_NOT_FOUND", "Weekly challenge not found.");
   const id = submissionId(challengeId, userId);
   const submission = await tx.getSubmission(companyId, challengeId, id);
   if (!submission) throw new SubmissionError("not-found", "SUBMISSION_NOT_FOUND", "Submission not found.");

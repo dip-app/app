@@ -92,15 +92,15 @@ describe("opt-in email templates", () => {
   test("weekly theme: art tile on the theme accent, title, description, dates and points; the button opens DIP", () => {
     const c = PREVIEW_CASES.find((x) => x.name === "weekly_theme")!;
     const out = renderEmail("weekly_theme", c.variables as never, c.ctx);
-    assert.equal(out.subject, "This week's theme: Outdoors Week");
+    assert.equal(out.subject, "This week's challenge: Outdoors Week");
     assert.ok(out.html.includes('src="https://letsdip.work/img/email/ideas/outdoors.png"') && out.html.includes('bgcolor="#6BE5D0"'));
     assert.ok(out.text.includes("OUTDOORS WEEK") && out.text.includes("Mon, Nov 23 to Sun, Nov 29") && out.text.includes("Worth 50 points"));
     assert.ok(out.text.includes("Open DIP: https://letsdip.work/"));
-    assert.ok(out.text.includes("You are getting this because weekly theme emails are on."));
+    assert.ok(out.text.includes("You are getting this because weekly challenge emails are on."));
     const plain = renderEmail("weekly_theme", PREVIEW_CASES.find((x) => x.name === "weekly_theme_plain")!.variables as never, SAMPLE_CTX);
     assert.ok(!plain.html.includes("/img/email/ideas/") && !plain.text.includes("points"));
     const es = renderEmail("weekly_theme", c.variables as never, { ...c.ctx, locale: "es" });
-    assert.equal(es.subject, "Tema de la semana: Outdoors Week");
+    assert.equal(es.subject, "Reto de la semana: Outdoors Week");
     assert.ok(es.text.includes("Vale 50 puntos") && es.text.includes("lun, 23 nov a dom, 29 nov"));
   });
 
@@ -344,7 +344,7 @@ describe("send-time gates of the opt-in emails", () => {
     assert.equal((await sendOutboxEmail(w.deps, id)).status, "sent");
     assert.equal((await sendOutboxEmail(w.deps, id)).reason, "not_queued", "redelivery sends once");
     assert.equal(w.sent.length, 1);
-    assert.equal(w.sent[0]!.subject, "Tema de la semana: Outdoors Week");
+    assert.equal(w.sent[0]!.subject, "Reto de la semana: Outdoors Week");
     const token = w.sent[0]!.headers["List-Unsubscribe"]!.slice(1, -1).split("/u/")[1]!;
     const claims = verifyUnsubscribeToken(KEY, token, Math.floor(NOW.getTime() / 1000));
     assert.ok(claims.ok && claims.claims.category === "weekly_themes");

@@ -1,6 +1,6 @@
-THIS WEEK'S THEME
+THIS WEEK'S CHALLENGE
 
-Hi there, a new weekly theme just started. Join in with coworkers, then log what you did in DIP.
+Hi there, a new weekly challenge just started. Join in with coworkers, then log what you did in DIP.
 
 BRING YOUR OWN LUNCH AND LEARN WEEK FOR EVERY TEAM IN THE COMPANY
 Mon, Nov 23 to Thu, Nov 26
@@ -10,7 +10,7 @@ You will find it on the Home screen of the DIP app.
 Open DIP: https://letsdip.work/
 
 --
-You are getting this because weekly theme emails are on.
+You are getting this because weekly challenge emails are on.
 Unsubscribe: https://letsdip.work/u/sample-token
 Manage in DIP: Profile > Notifications
 Sent by DIP · Questions? support@letsdip.work

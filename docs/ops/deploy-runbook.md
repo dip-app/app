@@ -180,7 +180,7 @@ Run after each surface. Use a real member account in the app or the admin portal
 | `resolveMembershipV1` | Sign in with a company-domain Google account: lands in the app Home; a personal domain is refused (`PERSONAL_EMAIL_DOMAIN`). |
 | `createEventV1`, `updateEventV1` | Admin portal: create an event, edit it (revision increments), a second edit with a stale revision is refused. |
 | `setRsvpV1` | Join and leave an event in the app; a full event is refused. |
-| `createChallengeV1`, `updateChallengeV1` | Admin portal Weekly themes: create/edit; an overlapping window is refused. The app Home card shows the current theme. |
+| `createChallengeV1`, `updateChallengeV1` | Admin portal Challenges > Schedule: create/edit; an overlapping window is refused. The app Home card shows the current theme. |
 | `submitChallengeV1`, `approveChallengeV1`, `rejectChallengeV1`, `listChallengeSubmissionsV1` | Submit from the app; approve in the portal; points balance rises once (retry does not add again). |
 | `finalizeEventPhotoV1`, `onPhotoCommentCreated` | After an event ends, a going member uploads a photo (confirms the Storage service agent role); the album shows it; a comment increments the count. |
 | `sendInviteV1`, `respondToInviteV1`, `listCoworkersV1` | Invite a same-company coworker (search needs 2+ characters); the recipient sees it in the bell sheet and accepts; a full event leaves the invite pending. |

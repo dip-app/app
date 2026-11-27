@@ -72,7 +72,7 @@ describe("AddPersonDialog", () => {
     render(<AddPersonDialog api={fake} domain="acme.com" onAdded={onAdded} onClose={() => {}} />);
     fill("Nico Farrow", "nico.farrow@acme.com");
     fireEvent.click(screen.getByRole("button", { name: "Add person" }));
-    await waitFor(() => expect(screen.getByText(/That email is already on the roster/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Someone with that email is already listed/)).toBeTruthy());
     expect(fake.applyImportStep).not.toHaveBeenCalled();
     expect(onAdded).not.toHaveBeenCalled();
   });

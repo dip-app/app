@@ -1,14 +1,18 @@
 // English copy for the challenges area. Keys start with "challenges.". US English, no em dashes. See docs/design/admin-i18n.md.
-// Theme names and descriptions are server content and never go through t().
+// Challenge titles and descriptions are server content and never go through t().
 
 export const challenges = {
-  // Review list (Challenges)
+  // Challenges page: Schedule (plan and edit) and Review (submissions)
   "challenges.title": "Challenges",
-  "challenges.subtitle": "Review what people submitted for each weekly theme: approve it to award the points, or ask for changes.",
-  "challenges.loading": "Loading weekly themes",
+  "challenges.subtitle": "Plan the weekly challenge members see on the app’s Home screen, and review what they submit.",
+  "challenges.tabsLabel": "Challenges",
+  "challenges.tab.schedule": "Schedule",
+  "challenges.tab.review": "Review",
+  "challenges.review.intro": "Approve an entry to award the points, or ask for changes.",
+  "challenges.loading": "Loading challenges",
   "challenges.empty.title": "Nothing to review yet",
-  "challenges.empty.body": "Submissions appear here once a weekly theme has started.",
-  "challenges.empty.action": "Weekly themes",
+  "challenges.empty.body": "Submissions appear here once a weekly challenge has started.",
+  "challenges.empty.action": "Open the schedule",
 
   // Status chip on a theme
   "challenges.phase.current": "This week",
@@ -35,32 +39,30 @@ export const challenges = {
   "challenges.row.reviewAria": "Review submissions for {title}, {window}",
   "challenges.row.notOpen": "Not open yet",
 
-  // Weekly themes list
-  "challenges.themes.title": "Weekly themes",
-  "challenges.themes.subtitle": "The “This Week’s Challenge” card on the app’s Home screen.",
-  "challenges.themes.new": "New theme",
-  "challenges.themes.loadFailed": "Couldn’t load weekly themes. Check your connection and try again.",
-  "challenges.themes.filterLabel": "Filter weekly themes",
+  // Schedule tab
+  "challenges.themes.new": "New challenge",
+  "challenges.themes.loadFailed": "Couldn’t load challenges. Check your connection and try again.",
+  "challenges.themes.filterLabel": "Show challenges by week",
   "challenges.themes.tab.current": "Current",
   "challenges.themes.tab.upcoming": "Upcoming",
   "challenges.themes.tab.past": "Past",
-  "challenges.themes.empty.current.title": "No theme this week",
-  "challenges.themes.empty.current.body": "Members see the Home challenge card only while a theme runs. Add one for this week or plan the next.",
+  "challenges.themes.empty.current.title": "No challenge this week",
+  "challenges.themes.empty.current.body": "Members see the Home challenge card only while a challenge runs. Add one for this week or plan the next.",
   "challenges.themes.empty.upcoming.title": "Nothing planned",
   "challenges.themes.empty.upcoming.body": "Plan the next weeks so Home always has a challenge on Monday.",
-  "challenges.themes.empty.past.title": "No past themes",
-  "challenges.themes.empty.past.body": "Themes move here once their last day ends.",
+  "challenges.themes.empty.past.title": "No past challenges",
+  "challenges.themes.empty.past.body": "Challenges move here once their last day ends.",
 
-  // Weekly themes table
-  "challenges.themes.table.label": "Weekly themes",
-  "challenges.themes.table.theme": "Theme",
+  // Schedule table
+  "challenges.themes.table.label": "Challenge schedule",
+  "challenges.themes.table.theme": "Challenge",
   "challenges.themes.table.week": "Week",
   "challenges.themes.table.goal": "Goal",
   "challenges.themes.table.reward": "Reward",
   "challenges.themes.table.participation": "Participation",
   "challenges.themes.table.status": "Status",
   "challenges.themes.table.actions": "Actions",
-  "challenges.themes.row.editTitle": "Edit theme",
+  "challenges.themes.row.editTitle": "Edit challenge",
   "challenges.themes.row.editWindowAria": "Edit {title}, {window}",
   "challenges.themes.row.editAria": "Edit {title}",
   "challenges.themes.row.edit": "Edit",
@@ -76,20 +78,20 @@ export const challenges = {
   "challenges.weeks.easternTime": "Eastern Time",
   "challenges.reward": "+{points} points",
 
-  // Validation messages for the theme form
+  // Validation messages for the challenge form
   "challenges.validation.title": "Title must be 1 to {max} characters.",
   "challenges.validation.description": "Description must be 1 to {max} characters.",
-  "challenges.validation.cover": "Pick a theme from the catalog.",
+  "challenges.validation.cover": "Pick an illustration from the list.",
   "challenges.validation.goal": "Goal must be more than 0 and at most {max}.",
   "challenges.validation.unit": "Unit must be 1 to {max} characters.",
   "challenges.validation.points": "Points must be a whole number from 0 to {max}.",
   "challenges.validation.startDate": "Choose the first week.",
   "challenges.validation.endDate": "Choose the last week.",
   "challenges.validation.endBeforeStart": "The last week can’t end before the first week starts.",
-  "challenges.validation.tooLong": "A theme can run for at most {max} days (two weeks).",
+  "challenges.validation.tooLong": "A challenge can run for at most {max} days (two weeks).",
   "challenges.validation.passed": "These weeks have already passed. Pick this week or a later one.",
   "challenges.validation.tagsUnknown": "Choose tags from the list.",
   "challenges.validation.tagsDuplicate": "Choose each tag once.",
   "challenges.validation.tagsMax": "Choose at most {max} tags.",
-  "challenges.validation.overlap": "Overlaps “{title}” ({window}). Pick a week without a theme.",
+  "challenges.validation.overlap": "Overlaps “{title}” ({window}). Pick a week without a challenge.",
 };

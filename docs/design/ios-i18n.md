@@ -105,7 +105,7 @@ Profile radius stays in miles; unit conversion is out of scope.
   | points | puntos |
   | Rewards | Recompensas |
   | challenge | reto |
-  | weekly theme | tema semanal |
+  | weekly challenge | reto semanal |
   | entry | participación |
   | Memories | Recuerdos |
   | Album | Álbum |

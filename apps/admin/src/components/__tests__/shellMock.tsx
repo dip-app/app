@@ -14,13 +14,14 @@ export function useShellHeader(header: HeaderOverride | null) {
   useEffect(() => { set(latest.current); }, [set, key]);
 }
 
-export function Shell({ title, subtitle, back, children }: { title: string; subtitle?: string; back?: { href: string; label: string }; children: ReactNode }) {
+export function Shell({ title, subtitle, back, action, children }: { title: string; subtitle?: string; back?: { href: string; label: string }; action?: ReactNode; children: ReactNode }) {
   const [header, setHeader] = useState<HeaderOverride | null>(null);
   return (
     <main>
       {back && <a href={back.href}>{back.label}</a>}
       <h1>{header?.title ?? title}</h1>
       {!header && <p>{subtitle}</p>}
+      {action && <div data-testid="page-actions">{action}</div>}
       {header?.meta && <div data-testid="page-meta">{header.meta}</div>}
       <Ctx.Provider value={setHeader}>{children}</Ctx.Provider>
     </main>

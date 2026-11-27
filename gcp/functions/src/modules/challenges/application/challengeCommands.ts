@@ -28,7 +28,7 @@ function wholeSeconds(date: Date): Date {
 function requireCaller(caller: Caller | null): Caller {
   if (!caller) throw new ChallengeError("unauthenticated", "UNAUTHENTICATED", "Sign in to continue.");
   if (!caller.emailVerified || caller.signInProvider !== "google.com") {
-    throw new ChallengeError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage weekly themes.");
+    throw new ChallengeError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage weekly challenges.");
   }
   return caller;
 }
@@ -40,11 +40,11 @@ function requireCaller(caller: Caller | null): Caller {
 async function requireOrganizer(tx: ChallengeTransaction, caller: Caller, companyId: string) {
   const membership = await tx.getMembership(caller.uid);
   if (!membership || membership.role !== "admin") {
-    throw new ChallengeError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage weekly themes.");
+    throw new ChallengeError("permission-denied", "NOT_ORGANIZER", "Only organizers can manage weekly challenges.");
   }
   if (isDeactivated(membership)) throw new ChallengeError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
   if (membership.companyId !== companyId) {
-    throw new ChallengeError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's weekly themes.");
+    throw new ChallengeError("permission-denied", "COMPANY_MISMATCH", "You can only manage your own company's weekly challenges.");
   }
   return membership;
 }
@@ -76,7 +76,7 @@ async function requireFreeWindow(tx: ChallengeTransaction, companyId: string, dr
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
   if (conflict) {
     throw new ChallengeError("failed-precondition", "CHALLENGE_WINDOW_OVERLAP",
-      "Another weekly theme already runs during these dates.", ["startDate", "endDate"],
+      "Another weekly challenge already runs during these dates.", ["startDate", "endDate"],
       { challengeId: conflict.challengeId, startDate: rfc3339(conflict.startDate), endDate: rfc3339(conflict.endDate) });
   }
 }
@@ -109,7 +109,7 @@ export async function createChallenge(
     }
     const now = clock.now();
     if (request.draft.endDate.getTime() <= now.getTime()) {
-      throw new ChallengeError("invalid-argument", "VALIDATION_FAILED", "This theme's dates have already passed.", ["endDate"]);
+      throw new ChallengeError("invalid-argument", "VALIDATION_FAILED", "This challenge's dates have already passed.", ["endDate"]);
     }
     await requireKnownTags(tx, request.draft.tagIds);
     await requireFreeWindow(tx, request.companyId, request.draft);
@@ -132,7 +132,7 @@ export async function createChallenge(
     const auditId = `challenge_create_${authenticated.uid}_${request.requestId}`;
     tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
       id: auditId, action: "challenge.create", targetType: "challenge", targetId: challengeId, requestId: request.requestId,
-      summary: `Created the weekly theme "${request.draft.title}"`, summaryKey: "challenge.create", summaryParams: { title: request.draft.title },
+      summary: `Created the weekly challenge "${request.draft.title}"`, summaryKey: "challenge.create", summaryParams: { title: request.draft.title },
       changes: [change("title", null, request.draft.title), change("startDate", null, iso(request.draft.startDate)), change("endDate", null, iso(request.draft.endDate)), change("pointsReward", null, request.draft.pointsReward)],
     }));
     return { contractVersion: 1, challengeId, revision: 1, challenge: toChallengeDto(challengeId, stored), replayed: false };
@@ -155,9 +155,9 @@ export async function updateChallenge(
   return store.runTransaction(async (tx) => {
     const membership = await requireOrganizer(tx, authenticated, request.companyId);
     const current = await tx.getChallenge(request.companyId, request.challengeId);
-    if (!current) throw new ChallengeError("not-found", "CHALLENGE_NOT_FOUND", "That weekly theme doesn't exist.");
+    if (!current) throw new ChallengeError("not-found", "CHALLENGE_NOT_FOUND", "That weekly challenge doesn't exist.");
     if (current.revision !== request.expectedRevision) {
-      throw new ChallengeError("aborted", "REVISION_CONFLICT", "Someone else changed this weekly theme. Reload it and try again.");
+      throw new ChallengeError("aborted", "REVISION_CONFLICT", "Someone else changed this weekly challenge. Reload it and try again.");
     }
     const now = clock.now();
     const blocked = windowChangeBlocked(current, request.draft, now);
@@ -174,7 +174,7 @@ export async function updateChallenge(
     const auditId = `challenge_update_${request.challengeId}_r${nextRevision}`;
     tx.writeAudit(request.companyId, auditId, auditEntry(request.companyId, { uid: authenticated.uid, ...membership }, {
       id: auditId, action: "challenge.update", targetType: "challenge", targetId: request.challengeId,
-      summary: `Edited the weekly theme "${request.draft.title}"`, summaryKey: "challenge.update", summaryParams: { title: request.draft.title }, changes: challengeChanges(current, request.draft),
+      summary: `Edited the weekly challenge "${request.draft.title}"`, summaryKey: "challenge.update", summaryParams: { title: request.draft.title }, changes: challengeChanges(current, request.draft),
     }));
     const next: StoredChallenge = { ...current, ...request.draft, tagIds: [...request.draft.tagIds], revision: nextRevision, updatedAt };
     return { contractVersion: 1, challengeId: request.challengeId, revision: nextRevision, challenge: toChallengeDto(request.challengeId, next) };

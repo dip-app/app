@@ -2,7 +2,7 @@
 
 // @i18n-migrated
 
-import { useId, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { t } from "@/lib/i18n";
 
 export interface TabItem { id: string; label: string; count?: number | string }
@@ -27,6 +27,21 @@ export function Tabs({ label, items, value, onChange, idBase }: Props) {
   const generated = useId();
   const base = idBase ?? generated;
   const current = items.some((item) => item.id === value) ? value : items[0]?.id;
+  const list = useRef<HTMLDivElement>(null);
+  const shape = items.map((item) => `${item.id}:${item.label}:${item.count ?? ""}`).join("|");
+
+  // A row wider than the screen scrolls sideways: keep the selected tab in view (on load, from a link, after a change).
+  // Only the tab row scrolls, never the page.
+  useEffect(() => {
+    const row = list.current;
+    const tab = current ? refs.current[current] : null;
+    if (!row || !tab || row.scrollWidth <= row.clientWidth) return;
+    const r = tab.getBoundingClientRect();
+    const c = row.getBoundingClientRect();
+    if (r.left < c.left) row.scrollLeft -= c.left - r.left + 24;
+    else if (r.right > c.right) row.scrollLeft += r.right - c.right + 24;
+    // Counts arrive after the first paint and widen the row: check again when the labels change.
+  }, [current, shape]);
 
   function move(to: string) {
     onChange(to);
@@ -48,7 +63,7 @@ export function Tabs({ label, items, value, onChange, idBase }: Props) {
   }
 
   return (
-    <div className="tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+    <div ref={list} className="tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
       {items.map((item) => {
         const selected = item.id === current;
         return (

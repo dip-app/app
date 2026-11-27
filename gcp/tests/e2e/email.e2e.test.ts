@@ -550,8 +550,8 @@ test("every email goes out exactly once from its real trigger (emulators)", { ti
     await prefs(ada, { weekly_themes: true });
     await prefs(rita, { weekly_themes: true });
     const sent = await expectEmails("weekly theme", [[ada, "weekly_theme"], [rita, "weekly_theme"]], run);
-    assert.equal(one(sent, ada, "weekly_theme").subject, "This week's theme: Hydration Week");
-    assert.equal(one(sent, rita, "weekly_theme").subject, "Tema de la semana: Hydration Week");
+    assert.equal(one(sent, ada, "weekly_theme").subject, "This week's challenge: Hydration Week");
+    assert.equal(one(sent, rita, "weekly_theme").subject, "Reto de la semana: Hydration Week");
     assert.ok(one(sent, ada, "weekly_theme").html.includes("img/email/ideas/fitness.png"), "theme art");
     await expectEmails("weekly theme rerun", [], run);
   });

@@ -7,7 +7,7 @@ push notifications, and the stable keys behind audit summaries and typed errors.
 - English (US) is the source, and existing English emails and pushes stay byte-identical.
 - Spanish (`es`) is the first translation: neutral Latin American Spanish with informal "tú". The owner accepted the
   Spanish, so no native review is pending for this phase.
-- Server and user content is never translated: event titles, names, chat text, theme titles and idea text.
+- Server and user content is never translated: event titles, names, chat text, challenge titles and idea text.
 - There are no provider names in copy, and no right-to-left work.
 
 ## Member language
@@ -99,7 +99,7 @@ every language.
 
 `NotificationRequest` has an optional `pushFor(locale)`. Router-mode triggers set `push: build("en")` and
 `pushFor: build`. They cover chat, event change, reminder, invite, invite answered, attendee added, challenge reviewed
-and weekly theme.
+and weekly challenge.
 
 After the preference and rate-limit gates, `deliverNotification` reads the locales of the recipients it will actually
 send to (`LocaleReader`, `FirestoreLocales`: one `getAll` with a `locale` field mask). It then groups their device

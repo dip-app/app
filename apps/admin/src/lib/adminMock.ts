@@ -225,7 +225,7 @@ const BUG_SEEDS: { cat: BugCategory; text: string; screen: string; shot?: string
   { cat: "idea", text: "Let me add a plus one to an event.", screen: "event" },
   { cat: "confusing", text: "What does 'Check in' do? I pressed it by accident.", screen: "myEvents", status: "resolved", note: "Explained in the help text, closing." },
   { cat: "bug", text: "App crashed when I opened My Events right after signing in.", screen: "myEvents" },
-  { cat: "idea", text: "Weekly theme reminders on Monday morning would help me remember.", screen: "challenge", source: "profile" },
+  { cat: "idea", text: "Weekly challenge reminders on Monday morning would help me remember.", screen: "challenge", source: "profile" },
   { cat: "bug", text: "I can't see my friend's photos in the album even though they were published yesterday.", screen: "album", shot: "games" },
   { cat: "looksWrong", text: "Profile picture is stretched on the Home screen header.", screen: "home" },
 ];
@@ -893,7 +893,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const state = load();
       const session = staff("challenges.review");
       const theme = deps.themes(session.companyId).find((t) => t.id === challengeId);
-      if (!theme) throw new ApiError("not-found", "That weekly theme doesn’t exist.", {}, "CHALLENGE_NOT_FOUND");
+      if (!theme) throw new ApiError("not-found", "That weekly challenge doesn’t exist.", {}, "CHALLENGE_NOT_FOUND");
       state.submissions ??= [];
       state.seededThemes ??= [];
       if (!state.seededThemes.includes(`${session.companyId}:${challengeId}`)) {
@@ -1111,13 +1111,13 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
     async suggestTheme(input): Promise<SuggestThemeResult> {
       const session = staff("ai.generate");
       const scenario = themeSuggestScenarioFromSearch(typeof window === "undefined" ? "" : window.location.search);
-      if (aiScenario() === "off") throw new ApiError("failed-precondition", "Theme suggestions are turned off for this company.", {}, "AI_THEME_SUGGEST_DISABLED");
+      if (aiScenario() === "off") throw new ApiError("failed-precondition", "Challenge suggestions are turned off for this company.", {}, "AI_THEME_SUGGEST_DISABLED");
       const replay = themeRuns.receipts.get(input.requestId);
       await aiDelay(replay ? 300 : scenario === "slow" ? 6000 : 1400);
       if (replay) return { ...replay, replay: true, creditsCharged: 0 };
       const cost = MOCK_CREDIT_COSTS.themeSuggest;
       if (MOCK_CREDIT_ALLOWANCE - aiCreditsUsed(session.companyId) < cost) throw new ApiError("resource-exhausted", "This company has used this month's Dipbot credits.", {}, "AI_CREDITS_EXHAUSTED");
-      if (scenario === "limit") throw new ApiError("resource-exhausted", "You have used today's theme suggestions. Try again tomorrow.", {}, "AI_THEME_SUGGEST_LIMIT");
+      if (scenario === "limit") throw new ApiError("resource-exhausted", "You have used today's challenge suggestions. Try again tomorrow.", {}, "AI_THEME_SUGGEST_LIMIT");
       if (scenario === "busy") throw Object.assign(new Error("unavailable [503]"), { name: "FirebaseError", code: "functions/unavailable" });
       if (scenario === "error") throw Object.assign(new Error("internal"), { name: "FirebaseError", code: "functions/internal" });
       if (input.hint && /@|https?:/i.test(input.hint)) throw new ApiError("invalid-argument", "Leave out links, email addresses and phone numbers.", { hint: "Leave out links, email addresses and phone numbers." }, "AI_PROMPT_REJECTED");

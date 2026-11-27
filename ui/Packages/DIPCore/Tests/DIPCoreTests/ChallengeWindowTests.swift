@@ -27,7 +27,7 @@ final class ChallengeWindowTests: XCTestCase {
         let locale = Locale(identifier: "en_US")
         XCTAssertEqual(d.statusNote(now: start.addingTimeInterval(-86_400), locale: locale), "Starts Mon, Nov 9")
         XCTAssertEqual(d.statusNote(now: start.addingTimeInterval(3_600), locale: locale), DIPChallengeText.submissionsSoon)
-        XCTAssertEqual(d.statusNote(now: end.addingTimeInterval(3_600), locale: locale), "This weekly theme has ended")
+        XCTAssertEqual(d.statusNote(now: end.addingTimeInterval(3_600), locale: locale), "This weekly challenge has ended")
         XCTAssertTrue(d.canAddToCalendar(now: start.addingTimeInterval(-1)))
         XCTAssertTrue(d.canAddToCalendar(now: start.addingTimeInterval(1)))
         XCTAssertFalse(d.canAddToCalendar(now: end))
@@ -37,7 +37,7 @@ final class ChallengeWindowTests: XCTestCase {
     func testCalendarFieldsAreAnAllDayWeekWithTheLastDayIncluded() throws {
         let fields = try XCTUnwrap(detail(start: start, end: end).calendarFields())
         XCTAssertTrue(fields.isAllDay)
-        XCTAssertEqual(fields.title, "Weekly theme: Fitness")
+        XCTAssertEqual(fields.title, "Weekly challenge: Fitness")
         XCTAssertEqual(fields.startDate, start)
         XCTAssertEqual(fields.endDate, cal.date(from: DateComponents(year: 2026, month: 11, day: 15)))
         XCTAssertEqual(fields.notes, "Get moving.\nGoal: 3 workouts\nReward: +50 points")
@@ -102,7 +102,7 @@ final class ChallengeWindowTests: XCTestCase {
         let fields = try XCTUnwrap(long.calendarFields())
         XCTAssertLessThanOrEqual(fields.title.count, DIPEventMetadata.calendarTitleLimit)
         XCTAssertLessThanOrEqual(fields.notes.count, DIPEventMetadata.calendarNotesLimit)
-        XCTAssertTrue(fields.title.hasPrefix("Weekly theme: Marathon"))
+        XCTAssertTrue(fields.title.hasPrefix("Weekly challenge: Marathon"))
     }
 
     func testNoRewardThemeOmitsTheRewardFromTheCalendarNotes() throws {
@@ -117,7 +117,7 @@ final class ChallengeWindowTests: XCTestCase {
         let locale = Locale(identifier: "en_US")
         XCTAssertTrue(d.statusNote(now: start.addingTimeInterval(-7 * 86_400), locale: locale).hasPrefix("Starts "))
         XCTAssertFalse(d.canAddToCalendar(now: end.addingTimeInterval(86_400)), "an ended theme is informational only")
-        XCTAssertEqual(d.statusNote(now: end, locale: locale), "This weekly theme has ended")
+        XCTAssertEqual(d.statusNote(now: end, locale: locale), "This weekly challenge has ended")
     }
 
     func testGoalAndRewardTextVariants() {

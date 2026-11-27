@@ -22,11 +22,11 @@ const CATEGORY_WORDS: Readonly<Record<EmailCategory, string>> = {
   invites: "event invitations",
   event_updates: "event updates",
   reminders: "event reminders",
-  challenges: "weekly theme reviews",
+  challenges: "challenge reviews",
   discovery: "event suggestions",
   calendar_invites: "calendar invites",
   admin_suggestions: "weekly event ideas",
-  weekly_themes: "weekly theme announcements",
+  weekly_themes: "weekly challenge announcements",
   admin_digest: "daily roster digests",
   day_before_reminders: "event reminders the day before",
 };

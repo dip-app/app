@@ -52,7 +52,7 @@ function Page() {
 const title = () => (document.getElementById("title") as HTMLInputElement).value;
 const description = () => (document.getElementById("description") as HTMLTextAreaElement).value;
 const pressed = () => screen.getAllByRole("button", { pressed: true }).map((b) => b.textContent);
-const suggestButton = () => screen.findByRole("button", { name: /^Suggest theme, 2 credits/ });
+const suggestButton = () => screen.findByRole("button", { name: /^Suggest challenge, 2 credits/ });
 
 beforeEach(() => { suggestTheme.mockReset(); eventIdeaContext.mockReset(); eventIdeaContext.mockResolvedValue(context()); role = "admin"; });
 afterEach(() => { cleanup(); setLocale("en"); });
@@ -71,7 +71,7 @@ describe("Suggest theme on the New theme form", () => {
     expect(document.querySelectorAll(".dipbot-tag").length).toBe(7);
     expect(screen.getByRole("heading", { name: "Dipbot suggested “Recipe Swap”" })).toBeTruthy();
     expect(screen.getByText("Why Recipe Swap.")).toBeTruthy();
-    expect(document.body.textContent).toContain("Dipbot filled in: theme picture, title, description, tags, week, and goal. Undo is available.");
+    expect(document.body.textContent).toContain("Dipbot filled in: illustration, title, description, tags, week, and goal. Undo is available.");
     const sent = suggestTheme.mock.calls[0]![0] as { requestId: string; locale: string };
     expect(sent.locale).toBe("en");
     expect(sent.requestId).toMatch(/^[0-9a-f-]{36}$/);
@@ -150,21 +150,21 @@ describe("Suggest theme on the New theme form", () => {
     role = "organizer";
     const { unmount } = render(<Page />);
     await act(async () => { await Promise.resolve(); });
-    expect(screen.queryByRole("button", { name: /Suggest theme/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Suggest challenge/ })).toBeNull();
     unmount();
     role = "admin";
     eventIdeaContext.mockResolvedValue(context(400, false));
     render(<Page />);
     await waitFor(() => expect(eventIdeaContext).toHaveBeenCalled());
     await act(async () => { await Promise.resolve(); });
-    expect(screen.queryByRole("button", { name: /Suggest theme/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Suggest challenge/ })).toBeNull();
   });
 
   it("Spanish: the request asks for Spanish and the copy is translated", async () => {
     setLocale("es");
     suggestTheme.mockResolvedValue(RESULT);
     render(<Page />);
-    fireEvent.click(await screen.findByRole("button", { name: /^Sugerir tema, 2 créditos/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sugerir reto, 2 créditos/ }));
     await waitFor(() => expect(suggestTheme).toHaveBeenCalled());
     await waitFor(() => expect(document.querySelector(".theme-suggest h2")?.textContent).toBe("Dipbot sugirió “Recipe Swap”"), { timeout: 2000 });
     expect((suggestTheme.mock.calls[0]![0] as { locale: string }).locale).toBe("es");

@@ -74,7 +74,7 @@ describe("account email templates", () => {
     assert.ok(welcome.text.includes("- Join an event") && !welcome.text.includes("admin portal"));
     assert.ok(welcome.text.includes("Open DIP: https://letsdip.work/") && welcome.text.includes("Profile > Notifications"));
     const admin = renderEmail("welcome", { companyName: "Acme", role: "admin" }, SAMPLE_CTX);
-    assert.ok(admin.text.includes("- Plan events and weekly themes in the admin portal.") && admin.text.includes("https://letsdip.work/admin/"));
+    assert.ok(admin.text.includes("- Plan events and weekly challenges in the admin portal.") && admin.text.includes("https://letsdip.work/admin/"));
     const bug = renderEmail("bug_report_resolved", { reportId: "r1", submittedAt: "2030-01-05T02:00:00Z" }, { ...SAMPLE_CTX, timeZone: "America/New_York" });
     assert.ok(bug.text.includes("reported on January 4 was marked resolved"), "the date is in the company zone");
     assert.equal(renderEmail("bug_report_resolved", { reportId: "r1", submittedAt: "2030-01-05T02:00:00Z" }, { ...SAMPLE_CTX, locale: "es" }).subject, "Se resolvió el problema que reportaste");

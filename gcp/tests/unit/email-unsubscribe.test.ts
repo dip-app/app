@@ -100,7 +100,7 @@ describe("GET and HEAD", () => {
     for (const method of ["GET", "HEAD"]) {
       const res = await handleUnsubscribe(deps, req(method, tok("challenges")));
       assert.equal(res.status, 200);
-      assert.match(res.body, /weekly theme reviews/);
+      assert.match(res.body, /challenge reviews/);
       assert.match(res.body, /<button class="primary" type="submit">Unsubscribe<\/button>/);
       assert.match(res.body, /name="scope" value="all"/);
       assert.match(res.body, /name="List-Unsubscribe" value="One-Click"/);
@@ -109,7 +109,7 @@ describe("GET and HEAD", () => {
     assert.equal(calls.length, 0);
   });
   test("category wording", async () => {
-    const words = { invites: "event invitations", event_updates: "event updates", reminders: "event reminders", challenges: "weekly theme reviews", discovery: "event suggestions", calendar_invites: "calendar invites", admin_suggestions: "weekly event ideas", weekly_themes: "weekly theme announcements", admin_digest: "daily roster digests", day_before_reminders: "event reminders the day before" };
+    const words = { invites: "event invitations", event_updates: "event updates", reminders: "event reminders", challenges: "challenge reviews", discovery: "event suggestions", calendar_invites: "calendar invites", admin_suggestions: "weekly event ideas", weekly_themes: "weekly challenge announcements", admin_digest: "daily roster digests", day_before_reminders: "event reminders the day before" };
     for (const c of EMAIL_CATEGORIES) {
       const res = await handleUnsubscribe(setup().deps, req("GET", tok(c)));
       assert.ok(res.body.includes(words[c]), c);

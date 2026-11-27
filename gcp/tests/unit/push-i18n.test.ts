@@ -83,7 +83,7 @@ describe("English output is byte-identical to the pre-i18n copy", () => {
     const theme = weeklyThemePush("c1", "ch1", "Photo week", END);
     assert.equal(theme.title, "New weekly challenge");
     assert.equal(theme.body, "Photo week");
-    assert.equal(weeklyThemePush("c1", "ch1", " ").body, "A new theme just started.");
+    assert.equal(weeklyThemePush("c1", "ch1", " ").body, "A new challenge just started.");
   });
 });
 
@@ -98,7 +98,7 @@ describe("Spanish builders", () => {
       [challengeReviewedPush("c1", "ch1", "s1", true, "Photo week"), challengeReviewedPush("c1", "ch1", "s1", true, "Photo week", "es"), "Tu participación fue aprobada", "Photo week"],
       [challengeReviewedPush("c1", "ch1", "s1", false, ""), challengeReviewedPush("c1", "ch1", "s1", false, "", "es"), "Piden cambios en tu participación", "Reto semanal"],
       [weeklyThemePush("c1", "ch1", "Photo week", END), weeklyThemePush("c1", "ch1", "Photo week", END, "es"), "Nuevo reto semanal", "Photo week"],
-      [weeklyThemePush("c1", "ch1", ""), weeklyThemePush("c1", "ch1", "", undefined, "es"), "Nuevo reto semanal", "Acaba de empezar un nuevo tema."],
+      [weeklyThemePush("c1", "ch1", ""), weeklyThemePush("c1", "ch1", "", undefined, "es"), "Nuevo reto semanal", "Acaba de empezar un nuevo reto."],
       [chatPush("c1", "e1", "Pizza night", "m1", "", "hi"), chatPush("c1", "e1", "Pizza night", "m1", "", "hi", "es"), "Pizza night", "Alguien: hi"],
     ];
     for (const [english, spanish, title, body] of pairs) {

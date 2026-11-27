@@ -203,7 +203,7 @@ export default function ImportPage() {
   const currentStep = STEPS.findIndex((step) => step.phases.includes(phase));
 
   return (
-    <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run">
+    <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run" back={{ href: "/members/", label: t("shell.nav.members") }}>
       <ol className="steps" aria-label={t("import.steps.label")}>
         {STEPS.map((step, i) => (
           <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>
@@ -380,7 +380,7 @@ export default function ImportPage() {
           )}
           {!finished && <InlineNotice>{t("import.done.stoppedEarly")}</InlineNotice>}
           <div className="actions">
-            <Button variant="primary" href="/roster/">{t("import.done.seeRoster")}</Button>
+            <Button variant="primary" href="/members/">{t("import.done.seeRoster")}</Button>
             {(failed.length > 0 || counts.invalid > 0) && (
               <Button onClick={() => downloadText("import-errors.csv", errorCsv([
         ...rows.filter((r) => r.action === "invalid"), ...failed.map((f) => ({ line: f.line, email: f.email, errors: [f.message ?? t("import.done.failed")] })),

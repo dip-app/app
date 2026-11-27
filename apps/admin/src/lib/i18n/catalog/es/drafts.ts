@@ -4,7 +4,7 @@ import type { drafts as source } from "../en/drafts";
 
 export const drafts: Record<keyof typeof source, string> = {
   "drafts.offer.event": "Tienes un borrador de evento sin terminar, guardado {ago}.",
-  "drafts.offer.theme": "Tienes un borrador de tema sin terminar, guardado {ago}.",
+  "drafts.offer.theme": "Tienes un borrador de reto sin terminar, guardado {ago}.",
   "drafts.offer.replaces": "También tienes un borrador anterior, guardado {ago}. Al restaurarlo se reemplaza lo que hay en esta página.",
   "drafts.agoNow": "hace un momento",
   "drafts.restore": "Restaurar borrador",
@@ -23,6 +23,6 @@ export const drafts: Record<keyof typeof source, string> = {
   "drafts.replace.body": "Al restaurar el borrador guardado {ago} se reemplaza lo que has escrito aquí.",
   "drafts.discard.title": "¿Descartar este borrador?",
   "drafts.discard.event": "El evento que empezaste y su borrador guardado se eliminarán.",
-  "drafts.discard.theme": "El tema que empezaste y su borrador guardado se eliminarán.",
+  "drafts.discard.theme": "El reto que empezaste y su borrador guardado se eliminarán.",
   "drafts.discard.confirm": "Descartar borrador",
 };

@@ -21,7 +21,7 @@ describe("theme preview", () => {
     render(<ThemePreview draft={draft} participantCount={3} />);
     expect(screen.getByLabelText("Preview")).toBeTruthy();
     expect(screen.getByText("Preview: This Week’s Challenge")).toBeTruthy();
-    expect(screen.getByText("Theme title")).toBeTruthy();
+    expect(screen.getByText("Challenge title")).toBeTruthy();
     expect(screen.getByText("+ 3 others participating")).toBeTruthy();
     expect(screen.getByText("3 workouts")).toBeTruthy();
   });
@@ -30,7 +30,7 @@ describe("theme preview", () => {
     setLocale("es");
     render(<ThemePreview draft={draft} participantCount={0} />);
     expect(screen.getByLabelText("Vista previa")).toBeTruthy();
-    expect(screen.getByText("Título del tema")).toBeTruthy();
+    expect(screen.getByText("Título del reto")).toBeTruthy();
     expect(screen.getByText("Sé el primero esta semana")).toBeTruthy();
     expect(screen.getByText("Semana")).toBeTruthy();
   });
@@ -49,7 +49,7 @@ describe("theme form messages", () => {
 
   it("keeps English strings byte for byte", () => {
     expect(t("themeForm.toast.saved", { title: "Yoga" })).toBe("Saved changes to “Yoga”.");
-    expect(t("themeForm.weeksHint", { zone: "Eastern Time" })).toBe("Themes run Monday 12:00 AM to Sunday 11:59 PM Eastern Time, for one or two weeks. Weeks that already have a theme are marked taken.");
+    expect(t("themeForm.weeksHint", { zone: "Eastern Time" })).toBe("Challenges run Monday 12:00 AM to Sunday 11:59 PM Eastern Time, for one or two weeks. Weeks that already have a challenge are marked taken.");
     expect(t("themeForm.counts", { joined: 4, completed: 2 })).toBe("4 joined · 2 completed. These counts update as members take part.");
   });
 });

@@ -158,7 +158,7 @@ describe("overlap, phases and week pickers", () => {
     expect(findOverlap(week("2026-11-23", 2), themes)?.id).toBe("later");
     expect(findOverlap(week("2026-11-09"), themes)?.id).toBe("this");
     expect(findOverlap(week("2026-11-09"), themes, "this")).toBeUndefined();
-    expect(overlapMessage(themes[1])).toBe("Overlaps “Fitness” (Nov 9 to Nov 15, 2026). Pick a week without a theme.");
+    expect(overlapMessage(themes[1])).toBe("Overlaps “Fitness” (Nov 9 to Nov 15, 2026). Pick a week without a challenge.");
   });
 
   it("classifies and sorts by window", () => {

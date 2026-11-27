@@ -1,8 +1,8 @@
-// English copy for autosaved form drafts (New event, New theme). US English, no em dashes. See docs/design/admin-drafts.md.
+// English copy for autosaved form drafts (New event, New challenge). US English, no em dashes. See docs/design/admin-drafts.md.
 
 export const drafts = {
   "drafts.offer.event": "You have an unfinished event draft, saved {ago}.",
-  "drafts.offer.theme": "You have an unfinished theme draft, saved {ago}.",
+  "drafts.offer.theme": "You have an unfinished challenge draft, saved {ago}.",
   "drafts.offer.replaces": "You also have an older draft, saved {ago}. Restoring it replaces what is on this page.",
   "drafts.agoNow": "a moment ago",
   "drafts.restore": "Restore draft",
@@ -21,6 +21,6 @@ export const drafts = {
   "drafts.replace.body": "Restoring the draft saved {ago} replaces what you have entered here.",
   "drafts.discard.title": "Discard this draft?",
   "drafts.discard.event": "The event you started and its saved draft will be deleted.",
-  "drafts.discard.theme": "The theme you started and its saved draft will be deleted.",
+  "drafts.discard.theme": "The challenge you started and its saved draft will be deleted.",
   "drafts.discard.confirm": "Discard draft",
 } as const;

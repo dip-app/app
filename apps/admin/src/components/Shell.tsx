@@ -32,26 +32,21 @@ interface Props {
   meta?: React.ReactNode;
 }
 
-interface NavItem { href: string; /** Catalog key, or null for the Dipbot item (named by the AI copy). */ labelKey: MessageKey | null; d: string; requires?: Capability; badge?: "bugReports" }
+interface NavItem { href: string; /** Catalog key, or null for the Dipbot item (named by the AI copy). */ labelKey: MessageKey | null; d: string; requires?: Capability; badge?: "bugReports"; /** Pages reached from this item that have no nav entry of their own (Import from Members). */ also?: string[] }
 interface NavGroup { id: string; headingKey: MessageKey; items: NavItem[]; /** Home has no visible heading; the group is still labeled for screen readers. */ headless?: boolean }
 
-// Grouped like most admin tools: what you run, what you review, who is involved, what happened. Items a role can't use are hidden.
+// Grouped like most admin tools: what you run, who is involved, what you support, what happened. Items a role can't use are hidden.
 const NAV: NavGroup[] = [
   { id: "home", headingKey: "shell.group.home", headless: true, items: [
     { href: "/overview/", labelKey: "shell.nav.overview", d: "M4 13.5h4V20H4zM10 4h4v16h-4zM16 9h4v11h-4z", requires: "insights.view" },
   ] },
   { id: "program", headingKey: "shell.group.program", items: [
     { href: "/events/", labelKey: "shell.nav.events", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", requires: "events.manage" },
+    { href: "/challenges/", labelKey: "shell.nav.challenges", d: "M12 3.5l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.7 5.4-.7z" },
     { href: "/ideas/", labelKey: null, d: "M7 19.5a4.5 4.5 0 0 1-.9-8.9A6 6 0 0 1 17.4 11.4 4.1 4.1 0 0 1 17 19.5zM19.6 2.4l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z", requires: "ai.generate" },
   ] },
-  { id: "challenges", headingKey: "shell.group.challenges", items: [
-    { href: "/themes/", labelKey: "shell.nav.themes", d: "M4 5.5h16V20H4zM4 10h16M8 3v4M16 3v4" },
-    { href: "/challenges/", labelKey: "shell.nav.challenges", d: "M12 3.5l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.7 5.4-.7z", requires: "challenges.review" },
-  ] },
   { id: "people", headingKey: "shell.group.people", items: [
-    { href: "/members/", labelKey: "shell.nav.members", d: "M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.7a3.5 3.5 0 0 1 0 6.6", requires: "members.view" },
-    { href: "/roster/", labelKey: "shell.nav.roster", d: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01", requires: "roster.manage" },
-    { href: "/import/", labelKey: "shell.nav.import", d: "M12 4v11m0 0-4-4m4 4 4-4M5 19h14", requires: "import.run" },
+    { href: "/members/", labelKey: "shell.nav.members", d: "M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.7a3.5 3.5 0 0 1 0 6.6", requires: "members.view", also: ["/import/"] },
   ] },
   { id: "support", headingKey: "shell.group.support", items: [
     { href: "/bug-reports/", labelKey: "shell.nav.bugReports", d: "M9 9V7a3 3 0 0 1 6 0v2M7 9h10v5a5 5 0 0 1-10 0zM4 13h3M17 13h3M5 19l2.5-2.2M19 19l-2.5-2.2M12 9v10", requires: "bugreports.manage", badge: "bugReports" },
@@ -200,7 +195,7 @@ export function Shell({ title: pageTitle, subtitle, action, children, requires, 
             <div className="nav-group" key={group.id} role="group" aria-label={t(group.headingKey)}>
               {!group.headless && <p className="nav-heading" aria-hidden>{t(group.headingKey)}</p>}
               {group.items.map((item) => (
-                <Link key={item.href} href={item.href} className="nav-item" aria-current={isWithin(pathname, item.href)} onClick={() => { if (open) close(false); }}>
+                <Link key={item.href} href={item.href} className="nav-item" aria-current={isWithin(pathname, item.href) ?? (item.also?.some((href) => isWithin(pathname, href)) ? "true" : undefined)} onClick={() => { if (open) close(false); }}>
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d={item.d} /></svg>
                   <span className="label">{item.labelKey ? t(item.labelKey) : tAi("nav.label")}</span>
                   {item.badge === "bugReports" && bugBadge && bugBadge.count > 0 && (

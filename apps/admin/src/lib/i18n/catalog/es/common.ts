@@ -6,6 +6,7 @@ export const common: Record<keyof typeof source, string> = {
   "common.tryAgain": "Intentar de nuevo",
   "common.goBack": "Volver",
   "common.cancel": "Cancelar",
+  "common.close": "Cerrar",
   "common.saving": "Guardando…",
   "common.loadMore": "Cargar más",
   "common.loadingMore": "Cargando más…",

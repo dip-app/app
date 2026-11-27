@@ -105,7 +105,7 @@ export function parseChallengeDraft(data: unknown): ParsedChallengeDraft {
   const startDate = utcInstant(record, "startDate");
   const endDate = utcInstant(record, "endDate");
   if (endDate.getTime() <= startDate.getTime()) fail(["endDate"], "The end must be after the start.");
-  if (endDate.getTime() - startDate.getTime() > CHALLENGE_LIMITS.maxSpanMs) fail(["endDate"], "A theme can last at most 14 days.");
+  if (endDate.getTime() - startDate.getTime() > CHALLENGE_LIMITS.maxSpanMs) fail(["endDate"], "A challenge can last at most 14 days.");
 
   const pointsReward = record.pointsReward;
   if (!Number.isInteger(pointsReward) || (pointsReward as number) < 0 || (pointsReward as number) > CHALLENGE_LIMITS.pointsRewardMax) fail(["pointsReward"]);

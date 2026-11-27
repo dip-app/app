@@ -3,46 +3,23 @@
 import type { roster as source } from "../en/roster";
 
 export const roster: Record<keyof typeof source, string> = {
-  "roster.title": "Lista de personal",
-  "roster.subtitle": "Todas las personas de tu empresa. Las personas invitadas se agregaron con anticipación y reciben su rol y sus equipos al iniciar sesión; cualquier persona con un correo de la empresa puede unirse.",
   "roster.import": "Importar personas",
-  "roster.loading": "Cargando la lista de personal",
-  "roster.tableLabel": "Lista de personal",
-  "roster.filterLabel": "Filtrar la lista de personal",
 
   // Filter tabs and state chips
-  "roster.filter.all": "Todos",
   "roster.state.invited": "Invitado",
   "roster.state.active": "Activo",
   "roster.state.deactivated": "Desactivado",
   "roster.state.revoked": "Revocado",
 
-  // Search
-  "roster.search.label": "Buscar por nombre o correo",
-  "roster.search.placeholder": "Buscar por nombre o correo",
-
   // Unlisted members banner
-  "roster.unlisted.headline": "{count, plural, one {# persona inició sesión pero no está en la lista de personal.} other {# personas iniciaron sesión pero no están en la lista de personal.}}",
-  "roster.unlisted.detail": "Se unieron antes de que la lista incluyera a todos. Al agregarlas, siguen activas con el mismo rol y los mismos equipos.",
-  "roster.unlisted.add": "Agregar miembros existentes",
+  "roster.unlisted.headline": "{count, plural, one {# miembro aún no está en la lista de personal.} other {# miembros aún no están en la lista de personal.}}",
+  "roster.unlisted.detail": "Iniciaron sesión antes de que DIP llevara la lista. Agregarlos no cambia nada para ellos: siguen activos con el mismo rol y los mismos equipos.",
+  "roster.unlisted.add": "Agregarlos a la lista",
   "roster.unlisted.checking": "Revisando {count}…",
-
-  // Empty states
-  "roster.empty.rosterEmpty": "La lista de personal está vacía",
-  "roster.empty.noMatches": "Sin coincidencias",
-  "roster.empty.noInvites": "No hay invitaciones pendientes",
-  "roster.empty.noPeople": "No hay personas",
-  "roster.empty.noActive": "No hay personas activas",
-  "roster.empty.noDeactivated": "No hay personas desactivadas",
-  "roster.empty.noRevoked": "No hay personas revocadas",
-  "roster.empty.importBody": "Importa una hoja de cálculo para agregar personas antes de que inicien sesión.",
-  "roster.empty.invitedBody": "Las personas que importes y que aún no hayan iniciado sesión aparecerán aquí como invitadas.",
-  "roster.empty.searchBody": "Prueba con otro nombre o correo, o borra la búsqueda.",
-  "roster.empty.groupBody": "Por ahora no hay nadie en este grupo.",
 
   // Result count
   "roster.count.showingOf": "Mostrando {shown} de {total, plural, one {# persona} other {# personas}}",
-  "roster.count.matchesSoFar": "{count} coincidencias hasta ahora",
+  "roster.count.matchesSoFar": "Mostrando los primeros {count}",
   "roster.count.matches": "{count, plural, one {# persona coincide} other {# personas coinciden}}",
 
   // Table
@@ -75,8 +52,8 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.toast.revoked": "Se revocó la invitación de {email}. No recibirá el rol ni los equipos definidos aquí cuando se registre.",
   "roster.toast.added": "{count, plural, one {Se agregó # persona a la lista de personal.} other {Se agregaron # personas a la lista de personal.}}",
   "roster.toast.copied": "Mensaje de invitación copiado. Envíaselo a {name} por tu cuenta.",
-  "roster.toast.addedPerson": "Se agregó a {name} a la lista de personal como invitado. Usa Obtener mensaje de invitación en su fila para enviarle la invitación.",
-  "roster.toast.addedPersonEmail": "Se agregó a {name} a la lista de personal como invitado. Usa Enviar invitación por correo en su fila cuando quieras.",
+  "roster.toast.addedPerson": "Se agregó a {name} como invitado. Usa Obtener mensaje de invitación en su fila para enviarle la invitación.",
+  "roster.toast.addedPersonEmail": "Se agregó a {name} como invitado. Usa Enviar invitación por correo en su fila cuando quieras.",
   "roster.toast.addedEmailed": "Se agregó a {name} y se le envió una invitación por correo.",
   "roster.toast.emailed": "Se envió la invitación a {email}. Llegará en unos minutos.",
 
@@ -95,7 +72,7 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.add.busy": "Agregando…",
   "roster.add.nameRequired": "Agrega su nombre.",
   "roster.add.checkDetails": "Revisa los datos de arriba.",
-  "roster.add.exists": "Ese correo ya está en la lista de personal. Búscalo para ver o cambiar su entrada.",
+  "roster.add.exists": "Ya hay alguien con ese correo. Búscalo en Miembros para ver su entrada.",
 
   // Revoke dialog
   "roster.revoke.title": "¿Revocar la invitación de {name}?",
@@ -128,4 +105,10 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.email.sentBefore": "Ya se envió {count}×. Última vez: {date}",
   "roster.email.copyInstead": "¿Prefieres enviarla tú?",
   "roster.sub.added": "Agregado el {date}",
+
+  "roster.detail.email": "Correo",
+  "roster.detail.department": "Departamento",
+  "roster.detail.jobTitle": "Puesto",
+  "roster.detail.invitedNote": "Aún no ha iniciado sesión. Recibe este rol y estos equipos al iniciar sesión con este correo.",
+  "roster.detail.revokedNote": "Esta invitación se revocó. Invítalo de nuevo para que reciba este rol y estos equipos al iniciar sesión.",
 };

@@ -54,7 +54,7 @@ struct DIPChallengeSubmissionSection: View {
         statusPill(state)
         if case .rejected(_, let canResubmit) = state, let note = entry.reviewNote {
             organizerNote(note)
-            Text(canResubmit ? String(localized: "challenge.entry.rejected.resubmit", defaultValue: "Update your entry and send it again.", comment: "Challenge entry rejected, resubmission still possible") : String(localized: "challenge.entry.rejected.ended", defaultValue: "This theme has ended.", comment: "Challenge entry rejected and the weekly theme is over"))
+            Text(canResubmit ? String(localized: "challenge.entry.rejected.resubmit", defaultValue: "Update your entry and send it again.", comment: "Challenge entry rejected, resubmission still possible") : String(localized: "challenge.entry.rejected.ended", defaultValue: "This challenge has ended.", comment: "Challenge entry rejected and the weekly challenge is over"))
                 .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body)).foregroundStyle(ink)
                 .accessibilityIdentifier("submission.detail")
         } else {

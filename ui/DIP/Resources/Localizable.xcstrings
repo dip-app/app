@@ -6373,13 +6373,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Weekly theme"
+            "value" : "Weekly challenge"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tema semanal"
+            "value" : "Reto semanal"
           }
         },
         "tlh" : {
@@ -6919,19 +6919,19 @@
       }
     },
     "challenge.entry.rejected.ended" : {
-      "comment" : "Challenge entry rejected and the weekly theme is over",
+      "comment" : "Challenge entry rejected and the weekly challenge is over",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This theme has ended."
+            "value" : "This challenge has ended."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tema ya terminó."
+            "value" : "Este reto ya terminó."
           }
         },
         "tlh" : {

@@ -2,7 +2,7 @@ TE DAMOS LA BIENVENIDA A DIP
 
 ¡Hola, Sam! Te uniste a DIP en Acme Robotics. Así puedes empezar:
 
-- Planea eventos y temas semanales en el portal de administración.
+- Planea eventos y retos semanales en el portal de administración.
 - Únete a un evento que te guste o invita a un compañero.
 - Elige tus intereses en Perfil para ver primero los eventos que van contigo.
 

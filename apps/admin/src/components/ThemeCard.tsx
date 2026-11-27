@@ -17,17 +17,17 @@ export function ThemeCard({ theme, phase, canEdit = true }: { theme: WeeklyTheme
           <ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art" />
           <div className="media-text">
             {canEdit
-              ? <Link className="row-title" href={`/themes/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.themes.row.editWindowAria", { title: theme.title, window })} title={t("challenges.themes.row.editTitle")}>{theme.title}</Link>
+              ? <Link className="row-title" href={`/challenges/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.themes.row.editWindowAria", { title: theme.title, window })} title={t("challenges.themes.row.editTitle")}>{theme.title}</Link>
               : <span className="row-title">{theme.title}</span>}
           </div>
         </div>
       </td>
       <td className="nowrap" data-label={t("challenges.themes.table.week")}>{window}</td>
-      <td className="mid-hide" data-label={t("challenges.themes.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
+      <td className="mid-hide nowrap" data-label={t("challenges.themes.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
       <td className="mid-hide" data-label={t("challenges.themes.table.reward")}>{formatReward(theme.pointsReward)}</td>
       <td className="num" data-label={t("challenges.themes.table.participation")}>{theme.completedCount > 0 ? t("challenges.themes.row.joinedCompleted", { joined: theme.participantCount, completed: theme.completedCount }) : t("challenges.themes.row.joined", { count: theme.participantCount })}</td>
       <td data-label={t("challenges.themes.table.status")}><Chip tone={phase === "current" ? "ok" : undefined}>{phaseLabel(phase)}</Chip></td>
-      <td className="right">{canEdit && <span className="row-actions"><Button size="sm" href={`/themes/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.themes.row.editAria", { title: theme.title })}>{t("challenges.themes.row.edit")}</Button></span>}</td>
+      <td className="right">{canEdit && <span className="row-actions"><Button size="sm" href={`/challenges/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.themes.row.editAria", { title: theme.title })}>{t("challenges.themes.row.edit")}</Button></span>}</td>
     </tr>
   );
 }

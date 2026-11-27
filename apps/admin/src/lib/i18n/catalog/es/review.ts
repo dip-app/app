@@ -21,8 +21,8 @@ export const review: Record<keyof typeof source, string> = {
   "review.empty.approved.title": "Aún no hay nada aprobado",
   "review.empty.approved.body": "Aquí se listan las participaciones aprobadas, con los puntos que ganaron.",
 
-  "review.error.noTheme": "No se seleccionó ningún tema semanal. Elige uno de la lista de retos.",
-  "review.error.themeMissing": "Ese tema semanal no existe.",
+  "review.error.noTheme": "No se seleccionó ningún reto semanal. Elige uno de la lista de retos.",
+  "review.error.themeMissing": "Ese reto semanal no existe.",
   "review.error.loadFailed": "No se pudieron cargar las participaciones. Revisa tu conexión e inténtalo de nuevo.",
   "review.backToChallenges": "Volver a retos",
 

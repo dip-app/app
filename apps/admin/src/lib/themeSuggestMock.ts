@@ -1,4 +1,4 @@
-// Preview data for Suggest theme (suggestThemeV1). `?themeSuggest=` picks a scenario for design review:
+// Preview data for Suggest challenge (suggestThemeV1). `?themeSuggest=` picks a scenario for design review:
 // `slow` (6 s), `error` (the server could not answer), `busy` (unavailable), `limit` (daily cap), `fallback` (catalog only,
 // free), `long` (the longest titles, descriptions and why lines the server allows). `?ai=nocredits` is the out-of-credits state.
 // Mock content stands in for model output: English, and Spanish when the request asks for it.
@@ -17,7 +17,7 @@ type Row = Omit<ThemeSuggestion, "id" | "weekStart" | "reasonBasis" | "source">;
 const EN: Row[] = [
   { title: "Recipe Swap Week", themeKey: "food", tagIds: ["tag-food", "tag-cooking", "tag-social"], fitLabel: "perfect",
     description: "Cook something from a coworker's favorite recipe and share one of yours. Post a photo of the dish and its name.",
-    why: ["Food & Drink is a popular interest here (20+ members).", "No Food & Drink theme in the last 8 weeks."] },
+    why: ["Food & Drink is a popular interest here (20+ members).", "No Food & Drink challenge in the last 8 weeks."] },
   { title: "Lunch Walk Club", themeKey: "fitness", tagIds: ["tag-fitness", "tag-outdoors"], fitLabel: "great",
     description: "Take a 20 minute walk at lunch on three days this week, alone or with a coworker. Post a photo from your route.",
     why: ["Fitness is a popular interest here (20+ members)."] },
@@ -32,7 +32,7 @@ const EN: Row[] = [
 const ES: Row[] = [
   { title: "Semana de recetas compartidas", themeKey: "food", tagIds: ["tag-food", "tag-cooking", "tag-social"], fitLabel: "perfect",
     description: "Cocina algo de la receta favorita de un compañero y comparte una tuya. Publica una foto del plato y su nombre.",
-    why: ["Comida y bebida es un interés popular aquí (20+ miembros).", "No hubo un tema de Comida y bebida en las últimas 8 semanas."] },
+    why: ["Comida y bebida es un interés popular aquí (20+ miembros).", "No hubo un reto de Comida y bebida en las últimas 8 semanas."] },
   { title: "Club de caminatas al mediodía", themeKey: "fitness", tagIds: ["tag-fitness", "tag-outdoors"], fitLabel: "great",
     description: "Camina 20 minutos al mediodía tres días esta semana, solo o con un compañero. Publica una foto de tu ruta.",
     why: ["Fitness es un interés popular aquí (20+ miembros)."] },
@@ -48,8 +48,8 @@ const LONG: Row = {
   title: "Neighborhood Volunteering and Kindness Week Together", themeKey: "volunteering", tagIds: ["tag-volunteering", "tag-social", "tag-outdoors", "tag-wellness"], fitLabel: "great",
   description: "Spend at least thirty minutes this week helping out in your neighborhood: pick up litter on a walk, drop off warm clothes or books at a donation point, help a neighbor carry groceries or volunteer an hour at a local food bank. Post a photo of what you did or a few words about it, without names, and cheer on what others share.",
   why: [
-    "Volunteering is a growing interest here, and past giving-back themes kept members posting all week (10-19).",
-    "No Volunteering theme in the last 8 weeks, so this adds variety after the recent fitness and food themes.",
+    "Volunteering is a growing interest here, and past giving-back challenges kept members posting all week (10-19).",
+    "No Volunteering challenge in the last 8 weeks, so this adds variety after the recent fitness and food challenges.",
     "Outdoor parts work in most weather, and indoor options like the food bank keep it open to everyone.",
   ],
 };
@@ -58,8 +58,8 @@ const LONG_ES: Row = {
   title: "Semana de voluntariado y amabilidad en el vecindario", themeKey: "volunteering", tagIds: ["tag-volunteering", "tag-social", "tag-outdoors", "tag-wellness"], fitLabel: "great",
   description: "Dedica al menos treinta minutos esta semana a ayudar en tu vecindario: recoge basura en una caminata, lleva ropa abrigada o libros a un punto de donación, ayuda a un vecino con las compras o colabora una hora en un banco de alimentos. Publica una foto de lo que hiciste o unas palabras, sin nombres, y anima lo que comparten los demás.",
   why: [
-    "El voluntariado es un interés en aumento aquí y los temas solidarios mantuvieron activos a los miembros (10-19).",
-    "No hubo un tema de Voluntariado en las últimas 8 semanas, así que aporta variedad tras fitness y comida.",
+    "El voluntariado es un interés en aumento aquí y los retos solidarios mantuvieron activos a los miembros (10-19).",
+    "No hubo un reto de Voluntariado en las últimas 8 semanas, así que aporta variedad tras fitness y comida.",
     "Las partes al aire libre funcionan casi con cualquier clima y las opciones bajo techo lo abren a todos.",
   ],
 };
