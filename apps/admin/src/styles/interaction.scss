@@ -88,6 +88,9 @@ $t-color: background-color var(--dur-fast) var(--ease-standard), box-shadow var(
   .table-wrap { transition: opacity var(--dur-fast) var(--ease-standard); }
 }
 
+// The attendance button swaps "Check in" and "Undo" while its spinner runs; one width for both keeps the row still.
+.content .attendance .pill-btn.small { min-width: 84px; }
+
 // ---------- Sidebar (dark): same recipe on ink
 .nav-item, .menu-btn, .sidebar .who { transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard); }
 .nav-item:active, .menu-btn:active, .sidebar .who:active { background: rgba(255, 255, 255, .22); transition-duration: var(--dur-press); }

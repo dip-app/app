@@ -139,3 +139,46 @@ Review: one fresh Opus reviewer round, PASS with no P1. Fixed from it: the focus
 at about 2.3:1 (an older `opacity: .55` rule); now 4.6:1. Accepted as designed: 140 ms exits (quicker than the
 150 ms floor on purpose), small buttons not scaling on press (documented above). Not changed: the tab focus ring
 (unchanged from before, owned with the tab layout).
+
+### Wave 2: data cache and optimistic updates (PR "Admin data cache and optimistic check-in")
+
+How the cache works (`src/lib/queryCache.ts`, used by `useLoad` and `usePaged`):
+- Stale-while-revalidate in memory for the session. A screen seen before renders its last answer at once and
+  refreshes behind it (`refreshing`, never `loading`, so tables are not dimmed). Readers of one key mounted together
+  share one request; answers younger than 4 s are not fetched again.
+- Scope: user, company, role and language. Any change empties it; sign-out empties it; an answer that lands after the
+  scope changed, after a write, or after a newer request for the same key is never stored.
+- Keys: the hook key plus the loader's source text. A key must name everything the loader reads (ids included).
+- Writes: every successful write (the api is wrapped once in `AppProvider`) drops entries no screen is showing, so a
+  just-saved edit never shows its old version on the next page, and marks the ones on screen stale.
+- Failures: a refused refresh (`permission-denied`, `unauthenticated`) clears the data and shows the load error; any
+  other failed refresh keeps the data and shows one error toast. A failed first load is the page's load error as before.
+- `reload()` now refreshes in place (data stays, no dim); `setData` and `mutate` write through to the cache.
+
+Optimistic updates: attendance check-in and its Undo change the row at once (a pending value beside the data, so an
+older refresh can't flip it back), the button shows the spinner and keeps focus, one refresh follows the last request,
+and a refused request rolls the row back with the error. The toast still waits for the server, which decides whether
+points were awarded. Approve and reject already removed the row from the server's answer and moved focus to the next
+person; role and team saves stay server-confirmed (the server enforces last-admin rules), and email switches were
+already optimistic. Removing an attendee removes the row at once and moves focus to the next row's Remove (or the
+search box). Skeleton minimum hold: 300 to 200 ms (the 140 ms reveal makes a shorter hold read as calm).
+
+| Measure (mock backend answering in 300 ms, 4x CPU) | Before | After |
+| --- | --- | --- |
+| Revisit Events / Overview / Members / Events (click to content) | 530 / 537 / 537 / 514 ms, skeleton every time | 68 / 82 / 82 / 67 ms, no skeleton |
+| First visit Events / Members / Themes | 575 / 530 / 530 ms | 511 / 445 / 437 ms |
+| Check-in: row shows the new state (1 s backend) | after the round trip and a full reload (over 1.3 s) | first frame captured, about 40 ms |
+| Focus after check-in / after removing an attendee | dropped to the page (button disabled) / the page | stays on the row's button / next row's Remove |
+
+Review: three fresh Opus rounds. Round 1 FAIL (queued Load more paged from the old cursor; an older refresh could
+flip an overlapping check-in back; a just-saved edit showed its old version on the list; silent refresh failures,
+including refused ones). Round 2 FAIL (paged lists kept rows after a refused refresh; a failed final refresh dropped
+pending values; reads in flight during a write could store old data). Round 3 FAIL with one P1 (a paged answer landing
+after sign-out could be stored for the next person), fixed with a test; its remaining notes are accepted or open:
+the table columns are 11 to 20 px wider than before because the attendance button now has one width for both labels
+(steady during check-in, measured within the same build); a pending value whose final refresh failed shows until the
+next refresh; the check-in button changes from filled to outlined under its spinner; screen readers hear the toast,
+not the badge change; the `generations` map is not pruned during a session.
+
+Open, deferred on purpose: prefetch on hover (a route-to-loader registry would duplicate the inline loaders; Next
+already prefetches route code), inline confirmation instead of a modal (page structure, the structure owner's call).
