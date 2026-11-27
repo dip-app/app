@@ -57,7 +57,7 @@ function Events() {
           <>
             <Tabs idBase="events" label={t("events.list.filterLabel")} value={filter} onChange={(id) => setQuery({ filter: id })}
               items={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), count: events.filter((event) => classify(event) === item.id).length }))} />
-            <div {...tabPanelProps("events", filter)}>
+            <div key={filter} {...tabPanelProps("events", filter)}>
               {inTab.length > 0 && (
                 <div className="list-toolbar">
                   <SearchBox shortcut id="events-search" value={search} onChange={(v) => setQuery({ q: v })} label={t("events.list.search.label")} placeholder={t("events.list.search.placeholder")} />

@@ -105,7 +105,7 @@ function Members() {
       {clearable && (
         <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t("members.filter.clear")}</Button></div>
       )}
-      <div {...tabPanelProps("members", status)}>
+      <div key={status} {...tabPanelProps("members", status)}>
         {list.error && list.items.length === 0 ? <LoadError error={list.error} onRetry={list.reload} />
           : firstLoad || holdLoad ? <Loading label={t("members.loading")} layout="members" />
           : list.items.length === 0 ? (

@@ -75,6 +75,15 @@ layout, sticky form footer, settings layout) is the next PR.
 
 ## Handoff
 
+- Rebased on main after #356 (admin motion and interaction states). Conflicts in `app/layout.tsx` (both stylesheets kept:
+  structure.scss loads before interaction.scss so states layer over layout) and `Ui.tsx` LoadMore (their spinner button
+  kept, the `hideCount` option kept). Targeted vitest re-run after the rebase: 54 files, 445 tests pass.
+- From the interaction owner's requests (docs/design/polish-2026-11/admin-interaction.md): the Events, Members, Roster
+  and Weekly themes tab panels are now keyed by the selected tab, so their shared reveal can fade a new panel in (the
+  review and bug report panels are not keyed: they keep the selection and scroll). Not done here: the layout shift on
+  Account and Roster (tab counts arriving) and the catalogs and cover library loaded on every page; they are listed as
+  open for the next structure pass.
+
 - Wave 3 (next PR): bug reports rows and phone master/detail (S2, S17), sticky form footer on the event and theme
   forms (S10), member detail layout (S11), settings two-column layout (S23).
 - Later (need a decision or a backend change): merge Roster into Members and Challenges into Weekly themes (S9),

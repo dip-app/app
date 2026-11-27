@@ -168,7 +168,7 @@ function Roster() {
         items={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), ...(counts ? { count: number(counts[item.id]) } : {}) }))} />
       <SearchBox shortcut id="roster-search" value={search} onChange={(v) => setQs({ q: v })} label={t("roster.search.label")} placeholder={t("roster.search.placeholder")} />
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
-      <div {...tabPanelProps("roster", filter)}>
+      <div key={filter} {...tabPanelProps("roster", filter)}>
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
         : (list.loading && empty) || hold ? <Loading label={t("roster.loading")} layout="roster" />
         : empty ? (
