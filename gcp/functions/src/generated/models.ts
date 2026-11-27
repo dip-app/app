@@ -832,6 +832,12 @@ export interface ListMembersResponse {
   members: Array<AdminMemberSummary>;
   nextPageToken?: string;
   total?: number;
+  statusCounts?: MemberStatusCounts;
+}
+
+export interface MemberStatusCounts {
+  active: number;
+  deactivated: number;
 }
 
 export interface GetMemberRequest {
@@ -1053,6 +1059,7 @@ export interface ListChallengeSubmissionsResponse {
   contractVersion: number;
   submissions: Array<ChallengeSubmission>;
   nextCursor: string | null;
+  total?: number;
 }
 
 export interface SendInviteRequest {
@@ -1172,6 +1179,9 @@ export interface ListRosterRequest {
   companyId: string;
   state?: "invited" | "active" | "deactivated" | "revoked";
   query?: string;
+  role?: "member" | "organizer" | "admin";
+  teamId?: string;
+  workLocation?: string;
   pageSize?: number;
   pageToken?: string;
 }

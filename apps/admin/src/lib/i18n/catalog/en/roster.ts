@@ -32,6 +32,7 @@ export const roster = {
   "roster.table.resentLast": "Message shared {count}×, last {date}",
   "roster.table.emailed": "Invite emailed {count}×",
   "roster.table.emailedLast": "Invite emailed {count}×, last {date}",
+  "roster.table.revokedOn": "Revoked {date}",
 
   // Row actions. DIP sends no email: the action opens the invite message for the admin to send (and records it).
   "roster.action.resend": "Get invite message",

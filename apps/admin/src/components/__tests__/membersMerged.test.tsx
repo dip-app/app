@@ -13,7 +13,8 @@ const invite = (entryId: string, displayName: string, state = "invited") => ({
   invitedAt: "2026-11-02T00:00:00.000Z", inviteEmailCount: 1, lastInviteEmailAt: "2026-11-03T00:00:00.000Z",
 }) as Record<string, unknown>;
 
-const state = { role: "admin", status: "all" };
+const state: { role: string; status: string; extra: Record<string, string> } = { role: "admin", status: "all", extra: {} };
+const setQs = vi.fn();
 const api = {
   companyInfo: vi.fn(),
   listMembersPage: vi.fn(),
@@ -30,7 +31,7 @@ vi.mock("@/components/AppProvider", () => ({ useApp: () => ({ api, session: { ui
 vi.mock("@/components/Shell", () => import("./shellMock"));
 vi.mock("@/lib/useQueryState", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/useQueryState")>();
-  return { ...real, useQueryState: (defaults: Record<string, string>) => [{ ...defaults, status: state.status }, vi.fn()] };
+  return { ...real, useQueryState: (defaults: Record<string, string>) => [{ ...defaults, status: state.status, ...state.extra }, setQs] };
 });
 
 import { resetCache } from "@/lib/queryCache";
@@ -46,11 +47,12 @@ beforeEach(() => {
   api.listMembersPage.mockImplementation(async (q: { status: string }) => {
     const all = [member("m1", "Bea Active"), member("m2", "Cy Gone", "deactivated")];
     const rows = all.filter((m) => q.status === "all" || m.status === q.status);
-    return { members: rows, nextCursor: null, total: all.length };
+    // Status counts come from the server, independent of the roster (Cy never got a roster entry).
+    return { members: rows, nextCursor: null, total: all.length, statusCounts: { active: 1, deactivated: 1 } };
   });
   api.listRosterPage.mockImplementation(async (q: { state: string }) => {
     const rows = [invite("r1", "Dee Invited"), invite("r2", "Eli Revoked", "revoked")].filter((r) => q.state === "all" || r.state === q.state);
-    return { rows, nextCursor: null, counts: { all: 4, invited: 1, active: 1, deactivated: 1, revoked: 1 }, inviteEmail: true };
+    return { rows, nextCursor: null, counts: { all: 3, invited: 1, active: 1, deactivated: 0, revoked: 1 }, inviteEmail: true };
   });
   api.sendInviteEmail.mockResolvedValue({ inviteEmailCount: 2, lastInviteEmailAt: "2026-11-20T00:00:00.000Z" });
 });
@@ -60,6 +62,7 @@ afterEach(() => {
   setLocale("en");
   state.role = "admin";
   state.status = "all";
+  state.extra = {};
   vi.clearAllMocks();
 });
 
@@ -86,8 +89,9 @@ describe("Members (merged with the roster)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Send an invite email to Dee Invited" })).toBeTruthy());
     expect(screen.getByRole("button", { name: "Revoke invite for Dee Invited" })).toBeTruthy();
     expect(screen.queryByText("Bea Active")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Export CSV" })).toBeNull();
-    expect(api.listRosterPage).toHaveBeenCalledWith({ query: "", state: "invited" }, null, 25);
+    // Export stays in the header on every tab (it exports this tab's list), so the header never changes height.
+    expect(within(screen.getByTestId("page-actions")).getByRole("button", { name: "Export CSV" })).toBeTruthy();
+    expect(api.listRosterPage).toHaveBeenCalledWith({ query: "", state: "invited", role: "all", teamId: "all", workLocation: "all" }, null, 25);
 
     fireEvent.click(document.querySelector("button.person") as HTMLElement);
     const dialog = await screen.findByRole("dialog");
@@ -113,6 +117,42 @@ describe("Members (merged with the roster)", () => {
     expect(screen.queryByRole("tab", { name: /Revoked/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Add person" })).toBeNull();
     expect(api.listRosterPage).not.toHaveBeenCalled();
+  });
+
+  it("shows every count at once from the server, before any list is read to the end", async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    const held = new Promise((resolve) => { finish = resolve; });
+    api.listRosterPage.mockImplementationOnce(async () => { await held; return { rows: [], nextCursor: null, counts: { all: 3, invited: 1, active: 1, deactivated: 0, revoked: 1 }, inviteEmail: true }; });
+    render(<MembersPage />);
+    await waitFor(() => expect(screen.getByText("Bea Active")).toBeTruthy());
+    // The roster counts are still loading: no tab shows a count yet (they never arrive one by one).
+    expect(screen.getByRole("tab", { name: "All" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Active" })).toBeTruthy();
+    finish(null);
+    await waitFor(() => expect(screen.getByRole("tab", { name: "All (3)" })).toBeTruthy());
+    // Deactivated is the members callable's count (1), not the roster's joined entries (0).
+    expect(screen.getByRole("tab", { name: "Deactivated (1)" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Active (1)" })).toBeTruthy();
+  });
+
+  it("keeps the invited section under a role, team or location filter (the roster callable filters too)", async () => {
+    state.extra = { role: "member", location: "Lisbon" };
+    render(<MembersPage />);
+    await waitFor(() => expect(screen.getByText("Dee Invited")).toBeTruthy());
+    expect(api.listRosterPage).toHaveBeenCalledWith({ query: "", state: "invited", role: "member", teamId: "all", workLocation: "Lisbon" }, null, 25);
+    // The filters stay on the invitation tabs too.
+    cleanup();
+    state.status = "invited";
+    render(<MembersPage />);
+    await waitFor(() => expect(screen.getByText("Dee Invited")).toBeTruthy());
+    expect(screen.getByLabelText("Role")).toBeTruthy();
+    expect(screen.getByLabelText("Work location")).toBeTruthy();
+  });
+
+  it("an old Roster link redirected by hosting picks its view from `filter`, then drops it", async () => {
+    state.extra = { filter: "revoked" };
+    render(<MembersPage />);
+    await waitFor(() => expect(setQs).toHaveBeenCalledWith({ status: "revoked", filter: "" }));
   });
 
   it("reads in Spanish", async () => {

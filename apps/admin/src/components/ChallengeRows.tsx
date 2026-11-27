@@ -1,5 +1,5 @@
 // @i18n-migrated
-import { type ThemePhase, type WeeklyTheme, formatGoal, formatReward, phaseLabel } from "@/lib/challenge";
+import { type ThemePhase, type WeeklyTheme, formatGoal, formatReward } from "@/lib/challenge";
 import { formatNumber, t } from "@/lib/i18n";
 import { formatWindow } from "@/lib/weeks";
 import { TableRegion } from "./TableRegion";
@@ -21,7 +21,7 @@ export function sortChallenges(themes: WeeklyTheme[], phaseOf: (theme: WeeklyThe
 }
 
 /**
- * One table row per challenge: theme art tile, title with its status chip, reward and review note, then
+ * One table row per challenge: theme art tile, title, reward and the review note (which says where the week stands; no chip marks the normal states), then
  * dates, goal, joined, pending and the review link (outline: a page of themes has no single main action). `pending` is undefined while the count loads.
  */
 export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; phase: ThemePhase; pending?: string }) {
@@ -34,7 +34,7 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
         <div className="media-cell">
           <ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" />
           <div className="media-text">
-            <span className="challenge-title"><strong>{theme.title}</strong><Info tone={phase === "current" ? "ok" : undefined}>{phaseLabel(phase)}</Info></span>
+            <span className="challenge-title"><strong>{theme.title}</strong></span>
             <span className="line muted">{formatReward(theme.pointsReward)} · {note}</span>
             <span className="mid-sub">{window}</span>
           </div>

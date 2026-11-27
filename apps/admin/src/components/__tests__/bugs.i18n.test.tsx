@@ -44,7 +44,7 @@ describe("bug reports (Spanish)", () => {
   it("renders the page, list and filters in Spanish", async () => {
     setLocale("es");
     render(<BugReportsPage />);
-    expect(screen.getByRole("heading", { level: 1, name: "Errores" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Reportes de errores" })).toBeTruthy();
     expect(await screen.findByText("Button is cut off")).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Clasificado/ })).toBeTruthy();
     expect(screen.getByLabelText("Buscar reportes")).toBeTruthy();

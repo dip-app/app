@@ -3768,11 +3768,33 @@
           "type": "integer",
           "minimum": 0,
           "description": "Company members in total (first page only), for 'N of M'."
+        },
+        "statusCounts": {
+          "$ref": "#/$defs/MemberStatusCounts"
         }
       },
       "required": [
         "contractVersion",
         "members"
+      ]
+    },
+    "MemberStatusCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Company members by status (first page of listMembersV1 only), so the portal can show every status tab's count up front. Counted on the server in the caller's own company.",
+      "properties": {
+        "active": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deactivated": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "active",
+        "deactivated"
       ]
     },
     "GetMemberRequest": {
@@ -4850,6 +4872,11 @@
             "string",
             "null"
           ]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Submissions with the requested status for this challenge in total (first page only, without a cursor), so the review queue can show exact counts."
         }
       },
       "required": [
@@ -5390,7 +5417,7 @@
     "ListRosterRequest": {
       "type": "object",
       "additionalProperties": false,
-      "description": "listRosterV1: roster page with server-side state filter and search; scans in document-id order with a cursor. roster.manage.",
+      "description": "listRosterV1: roster page with server-side state, role, team and work-location filters and search; scans in document-id order with a cursor. roster.manage.",
       "properties": {
         "contractVersion": {
           "type": "integer",
@@ -5415,6 +5442,27 @@
           "type": "string",
           "maxLength": 80,
           "description": "Case-insensitive substring of name, email, department, job title or work location."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "admin"
+          ],
+          "description": "Only entries with this role."
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "Only entries on this team."
+        },
+        "workLocation": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Only entries at this work location (case-insensitive exact match)."
         },
         "pageSize": {
           "type": "integer",

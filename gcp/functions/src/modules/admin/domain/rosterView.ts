@@ -38,10 +38,17 @@ export function toRosterEntry(id: string, entry: Doc): RosterEntry {
   return out;
 }
 
-export interface RosterFilter { state?: RosterState | undefined; query?: string | undefined }
+export interface RosterFilter {
+  state?: RosterState | undefined; query?: string | undefined;
+  /** The same role, team and work-location filters as listMembersV1 (exact; work location ignores case). */
+  role?: string | undefined; teamId?: string | undefined; workLocation?: string | undefined;
+}
 
 export function matchesRoster(entry: RosterEntry, filter: RosterFilter): boolean {
   if (filter.state && rosterStateOf({ status: entry.status, memberStatus: entry.memberStatus }) !== filter.state) return false;
+  if (filter.role && entry.role !== filter.role) return false;
+  if (filter.teamId && !entry.teamIds.includes(filter.teamId)) return false;
+  if (filter.workLocation && entry.workLocation.toLowerCase() !== filter.workLocation.toLowerCase()) return false;
   const query = filter.query?.trim().toLowerCase();
   if (query) {
     const haystack = [entry.displayName, entry.email, entry.department, entry.jobTitle, entry.workLocation].join("\n").toLowerCase();

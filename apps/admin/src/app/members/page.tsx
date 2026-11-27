@@ -6,6 +6,7 @@ import { useApp } from "@/components/AppProvider";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
 import { Dialog } from "@/components/Dialog";
 import { InvitedPersonDialog, ResendDialog } from "@/components/InviteDialogs";
+import { rosterFilterStatus } from "@/components/Redirect";
 import { type InviteActions, InviteTable, MemberTable } from "@/components/PeopleTables";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
@@ -17,7 +18,7 @@ import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button, ErrorNotice, InlineNotice } from "@/components/kit";
 import { LIST_PAGE_SIZE, ROLE_LABEL, can, type Member, type MemberQuery, type ResendResult, type Role, type RosterCounts, type RosterRow } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
-import { membersCsv } from "@/lib/exports";
+import { invitesCsv, membersCsv } from "@/lib/exports";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
@@ -35,7 +36,8 @@ const VIEWS: { id: View; labelKey: MessageKey; invites?: true }[] = [
 ];
 const VIEW_IDS = VIEWS.map((item) => item.id);
 const ROLES = ["admin", "organizer", "member"] as const;
-const DEFAULTS = { q: "", status: "all", role: "all", team: "all", location: "all" };
+/** `filter` is the old Roster parameter, kept only to read it once (see the effect in Members). */
+const DEFAULTS = { q: "", status: "all", role: "all", team: "all", location: "all", filter: "" };
 const NO_FILTER: MemberQuery = { query: "", status: "all", role: "all", teamId: "all", workLocation: "all" };
 const EMPTY_INVITES: Record<"invited" | "revoked", { title: MessageKey; body: MessageKey }> = {
   invited: { title: "members.invited.empty.title", body: "members.invited.empty.body" },
@@ -51,6 +53,8 @@ function Members() {
   const canImport = can(session?.role, "import.run");
   const company = useLoad((a) => a.companyInfo(), "company");
   const [qs, setQs] = useQueryState(DEFAULTS);
+  // An old Roster link that hosting redirected here (301, query kept): its `filter` picks the view, then leaves the URL.
+  useEffect(() => { if (qs.filter) setQs({ status: rosterFilterStatus(qs.filter), filter: "" }); }, [qs.filter, setQs]);
   const requested = oneOf(qs.status, VIEW_IDS, "all");
   // Organizers look people up but don't manage invitations: the invite views fall back to All.
   const view: View = !canInvite && (requested === "invited" || requested === "revoked") ? "all" : requested;
@@ -63,13 +67,15 @@ function Members() {
   useSlashFocus("members-search");
   const memberFilters = role !== "all" || team !== "all" || location !== "all";
 
-  // Tab counts: the company total (members callable, first page) and the invitation counts (roster callable, first page).
+  // Tab counts, all from the server's first pages: the company total and the per-status member counts (members callable)
+  // and the invitation counts (roster callable).
   const memberTotal = useLoad((a) => a.listMembersPage(NO_FILTER, null, 1), "member-total");
   const summary = useLoad((a) => (canInvite ? a.listRosterPage({ query: "", state: "invited" }, null, 1) : Promise.resolve(null)), `roster-summary|${canInvite}`);
   const counts: RosterCounts | null = summary.data?.counts ?? null;
   // DIP can email invitations for this company: rows email the invite (the message stays one click away).
   const inviteEmail = summary.data?.inviteEmail === true;
   const total = memberTotal.data?.total ?? null;
+  const statusCounts = memberTotal.data?.statusCounts ?? null;
   // People who signed in before the roster listed everyone: the roster's joined entries don't add up to the member total.
   const unlisted = total !== null && counts ? Math.max(0, total - counts.active - counts.deactivated) : 0;
 
@@ -84,25 +90,27 @@ function Members() {
     joinedView ? JSON.stringify(filter) : "off",
     LIST_PAGE_SIZE,
   );
-  // People invited in advance: the Invited and Revoked tabs, and the invited section under All (search only; the
-  // roster callable has no role, team or location filter, so the section steps aside while one is set).
-  const inviteState = view === "invited" || view === "revoked" ? view : view === "all" && canInvite && !memberFilters ? "invited" : null;
+  // People invited in advance: the Invited and Revoked tabs, and the invited section under All. The roster callable takes
+  // the same search, role, team and location filters as the members callable, so the section stays under any filter.
+  const inviteState = view === "invited" || view === "revoked" ? view : view === "all" && canInvite ? "invited" : null;
+  const inviteFilter = useMemo(() => (inviteState ? { query, state: inviteState, role, teamId: team, workLocation: location } : null), [inviteState, query, role, team, location]);
   const invites = usePaged<RosterRow, null>(
     async (a, cursor) => {
-      if (!inviteState) return { items: [], nextCursor: null, extra: null };
-      const page = await a.listRosterPage({ query, state: inviteState }, cursor, LIST_PAGE_SIZE);
+      if (!inviteFilter) return { items: [], nextCursor: null, extra: null };
+      const page = await a.listRosterPage(inviteFilter, cursor, LIST_PAGE_SIZE);
       return { items: [...page.rows].sort((x, y) => x.displayName.localeCompare(y.displayName)), nextCursor: page.nextCursor, extra: null };
     },
-    inviteState ? `${inviteState}|${query}` : "off",
+    inviteFilter ? JSON.stringify(inviteFilter) : "off",
     LIST_PAGE_SIZE,
   );
 
-  // Work locations to pick from: everything seen so far (the server filters by exact location, so the options must not shrink with the filter).
+  // Work locations to pick from: everything seen so far in either list (the server filters by exact location, so the
+  // options must not shrink with the filter).
   const [knownLocations, setKnownLocations] = useState<string[]>([]);
   useEffect(() => {
-    const seen = members.items.map((m) => m.workLocation).filter(Boolean);
+    const seen = [...members.items.map((m) => m.workLocation), ...invites.items.map((r) => r.workLocation)].filter(Boolean);
     if (seen.length) setKnownLocations((previous) => [...new Set([...previous, ...seen])].sort());
-  }, [members.items]);
+  }, [members.items, invites.items]);
 
   const [exporting, setExporting] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -124,9 +132,17 @@ function Members() {
     summary.reload();
   }
 
+  /** Exports the list the tab shows (with its search and filters): people who joined, or the invited or revoked people. */
   async function exportCsv() {
     setExporting(true);
     try {
+      if (!joinedView) {
+        const rows = await invites.loadAll();
+        const file = `${view}.csv`;
+        downloadText(file, invitesCsv(rows, teams));
+        toast(t("members.export.doneFile", { count: rows.length, file }));
+        return;
+      }
       const everyone = await members.loadAll();
       downloadText("members.csv", membersCsv(everyone, teams));
       toast(t("members.export.done", { count: everyone.length }));
@@ -230,25 +246,23 @@ function Members() {
     onReinvite: (row) => void reinvite(row),
   };
 
-  // Tab counts where the server gives them. Active and Deactivated come from the roster's joined entries, which match
-  // the members only while everyone who signed in is listed (otherwise they are left out rather than shown wrong).
-  // A status list read to the end without a search or filter is its own exact count, kept for this visit.
-  const [seen, setSeen] = useState<Partial<Record<"active" | "deactivated", number>>>({});
-  const listDone = !members.loading && !members.hasMore && !members.error;
-  useEffect(() => {
-    if ((view === "active" || view === "deactivated") && query === "" && !memberFilters && listDone) setSeen((previous) => ({ ...previous, [view]: members.items.length }));
-  }, [view, query, memberFilters, listDone, members.items.length]);
+  // Tab counts, exact from the server: Active and Deactivated from the members callable, Invited and Revoked from the
+  // roster callable. They appear together once both first pages are in, so the tabs never shift one count at a time.
+  const countsReady = statusCounts !== null && total !== null && (!canInvite || counts !== null);
   const countFor = (id: View): number | undefined => {
-    if (id === "all") return total === null ? undefined : total + (canInvite && counts ? counts.invited : 0);
+    if (!countsReady) return undefined;
+    if (id === "all") return total + (canInvite && counts ? counts.invited : 0);
     if (id === "invited" || id === "revoked") return counts ? counts[id] : undefined;
-    return counts && unlisted === 0 ? counts[id] : seen[id];
+    return statusCounts[id];
   };
   const tabs = VIEWS.filter((item) => !item.invites || (canInvite && (item.id !== "revoked" || view === "revoked" || (counts?.revoked ?? 0) > 0)))
     .map((item) => { const count = countFor(item.id); return { id: item.id, label: t(item.labelKey), ...(count !== undefined ? { count: number(count) } : {}) }; });
 
+  // Export is on every tab (it exports what the tab lists), so the header and the tab row stay put between tabs.
+  const exportable = joinedView ? members.items.length > 0 : invites.items.length > 0;
   const header = (
     <>
-      {joinedView && <Button disabled={!members.items.length || exporting} onClick={() => void exportCsv()}>{exporting ? t("common.exporting") : t("common.exportCsv")}</Button>}
+      <Button disabled={!exportable || exporting} onClick={() => void exportCsv()}>{exporting ? t("common.exporting") : t("common.exportCsv")}</Button>
       {canImport && <Button href="/import/">{t("roster.import")}</Button>}
       {canInvite && <Button variant="primary" onClick={() => setAdding(true)}>{t("roster.add")}</Button>}
     </>
@@ -256,7 +270,7 @@ function Members() {
 
   return (
     <Shell title={t("members.title")} subtitle={t(canInvite ? "members.subtitle.invites" : "members.subtitle")} requires="members.view" action={header}>
-      {canInvite && view === "all" && unlisted > 0 && (
+      {canInvite && unlisted > 0 && (
         <div className="review-banner ok" role="status">
           <span><strong>{t("roster.unlisted.headline", { count: unlisted })}</strong> {t("roster.unlisted.detail")}</span>
           <Button size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? t("roster.unlisted.checking", { count: number(backfill.scanned) }) : t("roster.unlisted.add")}</Button>
@@ -265,33 +279,31 @@ function Members() {
       <Tabs idBase="members" label={t("members.filterByStatus")} value={view} onChange={(id) => setQs({ status: id })} items={tabs} />
       <div className="filters">
         <SearchBox shortcut id="members-search" value={search} onChange={(v) => setQs({ q: v })} label={t("members.search.label")} placeholder={t("members.search.placeholder")} />
-        {joinedView && <>
-          <div className="field"><label htmlFor="f-role">{t("members.filter.role")}</label>
-            <select id="f-role" value={role} onChange={(e) => setQs({ role: e.target.value })}>
-              <option value="all">{t("members.filter.allRoles")}</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-            </select></div>
-          <div className="field"><label htmlFor="f-team">{t("members.filter.team")}</label>
-            <select id="f-team" value={team} onChange={(e) => setQs({ team: e.target.value })}>
-              <option value="all">{t("members.filter.allTeams")}</option>{teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select></div>
-          <div className="field"><label htmlFor="f-loc">{t("members.filter.location")}</label>
-            <select id="f-loc" value={location} onChange={(e) => setQs({ location: e.target.value })}>
-              <option value="all">{t("members.filter.allLocations")}</option>{[...new Set([...knownLocations, ...(location !== "all" ? [location] : [])])].sort().map((l) => <option key={l}>{l}</option>)}
-            </select></div>
-        </>}
+        <div className="field"><label htmlFor="f-role">{t("members.filter.role")}</label>
+          <select id="f-role" value={role} onChange={(e) => setQs({ role: e.target.value })}>
+            <option value="all">{t("members.filter.allRoles")}</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          </select></div>
+        <div className="field"><label htmlFor="f-team">{t("members.filter.team")}</label>
+          <select id="f-team" value={team} onChange={(e) => setQs({ team: e.target.value })}>
+            <option value="all">{t("members.filter.allTeams")}</option>{teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select></div>
+        <div className="field"><label htmlFor="f-loc">{t("members.filter.location")}</label>
+          <select id="f-loc" value={location} onChange={(e) => setQs({ location: e.target.value })}>
+            <option value="all">{t("members.filter.allLocations")}</option>{[...new Set([...knownLocations, ...(location !== "all" ? [location] : [])])].sort().map((l) => <option key={l}>{l}</option>)}
+          </select></div>
       </div>
-      {(search !== "" || (joinedView && memberFilters)) && (
-        <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t(joinedView && memberFilters ? "members.filter.clear" : "members.filter.clearSearch")}</Button></div>
+      {(search !== "" || memberFilters) && (
+        <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t(memberFilters ? "members.filter.clear" : "members.filter.clearSearch")}</Button></div>
       )}
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div key={view} {...tabPanelProps("members", view)}>
         {joinedView
           ? <JoinedPanel members={members} query={query} knownTotal={query !== "" || memberFilters ? undefined : view === "all" ? total ?? undefined : countFor(view)} teamName={teamName} showPoints={showPoints}
               invitesBelow={inviteState !== null && invites.items.length > 0} />
-          : <InvitesPanel list={invites} view={view as "invited" | "revoked"} query={query} counts={counts} teamName={teamName} actions={actions} canImport={canImport} />}
+          : <InvitesPanel list={invites} view={view as "invited" | "revoked"} query={query} filtered={memberFilters} counts={counts} teamName={teamName} actions={actions} canImport={canImport} />}
         {view === "all" && inviteState && invites.items.length > 0 && (
           <section className="list-section" aria-labelledby="invited-heading">
-            <h2 id="invited-heading" className="list-section-title">{t("members.invited.section", { count: !query && counts ? counts.invited : invites.items.length })}</h2>
+            <h2 id="invited-heading" className="list-section-title">{t("members.invited.section", { count: !query && !memberFilters && counts ? counts.invited : invites.items.length })}</h2>
             <p className="muted list-section-note">{t("members.invited.sectionNote")}</p>
             <InviteTable rows={invites.items} teamName={teamName} busy={invites.loading} label={t("members.invited.tableLabel")} actions={actions} />
             {invites.error && <ErrorNotice error={invites.error} />}
@@ -363,7 +375,7 @@ function JoinedPanel({ members, query, knownTotal, teamName, showPoints, invites
   }
   const shownCount = formatNumber(members.items.length);
   const matches = members.hasMore ? t("members.count.matchesSoFar", { shown: shownCount }) : t("members.count.matches", { shown: members.items.length });
-  const count = knownTotal !== undefined ? t("members.count.showingOf", { shown: shownCount, total: knownTotal }) : matches;
+  const count = knownTotal !== undefined ? t(invitesBelow ? "members.count.showingOfJoined" : "members.count.showingOf", { shown: shownCount, total: knownTotal }) : matches;
   return (
     <>
       <ResultCount>{count}</ResultCount>
@@ -375,24 +387,24 @@ function JoinedPanel({ members, query, knownTotal, teamName, showPoints, invites
 }
 
 /** Invited and Revoked: people added in advance who have not joined. */
-function InvitesPanel({ list, view, query, counts, teamName, actions, canImport }: {
-  list: Paged<RosterRow, null>; counts: RosterCounts | null; view: "invited" | "revoked"; query: string; teamName: (id: string) => string; actions: InviteActions; canImport: boolean;
+function InvitesPanel({ list, view, query, filtered, counts, teamName, actions, canImport }: {
+  list: Paged<RosterRow, null>; counts: RosterCounts | null; view: "invited" | "revoked"; query: string; /** A role, team or location filter is set (the state counts then are not the list total). */ filtered: boolean; teamName: (id: string) => string; actions: InviteActions; canImport: boolean;
 }) {
   const empty = list.items.length === 0;
   const hold = useSkeletonGate(list.loading && empty);
   if (list.error && empty) return <LoadError error={list.error} onRetry={list.reload} />;
   if ((list.loading && empty) || hold) return <Loading label={t("members.loading")} layout="roster" />;
   if (empty) {
-    return query
-      ? <Empty title={t("members.empty.title")} body={t("members.empty.searchBody")} />
+    return query || filtered
+      ? <Empty title={t("members.empty.title")} body={t(filtered ? "members.empty.body" : "members.empty.searchBody")} />
       : <Empty title={t(EMPTY_INVITES[view].title)} body={t(EMPTY_INVITES[view].body)} action={view === "invited" && canImport ? <Button href="/import/">{t("roster.import")}</Button> : undefined} />;
   }
   return (
     <>
-      <ResultCount>{!query && counts ? t("roster.count.showingOf", { shown: number(list.items.length), total: counts[view] }) : list.hasMore ? t("roster.count.matchesSoFar", { count: number(list.items.length) }) : t("roster.count.matches", { count: list.items.length })}</ResultCount>
+      <ResultCount>{!query && !filtered && counts ? t("roster.count.showingOf", { shown: number(list.items.length), total: counts[view] }) : list.hasMore ? t("roster.count.matchesSoFar", { count: number(list.items.length) }) : t("roster.count.matches", { count: list.items.length })}</ResultCount>
       <InviteTable rows={list.items} teamName={teamName} busy={list.loading} label={t(view === "invited" ? "members.invited.tableLabel" : "members.revoked.tableLabel")} actions={actions} />
       {list.error && <ErrorNotice error={list.error} />}
-      {list.hasMore && <LoadMore hideCount shown={list.items.length} total={!query && counts ? counts[view] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
+      {list.hasMore && <LoadMore hideCount shown={list.items.length} total={!query && !filtered && counts ? counts[view] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
     </>
   );
 }

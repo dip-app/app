@@ -10,7 +10,7 @@ Imports finished (7)
 - 9:03 AM EST: 3 invited, 3 updated, 2 could not be added
 - and 2 more imports
 
-Open the roster: https://letsdip.work/admin/roster/
+Open Members: https://letsdip.work/admin/members/
 
 --
 You are getting this because you turned on the daily roster digest for admins.

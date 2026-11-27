@@ -21,13 +21,15 @@ function renderRow(t: WeeklyTheme, phase: Phase, pending?: string) {
 }
 
 describe("ChallengeRow", () => {
-  it("shows the known theme's art on its accent, chips, columns and the review action", () => {
+  it("shows the known theme's art on its accent, columns and the review action", () => {
     const { container } = renderRow(theme({}), "current", "7");
     const art = container.querySelector(".theme-art") as HTMLElement;
     expect(art.style.background).not.toBe("");
     expect(art.querySelector("img")?.getAttribute("src")).toContain("fitness");
     const row = screen.getByTestId("challenge-row");
-    expect(within(row).getByText("This week")).toBeTruthy();
+    // Normal phases carry no chip: the note says where the week stands.
+    expect(within(row).queryByText("This week")).toBeNull();
+    expect(within(row).getByText(/Review as entries arrive/)).toBeTruthy();
     expect(within(row).getByText("7 pending")).toBeTruthy();
     expect(within(row).getByText("3 workouts")).toBeTruthy();
     expect(within(row).getByText("128")).toBeTruthy();
@@ -41,7 +43,7 @@ describe("ChallengeRow", () => {
     const art = container.querySelector(".theme-art") as HTMLElement;
     expect(art.querySelector("img")).toBeNull();
     expect(art.textContent).toBe("Karaoke Week");
-    expect(screen.getByText("Past")).toBeTruthy();
+    expect(screen.queryByText("Past")).toBeNull();
     expect(screen.getByText("0 pending")).toBeTruthy();
   });
 
@@ -49,7 +51,7 @@ describe("ChallengeRow", () => {
     renderRow(theme({ participantCount: 0, completedCount: 0 }), "upcoming");
     expect(screen.queryByRole("link", { name: /Review submissions/ })).toBeNull();
     expect(screen.getByText("Not open yet")).toBeTruthy();
-    expect(screen.getByText("Upcoming")).toBeTruthy();
+    expect(screen.queryByText("Upcoming")).toBeNull();
   });
 });
 

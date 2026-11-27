@@ -4,7 +4,7 @@ export const ui = {
   // Toggle state text
   "ui.toggle.on": "On",
   "ui.toggle.off": "Off",
-  "ui.skeleton.tab.current": "Current",
+  "ui.skeleton.tab.current": "This week",
   "ui.skeleton.tab.upcoming": "Upcoming",
   "ui.skeleton.tab.past": "Past",
   "ui.skeleton.tab.cancelled": "Canceled",

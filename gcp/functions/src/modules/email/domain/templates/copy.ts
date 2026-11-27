@@ -73,7 +73,8 @@ export interface EmailCopy {
 export const APP_URL = `${SHARE_ORIGIN}/`;
 export const PORTAL_URL = `${SHARE_ORIGIN}/admin/`;
 /** Admin digest links: the roster page and Your settings, where the digest is switched on and off. */
-export const ROSTER_URL = `${SHARE_ORIGIN}/admin/roster/`;
+/** Members in the admin portal (the Roster moved there in PR #370; the digest links it directly, not the old redirect). */
+export const MEMBERS_URL = `${SHARE_ORIGIN}/admin/members/`;
 export const SETTINGS_URL = `${SHARE_ORIGIN}/admin/account/`;
 
 /** Weekly theme accents (apps/admin/public/img/themes/ACCENTS.md), also the art tile background while images load. */
@@ -434,7 +435,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
         note: null,
         sections,
         ctaLabel: t("email.adminDigest.cta"),
-        ctaURL: ROSTER_URL,
+        ctaURL: MEMBERS_URL,
         footer: { reason: t("email.adminDigest.reason"), manage: false, manageLink: { label: t("email.adminDigest.manage"), url: SETTINGS_URL } },
       };
     }

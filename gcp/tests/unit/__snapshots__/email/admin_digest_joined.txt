@@ -5,7 +5,7 @@ Hi Sam, here is what changed on your roster on Thursday, November 19.
 Joined (1)
 - Priya Patel
 
-Open the roster: https://letsdip.work/admin/roster/
+Open Members: https://letsdip.work/admin/members/
 
 --
 You are getting this because you turned on the daily roster digest for admins.

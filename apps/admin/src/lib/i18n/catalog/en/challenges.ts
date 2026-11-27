@@ -43,7 +43,7 @@ export const challenges = {
   "challenges.themes.new": "New challenge",
   "challenges.themes.loadFailed": "Couldn’t load challenges. Check your connection and try again.",
   "challenges.themes.filterLabel": "Show challenges by week",
-  "challenges.themes.tab.current": "Current",
+  "challenges.themes.tab.current": "This week",
   "challenges.themes.tab.upcoming": "Upcoming",
   "challenges.themes.tab.past": "Past",
   "challenges.themes.empty.current.title": "No challenge this week",
@@ -60,13 +60,12 @@ export const challenges = {
   "challenges.themes.table.goal": "Goal",
   "challenges.themes.table.reward": "Reward",
   "challenges.themes.table.participation": "Participation",
-  "challenges.themes.table.status": "Status",
   "challenges.themes.table.actions": "Actions",
   "challenges.themes.row.editTitle": "Edit challenge",
   "challenges.themes.row.editWindowAria": "Edit {title}, {window}",
   "challenges.themes.row.editAria": "Edit {title}",
   "challenges.themes.row.edit": "Edit",
-  "challenges.themes.row.joined": "{count} joined",
+  "challenges.themes.row.joined": "{count, plural, =0 {No one joined} other {# joined}}",
   "challenges.themes.row.joinedCompleted": "{joined} joined · {completed} completed",
 
   // Dates, goals and rewards

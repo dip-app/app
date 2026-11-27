@@ -26,11 +26,15 @@ export function withQuery(path: string, params: URLSearchParams): string {
   return query ? `${path}?${query}` : path;
 }
 
-/** Old Roster filters (`?filter=`) to the Members views (`?status=`): the roster opened on everyone, which now means its invitations. */
+/** One old Roster filter to its Members view: the roster opened on everyone, which now means its invitations. */
+export function rosterFilterStatus(filter: string): "invited" | "active" | "deactivated" | "revoked" {
+  return filter === "revoked" || filter === "active" || filter === "deactivated" ? filter : "invited";
+}
+
+/** Old Roster filters (`?filter=`) to the Members views (`?status=`). */
 export function rosterToMembers(params: URLSearchParams): string {
-  const filter = params.get("filter") ?? "";
   const next = new URLSearchParams();
-  next.set("status", filter === "revoked" || filter === "active" || filter === "deactivated" ? filter : "invited");
+  next.set("status", rosterFilterStatus(params.get("filter") ?? ""));
   const q = params.get("q");
   if (q) next.set("q", q);
   return withQuery("/members/", next);

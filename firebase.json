@@ -34,6 +34,23 @@
         "**/node_modules/**"
       ],
       "trailingSlash": true,
+      "redirects": [
+        {
+          "source": "/admin/roster{,/}",
+          "destination": "/admin/members/?status=invited",
+          "type": 301
+        },
+        {
+          "source": "/admin/themes{,/}",
+          "destination": "/admin/challenges/",
+          "type": 301
+        },
+        {
+          "source": "/admin/themes/new{,/}",
+          "destination": "/admin/challenges/new/",
+          "type": 301
+        }
+      ],
       "rewrites": [
         {
           "source": "/img/covers-dyn/**",

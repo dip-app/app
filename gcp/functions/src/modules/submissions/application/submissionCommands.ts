@@ -212,6 +212,10 @@ export async function listChallengeSubmissions(store: SubmissionStore, caller: S
   const reviewer = requireCaller(caller);
   const { companyId, challengeId, status, limit, cursor } = parseListRequest(data);
   await requireOrganizer(uid => store.getMember(uid), reviewer.uid, companyId);
-  const page = await store.list(companyId, challengeId, status, limit, cursor);
-  return { contractVersion: 1, submissions: page.items.map(item => toSubmissionDto(item.id, item.submission)), nextCursor: page.nextCursor };
+  // The first page also carries the exact total (an aggregation), so the review queue shows real counts, not "25+".
+  const [page, total] = await Promise.all([store.list(companyId, challengeId, status, limit, cursor), cursor ? undefined : store.count(companyId, challengeId, status)]);
+  return {
+    contractVersion: 1, submissions: page.items.map(item => toSubmissionDto(item.id, item.submission)), nextCursor: page.nextCursor,
+    ...(total !== undefined ? { total } : {}),
+  };
 }

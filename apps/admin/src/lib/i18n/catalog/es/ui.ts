@@ -6,7 +6,7 @@ export const ui: Record<keyof typeof source, string> = {
   // Toggle state text
   "ui.toggle.on": "Activado",
   "ui.toggle.off": "Desactivado",
-  "ui.skeleton.tab.current": "Actuales",
+  "ui.skeleton.tab.current": "Esta semana",
   "ui.skeleton.tab.upcoming": "Próximos",
   "ui.skeleton.tab.past": "Pasados",
   "ui.skeleton.tab.cancelled": "Cancelados",

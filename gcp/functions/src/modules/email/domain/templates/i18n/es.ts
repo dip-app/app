@@ -168,7 +168,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.adminDigest.imports.label": "Importaciones terminadas ({count})",
   "email.adminDigest.import": "{time}: {invited} invitadas, {updated} actualizadas{failed, plural, =0 {} one {, # no se pudo agregar} other {, # no se pudieron agregar}}",
   "email.adminDigest.imports.more": "{count, plural, one {y # importación más} other {y # importaciones más}}",
-  "email.adminDigest.cta": "Abrir la lista de personal",
+  "email.adminDigest.cta": "Abrir Miembros",
   "email.adminDigest.reason": "Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.",
   "email.adminDigest.manage": "Configurar en el portal de administración",
 };

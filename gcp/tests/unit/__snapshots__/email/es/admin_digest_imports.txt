@@ -10,7 +10,7 @@ Importaciones terminadas (7)
 - 9:03 a.m. EST: 3 invitadas, 3 actualizadas, 2 no se pudieron agregar
 - y 2 importaciones más
 
-Abrir la lista de personal: https://letsdip.work/admin/roster/
+Abrir Miembros: https://letsdip.work/admin/members/
 
 --
 Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.

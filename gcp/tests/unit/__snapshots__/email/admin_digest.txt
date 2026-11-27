@@ -18,7 +18,7 @@ Joined (14)
 Imports finished (1)
 - 2:42 PM EST: 42 invited, 3 updated, 1 could not be added
 
-Open the roster: https://letsdip.work/admin/roster/
+Open Members: https://letsdip.work/admin/members/
 
 --
 You are getting this because you turned on the daily roster digest for admins.
