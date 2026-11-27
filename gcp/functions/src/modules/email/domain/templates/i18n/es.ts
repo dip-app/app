@@ -66,7 +66,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.eventCanceled.subject": "Cancelado: {title}",
   "email.eventCanceled.preheader": "Se canceló {title}.",
   "email.eventCanceled.lead": "Se canceló este evento.",
-  "email.eventCanceled.note": "Explora otros eventos.",
+  "email.eventCanceled.note": "Ábrelo en DIP para ver los detalles y busca otro evento al que unirte.",
 
   "email.attendeeAdded.heading": "Te agregaron",
   "email.attendeeAdded.subject": "Te agregaron a {title}",
@@ -82,7 +82,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.calendarInvite.subject": "{reason, select, updated {Invitación actualizada: {title}} other {Invitación de calendario: {title}}}",
   "email.calendarInvite.preheader": "{reason, select, updated {Cambiaron los detalles de {title}.} other {Agrega {title} a tu calendario.}}",
   "email.calendarInvite.lead": "{reason, select, updated {Cambió la hora o el lugar de este evento.} other {Te uniste a este evento.}}",
-  "email.calendarInvite.note": "{reason, select, updated {Abre la invitación de calendario adjunta para actualizar tu calendario.} other {Abre la invitación adjunta (invite.ics) y elige Agregar al calendario. Si cambia la hora o el lugar, te enviaremos una invitación actualizada.}}",
+  "email.calendarInvite.note": "{reason, select, updated {Para actualizar tu calendario, abre la invitación adjunta. El botón de abajo abre el evento en DIP.} other {Para agregarlo a tu calendario, abre la invitación adjunta (invite.ics) y elige Agregar al calendario. El botón de abajo abre el evento en DIP. Si cambia la hora o el lugar, te enviaremos una invitación actualizada.}}",
 
   "email.calendarCancel.heading": "{reason, select, left {Se quitó de tu calendario} other {Evento cancelado}}",
   "email.calendarCancel.subject": "{reason, select, left {Se quitó de tu calendario: {title}} other {Cancelado: {title}}}",

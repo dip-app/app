@@ -74,7 +74,7 @@ export const en = {
   "email.eventCanceled.subject": "Canceled: {title}",
   "email.eventCanceled.preheader": "{title} was canceled.",
   "email.eventCanceled.lead": "this event was canceled.",
-  "email.eventCanceled.note": "Browse other events.",
+  "email.eventCanceled.note": "Open it in DIP to see the details, then find another event to join.",
 
   // attendee_added
   "email.attendeeAdded.heading": "You were added",
@@ -93,7 +93,7 @@ export const en = {
   "email.calendarInvite.subject": "{reason, select, updated {Updated invite: {title}} other {Calendar invite: {title}}}",
   "email.calendarInvite.preheader": "{reason, select, updated {The details changed for {title}.} other {Add {title} to your calendar.}}",
   "email.calendarInvite.lead": "{reason, select, updated {the time or place changed for this event.} other {you joined this event.}}",
-  "email.calendarInvite.note": "{reason, select, updated {Open the attached calendar invite to update your calendar.} other {Open the attached invite (invite.ics) and choose Add to calendar. If the time or place changes, we will send an updated invite.}}",
+  "email.calendarInvite.note": "{reason, select, updated {To update your calendar, open the attached invite. The button below opens the event in DIP.} other {To add it to your calendar, open the attached invite (invite.ics) and choose Add to calendar. The button below opens the event in DIP. If the time or place changes, we will send an updated invite.}}",
 
   // calendar_cancel
   "email.calendarCancel.heading": "{reason, select, left {Removed from your calendar} other {Event canceled}}",

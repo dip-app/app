@@ -426,7 +426,7 @@ describe("email template invariants", () => {
     assert.equal(byName("event_canceled").subject, "Canceled: Sunset hike at Frick Park");
     assert.ok(byName("event_changed").text.includes("Hi Sam, the time and location changed for this event."));
     assert.ok(byName("invite_received").text.includes("See who is going and respond."));
-    assert.ok(byName("event_canceled").text.includes("Browse other events."));
+    assert.ok(byName("event_canceled").text.includes("Open it in DIP to see the details, then find another event to join."));
     assert.ok(byName("challenge_approved").text.includes("+50 points"));
     assert.ok(byName("challenge_approved").html.includes("font-weight:700;color:#1E212B;\">+50 points"));
     assert.ok(byName("invite_received").html.includes(">New invitation<"));
