@@ -8,7 +8,7 @@ afterEach(() => setLocale("en"));
 describe("attendees (Spanish)", () => {
   it("translates labels, toasts and plurals", () => {
     setLocale("es");
-    expect(t("attendees.going", { count: 3, capacity: 10 })).toBe("3 de 10 van");
+    expect(t("attendees.going", { count: 3, capacity: 10 })).toBe("3 de 10 asistirán");
     expect(t("attendees.count.total", { count: 1 })).toBe("1 asistente");
     expect(t("attendees.count.total", { count: 4 })).toBe("4 asistentes");
     expect(t("attendees.toast.exported", { count: 2 })).toBe("Se exportaron 2 asistentes.");
