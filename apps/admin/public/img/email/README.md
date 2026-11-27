@@ -5,12 +5,11 @@ Images for DIP notification emails. Served at `https://letsdip.work/img/email/<f
 | File | Pixels | Display size | Fallback `bgcolor` | Alt text |
 | --- | --- | --- | --- | --- |
 | `logo.png` | 96x96, transparent | 32x32 or 48x48 | none (works on white and `#1B1D24`) | `DIP` |
-| `header.png` | 1200x200, opaque | 600x100 | `#F2F3FC` (flat) | `DIP` |
-| `footer.png` | 1200x200, opaque | 600x100 | `#F2F3FC` (flat) | `""` (decorative) |
-| `header-dark.png` | 1200x200, opaque | 600x100 | `#23252E` (flat) | `DIP` |
-| `footer-dark.png` | 1200x200, opaque | 600x100 | `#23252E` (flat) | `""` (decorative) |
+| `header.png` | 1200x200, transparent | 600x100 | cell `#F2F3FC` light, `#121318` dark | `DIP` |
+| `footer.png` | 1200x200, transparent | 600x100 | cell `#F2F3FC` light, `#121318` dark | `""` (decorative) |
+| `header-dark.png`, `footer-dark.png` | copies of the above | | | kept only for emails already sent with the old dark swap |
 
-The `-dark` variants (wordmark `#ECEDEF`, clouds `#2E313B`) keep the mascots on a light `#E8EAF8` panel so their ink outlines stay legible; swap them in with `prefers-color-scheme: dark`. All four edges of every header/footer PNG are exactly the fallback colour (verified by pixel check). Header and footer are fully opaque; the header has the clover mark and a "DIP" wordmark (Fjalla One, ink `#1E212B`) baked in at the left, with mascots and clouds on the right.
+One image per band for every mode: the band colour comes from the table cell (so dark mode and forced inversion recolour it), and the art carries only what reads on both grounds: the clover and a "DIP" wordmark in brand purple (`#7B88FA` mark, `#5A66E6` Fjalla One wordmark), and the mascots centred on a rounded white tile with a hairline (header tile on the right, footer tile centred) so their ink outlines stay legible.
 
 Sources (repo graphics only): Fjalla One (`ui/Packages/DIPDesignSystem/.../Fonts/FjallaOne-Regular.ttf`, OFL), clover `ui/DIP/Resources/AppIcon.icon/Assets/logo.svg` (recoloured `#7B88FA`), theme illustrations `apps/admin/public/img/themes/*.png` (header: learning, games, music; footer: arts, food, wellness).
 

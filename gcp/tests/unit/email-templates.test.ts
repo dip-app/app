@@ -89,7 +89,7 @@ describe("email template invariants", () => {
       assert.ok(out.html.includes("max-width:600px") && out.html.includes("#1E212B"), c.name);
       assert.ok(out.html.includes("v:roundrect"), c.name);
       assert.ok(out.html.includes("border-color: #2C2F38") && out.html.includes("[data-ogsc]"), c.name);
-      assert.ok(out.preheader.length >= 20 && out.preheader.length <= 110 && !out.preheader.startsWith("Hi ") && out.preheader.endsWith(".") && !out.preheader.includes("..."), c.name);
+      assert.ok(out.preheader.length >= 20 && out.preheader.length <= 110 && !out.preheader.startsWith("Hi ") && (out.preheader.endsWith(".") || out.preheader.endsWith("…")) && !out.preheader.includes("...") && !out.preheader.includes("…."), c.name);
       assert.ok(out.html.includes(`mso-hide:all;">`) && out.html.includes(out.preheader.replace(/&/g, "&amp;")), c.name);
       assert.ok(out.html.includes('name="color-scheme" content="light dark"'));
       assert.ok(out.html.includes("prefers-color-scheme: dark"));
@@ -195,13 +195,12 @@ describe("email template invariants", () => {
       assert.ok(imgs.length >= 2, c.name);
       assert.ok(!html.includes("logo.png"), c.name);
       for (const img of imgs) assert.ok(/\salt="[^"]*"/.test(img), `${c.name}: ${img}`);
-      assert.ok(html.includes('<a href="https://letsdip.work/" style="text-decoration:none;"><img class="art light-img" src="https://letsdip.work/img/email/header.png" width="600" height="100" alt="DIP"'), c.name);
+      assert.ok(html.includes('<a href="https://letsdip.work/" style="text-decoration:none;"><img class="art" src="https://letsdip.work/img/email/header.png" width="600" height="100" alt="DIP"'), c.name);
       assert.ok(html.indexOf("header.png") < html.indexOf("<h1"), c.name);
       assert.ok(html.includes('src="https://letsdip.work/img/email/footer.png" width="600" height="100" alt=""'), c.name);
-      assert.ok(html.includes('class="art dark-img" src="https://letsdip.work/img/email/header-dark.png" width="600" height="100" alt="DIP" style="display:none;mso-hide:all;max-height:0;overflow:hidden;'), c.name);
-      assert.ok(html.includes('class="art dark-img" src="https://letsdip.work/img/email/footer-dark.png" width="600" height="100" alt="" style="display:none;mso-hide:all;max-height:0;overflow:hidden;'), c.name);
-      assert.ok(html.includes(".dark-img { display: block !important") && html.includes(".light-img { display: none !important") && html.includes("[data-ogsc] .dark-img"), c.name);
-      assert.ok(html.includes(".art-cell { background-color: #23252E !important; }"), c.name);
+      // One transparent image per band (no light/dark swap); the dark band is the dark page colour.
+      assert.ok(!html.includes("-dark.png") && !html.includes("dark-img") && !html.includes("light-img"), c.name);
+      assert.ok(html.includes(".art-cell { background-color: #121318 !important; }"), c.name);
       assert.ok(html.includes('bgcolor="#F2F3FC"'), c.name);
       for (const m of html.matchAll(/<img\b[^>]*\ssrc="([^"]*)"/g)) assert.ok(m[1]!.startsWith("https://"), `${c.name}: ${m[1]}`);
     }
@@ -215,7 +214,7 @@ describe("email template invariants", () => {
         assert.ok(pixel.test(out.html), c.name);
         assert.ok(out.html.includes(`src="${c.ctx.openPixelURL}"`), c.name);
         const imgs = out.html.match(/<img\b[^>]*>/g)!;
-        assert.ok(imgs[imgs.length - 2]!.includes("footer-dark.png") && imgs[imgs.length - 1]!.includes(c.ctx.openPixelURL), c.name);
+        assert.ok(imgs[imgs.length - 2]!.includes("footer.png") && imgs[imgs.length - 1]!.includes(c.ctx.openPixelURL), c.name);
       } else {
         assert.ok(!pixel.test(out.html), c.name);
       }
@@ -239,7 +238,7 @@ describe("email template invariants", () => {
       assert.ok(!/#4F5BD5|#AEB7FF/i.test(html), c.name);
       const purple = html.split("\n").filter((l) => l.includes("#7B88FA"));
       assert.ok(purple.every((l) => /v:roundrect|btn-table/.test(l)), c.name);
-      assert.ok(/<td class="text-muted" style="padding:12px 0;[^"]*"><a class="link" href="[^"]*" style="color:#1E212B;text-decoration:underline;">Unsubscribe/.test(html), c.name);
+      assert.ok(/<td class="text-muted" style="padding:8px 0;[^"]*"><a class="link" href="[^"]*" style="color:#1E212B;text-decoration:underline;">Unsubscribe/.test(html), c.name);
     }
   });
 
@@ -264,8 +263,8 @@ describe("email template invariants", () => {
       assert.equal(bands.length, 2, c.name);
       assert.ok(html.indexOf("header.png") < html.indexOf("<h1") && html.indexOf("<h1") < html.indexOf("footer.png"), c.name);
       // the footer band is the last row of the outer table
-      assert.ok(/footer-dark\.png"[^>]*\/>(<img [^>]*width="1"[^>]*\/>)?<\/td><\/tr><\/table><\/td><\/tr>\n<\/table>\n<\/body>/.test(html), c.name);
-      assert.ok(html.includes("body, .bg-outer { background-color: #121318 !important; }") && html.includes("[data-ogsb] .art-cell { background-color: #23252E !important; }"), c.name);
+      assert.ok(/footer\.png"[^>]*\/>(<img [^>]*width="1"[^>]*\/>)?<\/td><\/tr><\/table><\/td><\/tr>\n<\/table>\n<\/body>/.test(html), c.name);
+      assert.ok(html.includes("body, .bg-outer { background-color: #121318 !important; }") && html.includes("[data-ogsb] .art-cell { background-color: #121318 !important; }"), c.name);
       assert.ok(!html.slice(html.indexOf('class="container bg-card')).includes("header.png"), c.name);
     }
   });
@@ -274,7 +273,7 @@ describe("email template invariants", () => {
     for (const c of LEGACY_CASES) {
       const { html } = render(c);
       const imgs = html.match(/<img\b[^>]*>/g)!;
-      const footerIdx = imgs.findIndex((i) => i.includes("footer-dark.png"));
+      const footerIdx = imgs.findIndex((i) => i.includes("footer.png"));
       assert.ok(footerIdx === imgs.length - 1 || (footerIdx === imgs.length - 2 && imgs[imgs.length - 1]!.includes('width="1"')), c.name);
       assert.ok(html.indexOf("footer.png") > html.indexOf(">Unsubscribe<"), c.name);
       assert.ok(html.indexOf(">Unsubscribe<") > html.indexOf("Open in DIP"), c.name);
@@ -311,7 +310,7 @@ describe("email template invariants", () => {
 
   test("event_changed shows struck old values only for what changed", () => {
     const by = (n: string) => render(PREVIEW_CASES.find((c) => c.name === n)!);
-    const dels = (html: string) => [...html.matchAll(/<del style="text-decoration:line-through;color:#8A8F9E;">(.*?)<\/del>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ""));
+    const dels = (html: string) => [...html.matchAll(/<del style="text-decoration:line-through;color:#6B7080;">(.*?)<\/del>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ""));
     // time only, same day: strike the old range only
     const t = by("event_changed_time");
     assert.deepEqual(dels(t.html), ["was 5:30\u00A0PM to 7:00\u00A0PM\u00A0EST".replace(/\u00A0/g, "&nbsp;")]);
@@ -350,7 +349,7 @@ describe("email template invariants", () => {
     const ti = by("event_changed_title");
     assert.deepEqual(dels(ti.html), ["was Evening walk at Frick Park"]);
     assert.equal(ti.subject, "Updated: Sunset hike at Frick Park (title changed)");
-    assert.ok(ti.html.includes(">Updated<"));
+    assert.ok(ti.html.includes(">Event updated<"));
     // unchanged fields get no strike; dark-mode color override exists without a class
     assert.ok(!by("event_changed").html.includes("<del"));
     assert.ok(t.html.includes("del { color: #A3A7B3 !important; }") && t.html.includes("[data-ogsc] del"));
@@ -405,9 +404,9 @@ describe("email template invariants", () => {
     assert.equal(validateVariables(c.template, { ...(c.variables as object), coverImageURL: 5 }), null);
   });
 
-  test("event_changed shows an Updated pill and names what changed", () => {
+  test("event_changed leads with an Event updated kicker, the title as the heading, and names what changed", () => {
     const out = render(PREVIEW_CASES.find((c) => c.name === "event_changed")!);
-    assert.ok(out.html.includes(">Updated<") && out.html.includes('class="pill border"') && !out.html.includes("#EEF0FF"));
+    assert.ok(out.html.includes(">Event updated</p>") && /<h1 dir="auto"[^>]*><span dir="auto">[^<]+<\/span><\/h1>/.test(out.html) && !out.html.includes('class="pill border"') && !out.html.includes("#EEF0FF"));
     assert.ok(!out.text.includes("latest details are below"));
   });
 
@@ -427,7 +426,7 @@ describe("email template invariants", () => {
     assert.equal(byName("event_canceled").subject, "Canceled: Sunset hike at Frick Park");
     assert.ok(byName("event_changed").text.includes("Hi Sam, the time and location changed for this event."));
     assert.ok(byName("invite_received").text.includes("See who is going and respond."));
-    assert.ok(byName("event_canceled").text.includes("Browse other events."));
+    assert.ok(byName("event_canceled").text.includes("Open it in DIP to see the details, then find another event to join."));
     assert.ok(byName("challenge_approved").text.includes("+50 points"));
     assert.ok(byName("challenge_approved").html.includes("font-weight:700;color:#1E212B;\">+50 points"));
     assert.ok(byName("invite_received").html.includes(">New invitation<"));

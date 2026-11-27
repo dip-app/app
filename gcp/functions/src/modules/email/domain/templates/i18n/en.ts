@@ -9,7 +9,7 @@ export const en = {
   "email.lead.named": "Hi {name}, {lead}",
   "email.lead.anonymous": "Hi there, {lead}",
   /** Preheader with the event day appended; `sentence` has no final period. */
-  "email.preheader.onDay": "{sentence} on {day}.",
+  "email.preheader.onDay": "{sentence} ({day}).",
 
   // Event card and plain-text labels
   "email.card.when": "When",
@@ -74,7 +74,7 @@ export const en = {
   "email.eventCanceled.subject": "Canceled: {title}",
   "email.eventCanceled.preheader": "{title} was canceled.",
   "email.eventCanceled.lead": "this event was canceled.",
-  "email.eventCanceled.note": "Browse other events.",
+  "email.eventCanceled.note": "Open it in DIP to see the details, then find another event to join.",
 
   // attendee_added
   "email.attendeeAdded.heading": "You were added",
@@ -93,7 +93,7 @@ export const en = {
   "email.calendarInvite.subject": "{reason, select, updated {Updated invite: {title}} other {Calendar invite: {title}}}",
   "email.calendarInvite.preheader": "{reason, select, updated {The details changed for {title}.} other {Add {title} to your calendar.}}",
   "email.calendarInvite.lead": "{reason, select, updated {the time or place changed for this event.} other {you joined this event.}}",
-  "email.calendarInvite.note": "{reason, select, updated {Open the attached calendar invite to update your calendar.} other {Open the attached invite (invite.ics) and choose Add to calendar. If the time or place changes, we will send an updated invite.}}",
+  "email.calendarInvite.note": "{reason, select, updated {To update your calendar, open the attached invite. The button below opens the event in DIP.} other {To add it to your calendar, open the attached invite (invite.ics) and choose Add to calendar. The button below opens the event in DIP. If the time or place changes, we will send an updated invite.}}",
 
   // calendar_cancel
   "email.calendarCancel.heading": "{reason, select, left {Removed from your calendar} other {Event canceled}}",
@@ -137,7 +137,7 @@ export const en = {
   "email.welcome.reason": "You are getting this because you joined DIP at {company}.",
 
   // bug_report_resolved
-  "email.bugResolved.heading": "Thanks for your report",
+  "email.bugResolved.heading": "Problem resolved",
   "email.bugResolved.subject": "Your problem report was resolved",
   "email.bugResolved.preheader": "The problem you reported on {day} was marked resolved.",
   "email.bugResolved.lead": "the problem you reported on {day} was marked resolved. Thank you for helping us make DIP better.",
@@ -163,14 +163,14 @@ export const en = {
   "email.ideas.start": "Start this event",
   "email.ideas.startLabel": "Start this event: {title}",
   "email.ideas.open": "Open event ideas",
-  "email.ideas.footer.reason": "You get this because you turned on weekly event ideas for admins.",
+  "email.ideas.footer.reason": "You are getting this because you turned on weekly event ideas for admins.",
   "email.ideas.footer.manage": "Manage in the admin portal",
   "email.ideas.text.when": "When: {hint}",
 
   // weekly_theme (opt-in `weekly_themes`): {title} is the theme title as the organizer wrote it.
   "email.weeklyTheme.heading": "This week's theme",
   "email.weeklyTheme.subject": "This week's theme: {title}",
-  "email.weeklyTheme.preheader": "{title} is the new weekly theme. Join in with your coworkers.",
+  "email.weeklyTheme.preheader": "Runs {dates}. Join in with coworkers, then log what you did in DIP.",
   "email.weeklyTheme.lead": "a new weekly theme just started. Join in with coworkers, then log what you did in DIP.",
   "email.weeklyTheme.dates": "{start} to {end}",
   "email.weeklyTheme.points": "{points, plural, one {Worth # point} other {Worth # points}}",
@@ -190,7 +190,7 @@ export const en = {
   "email.adminDigest.import": "{time}: {invited} invited, {updated} updated{failed, plural, =0 {} one {, # could not be added} other {, # could not be added}}",
   "email.adminDigest.imports.more": "{count, plural, one {and # more import} other {and # more imports}}",
   "email.adminDigest.cta": "Open the roster",
-  "email.adminDigest.reason": "You get this because you turned on the daily roster digest for admins.",
+  "email.adminDigest.reason": "You are getting this because you turned on the daily roster digest for admins.",
   "email.adminDigest.manage": "Manage in the admin portal",
 } as const;
 

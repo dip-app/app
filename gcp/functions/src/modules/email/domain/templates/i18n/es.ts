@@ -66,7 +66,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.eventCanceled.subject": "Cancelado: {title}",
   "email.eventCanceled.preheader": "Se canceló {title}.",
   "email.eventCanceled.lead": "Se canceló este evento.",
-  "email.eventCanceled.note": "Explora otros eventos.",
+  "email.eventCanceled.note": "Ábrelo en DIP para ver los detalles y busca otro evento al que unirte.",
 
   "email.attendeeAdded.heading": "Te agregaron",
   "email.attendeeAdded.subject": "Te agregaron a {title}",
@@ -82,7 +82,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.calendarInvite.subject": "{reason, select, updated {Invitación actualizada: {title}} other {Invitación de calendario: {title}}}",
   "email.calendarInvite.preheader": "{reason, select, updated {Cambiaron los detalles de {title}.} other {Agrega {title} a tu calendario.}}",
   "email.calendarInvite.lead": "{reason, select, updated {Cambió la hora o el lugar de este evento.} other {Te uniste a este evento.}}",
-  "email.calendarInvite.note": "{reason, select, updated {Abre la invitación de calendario adjunta para actualizar tu calendario.} other {Abre la invitación adjunta (invite.ics) y elige Agregar al calendario. Si cambia la hora o el lugar, te enviaremos una invitación actualizada.}}",
+  "email.calendarInvite.note": "{reason, select, updated {Para actualizar tu calendario, abre la invitación adjunta. El botón de abajo abre el evento en DIP.} other {Para agregarlo a tu calendario, abre la invitación adjunta (invite.ics) y elige Agregar al calendario. El botón de abajo abre el evento en DIP. Si cambia la hora o el lugar, te enviaremos una invitación actualizada.}}",
 
   "email.calendarCancel.heading": "{reason, select, left {Se quitó de tu calendario} other {Evento cancelado}}",
   "email.calendarCancel.subject": "{reason, select, left {Se quitó de tu calendario: {title}} other {Cancelado: {title}}}",
@@ -120,7 +120,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.welcome.step.interests": "Elige tus intereses en Perfil para ver primero los eventos que van contigo.",
   "email.welcome.reason": "Recibes este correo porque te uniste a DIP en {company}.",
 
-  "email.bugResolved.heading": "Gracias por tu reporte",
+  "email.bugResolved.heading": "Problema resuelto",
   "email.bugResolved.subject": "Se resolvió el problema que reportaste",
   "email.bugResolved.preheader": "El problema que reportaste el {day} se marcó como resuelto.",
   "email.bugResolved.lead": "El problema que reportaste el {day} se marcó como resuelto. Gracias por ayudarnos a mejorar DIP.",
@@ -145,12 +145,12 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.ideas.startLabel": "Crear este evento: {title}",
   "email.ideas.open": "Abrir ideas de eventos",
   "email.ideas.footer.reason": "Recibes este correo porque activaste las ideas semanales de eventos para administradores.",
-  "email.ideas.footer.manage": "Administrar en el portal de administración",
+  "email.ideas.footer.manage": "Configurar en el portal de administración",
   "email.ideas.text.when": "Cuándo: {hint}",
 
   "email.weeklyTheme.heading": "El tema de esta semana",
   "email.weeklyTheme.subject": "Tema de la semana: {title}",
-  "email.weeklyTheme.preheader": "{title} es el nuevo tema semanal. Participa con tus compañeros.",
+  "email.weeklyTheme.preheader": "Del {dates}. Participa con tus compañeros y luego registra en DIP lo que hiciste.",
   "email.weeklyTheme.lead": "Empezó un nuevo tema semanal. Participa con tus compañeros y luego registra en DIP lo que hiciste.",
   "email.weeklyTheme.dates": "{start} a {end}",
   "email.weeklyTheme.points": "{points, plural, one {Vale # punto} other {Vale # puntos}}",
@@ -170,7 +170,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.adminDigest.imports.more": "{count, plural, one {y # importación más} other {y # importaciones más}}",
   "email.adminDigest.cta": "Abrir la lista de personal",
   "email.adminDigest.reason": "Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.",
-  "email.adminDigest.manage": "Administrar en el portal de administración",
+  "email.adminDigest.manage": "Configurar en el portal de administración",
 };
 
 /** Spanish for server-written sentences that reach the ideas email as stored text (matched exactly, else shown as is). */

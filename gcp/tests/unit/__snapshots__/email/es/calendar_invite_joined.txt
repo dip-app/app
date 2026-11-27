@@ -7,7 +7,7 @@ Cuándo: vie, 20 nov, 6:30 p.m. a 8:00 p.m. EST
 Dónde: Frick Park, Hot Metal Street entrance
        Hot Metal St, Pittsburgh, PA
 
-Abre la invitación adjunta (invite.ics) y elige Agregar al calendario. Si cambia la hora o el lugar, te enviaremos una invitación actualizada.
+Para agregarlo a tu calendario, abre la invitación adjunta (invite.ics) y elige Agregar al calendario. El botón de abajo abre el evento en DIP. Si cambia la hora o el lugar, te enviaremos una invitación actualizada.
 
 Abrir en DIP: https://letsdip.work/e/evt_sunset_hike
 

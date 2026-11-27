@@ -384,7 +384,7 @@ export function buildCopy<T extends TemplateId>(template: T, variables: Template
       return {
         heading: t("email.weeklyTheme.heading"),
         subject: subject(locale, "email.weeklyTheme.subject", title),
-        preheader: t("email.weeklyTheme.preheader", { title }),
+        preheader: t("email.weeklyTheme.preheader", { dates: lines[0]! }),
         lead: t("email.weeklyTheme.lead"),
         badge: null,
         event: null,

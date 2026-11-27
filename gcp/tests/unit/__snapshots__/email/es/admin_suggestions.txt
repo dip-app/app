@@ -40,5 +40,5 @@ Abrir ideas de eventos: https://letsdip.work/admin/ideas/
 --
 Recibes este correo porque activaste las ideas semanales de eventos para administradores.
 Cancelar suscripción: https://letsdip.work/u/sample-token
-Administrar en el portal de administración: https://letsdip.work/admin/suggestions/
+Configurar en el portal de administración: https://letsdip.work/admin/suggestions/
 Enviado por DIP · ¿Preguntas? support@letsdip.work

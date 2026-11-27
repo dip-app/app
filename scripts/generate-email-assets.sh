@@ -40,41 +40,44 @@ cat > "$TMP/logo.svg" <<SVG
 SVG
 rsvg-convert -w 96 -h 96 -o "$OUT/logo.png" "$TMP/logo.svg"
 
-# 2/3. header*.png and footer*.png: 1200x200, flat opaque background (light and dark variants).
-# header: clover + "DIP" wordmark at the left, clouds and theme art right. footer: quiet right-weighted mascots.
-build() { # suffix bg ink cloudfill cloudopacity plate (plate = art panel colour, or none)
-  local sfx="$1" bg="$2" ink="$3" cf="$4" co="$5" plate="${6:-none}"
-  local plate_el=""
-  if [ "$plate" != "none" ]; then plate_el="<rect x=\"548\" y=\"4\" width=\"640\" height=\"192\" rx=\"16\" fill=\"$plate\"/>"; fi
-  cat > "$TMP/header$sfx.svg" <<SVG
+# 2/3. header.png and footer.png: 1200x200, TRANSPARENT, one asset for light mode, dark mode and forced inversion.
+# The band colour comes from the email's table cell (#F2F3FC light, #121318 dark, or whatever a client inverts it to);
+# the art carries only what reads on both: the brand-purple clover and wordmark, and the mascots centred on
+# a rounded light panel (their ink outlines need a light ground). header-dark.png and footer-dark.png are written as
+# copies so emails already sent with the old dark swap keep loading an image.
+build() {
+  # The panel stays inside the body card's right edge on phones (12 px page gutter: x <= 1160 of 1200 at 390 px wide).
+  local plate="<rect x=\"584\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"#FFFFFF\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  # Drawn again with no fill after the art, so clouds inside the theme art never cover the hairline.
+  local footer_plate="<rect x=\"314\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"#FFFFFF\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  local plate_line="<rect x=\"584\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"none\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  local footer_plate_line="<rect x=\"314\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"none\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  cat > "$TMP/header.svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="200" viewBox="0 0 1200 200">
-<rect width="1200" height="200" fill="$bg"/>
 <g transform="translate(56 56) scale(0.1266) translate(-164 -164)">$CLOVER_BRAND</g>
-<text x="166" y="141" font-family="Fjalla One" font-size="96" fill="$ink">DIP</text>
-$(cloud 330 25 0.45 $co $cf)$(cloud 440 130 0.5 $co $cf)
-$plate_el
-<image xlink:href="music.png" x="900" y="8" width="272" height="186"/>
-<image xlink:href="games.png" x="730" y="8" width="272" height="186"/>
-<image xlink:href="learning.png" x="560" y="8" width="272" height="186"/>
+<text x="166" y="141" font-family="Fjalla One" font-size="96" fill="#5A66E6">DIP</text>
+$plate
+<image xlink:href="music.png" x="867" y="22" width="232" height="158"/>
+<image xlink:href="games.png" x="721" y="22" width="232" height="158"/>
+<image xlink:href="learning.png" x="567" y="22" width="232" height="158"/>
+$plate_line
 </svg>
 SVG
-  cat > "$TMP/footer$sfx.svg" <<SVG
+  cat > "$TMP/footer.svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="200" viewBox="0 0 1200 200">
-<rect width="1200" height="200" fill="$bg"/>
-$(cloud 60 90 0.7 $co $cf)$(cloud 230 25 0.5 $co $cf)$(cloud 330 120 0.45 $co $cf)
-$plate_el
-<image xlink:href="arts.png" x="560" y="8" width="272" height="186"/>
-<image xlink:href="food.png" x="730" y="8" width="272" height="186"/>
-<image xlink:href="wellness.png" x="890" y="8" width="272" height="186"/>
+$footer_plate
+<image xlink:href="arts.png" x="297" y="22" width="232" height="158"/>
+<image xlink:href="food.png" x="451" y="22" width="232" height="158"/>
+<image xlink:href="wellness.png" x="597" y="22" width="232" height="158"/>
+$footer_plate_line
 </svg>
 SVG
   for n in header footer; do
-    rsvg-convert -w 1200 -h 200 -o "$TMP/$n$sfx-full.png" "$TMP/$n$sfx.svg"
-    sips -s format png "$TMP/$n$sfx-full.png" --out "$OUT/$n$sfx.png" > /dev/null   # opaque, lossless
+    rsvg-convert -w 1200 -h 200 -o "$OUT/$n.png" "$TMP/$n.svg"   # keeps alpha
+    cp "$OUT/$n.png" "$OUT/$n-dark.png"
   done
 }
-build ""      "#F2F3FC" "#1E212B" "#FFFFFF" 0.85
-build "-dark" "#23252E" "#ECEDEF" "#2E313B" 1 "#E8EAF8"
+build
 # 4. ideas/<theme>.png: 224x224 opaque tiles (shown at 112x112) for the admin weekly ideas email. The transparent theme art
 # is cropped to its mascot cluster (about x 290..730, y 30..500 of the shared 730x539 slot) and centered on the theme's accent
 # color (apps/admin/public/img/themes/ACCENTS.md), so the character fills most of the tile.

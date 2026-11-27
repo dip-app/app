@@ -38,7 +38,7 @@ Hi Sam, here are 4 ideas for the coming weeks, picked from what your team likes 
 Open event ideas: https://letsdip.work/admin/ideas/
 
 --
-You get this because you turned on weekly event ideas for admins.
+You are getting this because you turned on weekly event ideas for admins.
 Unsubscribe: https://letsdip.work/u/sample-token
 Manage in the admin portal: https://letsdip.work/admin/suggestions/
 Sent by DIP · Questions? support@letsdip.work
