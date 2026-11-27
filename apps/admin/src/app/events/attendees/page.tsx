@@ -144,7 +144,7 @@ function Attendees() {
   const meta = (
     <>
       <span>{formatWhen(event.data.startTime, event.data.endTime)}</span>
-      {event.data.venue.name && <span>{event.data.venue.name}</span>}
+      {event.data.venue?.name && <span>{event.data.venue.name}</span>}
       <span><strong>{t("attendees.going", { count: attendees.data.length, capacity: event.data.capacity })}</strong>{full && kind === "upcoming" && <Info>{t("attendees.full")}</Info>}</span>
       {started ? <span>{t("attendees.checkedInCount", { count: checkedIn })}</span> : <span>{t("attendees.action.opensAtStart")}</span>}
     </>

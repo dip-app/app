@@ -78,6 +78,10 @@ layout, sticky form footer, settings layout) is the next PR.
 - Rebased on main after #356 (admin motion and interaction states). Conflicts in `app/layout.tsx` (both stylesheets kept:
   structure.scss loads before interaction.scss so states layer over layout) and `Ui.tsx` LoadMore (their spinner button
   kept, the `hideCount` option kept). Targeted vitest re-run after the rebase: 54 files, 445 tests pass.
+- Rebased again after #358 (data cache). Events and Attendees conflicts resolved on the cached `useLoad`: Events keeps
+  its search and sort over the cached list (no direct fetch), Attendees keeps the optimistic check-in (`rows`,
+  `busyIds`, `data-member`) inside the named frame. The optimistic check-in test now uses the shared Shell stand-in
+  (`useShellHeader`), and the facts line tolerates an event without a venue. Targeted vitest: 57 files, 463 tests pass.
 - From the interaction owner's requests (docs/design/polish-2026-11/admin-interaction.md): the Events, Members, Roster
   and Weekly themes tab panels are now keyed by the selected tab, so their shared reveal can fade a new panel in (the
   review and bug report panels are not keyed: they keep the selection and scroll). Not done here: the layout shift on
