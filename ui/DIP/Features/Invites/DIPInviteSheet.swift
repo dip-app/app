@@ -117,7 +117,7 @@ struct DIPInviteSheet: View {
                           message: String(localized: "invite.none.message", defaultValue: "Check the spelling or try part of their first or last name.", comment: "Invite sheet: no search results message"), faces: 2)
         case .failed(let failure):
             DIPEmptyState(screen: "invite-error", title: String(localized: "invite.error.title", defaultValue: "Couldn’t search", comment: "Invite sheet: search error title"), message: failure.message, faces: 3,
-                          actionTitle: String(localized: "invite.error.retry", defaultValue: "Try again", comment: "Invite sheet: retry button after a search error"), action: failure.isRetryable ? { DIPHaptics.commit(); Task { await model.search() } } : nil)
+                          tone: .failure, actionTitle: String(localized: "invite.error.retry", defaultValue: "Try again", comment: "Invite sheet: retry button after a search error"), action: failure.isRetryable ? { DIPHaptics.commit(); Task { await model.search() } } : nil)
         }
     }
 

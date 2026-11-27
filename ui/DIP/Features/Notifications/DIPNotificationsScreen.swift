@@ -180,7 +180,7 @@ struct DIPNotificationsScreen: View {
         case .loading: loading
         case .failed(let message):
             DIPEmptyState(screen: "notifications-error", title: String(localized: "notifications.error.title", defaultValue: "Couldn’t load notifications", comment: "Notifications: error state title"), message: message, faces: 3,
-                          actionTitle: String(localized: "notifications.error.retry", defaultValue: "Try again", comment: "Notifications: retry button on the error state"), action: { DIPHaptics.commit(); onRetry() })
+                          tone: .failure, actionTitle: String(localized: "notifications.error.retry", defaultValue: "Try again", comment: "Notifications: retry button on the error state"), action: { DIPHaptics.commit(); onRetry() })
         case .ready:
             if model.isEmpty {
                 DIPEmptyState(screen: "notifications", title: String(localized: "notifications.empty.title", defaultValue: "No notifications yet", comment: "Notifications: empty state title"),

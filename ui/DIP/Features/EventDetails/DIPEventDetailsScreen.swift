@@ -106,7 +106,7 @@ struct DIPEventDetailsScreen: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 130)
                     }
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).dipTopEdgeFade()
                 }
                 .padding(.bottom, 22)
                 .overlay(alignment: .top) {
@@ -211,9 +211,9 @@ struct DIPEventDetailsScreen: View {
 
     private var header: some View {
         return DIPDetailHeader(
-            timing: Self.dateOnly(event), widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
+            timing: Self.headerDate(event), widePill: event.isPast, identifierPrefix: "event", onBack: onBack,
             calendarLabel: addableMetadata.map(Self.calendarLabel), calendarState: pillState,
-            onCalendar: addToCalendar)
+            onCalendar: addToCalendar, showsCalendarIcon: !event.isPast && event.metadata != nil)
         .alert(DIPCalendarOverlapText.alertTitle(conflicts), isPresented: $showsConflictAlert) {
             Button("Add anyway") { performAdd() }
             Button("Cancel", role: .cancel) {}
@@ -227,6 +227,13 @@ struct DIPEventDetailsScreen: View {
         } message: {
             if case .failed(let message) = calendarResult { Text(message) }
         }
+    }
+
+    /// Upcoming events that cannot be added (cancelled, already started) keep the add pill's date format and glyph in
+    /// the informational pill, so the header does not switch to a different-looking date; past events keep the year.
+    static func headerDate(_ event: DIPEventDetail) -> String {
+        guard !event.isPast, let start = event.metadata?.startTime else { return dateOnly(event) }
+        return start.formatted(.dateTime.weekday(.wide).month(.defaultDigits).day())
     }
 
     /// The header pill shows the date only ("Nov 23, 2026"); the time lives in the When row of the info card.
@@ -455,10 +462,10 @@ struct DIPEventDetailsScreen: View {
                 invite: invitePill,
                 showsParticipation: true,
                 // The bottom bar (own or the shell's) is the one Join action; this slot is Directions (always, when there is a location); Leave sits at the bottom of the page.
-                joinInRow: false, directionsURL: event.metadata?.directionsURL(fallbackTitle: event.title),
+                joinInRow: false, directionsURL: event.metadata?.status == .cancelled ? nil : event.metadata?.directionsURL(fallbackTitle: event.title),
                 isParticipating: joined, canChange: canChangeParticipation,
                 joinTitle: String(localized: "event.action.join", defaultValue: "Join Activity", comment: "Pill that joins the activity"), leaveTitle: String(localized: "event.action.leave", defaultValue: "Leave Activity", comment: "Pill that leaves the activity"),
-                shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title) — \(event.timing)",
+                shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title), \(event.timing)",
                 shareLink: event.metadata?.status == .cancelled ? nil : DIPShareLink.url(forEventID: event.id),
                 shareTitle: String(localized: "event.action.share", defaultValue: "Share Event", comment: "Pill that opens the share sheet for the activity"), identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
@@ -648,7 +655,7 @@ struct DIPEventDetailsScreen: View {
                 }
             }
         }
-        if !event.isPast, let url = metadata.mapsURL {
+        if !event.isPast, metadata.status != .cancelled, let url = metadata.mapsURL {
             Button { openURL(url) } label: {
                 row(AnyView(rowGlyph("arrow.up.right"))).frame(minHeight: 44).contentShape(Rectangle())
             }

@@ -93,7 +93,7 @@ struct DIPAlbumScreen: View {
                         }
                         .padding(.horizontal, 20).padding(.bottom, 100)
                     }
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).dipTopEdgeFade()
                 }
                 .padding(.bottom, 22)
                 if showsBottomBar && album.canAddPhotos {
@@ -105,7 +105,7 @@ struct DIPAlbumScreen: View {
                             .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                             .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(DIPPressFeedbackStyle())
                     .disabled(selectionLimit == 0)
                     .accessibilityIdentifier("album.add-photos")
                     .padding(.horizontal, 20)
@@ -177,8 +177,7 @@ struct DIPAlbumScreen: View {
 
     @ViewBuilder private func content(width: CGFloat) -> some View {
         if !album.isLoaded {
-            ProgressView("Loading photos…")
-                .frame(maxWidth: .infinity).padding(.top, 40)
+            DIPPageSkeleton(.grid, horizontalInset: 0, label: Text("Loading photos", comment: "VoiceOver label while album photos load"))
                 .accessibilityIdentifier("album.loading")
         } else if album.photos.isEmpty {
             // A load error is shown even while drafts are listed above; the plain empty state is not.
@@ -199,7 +198,7 @@ struct DIPAlbumScreen: View {
     /// Shared empty-state format. The invitation to add appears only when this member may upload.
     @ViewBuilder private var emptyState: some View {
         if let error = album.loadError {
-            DIPEmptyState(screen: "album-error", title: String(localized: "album.error.title", defaultValue: "Couldn’t load photos", comment: "Album error state title when the photos could not be loaded"), message: error)
+            DIPEmptyState(screen: "album-error", title: String(localized: "album.error.title", defaultValue: "Couldn’t load photos", comment: "Album error state title when the photos could not be loaded"), message: error, tone: .failure)
         } else if album.canAddPhotos && selectionLimit > 0 {
             // The solid Add Photos pill below is the single add action (no second button in the card).
             DIPEmptyState(screen: "album", title: String(localized: "album.empty.title", defaultValue: "No photos yet", comment: "Album empty state title"), message: String(localized: "album.empty.message.canAdd", defaultValue: "Be the first to add one.", comment: "Album empty state message for a member who can add photos"))
@@ -256,7 +255,7 @@ struct DIPAlbumScreen: View {
             .accessibilityLabel("Share album")
             .accessibilityIdentifier("album.share")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DIPIconPressStyle())
         .frame(height: 50)
     }
 
@@ -573,7 +572,7 @@ struct DIPAlbumScreen: View {
                 }
                 .contentShape(RoundedRectangle(cornerRadius: 20))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DIPCardPressStyle())
         .accessibilityLabel(
             photo.attribution.map { String(localized: "album.photo.accessibility.by", defaultValue: "Open photo by \($0.name)", comment: "VoiceOver label of an album photo; %@ = name of the member who took it") }
                 ?? String(localized: "album.photo.accessibility.index", defaultValue: "Open album photo \(index + 1)", comment: "VoiceOver label of an album photo; %lld = position in the album")

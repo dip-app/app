@@ -69,7 +69,7 @@ struct DIPChallengeDetailsScreen: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 130)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.hidden).dipTopEdgeFade()
             }
             .padding(.bottom, 22)
         }

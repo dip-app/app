@@ -87,6 +87,17 @@
         }
       }
     },
+    "Loading" : {
+      "comment" : "VoiceOver label of a page that is still loading",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando"
+          }
+        }
+      }
+    },
     "Notifications" : {
       "localizations" : {
         "es" : {
@@ -183,6 +194,28 @@
         }
       }
     },
+    "Reloads your activities" : {
+      "comment" : "VoiceOver hint of the Updates paused pill",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a cargar tus actividades"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "comment" : "Action inside the Updates paused pill",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        }
+      }
+    },
     "Send" : {
       "localizations" : {
         "es" : {
@@ -211,6 +244,17 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "yInIDqa'"
+          }
+        }
+      }
+    },
+    "Updates paused" : {
+      "comment" : "Pill shown when live updates stopped; the content on screen may be out of date",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizaciones en pausa"
           }
         }
       }

@@ -198,7 +198,7 @@ struct DIPDuoRail: View {
                         .frame(width: Self.item, height: Self.item)
                         .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DIPIconPressStyle())
                 .accessibilityLabel(tab.title)
                 .accessibilityIdentifier("home.tab.\(tab.id)")
                 .accessibilityAddTraits(tab == selected ? .isSelected : [])
@@ -251,7 +251,7 @@ struct DIPDuoRail: View {
             }
             .frame(width: 56, height: 56).contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DIPIconPressStyle())
         .accessibilityLabel(String(localized: "duo.rail.notifications.a11y", defaultValue: "Notifications, \(unreadCount) unread",
                                      comment: "VoiceOver label of the notifications button in the Duo navigation rail; %lld = unread count"))
         .accessibilityIdentifier("home.notifications")

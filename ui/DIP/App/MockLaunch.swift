@@ -59,7 +59,20 @@ enum MockLaunch {
     /// `--album-readonly` shows it to a member who may not add photos.
     static func snapshot(arguments: [String] = ProcessInfo.processInfo.arguments) -> DIPAppSnapshot? {
         guard mode() != nil else { return nil }
-        var snapshot = arguments.contains("--empty-state=album") ? DIPMockFixtures.emptyStateReview(.album) : DIPMockFixtures.v1Events()
+        // The same review fixtures the Preview shell honors, so every designed state can be captured in the real app.
+        let emptyState = arguments.first { $0.hasPrefix("--empty-state=") }
+            .flatMap { DIPEmptyStateFixture(rawValue: String($0.dropFirst("--empty-state=".count))) }
+        var snapshot = emptyState.map { DIPMockFixtures.emptyStateReview($0, base: DIPMockFixtures.v1Events()) } ?? DIPMockFixtures.v1Events()
+        if arguments.contains("--event-cancelled") {
+            snapshot.eventDetails["puppy-yoga"]?.metadata?.status = .cancelled
+        } else if arguments.contains("--event-full"), let capacity = snapshot.eventDetails["puppy-yoga"]?.metadata?.capacity {
+            snapshot.eventDetails["puppy-yoga"]?.attendeeCount = capacity
+        }
+        // `--screen=event` reviews Puppy Yoga before joining (the fixture seeds it as joined).
+        if arguments.contains("--screen=event") || arguments.contains("--event-full") || arguments.contains("--event-cancelled") {
+            snapshot.eventDetails["puppy-yoga"]?.isJoined = false
+            snapshot.activeEvents.removeAll { $0.id == "puppy-yoga" }
+        }
         if arguments.contains("--album-readonly") {
             for id in snapshot.albums.keys { snapshot.albums[id]?.canAddPhotos = false }
         }
@@ -73,7 +86,17 @@ enum MockLaunch {
         }
         return snapshot
     }
+    /// `--shell-state=loading` holds the first snapshot for an hour (page skeleton); `--shell-state=failed` fails the first
+    /// observation once (full-page error with Try again). Review and UI tests only.
+    static func shellLoadDelay(arguments: [String] = ProcessInfo.processInfo.arguments) -> Duration {
+        arguments.contains("--shell-state=loading") ? .seconds(3600) : .zero
+    }
+    static func shellFailures(arguments: [String] = ProcessInfo.processInfo.arguments) -> [DIPMockOperation: String] {
+        arguments.contains("--shell-state=failed") ? [.observation: "Check your connection and try again."] : [:]
+    }
     #else
+    static func shellLoadDelay() -> Duration { .zero }
+    static func shellFailures() -> [DIPMockOperation: String] { [:] }
     static func mode(arguments: [String] = [], environment: [String: String] = [:]) -> Mode? { nil }
     static func snapshot() -> DIPAppSnapshot? { nil }
     #endif

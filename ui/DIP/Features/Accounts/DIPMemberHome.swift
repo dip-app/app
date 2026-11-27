@@ -1,6 +1,7 @@
 import DIPAccounts
 import DIPContracts
 import DIPCore
+import DIPDesignSystem
 import DIPMockData
 import Foundation
 import SwiftUI
@@ -43,6 +44,7 @@ struct DIPMemberHome: View {
     /// Calendar conflicts for this member (per-uid local records; feature-flagged). Created once with the home.
     @State private var calendar: DIPCalendarModel
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dipTopInset) private var topInset
     @State private var tour: OnboardingTourModel?
     @State private var tourInterests: OnboardingInterestsModel?
     @State private var replay: OnboardingTourModel?
@@ -105,7 +107,8 @@ struct DIPMemberHome: View {
             return HomeScope(
                 editor: editor, catalog: InterestCatalog(repository: repository), calendar: calendarModel,
                 prototypeRepository: DIPMockRepository(initialSnapshot: MemberProfileBridge.seed(
-                    context: context, oauthPhotoURL: oauthPhotoURL, base: mockSnapshot ?? DIPMockFixtures.reference)),
+                    context: context, oauthPhotoURL: oauthPhotoURL, base: mockSnapshot ?? DIPMockFixtures.reference),
+                    initialFailures: MockLaunch.shellFailures(), firstSnapshotDelay: MockLaunch.shellLoadDelay()),
                 notifications: live ? notificationsFactory?(context) : nil,
                 notificationPreferences: live ? notificationPreferencesFactory?(context) : nil,
                 invites: live ? invitesFactory?(context) : nil, tour: tour, tourInterests: tourInterests)
@@ -171,9 +174,16 @@ struct DIPMemberHome: View {
             if eventReadFactory != nil {
                 if let liveEvents { prototype(repository: liveEvents, live: true) }
                 else if eventConfigurationError {
-                    ContentUnavailableView("Events unavailable", systemImage: "calendar.badge.exclamationmark",
-                                           description: Text("Please sign out and try again."))
-                } else { ProgressView("Loading your company events…") }
+                    DIPEmptyState(
+                        screen: "member-events-unavailable",
+                        title: String(localized: "member.eventsUnavailable.title", defaultValue: "Events unavailable", comment: "Full-page error when the company's events cannot be set up for this account"),
+                        message: String(localized: "member.eventsUnavailable.message", defaultValue: "Please sign out and try again.", comment: "Hint under Events unavailable"),
+                        tone: .failure)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    DIPPageSkeleton(.tab, topInset: topInset, label: Text("Loading your company events", comment: "VoiceOver label while the company's events load after sign-in"))
+                }
             } else { prototype(repository: prototypeRepository, live: false) }
         }
         .task {

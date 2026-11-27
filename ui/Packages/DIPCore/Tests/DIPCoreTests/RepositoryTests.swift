@@ -272,4 +272,17 @@ final class RepositoryTests: XCTestCase {
             XCTAssertEqual(error as? DIPRepositoryError, expected)
         }
     }
+
+    /// Review-only loading delay: the first observer waits, later observers (and a retry) get the snapshot at once.
+    func testFirstSnapshotDelayHoldsOnlyTheFirstObserver() async throws {
+        let repository = DIPMockRepository(firstSnapshotDelay: .milliseconds(300))
+        let start = ContinuousClock.now
+        var first = await repository.observe().makeAsyncIterator()
+        _ = try await first.next()
+        XCTAssertGreaterThanOrEqual(ContinuousClock.now - start, .milliseconds(250))
+        let again = ContinuousClock.now
+        var second = await repository.observe().makeAsyncIterator()
+        _ = try await second.next()
+        XCTAssertLessThan(ContinuousClock.now - again, .milliseconds(250))
+    }
 }

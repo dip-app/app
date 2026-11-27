@@ -150,7 +150,7 @@ public enum DIPBadgeCount {
                 .padding(5).frame(height: 50)
                 .background(DIPTokens.Color.surfaceMuted.swiftUIColor, in: Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(DIPIconPressStyle())
             // Fixed shell chrome (the page reserves 50 pt for it): its text stops growing past xxxLarge so the
             // pinned bar never covers the page. Normal sizes are untouched.
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -265,7 +265,7 @@ public enum DIPBadgeCount {
                 .frame(height: large ? nil : 225)
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(DIPCardPressStyle())
             .accessibilityLabel(accessibilityText)
             .accessibilityHint(Text("Opens the challenge details", bundle: .module))
             .accessibilityIdentifier("home.challenge")
@@ -424,10 +424,7 @@ public enum DIPBadgeCount {
                     artwork
                         .overlay(.black.opacity(shade))
                         // Keeps the white title/locality readable on light category photos (V1-10).
-                        .overlay(alignment: .bottom) {
-                            LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
-                                .frame(height: 90)
-                        }
+                        .overlay { DIPPhotoScrim() }
                 }
                 .overlay(alignment: .topTrailing) {
                     if calendarBadge != .none {
@@ -448,7 +445,7 @@ public enum DIPBadgeCount {
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .contentShape(RoundedRectangle(cornerRadius: 20))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(DIPCardPressStyle())
             .accessibilityLabel(spokenLabel)
             .accessibilityValue(calendarValue)
             .accessibilityHint(Text("Opens the event page", bundle: .module))
@@ -679,7 +676,9 @@ public enum DIPBadgeCount {
                     HStack(spacing: 0) {
                         Text(action.title)
                             .font(DIPReferenceAssets.font("Figtree-Regular", size: 24))
-                            .foregroundStyle(.white)
+                            // The complete/unavailable gray carries the reason (Activity full, cancelled): ink keeps it
+                            // readable (white on #CCCCCC was 1.6:1). Purple and ink bars keep white text.
+                            .foregroundStyle(action.style == .complete ? DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.75) : .white)
                             .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.4)
                             .padding(.horizontal, 16)
                             .frame(maxWidth: .infinity)

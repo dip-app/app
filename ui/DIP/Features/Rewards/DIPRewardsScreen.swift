@@ -96,7 +96,7 @@ struct DIPRewardsScreen: View {
                 .font(DIPReferenceAssets.font("Inter-Regular", size: Metrics.body, relativeTo: .subheadline))
                 .foregroundStyle(ink.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
-            DIPButton(String(localized: "rewards.zero.action", defaultValue: "Find an event", comment: "Rewards: button under the zero-points nudge that goes to Home")) { DIPHaptics.select(); onSelectTab(.home) }
+            DIPButton(String(localized: "rewards.zero.action", defaultValue: "Find an event", comment: "Rewards: button under the zero-points nudge that goes to Home")) { onSelectTab(.home) }
                 .accessibilityIdentifier("rewards.zero.action")
         }
         .padding(16)
@@ -134,8 +134,9 @@ struct DIPRewardsScreen: View {
                                 DIPEmptyState(
                                     screen: "rewards", title: String(localized: "rewards.empty.title", defaultValue: "No rewards yet", comment: "Rewards: empty state title"),
                                     message: String(localized: "rewards.empty.message", defaultValue: "Rewards and discounts will show up here.", comment: "Rewards: empty state message"),
-                                    actionTitle: String(localized: "rewards.empty.action", defaultValue: "Find an event", comment: "Rewards: empty state button that goes to Home")) { onSelectTab(.home) }
-                                    .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 360), alignment: .center)
+                                    // One next step: the zero-points nudge above already offers Find an event.
+                                    actionTitle: pointsDisplay.showsZeroNudge ? nil : String(localized: "rewards.empty.action", defaultValue: "Find an event", comment: "Rewards: empty state button that goes to Home")) { onSelectTab(.home) }
+                                    .frame(maxWidth: .infinity)
                             } else if duoOpen {
                                 // Open Duo: points and the raffle on the left, the discounts beside them, instead of one
                                 // long column. The negative inset lifts the discounts to the points row (bows stay visible).
@@ -154,7 +155,7 @@ struct DIPRewardsScreen: View {
                         }
                         .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
                     }
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).dipTopEdgeFade()
                     .accessibilityIdentifier("rewards.content")
                 }
                 if showsBottomBar {

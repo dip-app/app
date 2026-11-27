@@ -59,10 +59,14 @@ public struct DIPEmptyStateContent: Equatable, Sendable {
     /// entrance (fade and slight scale of the faces) that is skipped under Reduce Motion; nothing loops.
     public struct DIPEmptyState: View {
         public enum Style: Sendable { case card, compact }
+        /// `failure`: something went wrong (load failed, offline). Shows a glyph in a soft tinted disc instead of the
+        /// Crew faces, so a failure never looks like an ordinary empty list.
+        public enum Tone: Sendable { case neutral, failure }
 
         private let content: DIPEmptyStateContent
         private let style: Style
         private let faces: Int
+        private let tone: Tone
         private let action: (() -> Void)?
 
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -75,8 +79,9 @@ public struct DIPEmptyStateContent: Equatable, Sendable {
         ///   - actionTitle/action: shown only when both are supplied.
         public init(
             screen: String, title: String, message: String? = nil, style: Style = .card, faces: Int = 3,
-            actionTitle: String? = nil, action: (() -> Void)? = nil
+            tone: Tone = .neutral, actionTitle: String? = nil, action: (() -> Void)? = nil
         ) {
+            self.tone = tone
             let content = DIPEmptyStateContent(
                 screen: screen, title: title, message: message, actionTitle: action == nil ? nil : actionTitle)
             self.content = content
@@ -136,7 +141,16 @@ public struct DIPEmptyStateContent: Equatable, Sendable {
         }
 
         @ViewBuilder private func illustration(size: CGFloat) -> some View {
-            if faces > 0 {
+            if tone == .failure {
+                Image(systemName: "exclamationmark")
+                    .font(.system(size: size * 0.45, weight: .semibold))
+                    .foregroundStyle(DIPComponentTheme.ink.opacity(0.75))
+                    .frame(width: size * 1.2, height: size * 1.2)
+                    .background(DIPTokens.Color.notificationAccent.swiftUIColor.opacity(0.35), in: Circle())
+                    .opacity(appeared ? 1 : 0)
+                    .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
+                    .accessibilityHidden(true)
+            } else if faces > 0 {
                 DIPCrewFaces(count: faces, size: size)
                     .opacity(appeared ? 1 : 0)
                     .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
