@@ -37,14 +37,15 @@ class HostingShareLinks(unittest.TestCase):
             "/admin/roster{,/}": "/admin/members/?status=invited",
             "/admin/themes{,/}": "/admin/challenges/",
             "/admin/themes/new{,/}": "/admin/challenges/new/",
+            "/admin/themes/edit{,/}": "/admin/challenges/edit/",
         }
         self.assertEqual({k: v["destination"] for k, v in redirects.items()}, expected)
         self.assertTrue(all(r["type"] == 301 for r in redirects.values()))
-        # /admin/themes/edit/ needs its ?id, which a hosting redirect may not carry over: it keeps the client redirect only.
+        # Hosting keeps the query string on redirects (verified on letsdip.work), so /admin/themes/edit/?id= keeps its id.
         for page in ("roster", "themes", "themes/new", "themes/edit"):
             self.assertTrue((ROOT / "apps/admin/src/app" / page / "page.tsx").is_file(), page)
         # Every target exists in the admin app.
-        for target in ("members", "challenges", "challenges/new"):
+        for target in ("members", "challenges", "challenges/new", "challenges/edit"):
             self.assertTrue((ROOT / "apps/admin/src/app" / target / "page.tsx").is_file(), target)
 
     def test_app_association_is_disabled_so_our_aasa_is_served(self):
