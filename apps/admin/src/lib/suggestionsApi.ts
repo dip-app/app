@@ -7,12 +7,9 @@
 // starts off), `error` (every call fails), `slow` (2.5 s). Deep link tokens in the mock: `expired`, `other`
 // (permission denied); anything else resolves to a sample draft.
 
-import { getApps } from "firebase/app";
-import { getFunctions, httpsCallable } from "firebase/functions";
 import type { AdminApi, Session } from "./api";
 import { ApiError } from "./contract";
 import { t } from "./i18n";
-import { apiErrorFrom } from "./firebaseAdapter";
 import {
   type ManageSuggestionsResponse, type ResolveSuggestedIdeaResponse, type SuggestionsAction, type SuggestionsSchedule,
   manageRequest, resolveRequest, scheduleValid,
@@ -29,15 +26,17 @@ export function suggestionsApiFor(api: AdminApi, session: Session): SuggestionsA
   return api.mode === "mock" ? createMockSuggestions(session) : createLiveSuggestions(session);
 }
 
+// The Firebase SDK and the live adapter load on the first live call, never in mock mode, so the pages that use these
+// callables (Your settings, a suggested idea) don't download the whole SDK up front.
 function createLiveSuggestions(session: Session): SuggestionsApi {
-  const functions = () => {
+  async function call<T>(name: string, payload: unknown): Promise<T> {
+    const [{ getApps }, { getFunctions, httpsCallable }, { apiErrorFrom }] = await Promise.all([
+      import("firebase/app"), import("firebase/functions"), import("./firebaseAdapter"),
+    ]);
     const app = getApps().find((a) => a.name === "dip-admin");
     if (!app) throw new ApiError("failed-precondition", t("dipbot.email.error.notConnected"));
-    return getFunctions(app, "us-central1");
-  };
-  async function call<T>(name: string, payload: unknown): Promise<T> {
     try {
-      return (await httpsCallable<unknown, T>(functions(), name)(payload)).data;
+      return (await httpsCallable<unknown, T>(getFunctions(app, "us-central1"), name)(payload)).data;
     } catch (error) {
       throw apiErrorFrom(error);
     }

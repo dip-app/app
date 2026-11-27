@@ -13,6 +13,7 @@ import { Avatar } from "./Avatar";
 import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 import { Toaster } from "./Toast";
+import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { EmptyState, PageHeader } from "@/components/kit";
 
 interface Props {
@@ -203,6 +204,8 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         <PageHeader title={title} description={subtitle} actions={action} />
         {children}
         </>)}
+        {/* "g" then a letter goes to any page in the sidebar; "?" lists the shortcuts. */}
+        <KeyboardShortcuts pages={[...visible.flatMap((group) => group.items.map((item) => ({ href: item.href, label: item.labelKey ? t(item.labelKey) : tAi("nav.label") }))), { href: "/account/", label: t("shell.settings") }]} />
       </main>
       <Toaster />
     </div>

@@ -10,7 +10,7 @@ import { TableRegion } from "@/components/TableRegion";
 import { Empty, Info, LoadMore, Loading } from "@/components/Ui";
 import { describe, useLoad } from "@/components/useLoad";
 import { IMPORT_LIMITS, type ImportJobInfo, type PlanAction, type PlanNewTeam, type PlanRow, type PlanSkippedTeam, type TeamSkipReason } from "@/lib/adminTypes";
-import { browserStore } from "@/lib/api";
+import { browserStore } from "@/lib/browserStore";
 import { ApiError } from "@/lib/contract";
 import { downloadText } from "@/lib/csv";
 import { type ParsedImport, fieldLabel, type RawFile, errorCsv, planCounts, readRawFile, templateCsv, validRows } from "@/lib/importFile";

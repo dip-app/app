@@ -6,7 +6,7 @@ import { TagCatalogProvider } from "./TagCatalog";
 import { holdReadsFromQuery } from "@/lib/loadingHold";
 import { failFromQuery } from "@/lib/mockFailures";
 import { resetCache, staleOnWrite } from "@/lib/queryCache";
-import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
+import type { AdminApi, PersonaId, Session } from "@/lib/api";
 import { Button, EmptyState } from "@/components/kit";
 import { BRAND, applyMemberLocale, initLocale, t } from "@/lib/i18n";
 import { I18nProvider } from "./I18nProvider";
@@ -42,8 +42,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (configured) {
         const { createFirebaseApi, readLiveConfig } = await import("@/lib/firebaseAdapter");
         const live = readLiveConfig();
-        created = live ? createFirebaseApi(live) : holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search);
+        if (live) created = createFirebaseApi(live);
+        else {
+          const { browserStore, createMockApi } = await import("@/lib/api");
+          created = holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search);
+        }
       } else {
+        // The mock backend and its fixtures load only in mock mode, so live pages never download them.
+        const { browserStore, createMockApi } = await import("@/lib/api");
         // `?loading=1` (mock only) keeps every page in its loading state for screenshots; `?fail=` forces error states.
         created = await failFromQuery(holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search), window.location.search);
       }
