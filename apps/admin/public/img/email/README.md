@@ -9,7 +9,7 @@ Images for DIP notification emails. Served at `https://letsdip.work/img/email/<f
 | `footer.png` | 1200x200, transparent | 600x100 | cell `#F2F3FC` light, `#121318` dark | `""` (decorative) |
 | `header-dark.png`, `footer-dark.png` | copies of the above | | | kept only for emails already sent with the old dark swap |
 
-One image per band for every mode: the band colour comes from the table cell (so dark mode and forced inversion recolour it), and the art carries only what reads on both grounds: the clover and a "DIP" wordmark in brand purple (`#7B88FA` mark, `#5A66E6` Fjalla One wordmark), clouds in 16% purple, and the mascots on a rounded `#F7F8FE` panel so their ink outlines stay legible.
+One image per band for every mode: the band colour comes from the table cell (so dark mode and forced inversion recolour it), and the art carries only what reads on both grounds: the clover and a "DIP" wordmark in brand purple (`#7B88FA` mark, `#5A66E6` Fjalla One wordmark), and the mascots centred on a rounded white tile with a hairline (header tile on the right, footer tile centred) so their ink outlines stay legible.
 
 Sources (repo graphics only): Fjalla One (`ui/Packages/DIPDesignSystem/.../Fonts/FjallaOne-Regular.ttf`, OFL), clover `ui/DIP/Resources/AppIcon.icon/Assets/logo.svg` (recoloured `#7B88FA`), theme illustrations `apps/admin/public/img/themes/*.png` (header: learning, games, music; footer: arts, food, wellness).
 

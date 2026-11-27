@@ -144,7 +144,7 @@ describe("admin_suggestions rendering", () => {
       assert.ok(out.html.includes(`href="${i.linkURL}"`), i.ideaId);
       assert.ok(out.text.includes(`\n   ${i.linkURL}\n`), i.ideaId);
     }
-    assert.equal((out.html.match(/>Start this event</g) ?? []).length, 4);
+    assert.equal((out.html.match(/>Start this event&nbsp;&rarr;</g) ?? []).length, 4);
     assert.ok(out.html.includes('href="https://letsdip.work/admin/ideas/"') && out.html.includes(">Open event ideas<") && out.html.includes("v:roundrect"));
     assert.ok(out.text.includes("Open event ideas: https://letsdip.work/admin/ideas/"));
     for (const body of [out.html, out.text]) {
@@ -181,7 +181,7 @@ describe("admin_suggestions rendering", () => {
   test("cards use uniform hairlines and a 12px radius; no one-sided borders on rounded elements", () => {
     const { html } = render("admin_suggestions");
     assert.ok(html.includes("border:1px solid #E6E7EE;border-radius:12px"));
-    assert.ok(html.includes("border:2px solid #7B88FA;border-radius:8px"));
+    assert.ok(html.includes('class="btn2-a"') && html.includes("height:44px;font-family") && html.includes("color:#4A56D6;text-decoration:underline;"));
     for (const c of CASES) {
       for (const m of renderEmail("admin_suggestions", c.variables as never, c.ctx).html.matchAll(/<[a-z0-9]+\b[^>]*\sstyle="([^"]*)"/g)) {
         const style = m[1]!;

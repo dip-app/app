@@ -149,6 +149,8 @@ function preheaderFor(v: Vars, locale: Locale): string {
 // ---------------------------------------------------------------------------------------------
 
 const CARD_BG = "#FFFFFF";
+/** Secondary "Start this event" links: AA purple text (one primary button per email stays the filled one). */
+const LINK = "#4A56D6";
 
 /** Template-specific classes appended to the shared style block. Dark mode via prefers-color-scheme and [data-ogsc]/[data-ogsb]. */
 const EXTRA_STYLE = `
@@ -163,12 +165,13 @@ const EXTRA_STYLE = `
     .idea-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
     .tint-box { background-color: #23252E !important; }
     .fit-pill { background-color: #2E313B !important; color: #ECEDEF !important; }
-    .btn2-a { color: #ECEDEF !important; }
+    .btn2-a { color: #A3ACFC !important; }
   }
   [data-ogsb] .idea-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
   [data-ogsb] .tint-box { background-color: #23252E !important; }
   [data-ogsb] .fit-pill { background-color: #2E313B !important; }
-  [data-ogsc] .fit-pill, [data-ogsc] .btn2-a { color: #ECEDEF !important; }
+  [data-ogsc] .fit-pill { color: #ECEDEF !important; }
+  [data-ogsc] .btn2-a { color: #A3ACFC !important; }
 `;
 
 const e = escapeHtml;
@@ -191,7 +194,7 @@ function ideaCard(i: SuggestionIdeaVariables, last: boolean, locale: Locale): st
   const when = i.whenHint
     ? `<p dir="auto" class="text-muted" style="margin:0 0 12px 0;font-family:${FONT};font-size:14px;line-height:20px;color:${MUTED};">${e(i.whenHint)}</p>`
     : "";
-  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td class="btn2-td" align="center" height="48" style="height:48px;border:2px solid ${ACCENT};border-radius:8px;"><a class="btn2-a" href="${e(i.linkURL)}" aria-label="${e(tEmail(locale, "email.ideas.startLabel", { title: i.title }))}" title="${e(i.title)}" style="display:inline-block;padding:0 18px;mso-padding-alt:0 18px;height:44px;font-family:${FONT};font-size:15px;line-height:44px;font-weight:700;color:${INK};text-decoration:none;"><!--[if mso]>&nbsp;&nbsp;<![endif]-->${e(tEmail(locale, "email.ideas.start"))}<!--[if mso]>&nbsp;&nbsp;<![endif]--></a></td></tr></table>`;
+  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td class="btn2-td" align="left" height="44" style="height:44px;"><a class="btn2-a" href="${e(i.linkURL)}" aria-label="${e(tEmail(locale, "email.ideas.startLabel", { title: i.title }))}" title="${e(i.title)}" style="display:inline-block;padding:0;height:44px;font-family:${FONT};font-size:15px;line-height:44px;font-weight:700;color:${LINK};text-decoration:underline;">${e(tEmail(locale, "email.ideas.start"))}&nbsp;&rarr;</a></td></tr></table>`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="idea-card border" style="margin:0 0 ${last ? "20px" : "16px"} 0;background-color:${CARD_BG};border:1px solid ${HAIRLINE};border-radius:12px;border-collapse:separate;">
 <tr>
 <td class="stack tile-col" width="112" valign="top" style="width:112px;padding:16px 0 16px 16px;">

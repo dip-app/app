@@ -42,30 +42,34 @@ rsvg-convert -w 96 -h 96 -o "$OUT/logo.png" "$TMP/logo.svg"
 
 # 2/3. header.png and footer.png: 1200x200, TRANSPARENT, one asset for light mode, dark mode and forced inversion.
 # The band colour comes from the email's table cell (#F2F3FC light, #121318 dark, or whatever a client inverts it to);
-# the art carries only what reads on both: the brand-purple clover and wordmark, faint purple clouds, and the mascots on
+# the art carries only what reads on both: the brand-purple clover and wordmark, and the mascots centred on
 # a rounded light panel (their ink outlines need a light ground). header-dark.png and footer-dark.png are written as
 # copies so emails already sent with the old dark swap keep loading an image.
 build() {
   # The panel stays inside the body card's right edge on phones (12 px page gutter: x <= 1160 of 1200 at 390 px wide).
   local plate="<rect x=\"584\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"#FFFFFF\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  # Drawn again with no fill after the art, so clouds inside the theme art never cover the hairline.
+  local footer_plate="<rect x=\"314\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"#FFFFFF\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  local plate_line="<rect x=\"584\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"none\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
+  local footer_plate_line="<rect x=\"314\" y=\"16\" width=\"572\" height=\"168\" rx=\"24\" fill=\"none\" stroke=\"#E6E7EE\" stroke-width=\"2\"/>"
   cat > "$TMP/header.svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="200" viewBox="0 0 1200 200">
 <g transform="translate(56 56) scale(0.1266) translate(-164 -164)">$CLOVER_BRAND</g>
 <text x="166" y="141" font-family="Fjalla One" font-size="96" fill="#5A66E6">DIP</text>
-$(cloud 330 25 0.45 0.16 "#7B88FA")$(cloud 440 130 0.5 0.16 "#7B88FA")
 $plate
-<image xlink:href="music.png" x="904" y="22" width="232" height="158"/>
-<image xlink:href="games.png" x="758" y="22" width="232" height="158"/>
-<image xlink:href="learning.png" x="604" y="22" width="232" height="158"/>
+<image xlink:href="music.png" x="867" y="22" width="232" height="158"/>
+<image xlink:href="games.png" x="721" y="22" width="232" height="158"/>
+<image xlink:href="learning.png" x="567" y="22" width="232" height="158"/>
+$plate_line
 </svg>
 SVG
   cat > "$TMP/footer.svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="200" viewBox="0 0 1200 200">
-$(cloud 60 90 0.7 0.16 "#7B88FA")$(cloud 230 25 0.5 0.16 "#7B88FA")$(cloud 330 120 0.45 0.16 "#7B88FA")
-$plate
-<image xlink:href="arts.png" x="604" y="22" width="232" height="158"/>
-<image xlink:href="food.png" x="758" y="22" width="232" height="158"/>
-<image xlink:href="wellness.png" x="904" y="22" width="232" height="158"/>
+$footer_plate
+<image xlink:href="arts.png" x="297" y="22" width="232" height="158"/>
+<image xlink:href="food.png" x="451" y="22" width="232" height="158"/>
+<image xlink:href="wellness.png" x="597" y="22" width="232" height="158"/>
+$footer_plate_line
 </svg>
 SVG
   for n in header footer; do
