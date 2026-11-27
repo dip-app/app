@@ -21,7 +21,7 @@ Imports finished (1)
 Open the roster: https://letsdip.work/admin/roster/
 
 --
-You get this because you turned on the daily roster digest for admins.
+You are getting this because you turned on the daily roster digest for admins.
 Unsubscribe: https://letsdip.work/u/sample-token
 Manage in the admin portal: https://letsdip.work/admin/account/
 Sent by DIP · Questions? support@letsdip.work

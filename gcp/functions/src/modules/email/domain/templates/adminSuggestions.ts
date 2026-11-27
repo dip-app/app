@@ -191,7 +191,7 @@ function ideaCard(i: SuggestionIdeaVariables, last: boolean, locale: Locale): st
   const when = i.whenHint
     ? `<p dir="auto" class="text-muted" style="margin:0 0 12px 0;font-family:${FONT};font-size:14px;line-height:20px;color:${MUTED};">${e(i.whenHint)}</p>`
     : "";
-  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td class="btn2-td" align="center" height="40" style="height:40px;border:2px solid ${ACCENT};border-radius:8px;"><a class="btn2-a" href="${e(i.linkURL)}" aria-label="${e(tEmail(locale, "email.ideas.startLabel", { title: i.title }))}" title="${e(i.title)}" style="display:inline-block;padding:0 18px;mso-padding-alt:0 18px;height:36px;font-family:${FONT};font-size:15px;line-height:36px;font-weight:700;color:${INK};text-decoration:none;"><!--[if mso]>&nbsp;&nbsp;<![endif]-->${e(tEmail(locale, "email.ideas.start"))}<!--[if mso]>&nbsp;&nbsp;<![endif]--></a></td></tr></table>`;
+  const button = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;"><tr><td class="btn2-td" align="center" height="48" style="height:48px;border:2px solid ${ACCENT};border-radius:8px;"><a class="btn2-a" href="${e(i.linkURL)}" aria-label="${e(tEmail(locale, "email.ideas.startLabel", { title: i.title }))}" title="${e(i.title)}" style="display:inline-block;padding:0 18px;mso-padding-alt:0 18px;height:44px;font-family:${FONT};font-size:15px;line-height:44px;font-weight:700;color:${INK};text-decoration:none;"><!--[if mso]>&nbsp;&nbsp;<![endif]-->${e(tEmail(locale, "email.ideas.start"))}<!--[if mso]>&nbsp;&nbsp;<![endif]--></a></td></tr></table>`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="idea-card border" style="margin:0 0 ${last ? "20px" : "16px"} 0;background-color:${CARD_BG};border:1px solid ${HAIRLINE};border-radius:12px;border-collapse:separate;">
 <tr>
 <td class="stack tile-col" width="112" valign="top" style="width:112px;padding:16px 0 16px 16px;">
@@ -247,12 +247,12 @@ export function renderAdminSuggestions(variables: Vars, ctx: RenderContext): Ren
     extraStyle: EXTRA_STYLE,
     fluid: true,
     lang: locale,
-    main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(t("email.ideas.heading"))}</h1>
+    main: `<h1 class="text-main" style="margin:0 0 16px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(t("email.ideas.heading"))}</h1>
 <p class="text-main" style="margin:0 0 20px 0;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">${e(lead)}</p>
 ${note}${cards}
 ${primaryButton(IDEAS_URL, t("email.ideas.open"))}`,
     footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">${e(t("email.ideas.footer.reason"))}</td></tr>
-<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(t("email.footer.unsubscribe"))}</a> &middot; <a class="link" href="${MANAGE_URL}" style="color:${INK};text-decoration:underline;">${e(t("email.ideas.footer.manage"))}</a></td></tr>
+<tr><td class="text-muted" style="padding:8px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(t("email.footer.unsubscribe"))}</a> &middot; <a class="link" href="${MANAGE_URL}" style="color:${INK};text-decoration:underline;">${e(t("email.ideas.footer.manage"))}</a></td></tr>
 <tr><td class="text-muted" style="padding:0;${FINE}">${e(t("email.footer.sentBy"))} &middot; ${e(t("email.footer.questions"))} <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
   });
   return { subject, preheader, html, text: plainText(variables, lead, ctx.unsubscribeURL, locale) };

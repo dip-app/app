@@ -2,7 +2,6 @@ EVENT CANCELED
 
 Hi Sam, this event was canceled.
 
-[Canceled]
 Sunset hike at Frick Park
 When: Fri, Nov 20, 6:30 PM to 8:00 PM EST
 Where: Frick Park, Hot Metal Street entrance

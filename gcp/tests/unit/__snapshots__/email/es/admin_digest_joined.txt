@@ -10,5 +10,5 @@ Abrir la lista de personal: https://letsdip.work/admin/roster/
 --
 Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.
 Cancelar suscripción: https://letsdip.work/u/sample-token
-Administrar en el portal de administración: https://letsdip.work/admin/account/
+Configurar en el portal de administración: https://letsdip.work/admin/account/
 Enviado por DIP · ¿Preguntas? support@letsdip.work

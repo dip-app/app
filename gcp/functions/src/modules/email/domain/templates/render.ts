@@ -1,4 +1,4 @@
-import { SHARE_ORIGIN, collapseWhitespace, escapeHtml } from "../../../share/domain/sharePage";
+import { SHARE_ORIGIN, collapseWhitespace, escapeHtml, truncateAtWord } from "../../../share/domain/sharePage";
 import { EMAIL_ASSET_BASE, FINE, HAIRLINE, INK, MUTED, FONT, HEAD_FONT, STRIKE, SUPPORT_EMAIL, layoutShell, primaryButton } from "./layout";
 import { renderAdminSuggestions, validateAdminSuggestions } from "./adminSuggestions";
 import { intlTag, localeOrDefault, splitAround, type Locale } from "../../../i18n";
@@ -359,16 +359,31 @@ const THEME_STYLE = `
   [data-ogsb] .theme-card { background-color: #22242C !important; border-color: #2C2F38 !important; }
 `;
 
-/** One complete sentence: the copy sentence plus the event day when it fits; cut only at a word boundary, no ellipsis. */
-function buildPreheader(template: TemplateId, sentence: string, day: string, locale: Locale): string {
+/** Canceled kicker: readable red in light mode, a lighter red in dark mode. */
+const KICKER_STYLE = `
+  @media (prefers-color-scheme: dark) {
+    .kicker-alert { color: #FDA29B !important; }
+  }
+  [data-ogsc] .kicker-alert { color: #FDA29B !important; }
+`;
+
+/**
+ * One complete sentence: the copy sentence plus the event day when it fits. When it is too long, the inserted name or
+ * title (`slots`) is shortened with an ellipsis so the sentence keeps its grammar; only as a last resort is the sentence cut,
+ * at a word boundary with an ellipsis.
+ */
+function buildPreheader(template: TemplateId, sentence: string, day: string, locale: Locale, slots: readonly string[] = []): string {
   if (template !== "event_reminder" && day) {
     const withDay = tEmail(locale, "email.preheader.onDay", { sentence: sentence.replace(/\.$/, ""), day });
     if (withDay.length <= PREHEADER_MAX) return withDay;
   }
   if (sentence.length <= PREHEADER_MAX) return sentence;
-  const cut = sentence.slice(0, PREHEADER_MAX - 1);
-  const space = cut.lastIndexOf(" ");
-  return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[\s.,;:!?-]+$/u, "")}.`;
+  for (const slot of slots) {
+    if (!slot || !sentence.includes(slot)) continue;
+    const budget = PREHEADER_MAX - (sentence.length - slot.length);
+    if (budget >= 16) return sentence.replace(slot, truncateAtWord(slot, budget)).replace(/…\.$/u, "…");
+  }
+  return truncateAtWord(sentence, PREHEADER_MAX);
 }
 
 /** "Hi Sam, " + the lead sentence ("¡Hola, Sam! " in Spanish, where the lead starts a new sentence). */
@@ -421,7 +436,10 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
     if (c.venueAddress && prev?.venueAddress) oldAddress = collapseWhitespace(prev.venueAddress);
   }
   const lead = greetingLead(ctx, locale, copy.lead);
-  const preheader = buildPreheader(template, copy.preheader, whenParts.startDay, locale);
+  const slotValues = [title, copy.theme?.title, (variables as { companyName?: string }).companyName]
+    .filter((v): v is string => typeof v === "string" && v.length > 0)
+    .map((v) => collapseWhitespace(v));
+  const preheader = buildPreheader(template, copy.preheader, whenParts.startDay, locale, slotValues);
 
   const e = escapeHtml;
   const para = (text: string, margin = "16px"): string =>
@@ -452,11 +470,17 @@ export function renderEmail<T extends TemplateId>(template: T, variables: Templa
     address ? `<div class="text-muted" style="font-size:14px;line-height:20px;color:${MUTED};"><span dir="auto">${e(address)}</span></div>` : "",
   ].join("");
   const detailRows = [when ? row(whenLabel, whenHtml, true) : "", venue || address ? row(whereLabel, whereHtml, !when) : ""].join("");
+  void pill; // event emails carry the state in the kicker; the pill markup stays for templates without a kicker
+  const eventHead = facts && title;
   const card =
-    facts && title
-      ? `${pill}${old(oldTitle)}<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-family:${FONT};font-size:18px;line-height:26px;font-weight:700;color:${INK};"><span dir="auto">${e(title)}</span></p>
-${detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="border" style="margin:0 0 20px 0;border-top:1px solid ${HAIRLINE};border-bottom:1px solid ${HAIRLINE};">${detailRows}</table>` : `<div style="height:12px;line-height:12px;font-size:12px;">&nbsp;</div>`}`
+    eventHead
+      ? (detailRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="border" style="margin:0 0 20px 0;border-top:1px solid ${HAIRLINE};border-bottom:1px solid ${HAIRLINE};">${detailRows}</table>` : `<div style="height:4px;line-height:4px;font-size:4px;">&nbsp;</div>`)
       : "";
+  const kickerColor = template === "event_canceled" || (template === "calendar_cancel" && copy.badge) ? "#B42318" : MUTED;
+  const heading = eventHead
+    ? `<p class="${kickerColor === MUTED ? "text-muted" : "kicker-alert"}" style="margin:0 0 8px 0;font-family:${FONT};font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${kickerColor};">${e(copy.heading)}</p>
+${old(oldTitle)}<h1 dir="auto" class="text-main" style="margin:0 0 16px 0;font-family:${HEAD_FONT};font-size:${Array.from(title ?? "").length > 60 ? "22px;line-height:28px" : "28px;line-height:34px"};font-weight:normal;letter-spacing:0.01em;color:${INK};"><span dir="auto">${e(title)}</span></h1>`
+    : `<h1 class="text-main" style="margin:0 0 16px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>`;
 
   const highlight = copy.highlight
     ? `<p class="text-main" style="margin:0 0 16px 0;font-family:${FONT};font-size:20px;line-height:28px;font-weight:700;color:${INK};">${e(copy.highlight)}</p>`
@@ -508,15 +532,15 @@ ${theme.body ? `<p dir="auto" class="text-main" style="margin:0 0 8px 0;font-fam
     preheader,
     ctx,
     lang: locale,
-    ...(themeCard ? { extraStyle: THEME_STYLE } : {}),
-    main: `<h1 class="text-main" style="margin:0 0 12px 0;font-family:${HEAD_FONT};font-size:24px;line-height:30px;font-weight:normal;letter-spacing:0.02em;color:${INK};">${e(copy.heading)}</h1>
+    extraStyle: `${themeCard ? THEME_STYLE : ""}${eventHead ? KICKER_STYLE : ""}`,
+    main: `${heading}
 ${para(lead, "20px")}
 ${steps ? `${steps}\n` : ""}${sections ? `${sections}\n` : ""}${themeCard ? `${themeCard}\n` : ""}${card}
 ${copy.note ? noteHtml(copy.note) : ""}
 ${highlight}
 ${button}${fine ? `\n${fine}` : ""}`,
     footerRows: `<tr><td class="text-muted" style="padding:0;${FINE}">${e(reasonLine)}</td></tr>
-<tr><td class="text-muted" style="padding:12px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(unsubscribe)}</a>${manageHtml}</td></tr>
+<tr><td class="text-muted" style="padding:8px 0;${FINE}"><a class="link" href="${e(ctx.unsubscribeURL)}" style="color:${INK};text-decoration:underline;">${e(unsubscribe)}</a>${manageHtml}</td></tr>
 <tr><td class="text-muted" style="padding:0;${FINE}">${e(sentBy)} &middot; ${e(questions)} <a class="link" href="mailto:${SUPPORT_EMAIL}" style="color:${INK};text-decoration:underline;">${SUPPORT_EMAIL}</a></td></tr>`,
   });
 
@@ -526,7 +550,6 @@ ${button}${fine ? `\n${fine}` : ""}`,
   for (const section of copy.sections ?? []) lines.push(section.label, ...section.items.map((item) => `- ${item}`), "");
   if (theme) lines.push(theme.title.toLocaleUpperCase(intlTag(locale)), ...(theme.body ? [theme.body] : []), ...theme.lines, "");
   if (facts && title) {
-    if (copy.badge) lines.push(`[${copy.badge}]`);
     lines.push(`${title}${wasText(oldTitle)}`);
     if (when) lines.push(`${whenLabel}: ${when}${wasText(oldTime)}`);
     if (venue || address) {

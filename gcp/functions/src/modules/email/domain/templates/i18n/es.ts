@@ -120,7 +120,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.welcome.step.interests": "Elige tus intereses en Perfil para ver primero los eventos que van contigo.",
   "email.welcome.reason": "Recibes este correo porque te uniste a DIP en {company}.",
 
-  "email.bugResolved.heading": "Gracias por tu reporte",
+  "email.bugResolved.heading": "Problema resuelto",
   "email.bugResolved.subject": "Se resolvió el problema que reportaste",
   "email.bugResolved.preheader": "El problema que reportaste el {day} se marcó como resuelto.",
   "email.bugResolved.lead": "El problema que reportaste el {day} se marcó como resuelto. Gracias por ayudarnos a mejorar DIP.",
@@ -145,12 +145,12 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.ideas.startLabel": "Crear este evento: {title}",
   "email.ideas.open": "Abrir ideas de eventos",
   "email.ideas.footer.reason": "Recibes este correo porque activaste las ideas semanales de eventos para administradores.",
-  "email.ideas.footer.manage": "Administrar en el portal de administración",
+  "email.ideas.footer.manage": "Configurar en el portal de administración",
   "email.ideas.text.when": "Cuándo: {hint}",
 
   "email.weeklyTheme.heading": "El tema de esta semana",
   "email.weeklyTheme.subject": "Tema de la semana: {title}",
-  "email.weeklyTheme.preheader": "{title} es el nuevo tema semanal. Participa con tus compañeros.",
+  "email.weeklyTheme.preheader": "Del {dates}. Participa con tus compañeros y luego registra en DIP lo que hiciste.",
   "email.weeklyTheme.lead": "Empezó un nuevo tema semanal. Participa con tus compañeros y luego registra en DIP lo que hiciste.",
   "email.weeklyTheme.dates": "{start} a {end}",
   "email.weeklyTheme.points": "{points, plural, one {Vale # punto} other {Vale # puntos}}",
@@ -170,7 +170,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "email.adminDigest.imports.more": "{count, plural, one {y # importación más} other {y # importaciones más}}",
   "email.adminDigest.cta": "Abrir la lista de personal",
   "email.adminDigest.reason": "Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.",
-  "email.adminDigest.manage": "Administrar en el portal de administración",
+  "email.adminDigest.manage": "Configurar en el portal de administración",
 };
 
 /** Spanish for server-written sentences that reach the ideas email as stored text (matched exactly, else shown as is). */

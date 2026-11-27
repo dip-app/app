@@ -148,13 +148,13 @@ describe("admin_suggestions rendering", () => {
     assert.ok(out.html.includes('href="https://letsdip.work/admin/ideas/"') && out.html.includes(">Open event ideas<") && out.html.includes("v:roundrect"));
     assert.ok(out.text.includes("Open event ideas: https://letsdip.work/admin/ideas/"));
     for (const body of [out.html, out.text]) {
-      assert.ok(body.includes("You get this because you turned on weekly event ideas for admins."));
+      assert.ok(body.includes("You are getting this because you turned on weekly event ideas for admins."));
       assert.ok(body.includes("https://letsdip.work/u/sample-token") && body.includes("Unsubscribe"));
       assert.ok(body.includes("https://letsdip.work/admin/suggestions/") && body.includes("Manage in the admin portal"));
     }
     assert.ok(out.html.includes('Sent by DIP &middot; Questions? <a class="link" href="mailto:support@letsdip.work"'));
     assert.ok(out.text.includes("Sent by DIP · Questions? support@letsdip.work"));
-    assert.ok(!/\d+\s+[A-Z][a-z]+\s+(Street|St|Ave|Avenue|Road|Rd|Blvd)\b/.test(out.html.slice(out.html.indexOf("You get this because"))));
+    assert.ok(!/\d+\s+[A-Z][a-z]+\s+(Street|St|Ave|Avenue|Road|Rd|Blvd)\b/.test(out.html.slice(out.html.indexOf("You are getting this because"))));
   });
 
   test("theme tiles are opaque, sized, decorative and built from the asset base", () => {
@@ -171,10 +171,10 @@ describe("admin_suggestions rendering", () => {
     for (const c of CASES) {
       const { html } = renderEmail("admin_suggestions", c.variables as never, c.ctx);
       const imgs = html.match(/<img\b[^>]*>/g)!;
-      assert.ok(imgs[imgs.length - 1]!.includes("footer-dark.png"), c.name);
+      assert.ok(imgs[imgs.length - 1]!.includes("footer.png"), c.name);
       assert.ok(html.indexOf("footer.png") > html.indexOf(">Unsubscribe<") && html.indexOf(">Unsubscribe<") > html.lastIndexOf("ideas/"), c.name);
       assert.ok(html.indexOf("header.png") < html.indexOf("<h1"), c.name);
-      assert.ok(/footer-dark\.png"[^>]*\/><\/td><\/tr><\/table><\/td><\/tr>\n<\/table>\n<\/body>/.test(html), c.name);
+      assert.ok(/footer\.png"[^>]*\/><\/td><\/tr><\/table><\/td><\/tr>\n<\/table>\n<\/body>/.test(html), c.name);
     }
   });
 
@@ -211,7 +211,7 @@ describe("admin_suggestions rendering", () => {
     const c = by("admin_suggestions");
     const out = renderEmail("admin_suggestions", c.variables as never, { ...c.ctx, openPixelURL: "https://letsdip.work/o/t.gif" });
     const imgs = out.html.match(/<img\b[^>]*>/g)!;
-    assert.ok(imgs[imgs.length - 2]!.includes("footer-dark.png") && imgs[imgs.length - 1]!.includes("/o/t.gif"));
+    assert.ok(imgs[imgs.length - 2]!.includes("footer.png") && imgs[imgs.length - 1]!.includes("/o/t.gif"));
     assert.ok(!out.text.includes("/o/"));
   });
 });

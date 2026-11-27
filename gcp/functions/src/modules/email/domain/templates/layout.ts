@@ -9,10 +9,12 @@ import type { RenderContext } from "./types";
 export const ACCENT = "#7B88FA";
 export const INK = "#1E212B";
 export const MUTED = "#5B6070";
-export const STRIKE = "#8A8F9E";
+export const STRIKE = "#6B7080";
 export const SUPPORT_EMAIL = "support@letsdip.work";
 export const HAIRLINE = "#E6E7EE";
 export const ART_BG = "#F2F3FC";
+/** Dark page colour; the header and footer bands use it too, so dark mode has two tones (page and card). */
+export const DARK_BG = "#121318";
 export const FONT_URL = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fjalla+One&display=swap";
 export const FONT = "Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 export const HEAD_FONT = "'Fjalla One', 'Arial Narrow', Arial, sans-serif";
@@ -38,14 +40,10 @@ export const STYLE = `
     .border { border-color: #2C2F38 !important; }
     .pill { border-color: #2C2F38 !important; color: #ECEDEF !important; }
     .link { color: #ECEDEF !important; }
-    .art-cell { background-color: #23252E !important; }
-    .light-img { display: none !important; max-height: 0 !important; overflow: hidden !important; }
-    .dark-img { display: block !important; max-height: none !important; overflow: visible !important; }
+    .art-cell { background-color: #121318 !important; }
     .btn-a, .btn-t { color: #1E212B !important; }
   }
-  [data-ogsc] .light-img, [data-ogsb] .light-img { display: none !important; max-height: 0 !important; overflow: hidden !important; }
-  [data-ogsc] .dark-img, [data-ogsb] .dark-img { display: block !important; max-height: none !important; overflow: visible !important; }
-  [data-ogsb] .art-cell { background-color: #23252E !important; }
+  [data-ogsb] .art-cell { background-color: #121318 !important; }
   [data-ogsc] .text-main, [data-ogsc] .link { color: #ECEDEF !important; }
   [data-ogsc] .text-muted { color: #A3A7B3 !important; }
   [data-ogsc] .btn-a, [data-ogsc] .btn-t { color: #1E212B !important; }
@@ -62,6 +60,9 @@ export const MSO_STYLE = `<!--[if mso]>
 
 
 const e = escapeHtml;
+
+/** Invisible filler after the preheader so inbox previews stop there instead of continuing into the body ("Hi Sam, ..."). */
+export const PREHEADER_PAD = "&#847;&zwnj;&nbsp;".repeat(90);
 
 /**
  * Bulletproof primary button (purple fill, 44px) with a VML roundrect fallback for classic Outlook. Label colour rule:
@@ -101,21 +102,22 @@ export interface ShellInput {
   lang?: string;
 }
 
-/** Wraps template content in the shared document: header band, white card, footer rows, footer band (last visible image). */
+/** Wraps template content in the shared document: header band, white card, footer rows under a hairline, footer band (last visible image). */
 export function layoutShell(input: ShellInput): string {
   const pixel = input.ctx.openPixelURL
     ? `<img src="${e(input.ctx.openPixelURL)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0" />`
     : "";
 
   const IMG = "width:100%;max-width:100%;height:auto;border:0;";
-  const HIDDEN = "display:none;mso-hide:all;max-height:0;overflow:hidden;";
-  const pair = (file: "header" | "footer", alt: string, extraStyle: string): string =>
-    `<img class="art light-img" src="${EMAIL_ASSET_BASE}${file}.png" width="600" height="100" alt="${alt}" style="display:block;${IMG}${extraStyle}" /><img class="art dark-img" src="${EMAIL_ASSET_BASE}${file}-dark.png" width="600" height="100" alt="${alt}" style="${HIDDEN}${IMG}${extraStyle}" />`;
+  // One transparent image per band: the cell colour shows through (light, dark or a client's forced inversion), and the
+  // art itself (brand-purple mark, mascots on their own light panel) reads on all of them, so no light/dark swap.
+  const art = (file: "header" | "footer", alt: string, extraStyle: string): string =>
+    `<img class="art" src="${EMAIL_ASSET_BASE}${file}.png" width="600" height="100" alt="${alt}" style="display:block;${IMG}${extraStyle}" />`;
   // Full-bleed band: a 100%-wide cell in the band color holding a centered 600px table with the art.
   const artCell = (inner: string): string =>
     `<tr><td class="art-cell" align="center" bgcolor="${ART_BG}" width="100%" style="padding:0;background-color:${ART_BG};font-size:0;line-height:0;"><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container" style="width:600px;max-width:100%;"><tr><td style="padding:0;font-size:0;line-height:0;">${inner}</td></tr></table></td></tr>`;
-  const header = artCell(`<a href="${SHARE_ORIGIN}/" style="text-decoration:none;">${pair("header", "DIP", `font-family:${HEAD_FONT};font-size:20px;line-height:100px;color:${INK};`)}</a>`);
-  const footerArt = artCell(`${pair("footer", "", "")}${pixel}`);
+  const header = artCell(`<a href="${SHARE_ORIGIN}/" style="text-decoration:none;">${art("header", "DIP", `font-family:${HEAD_FONT};font-size:20px;line-height:100px;color:#5A66E6;`)}</a>`);
+  const footerArt = artCell(`${art("footer", "", "")}${pixel}`);
 
   return `<!doctype html>
 <html lang="${input.lang ?? "en"}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -131,7 +133,7 @@ ${MSO_STYLE}
 </style>
 </head>
 <body class="bg-outer" style="margin:0;padding:0;background-color:#F2F3FC;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${e(input.preheader)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${e(input.preheader)}${PREHEADER_PAD}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#F2F3FC;">
 ${header}
 <tr><td align="center" class="bg-outer" style="padding:24px 12px;background-color:#F2F3FC;">
@@ -139,8 +141,9 @@ ${header}
 <tr><td class="px" style="padding:28px 28px 20px 28px;">
 ${input.main}
 </td></tr>
-<tr><td class="px" style="padding:8px 28px 16px 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td class="px" style="padding:4px 28px 20px 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="border" style="border-top:1px solid ${HAIRLINE};">
+<tr><td style="height:16px;line-height:16px;font-size:0;">&nbsp;</td></tr>
 ${input.footerRows}
 </table>
 </td></tr>
