@@ -71,6 +71,17 @@ describe("share page domain", () => {
     assert.ok(html.includes('<a href="/privacy/">Privacy</a>'));
   });
 
+  test("category covers crop their DIP strip on the page; long titles keep more words on the page than in previews", () => {
+    const html = renderSharePage(buildPreview("evt_123", EVENT));
+    assert.ok(html.includes('<div class="cover strip">'));
+    assert.ok(!renderSharePage(buildPreview("evt_123", { ...EVENT, coverImageURL: "" })).includes("cover strip"));
+    const long = Array.from({ length: 30 }, (_, i) => `Word${i}`).join(" ");
+    const preview = buildPreview("evt_123", { ...EVENT, title: long });
+    assert.ok(Array.from(preview.title).length <= 90);
+    assert.ok(preview.pageTitle.length > preview.title.length);
+    assert.ok(renderSharePage(preview).includes(`<h1 dir="auto">${preview.pageTitle}</h1>`));
+  });
+
   test("the page body never repeats the date or shows the fallback description", () => {
     const empty = renderSharePage(buildPreview("evt_123", { ...EVENT, description: "  " }));
     assert.ok(!empty.includes('class="summary"'));
@@ -83,7 +94,7 @@ describe("share page domain", () => {
   test("a public TestFlight link fills the beta line and the didn't-open message; the App Store wins", () => {
     const tf = "https://testflight.apple.com/join/AbC123xy";
     const html = renderSharePage(buildPreview("evt_123", EVENT), { appStoreId: "", useBadge: false, testflightURL: tf });
-    assert.ok(html.includes(`New to DIP? <a href="${tf}">Join the beta on TestFlight</a>.`));
+    assert.ok(html.includes(`<a class="pill secondary" href="${tf}">Join the beta on TestFlight</a>`));
     assert.ok(html.includes(`<a href="${tf}">Join the beta on TestFlight</a>.</template>`));
     assert.equal(metaContent(html, "apple-itunes-app"), null);
     const bogus = renderSharePage(buildPreview("evt_123", EVENT), { appStoreId: "", useBadge: false, testflightURL: "https://evil.example/join/x" });
@@ -109,7 +120,7 @@ describe("share page domain", () => {
     const withId = renderSharePage(buildPreview("evt_123", EVENT), "1234567890", true);
     assert.ok(withId.includes('<img src="/img/landing/app-store-badge.svg" alt="Download on the App Store"'));
     assert.ok(withId.includes('href="https://apps.apple.com/app/id1234567890"'));
-    assert.ok(!withId.includes("Get it on the App Store"));
+    assert.ok(!withId.includes("Get it on the App Store</a>"));
     const withoutId = renderSharePage(buildPreview("evt_123", EVENT), "", true);
     assert.ok(!withoutId.includes("app-store-badge.svg"));
     assert.ok(withoutId.includes("It’s in private beta for invited companies."));
@@ -117,7 +128,7 @@ describe("share page domain", () => {
 
   test("with an App Store id the muted line links to the listing and nothing ever redirects", () => {
     const html = renderSharePage(buildPreview("evt_123", EVENT), "1234567890");
-    assert.ok(html.includes('New to DIP? <a href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>.'));
+    assert.ok(html.includes('<a class="pill secondary" href="https://apps.apple.com/app/id1234567890">Get it on the App Store</a>'));
     assert.ok(html.includes('<a href="https://apps.apple.com/app/id1234567890">Get DIP on the App Store</a>.</template>'));
     assert.ok(!html.includes("private beta"));
     assert.ok(!html.includes("location.replace"));

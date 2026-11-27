@@ -28,6 +28,8 @@ class AppStoreConfig(unittest.TestCase):
         self.assertEqual(lc.render_landing(LANDING, "", True, True), LANDING)
         self.assertIn("Private beta on iPhone", LANDING)
         self.assertIn('id="open-app" href="dip://">Open the app</a>', LANDING)
+        self.assertIn('<a class="button" href="#join">How to join</a>', LANDING)
+        self.assertIn('id="join"', LANDING)
         self.assertIn('role="status"', LANDING)
         self.assertNotIn("app-store.svg", LANDING)  # no App Store glyph before a listing exists
 
@@ -46,6 +48,8 @@ class AppStoreConfig(unittest.TestCase):
         self.assertIn('href="https://testflight.apple.com/join/AbC123xy">Join the beta on TestFlight</a>', html)
         self.assertNotIn('href="dip://"', html)
         self.assertIn("Private beta on iPhone", html)
+        self.assertNotIn('id="join"', html)
+        self.assertNotIn('href="#join"', html)
 
     def test_id_points_the_button_at_the_listing_and_wins_over_testflight(self):
         html = lc.render_landing(LANDING, "1234567890", False, False, "https://testflight.apple.com/join/AbC123xy")
@@ -53,6 +57,7 @@ class AppStoreConfig(unittest.TestCase):
         self.assertNotIn('id="open-app" href="dip://"', html)
         self.assertNotIn("testflight", html.lower().split("<body>")[1])
         self.assertNotIn("Private beta", html)
+        self.assertNotIn('id="join"', html)
 
     def test_badge_variant_needs_the_asset(self):
         with self.assertRaises(ValueError):

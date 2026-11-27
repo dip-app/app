@@ -54,7 +54,11 @@
   .header-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; font-size: 15px; font-weight: 600; color: var(--text); text-decoration: none; }
   .header-link:hover { color: var(--link); text-decoration: underline; }
   main { flex: 1; padding: 40px 0 64px; }
-  .prose { max-width: 680px; }
+  .prose { max-width: 680px; margin: 0 auto; }
+  .actions { margin: 24px 0; }
+  .button { display: inline-flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 28px; border-radius: 28px; background: #4A56D6; color: #FFFFFF; font: 600 19px/1 var(--body); text-decoration: none; }
+  .button:hover { background: #3B47C4; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .button { background: #8C97FB; color: #14161D; } :root:not([data-theme="light"]) .button:hover { background: #A3ACFC; } }
   h1 { font-family: var(--display); font-weight: 400; font-size: clamp(38px, 6vw, 56px); line-height: 1.05; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .005em; }
   h2 { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.2; margin: 40px 0 10px; text-transform: uppercase; letter-spacing: .01em; }
   .meta { color: var(--muted); margin: 0 0 28px; font-size: 15px; }
@@ -96,7 +100,9 @@
 <main><div class="wrap"><article class="prose">
 <h1>Page not found</h1>
 <p class="meta">This page doesn't exist, or the link is incomplete.</p>
-<p>Looking for an event someone shared? Open the full link from the message on your iPhone. Otherwise, start from the <a href="/">DIP home page</a> or <a href="/support/">get support</a>.</p>
+<p>Looking for an event someone shared? Open the full link from the message on your iPhone.</p>
+<p class="actions"><a class="button" href="/">Go to DIP home</a></p>
+<p>Still stuck? <a href="/support/">Get support</a>.</p>
 </article></div></main>
 <footer class="site-footer"><div class="wrap">
   <small>&copy; 2026 DIP</small>

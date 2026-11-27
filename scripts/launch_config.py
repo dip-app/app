@@ -28,6 +28,7 @@ _TESTFLIGHT_URL = re.compile(r"^https://testflight\.apple\.com/join/[A-Za-z0-9]{
 # The landing page marks the pre-release call to action and the beta eyebrow; both are swapped per launch state.
 _LANDING_CTA = re.compile(r"<!-- cta -->.*?<!-- /cta -->", re.S)
 _LANDING_EYEBROW = re.compile(r"<!-- cta:eyebrow -->.*?<!-- /cta:eyebrow -->", re.S)
+_LANDING_JOIN = re.compile(r"\n *<!-- cta:join -->.*?<!-- /cta:join -->", re.S)
 
 
 def read_launch_config(ts_text):
@@ -59,14 +60,14 @@ def app_store_url(app_store_id):
 def render_landing(html, app_store_id, use_badge=False, badge_exists=False, testflight_url=""):
     """Landing page for the launch state.
 
-    No App Store id and no TestFlight link: the page is returned unchanged (private beta eyebrow, "Open the app" button
-    for invited testers, beta note). TestFlight link only: the button joins the public beta. App Store id: the beta
+    No App Store id and no TestFlight link: the page is returned unchanged (private beta eyebrow, "How to join" button
+    and steps, "Open the app" for invited testers). TestFlight link only: the button joins the public beta. App Store id: the beta
     eyebrow goes and the button (or Apple's official badge) opens the listing; the id wins over a TestFlight link.
     """
     url = app_store_url(app_store_id)
     if not url and not testflight_url:
         return html
-    if not _LANDING_CTA.search(html) or not _LANDING_EYEBROW.search(html):
+    if not _LANDING_CTA.search(html) or not _LANDING_EYEBROW.search(html) or not _LANDING_JOIN.search(html):
         raise ValueError("landing page no longer contains the cta markers")
     if url:
         if use_badge:
@@ -87,6 +88,7 @@ def render_landing(html, app_store_id, use_badge=False, badge_exists=False, test
             '          <p class="cta-note">Opens TestFlight, Apple\'s app for beta testing. Then sign in to DIP with your work Google account.</p>\n'
             '        </div>'
         )
+    html = _LANDING_JOIN.sub("", html, count=1)  # the private-beta "How to join" steps
     return _LANDING_CTA.sub(lambda _m: block, html, count=1)
 
 

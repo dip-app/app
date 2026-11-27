@@ -47,6 +47,8 @@ const APPROVED_IMAGE_PREFIXES: readonly string[] = [
 ];
 
 export const TITLE_MAX = 90;
+/** The page heading has room for longer titles than link previews. */
+export const PAGE_TITLE_MAX = 160;
 export const DESCRIPTION_MAX = 180;
 
 /** The only event fields the share page ever receives. */
@@ -62,6 +64,8 @@ export interface ShareEvent {
 
 export interface SharePreview {
   title: string;
+  /** Heading on the page itself: the same title, cut later than the preview title. */
+  pageTitle: string;
   description: string;
   imageURL: string;
   /** Declared only for our own 1200x630 JPEGs; unknown for any other approved image. */
@@ -159,6 +163,7 @@ export function resolveImage(coverImageURL: string | null | undefined): { url: s
 export function genericPreview(eventId: string | null): SharePreview {
   return {
     title: eventId ? GENERIC_EVENT_TITLE : GENERIC_TITLE,
+    pageTitle: eventId ? GENERIC_EVENT_TITLE : GENERIC_TITLE,
     description: eventId ? GENERIC_EVENT_DESCRIPTION : GENERIC_DESCRIPTION,
     imageURL: `${SHARE_ORIGIN}/share/og/default.jpg`,
     imageIsStandard: true,
@@ -184,6 +189,7 @@ export function buildPreview(eventId: string | null, event: ShareEvent | null): 
   const image = resolveImage(event.coverImageURL);
   return {
     title,
+    pageTitle: truncateAtWord(collapseWhitespace(event.title), PAGE_TITLE_MAX),
     description,
     imageURL: image.url,
     imageIsStandard: image.standard,
@@ -264,16 +270,19 @@ export function renderSharePage(
     metaName("twitter:image", preview.imageURL),
     metaName("twitter:image:alt", preview.imageAlt),
   ];
-  // One muted line for people without the app, honest about the launch state. Nothing navigates by itself.
+  // For people without the app, honest about the launch state: a secondary install button once there is somewhere to
+  // install from, else one muted line. Nothing navigates by itself.
   const note = storeURL && state.useBadge
-    ? `<p class="note"><a class="badge" href="${escapeHtml(storeURL)}"><img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="40"></a></p>`
+    ? `<div class="get"><span class="get-label">New to DIP?</span><a class="badge" href="${escapeHtml(storeURL)}"><img src="/img/landing/app-store-badge.svg" alt="Download on the App Store" height="40"></a></div>`
     : storeURL
-      ? `<p class="note">New to DIP? <a href="${escapeHtml(storeURL)}">Get it on the App Store</a>.</p>`
+      ? `<div class="get"><span class="get-label">New to DIP?</span><a class="pill secondary" href="${escapeHtml(storeURL)}">Get it on the App Store</a></div>`
       : testflightURL
-        ? `<p class="note">New to DIP? <a href="${escapeHtml(testflightURL)}">Join the beta on TestFlight</a>.</p>`
+        ? `<div class="get"><span class="get-label">New to DIP?</span><a class="pill secondary" href="${escapeHtml(testflightURL)}">Join the beta on TestFlight</a></div>`
         : `<p class="note">New to DIP? It’s in private beta for invited companies. Ask your DIP admin how to join.</p>`;
+  // Our category preview images carry a DIP strip along the bottom; the page crops it (the header already shows the logo).
+  const strip = preview.imageIsStandard && /\/share\/og\/(?!default\.jpg)[a-z]+\.jpg$/.test(preview.imageURL);
   const card = preview.isEvent
-    ? `    <div class="cover"><img src="${escapeHtml(preview.imageURL)}" alt="${escapeHtml(preview.imageAlt)}" width="${PREVIEW_IMAGE.width}" height="${PREVIEW_IMAGE.height}" fetchpriority="high"></div>
+    ? `    <div class="cover${strip ? " strip" : ""}"><img src="${escapeHtml(preview.imageURL)}" alt="${escapeHtml(preview.imageAlt)}" width="${PREVIEW_IMAGE.width}" height="${PREVIEW_IMAGE.height}" fetchpriority="high"></div>
 ${preview.dateLabel ? `    <p class="date">${escapeHtml(preview.dateLabel)}</p>\n` : ""}`
     : "";
   const lead = preview.isEvent
@@ -313,6 +322,8 @@ ${FONT_FACES}
   main { flex:1; padding:28px 0 48px; }
   .cover { margin:0 0 22px; border-radius:20px; overflow:hidden; border:1.5px solid var(--line); background:var(--tint); aspect-ratio:1200/630; }
   .cover img { display:block; width:100%; height:100%; object-fit:cover; }
+  .cover.strip { aspect-ratio:1200/510; }
+  .cover.strip img { object-position:top; }
   .date { margin:0 0 8px; font-size:15px; line-height:20px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); }
   h1 { font-family:var(--display); font-weight:400; font-size:clamp(34px,9vw,48px); line-height:1.08; margin:0 0 14px; text-transform:uppercase; overflow-wrap:anywhere; text-wrap:balance; }
   .summary { margin:0 0 26px; font-size:18px; line-height:1.5; color:var(--muted); overflow-wrap:anywhere; }
@@ -321,15 +332,21 @@ ${FONT_FACES}
   .pill { display:inline-flex; align-items:center; justify-content:center; min-height:56px; padding:0 30px; border-radius:28px; font:600 19px/1 var(--body); text-decoration:none; white-space:nowrap; background:var(--brand); color:var(--on-brand); transition:background-color .15s ease-out, transform .1s ease-out; }
   .pill:hover { background:var(--brand-hover); }
   .pill:active { transform:scale(.97); }
-  .note, .status { margin:16px 0 0; font-size:15px; line-height:22px; color:var(--muted); }
-  .status { color:var(--text); }
+  .note { margin:16px 0 0; font-size:15px; line-height:22px; color:var(--muted); }
+  /* "Didn't open" notice: same wording, place and style as on the landing page. */
+  .status { margin:14px 0 0; padding:10px 14px; border:1px solid var(--line); background:var(--tint); border-radius:12px; font-size:15px; line-height:22px; color:var(--text); }
   .status:empty { display:none; }
-  .note a, .status a { color:var(--accent); }
+  .status a { color:var(--accent); }
+  .get { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin:22px 0 0; padding-top:20px; border-top:1px solid var(--hairline); }
+  .get-label { font-size:15px; color:var(--muted); }
+  .pill.secondary { min-height:48px; padding:0 22px; font-size:17px; background:transparent; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--brand); }
+  .pill.secondary:hover { background:var(--tint); }
   footer { border-top:1px solid var(--hairline); }
-  footer .wrap { display:flex; flex-wrap:wrap; gap:0 20px; padding-top:6px; padding-bottom:max(10px, env(safe-area-inset-bottom)); font-size:14px; }
+  footer .wrap { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0 20px; padding-top:6px; padding-bottom:max(10px, env(safe-area-inset-bottom)); font-size:14px; color:var(--muted); }
+  footer nav { display:flex; flex-wrap:wrap; gap:0 20px; }
   footer a { display:inline-flex; align-items:center; min-height:44px; color:var(--muted); }
   footer a:hover { color:var(--text); }
-  @media (max-width:480px) { .pill { display:flex; width:100%; } }
+  @media (max-width:480px) { .pill { display:flex; width:100%; } .get .pill { flex:1 1 100%; } }
   @media (prefers-reduced-motion: reduce) { .pill { transition:none; } }
 </style>
 </head>
@@ -337,13 +354,13 @@ ${FONT_FACES}
 <header><div class="wrap"><a class="logo" href="/" aria-label="DIP home"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a></div></header>
 <main>
   <div class="wrap">
-${card}    <h1 dir="auto">${escapeHtml(preview.title)}</h1>
+${card}    <h1 dir="auto">${escapeHtml(preview.pageTitle)}</h1>
 ${lead}    <a class="pill" id="open-app" href="${escapeHtml(appLink)}">Open in DIP</a>
     <p class="status" id="open-status" role="status"></p>
     ${note}
   </div>
 </main>
-<footer><nav class="wrap" aria-label="Site"><a href="/">About DIP</a><a href="/privacy/">Privacy</a><a href="/support/">Support</a></nav></footer>
+<footer><div class="wrap"><small>&copy; 2026 DIP</small><nav aria-label="Site"><a href="/">About DIP</a><a href="/privacy/">Privacy</a><a href="/support/">Support</a></nav></div></footer>
 <template id="not-opened">If DIP didn’t open, it may not be installed on this iPhone. In another app’s browser, open this page in Safari first.${statusLink}</template>
 <script>
 // "Open in DIP" opens the installed app through a hidden frame (no "address is invalid" alert in iOS Safari when it is
