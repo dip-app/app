@@ -47,5 +47,5 @@ export const members = {
 
   // Export
   "members.export.done": "Exported {count, plural, one {# person} other {# people}} to members.csv.",
-  "members.sub.points": "{count, plural, one {# point} other {# points}}",
+  "members.sub.points": "{count, plural, one {# point} other {# points}}",
 };

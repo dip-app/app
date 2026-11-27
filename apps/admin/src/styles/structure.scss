@@ -17,7 +17,7 @@ $r-box: 8px;
   .page-eyebrow { display: block; font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-bottom: 2px; }
   .page-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; font-size: 13px; color: var(--muted);
     > * { display: inline-flex; align-items: center; gap: 6px; }
-    > :not(.meta-art) + *::before { content: "·"; margin-right: 2px; color: var(--muted); }
+    > :not(.meta-art):not(:last-child)::after { content: "·"; margin-left: 2px; color: var(--muted); }
     strong { color: $ink; font-weight: 600; }
     .meta-art { width: 32px; height: 24px; flex: none; } }
 
@@ -92,6 +92,55 @@ $r-box: 8px;
   // ---------- Person rows on phones: one card line with the name, a muted line of facts, the exception chip
   .person-sub { display: none; }
   .sort-select { display: none; }
+
+  // ---------- Overview: Last 7 days band, section titles, Coming up, Recent activity
+  .overview-section-title { font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--muted); margin: 4px 0 -6px; }
+  .week-band { display: grid; gap: 8px; }
+  .week-band .overview-section-title { margin: 0; }
+  .week-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .week-tile { min-width: 0; }
+  .week-link { display: grid; gap: 2px; height: 100%; padding: 12px 14px; background: $white; border: 1px solid $line; border-radius: $r-box; color: $ink; text-decoration: none; box-sizing: border-box;
+    &:not(.static):hover { border-color: $line-strong; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } }
+  .week-label { font-size: 12px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .week-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .week-value { font-family: var(--font-fjalla), Impact, sans-serif; font-size: 26px; font-weight: 400; line-height: 1.15; letter-spacing: .01em; }
+  .week-note { font-size: 12px; color: var(--muted); }
+  .week-spark { flex: none; margin-bottom: 4px; .before { fill: #d9dcf6; } .now { fill: var(--primary); } }
+  .panel-head .panel-link, .panel-link { font-size: 13px; font-weight: 500; color: var(--primary); text-decoration: none; &:hover { text-decoration: underline; } }
+  .coming-list, .feed-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .coming-list li + li, .feed-list li + li { border-top: 1px solid $line; }
+  .coming-row { display: grid; grid-template-columns: 40px 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 4px; color: $ink; text-decoration: none; border-radius: $r-ctl;
+    &:hover { background: $subtle; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; } }
+  .coming-date { display: grid; justify-items: center; line-height: 1.1; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); strong { font-size: 18px; color: $ink; } }
+  .coming-thumb { width: 56px; height: 40px; }
+  .coming-main { display: grid; min-width: 0; .muted { font-size: 12px; } }
+  .coming-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .coming-going { display: grid; justify-items: end; gap: 4px; font-size: 13px; white-space: nowrap; }
+  .feed-item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 2px;
+    .avatar { width: 28px; height: 28px; } }
+  .feed-text { display: grid; gap: 1px; font-size: 13px; strong { font-weight: 600; } .muted { font-size: 12px; } }
+}
+
+@media (max-width: 900px) { .content .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+// ---------- Mid widths (docked sidebar at 1024, drawer at 768): secondary columns move into the row's sub line, so a
+// table fits its region instead of hiding columns behind a sideways scroll. Wide screens show every column.
+.content .mid-sub, .content .phone-only { display: none; }
+@media (min-width: 701px) and (max-width: 1279px) {
+  .content .table :is(td, th).mid-hide { display: none; }
+  .content .person-sub.mid-show { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 2px; font-size: 12px; color: var(--muted); }
+  .content .mid-sub { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .content .events-table .clamp-1 { display: none; }
+}
+@media (max-width: 700px) {
+  .content .phone-only { display: inline-flex; }
+  .content .compact-table .person-sub > .phone-only { display: inline; }
+}
+@media (max-width: 700px) {
+  .content .coming-row { grid-template-columns: 40px minmax(0, 1fr); .coming-thumb { display: none; } .coming-going { grid-column: 2; justify-items: start; } }
+  .content .week-value { font-size: 22px; }
 }
 
 // Phones and coarse pointers: the small header links get a 44 px hit area without moving the layout.
@@ -103,11 +152,17 @@ $r-box: 8px;
   .content {
     .table.responsive:is(.person-table, .compact-table) td.phone-hide { display: none; }
     .sort-select { display: grid; flex: 1 1 100%; }
-    .compact-table .person-sub > span + span::before { content: "·"; margin-right: 6px; }
+    .compact-table .person-sub > span:not(:last-child):not(.phone-only)::after { content: "·"; margin-left: 6px; }
     :is(.person-table, .compact-table) .person-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin-top: 4px; font-size: 13px; color: var(--muted);
       .info-pill { min-height: 20px; font-size: 11px; } }
     .table.responsive:is(.person-table, .compact-table) tr { padding: 10px 12px; }
     .compact-table .row-actions { justify-content: flex-start; }
+    .table.responsive:is(.compact-table, .person-table) td:not([data-label]) { padding-left: 0; padding-right: 0; }
+    .table.responsive.actions-corner tr { position: relative; padding-right: 96px; }
+    .table.responsive.actions-corner td.right { position: absolute; top: 4px; right: 8px; padding: 0; }
+    // The lead cell of a compact card reads as its title: no label column.
+    .table.responsive.compact-table td.phone-lead[data-label] { padding-left: 0; &::before { display: none; } }
+    .table.responsive.compact-table td.phone-lead .person-sub { margin: 0 0 4px; }
     .table.responsive.person-table td.right:has(> .row-actions:empty) { display: none; }
     .person-table td.right .row-actions { justify-content: flex-start; flex-wrap: wrap; }
     .list-toolbar .field.search { max-width: none; flex-basis: 100%; }

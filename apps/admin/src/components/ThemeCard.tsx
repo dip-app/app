@@ -23,8 +23,8 @@ export function ThemeCard({ theme, phase, canEdit = true }: { theme: WeeklyTheme
         </div>
       </td>
       <td className="nowrap" data-label={t("challenges.themes.table.week")}>{window}</td>
-      <td data-label={t("challenges.themes.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
-      <td data-label={t("challenges.themes.table.reward")}>{formatReward(theme.pointsReward)}</td>
+      <td className="mid-hide" data-label={t("challenges.themes.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
+      <td className="mid-hide" data-label={t("challenges.themes.table.reward")}>{formatReward(theme.pointsReward)}</td>
       <td className="num" data-label={t("challenges.themes.table.participation")}>{theme.completedCount > 0 ? t("challenges.themes.row.joinedCompleted", { joined: theme.participantCount, completed: theme.completedCount }) : t("challenges.themes.row.joined", { count: theme.participantCount })}</td>
       <td data-label={t("challenges.themes.table.status")}><Chip tone={phase === "current" ? "ok" : undefined}>{phaseLabel(phase)}</Chip></td>
       <td className="right">{canEdit && <span className="row-actions"><Button size="sm" href={`/themes/edit/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.themes.row.editAria", { title: theme.title })}>{t("challenges.themes.row.edit")}</Button></span>}</td>
@@ -37,7 +37,7 @@ export function ThemeTable({ children }: { children: React.ReactNode }) {
     <TableRegion label={t("challenges.themes.table.label")}>
       <table className="table responsive themes-table sticky-actions">
         <caption className="sr-only">{t("challenges.themes.table.label")}</caption>
-        <thead><tr><th scope="col">{t("challenges.themes.table.theme")}</th><th scope="col">{t("challenges.themes.table.week")}</th><th scope="col">{t("challenges.themes.table.goal")}</th><th scope="col">{t("challenges.themes.table.reward")}</th><th scope="col" className="num">{t("challenges.themes.table.participation")}</th><th scope="col">{t("challenges.themes.table.status")}</th><th scope="col"><span className="sr-only">{t("challenges.themes.table.actions")}</span></th></tr></thead>
+        <thead><tr><th scope="col">{t("challenges.themes.table.theme")}</th><th scope="col">{t("challenges.themes.table.week")}</th><th scope="col" className="mid-hide">{t("challenges.themes.table.goal")}</th><th scope="col" className="mid-hide">{t("challenges.themes.table.reward")}</th><th scope="col" className="num">{t("challenges.themes.table.participation")}</th><th scope="col">{t("challenges.themes.table.status")}</th><th scope="col"><span className="sr-only">{t("challenges.themes.table.actions")}</span></th></tr></thead>
         <tbody>{children}</tbody>
       </table>
     </TableRegion>

@@ -96,9 +96,9 @@ function Audit() {
               <>
                 <ResultCount>{t("audit.showingOf", { shown: Math.min(shown, filtered.length), total: filtered.length })}</ResultCount>
                 <TableRegion label={t("audit.table.label")}>
-                  <table className="table responsive audit-table sticky-actions compact-table">
+                  <table className="table responsive audit-table sticky-actions compact-table actions-corner">
                     <caption className="sr-only">{t("audit.table.label")}</caption>
-                    <thead><tr><SortHeader column="when" sort={sort}>{t("audit.table.when")}</SortHeader><th scope="col">{t("audit.table.what")}</th><th scope="col">{t("audit.table.who")}</th><th scope="col">{t("audit.table.target")}</th><th scope="col"><span className="sr-only">{t("common.details")}</span></th></tr></thead>
+                    <thead><tr><SortHeader column="when" sort={sort}>{t("audit.table.when")}</SortHeader><th scope="col">{t("audit.table.what")}</th><th scope="col" className="mid-hide">{t("audit.table.who")}</th><th scope="col">{t("audit.table.target")}</th><th scope="col"><span className="sr-only">{t("common.details")}</span></th></tr></thead>
                     <tbody>
                       {ordered.slice(0, shown).map((e, index, rows) => {
                         const a = auditAction(e.action);
@@ -113,9 +113,9 @@ function Audit() {
                             {newDay && <tr className="group-row"><th scope="colgroup" colSpan={5}>{dayLabel(at, now)}</th></tr>}
                             <tr className="audit-entry">
                               <td className="nowrap phone-hide" data-label={t("audit.table.when")}>{dayKey(at) === dayKey(now) ? <RelativeTime iso={e.at} /> : <time dateTime={e.at} title={absoluteTime(at, now)}>{formatTime(at, { hour: "numeric", minute: "2-digit" })}</time>}</td>
-                              <td data-label={t("audit.table.what")}><span className="person-sub">{formatTime(at, { hour: "numeric", minute: "2-digit" })} · {e.actorName}, {ROLE_LABEL[e.actorRole]}</span><span className="audit-what"><span className="audit-label" title={t("audit.actionKeyTitle", { key: e.action })}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{auditCategoryLabel(a.category)}</span></span></td>
-                              <td className="phone-hide" data-label={t("audit.table.who")}><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong className="nowrap">{e.actorName}</strong><span className="line muted">{ROLE_LABEL[e.actorRole]}</span></span></span></td>
-                              <td data-label={t("audit.table.target")}>{summary !== a.label && <p>{summary}</p>}{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
+                              <td className="phone-lead" data-label={t("audit.table.what")}><span className="person-sub mid-show"><span className="phone-only">{dayKey(at) === dayKey(now) ? <RelativeTime iso={e.at} /> : formatTime(at, { hour: "numeric", minute: "2-digit" })} · </span>{e.actorName}, {ROLE_LABEL[e.actorRole]}</span><span className="audit-what"><span className="audit-label" title={t("audit.actionKeyTitle", { key: e.action })}>{a.label}</span><span className={`audit-chip ${a.category.toLowerCase()}`}>{auditCategoryLabel(a.category)}</span></span></td>
+                              <td className="phone-hide mid-hide" data-label={t("audit.table.who")}><span className="person"><Avatar name={e.actorName} userId={e.actorId} /><span><strong className="nowrap">{e.actorName}</strong><span className="line muted">{ROLE_LABEL[e.actorRole]}</span></span></span></td>
+                              <td className="phone-lead" data-label={t("audit.table.target")}>{summary !== a.label && <p>{summary}</p>}{targetKind(e.targetType) && <p className="muted">{targetKind(e.targetType)}</p>}</td>
                               <td className="right"><Button size="sm" aria-expanded={open === e.id} aria-controls={`audit-detail-${e.id}`} aria-label={t(open === e.id ? "audit.hideDetailsFor" : "audit.showDetailsFor", { label: a.label })} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? t("common.hideDetails") : t("common.details")}</Button></td>
                             </tr>
                             {open === e.id && (

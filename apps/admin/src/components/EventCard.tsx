@@ -38,6 +38,7 @@ export function EventCard({ event }: { event: AdminEvent }) {
           <div className="media-text">
             <Link className="row-title" href={`/events/edit/?id=${encodeURIComponent(event.id)}`} tabIndex={-1}>{event.title}</Link>
             <span className="muted clamp-1">{event.description}</span>
+            <span className="mid-sub">{event.venue.name} · {formatPrice(event.costCents)}</span>
             {/* Phones: the row is one card; this line carries the facts the hidden cells show on wider screens. */}
             <span className="person-sub">
               <span>{formatDate(new Date(event.startTime), { weekday: "short", month: "short", day: "numeric" })}, {formatTime(new Date(event.startTime), { hour: "numeric", minute: "2-digit" })}</span>
@@ -50,8 +51,8 @@ export function EventCard({ event }: { event: AdminEvent }) {
         </div>
       </td>
       <td className="phone-hide" data-label={t("events.table.when")}><WhenCell event={event} upcoming={kind === "upcoming"} /></td>
-      <td className="where-cell phone-hide" data-label={t("events.table.where")}><span className="line" title={event.venue.name}>{event.venue.name}</span><span className="line muted" title={event.venue.locality}>{event.venue.locality}</span></td>
-      <td className="num phone-hide" data-label={t("events.table.price")}>{formatPrice(event.costCents)}</td>
+      <td className="where-cell phone-hide mid-hide" data-label={t("events.table.where")}><span className="line" title={event.venue.name}>{event.venue.name}</span><span className="line muted" title={event.venue.locality}>{event.venue.locality}</span></td>
+      <td className="num phone-hide mid-hide" data-label={t("events.table.price")}>{formatPrice(event.costCents)}</td>
       <td className="num phone-hide" data-label={t("events.table.going")}>
         <div className="going">
           <span className="going-count" aria-label={t("events.row.going", { count: event.attendeeCount, capacity: event.capacity })}>{event.attendeeCount} / {event.capacity}</span>
@@ -70,14 +71,14 @@ export function EventCard({ event }: { event: AdminEvent }) {
 }
 
 export function EventTable({ sort, children }: { sort?: TableSort<EventSortKey>; children: React.ReactNode }) {
-  const head = (key: EventSortKey, label: string, align?: "right") => sort
-    ? <SortHeader column={key} sort={sort} align={align}>{label}</SortHeader>
-    : <th scope="col" className={align === "right" ? "num" : undefined}>{label}</th>;
+  const head = (key: EventSortKey, label: string, align?: "right", className?: string) => sort
+    ? <SortHeader column={key} sort={sort} align={align} className={className}>{label}</SortHeader>
+    : <th scope="col" className={[align === "right" ? "num" : "", className ?? ""].join(" ").trim() || undefined}>{label}</th>;
   return (
     <TableRegion label={t("events.table.label")}>
       <table className="table responsive events-table sticky-actions compact-table">
         <caption className="sr-only">{t("events.table.label")}</caption>
-        <thead><tr>{head("title", t("events.table.event"))}{head("when", t("events.table.when"))}<th scope="col">{t("events.table.where")}</th>{head("price", t("events.table.price"), "right")}{head("going", t("events.table.going"), "right")}<th scope="col"><span className="sr-only">{t("events.table.actions")}</span></th></tr></thead>
+        <thead><tr>{head("title", t("events.table.event"))}{head("when", t("events.table.when"))}<th scope="col" className="mid-hide">{t("events.table.where")}</th>{head("price", t("events.table.price"), "right", "mid-hide")}{head("going", t("events.table.going"), "right")}<th scope="col"><span className="sr-only">{t("events.table.actions")}</span></th></tr></thead>
         <tbody>{children}</tbody>
       </table>
     </TableRegion>

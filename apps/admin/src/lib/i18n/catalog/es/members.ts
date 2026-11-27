@@ -43,5 +43,5 @@ export const members: Record<keyof typeof source, string> = {
   "members.count.withTotal": "{matches} (de {total})",
 
   "members.export.done": "Se exportaron {count, plural, one {# persona} other {# personas}} a members.csv.",
-  "members.sub.points": "{count, plural, one {# punto} other {# puntos}}",
+  "members.sub.points": "{count, plural, one {# punto} other {# puntos}}",
 };

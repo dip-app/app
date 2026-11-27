@@ -37,6 +37,8 @@ beforeEach(() => {
   state.api = {
     companyInsights: vi.fn(async (refresh?: boolean) => make(refresh ? 777 : 111)),
     tagStats: vi.fn(async () => [stat("a", 3), stat("b", 1)]),
+    listEvents: vi.fn(async () => []),
+    listAudit: vi.fn(async () => []),
   };
 });
 afterEach(() => { cleanup(); window.localStorage.clear(); });

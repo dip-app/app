@@ -116,7 +116,7 @@ function Members() {
               <TableRegion label={t("members.table.label")} busy={list.loading}>
                 <table className="table responsive person-table">
                   <caption className="sr-only">{t("members.table.label")}</caption>
-                  <thead><tr><th scope="col">{t("members.table.name")}</th><th scope="col">{t("members.table.role")}</th><th scope="col">{t("members.table.teams")}</th><th scope="col">{t("members.table.location")}</th><th scope="col">{t("members.table.status")}</th>{showPoints && <th scope="col" className="right">{t("members.table.points")}</th>}</tr></thead>
+                  <thead><tr><th scope="col">{t("members.table.name")}</th><th scope="col" className="mid-hide">{t("members.table.role")}</th><th scope="col" className="mid-hide">{t("members.table.teams")}</th><th scope="col" className="mid-hide">{t("members.table.location")}</th><th scope="col">{t("members.table.status")}</th>{showPoints && <th scope="col" className="right mid-hide">{t("members.table.points")}</th>}</tr></thead>
                   <tbody>
                     {list.items.map((m) => {
                       const teamsText = m.teamIds.map(teamName).join(", ");
@@ -126,12 +126,12 @@ function Members() {
                       return (
                         <tr key={m.id}>
                           <th scope="row"><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span>
-                            <span className="person-sub">{[ROLE_LABEL[m.role], teamsText, m.workLocation].filter(Boolean).join(" · ")}{showPoints && m.pointsBalance !== null && <> · {t("members.sub.points", { count: m.pointsBalance })}</>}{m.status !== "active" && status}</span></span></Link></th>
-                          <td className="phone-hide" data-label={t("members.table.role")}>{ROLE_LABEL[m.role]}</td>
-                          <td className="phone-hide" data-label={t("members.table.teams")}>{teamsText || <span className="muted">{t("common.none")}</span>}</td>
-                          <td className="phone-hide" data-label={t("members.table.location")}>{m.workLocation || <span className="muted">{t("common.notSet")}</span>}</td>
+                            <span className="person-sub mid-show">{[ROLE_LABEL[m.role], teamsText, m.workLocation].filter(Boolean).join(" · ")}{showPoints && m.pointsBalance !== null && <> · {t("members.sub.points", { count: m.pointsBalance })}</>}{m.status !== "active" && <span className="phone-only">{status}</span>}</span></span></Link></th>
+                          <td className="phone-hide mid-hide" data-label={t("members.table.role")}>{ROLE_LABEL[m.role]}</td>
+                          <td className="phone-hide mid-hide" data-label={t("members.table.teams")}>{teamsText || <span className="muted">{t("common.none")}</span>}</td>
+                          <td className="phone-hide mid-hide" data-label={t("members.table.location")}>{m.workLocation || <span className="muted">{t("common.notSet")}</span>}</td>
                           <td className="phone-hide" data-label={t("members.table.status")}>{status}</td>
-                          {showPoints && <td className="right phone-hide" data-label={t("members.table.points")}>{m.pointsBalance}</td>}
+                          {showPoints && <td className="right phone-hide mid-hide" data-label={t("members.table.points")}>{m.pointsBalance}</td>}
                         </tr>
                       );
                     })}

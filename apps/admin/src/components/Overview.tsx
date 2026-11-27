@@ -207,8 +207,8 @@ export function ActivityChart({ insights }: { insights: CompanyInsights }) {
 
 const Chevron = () => <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>;
 
-export function PendingActions({ insights, role, now }: { insights: CompanyInsights; role: Role; now?: Date }) {
-  const items = pendingActions(insights, role, now);
+export function PendingActions({ insights, role, now, newBugReports }: { insights: CompanyInsights; role: Role; now?: Date; /** Admins: new bug reports (the nav badge's count); null while unknown. */ newBugReports?: number | null }) {
+  const items = pendingActions(insights, role, now, { newBugReports });
   const shortcuts = shortcutsFor(role);
   // Both sources down: nothing to show. One down: show what is known, never "all caught up".
   const partial = off(insights, "challenges") || off(insights, "members");
@@ -298,7 +298,7 @@ export function ThemeCard({ insights, role, now = new Date() }: { insights: Comp
             <div className="theme-meter"><p className="muted"><span>{t("overview.theme.thisWeek")}</span><span>{t("overview.theme.day", { day: week.day, days: week.days })}</span></p>
               <div className="meter" role="img" aria-label={t("overview.theme.day", { day: week.day, days: week.days })}><span style={{ width: `${Math.round(week.fraction * 100)}%` }} /></div></div>
           </div>
-          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Button href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} variant="primary" size="sm" className="self-start theme-cta">{t("overview.theme.review")}</Button>}
+          {can(role, "challenges.review") && theme.pendingReviews > 0 && <Button href={`/challenges/review/?id=${encodeURIComponent(theme.challengeId)}&status=submitted`} size="sm" className="self-start theme-cta">{t("overview.theme.review")}</Button>}
         </>
       )}
     </section>

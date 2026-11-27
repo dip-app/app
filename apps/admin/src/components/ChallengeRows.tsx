@@ -40,7 +40,7 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
         </div>
       </td>
       <td className="nowrap" data-label={t("challenges.table.dates")}>{window}</td>
-      <td data-label={t("challenges.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
+      <td className="mid-hide" data-label={t("challenges.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
       <td className="num" data-label={t("challenges.table.joined")}>{formatNumber(theme.participantCount)}{theme.completedCount > 0 && <span className="line muted">{t("challenges.row.completed", { count: formatNumber(theme.completedCount) })}</span>}</td>
       <td className="num" data-label={t("challenges.table.pending")}>
         {!reviewable ? <span className="muted">{t("challenges.row.noneYet")}</span>
@@ -62,7 +62,7 @@ export function ChallengeTable({ children }: { children: React.ReactNode }) {
     <TableRegion label={t("challenges.table.label")}>
       <table className="table responsive challenges-table sticky-actions">
         <caption className="sr-only">{t("challenges.table.caption")}</caption>
-        <thead><tr><th scope="col">{t("challenges.table.challenge")}</th><th scope="col">{t("challenges.table.dates")}</th><th scope="col">{t("challenges.table.goal")}</th><th scope="col" className="num">{t("challenges.table.joined")}</th><th scope="col" className="num">{t("challenges.table.pending")}</th><th scope="col"><span className="sr-only">{t("challenges.table.action")}</span></th></tr></thead>
+        <thead><tr><th scope="col">{t("challenges.table.challenge")}</th><th scope="col">{t("challenges.table.dates")}</th><th scope="col" className="mid-hide">{t("challenges.table.goal")}</th><th scope="col" className="num">{t("challenges.table.joined")}</th><th scope="col" className="num">{t("challenges.table.pending")}</th><th scope="col"><span className="sr-only">{t("challenges.table.action")}</span></th></tr></thead>
         <tbody>{children}</tbody>
       </table>
     </TableRegion>

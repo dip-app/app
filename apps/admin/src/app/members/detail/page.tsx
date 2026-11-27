@@ -131,12 +131,12 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
         {editable && <aside className="stack">
           <Panel id="access" title={t("memberDetail.access.title")}>
             {member.status === "deactivated"
-              ? <><p className="muted">{t("memberDetail.access.deactivatedNote")}</p><Button variant="primary" onClick={() => setAction("reactivate")}>{t("memberDetail.access.reactivate")}</Button></>
+              ? <><p className="muted">{t("memberDetail.access.deactivatedNote")}</p><Button onClick={() => setAction("reactivate")}>{t("memberDetail.access.reactivate")}</Button></>
               : <><p className="muted">{t("memberDetail.access.activeNote")}</p><Button variant="danger" disabled={self} onClick={() => setAction("deactivate")}>{t("memberDetail.access.deactivate")}</Button>{self && <p className="hint">{t("memberDetail.access.selfNote")}</p>}</>}
           </Panel>
           <Panel id="pts" title={t("memberDetail.points.title")}>
             <p className="big-number">{member.pointsBalance ?? 0}</p>
-            <Button variant="primary" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>{t("memberDetail.points.adjustOrReset")}</Button>
+            <Button onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>{t("memberDetail.points.adjustOrReset")}</Button>
           </Panel>
           <Panel id="prof" title={t("memberDetail.profile.title")}>
             <dl className="facts">
