@@ -38,7 +38,8 @@ export function ResultCount({ children }: { children: React.ReactNode }) {
 export function LoadMore({ shown, total, loading, onClick, label = t("common.loadMore") }: { shown: number; total?: number; loading: boolean; onClick: () => void; label?: string }) {
   return (
     <div className="load-more">
-      <Button size="sm" disabled={loading} onClick={onClick}>{loading ? t("common.loadingMore") : label}</Button>
+      {/* Loading: a spinner over the label (same width), and focus stays on the button for the next press. */}
+      <Button size="sm" loading={loading} aria-label={loading ? t("common.loadingMore") : undefined} onClick={onClick}>{label}</Button>
       <span className="muted" role="status" aria-live="polite">{total !== undefined ? t("common.showingOf", { shown, total }) : t("common.showing", { shown })}</span>
     </div>
   );

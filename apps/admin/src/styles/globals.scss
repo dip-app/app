@@ -5,6 +5,7 @@
 @use "@/styles/ideas";
 @use "@/styles/suggestions";
 @use "@/styles/dipbot-action";
+@use "@/styles/motion";
 
 // Matches the running iOS app: white pages, solid light-gray cards, flat color, pill shapes, Fjalla One
 // display type, Figtree labels, Inter body, dark ink navigation. No gradients, shadows or hairlines.
@@ -29,7 +30,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
 :focus-visible { outline: 3px solid $purple; outline-offset: 3px; }
 .sidebar :focus-visible, .dark:focus-visible, .tab[aria-pressed="true"]:focus-visible, .cover-option[aria-pressed="true"]:focus-visible { outline-color: $white; box-shadow: 0 0 0 6px $ink; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+// Reduced motion is handled once, for every transition and animation, in _motion.scss.
 
 // ---------- Frame
 .content { min-width: 0; width: 100%; }
@@ -39,7 +40,7 @@ button { cursor: pointer; border: 0; background: none; }
 .header-action { padding-top: 4px; flex: none; }
 
 // ---------- Controls
-.pill-btn, .big-pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-family: var(--font-figtree), sans-serif; transition: transform .12s ease, opacity .12s ease; white-space: nowrap; &:active { transform: scale(.98); } &[disabled] { opacity: .45; cursor: not-allowed; } }
+.pill-btn, .big-pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-family: var(--font-figtree), sans-serif; transition: transform var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard); white-space: nowrap; &:active { transform: scale(.98); } &[disabled] { opacity: .45; cursor: not-allowed; } }
 .pill-btn { min-height: 48px; padding: 0 28px; font-size: 18px; &.purple { background: var(--primary); color: $white; } &.gray { background: $gray; color: $ink; } }
 .big-pill { min-height: 56px; padding: 0 40px; font-size: 20px; &.dark { background: $ink; color: $white; } &.gray { background: $gray; color: $ink; } }
 .tabs { display: flex; gap: 4px; margin-bottom: 28px; overflow-x: auto; padding: 4px; background: $gray; border-radius: 999px; width: fit-content; max-width: 100%; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }

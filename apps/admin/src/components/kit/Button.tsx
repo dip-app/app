@@ -16,7 +16,7 @@ interface Common {
   /** primary: the one main action; outline: every other action; danger: destructive (outlined, solid only in its confirm dialog); plain: inherits context (inside a banner). */
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Pending: aria-busy, presses are ignored, the button keeps its width and place. */
+  /** Pending: aria-busy, a spinner over the hidden label, presses are ignored, the button keeps its width and place. */
   loading?: boolean;
   className?: string;
   children?: ReactNode;
@@ -32,14 +32,16 @@ export type { ButtonProps, LinkProps };
 export function Button(props: ButtonProps | LinkProps) {
   const { variant = "outline", size = "md", loading = false, className, children, ...rest } = props;
   const cls = `pill-btn${VARIANT_CLASS[variant]}${size === "sm" ? " small" : ""}${className ? ` ${className}` : ""}`;
+  // Pending: the label stays in place but hidden (so the width never changes) and a spinner sits over it.
+  const content = loading ? <><span className="btn-label">{children}</span><span className="btn-spin" aria-hidden /></> : children;
   if (props.href !== undefined) {
     const { href, ...anchor } = rest as LinkProps;
-    return <Link {...anchor} href={href} className={cls} aria-busy={loading || undefined}>{children}</Link>;
+    return <Link {...anchor} href={href} className={cls} aria-busy={loading || undefined}>{content}</Link>;
   }
   const { type = "button", onClick, ...button } = rest as ButtonProps;
   return (
     <button {...button} type={type} className={cls} aria-busy={loading || undefined} onClick={(e) => { if (loading) { e.preventDefault(); return; } onClick?.(e); }}>
-      {children}
+      {content}
     </button>
   );
 }

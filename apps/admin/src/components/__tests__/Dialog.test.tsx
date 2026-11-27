@@ -51,8 +51,15 @@ describe("Dialog", () => {
     const onConfirm = () => new Promise<void>((_, reject) => { fail = reject; });
     render(<Dialog title="Go" confirmLabel="Apply" busyLabel="Applying…" onConfirm={onConfirm} onClose={() => {}} />);
     fireEvent.click(confirmButton("Apply"));
-    expect(confirmButton("Applying…").disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    // Busy: a spinner and the busy name; both buttons keep focus (not disabled) but ignore presses.
+    const busy = confirmButton("Applying…");
+    expect(busy.getAttribute("aria-busy")).toBe("true");
+    expect(busy.disabled).toBe(false);
+    expect(busy.querySelector(".btn-spin")).toBeTruthy();
+    const cancel = screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement;
+    expect(cancel.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(cancel);
+    fireEvent.click(busy);
     await act(async () => { fail(new ApiError("failed-precondition", "Nope, try again.")); });
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Nope, try again."));
     expect(confirmButton("Apply").disabled).toBe(false);
@@ -70,7 +77,30 @@ describe("Dialog", () => {
     const onClose = vi.fn();
     render(<Dialog title="Number" confirmLabel="Apply" confirmDisabled onConfirm={async () => {}} onClose={onClose} />);
     expect(confirmButton("Apply").disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(onClose).toHaveBeenCalled();
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      // The exit plays first: the dialog is marked closing and the parent is told once it ends.
+      expect(screen.getByRole("dialog").getAttribute("data-closing")).toBe("true");
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      act(() => { vi.advanceTimersByTime(140); });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("closes at once under reduced motion", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    try {
+      const onClose = vi.fn();
+      render(<Dialog title="Number" confirmLabel="Apply" onConfirm={async () => {}} onClose={onClose} />);
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

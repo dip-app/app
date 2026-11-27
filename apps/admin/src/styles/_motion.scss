@@ -1,0 +1,26 @@
+// Motion tokens for the admin portal. Every transition and animation uses these; `src/lib/motion.ts` holds the same
+// numbers for code that waits for a motion to end (toast and dialog exits). Rules: docs/design/polish-2026-11/admin-interaction.md.
+//
+//   --dur-press   0     a press lands at once (the release eases back over --dur-fast)
+//   --dur-fast    140ms hover, color, focus, exits (leaving is quicker than arriving)
+//   --dur-base    200ms enters, small moves, dialogs
+//   --dur-slow    240ms drawers and large moves
+//   --ease-standard  moves that start and end on screen
+//   --ease-enter     arrives fast, settles (decelerate)
+//   --ease-exit      leaves gently, then fast (accelerate)
+:root {
+  --dur-press: 0ms;
+  --dur-fast: 140ms;
+  --dur-base: 200ms;
+  --dur-slow: 240ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(.3, 0, 1, 1);
+}
+
+// Reduced motion: nothing moves or fades over time. Durations become 1 ms (not 0) so transitionend and animationend
+// still fire; code that waits uses motion.ts, which returns 0 under the same query.
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; }
+  *, *::before, *::after, ::backdrop { animation-duration: 1ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important; transition-duration: 1ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important; }
+}

@@ -5,6 +5,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { t } from "@/lib/i18n";
 import { userErrorMessage } from "@/lib/userError";
+import { motionMs } from "@/lib/motion";
 import { ErrorIcon } from "./kit/InlineNotice";
 
 export interface ToastOptions {
@@ -12,7 +13,7 @@ export interface ToastOptions {
   /** One quick follow-up, such as Undo. Running it dismisses the toast. */
   action?: { label: string; onClick: () => void | Promise<void> };
 }
-interface ToastItem { id: number; message: string; tone: "success" | "error"; action?: ToastOptions["action"] }
+interface ToastItem { id: number; message: string; tone: "success" | "error"; action?: ToastOptions["action"]; /** Playing its exit; removed when it ends. */ leaving?: boolean }
 
 const AUTO_DISMISS_MS = 6000;
 const MAX_VISIBLE = 4;
@@ -30,6 +31,7 @@ const emit = () => listeners.forEach((listener) => listener());
  */
 export function toast(message: string, options: ToastOptions = {}): number {
   const item: ToastItem = { id: nextId++, message, tone: options.tone ?? "success", action: options.action };
+  // The same message again replaces the earlier toast at once (no exit, so it never shows twice).
   items = [...items.filter((other) => other.message !== message), item].slice(-MAX_VISIBLE);
   emit();
   return item.id;
@@ -38,10 +40,21 @@ export function toast(message: string, options: ToastOptions = {}): number {
 export function toastError(error: unknown, fallback?: string): number {
   return toast(userErrorMessage(error, fallback), { tone: "error" });
 }
-export function dismissToast(id: number) {
+function remove(id: number) {
   items = items.filter((item) => item.id !== id);
   if (items.length === 0) items = EMPTY;
   emit();
+}
+/** Dismisses a toast: it fades and slides out, the stack closes the gap, then it is removed (at once under reduced motion). */
+export function dismissToast(id: number) {
+  const target = items.find((item) => item.id === id);
+  if (!target || target.leaving) return;
+  // The fade (fast) and the gap closing (base, after the fade) both finish before removal.
+  const exit = motionMs("fast") + motionMs("base");
+  if (exit === 0) { remove(id); return; }
+  items = items.map((item) => (item.id === id ? { ...item, leaving: true } : item));
+  emit();
+  setTimeout(() => remove(id), exit);
 }
 export function dismissAllToasts() {
   items = EMPTY;
@@ -57,11 +70,13 @@ function ToastView({ item }: { item: ToastItem }) {
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     // Errors stay until dismissed: a two-line message (longer in Spanish) needs more than 6 s.
-    if (paused || item.tone === "error") return;
+    if (paused || item.tone === "error" || item.leaving) return;
     const timer = setTimeout(() => dismissToast(item.id), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [paused, item.id, item.tone]);
+  }, [paused, item.id, item.tone, item.leaving]);
   return (
+    <div className="toast-slot" data-leaving={item.leaving ? "true" : undefined} aria-hidden={item.leaving || undefined}>
+    <div className="toast-clip">
     <div
       className={`toast ${item.tone}`}
       onMouseEnter={() => setPaused(true)}
@@ -77,6 +92,8 @@ function ToastView({ item }: { item: ToastItem }) {
       <button type="button" className="toast-btn toast-close" aria-label={t("common.dismissNotification")} onClick={() => dismissToast(item.id)}>
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
+    </div>
+    </div>
     </div>
   );
 }

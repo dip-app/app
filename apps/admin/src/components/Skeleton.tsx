@@ -2,8 +2,9 @@
 
 // @i18n-migrated
 
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CHART_HEIGHT } from "@/lib/skeletonLayout";
+import { motionMs } from "@/lib/motion";
 import { useDelayedShow } from "./useDelayedShow";
 
 // A small kit for loading states. Rule: a skeleton is built from the SAME markup and classes as the loaded page, with
@@ -138,8 +139,23 @@ export function usePrefersReducedMotion(): boolean {
 export function SkeletonRegion({ label, children, className = "", delay }: { label: string; children?: ReactNode; className?: string; delay?: number }) {
   const shown = useDelayedShow(true, delay, 0);
   const still = usePrefersReducedMotion();
+  const region = useRef<HTMLDivElement>(null);
+  const wasShown = useRef(false);
+  wasShown.current = shown;
+  // A skeleton that was painted hands over to the content with a short fade (`.sk-reveal` on the parent, which the content
+  // replaces it in). One that never painted leaves no trace, so a fast load shows its content at once.
+  useLayoutEffect(() => {
+    const parent = region.current?.parentElement;
+    return () => {
+      if (!parent || !wasShown.current) return;
+      const fade = motionMs("fast");
+      if (fade === 0) return;
+      parent.classList.add("sk-reveal");
+      setTimeout(() => parent.classList.remove("sk-reveal"), fade + 40);
+    };
+  }, []);
   return (
-    <div className={`sk-region${still ? " sk-still" : ""} ${className}`.trim()} aria-busy="true" data-skeleton={shown ? "shown" : "waiting"}>
+    <div ref={region} className={`sk-region${still ? " sk-still" : ""} ${className}`.trim()} aria-busy="true" data-skeleton={shown ? "shown" : "waiting"}>
       <span className="sr-only" role="status">{label}</span>
       {shown && children}
     </div>
