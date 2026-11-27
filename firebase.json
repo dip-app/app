@@ -49,6 +49,11 @@
           "source": "/admin/themes/new{,/}",
           "destination": "/admin/challenges/new/",
           "type": 301
+        },
+        {
+          "source": "/admin/themes/edit{,/}",
+          "destination": "/admin/challenges/edit/",
+          "type": 301
         }
       ],
       "rewrites": [
