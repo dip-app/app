@@ -43,13 +43,15 @@ export const members: Record<keyof typeof source, string> = {
   "members.table.points": "Puntos",
 
   "members.count.showingOf": "Mostrando {shown} de {total, plural, one {# persona} other {# personas}}",
+  "members.count.showingOfJoined": "Mostrando {shown} de {total, plural, one {# persona que se unió} other {# personas que se unieron}}",
   "members.count.matchesSoFar": "Mostrando los primeros {shown}",
   "members.count.matches": "{shown, plural, one {# persona coincide} other {# personas coinciden}}",
 
   "members.export.done": "Se exportaron {count, plural, one {# persona} other {# personas}} a members.csv.",
+  "members.export.doneFile": "Se exportaron {count, plural, one {# persona} other {# personas}} a {file}.",
   "members.sub.points": "{count, plural, one {# punto} other {# puntos}}",
 
-  "members.subtitle.invites": "Todas las personas de tu empresa: quienes se unieron y quienes invitaste. Abre a una persona para ver sus datos.",
+  "members.subtitle.invites": "Todas las personas de tu empresa: miembros e invitados. Abre a una para ver sus datos.",
   "members.invited.section": "{count, plural, one {# persona invitada aún no se une} other {# personas invitadas aún no se unen}}",
   "members.invited.sectionNote": "Reciben el rol y los equipos definidos aquí cuando inician sesión con su correo de trabajo.",
   "members.invited.tableLabel": "Personas invitadas",

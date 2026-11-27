@@ -45,6 +45,7 @@ export const INVITE_STATE_KEY: Record<RosterRow["state"], MessageKey> = { invite
 
 /** What a row shows under its status: how often the invite went out, and when last. */
 export function inviteHistory(row: RosterRow): string[] {
+  if (row.state === "revoked") return row.revokedAt ? [t("roster.table.revokedOn", { date: formatDate(row.revokedAt) })] : [];
   if (row.state !== "invited") return [];
   const lines: string[] = [];
   if (row.inviteEmailCount) lines.push(row.lastInviteEmailAt ? t("roster.table.emailedLast", { count: row.inviteEmailCount, date: formatDate(row.lastInviteEmailAt) }) : t("roster.table.emailed", { count: row.inviteEmailCount }));

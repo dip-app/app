@@ -93,6 +93,30 @@ describe("listRosterV1", () => {
     assert.equal((await listRoster(deps, admin, { ...base, query: "p03@" })).entries[0]!.email, "p03@alpha.test");
     await fails(listRoster(deps, caller("org1"), base), "permission-denied", "INSUFFICIENT_ROLE");
   });
+
+  test("filters by role, team and work location like the member list, within the caller's company", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    const entry = (email: string, extra: Record<string, unknown>) => store.seed(entryPath(email), {
+      companyId: "alpha", email, displayName: email, role: "member", teamIds: [], workLocation: "", department: "", jobTitle: "",
+      status: "invited", source: "manual", createdAt: new Date("2030-01-01T00:00:00Z"), updatedAt: new Date("2030-01-01T00:00:00Z"), revision: 1, ...extra,
+    });
+    entry("a@alpha.test", { role: "organizer", teamIds: ["t-platform"], workLocation: "Pittsburgh HQ" });
+    entry("b@alpha.test", { teamIds: ["t-sales"], workLocation: "Remote" });
+    entry("c@alpha.test", { role: "admin", workLocation: "pittsburgh hq", status: "revoked" });
+    store.seed("companies/beta/roster/x", { companyId: "beta", email: "x@beta.test", displayName: "x", role: "organizer", teamIds: ["t-platform"], workLocation: "Pittsburgh HQ", status: "invited", revision: 1 });
+    const emails = async (extra: Record<string, unknown>) => (await listRoster(deps, admin, { ...base, state: "invited", pageSize: 100, ...extra })).entries.map(e => e.email);
+    assert.deepEqual(await emails({ role: "organizer" }), ["a@alpha.test"]);
+    assert.deepEqual(await emails({ teamId: "t-sales" }), ["b@alpha.test"]);
+    assert.deepEqual(await emails({ workLocation: "PITTSBURGH HQ" }), ["a@alpha.test"]);
+    assert.deepEqual(await emails({ role: "member", workLocation: "Pittsburgh HQ" }), []);
+    assert.deepEqual((await listRoster(deps, admin, { ...base, state: "revoked", workLocation: "Pittsburgh HQ" })).entries.map(e => e.email), ["c@alpha.test"]);
+    // Counts stay company-wide: the filters narrow the page only.
+    const first = await listRoster(deps, admin, { ...base, state: "invited", role: "admin" });
+    assert.deepEqual([first.entries.length, first.counts?.invited, first.counts?.revoked], [0, 2, 1]);
+    await fails(listRoster(deps, admin, { ...base, role: "owner" }), "invalid-argument", "VALIDATION_FAILED");
+    await fails(listRoster(deps, caller("bo"), { ...base, role: "organizer" }), "permission-denied", "COMPANY_MISMATCH");
+  });
 });
 
 describe("listMembersV1 total", () => {
@@ -104,6 +128,25 @@ describe("listMembersV1 total", () => {
     assert.equal(first.members.length, 3);
     const next = await listMembers(deps, admin, { ...base, pageSize: 3, pageToken: first.nextPageToken });
     assert.equal(next.total, undefined);
+  });
+
+  test("the first page carries exact per-status counts for the caller's company only", async () => {
+    const { deps, store } = makeDeps();
+    seedCompany(store);
+    const first = await listMembers(deps, admin, { ...base, pageSize: 3 });
+    assert.deepEqual(first.statusCounts, { active: 6, deactivated: 1 });
+    // Filters and search narrow the page, never the tab counts.
+    assert.deepEqual((await listMembers(deps, admin, { ...base, status: "deactivated", query: "nobody" })).statusCounts, { active: 6, deactivated: 1 });
+    // The organizer view reads the same counts (member.read).
+    assert.deepEqual((await listMembers(deps, caller("org1"), base)).statusCounts, { active: 6, deactivated: 1 });
+    const next = await listMembers(deps, admin, { ...base, pageSize: 3, pageToken: first.nextPageToken });
+    assert.equal(next.statusCounts, undefined);
+    // Tenant isolation: another company's admin gets their company's counts, and naming this company is refused.
+    assert.deepEqual((await listMembers(deps, caller("bo"), { ...base, companyId: "beta" })).statusCounts, { active: 2, deactivated: 0 });
+    await fails(listMembers(deps, caller("bo"), base), "permission-denied", "COMPANY_MISMATCH");
+    // Auth denial: no caller, or a deactivated one.
+    await assert.rejects(listMembers(deps, null, base));
+    await assert.rejects(listMembers(deps, caller("deact"), base));
   });
 });
 

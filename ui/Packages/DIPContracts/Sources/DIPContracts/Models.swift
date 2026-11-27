@@ -1666,12 +1666,24 @@ public struct ListMembersResponse: Codable, Equatable, Sendable {
     public var members: [AdminMemberSummary]
     public var nextPageToken: String?
     public var total: Int?
+    public var statusCounts: MemberStatusCounts?
 
-    public init(contractVersion: Int, members: [AdminMemberSummary], nextPageToken: String? = nil, total: Int? = nil) {
+    public init(contractVersion: Int, members: [AdminMemberSummary], nextPageToken: String? = nil, total: Int? = nil, statusCounts: MemberStatusCounts? = nil) {
         self.contractVersion = contractVersion
         self.members = members
         self.nextPageToken = nextPageToken
         self.total = total
+        self.statusCounts = statusCounts
+    }
+}
+
+public struct MemberStatusCounts: Codable, Equatable, Sendable {
+    public var active: Int
+    public var deactivated: Int
+
+    public init(active: Int, deactivated: Int) {
+        self.active = active
+        self.deactivated = deactivated
     }
 }
 
@@ -2109,11 +2121,13 @@ public struct ListChallengeSubmissionsResponse: Codable, Equatable, Sendable {
     public var contractVersion: Int
     public var submissions: [ChallengeSubmission]
     public var nextCursor: String?
+    public var total: Int?
 
-    public init(contractVersion: Int, submissions: [ChallengeSubmission], nextCursor: String? = nil) {
+    public init(contractVersion: Int, submissions: [ChallengeSubmission], nextCursor: String? = nil, total: Int? = nil) {
         self.contractVersion = contractVersion
         self.submissions = submissions
         self.nextCursor = nextCursor
+        self.total = total
     }
 }
 
@@ -2346,14 +2360,20 @@ public struct ListRosterRequest: Codable, Equatable, Sendable {
     public var companyId: String
     public var state: String?
     public var query: String?
+    public var role: String?
+    public var teamId: String?
+    public var workLocation: String?
     public var pageSize: Int?
     public var pageToken: String?
 
-    public init(contractVersion: Int, companyId: String, state: String? = nil, query: String? = nil, pageSize: Int? = nil, pageToken: String? = nil) {
+    public init(contractVersion: Int, companyId: String, state: String? = nil, query: String? = nil, role: String? = nil, teamId: String? = nil, workLocation: String? = nil, pageSize: Int? = nil, pageToken: String? = nil) {
         self.contractVersion = contractVersion
         self.companyId = companyId
         self.state = state
         self.query = query
+        self.role = role
+        self.teamId = teamId
+        self.workLocation = workLocation
         self.pageSize = pageSize
         self.pageToken = pageToken
     }

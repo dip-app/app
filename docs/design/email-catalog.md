@@ -75,7 +75,7 @@ Owner decision: build every planned email that is valuable. Both new emails use 
 ### Admin roster digest
 
 - **Trigger:** hourly job like the weekly ideas email. A company is due from 08:00 to 11:59 in its zone (`emailSettings/{c}.timeZone`, else `EMAIL_DEFAULT_TIME_ZONE`) and the digest reports the previous local day (DST and half-hour zones handled). One email per admin per company day (`admin_digest_<company-day>_<uid>_<day>`), only when something happened.
-- **Content (only what admins already see):** roster entries invited by an admin or an import (not walk-in sign-ups) that were claimed that day, with up to 10 roster names and a count of the rest; imports that finished that day (completed or with errors), up to 5 with their finish time and invited, updated and failed counts. No addresses, file names or row errors. Button **Open the roster**; the footer links to Your settings.
+- **Content (only what admins already see):** roster entries invited by an admin or an import (not walk-in sign-ups) that were claimed that day, with up to 10 roster names and a count of the rest; imports that finished that day (completed or with errors), up to 5 with their finish time and invited, updated and failed counts. No addresses, file names or row errors. Button **Open Members** (`/admin/members/`); the footer links to Your settings.
 - **Recipients:** active admins whose `admin_digest` switch is on; the role is checked again at send time (`not_admin`). Reads are single-field range queries (`claimedAt`, `updatedAt`) inside one company, so no new index is needed.
 
 ### Reminder emails now show the venue

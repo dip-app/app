@@ -1,4 +1,4 @@
-import type { Attendee, AuditEntry, Member, Team } from "./adminTypes";
+import type { Attendee, AuditEntry, Member, RosterRow, Team } from "./adminTypes";
 import { auditAction } from "./auditLabels";
 import { toCsv } from "./csv";
 
@@ -16,6 +16,15 @@ export function membersCsv(rows: Member[], teams: Team[]): string {
   return toCsv([
     ["name", "email", "role", "status", "teams", "department", "job title", "work location", "points"],
     ...rows.map((m) => [m.displayName, m.email, m.role, m.status, team(m.teamIds), m.department, m.jobTitle, m.workLocation, m.pointsBalance ?? ""]),
+  ]);
+}
+
+/** Invited or revoked people (Members > Invited / Revoked): the roster columns, with the date they were added. */
+export function invitesCsv(rows: RosterRow[], teams: Team[]): string {
+  const team = (ids: string[]) => ids.map((id) => teams.find((t) => t.id === id)?.name ?? id).join("; ");
+  return toCsv([
+    ["name", "email", "role", "status", "teams", "department", "job title", "work location", "added"],
+    ...rows.map((r) => [r.displayName, r.email, r.role, r.state, team(r.teamIds), r.department, r.jobTitle, r.workLocation, r.invitedAt.slice(0, 10)]),
   ]);
 }
 

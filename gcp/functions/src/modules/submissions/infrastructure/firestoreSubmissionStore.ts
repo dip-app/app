@@ -102,6 +102,12 @@ export class FirestoreSubmissionStore implements SubmissionStore {
     });
   }
 
+  async count(companyId: string, challengeId: string, status: SubmissionStatus | null): Promise<number> {
+    const base = this.submissions(companyId, challengeId);
+    const snapshot = await (status ? base.where("status", "==", status) : base).count().get();
+    return snapshot.data().count;
+  }
+
   async list(companyId: string, challengeId: string, status: SubmissionStatus | null, limit: number, cursor: string | null): Promise<SubmissionPage> {
     let query = this.submissions(companyId, challengeId).orderBy(FieldPath.documentId());
     if (status) query = query.where("status", "==", status);

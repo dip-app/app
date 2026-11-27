@@ -44,6 +44,9 @@ class Store implements SubmissionStore {
       nextCursor: all.length > limit ? page[page.length - 1] : null,
     };
   }
+  async count(companyId: string, challengeId: string, status: SubmissionStatus | null): Promise<number> {
+    return (await this.list(companyId, challengeId, status, Number.MAX_SAFE_INTEGER, null)).items.length;
+  }
   async runTransaction<T>(work: (tx: SubmissionTransaction) => Promise<T>): Promise<T> {
     for (let attempt = 0; attempt < 20; attempt++) {
       const seen = new Map<string, number>();
@@ -324,6 +327,13 @@ test("the review queue lists only the organizer's company, filtered and paged", 
   const pending = await listChallengeSubmissions(store, caller("boss"), { contractVersion: 1, companyId: "alpha", challengeId: "week1", status: "submitted" });
   assert.deepEqual(pending.submissions.map(s => s.userId), ["alice"]);
   assert.equal(pending.submissions[0].photoURL, null);
+  // Exact totals on the first page only (the Review tab sums them); later pages leave the total out.
+  assert.equal(all.total, 2);
+  assert.equal(pending.total, 1);
+  assert.equal(next.total, undefined);
+  // Tenant isolation: another company's organizer counts their own company's queue, never this one.
+  const other = await listChallengeSubmissions(store, caller("otherboss"), { contractVersion: 1, companyId: "beta", challengeId: "week1", status: "submitted" });
+  assert.deepEqual([other.submissions.length, other.total], [0, 0]);
   assert.equal(await reason(listChallengeSubmissions(store, caller("bob"), { contractVersion: 1, companyId: "alpha", challengeId: "week1" })), "NOT_ORGANIZER");
   assert.equal(await reason(listChallengeSubmissions(store, caller("otherboss"), { contractVersion: 1, companyId: "alpha", challengeId: "week1" })), "COMPANY_MISMATCH");
   assert.equal(await reason(listChallengeSubmissions(store, caller("boss"), { contractVersion: 1, companyId: "alpha", challengeId: "week1", limit: 51 })), "VALIDATION_FAILED");

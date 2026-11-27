@@ -25,7 +25,7 @@ export const shell: Record<keyof typeof source, string> = {
   "shell.nav.events": "Eventos",
   "shell.nav.challenges": "Retos",
   "shell.nav.members": "Miembros",
-  "shell.nav.bugReports": "Errores",
+  "shell.nav.bugReports": "Reportes",
   "shell.nav.audit": "Registro de auditoría",
 
   "shell.noAccess.title": "Sin acceso de organizador",

@@ -138,6 +138,8 @@ export interface RosterRow {
   photoURL?: string;
   avatarId?: string;
   invitedAt: string;
+  /** When the invite was withdrawn: the entry's last change, which for a revoked entry is the revoke (revoked rows only). */
+  revokedAt?: string;
   /** How many times an admin resent the invite message, and when last. */
   resendCount?: number;
   lastResentAt?: string;
@@ -156,10 +158,13 @@ export interface MemberPage {
   nextCursor: string | null;
   /** All members of the company (first page only). */
   total: number | null;
+  /** Members by status, counted on the server (first page only; null when the server did not send them). */
+  statusCounts: { active: number; deactivated: number } | null;
 }
 
 export type RosterState = RosterRow["state"];
-export interface RosterQuery { query: string; state: RosterState | "all" }
+/** Role, team and location use the member list's values ("all" or empty means no filter). */
+export interface RosterQuery { query: string; state: RosterState | "all"; role?: Role | "all"; teamId?: string; workLocation?: string }
 export interface RosterCounts { all: number; invited: number; active: number; deactivated: number; revoked: number }
 export interface RosterPage {
   rows: RosterRow[]; nextCursor: string | null; /** First page only. */ counts: RosterCounts | null;
@@ -347,7 +352,8 @@ export interface Submission {
   pointsAwarded: number;
 }
 
-export interface SubmissionPage { submissions: Submission[]; nextCursor: string | null }
+/** `total`: every submission with the requested status for the challenge (first page only; null when not sent). */
+export interface SubmissionPage { submissions: Submission[]; nextCursor: string | null; total: number | null }
 
 // ----- Company insights (getCompanyInsightsV1, docs/contracts/admin.md, "Company insights")
 export interface InsightsDay { date: string; rsvps: number; photos: number }

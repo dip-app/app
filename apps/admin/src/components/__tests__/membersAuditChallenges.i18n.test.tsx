@@ -70,7 +70,7 @@ describe("challenges (Spanish)", () => {
     setLocale("es");
     render(<ChallengeTable><ChallengeRow theme={theme()} phase="current" pending="7" /></ChallengeTable>);
     const row = screen.getByTestId("challenge-row");
-    expect(within(row).getByText("Esta semana")).toBeTruthy();
+    expect(within(row).queryByText("Esta semana")).toBeNull();
     expect(within(row).getByText("7 pendientes")).toBeTruthy();
     expect(within(row).getByText("41 completaron")).toBeTruthy();
     expect(within(row).getByRole("link", { name: /Revisar participaciones de Fitness/ })).toBeTruthy();

@@ -60,7 +60,6 @@ const themeColumns = (): SkeletonColumn[] => [
   { head: t("ui.skeleton.col.goal"), cell: () => <Sk w={60} /> },
   { head: t("ui.skeleton.col.reward"), cell: () => <Sk w={48} /> },
   { head: t("ui.skeleton.col.participation"), className: "num", cell: () => <Sk w={90} /> },
-  { head: t("ui.skeleton.col.status"), cell: () => <Pill width={64} /> },
   { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button width={44} /></span> },
 ];
 

@@ -29,7 +29,7 @@ import ChallengesPage from "../../app/challenges/page";
 beforeEach(() => {
   resetCache();
   api.listThemes.mockResolvedValue([theme("now", "Walk week", -1, 5), theme("next", "Cook week", 8, 14), theme("old", "Read week", -20, -14)]);
-  api.listSubmissions.mockResolvedValue({ submissions: [{}, {}], nextCursor: null });
+  api.listSubmissions.mockImplementation(async (id: string) => (id === "now" ? { submissions: [{}, {}], nextCursor: null, total: 2 } : { submissions: [{}], nextCursor: "c", total: 30 }));
 });
 
 afterEach(() => {
@@ -46,19 +46,33 @@ describe("Challenges (Schedule and Review)", () => {
     expect(screen.getByRole("tab", { name: "Schedule" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("tab", { name: "Review" })).toBeTruthy();
     const filters = screen.getByRole("group", { name: "Show challenges by week" });
-    expect(within(filters).getByRole("button", { name: /Current/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(filters).getByRole("button", { name: /This week/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("link", { name: "Edit Walk week" }).getAttribute("href")).toBe("/challenges/edit?id=now");
     expect(within(screen.getByTestId("page-actions")).getByRole("link", { name: "New challenge" }).getAttribute("href")).toBe("/challenges/new");
     expect(screen.getByRole("columnheader", { name: "Challenge" })).toBeTruthy();
-    expect(api.listSubmissions).not.toHaveBeenCalled();
+    // No status chips on the normal weeks (the filter already says which week this is).
+    expect(screen.queryByRole("columnheader", { name: "Status" })).toBeNull();
+    // The Review tab carries the open-entry total of the weeks that started (the upcoming week has none to count).
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Review (32)" })).toBeTruthy());
+    expect(api.listSubmissions.mock.calls.map((call) => call[0]).sort()).toEqual(["now", "old"]);
   });
 
-  it("Review lists every challenge with its pending entries", async () => {
+  it("Review lists every challenge with its exact pending entries, which add up to the tab total", async () => {
     state.tab = "review";
     render(<ChallengesPage />);
     await waitFor(() => expect(screen.getAllByTestId("challenge-row")).toHaveLength(3));
-    await waitFor(() => expect(screen.getAllByText("2 pending")).toHaveLength(2));
+    await waitFor(() => expect(screen.getByText("2 pending")).toBeTruthy());
+    expect(screen.getByText("30 pending")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Review (32)" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Review submissions for Walk week/ }).getAttribute("href")).toBe("/challenges/review?id=now");
+  });
+
+  it("without exact totals, a long queue reads 25+ and the tab shows no total", async () => {
+    api.listSubmissions.mockImplementation(async () => ({ submissions: [{}], nextCursor: "c", total: null }));
+    state.tab = "review";
+    render(<ChallengesPage />);
+    await waitFor(() => expect(screen.getAllByText("1+ pending")).toHaveLength(2));
+    expect(screen.getByRole("tab", { name: "Review" })).toBeTruthy();
   });
 
   it("organizers see the schedule read-only, without the Review tab", async () => {

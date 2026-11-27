@@ -47,6 +47,7 @@ export function rosterFromDoc(id: string, d: DocumentData): RosterRow {
     department: str(d.department), jobTitle: str(d.jobTitle),
     state: d.status === "revoked" ? "revoked" : claimed ? (d.memberStatus === "deactivated" ? "deactivated" : "active") : "invited",
     ...(claimed && str(d.claimedBy) ? { memberId: str(d.claimedBy) } : {}), ...(str(d.memberPhotoURL) ? { photoURL: str(d.memberPhotoURL) } : {}), ...(str(d.memberAvatarId) ? { avatarId: str(d.memberAvatarId) } : {}), invitedAt: iso(d.createdAt),
+    ...(d.status === "revoked" && iso(d.updatedAt) ? { revokedAt: iso(d.updatedAt) } : {}),
     ...(typeof d.resendCount === "number" && d.resendCount > 0 ? { resendCount: d.resendCount } : {}), ...(iso(d.lastResentAt) ? { lastResentAt: iso(d.lastResentAt) } : {}),
     ...(typeof d.inviteEmailCount === "number" && d.inviteEmailCount > 0 ? { inviteEmailCount: d.inviteEmailCount } : {}), ...(iso(d.lastInviteEmailAt) ? { lastInviteEmailAt: iso(d.lastInviteEmailAt) } : {}),
   };
@@ -441,13 +442,17 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
 
     listMembers: () => run(async () => listMembersAll(await organizer())),
     listMembersPage: (q: MemberQuery, cursor, pageSize = 25) => run(async () => {
-      const data = await call<{ members: DocumentData[]; nextPageToken?: string; total?: number }>(ADMIN_CALLABLES.listMembers, await organizer(), {
+      const data = await call<{ members: DocumentData[]; nextPageToken?: string; total?: number; statusCounts?: { active: number; deactivated: number } }>(ADMIN_CALLABLES.listMembers, await organizer(), {
         pageSize,
         ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.status !== "all" ? { status: q.status } : {}), ...(q.role !== "all" ? { role: q.role } : {}),
         ...(q.teamId !== "all" && q.teamId ? { teamId: q.teamId } : {}), ...(q.workLocation !== "all" && q.workLocation ? { workLocation: q.workLocation } : {}),
         ...(cursor ? { pageToken: cursor } : {}),
       }, false);
-      return { members: data.members.map(memberFromSummary), nextCursor: data.nextPageToken ?? null, total: typeof data.total === "number" ? data.total : null };
+      const counts = data.statusCounts;
+      return {
+        members: data.members.map(memberFromSummary), nextCursor: data.nextPageToken ?? null, total: typeof data.total === "number" ? data.total : null,
+        statusCounts: counts && typeof counts.active === "number" && typeof counts.deactivated === "number" ? { active: counts.active, deactivated: counts.deactivated } : null,
+      };
     }),
     getMember: (id) => run(async () => member(await organizer(), id)),
     updateMember: (id, expectedRevision, patch) => run(async () => {
@@ -474,7 +479,9 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     // The roster lists everyone (invited, joined, deactivated, revoked); listRosterV1 pages and searches on the server.
     listRosterPage: (q, cursor, pageSize = 25) => run(async () => {
       const data = await call<{ entries: DocumentData[]; nextPageToken?: string; counts?: RosterCounts; inviteEmail?: boolean }>(ADMIN_CALLABLES.listRoster, await organizer(), {
-        pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.state !== "all" ? { state: q.state } : {}), ...(cursor ? { pageToken: cursor } : {}),
+        pageSize, ...(q.query.trim() ? { query: q.query.trim().slice(0, 80) } : {}), ...(q.state !== "all" ? { state: q.state } : {}),
+        ...(q.role && q.role !== "all" ? { role: q.role } : {}), ...(q.teamId && q.teamId !== "all" ? { teamId: q.teamId } : {}),
+        ...(q.workLocation && q.workLocation !== "all" ? { workLocation: q.workLocation } : {}), ...(cursor ? { pageToken: cursor } : {}),
       }, false);
       return { rows: data.entries.map((e) => rosterFromDoc(str(e.id), e)), nextCursor: data.nextPageToken ?? null, counts: data.counts ?? null, inviteEmail: data.inviteEmail === true };
     }),
@@ -524,9 +531,9 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
     }),
 
     listSubmissions: (challengeId, status, cursor) => run(async () => {
-      const data = await call<{ submissions: DocumentData[]; nextCursor: string | null }>(
+      const data = await call<{ submissions: DocumentData[]; nextCursor: string | null; total?: number }>(
         ADMIN_CALLABLES.listSubmissions, await organizer(), { challengeId, status, limit: 25, ...(cursor ? { cursor } : {}) }, false);
-      return { submissions: data.submissions.map(submissionFromWire), nextCursor: data.nextCursor ?? null };
+      return { submissions: data.submissions.map(submissionFromWire), nextCursor: data.nextCursor ?? null, total: typeof data.total === "number" ? data.total : null };
     }),
     // Evidence has no download URL: admins read the object through the authenticated Storage SDK (storage rules).
     submissionEvidence: (submission) => run(async () => {

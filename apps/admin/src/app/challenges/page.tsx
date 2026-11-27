@@ -47,18 +47,19 @@ function Challenges() {
   }), "themes.list");
   const themes = list.data;
   const hold = useSkeletonGate(themes === null && !list.error);
+  const pending = usePending(canReview ? themes : null);
 
   return (
     <Shell title={t("challenges.title")} subtitle={t("challenges.subtitle")}
       action={canManage ? <Button variant="primary" href="/challenges/new/">{t("challenges.themes.new")}</Button> : undefined}>
       {canReview && (
         <Tabs idBase="challenges" label={t("challenges.tabsLabel")} value={tab} onChange={(id) => setQs({ tab: id })}
-          items={[{ id: "schedule", label: t("challenges.tab.schedule") }, { id: "review", label: t("challenges.tab.review") }]} />
+          items={[{ id: "schedule", label: t("challenges.tab.schedule") }, { id: "review", label: t("challenges.tab.review"), ...(pending.total !== null ? { count: formatNumber(pending.total) } : {}) }]} />
       )}
       <div key={tab} {...(canReview ? tabPanelProps("challenges", tab) : {})}>
         {list.error ? <LoadError error={list.error} onRetry={list.reload} />
           : themes === null || hold ? <Loading label={t("challenges.loading")} layout={tab === "review" ? "challenges" : "themes"} />
-          : tab === "review" ? <Review themes={themes} onSchedule={() => setQs({ tab: "schedule" })} />
+          : tab === "review" ? <Review themes={themes} pending={pending.byChallenge} onSchedule={() => setQs({ tab: "schedule" })} />
           : <Schedule themes={themes} phase={oneOf(qs.phase, PHASE_IDS, "current")} onPhase={(phase) => setQs({ phase })} canEdit={canManage} />}
       </div>
     </Shell>
@@ -84,24 +85,40 @@ function Schedule({ themes, phase, onPhase, canEdit }: { themes: WeeklyTheme[]; 
   );
 }
 
-/** Review: this week first, then upcoming (nothing to review yet), then past, each with its pending entries. */
-function Review({ themes, onSchedule }: { themes: WeeklyTheme[]; onSchedule: () => void }) {
+/**
+ * Open entries per challenge that has started (this week and past weeks), from each review queue's exact server total,
+ * and their sum for the Review tab. The tab and the rows read the same numbers, so they always agree; the sum shows
+ * only once every queue has answered with an exact total.
+ */
+function usePending(themes: WeeklyTheme[] | null): { byChallenge: Record<string, string>; total: number | null } {
   const { api } = useApp();
-  const [pending, setPending] = useState<Record<string, string>>({});
-  const now = useMemo(() => new Date(), []);
-  const sorted = sortChallenges(themes, (theme) => themePhase(theme, now));
-  const ids = sorted.filter((theme) => themePhase(theme, now) !== "upcoming").map((theme) => theme.id).join(",");
+  const [counts, setCounts] = useState<Record<string, { count: number; exact: boolean }>>({});
+  const ids = useMemo(() => {
+    const now = new Date();
+    return (themes ?? []).filter((theme) => themePhase(theme, now) !== "upcoming").map((theme) => theme.id).join(",");
+  }, [themes]);
   useEffect(() => {
-    // Pending count per challenge (first page only, so a long queue shows "25+").
     let cancelled = false;
     for (const themeId of ids.split(",").filter(Boolean)) {
       api.listSubmissions(themeId, "submitted").then(
-        (page) => !cancelled && setPending((p) => ({ ...p, [themeId]: `${page.submissions.length}${page.nextCursor ? "+" : ""}` })),
+        // An older server without totals: the first page's length, marked "25+" when more follow.
+        (page) => !cancelled && setCounts((c) => ({ ...c, [themeId]: typeof page.total === "number" ? { count: page.total, exact: true } : { count: page.submissions.length, exact: !page.nextCursor } })),
         () => undefined,
       );
     }
     return () => { cancelled = true; };
   }, [api, ids]);
+  const wanted = ids.split(",").filter(Boolean);
+  const byChallenge: Record<string, string> = {};
+  for (const [id, c] of Object.entries(counts)) byChallenge[id] = `${formatNumber(c.count)}${c.exact ? "" : "+"}`;
+  const complete = themes !== null && wanted.every((id) => counts[id]?.exact);
+  return { byChallenge, total: complete ? wanted.reduce((sum, id) => sum + (counts[id]?.count ?? 0), 0) : null };
+}
+
+/** Review: this week first, then upcoming (nothing to review yet), then past, each with its pending entries. */
+function Review({ themes, pending, onSchedule }: { themes: WeeklyTheme[]; pending: Record<string, string>; onSchedule: () => void }) {
+  const now = useMemo(() => new Date(), []);
+  const sorted = sortChallenges(themes, (theme) => themePhase(theme, now));
 
   if (sorted.length === 0) return <Empty title={t("challenges.empty.title")} body={t("challenges.empty.body")} action={<Button onClick={onSchedule}>{t("challenges.empty.action")}</Button>} />;
   return (

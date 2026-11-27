@@ -189,7 +189,7 @@ export const en = {
   "email.adminDigest.imports.label": "Imports finished ({count})",
   "email.adminDigest.import": "{time}: {invited} invited, {updated} updated{failed, plural, =0 {} one {, # could not be added} other {, # could not be added}}",
   "email.adminDigest.imports.more": "{count, plural, one {and # more import} other {and # more imports}}",
-  "email.adminDigest.cta": "Open the roster",
+  "email.adminDigest.cta": "Open Members",
   "email.adminDigest.reason": "You are getting this because you turned on the daily roster digest for admins.",
   "email.adminDigest.manage": "Manage in the admin portal",
 } as const;

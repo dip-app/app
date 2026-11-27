@@ -46,11 +46,13 @@ export const members = {
 
   // Result counts
   "members.count.showingOf": "Showing {shown} of {total, plural, one {# person} other {# people}}",
+  "members.count.showingOfJoined": "Showing {shown} of {total, plural, one {# person} other {# people}} who joined",
   "members.count.matchesSoFar": "Showing the first {shown}",
   "members.count.matches": "{shown, plural, one {# person matches} other {# people match}}",
 
   // Export
   "members.export.done": "Exported {count, plural, one {# person} other {# people}} to members.csv.",
+  "members.export.doneFile": "Exported {count, plural, one {# person} other {# people}} to {file}.",
   "members.sub.points": "{count, plural, one {# point} other {# points}}",
 
   // Everyone on one page: people who joined, and people invited in advance (admins who manage invitations)

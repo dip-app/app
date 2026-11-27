@@ -34,6 +34,7 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.table.resentLast": "Mensaje compartido {count}×, último {date}",
   "roster.table.emailed": "Correo enviado {count}×",
   "roster.table.emailedLast": "Correo enviado {count}×, último {date}",
+  "roster.table.revokedOn": "Revocado el {date}",
 
   // Row actions
   "roster.action.resend": "Obtener mensaje de invitación",

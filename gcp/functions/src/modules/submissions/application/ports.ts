@@ -98,4 +98,6 @@ export interface SubmissionStore {
   /** Organizer authorization lookup outside a transaction (read path). */
   getMember(uid: string): Promise<Document | null>;
   list(companyId: string, challengeId: string, status: SubmissionStatus | null, limit: number, cursor: string | null): Promise<SubmissionPage>;
+  /** Aggregate count of one challenge's submissions, optionally with one status (no documents are read). */
+  count(companyId: string, challengeId: string, status: SubmissionStatus | null): Promise<number>;
 }

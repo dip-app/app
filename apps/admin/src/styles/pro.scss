@@ -72,6 +72,10 @@ $ctl-h: 36px;
   .panel > .pill-btn, .panel > .actions { justify-self: start; }
   .big-pill { padding: 0 18px; }
   .actions { gap: 8px; padding: 4px 0 24px; }
+  // Dialogs space their own rows (grid gap): no page-section padding under their action rows.
+  .dialog .actions { padding: 4px 0 0; }
+  // Phones: every dialog action is a full 44 px touch target (the small row buttons included).
+  @media (max-width: 700px), (pointer: coarse) { .dialog .actions .pill-btn { min-height: 44px; } }
   .link-btn { text-decoration-thickness: 1px; }
 
   // ---------- Focus

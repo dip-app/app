@@ -18,7 +18,7 @@ Se unieron (14)
 Importaciones terminadas (1)
 - 2:42 p.m. EST: 42 invitadas, 3 actualizadas, 1 no se pudo agregar
 
-Abrir la lista de personal: https://letsdip.work/admin/roster/
+Abrir Miembros: https://letsdip.work/admin/members/
 
 --
 Recibes este correo porque activaste el resumen diario de la lista de personal para administradores.

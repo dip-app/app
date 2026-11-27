@@ -29,6 +29,24 @@ class HostingShareLinks(unittest.TestCase):
         if "/o/**" in rewrites:
             self.assertEqual(rewrites["/o/**"]["function"], {"functionId": "emailOpenV1", "region": "us-central1"})
 
+    def test_moved_admin_pages_redirect_permanently(self):
+        # Roster moved into Members and Weekly themes into Challenges (PR #370). Hosting answers the old addresses with a
+        # 301 (redirects run before static files); the client redirect pages stay as the fallback for other servers.
+        redirects = {r["source"]: r for r in self.hosting.get("redirects", [])}
+        expected = {
+            "/admin/roster{,/}": "/admin/members/?status=invited",
+            "/admin/themes{,/}": "/admin/challenges/",
+            "/admin/themes/new{,/}": "/admin/challenges/new/",
+        }
+        self.assertEqual({k: v["destination"] for k, v in redirects.items()}, expected)
+        self.assertTrue(all(r["type"] == 301 for r in redirects.values()))
+        # /admin/themes/edit/ needs its ?id, which a hosting redirect may not carry over: it keeps the client redirect only.
+        for page in ("roster", "themes", "themes/new", "themes/edit"):
+            self.assertTrue((ROOT / "apps/admin/src/app" / page / "page.tsx").is_file(), page)
+        # Every target exists in the admin app.
+        for target in ("members", "challenges", "challenges/new"):
+            self.assertTrue((ROOT / "apps/admin/src/app" / target / "page.tsx").is_file(), target)
+
     def test_app_association_is_disabled_so_our_aasa_is_served(self):
         # Firebase auto-generates an empty AASA on web.app unless appAssociation is NONE.
         self.assertEqual(self.hosting["appAssociation"], "NONE")

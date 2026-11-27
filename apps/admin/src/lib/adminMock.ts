@@ -138,7 +138,7 @@ export function seedOps(now: Date): OpsState {
     companyId: "acme", entryId: m.email, email: m.email, displayName: m.displayName, role: m.role, teamIds: m.teamIds, workLocation: m.workLocation, department: m.department,
     jobTitle: m.jobTitle, state: "active", memberId: m.id, invitedAt: m.createdAt, ...profileOf(m),
   }));
-  const roster: StoredRoster[] = [...claimed, invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked" }];
+  const roster: StoredRoster[] = [...claimed, invite("Nico", "Farrow", 12, 0), invite("Priya", "Shah", 5, 2), invite("Tomas", "Reyes", 2, 4), { ...invite("Lena", "Marsh", 30, 1), state: "revoked", revokedAt: isoAgo(now, 9) }];
   const photos: Stored<AlbumPhoto>[] = [];
   const comments: Stored<AlbumComment & { eventId: string }>[] = [];
   const images = ["games", "cooking", "outdoors", "fitness", "hiking"];
@@ -640,7 +640,12 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const page = rest.filter(matches).slice(0, pageSize);
       const last = page[page.length - 1];
       const more = last ? rest.some((m) => m.id > last.id && matches(m)) : false;
-      return { members: page.map((m) => view(session, m)), nextCursor: more ? last!.id : null, total: cursor ? null : all.length };
+      const deactivated = all.filter((m) => m.status === "deactivated").length;
+      const invited = all.filter((m) => m.status === "invited").length;
+      return {
+        members: page.map((m) => view(session, m)), nextCursor: more ? last!.id : null, total: cursor ? null : all.length,
+        statusCounts: cursor ? null : { active: all.length - deactivated - invited, deactivated },
+      };
     },
     async getMember(id) {
       const state = load();
@@ -725,7 +730,9 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       };
       const entries = state.roster.filter((r) => r.companyId === session.companyId).sort((a, b) => (a.entryId < b.entryId ? -1 : 1));
       const text = q.query.trim().toLowerCase();
-      const matches = (r: StoredRoster) => (q.state === "all" || stateOf(r) === q.state) && (!text || `${r.displayName} ${r.email} ${r.department} ${r.jobTitle} ${r.workLocation}`.toLowerCase().includes(text));
+      const matches = (r: StoredRoster) => (q.state === "all" || stateOf(r) === q.state) && (!q.role || q.role === "all" || r.role === q.role) &&
+        (!q.teamId || q.teamId === "all" || r.teamIds.includes(q.teamId)) && (!q.workLocation || q.workLocation === "all" || r.workLocation.toLowerCase() === q.workLocation.toLowerCase()) &&
+        (!text || `${r.displayName} ${r.email} ${r.department} ${r.jobTitle} ${r.workLocation}`.toLowerCase().includes(text));
       const rest = entries.filter((r) => !cursor || r.entryId > cursor);
       const page = rest.filter(matches).slice(0, pageSize);
       const last = page[page.length - 1];
@@ -813,6 +820,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (!entry) throw new ApiError("not-found", "That person isn’t on the roster.", {}, "ROSTER_ENTRY_NOT_FOUND");
       if (entry.state !== "invited") return; // revoked already, or a claimed entry (revoke the member instead)
       entry.state = "revoked";
+      entry.revokedAt = now().toISOString();
       log(state, session, { action: "roster.revoke", targetType: "roster", targetId: entryId, summary: `Withdrew the invite for ${entry.displayName}`, changes: [{ field: "status", before: "invited", after: "revoked" }] });
       save(state);
     },
@@ -824,6 +832,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       if (state.members.some((m) => m.companyId === session.companyId && m.email === entry.email)) throw new ApiError("failed-precondition", "That person already has an account.", {}, "EMAIL_ALREADY_MEMBER");
       if (entry.state === "invited") return;
       entry.state = "invited";
+      delete entry.revokedAt;
       entry.invitedAt = now().toISOString();
       log(state, session, { action: "roster.upsert", targetType: "roster", targetId: entry.entryId, summary: `Invited ${entry.displayName} again`, changes: [{ field: "status", before: "revoked", after: "invited" }] });
       save(state);
@@ -905,7 +914,7 @@ export function createMockOps(deps: MockOpsDeps): AdminOpsApi {
       const page = all.filter((x) => !cursor || x.id > cursor).slice(0, SUBMISSION_PAGE);
       const last = page[page.length - 1];
       const more = last && all.some((x) => x.id > last.id);
-      return { submissions: page.map(({ companyId: _c, changeOnReview: _x, ...rest }) => (void _c, void _x, rest)), nextCursor: more ? last.id : null };
+      return { submissions: page.map(({ companyId: _c, changeOnReview: _x, ...rest }) => (void _c, void _x, rest)), nextCursor: more ? last.id : null, total: cursor ? null : all.length };
     },
     async submissionEvidence(submission) {
       const pictures = ["fitness", "outdoors", "hiking", "games", "cooking"];

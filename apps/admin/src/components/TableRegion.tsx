@@ -22,12 +22,16 @@ export function TableRegion({ label, busy, children }: { label: string; busy?: b
       setMore(start && end ? "both" : start ? "start" : end ? "end" : undefined);
     };
     measure();
+    // Web fonts change text widths without resizing the region: measure again once they are in, so a shadow from the
+    // fallback font's wider layout does not stay behind.
+    let live = true;
+    void document.fonts?.ready.then(() => { if (live) measure(); });
     el.addEventListener("scroll", measure, { passive: true });
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(el);
     const table = el.firstElementChild;
     if (table) observer?.observe(table);
-    return () => { el.removeEventListener("scroll", measure); observer?.disconnect(); };
+    return () => { live = false; el.removeEventListener("scroll", measure); observer?.disconnect(); };
   }, []);
   return (
     <div className="table-frame" data-more={more}>

@@ -205,10 +205,10 @@ const ROSTER_STATES = ["invited", "active", "deactivated", "revoked"] as const;
 export type RosterState = (typeof ROSTER_STATES)[number];
 
 export function parseListRoster(data: unknown) {
-  const r = Reader.from(data, [...BASE, "state", "query", "pageSize", "pageToken"]);
+  const r = Reader.from(data, [...BASE, "state", "query", "role", "teamId", "workLocation", "pageSize", "pageToken"]);
   const req = {
-    companyId: r.id("companyId"), state: r.optEnum("state", ROSTER_STATES), query: r.optText("query", 80), pageSize: r.optInt("pageSize", 1, 100) ?? 50,
-    pageToken: r.optId("pageToken"),
+    companyId: r.id("companyId"), state: r.optEnum("state", ROSTER_STATES), query: r.optText("query", 80), role: r.optEnum("role", REQUIRED_ROLES),
+    teamId: r.optId("teamId"), workLocation: r.optText("workLocation", 120), pageSize: r.optInt("pageSize", 1, 100) ?? 50, pageToken: r.optId("pageToken"),
   };
   r.finish();
   return req;

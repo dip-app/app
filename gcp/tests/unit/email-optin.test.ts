@@ -110,7 +110,7 @@ describe("opt-in email templates", () => {
     assert.equal(out.preheader, "14 people joined and 1 import finished on Thursday, November 19.");
     assert.ok(out.text.includes("Joined (14)") && out.text.includes("- Ava Johnson") && out.text.includes("- and 4 more people"));
     assert.ok(out.text.includes("- 2:42 PM EST: 42 invited, 3 updated, 1 could not be added"), "each import is labeled with its time in the company zone");
-    assert.ok(out.text.includes("Open the roster: https://letsdip.work/admin/roster/"));
+    assert.ok(out.text.includes("Open Members: https://letsdip.work/admin/members/"));
     assert.ok(out.text.includes("Manage in the admin portal: https://letsdip.work/admin/account/") && !out.text.includes("Profile > Notifications"));
     assert.ok(!out.text.replace("support@letsdip.work", "").includes("@"), "no addresses beyond the support contact");
     const es = renderEmail("admin_digest", PREVIEW_CASES.find((x) => x.name === "admin_digest_imports")!.variables as never, { ...SAMPLE_CTX, locale: "es" });

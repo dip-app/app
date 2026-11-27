@@ -54,9 +54,17 @@ export async function listMembers(deps: AdminDeps, caller: Caller | null, data: 
       if (batch.length < SCAN_BATCH) { exhausted = true; break; }
     }
     const nextPageToken = exhausted ? undefined : afterId;
-    // The first page carries the exact company total so the portal can show "N of M" however many pages follow.
-    const total = req.pageToken ? undefined : await tx.count("users", [["companyId", actor.companyId]]);
-    return { contractVersion: 1, members, ...(nextPageToken ? { nextPageToken } : {}), ...(total !== undefined ? { total } : {}) } satisfies ListMembersResponse;
+    // The first page carries the exact company total and the per-status counts (aggregations, no documents read), so the
+    // portal shows "N of M" and every status tab's count up front however many pages follow.
+    if (req.pageToken) return { contractVersion: 1, members, ...(nextPageToken ? { nextPageToken } : {}) } satisfies ListMembersResponse;
+    const [total, deactivated, invited] = await Promise.all([
+      tx.count("users", [["companyId", actor.companyId]]),
+      tx.count("users", [["companyId", actor.companyId], ["status", "deactivated"]]),
+      tx.count("users", [["companyId", actor.companyId], ["status", "invited"]]),
+    ]);
+    // Same rule as statusOf: anything not deactivated or invited is active (older members have no status field).
+    const statusCounts = { active: Math.max(0, total - deactivated - invited), deactivated };
+    return { contractVersion: 1, members, ...(nextPageToken ? { nextPageToken } : {}), total, statusCounts } satisfies ListMembersResponse;
   });
 }
 
