@@ -29,6 +29,11 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
     expect(screen.getByRole("button").getAttribute("aria-busy")).toBe("true");
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+    // Pending look: the label stays (the accessible name and the width) under a decorative spinner.
+    expect(screen.getByRole("button", { name: "Go" }).querySelector(".btn-label")?.textContent).toBe("Go");
+    expect(screen.getByRole("button").querySelector(".btn-spin")?.getAttribute("aria-hidden")).toBe("true");
+    rerender(<Button onClick={onClick}>Go</Button>);
+    expect(screen.getByRole("button").querySelector(".btn-spin")).toBeNull();
     rerender(<Button disabled onClick={onClick}>Go</Button>);
     expect((screen.getByRole("button") as HTMLButtonElement).disabled).toBe(true);
   });

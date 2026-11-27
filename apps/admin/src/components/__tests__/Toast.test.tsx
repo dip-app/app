@@ -27,6 +27,9 @@ describe("Toast", () => {
     act(() => { vi.advanceTimersByTime(5900); });
     expect(screen.queryByText("Saved.")).toBeTruthy();
     act(() => { vi.advanceTimersByTime(200); });
+    // Leaving: hidden from assistive tech while it fades, then removed once the exit has played.
+    expect(screen.getByText("Saved.").closest(".toast-slot")?.getAttribute("data-leaving")).toBe("true");
+    act(() => { vi.advanceTimersByTime(400); });
     expect(screen.queryByText("Saved.")).toBeNull();
   });
 
@@ -38,7 +41,7 @@ describe("Toast", () => {
     act(() => { vi.advanceTimersByTime(20_000); });
     expect(screen.queryByText("Saved.")).toBeTruthy();
     fireEvent.mouseLeave(item);
-    act(() => { vi.advanceTimersByTime(6100); });
+    act(() => { vi.advanceTimersByTime(6500); });
     expect(screen.queryByText("Saved.")).toBeNull();
 
     act(() => { toast("Again."); });
@@ -54,6 +57,7 @@ describe("Toast", () => {
     act(() => { toast("Checked in.", { action: { label: "Undo", onClick: undo } }); });
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(undo).toHaveBeenCalledTimes(1);
+    act(() => { vi.advanceTimersByTime(400); });
     expect(screen.queryByText("Checked in.")).toBeNull();
   });
 
@@ -61,7 +65,31 @@ describe("Toast", () => {
     render(<Toaster />);
     act(() => { toast("Saved."); });
     fireEvent.click(screen.getByRole("button", { name: "Dismiss notification" }));
+    act(() => { vi.advanceTimersByTime(400); });
     expect(screen.queryByText("Saved.")).toBeNull();
+  });
+
+  it("plays an exit before removal, and removes at once under reduced motion", () => {
+    render(<Toaster />);
+    act(() => { toast("Saved."); });
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss notification" }));
+    const slot = screen.getByText("Saved.").closest(".toast-slot")!;
+    expect(slot.getAttribute("data-leaving")).toBe("true");
+    expect(slot.getAttribute("aria-hidden")).toBe("true");
+    act(() => { vi.advanceTimersByTime(339); });
+    expect(screen.queryByText("Saved.")).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(2); });
+    expect(screen.queryByText("Saved.")).toBeNull();
+
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    try {
+      act(() => { toast("Again."); });
+      fireEvent.click(screen.getByRole("button", { name: "Dismiss notification" }));
+      expect(screen.queryByText("Again.")).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   it("keeps error toasts until dismissed, with the error mark, and replaces a repeat instead of stacking", () => {

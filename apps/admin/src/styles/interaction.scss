@@ -1,0 +1,144 @@
+@use "@/styles/variables.scss" as *;
+
+// Interaction states and motion for the signed-in portal, loaded after pro.scss (it only adds states and motion, never
+// layout). One recipe for everything pressable:
+//   hover     a wash (outlined things) or one step darker (filled things), over --dur-fast
+//   pressed   one step darker again, at once (--dur-press); md buttons outside tables also sink to 98 %
+//   focus     the existing rings (pro.scss), unchanged
+//   selected  the existing purple or ink fill; hover and press darken it
+//   disabled  the existing flat gray, no hover or press
+//   loading   a spinner over the hidden label (the width stays), presses ignored, cursor progress
+// Tokens: _motion.scss. Rules and evidence: docs/design/polish-2026-11/admin-interaction.md.
+
+$wash: #f6f7fa;        // hover on white
+$wash-press: #eceef4;  // pressed on white
+$primary-press: #3f4bc4; // white text 6.6:1
+$ctl-border: #8a8fa5;
+$ctl-border-hover: #5f6478;
+$danger-wash: #fff4f9;
+$danger-press: #ffe6f1;
+
+$t-color: background-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
+
+.content, .dialog {
+  // ---------- Buttons (kit Button: .pill-btn / .big-pill)
+  .pill-btn, .big-pill { transition: $t-color, transform var(--dur-fast) var(--ease-standard); -webkit-tap-highlight-color: transparent; }
+  .pill-btn:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]),
+  .big-pill:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]) { transition-duration: var(--dur-press); }
+  .pill-btn.purple:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]),
+  .big-pill.dark:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]) { background: $primary-press; }
+  .pill-btn.gray:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]),
+  .big-pill.gray:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]) { background: $wash-press; box-shadow: inset 0 0 0 1px $ctl-border-hover; }
+  .pill-btn.gray:hover:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]) { box-shadow: inset 0 0 0 1px $ctl-border-hover; }
+  .pill-btn.danger:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]) { background: $danger-press; }
+  .dialog .pill-btn.danger:hover:not([disabled]):not([aria-busy="true"]) { background: #9c0f52; }
+  .dialog .pill-btn.danger:active:not([disabled]):not([aria-busy="true"]) { background: #86104a; }
+  // Medium buttons sink a little; small ones and anything in a table only darken (scaling 28 px text in dense rows blurs it).
+  .pill-btn:not(.small):active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]),
+  .big-pill:active:not([disabled]):not([aria-busy="true"]):not([aria-disabled="true"]) { transform: scale(.98); }
+  .table .pill-btn:active, .table-wrap .pill-btn:active { transform: none; }
+
+  // Focusable but unavailable for now (a dialog's Cancel while it saves): same flat look as disabled.
+  .pill-btn[aria-disabled="true"] { opacity: 1; background: #eceef4; color: #646a80; box-shadow: none; cursor: not-allowed; } // 4.6:1 (the old .55 opacity fell to about 2.3:1)
+
+  // Pending: the label keeps its place (so the width never jumps) and a spinner sits over it.
+  .pill-btn[aria-busy="true"], .big-pill[aria-busy="true"] { position: relative; cursor: progress; }
+  [aria-busy="true"] > .btn-label { display: inline-flex; align-items: center; gap: inherit; opacity: 0; } // opacity, not visibility: the label stays the accessible name
+  .btn-spin { position: absolute; inset: 0; margin: auto; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
+    animation: btn-spin .7s linear infinite; }
+  .pill-btn.small .btn-spin { width: 14px; height: 14px; }
+  // A pending button keeps its resting look under the pointer (hover rules would wash it out behind the spinner).
+  .pill-btn.purple[aria-busy="true"], .big-pill.dark[aria-busy="true"] { background: var(--primary); }
+  .pill-btn.gray[aria-busy="true"], .big-pill.gray[aria-busy="true"] { background: $white; }
+  .pill-btn.danger[aria-busy="true"] { background: $white; }
+  .dialog .pill-btn.danger[aria-busy="true"] { background: var(--error); }
+
+  // ---------- Filter and choice chips (ChipToggle)
+  .chip { transition: $t-color; -webkit-tap-highlight-color: transparent;
+    &[aria-pressed="false"]:hover:not([disabled]) { background: $wash; box-shadow: inset 0 0 0 1px $ctl-border-hover; }
+    &[aria-pressed="false"]:active:not([disabled]) { background: $wash-press; transition-duration: var(--dur-press); }
+    &[aria-pressed="true"]:hover:not([disabled]) { background: var(--primary-hover); }
+    &[aria-pressed="true"]:active:not([disabled]) { background: $primary-press; transition-duration: var(--dur-press); }
+    &[disabled] { cursor: not-allowed; } }
+
+  // ---------- Segmented controls (pill and icon) and tabs
+  .seg, .view-toggle-btn { transition: $t-color;
+    &[aria-pressed="false"]:hover:not([disabled]) { background: $wash; }
+    &[aria-pressed="false"]:active:not([disabled]) { background: $wash-press; transition-duration: var(--dur-press); }
+    &[aria-pressed="true"]:hover:not([disabled]) { background: var(--primary-hover); } }
+  .tabs .tab { transition: $t-color;
+    &[aria-selected="false"]:hover, &[aria-pressed="false"]:hover { border-bottom-color: #c4c8d6; }
+    &[aria-selected="false"]:active, &[aria-pressed="false"]:active { border-bottom-color: $ctl-border; transition-duration: var(--dur-press); } }
+
+  // ---------- Switches (Toggle)
+  .toggle { transition: $t-color;
+    .track { transition: background-color var(--dur-fast) var(--ease-standard); }
+    .knob { transition: transform var(--dur-base) var(--ease-standard), width var(--dur-fast) var(--ease-standard); }
+    &:hover { background: $wash; .track { background: #767b91; } }
+    &[aria-checked="true"]:hover .track { background: var(--primary-hover); }
+    // Pressed: the knob stretches toward where it will go, the familiar switch "squish".
+    &:active .knob { width: 20px; transition-duration: var(--dur-press); }
+    &[aria-checked="true"]:active .knob { transform: translateX(12px); } }
+
+  // ---------- Fields and rows
+  .field input:not([type="checkbox"]), .field select, .field textarea, .search input { transition: $t-color, outline-color var(--dur-fast) var(--ease-standard); }
+  .table tbody td, .table tbody th { transition: background-color var(--dur-fast) var(--ease-standard); }
+  .queue-item, .action-row, .pick-list li { transition: background-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard); }
+  .queue-item:active { background: $wash-press; transition-duration: var(--dur-press); }
+  .table-wrap { transition: opacity var(--dur-fast) var(--ease-standard); }
+}
+
+// ---------- Sidebar (dark): same recipe on ink
+.nav-item, .menu-btn, .sidebar .who { transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard); }
+.nav-item:active, .menu-btn:active, .sidebar .who:active { background: rgba(255, 255, 255, .22); transition-duration: var(--dur-press); }
+@media (max-width: 900px) {
+  .sidebar { transition: transform var(--dur-slow) var(--ease-standard), visibility 0s linear var(--dur-slow);
+    &[data-open="true"] { transition: transform var(--dur-slow) var(--ease-enter); } }
+  .scrim { transition: opacity var(--dur-slow) var(--ease-standard); }
+}
+
+// ---------- Toasts: rise in, fade and slide out; the rest of the stack closes the gap instead of jumping.
+// The slot's row shrinks to 0 after the toast has faded (the 8 px stack gap closes with a matching negative margin).
+.toaster {
+  .toast-slot { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--dur-base) var(--ease-standard) var(--dur-fast), margin-top var(--dur-base) var(--ease-standard) var(--dur-fast); }
+  .toast-clip { min-height: 0; }
+  .toast-slot[data-leaving="true"] { grid-template-rows: 0fr; margin-top: -8px; pointer-events: none;
+    > .toast-clip { overflow: hidden; }
+    .toast { opacity: 0; transform: translateY(4px); transition: opacity var(--dur-fast) var(--ease-exit), transform var(--dur-fast) var(--ease-exit); } }
+  // backwards, not both: a filled animation would pin opacity at 1 and block the exit fade.
+  .toast { animation: toast-enter var(--dur-base) var(--ease-enter) backwards; }
+  .toast-btn { transition: background-color var(--dur-fast) var(--ease-standard);
+    &:active { background: rgba(255, 255, 255, .24); transition-duration: var(--dur-press); } }
+  .toast.error .toast-btn:active { background: rgba(156, 15, 82, .16); }
+}
+@keyframes toast-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+// ---------- Dialogs: the panel fades in and rises 4 px from 98 %, the backdrop fades. Cancel and Escape play the exit
+// (quicker, accelerating) before the dialog unmounts; a confirmed dialog closes at once, its result is the feedback.
+.dialog {
+  transition: opacity var(--dur-base) var(--ease-enter), transform var(--dur-base) var(--ease-enter), overlay var(--dur-base) allow-discrete, display var(--dur-base) allow-discrete;
+  &::backdrop { transition: opacity var(--dur-base) var(--ease-enter), overlay var(--dur-base) allow-discrete, display var(--dur-base) allow-discrete; }
+  &[data-closing="true"] { opacity: 0; transform: translateY(4px) scale(.98); transition: opacity var(--dur-fast) var(--ease-exit), transform var(--dur-fast) var(--ease-exit);
+    &::backdrop { opacity: 0; transition: opacity var(--dur-fast) var(--ease-exit); } }
+}
+@starting-style {
+  .dialog[open] { opacity: 0; transform: translateY(4px) scale(.98); }
+  .dialog[open]::backdrop { opacity: 0; }
+}
+
+// ---------- Popups and disclosures: suggestions drop in 4 px and fade; an opened section fades in under its chevron.
+.ac-popup { animation: popup-enter var(--dur-fast) var(--ease-enter) backwards; transform-origin: top center; }
+.ac-option { transition: background-color var(--dur-fast) var(--ease-standard); }
+@keyframes popup-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.disclosure .disclosure-chevron { transition: transform var(--dur-base) var(--ease-standard); }
+.disclosure .disclosure-panel:not([hidden]) { animation: sk-reveal var(--dur-base) var(--ease-enter) backwards; }
+.disclosure .disclosure-trigger { transition: background-color var(--dur-fast) var(--ease-standard); &:hover { background: $wash; } &:active { background: $wash-press; transition-duration: var(--dur-press); } }
+
+// ---------- A skeleton that was on screen hands over to the content with a short fade (never when no skeleton showed).
+.sk-reveal > :not(.page-header):not(.sk-region) { animation: sk-reveal var(--dur-fast) var(--ease-enter) backwards; }
+@keyframes sk-reveal { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .btn-spin { animation: none; border-right-color: currentColor; opacity: .6; }
+}

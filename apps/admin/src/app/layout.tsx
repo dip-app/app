@@ -3,6 +3,8 @@ import { ADMIN_URL, DESCRIPTION, ORIGIN, share } from "@/lib/seo";
 import { Fjalla_One, Figtree, Inter } from "next/font/google";
 import "@/styles/globals.scss";
 import "@/styles/pro.scss";
+// Interaction states and motion, after pro.scss so they layer over it.
+import "@/styles/interaction.scss";
 import { AppProvider } from "@/components/AppProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });

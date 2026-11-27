@@ -5,6 +5,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button, InlineNotice } from "@/components/kit";
 import { t } from "@/lib/i18n";
+import { motionMs } from "@/lib/motion";
 import { userError } from "@/lib/userError";
 
 interface Props {
@@ -29,12 +30,17 @@ interface Props {
   onClose: () => void;
 }
 
-/** Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. */
+/**
+ * Modal built on the native <dialog>: focus is trapped, Escape closes, and focus returns to the opener. It fades in
+ * (CSS); Cancel and Escape play a short exit before `onClose`. While the confirm request runs, the confirm button shows a
+ * spinner and both buttons keep focus but ignore presses.
+ */
 export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = t("common.dialog.reasonHint"), danger, focusCancel = !!danger, confirmDisabled, busyLabel = t("common.saving"), onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [closing, setClosing] = useState(false);
   const id = useId();
   const cancel = useRef<HTMLButtonElement>(null);
 
@@ -53,7 +59,17 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cancel and Escape: the exit plays, then the parent unmounts the dialog. A second request while it plays is ignored.
+  function requestClose() {
+    if (busy || closing) return;
+    const exit = motionMs("fast");
+    if (exit === 0) { onClose(); return; }
+    setClosing(true);
+    setTimeout(onClose, exit);
+  }
+
   async function confirm() {
+    if (busy || closing) return;
     setBusy(true);
     setError("");
     try {
@@ -68,7 +84,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
 
   const needsReason = reasonLabel !== undefined;
   return (
-    <dialog ref={ref} className="dialog" role={danger ? "alertdialog" : undefined} aria-labelledby={`${id}-t`} aria-describedby={`${id}-b`} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
+    <dialog ref={ref} className="dialog" role={danger ? "alertdialog" : undefined} aria-labelledby={`${id}-t`} aria-describedby={`${id}-b`} data-closing={closing ? "true" : undefined} onCancel={(event) => { event.preventDefault(); requestClose(); }}>
       <h2 id={`${id}-t`}>{title}</h2>
       <div className="dialog-body" id={`${id}-b`}>{children}</div>
       {needsReason && (
@@ -80,10 +96,11 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
       )}
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div className="actions">
-        <Button variant={danger ? "danger" : "primary"} disabled={busy || !!confirmDisabled || (needsReason && reason.trim().length < 3)} onClick={() => void confirm()}>
-          {busy ? busyLabel : confirmLabel}
+        {/* Busy: a spinner, not disabled (disabling the focused button would drop focus out of the modal). */}
+        <Button variant={danger ? "danger" : "primary"} loading={busy} aria-label={busy ? busyLabel : undefined} disabled={!busy && (!!confirmDisabled || (needsReason && reason.trim().length < 3))} onClick={() => void confirm()}>
+          {confirmLabel}
         </Button>
-        <Button ref={cancel} disabled={busy} onClick={onClose}>{t("common.cancel")}</Button>
+        <Button ref={cancel} aria-disabled={busy || undefined} onClick={requestClose}>{t("common.cancel")}</Button>
       </div>
     </dialog>
   );
