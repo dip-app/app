@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { type Capability, ROLE_LABEL, can, isStaff } from "@/lib/adminTypes";
 import { AdminOnly } from "./AdminOnly";
 import { badgeLabel, setBugBadge, useBugBadge } from "@/lib/bugBadge";
@@ -14,7 +14,7 @@ import { CloudMark } from "./Brand";
 import { useApp } from "./AppProvider";
 import { Toaster } from "./Toast";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
-import { EmptyState, PageHeader } from "@/components/kit";
+import { type BackLink, EmptyState, PageHeader } from "@/components/kit";
 
 interface Props {
   title: string;
@@ -24,6 +24,12 @@ interface Props {
   children: React.ReactNode;
   /** Capability this page needs; without it the page explains instead of failing. The backend still decides. */
   requires?: Capability;
+  /** Detail pages: the list this page belongs to, shown as a small link above the title. */
+  back?: BackLink;
+  /** Detail pages: what this page shows about the object ("Attendees"), shown before the title. */
+  eyebrow?: string;
+  /** A line of facts under the title (dates, counts, status). */
+  meta?: React.ReactNode;
 }
 
 interface NavItem { href: string; /** Catalog key, or null for the Dipbot item (named by the AI copy). */ labelKey: MessageKey | null; d: string; requires?: Capability; badge?: "bugReports" }
@@ -57,6 +63,26 @@ const NAV: NavGroup[] = [
 
 const MOBILE = "(max-width: 900px)";
 
+/** What a loaded detail page puts in the header once it knows its object (see `useShellHeader`). */
+export interface HeaderOverride { title: string; eyebrow?: string; meta?: React.ReactNode; /** Changes when `meta` should re-render. */ metaKey?: string }
+const HeaderContext = createContext<(next: HeaderOverride | null) => void>(() => undefined);
+
+/**
+ * A detail page names its object in the page header once it has loaded: the h1 becomes the object ("Pat Member"), the
+ * page's own title moves into the eyebrow above it, and `meta` is the line of facts under it. `null` (or unmounting)
+ * puts the page's static title back. Pass a `metaKey` that changes whenever the facts change.
+ */
+export function useShellHeader(header: HeaderOverride | null) {
+  const set = useContext(HeaderContext);
+  const latest = useRef(header);
+  latest.current = header;
+  const key = header ? `${header.title}\u0000${header.eyebrow ?? ""}\u0000${header.metaKey ?? ""}` : "";
+  useEffect(() => {
+    set(latest.current);
+  }, [set, key]);
+  useEffect(() => () => set(null), [set]);
+}
+
 /** "page" for the item's own page, "true" for pages below it (`/members/` covers `/members/detail/`, never `/membersfoo`). */
 function isWithin(pathname: string, href: string): "page" | "true" | undefined {
   const base = href.replace(/\/$/, "");
@@ -65,7 +91,11 @@ function isWithin(pathname: string, href: string): "page" | "true" | undefined {
 }
 
 /** Signed-in frame. Visibility is a convenience only; every command is authorized by the backend. */
-export function Shell({ title, subtitle, action, children, requires }: Props) {
+export function Shell({ title: pageTitle, subtitle, action, children, requires, back, eyebrow: pageEyebrow, meta: pageMeta }: Props) {
+  const [override, setOverride] = useState<HeaderOverride | null>(null);
+  const title = override?.title ?? pageTitle;
+  const eyebrow = override ? (override.eyebrow ?? pageTitle) : pageEyebrow;
+  const meta = override ? override.meta : pageMeta;
   const { session, signOut, api } = useApp();
   const bugBadge = useBugBadge();
   const router = useRouter();
@@ -149,7 +179,7 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
   return (
     <div className="app" data-nav-open={open ? "true" : undefined}>
       {/* Each page names itself in the tab and history (React hoists <title> into the head). */}
-      <title>{t("shell.docTitle", { title, brand: BRAND })}</title>
+      <title>{t("shell.docTitle", { title: eyebrow ? t("shell.docTitleDetail", { title, eyebrow }) : title, brand: BRAND })}</title>
       <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const target = document.getElementById("main"); target?.focus(); target?.scrollTo?.({ top: 0 }); }}>{t("shell.skip")}</a>
       <header className="topbar" inert={open}>
         <button type="button" ref={menuButton} className="menu-btn" aria-label={t("shell.openMenu")} aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
@@ -201,8 +231,8 @@ export function Shell({ title, subtitle, action, children, requires }: Props) {
         ) : requires && !can(session.role, requires) ? (
           <AdminOnly page={title} capability={requires} role={session.role} />
         ) : (<>
-        <PageHeader title={title} description={subtitle} actions={action} />
-        {children}
+        <PageHeader title={title} description={override ? undefined : subtitle} actions={action} back={back} eyebrow={eyebrow} meta={meta} />
+        <HeaderContext.Provider value={setOverride}>{children}</HeaderContext.Provider>
         </>)}
         {/* "g" then a letter goes to any page in the sidebar; "?" lists the shortcuts. */}
         <KeyboardShortcuts pages={[...visible.flatMap((group) => group.items.map((item) => ({ href: item.href, label: item.labelKey ? t(item.labelKey) : tAi("nav.label") }))), { href: "/account/", label: t("shell.settings") }]} />

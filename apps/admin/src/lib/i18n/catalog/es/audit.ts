@@ -11,7 +11,7 @@ export const audit: Record<keyof typeof source, string> = {
   "audit.noMatches.title": "Sin coincidencias",
   "audit.noMatches.body": "Prueba con otra búsqueda o categoría.",
   "audit.search.label": "Buscar por persona, elemento o motivo",
-  "audit.search.placeholder": "Buscar por persona, elemento o motivo (presiona / para enfocar)",
+  "audit.search.placeholder": "Buscar por persona, elemento o motivo",
   "audit.filter.category": "Categoría",
   "audit.filter.allCategories": "Todas las categorías",
   "audit.showingOf": "Mostrando {shown} de {total, plural, one {# entrada} other {# entradas}}",

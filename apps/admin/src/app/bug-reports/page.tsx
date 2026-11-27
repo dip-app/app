@@ -305,7 +305,7 @@ function BugReports() {
           items={(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => ({ id, label: id === "all" ? t("bugs.status.all") : statusLabel(id), ...(counts ? { count: tabCount(id) } : {}) }))} />
       </div>
       <div className="filters bug-filters" data-open={filtersOpen ? "true" : undefined}>
-        <SearchBox id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label={t("bugs.search.label")} placeholder={t("bugs.search.placeholder")} />
+        <SearchBox shortcut id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label={t("bugs.search.label")} placeholder={t("bugs.search.placeholder")} />
         <Button size="sm" className="filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
           {filtersOpen ? t("bugs.filters.hide") : t("bugs.filters.show")}

@@ -29,7 +29,6 @@ export const review = {
   "review.backToChallenges": "Back to challenges",
 
   // Toolbar
-  "review.allThemes": "All themes",
   "review.themeMeta": "{window} · {goal}",
 
   // Banner

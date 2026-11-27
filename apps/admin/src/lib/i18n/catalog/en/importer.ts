@@ -4,7 +4,6 @@ export const importer = {
   // Page
   "import.title": "Import people",
   "import.subtitle": "Add or update many people from a spreadsheet. You see exactly what changes before anything is saved.",
-  "import.roster": "Roster",
   "import.steps.label": "Import steps",
   "import.steps.progress": "Step {current} of {total}: {label}",
   "import.step.file": "Upload",

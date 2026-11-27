@@ -24,7 +24,7 @@ export const shell = {
   "shell.nav.overview": "Overview",
   "shell.nav.events": "Events",
   "shell.nav.themes": "Weekly themes",
-  "shell.nav.challenges": "Review submissions",
+  "shell.nav.challenges": "Challenges",
   "shell.nav.members": "Members",
   "shell.nav.roster": "Roster",
   "shell.nav.import": "Import people",
@@ -67,4 +67,5 @@ export const shell = {
   "shell.keys.toggleHint": "Letter keys, / and ? act as shortcuts. Turn them off if they get in the way.",
   "shell.keys.close": "Close",
   "shell.keys.goPending": "Go to: press a letter",
+  "shell.docTitleDetail": "{title} · {eyebrow}",
 };

@@ -17,7 +17,7 @@ export const roster = {
 
   // Search
   "roster.search.label": "Search by name or email",
-  "roster.search.placeholder": "Search by name or email (press / to focus)",
+  "roster.search.placeholder": "Search by name or email",
 
   // Unlisted members banner
   "roster.unlisted.headline": "{count, plural, one {# person has signed in but isn’t on the roster.} other {# people have signed in but aren’t on the roster.}}",
@@ -125,4 +125,5 @@ export const roster = {
   "roster.email.body": "DIP emails {email} that you invited them, with a link to sign in with that address.",
   "roster.email.sentBefore": "Already emailed {count}×, last {date}.",
   "roster.email.copyInstead": "Prefer to send it yourself?",
+  "roster.sub.added": "Added {date}",
 };

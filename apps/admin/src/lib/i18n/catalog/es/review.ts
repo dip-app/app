@@ -26,7 +26,6 @@ export const review: Record<keyof typeof source, string> = {
   "review.error.loadFailed": "No se pudieron cargar las participaciones. Revisa tu conexión e inténtalo de nuevo.",
   "review.backToChallenges": "Volver a retos",
 
-  "review.allThemes": "Todos los temas",
   "review.themeMeta": "{window} · {goal}",
 
   "review.banner.dismiss": "Descartar",

@@ -161,12 +161,12 @@ function Roster() {
       {unlisted > 0 && (
         <div className="review-banner ok" role="status">
           <span><strong>{t("roster.unlisted.headline", { count: unlisted })}</strong> {t("roster.unlisted.detail")}</span>
-          <Button variant="primary" size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? t("roster.unlisted.checking", { count: number(backfill.scanned) }) : t("roster.unlisted.add")}</Button>
+          <Button size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? t("roster.unlisted.checking", { count: number(backfill.scanned) }) : t("roster.unlisted.add")}</Button>
         </div>
       )}
       <Tabs idBase="roster" label={t("roster.filterLabel")} value={filter} onChange={(id) => setQs({ filter: id })}
         items={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), ...(counts ? { count: number(counts[item.id]) } : {}) }))} />
-      <SearchBox id="roster-search" value={search} onChange={(v) => setQs({ q: v })} label={t("roster.search.label")} placeholder={t("roster.search.placeholder")} />
+      <SearchBox shortcut id="roster-search" value={search} onChange={(v) => setQs({ q: v })} label={t("roster.search.label")} placeholder={t("roster.search.placeholder")} />
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div {...tabPanelProps("roster", filter)}>
       {list.error && empty ? <LoadError error={list.error} onRetry={list.reload} />
@@ -185,31 +185,35 @@ function Roster() {
                 : list.hasMore ? t("roster.count.matchesSoFar", { count: number(list.items.length) }) : t("roster.count.matches", { count: list.items.length })}
             </ResultCount>
             <TableRegion label={t("roster.tableLabel")} busy={list.loading}>
-              <table className="table responsive">
+              <table className="table responsive person-table sticky-actions">
                 <caption className="sr-only">{t("roster.tableLabel")}</caption>
                 <thead><tr><th scope="col">{t("roster.table.name")}</th><th scope="col">{t("roster.table.role")}</th><th scope="col">{t("roster.table.teams")}</th><th scope="col">{t("roster.table.status")}</th><th scope="col">{t("roster.table.added")}</th><th scope="col"><span className="sr-only">{t("roster.table.actions")}</span></th></tr></thead>
                 <tbody>
                   {list.items.map((r) => (
                     <tr key={r.entryId}>
                       <th scope="row">
-                        {r.memberId
-                          ? <Link className="person" href={`/members/detail/?id=${encodeURIComponent(r.memberId)}`}><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></Link>
-                          : <span className="person"><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} /><span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span></span></span>}
+                        {(() => {
+                          const sub = <span className="person-sub">{[ROLE_LABEL[r.role], r.teamIds.map(teamName).join(", "), t("roster.sub.added", { date: formatDate(r.invitedAt) })].filter(Boolean).join(" · ")}{r.state !== "active" && !(r.state === "invited" && (r.inviteEmailCount || r.resendCount)) && <Info tone="warn">{t(STATE_LABEL_KEY[r.state])}</Info>}</span>;
+                          const text = <span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span>{sub}</span>;
+                          return r.memberId
+                            ? <Link className="person" href={`/members/detail/?id=${encodeURIComponent(r.memberId)}`}><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} />{text}</Link>
+                            : <span className="person"><Avatar name={r.displayName} userId={r.memberId} photoURL={r.photoURL} avatarId={r.avatarId} />{text}</span>;
+                        })()}
                       </th>
-                      <td data-label={t("roster.table.role")}>{ROLE_LABEL[r.role]}</td>
-                      <td data-label={t("roster.table.teams")}>{r.teamIds.map(teamName).join(", ") || <span className="muted">{t("roster.table.noTeams")}</span>}</td>
-                      <td data-label={t("roster.table.status")}>
-                        <Info tone={r.state === "active" || r.state === "invited" ? "ok" : "warn"}>{t(STATE_LABEL_KEY[r.state])}</Info>
+                      <td className="phone-hide" data-label={t("roster.table.role")}>{ROLE_LABEL[r.role]}</td>
+                      <td className="phone-hide" data-label={t("roster.table.teams")}>{r.teamIds.map(teamName).join(", ") || <span className="muted">{t("roster.table.noTeams")}</span>}</td>
+                      <td data-label={t("roster.table.status")} className={r.state === "invited" && (r.inviteEmailCount || r.resendCount) ? undefined : "phone-hide"}>
+                        {r.state === "active" ? <span className="status-plain">{t(STATE_LABEL_KEY[r.state])}</span> : <Info tone="warn">{t(STATE_LABEL_KEY[r.state])}</Info>}
                         {r.state === "invited" && r.inviteEmailCount ? <><br /><span className="muted small-note">{r.lastInviteEmailAt ? t("roster.table.emailedLast", { count: r.inviteEmailCount, date: formatDate(r.lastInviteEmailAt) }) : t("roster.table.emailed", { count: r.inviteEmailCount })}</span></> : null}
                         {r.state === "invited" && r.resendCount ? <><br /><span className="muted small-note">{r.lastResentAt ? t("roster.table.resentLast", { count: r.resendCount, date: formatDate(r.lastResentAt) }) : t("roster.table.resent", { count: r.resendCount })}</span></> : null}
                       </td>
-                      <td data-label={t("roster.table.added")}>{formatDate(r.invitedAt)}</td>
+                      <td className="phone-hide nowrap" data-label={t("roster.table.added")}>{formatDate(r.invitedAt)}</td>
                       <td className="right">
                         <div className="row-actions">
-                          {r.state === "invited" && inviteEmail && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => { dismissAllToasts(); setEmailing(r); }} aria-label={t("roster.action.emailAria", { name: r.displayName })}>{t("roster.action.email")}</Button>}
-                          {r.state === "invited" && !inviteEmail && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={t("roster.action.resendAria", { name: r.displayName })}>{busy === r.entryId ? t("roster.action.resending") : t("roster.action.resend")}</Button>}
+                          {r.state === "invited" && inviteEmail && <Button size="sm" disabled={busy === r.entryId} onClick={() => { dismissAllToasts(); setEmailing(r); }} aria-label={t("roster.action.emailAria", { name: r.displayName })}>{t("roster.action.email")}</Button>}
+                          {r.state === "invited" && !inviteEmail && <Button size="sm" disabled={busy === r.entryId} onClick={() => void resend(r)} aria-label={t("roster.action.resendAria", { name: r.displayName })}>{busy === r.entryId ? t("roster.action.resending") : t("roster.action.resend")}</Button>}
                           {r.state === "invited" && <Button size="sm" className="quiet-danger" onClick={() => setRevoking(r)} aria-label={t("roster.action.revokeAria", { name: r.displayName })}>{t("roster.action.revoke")}</Button>}
-                          {r.state === "revoked" && <Button variant="primary" size="sm" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={t("roster.action.inviteAgainAria", { name: r.displayName })}>{t("roster.action.inviteAgain")}</Button>}
+                          {r.state === "revoked" && <Button size="sm" disabled={busy === r.entryId} onClick={() => void reinvite(r)} aria-label={t("roster.action.inviteAgainAria", { name: r.displayName })}>{t("roster.action.inviteAgain")}</Button>}
                         </div>
                       </td>
                     </tr>
@@ -218,7 +222,7 @@ function Roster() {
               </table>
             </TableRegion>
             {list.error && <ErrorNotice error={list.error} />}
-            {list.hasMore && <LoadMore shown={list.items.length} total={!searching && counts ? counts[filter] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
+            {list.hasMore && <LoadMore hideCount shown={list.items.length} total={!searching && counts ? counts[filter] : undefined} loading={list.loadingMore} onClick={list.loadMore} />}
           </>
         )}
       </div>

@@ -23,6 +23,18 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | The page title row | `PageHeader` | `title`, `description`, `actions`. `Shell` renders it. |
 | The header row of a Dipbot section | `SectionHeader` | `title`, `headingLevel`, `updated` (muted "Updated 3 hours ago"), `staleHint` (compact inline "New data available" beside it, only when stale), optional `toggle` (collapse), `hint`, `end` (actions). Used by "Ideas for you" and the wizard's per-step suggestions. |
 | One choice out of a few, always visible | `SegmentedControl` | `tabs` (underlined views), `pill` (compact, AM/PM), `icon` (grid or list). |
+| A detail page's header | `Shell` props `back` (small "‹ Events" link above the title), `eyebrow`, `meta`; or `useShellHeader({ title, meta, metaKey })` from a page that loads its object | The h1 is the object ("Puppy Yoga", "Pat Member"); the page's own title becomes the eyebrow; `meta` is one line of facts (dates, counts, the exception chip). No "All events" buttons. |
+| A sortable column | `SortHeader` with `useTableSort(list, keys, fallback, firstDirections)` and `sortRows` | A `th` with `aria-sort` and a button. The sort is in the URL and the last choice per list is remembered in this browser. Only for lists loaded whole in the browser (Events, Audit log by time); never on server-paged lists (Members, Roster). |
+| A time that should read as recent | `RelativeTime` (`relativeTime`, `absoluteTime`, `useMinuteClock`) | "12 min ago", "yesterday", then the date; the absolute time is the tooltip and is read after the words. One shared minute clock. |
+| A wide table | `TableRegion` | Keeps readable columns and scrolls inside its region; an edge shadow shows while columns are off-screen. Put `nowrap` on date and time values. |
+| A list search | `SearchBox` with `shortcut` on pages that use `useSlashFocus` | The "/" key cap sits inside the field on pointer devices; placeholders never carry the hint. |
+
+Density rules for lists (from the structure audit, [polish-2026-11/admin-structure.md](polish-2026-11/admin-structure.md)):
+
+- One primary per view. Row actions are always `outline` `sm` (Review submissions, Send invite email, Check in).
+- A status that is the norm is plain muted text (`.status-plain`, "Active"); exceptions keep the chip (Invited, Deactivated, Revoked, Checked in, No-show).
+- Person tables (`.person-table`) collapse on phones to one card line: the name cell carries a `.person-sub` line of facts and the exception chip, and the cells it repeats are `phone-hide`.
+- Time-ordered tables group rows by day with a `.group-row` heading when sorted by time (Audit log).
 
 `Tabs` (a real tablist with arrow keys) stays for switching whole pages of content; `SegmentedControl` is for switching how the same data is shown.
 

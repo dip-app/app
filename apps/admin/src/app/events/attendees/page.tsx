@@ -14,7 +14,7 @@ import { describe, useLoad } from "@/components/useLoad";
 import type { Attendee, Member } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
 import { attendeesCsv } from "@/lib/exports";
-import { classify } from "@/lib/contract";
+import { classify, formatWhen } from "@/lib/contract";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
@@ -75,8 +75,8 @@ function Attendees() {
   }, [members.data, attendees.data, pickerSearch]);
 
   const hold = useSkeletonGate((!attendees.data || !event.data) && !attendees.error && !event.error);
-  if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel={t("attendees.backToEvents")} />;
-  if (!attendees.data || !rows || !event.data || hold) return <Loading label={t("attendees.loading")} layout="attendees" />;
+  if (attendees.error || event.error) return <AttendeesFrame><LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel={t("attendees.backToEvents")} /></AttendeesFrame>;
+  if (!attendees.data || !rows || !event.data || hold) return <AttendeesFrame><Loading label={t("attendees.loading")} layout="attendees" /></AttendeesFrame>;
   const checkedIn = rows.filter((a) => a.checkedIn).length;
 
   /** Shows `checkedIn` on one row at once; `null` returns the row to what the server said (rollback). */
@@ -141,16 +141,23 @@ function Attendees() {
     }
   }
 
-  return (
+  const meta = (
     <>
-      <div className="toolbar">
-        <Button href="/events/">{t("attendees.allEvents")}</Button>
-        <Info>{t("attendees.going", { count: attendees.data.length, capacity: event.data.capacity })}</Info>
-        <Info>{t("attendees.checkedInCount", { count: checkedIn })}</Info>
-        <span className="spacer" />
-        <Button onClick={exportCsv} disabled={attendees.data.length === 0}>{t("attendees.exportCsv")}</Button>
-        {kind === "upcoming" && <Button variant="primary" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>{t("attendees.addAttendee")}</Button>}
-      </div>
+      <span>{formatWhen(event.data.startTime, event.data.endTime)}</span>
+      {event.data.venue.name && <span>{event.data.venue.name}</span>}
+      <span><strong>{t("attendees.going", { count: attendees.data.length, capacity: event.data.capacity })}</strong>{full && kind === "upcoming" && <Info>{t("attendees.full")}</Info>}</span>
+      {started ? <span>{t("attendees.checkedInCount", { count: checkedIn })}</span> : <span>{t("attendees.action.opensAtStart")}</span>}
+    </>
+  );
+  const actions = (
+    <>
+      <Button onClick={exportCsv} disabled={attendees.data.length === 0}>{t("attendees.exportCsv")}</Button>
+      {kind === "upcoming" && <Button variant="primary" onClick={() => { setAdding((v) => !v); setCandidate(null); }} aria-expanded={adding}>{t("attendees.addAttendee")}</Button>}
+    </>
+  );
+
+  return (
+    <AttendeesFrame title={event.data.title} meta={meta} actions={actions}>
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
 
       {adding && (
@@ -174,7 +181,7 @@ function Attendees() {
         </section>
       )}
 
-      <SearchBox id="attendee-search" value={search} onChange={(v) => setQs({ q: v })} label={t("attendees.search.label")} placeholder={t("attendees.search.placeholder")} />
+      <SearchBox shortcut id="attendee-search" value={search} onChange={(v) => setQs({ q: v })} label={t("attendees.search.label")} placeholder={t("attendees.search.placeholder")} />
       {attendees.data.length === 0 ? (
         <Empty title={t("attendees.empty.title")} body={t("attendees.empty.body")} />
       ) : shown.length === 0 ? (
@@ -183,21 +190,25 @@ function Attendees() {
         <>
         <ResultCount>{search.trim() ? t("attendees.count.matches", { shown: shown.length, total: attendees.data.length }) : t("attendees.count.total", { count: attendees.data.length })}</ResultCount>
         <TableRegion label={t("attendees.table.label", { title: event.data.title })}>
-          <table className="table responsive">
+          <table className="table responsive person-table">
             <caption className="sr-only">{t("attendees.table.label", { title: event.data.title })}</caption>
             <thead><tr><th scope="col">{t("attendees.table.name")}</th><th scope="col">{t("attendees.table.department")}</th><th scope="col">{t("attendees.table.rsvp")}</th><th scope="col">{t("attendees.table.attendance")}</th><th scope="col"><span className="sr-only">{t("attendees.table.actions")}</span></th></tr></thead>
             <tbody>
               {shown.map((a) => (
                 <tr key={a.memberId} data-member={a.memberId}>
-                  <th scope="row"><span className="person"><Avatar name={a.name} userId={a.memberId} photoURL={a.photoURL} avatarId={a.avatarId} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></th>
-                  <td data-label={t("attendees.table.department")}>{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
-                  <td data-label={t("attendees.table.rsvp")}>{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>{t("attendees.table.addedByStaff")}</Info></>}</td>
+                  <th scope="row"><span className="person"><Avatar name={a.name} userId={a.memberId} photoURL={a.photoURL} avatarId={a.avatarId} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span>
+                    <span className="person-sub">{[a.department, a.jobTitle, t("attendees.sub.rsvp", { date: formatDate(a.rsvpAt) })].filter(Boolean).join(" · ")}</span></span></span></th>
+                  <td className="phone-hide" data-label={t("attendees.table.department")}>{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
+                  <td className="phone-hide nowrap" data-label={t("attendees.table.rsvp")}>{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>{t("attendees.table.addedByStaff")}</Info></>}</td>
                   <td data-label={t("attendees.table.attendance")}>
                     <span className="attendance">
-                      <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{t(a.checkedIn ? "attendees.status.checkedIn" : ended ? "attendees.status.noShow" : "attendees.status.notCheckedIn")}</Info>
-                      <Button size="sm" variant={a.checkedIn ? "outline" : "primary"} loading={busyIds.has(a.memberId)} disabled={!started && !a.checkedIn}
-                        title={!started ? t("attendees.action.opensAtStart") : undefined} onClick={() => void mark(a, !a.checkedIn)}
-                        aria-label={t(a.checkedIn ? "attendees.action.undoCheckInFor" : "attendees.action.checkInFor", { name: a.name })}>{a.checkedIn ? t("attendees.action.undo") : t("attendees.action.checkIn")}</Button>
+                      {a.checkedIn || ended
+                        ? <Info tone={a.checkedIn ? "ok" : "warn"}>{t(a.checkedIn ? "attendees.status.checkedIn" : "attendees.status.noShow")}</Info>
+                        : <span className="status-plain">{t("attendees.status.notCheckedIn")}</span>}
+                      {(started || a.checkedIn) && (
+                        <Button size="sm" loading={busyIds.has(a.memberId)} onClick={() => void mark(a, !a.checkedIn)}
+                          aria-label={t(a.checkedIn ? "attendees.action.undoCheckInFor" : "attendees.action.checkInFor", { name: a.name })}>{a.checkedIn ? t("attendees.action.undo") : t("attendees.action.checkIn")}</Button>
+                      )}
                     </span>
                   </td>
                   <td className="right"><Button size="sm" className="quiet-danger" onClick={() => { setRemoving(a); setNotify(true); }} aria-label={t("attendees.action.removeNamed", { name: a.name })}>{t("attendees.action.remove")}</Button></td>
@@ -253,14 +264,20 @@ function Attendees() {
           <Toggle checked={notify} onChange={setNotify} label={t("attendees.notify.label")} hint={t("attendees.notify.removedHint")} />
         </Dialog>
       )}
-    </>
+    </AttendeesFrame>
+  );
+}
+
+/** The page frame: "Attendees" over the event's name once it is known, a back link to Events, the event's facts. */
+function AttendeesFrame({ title, meta, actions, children }: { title?: string; meta?: React.ReactNode; actions?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Shell title={title ?? t("attendees.title")} eyebrow={title ? t("attendees.title") : undefined} subtitle={title ? undefined : t("attendees.subtitle")}
+      back={{ href: "/events/", label: t("shell.nav.events") }} meta={meta} action={actions} requires="attendees.manage">
+      {children}
+    </Shell>
   );
 }
 
 export default function AttendeesPage() {
-  return (
-    <Shell title={t("attendees.title")} subtitle={t("attendees.subtitle")} requires="attendees.manage">
-      <Suspense fallback={<Loading label={t("attendees.loading")} layout="attendees" />}><Attendees /></Suspense>
-    </Shell>
-  );
+  return <Suspense fallback={<AttendeesFrame><Loading label={t("attendees.loading")} layout="attendees" /></AttendeesFrame>}><Attendees /></Suspense>;
 }

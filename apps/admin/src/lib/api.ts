@@ -155,6 +155,32 @@ function seed(): Persisted {
   };
 }
 
+/**
+ * The hosted preview's extra events (never the unit tests): enough rows across past and future, with varied fill,
+ * prices, one full and one nearly empty, that lists need search and sorting and the Overview has a busy week.
+ */
+function showcaseEvents(): AdminEvent[] {
+  const base = { companyId: "acme", pointsValue: 0, createdBy: PERSONAS.admin.uid, createdAt: iso(-30, 15), revision: 1, isOutdoor: false, costNote: "", status: "scheduled" as const };
+  const venue = (name: string, address: string, locality: string) => ({ name, address, locality, latitude: 40.44, longitude: -79.99 });
+  const row = (id: string, title: string, description: string, cover: string, tagIds: string[], day: number, hour: number, hours: number, where: ReturnType<typeof venue>, costCents: number, capacity: number, attendeeCount: number, extra: Partial<AdminEvent> = {}): AdminEvent =>
+    ({ ...base, id, title, description, coverImageURL: cover, tagIds, startTime: iso(day, hour), endTime: iso(day, hour + Math.floor(hours), (hours % 1) * 60), venue: where, costCents, capacity, attendeeCount, ...extra });
+  const office = venue("Acme HQ, 4th floor", "500 Grant St", "Downtown, Pittsburgh, PA");
+  return [
+    row("trivia-night", "Trivia Night", "Teams of four, three rounds, one very competitive host.", "catalog://default/games", ["tag-games", "tag-social"], 1, 22, 2, venue("The Pub on Penn", "1700 Penn Ave", "Strip District, PA"), 0, 40, 31),
+    row("lunch-learn-ai", "Lunch & Learn: AI at Work", "A practical hour on using AI tools safely, with lunch.", "catalog://cover/theme-learning", ["tag-learning"], 2, 16, 1, office, 0, 60, 44),
+    row("sunrise-hike", "Sunrise Hike", "An easy 5 km loop with coffee at the top.", "catalog://default/hiking", ["tag-outdoors", "tag-fitness"], 3, 11, 3, venue("Frick Park", "Beechwood Blvd", "Squirrel Hill, PA"), 0, 20, 7, { isOutdoor: true }),
+    row("pottery-wheel", "Pottery on the Wheel", "Make a mug or a bowl; the studio fires and glazes it.", "catalog://cover/theme-arts", ["tag-arts", "tag-chill"], 4, 22, 2.5, venue("Clay Studio", "2600 Smallman St", "Strip District, PA"), 3500, 12, 12),
+    row("food-drive", "Holiday Food Drive", "Sort and pack donations for the regional food bank.", "catalog://default/cooking", ["tag-volunteering"], 9, 14, 4, venue("Food Bank Warehouse", "1 N Linden St", "Duquesne, PA"), 0, 30, 18),
+    row("karaoke", "Karaoke Night", "Private room, songs in every language, snacks included.", "catalog://cover/theme-music", ["tag-music", "tag-hype"], 16, 23, 3, venue("Echo Lounge", "1501 E Carson St", "South Side, PA"), 1000, 25, 3),
+    row("climbing", "Bouldering Intro", "Shoes and a coach included; no experience needed.", "catalog://default/fitness", ["tag-fitness", "tag-energetic"], 27, 22, 2, venue("Climb North", "1000 Ridge Ave", "North Shore, PA"), 2000, 16, 9),
+    row("wellness-walk", "Lunchtime Wellness Walk", "A 30 minute walk along the river.", "catalog://default/outdoors", ["tag-wellness", "tag-outdoors"], -3, 16, 1, office, 0, 30, 22, { isOutdoor: true }),
+    row("bake-off", "Office Bake-Off", "Bring a bake, taste them all, vote for the best.", "catalog://default/cooking", ["tag-food", "tag-social"], -7, 19, 2, office, 0, 50, 46, { pointsValue: 20 }),
+    row("escape-room", "Escape Room Challenge", "Two rooms, sixty minutes, teams of six.", "catalog://default/games", ["tag-games", "tag-hype"], -21, 22, 1.5, venue("Locked In", "300 Liberty Ave", "Downtown, PA"), 2800, 24, 24, { pointsValue: 30 }),
+    row("park-cleanup", "Riverfront Park Cleanup", "Gloves and bags provided; lunch after.", "catalog://default/outdoors", ["tag-volunteering", "tag-outdoors"], -28, 14, 3, venue("Point State Park", "601 Commonwealth Pl", "Downtown, PA"), 0, 40, 27, { isOutdoor: true, pointsValue: 25 }),
+    row("wine-tasting", "Wine & Cheese Tasting", "Six pairings with a sommelier.", "catalog://default/cooking", ["tag-food"], 11, 23, 2, venue("Vine Cellar", "211 Fort Pitt Blvd", "Downtown, PA"), 4500, 20, 6, { status: "cancelled" }),
+  ];
+}
+
 function hashOf(draft: EventDraft): string {
   return JSON.stringify(normalizeDraft(draft));
 }
@@ -205,7 +231,8 @@ export function createMockApi(store: KeyValueStore, now: () => Date = () => new 
         // Fall through to a fresh seed when stored data is unreadable.
       }
     }
-    const fresh: Persisted = { ...seed(), themes: seedThemes(now(), showcase), themeReceipts: {} };
+    const seeded = seed();
+    const fresh: Persisted = { ...seeded, events: showcase ? [...seeded.events, ...showcaseEvents()] : seeded.events, themes: seedThemes(now(), showcase), themeReceipts: {} };
     store.setItem(KEY, JSON.stringify(fresh));
     return fresh;
   }

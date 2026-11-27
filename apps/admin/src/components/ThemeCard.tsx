@@ -22,7 +22,7 @@ export function ThemeCard({ theme, phase, canEdit = true }: { theme: WeeklyTheme
           </div>
         </div>
       </td>
-      <td data-label={t("challenges.themes.table.week")}>{window}</td>
+      <td className="nowrap" data-label={t("challenges.themes.table.week")}>{window}</td>
       <td data-label={t("challenges.themes.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
       <td data-label={t("challenges.themes.table.reward")}>{formatReward(theme.pointsReward)}</td>
       <td className="num" data-label={t("challenges.themes.table.participation")}>{theme.completedCount > 0 ? t("challenges.themes.row.joinedCompleted", { joined: theme.participantCount, completed: theme.completedCount }) : t("challenges.themes.row.joined", { count: theme.participantCount })}</td>
@@ -35,7 +35,7 @@ export function ThemeCard({ theme, phase, canEdit = true }: { theme: WeeklyTheme
 export function ThemeTable({ children }: { children: React.ReactNode }) {
   return (
     <TableRegion label={t("challenges.themes.table.label")}>
-      <table className="table responsive themes-table">
+      <table className="table responsive themes-table sticky-actions">
         <caption className="sr-only">{t("challenges.themes.table.label")}</caption>
         <thead><tr><th scope="col">{t("challenges.themes.table.theme")}</th><th scope="col">{t("challenges.themes.table.week")}</th><th scope="col">{t("challenges.themes.table.goal")}</th><th scope="col">{t("challenges.themes.table.reward")}</th><th scope="col" className="num">{t("challenges.themes.table.participation")}</th><th scope="col">{t("challenges.themes.table.status")}</th><th scope="col"><span className="sr-only">{t("challenges.themes.table.actions")}</span></th></tr></thead>
         <tbody>{children}</tbody>

@@ -5,9 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { EventForm } from "@/components/EventForm";
-import { Shell } from "@/components/Shell";
+import Link from "next/link";
+import { Shell, useShellHeader } from "@/components/Shell";
 import { LoadError, Loading } from "@/components/Ui";
-import { ApiError, type AdminEvent } from "@/lib/contract";
+import { ApiError, type AdminEvent, classify, formatWhen } from "@/lib/contract";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { t } from "@/lib/i18n";
 
@@ -33,6 +34,15 @@ function Editor() {
   }, [api, session, id, version]);
 
   const reload = useCallback(() => { setEvent(null); setVersion((v) => v + 1); }, []);
+  // The header names the event as it was loaded (the form below edits the title) and links to its people and photos.
+  useShellHeader(event ? {
+    title: event.title, metaKey: `${event.id}|${event.revision}`,
+    meta: <>
+      <span>{formatWhen(event.startTime, event.endTime)}</span>
+      <span>{t("events.row.going", { count: event.attendeeCount, capacity: event.capacity })} · <Link href={`/events/attendees/?id=${encodeURIComponent(event.id)}`} className="inline-link">{t("events.row.attendees")}</Link></span>
+      {classify(event) === "past" && <Link href={`/events/album/?id=${encodeURIComponent(event.id)}`} className="inline-link">{t("events.row.album")}</Link>}
+    </>,
+  } : null);
 
   const hold = useSkeletonGate(Boolean(id) && !event && !error);
   if (!id) return <LoadError error={noEvent()} onRetry={reload} backHref="/events/" backLabel={t("events.edit.backToEvents")} />;
@@ -43,7 +53,7 @@ function Editor() {
 
 export default function EditEventPage() {
   return (
-    <Shell title={t("events.edit.title")} subtitle={t("events.edit.subtitle")} requires="events.manage">
+    <Shell title={t("events.edit.title")} subtitle={t("events.edit.subtitle")} requires="events.manage" back={{ href: "/events/", label: t("shell.nav.events") }}>
       <Suspense fallback={<Loading label={t("events.edit.loading")} layout="form" />}><Editor /></Suspense>
     </Shell>
   );

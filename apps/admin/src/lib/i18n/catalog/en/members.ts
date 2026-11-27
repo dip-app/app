@@ -19,7 +19,7 @@ export const members = {
 
   // Filters
   "members.search.label": "Search by name, email or title",
-  "members.search.placeholder": "Search by name, email or title (press / to focus)",
+  "members.search.placeholder": "Search by name, email or title",
   "members.filter.role": "Role",
   "members.filter.allRoles": "All roles",
   "members.filter.team": "Team",
@@ -47,4 +47,5 @@ export const members = {
 
   // Export
   "members.export.done": "Exported {count, plural, one {# person} other {# people}} to members.csv.",
+  "members.sub.points": "{count, plural, one {# point} other {# points}}",
 };

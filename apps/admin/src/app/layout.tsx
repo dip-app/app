@@ -3,7 +3,9 @@ import { ADMIN_URL, DESCRIPTION, ORIGIN, share } from "@/lib/seo";
 import { Fjalla_One, Figtree, Inter } from "next/font/google";
 import "@/styles/globals.scss";
 import "@/styles/pro.scss";
-// Interaction states and motion, after pro.scss so they layer over it.
+// Page structure and list layout (docs/design/polish-2026-11/admin-structure.md), after pro.scss.
+import "@/styles/structure.scss";
+// Interaction states and motion, after the layout files so they layer over them.
 import "@/styles/interaction.scss";
 import { AppProvider } from "@/components/AppProvider";
 

@@ -46,7 +46,6 @@ const eventColumns = (): SkeletonColumn[] => [
   { head: t("ui.skeleton.col.where"), cell: (i) => lines(i + 1) },
   { head: t("ui.skeleton.col.price"), className: "num", cell: () => <Sk w={36} /> },
   { head: t("ui.skeleton.col.going"), className: "num", cell: (i) => <div className="going"><Sk w={52} /><span className="meter-mini"><span style={{ width: `${30 + ((i * 19) % 60)}%` }} /></span></div> },
-  { head: t("ui.skeleton.col.status"), cell: () => <Pill /> },
   { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button /><Button width={44} /></span> },
 ];
 

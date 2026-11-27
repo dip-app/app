@@ -6,7 +6,6 @@ export const memberDetail = {
   "memberDetail.subtitle": "Edit details, access, points and profile. Every change is recorded in the audit log.",
   "memberDetail.loading": "Loading member",
   "memberDetail.backToMembers": "Back to members",
-  "memberDetail.allMembers": "All members",
   "memberDetail.joined": "Joined {date}",
 
   // Status chip

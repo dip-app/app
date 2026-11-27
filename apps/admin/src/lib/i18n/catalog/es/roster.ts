@@ -19,7 +19,7 @@ export const roster: Record<keyof typeof source, string> = {
 
   // Search
   "roster.search.label": "Buscar por nombre o correo",
-  "roster.search.placeholder": "Buscar por nombre o correo (presiona / para enfocar)",
+  "roster.search.placeholder": "Buscar por nombre o correo",
 
   // Unlisted members banner
   "roster.unlisted.headline": "{count, plural, one {# persona inició sesión pero no está en la lista de personal.} other {# personas iniciaron sesión pero no están en la lista de personal.}}",
@@ -127,4 +127,5 @@ export const roster: Record<keyof typeof source, string> = {
   "roster.email.body": "DIP le envía a {email} un correo con tu invitación y un enlace para iniciar sesión con esa dirección.",
   "roster.email.sentBefore": "Ya se envió {count}×. Última vez: {date}",
   "roster.email.copyInstead": "¿Prefieres enviarla tú?",
+  "roster.sub.added": "Agregado el {date}",
 };

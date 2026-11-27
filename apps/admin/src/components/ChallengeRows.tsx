@@ -22,7 +22,7 @@ export function sortChallenges(themes: WeeklyTheme[], phaseOf: (theme: WeeklyThe
 
 /**
  * One table row per challenge: theme art tile, title with its status chip, reward and review note, then
- * dates, goal, joined, pending and the single primary action. `pending` is undefined while the count loads.
+ * dates, goal, joined, pending and the review link (outline: a page of themes has no single main action). `pending` is undefined while the count loads.
  */
 export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; phase: ThemePhase; pending?: string }) {
   const window = formatWindow(theme.startDate, theme.endDate);
@@ -39,17 +39,18 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
           </div>
         </div>
       </td>
-      <td data-label={t("challenges.table.dates")}>{window}</td>
+      <td className="nowrap" data-label={t("challenges.table.dates")}>{window}</td>
       <td data-label={t("challenges.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
       <td className="num" data-label={t("challenges.table.joined")}>{formatNumber(theme.participantCount)}{theme.completedCount > 0 && <span className="line muted">{t("challenges.row.completed", { count: formatNumber(theme.completedCount) })}</span>}</td>
       <td className="num" data-label={t("challenges.table.pending")}>
         {!reviewable ? <span className="muted">{t("challenges.row.noneYet")}</span>
           : pending === undefined ? <span className="muted" aria-label={t("challenges.row.loadingPending")}>…</span>
-          : <Info tone={pending !== "0" ? "warn" : undefined}>{t("challenges.row.pending", { count: pending })}</Info>}
+          : pending === "0" ? <span className="muted">{t("challenges.row.pending", { count: pending })}</span>
+          : <Info tone="warn">{t("challenges.row.pending", { count: pending })}</Info>}
       </td>
       <td className="right">
         {reviewable
-          ? <Button variant="primary" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.row.reviewAria", { title: theme.title, window })}>{t("challenges.row.review")}</Button>
+          ? <Button size="sm" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.row.reviewAria", { title: theme.title, window })}>{t("challenges.row.review")}</Button>
           : <span className="muted">{t("challenges.row.notOpen")}</span>}
       </td>
     </tr>
@@ -59,7 +60,7 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
 export function ChallengeTable({ children }: { children: React.ReactNode }) {
   return (
     <TableRegion label={t("challenges.table.label")}>
-      <table className="table responsive challenges-table">
+      <table className="table responsive challenges-table sticky-actions">
         <caption className="sr-only">{t("challenges.table.caption")}</caption>
         <thead><tr><th scope="col">{t("challenges.table.challenge")}</th><th scope="col">{t("challenges.table.dates")}</th><th scope="col">{t("challenges.table.goal")}</th><th scope="col" className="num">{t("challenges.table.joined")}</th><th scope="col" className="num">{t("challenges.table.pending")}</th><th scope="col"><span className="sr-only">{t("challenges.table.action")}</span></th></tr></thead>
         <tbody>{children}</tbody>

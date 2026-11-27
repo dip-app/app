@@ -35,12 +35,12 @@ export function ResultCount({ children }: { children: React.ReactNode }) {
 }
 
 /** Pager button for server-paged lists. The count stays in a polite live region so the new total is announced. */
-export function LoadMore({ shown, total, loading, onClick, label = t("common.loadMore") }: { shown: number; total?: number; loading: boolean; onClick: () => void; label?: string }) {
+export function LoadMore({ shown, total, loading, onClick, label = t("common.loadMore"), hideCount = false }: { shown: number; total?: number; loading: boolean; onClick: () => void; label?: string; /** The page already shows the count above the table (and announces it): show it once. */ hideCount?: boolean }) {
   return (
     <div className="load-more">
       {/* Loading: a spinner over the label (same width), and focus stays on the button for the next press. */}
       <Button size="sm" loading={loading} aria-label={loading ? t("common.loadingMore") : undefined} onClick={onClick}>{label}</Button>
-      <span className="muted" role="status" aria-live="polite">{total !== undefined ? t("common.showingOf", { shown, total }) : t("common.showing", { shown })}</span>
+      {!hideCount && <span className="muted" role="status" aria-live="polite">{total !== undefined ? t("common.showingOf", { shown, total }) : t("common.showing", { shown })}</span>}
     </div>
   );
 }
@@ -48,13 +48,18 @@ export function LoadMore({ shown, total, loading, onClick, label = t("common.loa
 /** The shared empty state (components/kit/EmptyState). */
 export { EmptyState as Empty } from "./kit";
 
-export function SearchBox({ value, onChange, label, placeholder, id }: { value: string; onChange: (v: string) => void; label: string; placeholder?: string; id?: string }) {
+/**
+ * The list search field. `shortcut` shows the "/" key cap inside the field (pointer devices only) for pages that focus
+ * it with `useSlashFocus`, so the hint is not part of the placeholder.
+ */
+export function SearchBox({ value, onChange, label, placeholder, id, shortcut = false }: { value: string; onChange: (v: string) => void; label: string; placeholder?: string; id?: string; shortcut?: boolean }) {
   const generated = useId();
   const inputId = id ?? generated;
   return (
-    <div className="field search">
+    <div className={`field search${shortcut ? " has-key" : ""}`}>
       <label htmlFor={inputId} className="sr-only">{label}</label>
-      <input id={inputId} type="search" value={value} placeholder={placeholder ?? label} onChange={(e) => onChange(e.target.value)} autoComplete="off" />
+      <input id={inputId} type="search" value={value} placeholder={placeholder ?? label} onChange={(e) => onChange(e.target.value)} autoComplete="off" aria-keyshortcuts={shortcut ? "/" : undefined} />
+      {shortcut && !value && <kbd className="search-key" aria-hidden title={t("ui.search.shortcut")}>/</kbd>}
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
-import { Shell } from "@/components/Shell";
+import { Shell, useShellHeader } from "@/components/Shell";
+import { formatWhen } from "@/lib/contract";
 import { Empty, Info, LoadError, Loading, formatDateTime } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
 import type { AlbumComment, AlbumPhoto } from "@/lib/adminTypes";
@@ -120,17 +121,16 @@ function Album() {
   const photos = useLoad((a) => a.listPhotos(eventId), `p-${eventId}`);
   const [open, setOpen] = useState<AlbumPhoto | null>(null);
   const [message, setMessage] = useState("");
+  useShellHeader(event.data ? {
+    title: event.data.title, metaKey: `${photos.data?.length ?? ""}`,
+    meta: <><span>{formatWhen(event.data.startTime, event.data.endTime)}</span>{photos.data && <span><strong>{t("album.count.photos", { count: photos.data.length })}</strong></span>}</>,
+  } : null);
 
   const hold = useSkeletonGate(!photos.data && !photos.error);
   if (photos.error) return <LoadError error={photos.error} onRetry={photos.reload} backHref="/events/" backLabel={t("attendees.backToEvents")} />;
   if (!photos.data || hold) return <Loading label={t("album.loading")} layout="album" />;
   return (
     <>
-      <div className="toolbar">
-        <Button href="/events/">{t("album.allEvents")}</Button>
-        <Info>{t("album.count.photos", { count: photos.data.length })}</Info>
-        {event.data && <span className="muted">{event.data.title}</span>}
-      </div>
       {message && <InlineNotice>{message}</InlineNotice>}
       {photos.data.length === 0 ? (
         <Empty title={t("album.empty.title")} body={t("album.empty.body")} />
@@ -164,7 +164,7 @@ function Album() {
 
 export default function AlbumPage() {
   return (
-    <Shell title={t("album.title")} subtitle={t("album.subtitle")} requires="albums.moderate">
+    <Shell title={t("album.title")} subtitle={t("album.subtitle")} requires="albums.moderate" back={{ href: "/events/?filter=past", label: t("shell.nav.events") }}>
       <Suspense fallback={<Loading label={t("album.loading")} layout="album" />}><Album /></Suspense>
     </Shell>
   );
