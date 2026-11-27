@@ -303,10 +303,8 @@ function BugReports() {
 
   return (
     <Shell title={t("bugs.title")} subtitle={t("bugs.subtitle")} requires="bugreports.manage">
-      <div className="tabs-fade">
-        <Tabs idBase="bugs" label={t("bugs.filterByStatus")} value={status} onChange={(id) => setQs({ status: id, report: "" })}
-          items={(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => ({ id, label: id === "all" ? t("bugs.status.all") : statusLabel(id), ...(counts ? { count: tabCount(id) } : {}) }))} />
-      </div>
+      <Tabs idBase="bugs" label={t("bugs.filterByStatus")} value={status} onChange={(id) => setQs({ status: id, report: "" })}
+        items={(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => ({ id, label: id === "all" ? t("bugs.status.all") : statusLabel(id), ...(counts ? { count: tabCount(id) } : {}) }))} />
       <div className="filters bug-filters" data-open={filtersOpen ? "true" : undefined}>
         <SearchBox shortcut id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label={t("bugs.search.label")} placeholder={t("bugs.search.placeholder")} />
         <Button size="sm" className="filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>

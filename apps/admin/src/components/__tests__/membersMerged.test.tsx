@@ -98,6 +98,10 @@ describe("Members (merged with the roster)", () => {
     expect(within(dialog).getByText("They haven’t signed in yet. They get this role and these teams when they sign in with this email.")).toBeTruthy();
     expect(within(dialog).getByText("Lisbon")).toBeTruthy();
     expect(within(dialog).getByText("Design")).toBeTruthy();
+    // Get invite message and Revoke sit in the dialog's action row (behind More actions on phones), not in the body.
+    const actionRow = within(dialog).getByRole("button", { name: "More actions" }).closest(".actions") as HTMLElement;
+    expect(within(actionRow).getByRole("button", { name: "Get invite message" })).toBeTruthy();
+    expect(within(actionRow).getByRole("button", { name: "Revoke invite" })).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Send invite email" }));
     await waitFor(() => expect(api.sendInviteEmail).toHaveBeenCalledTimes(1));
   });
@@ -140,6 +144,8 @@ describe("Members (merged with the roster)", () => {
     render(<MembersPage />);
     await waitFor(() => expect(screen.getByText("Dee Invited")).toBeTruthy());
     expect(api.listRosterPage).toHaveBeenCalledWith({ query: "", state: "invited", role: "member", teamId: "all", workLocation: "Lisbon" }, null, 25);
+    // Clear filters is the filter row's last cell, not a row of its own.
+    expect(screen.getByRole("button", { name: "Clear filters" }).closest(".filters")).toBe(screen.getByLabelText("Role").closest(".filters"));
     // The filters stay on the invitation tabs too.
     cleanup();
     state.status = "invited";

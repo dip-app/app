@@ -46,6 +46,7 @@ export const common = {
   "common.dialog.reasonNeeded": "Add a reason to continue. ",
   "common.dialog.reasonHint": "Saved in the audit log.",
   "common.dialog.reasonCount": "{count}/{max}",
+  "common.dialog.moreActions": "More actions",
 
   // App start
   "common.boot.loading": "Loading DIP Admin",

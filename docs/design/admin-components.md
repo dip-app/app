@@ -36,7 +36,11 @@ Density rules for lists (from the structure audit, [polish-2026-11/admin-structu
 - Person tables (`.person-table`) collapse on phones to one card line: the name cell carries a `.person-sub` line of facts and the exception chip, and the cells it repeats are `phone-hide`.
 - Time-ordered tables group rows by day with a `.group-row` heading when sorted by time (Audit log).
 
-`Tabs` (a real tablist with arrow keys) stays for switching whole pages of content; `SegmentedControl` is for switching how the same data is shown.
+`Tabs` (a real tablist with arrow keys) stays for switching whole pages of content; `SegmentedControl` is for switching how the same data is shown. A tab row wider than the screen scrolls sideways and fades out (40 px mask) on each side that has more tabs; the selected tab is scrolled clear of the fade. Do not wrap it in another fade.
+
+`Dialog` takes `more` for secondary actions (outline Buttons). They sit in the action row after Cancel on wide screens; on phones the confirm button is full width, Cancel and a "More actions" toggle share the next row, and the toggle reveals them full width underneath. Mark a destructive secondary action with `className="quiet-danger"` (red label).
+
+A filter row's "Clear filters" is its last cell (`.filters-clear`), never a row of its own.
 
 ## DipbotAction
 

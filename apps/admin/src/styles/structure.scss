@@ -73,6 +73,8 @@ $r-box: 8px;
   .phase-chips { margin-bottom: 16px;
     .chip[aria-pressed="true"] { background: #eef0fc; color: #3d48b8; box-shadow: inset 0 0 0 1px #5562dc; font-weight: 600;
       .chip-count { color: inherit; } } }
+  // Narrow phones: tighter chip padding so a row of filter chips (Spanish included) stays on one line at 320 px.
+  @media (max-width: 480px) { .chips .chip { padding: 0 8px; .chip-count { margin-left: 6px; } } }
   .tab-intro { margin: 0 0 12px; font-size: 13px; }
 
   // ---------- List toolbar: search and the result line on one row
@@ -90,15 +92,16 @@ $r-box: 8px;
   // ---------- Load more: the button and its count on one row with a gap
   .load-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 24px; }
 
-  // ---------- Tab rows scroll sideways with an edge fade when they do not fit (long labels, Spanish, phones)
-  .tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; flex-wrap: nowrap;
+  // ---------- Tab rows scroll sideways when they do not fit (long labels, Spanish, phones). `Tabs` marks the side(s) with
+  // more tabs (`data-more-start` / `data-more-end`) and the row fades out there over 40 px (the `FADE` in Tabs.tsx), so
+  // the last visible tab dissolves into the edge instead of being cut. Selected tabs are scrolled clear of the fade.
+  .tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; flex-wrap: nowrap; --fade-start: 0px; --fade-end: 0px;
     &::-webkit-scrollbar { display: none; }
     .tab { flex: none; white-space: nowrap; }
-    background:
-      linear-gradient(to right, $white 30%, rgba(255, 255, 255, 0)) left center / 32px 100% no-repeat local,
-      linear-gradient(to left, $white 30%, rgba(255, 255, 255, 0)) right center / 32px 100% no-repeat local,
-      linear-gradient(to right, rgba(30, 33, 43, .12), rgba(30, 33, 43, 0)) left center / 14px 100% no-repeat scroll,
-      linear-gradient(to left, rgba(30, 33, 43, .12), rgba(30, 33, 43, 0)) right center / 14px 100% no-repeat scroll; }
+    &[data-more-start] { --fade-start: 40px; }
+    &[data-more-end] { --fade-end: 40px; }
+    &[data-more-start], &[data-more-end] {
+      mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); } }
 
   // ---------- Status that is the norm is plain text; exceptions keep the chip (people lists)
   .status-plain { color: var(--muted); font-size: 13px; }

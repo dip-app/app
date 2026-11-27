@@ -21,8 +21,15 @@ export function InvitedPersonDialog({ row, inviteEmail, teamName, onClose, onEma
   const history = inviteHistory(row);
   const teams = row.teamIds.map(teamName).join(", ");
   const confirmLabel = revoked ? t("roster.action.inviteAgain") : inviteEmail ? t("roster.action.email") : t("roster.action.resend");
+  // The other things to do with an invitation: in the dialog's action row (behind "More actions" on phones).
+  const more = revoked ? undefined : (
+    <>
+      {inviteEmail && <Button onClick={() => { onClose(); onResend(row); }}>{t("roster.action.resend")}</Button>}
+      <Button className="quiet-danger" onClick={() => { onClose(); onRevoke(row); }}>{t("roster.revoke.confirm")}</Button>
+    </>
+  );
   return (
-    <Dialog title={row.displayName} confirmLabel={confirmLabel} cancelLabel={t("common.close")} busyLabel={revoked ? t("common.saving") : inviteEmail ? t("roster.email.busy") : t("roster.action.resending")} onClose={onClose}
+    <Dialog title={row.displayName} confirmLabel={confirmLabel} cancelLabel={t("common.close")} more={more} busyLabel={revoked ? t("common.saving") : inviteEmail ? t("roster.email.busy") : t("roster.action.resending")} onClose={onClose}
       onConfirm={async () => {
         if (revoked) await onReinvite(row);
         else if (inviteEmail) await onEmail(row);
@@ -39,12 +46,6 @@ export function InvitedPersonDialog({ row, inviteEmail, teamName, onClose, onEma
         {row.jobTitle && <div><dt>{t("roster.detail.jobTitle")}</dt><dd>{row.jobTitle}</dd></div>}
         <div><dt>{t("roster.table.added")}</dt><dd>{formatDate(row.invitedAt)}</dd></div>
       </dl>
-      {!revoked && (
-        <div className="actions">
-          {inviteEmail && <Button size="sm" onClick={() => { onClose(); onResend(row); }}>{t("roster.action.resend")}</Button>}
-          <Button size="sm" className="quiet-danger" onClick={() => { onClose(); onRevoke(row); }}>{t("roster.revoke.confirm")}</Button>
-        </div>
-      )}
     </Dialog>
   );
 }

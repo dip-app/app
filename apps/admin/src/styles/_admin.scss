@@ -218,5 +218,3 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 .no-changes { font-size: 13px; color: rgba(30, 33, 43, .7); margin: -4px 0 0; }
 .filters-toggle svg { margin-right: 8px; flex: none; }
 .filter-count { margin-left: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: $white; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
-.tabs-fade { position: relative; max-width: 100%; width: fit-content; }
-@media (max-width: 700px) { .tabs-fade { width: 100%; &::after { content: ""; position: absolute; right: 0; top: 0; bottom: 28px; width: 40px; border-radius: 0 999px 999px 0; pointer-events: none; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 85%); } } }

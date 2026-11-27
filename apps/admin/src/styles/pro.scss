@@ -66,6 +66,8 @@ $ctl-h: 36px;
   // Destructive buttons are outlined; only the confirm dialog gets the solid fill.
   .pill-btn.danger { background: $white; color: var(--error); box-shadow: inset 0 0 0 1px var(--error); &:hover:not([disabled]) { background: #fff4f9; } }
   .dialog .pill-btn.danger { background: var(--error); color: $white; box-shadow: none; }
+  // A destructive secondary action next to neutral ones (Revoke invite in a dialog): outlined, red label, any size.
+  .pill-btn.gray.quiet-danger { color: var(--error); }
   // In table rows a red outline on every row is noise: neutral outline, red label, red outline on hover/focus.
   .table .pill-btn.danger { box-shadow: inset 0 0 0 1px $ctl-border; &:hover:not([disabled]), &:focus-visible { box-shadow: inset 0 0 0 1px var(--error); } }
   .pill-btn[disabled], .big-pill[disabled] { opacity: 1; background: #eceef4; color: $placeholder; box-shadow: none; cursor: not-allowed; }
@@ -76,6 +78,21 @@ $ctl-h: 36px;
   .dialog .actions { padding: 4px 0 0; }
   // Phones: every dialog action is a full 44 px touch target (the small row buttons included).
   @media (max-width: 700px), (pointer: coarse) { .dialog .actions .pill-btn { min-height: 44px; } }
+  // Dialog with secondary actions (Dialog `more`). Wide: confirm, Cancel, then the secondary buttons (same height)
+  // (they wrap under them, left-aligned, when the labels are long).
+  // Phones: confirm full width; Cancel and "More actions" share a row; the toggle reveals the group, one per row.
+  .dialog-actions { align-items: center; }
+  .dialog-more { display: flex; flex-wrap: wrap; gap: 8px; }
+  .dialog-more-toggle { display: none; gap: 6px; }
+  .dialog-more-chevron { flex: none; transition: transform var(--dur-base) var(--ease-standard); }
+  .dialog-more-toggle[aria-expanded="true"] .dialog-more-chevron { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { .dialog-more-chevron { transition: none; } }
+  @media (max-width: 700px) {
+    .dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+      > .pill-btn { width: 100%; } > .pill-btn:first-child { grid-column: 1 / -1; } }
+    .dialog-more-toggle { display: inline-flex; }
+    .dialog-more { grid-column: 1 / -1; display: none; &[data-open] { display: grid; } .pill-btn { width: 100%; } }
+  }
   .link-btn { text-decoration-thickness: 1px; }
 
   // ---------- Focus
@@ -113,6 +130,8 @@ $ctl-h: 36px;
   .filters { grid-template-columns: minmax(240px, 2fr) repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 12px; margin-bottom: 12px; }
   .field.search { margin-bottom: 12px; max-width: 420px; }
   .filters .field.search { max-width: none; margin-bottom: 0; }
+  // "Clear filters" is the filter row's last cell, bottom-aligned with the selects (never a row of its own).
+  .filters-clear { display: flex; align-items: flex-end; min-width: 0; }
   .chip { min-height: 28px; padding: 0 10px; border-radius: $r-ctl; font-size: 13px; background: $white; box-shadow: inset 0 0 0 1px $ctl-border; &[aria-pressed="true"] { background: var(--primary); color: $white; box-shadow: none; } }
   .panel .chip { background: $white; &[aria-pressed="true"] { background: var(--primary); } }
   .chips { gap: 6px; }
@@ -183,7 +202,8 @@ $ctl-h: 36px;
     .stat-n { font-size: 26px; } &[aria-pressed="true"] { background: $tint; color: $ink; border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); } }
   .stats { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px; }
   .big-number { font-size: 36px; }
-  .facts { gap: 4px; div { grid-template-columns: 110px 1fr; } dt { font-size: 13px; } }
+  // The value column can shrink (a long email wraps) so a dialog never grows past a phone screen.
+  .facts { gap: 4px; div { grid-template-columns: 110px minmax(0, 1fr); } dt { font-size: 13px; } dd { overflow-wrap: anywhere; } }
   .detail-layout { gap: 14px; }
   .avatar { width: 32px; height: 32px; font-size: 12px; font-weight: 600; background: #e8eaf1; color: $ink; outline: 1px solid rgba(20, 22, 40, 0.1); outline-offset: -1px; object-fit: cover; }
   .avatar.crew, .queue-item[aria-current="true"] .avatar.crew { background: transparent; }
@@ -324,7 +344,7 @@ $ctl-h: 36px;
   .refresh { font-size: 13px; }
 
   // ---------- Dialogs
-  .dialog { border-radius: $r-box; padding: 20px; gap: 12px; box-shadow: 0 12px 40px rgba(30, 33, 43, .25), 0 0 0 1px $line;
+  .dialog { border-radius: $r-box; padding: 20px; gap: 12px; grid-template-columns: minmax(0, 1fr); box-shadow: 0 12px 40px rgba(30, 33, 43, .25), 0 0 0 1px $line;
     h2 { font-family: var(--font-figtree), sans-serif; text-transform: none; font-weight: 600; font-size: 18px; }
     &.viewer { background: $white; } }
   .viewer-side h2 { font-size: 18px; }
@@ -355,6 +375,10 @@ $ctl-h: 36px;
     .table.responsive td.num, .table.responsive td.right, .table.responsive th.right { text-align: left; }
     // Phones: search on its own row, the selects two per row so the list stays near the top.
     .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } > .field:last-child:nth-child(even) { grid-column: 1 / -1; } }
+    .filters-clear .pill-btn { width: 100%; }
+    // Banners with an action: the headline and the action only; the longer explanation (`.banner-detail`) is for wider
+    // screens, and the dialog the action opens repeats what matters before anything changes.
+    .review-banner { gap: 8px; .banner-detail { display: none; } .pill-btn { min-height: 44px; } }
     .bug-filters { grid-template-columns: minmax(0, 1fr) auto; &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .covers:has(.theme-option) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .table.responsive td[data-label] { display: flow-root; position: relative; padding-left: 96px; min-height: 20px; }

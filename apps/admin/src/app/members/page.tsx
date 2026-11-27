@@ -272,7 +272,8 @@ function Members() {
     <Shell title={t("members.title")} subtitle={t(canInvite ? "members.subtitle.invites" : "members.subtitle")} requires="members.view" action={header}>
       {canInvite && unlisted > 0 && (
         <div className="review-banner ok" role="status">
-          <span><strong>{t("roster.unlisted.headline", { count: unlisted })}</strong> {t("roster.unlisted.detail")}</span>
+          {/* Phones show the headline and the action only: the confirm dialog that follows says what adding them changes. */}
+          <span><strong>{t("roster.unlisted.headline", { count: unlisted })}</strong><span className="banner-detail"> {t("roster.unlisted.detail")}</span></span>
           <Button size="sm" disabled={backfill?.phase === "checking"} onClick={() => void previewBackfill()}>{backfill?.phase === "checking" ? t("roster.unlisted.checking", { count: number(backfill.scanned) }) : t("roster.unlisted.add")}</Button>
         </div>
       )}
@@ -291,10 +292,11 @@ function Members() {
           <select id="f-loc" value={location} onChange={(e) => setQs({ location: e.target.value })}>
             <option value="all">{t("members.filter.allLocations")}</option>{[...new Set([...knownLocations, ...(location !== "all" ? [location] : [])])].sort().map((l) => <option key={l}>{l}</option>)}
           </select></div>
+        {/* In the filter row, after the last select (on phones: beside Work location), so clearing never adds a row. */}
+        {(search !== "" || memberFilters) && (
+          <div className="filters-clear"><Button onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t(memberFilters ? "members.filter.clear" : "members.filter.clearSearch")}</Button></div>
+        )}
       </div>
-      {(search !== "" || memberFilters) && (
-        <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t(memberFilters ? "members.filter.clear" : "members.filter.clearSearch")}</Button></div>
-      )}
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div key={view} {...tabPanelProps("members", view)}>
         {joinedView
