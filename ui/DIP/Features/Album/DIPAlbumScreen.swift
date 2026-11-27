@@ -456,9 +456,13 @@ struct DIPAlbumScreen: View {
                     .rotationEffect(.degrees(-90)).frame(width: 28, height: 28)
                     .animation(.linear(duration: 0.2), value: value)
             case .failed:
-                shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.55))
-                Image(systemName: "exclamationmark.circle.fill").font(.system(size: 28))
-                    .foregroundStyle(DIPTokens.Color.notificationAccent.swiftUIColor)
+                // A light wash keeps the photo recognizable without tinting it (a dark scrim over warm photos read
+                // as maroon); the error red marks the state and the ink Retry below stays the one action.
+                shape.fill(DIPTokens.Color.surfaceDefault.swiftUIColor.opacity(0.72))
+                shape.strokeBorder(DIPTokens.Color.textError.swiftUIColor.opacity(0.5), lineWidth: 1.5)
+                Image(systemName: "exclamationmark.circle.fill").font(.system(size: 26))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(DIPTokens.Color.textInverse.swiftUIColor, DIPTokens.Color.textError.swiftUIColor)
                     .offset(y: -10)
             case .done:
                 shape.fill(DIPTokens.Color.navigationBackground.swiftUIColor.opacity(0.35))

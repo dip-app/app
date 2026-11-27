@@ -129,10 +129,12 @@ struct DIPProfileScreen: View {
                         profile: profile, catalogReady: catalogReady,
                         onEdit: beginEditing, onAddInterests: { isChoosingInterests = true })
                     catalogStatus
+                    // Memories sit under the card so the two columns end at similar heights (the card alone left a
+                    // large empty area under it while every row stacked on the right).
+                    memories
                 }
                 .frame(width: 360, alignment: .topLeading)
                 VStack(alignment: .leading, spacing: 28) {
-                    memories
                     profileActions
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)

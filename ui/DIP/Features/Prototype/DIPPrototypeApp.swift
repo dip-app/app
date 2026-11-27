@@ -551,7 +551,8 @@ struct DIPPrototypeApp: View {
                     initialMemories: initialMemories, showsBottomBar: false,
                     onSelectTab: selectTab,
                     onEvent: { openRoute(.event($0)) }, onAlbum: { openRoute(.event($0)) },
-                    onNotifications: openNotifications, onProfile: { selectTab(.profile) })) }
+                    onNotifications: openNotifications, onProfile: { selectTab(.profile) },
+                    onRefresh: homeRefresh)) }
             case .profile:
                 AnyView(DIPProfileScreen(
                     profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
@@ -1299,8 +1300,8 @@ struct DIPPrototypeApp: View {
                 .disabled(isRSVPPending)
                 .padding(.horizontal, 20)
                 .padding(.bottom, DIPFloatingNavigation.barCenterInset - DIPFloatingNavigation.height / 2)
-                // The pane's content dissolves above the bar (same fade as the phone shell).
-                .background(alignment: .bottom) { DIPEdgeFade.floatingBar.padding(.horizontal, -20) }
+                // The pane's content dissolves above the bar (a short pane, so content rests behind the bar: the fade reaches a little above it).
+                .background(alignment: .bottom) { DIPEdgeFade.paneBar.padding(.horizontal, -20) }
         }
     }
 

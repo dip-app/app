@@ -29,6 +29,8 @@ struct DIPMyEventsScreen: View {
     let onAlbum: (String) -> Void
     let onNotifications: () -> Void
     let onProfile: () -> Void
+    /// Pull to refresh: the same reload Home uses (nil hides it, e.g. fixtures without a live source).
+    let onRefresh: (() async -> Void)?
 
     init(
         activeEvents: [DIPEventSummary],
@@ -41,8 +43,10 @@ struct DIPMyEventsScreen: View {
         onEvent: @escaping (String) -> Void,
         onAlbum: @escaping (String) -> Void,
         onNotifications: @escaping () -> Void,
-        onProfile: @escaping () -> Void
+        onProfile: @escaping () -> Void,
+        onRefresh: (() async -> Void)? = nil
     ) {
+        self.onRefresh = onRefresh
         self.activeEvents = activeEvents
         self.memoryAlbums = memories
         self.unreadCount = unreadCount
@@ -116,6 +120,7 @@ struct DIPMyEventsScreen: View {
                 .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
         }
         .scrollIndicators(.hidden).dipTopEdgeFade()
+        .modifier(MemberEventRefresh(action: onRefresh))
         .frame(width: width)
         // The page that is off screen is not an accessibility target (VoiceOver would scroll the pager under
         // the user); the toggle, with its selected trait, is how VoiceOver switches pages.
