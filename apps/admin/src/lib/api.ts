@@ -409,18 +409,4 @@ function checkTheme(draft: ThemeDraft, companyThemes: WeeklyTheme[], excludeId?:
   }
 }
 
-export function browserStore(): KeyValueStore {
-  try {
-    const probe = "__probe__";
-    window.localStorage.setItem(probe, "1");
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    const memory = new Map<string, string>();
-    return {
-      getItem: (key) => memory.get(key) ?? null,
-      setItem: (key, value) => void memory.set(key, value),
-      removeItem: (key) => void memory.delete(key),
-    };
-  }
-}
+export { browserStore } from "./browserStore";

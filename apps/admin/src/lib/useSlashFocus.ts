@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { shortcutsEnabled } from "./shortcuts";
 
 /** True when a key press belongs to a form control, so page shortcuts must stay out of the way. */
 export function isTypingTarget(target: EventTarget | null): boolean {
@@ -13,6 +14,8 @@ export function useSlashFocus(inputId: string) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      // "/" is a single-key shortcut too: off with the others (WCAG 2.1.4).
+      if (!shortcutsEnabled()) return;
       if (isTypingTarget(event.target) || document.querySelector("dialog[open]")) return;
       const input = document.getElementById(inputId);
       if (!input) return;

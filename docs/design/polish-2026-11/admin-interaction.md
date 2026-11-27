@@ -120,6 +120,13 @@ would delay cached content); the command palette is deferred in favor of `?` sho
 - Tab panels (`Tabs` + `tabPanelProps`): if the panel element were keyed by the selected tab, the shared reveal could
   fade the new panel in; today the same element is reused, so switching tabs swaps content in one frame.
 - The member row link (`a.person`) has only an underline on hover; a row-level hover target would match the tables.
+- Layout shift on load (measured CLS, unchanged by these waves): Account 0.094 (settings sections fill in one by one;
+  each section's loading state should reserve its final height), Roster 0.046 (the tabs and search row move when the
+  counts arrive; reserve the count width or render the tabs with placeholders).
+- Bundle: both language catalogs ship on every page (about 68 KB gzip together); loading Spanish only for Spanish
+  readers needs an async language switch (i18n owner). The cover library's alt text rides into every page through
+  `contract.ts` -> `catalog.ts` -> `covers.ts` (about 55 KB gzip with the tag catalog); a lighter tag-id module for
+  `contract.ts` would keep it on the editor pages only.
 
 ## Results
 
@@ -182,3 +189,44 @@ not the badge change; the `generations` map is not pruned during a session.
 
 Open, deferred on purpose: prefetch on hover (a route-to-loader registry would duplicate the inline loaders; Next
 already prefetches route code), inline confirmation instead of a modal (page structure, the structure owner's call).
+
+### Wave 3: code splitting and keyboard (PR "Admin code splitting and keyboard shortcuts")
+
+- `suggestionsApi.ts` loads the Firebase SDK and the live adapter on the first live call instead of statically, so
+  Your settings and the suggested-idea page no longer download the whole SDK in mock mode, and the SDK leaves the
+  pages Next prefetches from the sidebar.
+- `AppProvider` loads the mock backend and its fixtures only in mock mode (dynamic import); `browserStore` moved to
+  its own module so the import page doesn't pull the mock in. Live pages never download the mock.
+- Keyboard: `g` then a letter goes to any page in the sidebar the role can open (O, E, I, T, C, M, R, P, B, A, S),
+  `?` or Ctrl/Cmd+/ lists every shortcut, `/` still focuses a page's search, the review queue keeps J/K/A/R. One live
+  setting (`lib/shortcuts.ts`, the review queue's old storage key so an existing choice carries over) turns every
+  single-key shortcut off at once (WCAG 2.1.4), including `/`; Ctrl/Cmd+/ still opens the list. Shortcuts never fire
+  while typing, composing (IME), with another dialog or the phone menu open; the letter after `g` is always consumed
+  so a page shortcut can't fire with it. The list starts focus on its title and returns focus on close.
+
+| Measure | Before | After |
+| --- | --- | --- |
+| First-load JS, gzip (build manifest) | 268 KB shared; 283 to 308 KB per page; 503 to 506 KB on Your settings and a suggested idea | 231 KB shared; 249 to 281 KB per page; 253 to 255 KB on those two |
+| JS transferred on a cold load incl. sidebar prefetch (10 Mbps, 40 ms RTT, gzip, mean of 2 runs) | 584 to 619 KB | 379 to 417 KB |
+| Real content on screen after a cold load (same conditions, 300 ms mock backend) | 982 to 1350 ms | 919 to 1290 ms (60 to 260 ms earlier on every route) |
+
+Honest caveats: these runs are mock mode. Mock mode now fetches the mock backend as its own chunk before the session
+loads, so first paint was 10 to 50 ms later on 8 of 10 routes (and LCP 60 to 80 ms later on Overview and Events) in
+the throttled runs, and noisier in one unthrottled run; live mode never downloads that chunk and was not measured
+(no deploys). Two runs per side.
+
+Review: three fresh Opus rounds. Round 1 FAIL (the off switch was shared only through storage, so switches disagreed
+until a reload; "g a" could also open the review queue's Approve; cramped 320 px list; first paint later than claimed).
+Round 2 FAIL (a letter after "g" that goes nowhere still reached the review queue; "/" ignored the off switch; "?"
+opened over the phone menu). Round 3 PASS. Fixed from round 3: Shift and Caps Lock no longer cancel a pending "g";
+Tab and Escape cancel it and keep their job. Open P3s: `⌘` read by screen readers as a symbol, a failed chunk download
+reaches `userError` as a network error rather than an `ApiError` (copy is still plain), the 320 px switch card wraps,
+the `g` hint can cover content for 1.5 s, two literal hairline colors match the existing files rather than tokens.
+
+## Remaining gaps (after wave 3)
+- Prefetch on intent (hover/focus warming a page's data) is not built; revisits are instant, first visits still load.
+- Inline confirmation instead of a modal, and undo toasts beyond check-in, need backend support or page structure.
+- Command palette: deferred; the `g` shortcuts and the list cover navigation for an occasional-use admin tool.
+- CLS on Account and Roster and the catalog/cover bundle split are requests above.
+- Live-mode LCP/INP were not measured (no deploys); interaction latency in mock mode stayed at 16 to 48 ms at 4x CPU.
+

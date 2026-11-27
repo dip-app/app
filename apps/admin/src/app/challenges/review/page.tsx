@@ -17,6 +17,7 @@ import { formatGoal } from "@/lib/challenge";
 import { ApiError } from "@/lib/contract";
 import { formatWindow } from "@/lib/weeks";
 import { isTypingTarget } from "@/lib/useSlashFocus";
+import { ignoredKey, isGoPending, useShortcutsEnabled } from "@/lib/shortcuts";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { Button } from "@/components/kit";
 import { t, type MessageKey } from "@/lib/i18n";
@@ -25,19 +26,8 @@ const TABS: SubmissionStatus[] = ["submitted", "rejected", "approved"];
 const STATUS_KEY: Record<SubmissionStatus, MessageKey> = { submitted: "review.status.submitted", rejected: "review.status.rejected", approved: "review.status.approved" };
 const statusLabel = (status: SubmissionStatus) => t(STATUS_KEY[status]);
 const DEFAULTS = { status: "submitted" };
-const KEYS_STORAGE = "dip-admin-review-keys";
-
-/** Single-key shortcuts can be switched off (WCAG 2.1.4). The choice is remembered in this browser; storage may be blocked. */
-function useShortcutsSetting(): [boolean, (on: boolean) => void] {
-  const [on, setOn] = useState(true);
-  useEffect(() => {
-    try { if (window.localStorage.getItem(KEYS_STORAGE) === "off") setOn(false); } catch { /* storage blocked: keep the default */ }
-  }, []);
-  return [on, (next) => {
-    setOn(next);
-    try { window.localStorage.setItem(KEYS_STORAGE, next ? "on" : "off"); } catch { /* the choice just won't be remembered */ }
-  }];
-}
+// Single-key shortcuts can be switched off (WCAG 2.1.4): one portal-wide setting (lib/shortcuts.ts), so this page's
+// switch and the shortcut list ("?") always agree.
 const EMPTY_KEYS: Record<SubmissionStatus, { title: MessageKey; body: MessageKey }> = {
   submitted: { title: "review.empty.submitted.title", body: "review.empty.submitted.body" },
   rejected: { title: "review.empty.rejected.title", body: "review.empty.rejected.body" },
@@ -116,7 +106,7 @@ function Review() {
   const theme = themes.data?.find((t) => t.id === id);
   const [qs, setQs] = useQueryState(DEFAULTS);
   const status = oneOf(qs.status, TABS, "submitted");
-  const [shortcuts, setShortcuts] = useShortcutsSetting();
+  const [shortcuts, setShortcuts] = useShortcutsEnabled();
   const [items, setItems] = useState<Submission[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -166,7 +156,8 @@ function Review() {
     if (!shortcuts) return;
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTypingTarget(event.target)) return;
+      // Typing, composing text, or the letter after "g" (go to a page) is not a review shortcut.
+      if (isTypingTarget(event.target) || ignoredKey(event) || isGoPending()) return;
       if (document.querySelector("dialog[open]")) return;
       const key = event.key.toLowerCase();
       if (key === "j") go(1);

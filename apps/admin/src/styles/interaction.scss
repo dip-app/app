@@ -91,6 +91,27 @@ $t-color: background-color var(--dur-fast) var(--ease-standard), box-shadow var(
 // The attendance button swaps "Check in" and "Undo" while its spinner runs; one width for both keeps the row still.
 .content .attendance .pill-btn.small { min-width: 84px; }
 
+// ---------- Keyboard shortcuts (KeyboardShortcuts.tsx): the "g" hint and the list
+.go-hint { position: fixed; left: 16px; bottom: 16px; z-index: 210; pointer-events: none;
+  &:empty { display: none; }
+  &:not(:empty) { padding: 6px 12px; border-radius: 6px; background: $ink; color: $white; font-family: var(--font-figtree), sans-serif; font-size: 13px; font-weight: 600;
+    animation: toast-enter var(--dur-fast) var(--ease-enter) backwards; } }
+@media (min-width: 901px) { .go-hint { left: 248px; } } // past the 232 px sidebar
+.keys-dialog { width: min(520px, calc(100vw - 32px));
+  h2:focus { outline: none; } // a programmatic start point, not a control
+  h3 { font-family: var(--font-figtree), sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+  .keys-list { display: grid; gap: 2px; margin: 0;
+    > div { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 12px; align-items: center; min-height: 32px; padding: 2px 0; border-bottom: 1px solid #e2e4ec; }
+    > div:last-child { border-bottom: 0; }
+    dd { margin: 0; font-size: 14px; } }
+  .keys-combo { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; > span { display: inline-flex; align-items: center; gap: 6px; } }
+  .keys-then { font-size: 12px; color: var(--muted); }
+  kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border: 1px solid $ctl-border; border-radius: 4px; background: $wash;
+    box-shadow: inset 0 -1px 0 #c4c8d6; font-family: var(--font-figtree), system-ui, sans-serif; font-size: 12px; font-weight: 600; line-height: 1; color: $ink; }
+  .actions { padding: 4px 0 0; justify-content: flex-end; }
+  // Narrow phones: keys above their description, so long Spanish text gets the full width.
+  @media (max-width: 480px) { .keys-list > div { grid-template-columns: 1fr; gap: 4px; padding: 6px 0; } } }
+
 // ---------- Sidebar (dark): same recipe on ink
 .nav-item, .menu-btn, .sidebar .who { transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard); }
 .nav-item:active, .menu-btn:active, .sidebar .who:active { background: rgba(255, 255, 255, .22); transition-duration: var(--dur-press); }
