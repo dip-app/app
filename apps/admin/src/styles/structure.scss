@@ -141,6 +141,56 @@ $r-box: 8px;
   .content .challenges-table .media-text .line.muted, .content .themes-table .media-text .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
   .content .events-table .thumb, .content .themes-table .thumb, .content .challenges-table .thumb { width: 44px; height: 32px; }
 }
+// ---------- Bug reports: rows of who and when, the words, one line of facts; a chosen report replaces the list on narrow screens
+.content .bug-item .queue-text { gap: 2px; }
+.content .bug-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0;
+  .bug-who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bug-when { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; .info-pill { min-height: 18px; font-size: 11px; } } }
+.content .bug-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 12px;
+  > span:not(.info-pill):not(:last-child)::after { content: "·"; margin-left: 6px; }
+  .info-pill { min-height: 18px; font-size: 11px; } }
+.content .back-link.to-list { display: none; border: 0; background: none; cursor: pointer; font-family: inherit; }
+.content .settings-section .field select { max-width: 420px; }
+@media (max-width: 1000px) {
+  .content .back-link.to-list { display: inline-flex; }
+  .content .bug-layout[data-open="true"] .bug-list { display: none; }
+  .content .bug-layout:not([data-open]) .bug-detail-wrap { display: none; }
+}
+
+// ---------- Long forms (event, theme): the Save row sticks to the bottom of the page scroller, so the main action is
+// always in reach; it sits in the flow at the end of the form.
+// A page with this bar drops the scroller's bottom padding (the bar ends the page), so the stuck bar sits on the window's
+// edge and hugs its buttons. Its background reaches sideways to the scroller's edges (border-image outset), no layout change.
+.content:has(.actions.form-footer) { padding-bottom: 0; }
+.content .actions.form-footer { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  margin: 8px 0 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+  border-image: linear-gradient(to bottom, $line 1px, $white 1px) fill 0 / / 0 100vmax; }
+.content .actions-note { margin: 16px 0 0; }
+.content .form-footer .draft-status { flex: 1 1 160px; min-height: 0; }
+
+// Phones: a page header with a back link and a compact header action (New event, New theme) keeps the order
+// back link, title with the action, subtitle.
+@media (max-width: 700px) {
+  .content .page-header.has-back:has(.quick-btn, .theme-suggest-btn) {
+    .back-link { grid-column: 1 / -1; grid-row: 1; }
+    .page-title { grid-column: 1; grid-row: 2; }
+    .header-action { grid-column: 2; grid-row: 2; }
+    .titles .subtitle { grid-column: 1 / -1; grid-row: 3; } }
+}
+
+// ---------- Your settings: section titles at the panel size; on wide screens the title and description sit in a left
+// column beside their controls, separated by hairlines (the usual settings layout).
+.content .user-settings { gap: 28px; }
+.content .settings-section-head { h2 { font-size: 17px; font-weight: 600; } .muted { font-size: 14px; } }
+@media (min-width: 1200px) {
+  .content .user-settings { max-width: 1080px; gap: 0; }
+  .content .settings-section .suggestions { max-width: none; }
+  .content .settings-section { grid-template-columns: 260px minmax(0, 1fr); gap: 32px; padding: 24px 0; align-items: start;
+    & + .settings-section { border-top: 1px solid $line; }
+    &:first-child { padding-top: 4px; } }
+  .content .settings-section-head { position: sticky; top: 12px; }
+}
+
 // Needs attention: one badge width, so the row text lines up whatever the count.
 .content .action-count { min-width: 32px; box-sizing: border-box; }
 .content .rank-main .muted { font-size: 12px; }
@@ -186,3 +236,9 @@ $r-box: 8px;
   // The drawer layout: the page header keeps the title and the actions on one row while they fit.
   .content .page-meta { font-size: 12px; }
 }
+
+// Bug detail: the "No changes to save" line sits under its buttons; "View full size" keeps its label centered when it
+// grows to 44 px on touch.
+.content .triage .actions { padding-bottom: 0; }
+.content .triage .no-changes { margin: 6px 0 0; }
+.content .view-full { display: inline-flex; align-items: center; justify-content: center; }

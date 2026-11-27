@@ -125,4 +125,5 @@ export const bugs: Record<keyof typeof source, string> = {
   "bugs.triage.noChanges": "No hay cambios que guardar",
   "bugs.triage.saved": "Guardado.",
   "bugs.triage.nothingToChange": "No hay nada que cambiar.",
+  "bugs.item.assignedTo": "Asignado a {name}",
 };

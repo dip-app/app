@@ -95,4 +95,5 @@ export const memberDetail = {
   "memberDetail.pointsDialog.balanceBecomes": "Balance {balance} becomes {next}. It can’t go below 0.",
   "memberDetail.pointsDialog.resetDone": "Points reset to 0.",
   "memberDetail.pointsDialog.changedDone": "Points changed by {delta}.",
+  "memberDetail.profileTitle": "Details",
 };

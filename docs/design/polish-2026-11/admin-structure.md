@@ -171,3 +171,9 @@ listed under Open.
 Open after this PR: S2, S10, S11, S17, S23 (wave 3); S16 and server-side sort (backend); S9 merges (decision);
 S24 to S26; phone card patterns on Challenges, Themes and Attendees still use the label grid; Members and Review tabs
 have no counts; the People card's "Total members" excludes invited people while the list above shows them.
+
+## Shipped: wave 3
+
+Second PR, stacked on the first: S2 and S17 (bug reports rows, triage after the text, a chosen report replaces the list
+below 1001 px), S10 (sticky Save bar on the event and theme forms), S23 (settings two-column layout from 1200 px), S11
+in part (member card heading). Two fresh Opus review rounds; the last P2 was fixed and checked by the author.

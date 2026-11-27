@@ -123,4 +123,5 @@ export const bugs = {
   "bugs.triage.noChanges": "No changes to save",
   "bugs.triage.saved": "Saved.",
   "bugs.triage.nothingToChange": "Nothing to change.",
+  "bugs.item.assignedTo": "Assigned to {name}",
 };

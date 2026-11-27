@@ -18,7 +18,7 @@ import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { BUG_CATEGORIES, BUG_STATUSES, issueText } from "@/lib/bugReports";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, EmptyState, ErrorNotice, InlineNotice } from "@/components/kit";
+import { Button, EmptyState, ErrorNotice, InlineNotice, RelativeTime } from "@/components/kit";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
 type StatusFilter = BugStatus | "all";
@@ -162,7 +162,10 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
   const rows = diagnosticRows(detail?.diagnostics ?? null);
   return (
     <article className="review-detail panel bug-detail" aria-label={t("bugs.detail.label", { name: report.reporterName })}>
-      <Button size="sm" className="to-list" onClick={onBackToList}><span aria-hidden>‹ </span>{t("bugs.detail.allReports")}</Button>
+      <button type="button" className="back-link to-list" onClick={onBackToList}>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden focusable="false"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        {t("bugs.detail.allReports")}
+      </button>
       <div className="review-head">
         <div className="person big"><Avatar name={report.reporterName} userId={report.reporterId} photoURL={report.reporterPhotoURL} avatarId={report.reporterAvatarId} /><div><h2>{report.reporterName}</h2><p className="muted">{detail?.reporterEmail || " "}</p></div></div>
         <div className="review-pills">
@@ -180,19 +183,6 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
               <h3>{t("bugs.detail.wrote")}</h3>
               {detail.report.description.trim() ? <blockquote className="member-note">{detail.report.description}</blockquote> : <p className="muted">{t("bugs.detail.noDescription")}</p>}
             </div>
-            <div>
-              <h3>{t("bugs.detail.screenshot")}</h3>
-              {detail.screenshotUrl
-                ? <Screenshot url={detail.screenshotUrl} who={report.reporterName} onExpired={() => setAttempt((n) => n + 1)} />
-                : <div className="evidence none"><p>{detail.report.hasScreenshot ? t("bugs.detail.shotGone") : t("bugs.detail.shotNone")}</p></div>}
-            </div>
-            <div>
-              <h3>{t("bugs.detail.diagnostics")}</h3>
-              {rows.length > 0
-                ? <dl className="facts diagnostics">{rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>
-                : <p className="muted">{t("bugs.detail.noDiagnostics")}</p>}
-            </div>
-
             <form className="triage" onSubmit={(event) => { event.preventDefault(); void save(); }} aria-label={t("bugs.triage.title")}>
               <h3>{t("bugs.triage.title")}</h3>
               <div className="row">
@@ -221,6 +211,19 @@ function ReportDetail({ report, admins, onSaved, onBackToList }: DetailProps) {
               </div>
               {!dirty && !saving && <p className="no-changes">{t("bugs.triage.noChanges")}</p>}
             </form>
+            <div>
+              <h3>{t("bugs.detail.screenshot")}</h3>
+              {detail.screenshotUrl
+                ? <Screenshot url={detail.screenshotUrl} who={report.reporterName} onExpired={() => setAttempt((n) => n + 1)} />
+                : <div className="evidence none"><p>{detail.report.hasScreenshot ? t("bugs.detail.shotGone") : t("bugs.detail.shotNone")}</p></div>}
+            </div>
+            <div>
+              <h3>{t("bugs.detail.diagnostics")}</h3>
+              {rows.length > 0
+                ? <dl className="facts diagnostics">{rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>
+                : <p className="muted">{t("bugs.detail.noDiagnostics")}</p>}
+            </div>
+
           </>
         )}
     </article>
@@ -335,7 +338,7 @@ function BugReports() {
                 ? t("bugs.count.showingOf", { shown: number(list.items.length), total })
                 : list.hasMore ? t("bugs.count.soFar", { shown: number(list.items.length) }) : t("bugs.count.matches", { shown: list.items.length })}
             </ResultCount>
-            <div className="review-layout" {...tabPanelProps("bugs", status)}>
+            <div className="review-layout bug-layout" data-open={qs.report ? "true" : undefined} {...tabPanelProps("bugs", status)}>
               <section aria-label={t("bugs.list.label")} className="queue-wrap bug-list" ref={listTop} aria-busy={list.loading || undefined}>
                 <ul className="queue">
                   {list.items.map((item) => (
@@ -344,14 +347,14 @@ function BugReports() {
                         onClick={() => { setQs({ report: item.id }); detailTop.current?.scrollIntoView?.({ block: "nearest" }); }}>
                         <Avatar name={item.reporterName} userId={item.reporterId} photoURL={item.reporterPhotoURL} avatarId={item.reporterAvatarId} />
                         <span className="queue-text">
-                          <span className="bug-meta"><Info>{categoryLabel(item.category)}</Info><Info tone={STATUS_TONE[item.status]}>{statusLabel(item.status)}</Info></span>
+                          <span className="bug-line"><strong className="bug-who">{item.reporterName}</strong><span className="bug-when">{item.status !== "new" && <Info tone={STATUS_TONE[item.status]}>{statusLabel(item.status)}</Info>}<span className="muted"><RelativeTime iso={item.createdAt} /></span></span></span>
                           <span className="bug-snippet">{item.description.trim() || t("bugs.item.noDescription")}</span>
-                          <span className="muted">{item.reporterName} · {formatDateTime(item.createdAt)}</span>
-                          {(item.hasScreenshot || item.hasNote || item.assigneeName) && (
-                            <span className="queue-chips">
-                              {item.hasScreenshot && <Info>{t("bugs.item.screenshot")}</Info>}{item.hasNote && <Info>{t("bugs.item.note")}</Info>}{item.assigneeName && <Info>{item.assigneeName}</Info>}
-                            </span>
-                          )}
+                          <span className="bug-facts muted">
+                            <span>{categoryLabel(item.category)}</span>
+                            {item.hasScreenshot && <span>{t("bugs.item.screenshot")}</span>}
+                            {item.hasNote && <span>{t("bugs.item.note")}</span>}
+                            {item.assigneeName && <span>{t("bugs.item.assignedTo", { name: item.assigneeName })}</span>}
+                          </span>
                         </span>
                       </button>
                     </li>
@@ -362,7 +365,7 @@ function BugReports() {
               </section>
               <div ref={detailTop} className="bug-detail-wrap">
                 {selected
-                  ? <ReportDetail key={selected.id} report={selected} admins={adminOptions} onSaved={saved} onBackToList={() => listTop.current?.scrollIntoView?.({ block: "start" })} />
+                  ? <ReportDetail key={selected.id} report={selected} admins={adminOptions} onSaved={saved} onBackToList={() => { setQs({ report: "" }); requestAnimationFrame(() => listTop.current?.scrollIntoView?.({ block: "start" })); }} />
                   : <EmptyState title={t("bugs.empty.pick.title")} body={t("bugs.empty.pick.body")} />}
               </div>
             </div>
