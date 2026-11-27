@@ -92,7 +92,7 @@ struct DIPHomeScreen: View {
                         }
                         .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
                     }
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).dipTopEdgeFade()
                     .modifier(MemberEventRefresh(action: onRefresh))
                 }
                 .padding(.bottom, 22)
@@ -261,7 +261,7 @@ struct DIPHomeScreen: View {
     private func eventFailure(_ message: String) -> some View {
         DIPEmptyState(
             screen: "home-events-error", title: String(localized: "home.events.error.title", defaultValue: "Couldn’t load events", comment: "Home error state title when the events could not be loaded"), message: message,
-            actionTitle: onRetryEvents == nil ? nil : String(localized: "home.events.error.retry", defaultValue: "Try again", comment: "Home error state retry button for events"), action: onRetryEvents.map { retry in { DIPHaptics.select(); retry() } })
+            tone: .failure, actionTitle: onRetryEvents == nil ? nil : String(localized: "home.events.error.retry", defaultValue: "Try again", comment: "Home error state retry button for events"), action: onRetryEvents.map { retry in { DIPHaptics.select(); retry() } })
     }
 
     /// "Matching your interests" / "All events": the solid thumb is the pressable control (the same toggle as
@@ -334,7 +334,7 @@ struct DIPHomeScreen: View {
                             .background(
                                 DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                     }
-                    .buttonStyle(.plain).accessibilityIdentifier("home.attendees")
+                    .buttonStyle(DIPPressFeedbackStyle()).accessibilityIdentifier("home.attendees")
                 }
             }
         }

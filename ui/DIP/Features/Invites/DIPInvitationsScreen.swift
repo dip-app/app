@@ -101,7 +101,7 @@ struct DIPInvitationsScreen: View {
             switch model.phase {
             case .failed(let message):
                 DIPEmptyState(screen: "invitations-error", title: String(localized: "invitations.error.title", defaultValue: "Couldn’t load invitations", comment: "Invitations: error state title"), message: message, faces: 3,
-                              actionTitle: String(localized: "invites.retry", defaultValue: "Try again", comment: "Invitations: retry button on an error state"), action: { DIPHaptics.commit(); onRetry() })
+                              tone: .failure, actionTitle: String(localized: "invites.retry", defaultValue: "Try again", comment: "Invitations: retry button on an error state"), action: { DIPHaptics.commit(); onRetry() })
             default: loading
             }
         } else {
@@ -122,7 +122,28 @@ struct DIPInvitationsScreen: View {
 
     private var loading: some View {
         VStack(spacing: 12) {
-            ForEach(0..<3, id: \.self) { _ in DIPSkeleton(cornerRadius: DIPTokens.Radius.card).frame(height: 150) }
+            // Shaped like an invitation card: inviter row, activity title, note, then the two answer buttons.
+            ForEach(0..<2, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        DIPSkeleton(cornerRadius: -1).frame(width: 36, height: 36)
+                        VStack(alignment: .leading, spacing: 6) {
+                            DIPSkeleton(cornerRadius: -1).frame(width: 150, height: 14)
+                            DIPSkeleton(cornerRadius: -1).frame(width: 70, height: 10)
+                        }
+                    }
+                    DIPSkeleton(cornerRadius: -1).frame(width: 130, height: 18)
+                    DIPSkeleton(cornerRadius: -1).frame(maxWidth: .infinity).frame(height: 12)
+                    HStack(spacing: 10) {
+                        DIPSkeleton(cornerRadius: -1).frame(height: 44)
+                        DIPSkeleton(cornerRadius: -1).frame(height: 44)
+                    }
+                }
+                .padding(14)
+                .background(
+                    DIPTokens.Color.actionPrimary.swiftUIColor.opacity(0.05),
+                    in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Loading invitations")

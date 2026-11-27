@@ -41,12 +41,11 @@ struct DIPNotificationSettingsScreen: View {
     @ViewBuilder private var content: some View {
         switch model.phase {
         case .loading:
-            ProgressView("Loading settings…")
-                .frame(maxWidth: .infinity).padding(.top, 40)
+            DIPPageSkeleton(.rows(count: 5), horizontalInset: 0, label: Text("Loading settings", comment: "VoiceOver label while notification settings load"))
                 .accessibilityIdentifier("notificationSettings.loading")
         case .failed(let message):
             DIPEmptyState(screen: "notification-settings-error", title: String(localized: "notificationSettings.error.title", defaultValue: "Couldn’t load settings", comment: "Notification settings: error state title"), message: message, faces: 3,
-                          actionTitle: String(localized: "notificationSettings.error.retry", defaultValue: "Try again", comment: "Notification settings: retry button on the error state"), action: { DIPHaptics.select(); Task { await model.load() } })
+                          tone: .failure, actionTitle: String(localized: "notificationSettings.error.retry", defaultValue: "Try again", comment: "Notification settings: retry button on the error state"), action: { DIPHaptics.select(); Task { await model.load() } })
         case .ready:
             // Without the push client (flag off) only the Email section exists: email does not depend on push.
             if model.isPushAvailable { master }

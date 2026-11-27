@@ -497,22 +497,6 @@
         }
       }
     },
-    "Activity unavailable" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actividad no disponible"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Qu' tu'lu'be'"
-          }
-        }
-      }
-    },
     "Add a note (optional)" : {
       "localizations" : {
         "es" : {
@@ -931,22 +915,6 @@
         }
       }
     },
-    "Couldn’t load your activities" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudieron cargar tus actividades"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Qu'meylIj wItu'laHbe'"
-          }
-        }
-      }
-    },
     "Couldn’t load your photo." : {
       "localizations" : {
         "es" : {
@@ -1263,22 +1231,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "ta' Dotlh: %@"
-          }
-        }
-      }
-    },
-    "Events unavailable" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eventos no disponibles"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "wanI'mey tu'lu'be'"
           }
         }
       }
@@ -1886,6 +1838,7 @@
       }
     },
     "Loading photos" : {
+      "comment" : "VoiceOver label while album photos load",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1901,34 +1854,13 @@
         }
       }
     },
-    "Loading photos…" : {
+    "Loading settings" : {
+      "comment" : "VoiceOver label while notification settings load",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cargando fotos…"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "mIlloghmey loStaH…"
-          }
-        }
-      }
-    },
-    "Loading settings…" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cargando ajustes…"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "SeHlaw loStaH…"
+            "value" : "Cargando ajustes"
           }
         }
       }
@@ -1949,18 +1881,13 @@
         }
       }
     },
-    "Loading your company events…" : {
+    "Loading your company events" : {
+      "comment" : "VoiceOver label while the company's events load after sign-in",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cargando los eventos de tu empresa…"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "yaSpu'lIj wanI'mey loStaH…"
+            "value" : "Cargando los eventos de tu empresa"
           }
         }
       }
@@ -1993,22 +1920,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "mIlloghlIj loStaH"
-          }
-        }
-      }
-    },
-    "Loading…" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cargando…"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "loStaH…"
           }
         }
       }
@@ -2058,22 +1969,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "laDta' yIghItlh"
-          }
-        }
-      }
-    },
-    "My Events isn’t available yet" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mis eventos aún no está disponible"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "wanI'meywIj tu'lu'be' DaH"
           }
         }
       }
@@ -2524,22 +2419,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Segh pagh mu' 'op yIwIv, nobmeH."
-          }
-        }
-      }
-    },
-    "Please sign out and try again." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cierra sesión e inténtalo de nuevo."
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "yImej, yInIDqa'."
           }
         }
       }
@@ -3283,22 +3162,6 @@
         }
       }
     },
-    "Updates paused — Retry" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actualizaciones en pausa. Reintentar"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "choHmey mevta'; yInIDqa'"
-          }
-        }
-      }
-    },
     "View %@" : {
       "localizations" : {
         "es" : {
@@ -3543,22 +3406,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "pa' 'oH Dachaw'laH: SeHlaw > DIP > jajmey."
-          }
-        }
-      }
-    },
-    "You can browse company events from Home." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Puedes explorar los eventos de la empresa desde Inicio."
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "juHvo' yaSpu' wanI'mey DaleghlaH."
           }
         }
       }
@@ -12128,6 +11975,42 @@
         }
       }
     },
+    "member.eventsUnavailable.message" : {
+      "comment" : "Hint under Events unavailable",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Please sign out and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cierra sesión y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "member.eventsUnavailable.title" : {
+      "comment" : "Full-page error when the company's events cannot be set up for this account",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Events unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eventos no disponibles"
+          }
+        }
+      }
+    },
     "myEvents.active.empty.action" : {
       "comment" : "My Events empty state button that goes to Home",
       "extractionState" : "extracted_with_value",
@@ -17611,6 +17494,42 @@
         }
       }
     },
+    "shell.activityUnavailable.back" : {
+      "comment" : "Button that leaves the Activity unavailable page",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Back"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atrás"
+          }
+        }
+      }
+    },
+    "shell.activityUnavailable.title" : {
+      "comment" : "Page shown when an opened activity no longer exists or cannot be loaded",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Activity unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actividad no disponible"
+          }
+        }
+      }
+    },
     "shell.invite.fallbackTitle" : {
       "comment" : "Title used in the invite sheet when the activity name is not known",
       "extractionState" : "extracted_with_value",
@@ -17655,6 +17574,96 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "yInIDqa'."
+          }
+        }
+      }
+    },
+    "shell.loadFailed.retry" : {
+      "comment" : "Button on the full-page error that reloads the member's activities",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Try again"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inténtalo de nuevo"
+          }
+        }
+      }
+    },
+    "shell.loadFailed.title" : {
+      "comment" : "Full-page error title when the member's activities could not be loaded; the message under it says what failed",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Something went wrong"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algo salió mal"
+          }
+        }
+      }
+    },
+    "shell.myEventsUnavailable.action" : {
+      "comment" : "Button that opens the Home tab from the unavailable My Events tab",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Go to Home"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir a Inicio"
+          }
+        }
+      }
+    },
+    "shell.myEventsUnavailable.message" : {
+      "comment" : "Hint under My Events isn’t available yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You can browse company events from Home."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puedes ver los eventos de la empresa desde Inicio."
+          }
+        }
+      }
+    },
+    "shell.myEventsUnavailable.title" : {
+      "comment" : "My Events tab when joined events cannot be shown yet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "My Events isn’t available yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis eventos aún no está disponible"
           }
         }
       }

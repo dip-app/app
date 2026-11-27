@@ -115,7 +115,7 @@ struct DIPMyEventsScreen: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(.horizontal, 20).padding(.bottom, DIPDuoPaneLayout.bottomClearance(open: duoOpen || tabsInRail))
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).dipTopEdgeFade()
         .frame(width: width)
         // The page that is off screen is not an accessibility target (VoiceOver would scroll the pager under
         // the user); the toggle, with its selected trait, is how VoiceOver switches pages.
@@ -181,17 +181,19 @@ struct DIPMyEventsScreen: View {
                             // The card grows with its text; the photo fills whatever size it ends up.
                             DIPMedia(event.image).resizable().scaledToFill()
                                 .overlay(.black.opacity(event.imageShade))
+                                .overlay { DIPPhotoScrim(height: 120) }
                         } else {
                             DIPMedia(event.image)
                                 .resizable().scaledToFill().frame(width: width, height: 246)
                                 .overlay(.black.opacity(event.imageShade))
+                                .overlay { DIPPhotoScrim(height: 120) }
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .contentShape(RoundedRectangle(cornerRadius: 20))
                     .dipDuoSelectionRing(duoSelectedEvent == event.id)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DIPCardPressStyle())
                 .accessibilityLabel("\(event.title), \(event.locality.replacingOccurrences(of: "\n", with: ", "))")
                 .accessibilityHint("Opens the event page")
                 .accessibilityIdentifier("events.card.\(event.id)")
@@ -276,11 +278,12 @@ struct DIPMyEventsScreen: View {
                     }
                 }
                 .overlay(.black.opacity(memory.imageShade))
+                .overlay { DIPPhotoScrim() }
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .contentShape(RoundedRectangle(cornerRadius: 20))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DIPCardPressStyle())
         .accessibilityLabel("View album, \(memory.title), \(memory.locality.replacingOccurrences(of: "\n", with: ", "))")
         .accessibilityHint("Opens the photo album")
         .accessibilityIdentifier("events.album.\(index)")

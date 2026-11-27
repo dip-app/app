@@ -16,9 +16,12 @@ public actor DIPMockRepository: DIPRepository {
     private var snapshot: DIPAppSnapshot
     private var observers: [UUID: AsyncThrowingStream<DIPAppSnapshot, Error>.Continuation] = [:]
     private var failures: [DIPMockOperation: String] = [:]
+    /// Review only: how long the first observer waits for its first snapshot (shows the loading state).
+    private var firstSnapshotDelay: Duration
     public var subscriberCount: Int { observers.count }
 
-    public init(initialSnapshot: DIPAppSnapshot = DIPMockFixtures.reference, initiallyJoinedEventIDs: Set<String> = [], initialFailures: [DIPMockOperation: String] = [:]) {
+    public init(initialSnapshot: DIPAppSnapshot = DIPMockFixtures.reference, initiallyJoinedEventIDs: Set<String> = [], initialFailures: [DIPMockOperation: String] = [:], firstSnapshotDelay: Duration = .zero) {
+        self.firstSnapshotDelay = firstSnapshotDelay
         var seed = initialSnapshot
         for id in initiallyJoinedEventIDs.sorted() where seed.eventDetails[id] != nil {
             Self.applyRSVP(eventID: id, going: true, to: &seed)
@@ -38,7 +41,17 @@ public actor DIPMockRepository: DIPRepository {
         continuation.onTermination = { [weak self] _ in
             Task { await self?.removeObserver(id) }
         }
-        continuation.yield(snapshot)
+        if firstSnapshotDelay > .zero {
+            let delay = firstSnapshotDelay
+            firstSnapshotDelay = .zero
+            Task { [weak self] in
+                try? await Task.sleep(for: delay)
+                guard let self else { return }
+                continuation.yield(await self.currentSnapshot())
+            }
+        } else {
+            continuation.yield(snapshot)
+        }
         return stream
     }
 

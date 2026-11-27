@@ -47,4 +47,16 @@ final class EmptyStateFixtureTests: XCTestCase {
             XCTAssertEqual(DIPEmptyStateFixture(rawValue: fixture.rawValue), fixture)
         }
     }
+
+    /// The `--mock-member` app reviews empty states on the dated V1 events: the base keeps its metadata (venue, time,
+    /// capacity) and only the reviewed list is emptied.
+    func testEmptyStateOnAnotherBaseKeepsThatBasesMetadata() throws {
+        let base = DIPMockFixtures.v1Events(now: now)
+        let attendees = DIPMockFixtures.emptyStateReview(.attendees, base: base)
+        let event = try XCTUnwrap(attendees.eventDetails["puppy-yoga"])
+        XCTAssertEqual(event.attendeeCount, 0)
+        XCTAssertNotNil(event.metadata)
+        XCTAssertEqual(event.metadata, base.eventDetails["puppy-yoga"]?.metadata)
+        XCTAssertEqual(DIPMockFixtures.emptyStateReview(.attendees).eventDetails["puppy-yoga"]?.attendeeCount, 0)
+    }
 }

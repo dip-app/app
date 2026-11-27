@@ -27,7 +27,7 @@ struct DIPChallengeSubmissionSection: View {
         case .failed(let message):
             card {
                 DIPEmptyState(screen: "submission-load", title: message, message: String(localized: "challenge.entry.loadFailed.message", defaultValue: "Check your connection and try again.", comment: "Challenge entry load error: hint under the error title"),
-                              actionTitle: String(localized: "challenge.entry.loadFailed.retry", defaultValue: "Try again", comment: "Challenge entry load error: retry button"), action: { DIPHaptics.select(); model.retryLoad() })
+                              tone: .failure, actionTitle: String(localized: "challenge.entry.loadFailed.retry", defaultValue: "Try again", comment: "Challenge entry load error: retry button"), action: { DIPHaptics.select(); model.retryLoad() })
             }
         case .ready:
             if let entry = model.state.submission { card { content(entry) } }

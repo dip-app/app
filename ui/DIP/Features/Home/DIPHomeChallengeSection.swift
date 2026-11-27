@@ -157,7 +157,7 @@ struct DIPChallengeFailureCard: View {
                         .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                         .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DIPPressFeedbackStyle())
                 .accessibilityHint("Reloads this week’s challenge")
                 .accessibilityIdentifier("home.challenge.retry")
             }

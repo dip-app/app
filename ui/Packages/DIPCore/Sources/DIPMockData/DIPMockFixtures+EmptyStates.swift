@@ -27,7 +27,12 @@ public enum DIPEmptyStateFixture: String, CaseIterable, Sendable {
 
 extension DIPMockFixtures {
     public static func emptyStateReview(_ fixture: DIPEmptyStateFixture) -> DIPAppSnapshot {
-        var snapshot = reference
+        emptyStateReview(fixture, base: reference)
+    }
+
+    /// The same empty state applied to another fixture (the `--mock-member` app starts from `v1Events()`).
+    public static func emptyStateReview(_ fixture: DIPEmptyStateFixture, base: DIPAppSnapshot) -> DIPAppSnapshot {
+        var snapshot = base
         switch fixture {
         case .homeEvents:
             let upcoming = snapshot.eventDetails.values.filter { !$0.isPast }.map(\.id)

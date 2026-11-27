@@ -32,7 +32,7 @@ struct DIPDetailHeader: View {
                     DIPReferenceAssets.image("event_BackButton").resizable()
                         .frame(width: 50, height: 50)
                 }
-                .buttonStyle(.plain).accessibilityLabel("Back")
+                .buttonStyle(DIPIconPressStyle()).accessibilityLabel("Back")
                 .accessibilityIdentifier("\(identifierPrefix).back")
             }
             if dynamicTypeSize.isAccessibilitySize { EmptyView() } else { Spacer(minLength: 10) }

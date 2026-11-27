@@ -60,7 +60,7 @@ struct DIPParticipantsScreen: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 122)
                     }
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).dipTopEdgeFade()
                 }
                 .padding(.bottom, 22)
                 if showsBottomBar {
@@ -74,7 +74,7 @@ struct DIPParticipantsScreen: View {
                             .background(DIPTokens.Color.actionPrimary.swiftUIColor, in: Capsule())
                             .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(DIPPressFeedbackStyle())
                     .padding(.horizontal, 20)
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 61)
                     .accessibilityIdentifier("participants.chat")
@@ -94,7 +94,7 @@ struct DIPParticipantsScreen: View {
                     .frame(width: 50, height: 50)
                     .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(DIPIconPressStyle())
             .accessibilityLabel("Close participants")
             .accessibilityIdentifier("participants.back")
             Spacer(minLength: 10)

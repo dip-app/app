@@ -357,6 +357,10 @@ struct DIPPrototypeApp: View {
                         // Folded Duo: the tabs are in the sensor-column rail; only an action (Join, Chat…) uses the bar.
                         duoActionBar.frame(maxHeight: .infinity, alignment: .bottom)
                     } else {
+                        // Scrolled content dissolves before it reaches the bar instead of sliding under it.
+                        DIPEdgeFade.floatingBar
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                            .ignoresSafeArea()
                         DIPFloatingNavigation(
                             selected: selectedTab, action: bottomAction,
                             onSelect: selectTab, onAction: performBottomAction
@@ -458,24 +462,33 @@ struct DIPPrototypeApp: View {
     @ViewBuilder private var loadedPages: some View {
         if let snapshot = model.snapshot {
             VStack(spacing: 0) {
-                if model.loadError != nil {
-                    Button("Updates paused — Retry") { observationID = UUID() }
-                        .font(.footnote).padding(.top, 50)
-                        .accessibilityIdentifier("data.retry")
-                }
                 tabPages(snapshot)
             }
             .overlay(alignment: .top) { fixedHeader(snapshot) }
-        } else if model.isLoading {
-            ProgressView("Loading…").frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ContentUnavailableView {
-                Label("Couldn’t load your activities", systemImage: "wifi.exclamationmark")
-            } description: {
-                Text(model.loadError ?? String(localized: "shell.loadFailed.fallback", defaultValue: "Please try again.", comment: "Fallback message under the Couldn’t load your activities error when no reason is known"))
-            } actions: {
-                Button("Retry") { observationID = UUID() }.accessibilityIdentifier("data.retry")
+            // Stale data: a small pill under the header instead of a line that pushed the whole page down.
+            .overlay(alignment: .top) {
+                if model.loadError != nil {
+                    DIPPausedPill { observationID = UUID() }
+                        .padding(.top, topInset + 56)
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                }
             }
+            .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: model.loadError != nil)
+        } else if model.isLoading {
+            // Shaped like the tab page that is about to appear (no spinner for page content).
+            DIPPageSkeleton(.tab, topInset: topInset)
+        } else {
+            DIPEmptyState(
+                screen: "shell-load",
+                title: String(localized: "shell.loadFailed.title", defaultValue: "Something went wrong", comment: "Full-page error title when the member's activities could not be loaded; the message under it says what failed"),
+                message: model.loadError ?? String(localized: "shell.loadFailed.fallback", defaultValue: "Please try again.", comment: "Fallback message under the Couldn’t load your activities error when no reason is known"),
+                tone: .failure,
+                actionTitle: String(localized: "shell.loadFailed.retry", defaultValue: "Try again", comment: "Button on the full-page error that reloads the member's activities"),
+                action: { observationID = UUID() })
+            .padding(.horizontal, 20)
+            // Where the page's first section would be (under the header area), not floating mid-screen.
+            .padding(.top, topInset + 70)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -524,8 +537,14 @@ struct DIPPrototypeApp: View {
                     calendarOverlaps: calendarOverlaps))
             case .events:
                 if participationUnavailable {
-                    AnyView(ContentUnavailableView("My Events isn’t available yet", systemImage: "calendar",
-                        description: Text("You can browse company events from Home.")))
+                    AnyView(DIPEmptyState(
+                        screen: "my-events-unavailable",
+                        title: String(localized: "shell.myEventsUnavailable.title", defaultValue: "My Events isn’t available yet", comment: "My Events tab when joined events cannot be shown yet"),
+                        message: String(localized: "shell.myEventsUnavailable.message", defaultValue: "You can browse company events from Home.", comment: "Hint under My Events isn’t available yet"),
+                        actionTitle: String(localized: "shell.myEventsUnavailable.action", defaultValue: "Go to Home", comment: "Button that opens the Home tab from the unavailable My Events tab"),
+                        action: { selectTab(.home) })
+                        .padding(.horizontal, 20).padding(.top, topInset + 70)
+                        .frame(maxHeight: .infinity, alignment: .top))
                 } else { AnyView(DIPMyEventsScreen(
                     activeEvents: lists.upcoming, memories: lists.past,
                     unreadCount: bellCount(snapshot), profileAvatar: snapshot.home.profileAvatar,
@@ -1068,15 +1087,41 @@ struct DIPPrototypeApp: View {
                         loadOriginal: readsOriginalPhotos ? { try await model.originalPhotoData(eventID: id, photoID: $0) } : nil)
                 } else { missingResource }
             }
-        } else { ProgressView("Loading…") }
+        } else {
+            // Shaped like the page being opened; the root tab page shows the same placeholder style.
+            // Pages draw edge to edge and inset themselves by topInset, so the placeholder does the same.
+            Group {
+                switch route {
+                case .album: DIPPageSkeleton(.grid, topInset: topInset + 62)
+                default: DIPPageSkeleton(.detail, topInset: topInset)
+                }
+            }
+            // Back stays real while the page loads, so a stalled load never traps the member.
+            .overlay(alignment: .topLeading) {
+                Button(action: pop) {
+                    DIPReferenceAssets.image("event_BackButton").resizable().frame(width: 50, height: 50)
+                }
+                .buttonStyle(DIPIconPressStyle())
+                .accessibilityLabel(Text("Back"))
+                .accessibilityIdentifier("loading.back")
+                .padding(.top, topInset).padding(.leading, 20)
+            }
+            .ignoresSafeArea()
+        }
     }
 
     private var missingResource: some View {
-        ContentUnavailableView {
-            Label("Activity unavailable", systemImage: "calendar.badge.exclamationmark")
-        } description: {
-            Text(EventBarAction.unavailableReason(updatesPaused: model.loadError != nil))
-        } actions: { Button("Back", action: pop) }
+        VStack(spacing: 0) {
+            DIPEmptyState(
+                screen: "activity-unavailable",
+                title: String(localized: "shell.activityUnavailable.title", defaultValue: "Activity unavailable", comment: "Page shown when an opened activity no longer exists or cannot be loaded"),
+                message: EventBarAction.unavailableReason(updatesPaused: model.loadError != nil),
+                actionTitle: String(localized: "shell.activityUnavailable.back", defaultValue: "Back", comment: "Button that leaves the Activity unavailable page"),
+                action: pop)
+        }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white)
     }
 
     // MARK: Open Duo (inner display): rail, list pane and detail pane
@@ -1254,6 +1299,8 @@ struct DIPPrototypeApp: View {
                 .disabled(isRSVPPending)
                 .padding(.horizontal, 20)
                 .padding(.bottom, DIPFloatingNavigation.barCenterInset - DIPFloatingNavigation.height / 2)
+                // The pane's content dissolves above the bar (same fade as the phone shell).
+                .background(alignment: .bottom) { DIPEdgeFade.floatingBar.padding(.horizontal, -20) }
         }
     }
 
