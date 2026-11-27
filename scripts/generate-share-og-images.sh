@@ -28,11 +28,13 @@ render() { # name, cover jpg path (empty for the generic image)
 </svg>
 SVG
   else
+    # Generic image: clover above the wordmark, both inside the centered 630x630 square, so WhatsApp's and iMessage's
+    # square crops keep the whole mark.
     cat > "$TMP/$name.svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
 <rect width="1200" height="630" fill="#7B88FA"/>
-<g transform="translate(150 55) scale(0.5)">$CLOVER</g>
-<text x="690" y="385" font-family="$FONT" font-weight="800" font-size="200" fill="#FFFFFF">DIP</text>
+<g transform="translate(415 46) scale(0.36)">$CLOVER</g>
+<text x="600" y="548" text-anchor="middle" font-family="$FONT" font-weight="800" font-size="150" letter-spacing="4" fill="#FFFFFF">DIP</text>
 </svg>
 SVG
   fi

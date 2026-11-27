@@ -16,3 +16,10 @@ export const APP_STORE_ID = "";
  * APP_STORE_ID is set AND `apps/landing/img/app-store-badge.svg` (downloaded from Apple Marketing Tools) exists.
  */
 export const USE_OFFICIAL_APP_STORE_BADGE = false;
+
+/**
+ * Public TestFlight invitation link (`https://testflight.apple.com/join/<code>`) for the open beta, or empty. When set and
+ * APP_STORE_ID is still empty, the landing page's button and the share page's "New to DIP?" line point at it. Never
+ * invent one: copy it from App Store Connect, TestFlight, External Testing, Public Link.
+ */
+export const TESTFLIGHT_URL = "";

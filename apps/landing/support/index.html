@@ -4,57 +4,118 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Support | DIP</title>
-<meta name="description" content="Get help with DIP.">
+<meta name="description" content="Get help with DIP: how to reach us and quick answers to common questions.">
 <link rel="canonical" href="https://letsdip.work/support/">
-<meta name="theme-color" content="#7B88FA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14161D" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta property="og:site_name" content="DIP">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://letsdip.work/support/">
+<meta property="og:title" content="DIP Support">
+<meta property="og:description" content="Get help with DIP: how to reach us and quick answers to common questions.">
+<meta property="og:image" content="https://letsdip.work/img/landing/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The DIP logo and the headline Get out of the office. Do something together.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/landing/logo.svg" type="image/svg+xml">
 <link rel="icon" href="/img/landing/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/img/landing/apple-touch-icon.png" sizes="180x180">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/img/landing/site.webmanifest">
+<link rel="preload" href="/img/landing/fjalla-one.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/img/landing/figtree.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  :root { --purple:#7B88FA; --ink:#1E212B; --bg:#FFFFFF; --text:var(--ink); --muted:rgba(30,33,43,.66); --line:rgba(123,136,250,.45); }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#14161D; --text:#F4F5FA; --muted:rgba(244,245,250,.68); } }
+  @font-face { font-family: "Figtree"; src: url(/img/landing/figtree.woff2) format("woff2"); font-weight: 300 900; font-display: swap; }
+  @font-face { font-family: "Fjalla One"; src: url(/img/landing/fjalla-one.woff2) format("woff2"); font-display: swap; }
+  @font-face { font-family: "Fjalla Fallback"; src: local("Impact"); size-adjust: 97%; ascent-override: 100.9%; descent-override: 24.8%; line-gap-override: 0%; }
+  @font-face { font-family: "Fjalla Fallback Arial"; src: local("Arial"); size-adjust: 69.4%; ascent-override: 100.9%; descent-override: 24.8%; line-gap-override: 0%; }
+  @font-face { font-family: "Figtree Fallback"; src: local("Arial"); size-adjust: 99.9%; ascent-override: 95%; descent-override: 25%; line-gap-override: 0%; }
+  :root {
+    --display: "Fjalla One", "Fjalla Fallback", "Fjalla Fallback Arial", sans-serif;
+    --body: Figtree, "Figtree Fallback", -apple-system, system-ui, sans-serif;
+    --bg: #FFFFFF; --text: #1E212B; --muted: rgba(30,33,43,.72); --link: #4A56D6;
+    --line: rgba(123,136,250,.45); --tint: rgba(123,136,250,.08); --hairline: rgba(30,33,43,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14161D; --text: #F4F5FA; --muted: rgba(244,245,250,.72); --link: #A3ACFC; --line: rgba(123,136,250,.55); --tint: rgba(123,136,250,.12); --hairline: rgba(244,245,250,.14); }
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { background: var(--bg); color: var(--text); font: 400 17px/1.6 Figtree, -apple-system, system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
-  .wrap { width: min(760px, 100%); margin: 0 auto; padding: 0 20px; }
-  header { padding: 22px 0 0; }
-  .logo { display: inline-flex; align-items: center; gap: 12px; font-family: "Fjalla One", Impact, sans-serif; font-size: 34px; line-height: 1; letter-spacing: .02em; text-decoration: none; color: var(--text); }
+  body { background: var(--bg); color: var(--text); font: 400 17px/1.65 var(--body); min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; -webkit-text-size-adjust: 100%; }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; border-radius: 6px; }
+  .wrap { width: min(1080px, 100%); margin: 0 auto; padding: 0 max(20px, env(safe-area-inset-left)); }
+  .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; }
+  .logo { display: inline-flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 34px; line-height: 1; letter-spacing: .02em; text-decoration: none; color: var(--text); min-height: 46px; }
   .logo img { width: 46px; height: 46px; display: block; }
-  main { flex: 1; padding: 28px 0 56px; }
-  h1 { font-family: "Fjalla One", Impact, sans-serif; font-weight: 400; font-size: clamp(36px, 6vw, 56px); line-height: 1.05; margin: 0 0 6px; text-transform: uppercase; }
-  h2 { font-family: "Fjalla One", Impact, sans-serif; font-weight: 400; font-size: 26px; margin: 34px 0 8px; text-transform: uppercase; }
-  .meta { color: var(--muted); margin: 0 0 24px; }
-  p, li { max-width: 40em; }
+  .header-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0 0 4px; font-size: 15px; font-weight: 600; color: var(--text); text-decoration: none; }
+  .header-link:hover { color: var(--link); text-decoration: underline; }
+  main { flex: 1; padding: 40px 0 64px; }
+  .prose { max-width: 680px; margin: 0 auto; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(38px, 6vw, 56px); line-height: 1.05; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .005em; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.2; margin: 40px 0 10px; text-transform: uppercase; letter-spacing: .01em; }
+  .meta { color: var(--muted); margin: 0 0 28px; font-size: 15px; }
+  p, ul { margin: 0 0 16px; }
   ul { padding-left: 22px; }
-  a { color: var(--purple); }
-  table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 8px 0; }
-  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  li { margin: 0 0 10px; }
+  li::marker { color: var(--link); }
+  .table { margin: 8px 0 16px; border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.5; }
+  th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-top: 1px solid var(--hairline); }
+  tr:first-child th { border-top: 0; background: var(--tint); }
   th { font-weight: 600; }
-  footer { padding: 22px 0 32px; color: var(--muted); font-size: 15px; }
-  footer a { color: var(--muted); }
+  td:first-child { width: 55%; }
+  .contact { margin: 8px 0 0; padding: 18px 20px; border: 1.5px solid var(--line); background: var(--tint); border-radius: 16px; }
+  .contact p { margin: 0; }
+  .contact a { font-weight: 600; }
+  .site-footer { border-top: 1px solid var(--hairline); }
+  .site-footer .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px; padding-top: 14px; padding-bottom: max(18px, env(safe-area-inset-bottom)); font-size: 14px; color: var(--muted); }
+  .site-footer nav ul { display: flex; flex-wrap: wrap; gap: 0 20px; margin: 0; padding: 0; list-style: none; }
+  .site-footer li { margin: 0; }
+  .site-footer li::marker { content: none; }
+  .site-footer nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); }
+  .site-footer nav a:hover, .site-footer nav a[aria-current] { color: var(--text); }
+  .site-footer small { font-size: 14px; }
+  @media (max-width: 560px) {
+    main { padding-top: 28px; }
+    body { font-size: 16.5px; }
+    th, td { padding: 10px 12px; }
+    td:first-child { width: auto; }
+    .header-link { font-size: 14px; }
+  }
 </style>
 </head>
 <body>
-<header><div class="wrap"><a class="logo" href="/"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a></div></header>
-<main><div class="wrap">
+<header class="site-header"><div class="wrap">
+  <a class="logo" href="/" aria-label="DIP home"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a>
+  <a class="header-link" href="/admin/">Admin portal</a>
+</div></header>
+<main><div class="wrap"><article class="prose">
 <h1>Support</h1>
 <p class="meta">We usually reply within two business days.</p>
 <h2>Contact us</h2>
-<p>Email <a href="mailto:support@letsdip.work">support@letsdip.work</a> and tell us what happened, what device and iOS version you use, and what you expected to happen.</p>
+<div class="contact"><p>Email <a href="mailto:support@letsdip.work">support@letsdip.work</a> and tell us what happened, what device and iOS version you use, and what you expected to happen.</p></div>
 
 <h2>Quick answers</h2>
 <ul>
-<li><strong>I can't sign in.</strong> DIP signs in with a Google account. Use your work email. If your company's domain isn't recognized yet, ask your DIP administrator to check the company setup.</li>
+<li><strong>How do I get the app?</strong> DIP is in private beta on iPhone for invited companies. If your company uses DIP, ask your DIP admin how to join the beta.</li>
+<li><strong>I can't sign in.</strong> DIP signs in with a Google account. Use your work email. If your company's domain isn't recognized yet, ask your DIP admin to check the company setup.</li>
 <li><strong>I don't see any events.</strong> Pull down on Home to refresh. Events are only shown to people at your company.</li>
 <li><strong>Something looks broken.</strong> Shake your phone to send a bug report with a screenshot straight from the app.</li>
 <li><strong>Photos won't upload.</strong> Check your connection and tap retry on the photo. Uploads continue when you are back online.</li>
 <li><strong>Delete my account or data.</strong> Email us from your sign-in address and we will take care of it. See the <a href="/privacy/">Privacy Policy</a>.</li>
 </ul>
-</div></main>
-<footer><div class="wrap">&copy; DIP &middot; <a href="/privacy/">Privacy</a> &middot; <a href="/support/">Support</a></div></footer>
+</article></div></main>
+<footer class="site-footer"><div class="wrap">
+  <small>&copy; 2026 DIP</small>
+  <nav aria-label="Site"><ul>
+    <li><a href="/privacy/">Privacy</a></li>
+    <li><a href="/support/" aria-current="page">Support</a></li>
+    <li><a href="mailto:support@letsdip.work">support@letsdip.work</a></li>
+  </ul></nav>
+</div></footer>
 </body>
 </html>

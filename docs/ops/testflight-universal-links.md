@@ -16,8 +16,8 @@ Everything here needs the paid Apple Developer Program team. None of it is done 
 - [ ] Entitlements check: `applinks:letsdip.work` is in the file (it must match `DIPShareLink.baseURL`'s host). No `applinks:team05-dip.web.app`: Apple does not follow redirects for the association file.
 - [ ] Deploy hosting `letsdip` after approval ([runbook](deploy-runbook.md#hosting)); then `curl -si https://letsdip.work/.well-known/apple-app-site-association` must return 200, `application/json`, no redirect, and the right app ID.
 - [ ] On a physical device (Universal Links do not work in the simulator reliably): install the build, tap a `https://letsdip.work/e/<id>` link in Notes or Messages (typing it in Safari's address bar does not trigger it): the app opens the event for a member of that company; "Activity unavailable" for another company. Long-press the link: "Open in DIP" is offered. Delete and reinstall the app if iOS cached an older association file; Apple's CDN can take a few hours to refresh.
-- [ ] Not installed: the link opens the share page with a preview and "Get the app".
-- [ ] `dip://events/<id>` (landing "Get the app" and notification deep links) opens the app.
+- [ ] Not installed: the link opens the share page with a preview and "Open in DIP"; after a tap, a notice says DIP may not be installed.
+- [ ] `dip://events/<id>` (share page "Open in DIP", landing "Open the app" and notification deep links). Confirm the hidden-frame launch still works in current iOS Safari; if it does not, the share and landing scripts need a direct `location` navigation instead. opens the app.
 
 ## C. Build and upload
 
