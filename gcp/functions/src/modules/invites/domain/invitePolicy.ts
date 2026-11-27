@@ -1,6 +1,7 @@
 import type { Locale } from "../../i18n";
 import { inviteNotice } from "../../notifications/domain/notices";
 import { InviteError } from "./errors";
+import { isRole } from "../../admin/domain/permissions";
 
 export const MESSAGE_MAX = 200;
 export const SEND_LIMIT = 20;
@@ -18,7 +19,7 @@ const REQUEST_ID = /^[A-Za-z0-9_-]{8,128}$/;
 /** A member who may take part: same company, a known role (organizers included) and not deactivated. */
 export function isActiveMember(member: Record<string, unknown> | null | undefined, companyId: string): member is Record<string, unknown> {
   return !!member && member.companyId === companyId && member.status !== "deactivated" &&
-    (member.role === "member" || member.role === "organizer" || member.role === "admin");
+    isRole(member.role);
 }
 
 export const validWireId = (value: unknown): value is string =>

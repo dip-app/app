@@ -70,6 +70,11 @@ final class ProfileDataTests: XCTestCase {
         XCTAssertNil(try AccountDocumentMapper.decode(id: "u1", fields: fields([:]))?.locale)
         XCTAssertEqual(try AccountDocumentMapper.decode(id: "u1", fields: fields(["locale": "es"]))?.locale, "es")
         XCTAssertNil(try AccountDocumentMapper.decode(id: "u1", fields: fields(["locale": 7]))?.locale)   // malformed: English
+        // Organizers and admins sign in to the app as full members; an unknown role fails closed.
+        for role in ["member", "organizer", "admin"] {
+            XCTAssertEqual(try AccountDocumentMapper.decode(id: "u1", fields: fields(["role": role]))?.role, role)
+        }
+        XCTAssertThrowsError(try AccountDocumentMapper.decode(id: "u1", fields: fields(["role": "owner"])))
     }
 
     @MainActor

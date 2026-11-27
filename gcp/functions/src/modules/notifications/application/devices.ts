@@ -2,6 +2,7 @@ import type { RegisterDeviceResponse, UnregisterDeviceResponse } from "../../../
 import { MAX_DEVICES_PER_USER, parseRegisterDevice, parseUnregisterDevice, tokenHash } from "../domain/device";
 import { NotificationsError } from "../domain/errors";
 import type { Caller, DeviceRegistry } from "./ports";
+import { isRole } from "../../admin/domain/permissions";
 
 function requireGoogleCaller(caller: Caller | null): Caller {
   if (!caller) throw new NotificationsError("unauthenticated", "UNAUTHENTICATED", "Sign in again.");
@@ -22,7 +23,7 @@ export async function registerDevice(registry: DeviceRegistry, caller: Caller | 
   const hash = tokenHash(request.token);
   return registry.runTransaction(async (tx) => {
     const member = await tx.getMember(authenticated.uid);
-    if (!member || !member.companyId || (member.role !== "member" && member.role !== "admin")) {
+    if (!member || !member.companyId || !isRole(member.role)) {
       throw new NotificationsError("permission-denied", "MEMBERSHIP_REQUIRED", "Company membership required.");
     }
     if (member.status === "deactivated") {
