@@ -163,13 +163,16 @@ struct DIPProfileScreen: View {
             reportProblem(presentBugReport)
         }
         if let onSignOut {
-            DIPButton(isSigningOut ? String(localized: "profile.signOut.working", defaultValue: "Signing out…", comment: "Profile: sign out button while signing out") : String(localized: "profile.signOut", defaultValue: "Sign out", comment: "Profile: sign out button"), emphasis: .secondary,
-                isLoading: isSigningOut) {
+            // VIS-3: a session-ending action reads as destructive text, apart from the neutral "Report a problem" pill.
+            DIPTextActionRow(
+                title: isSigningOut ? String(localized: "profile.signOut.working", defaultValue: "Signing out…", comment: "Profile: sign out button while signing out") : String(localized: "profile.signOut", defaultValue: "Sign out", comment: "Profile: sign out button"),
+                systemImage: "rectangle.portrait.and.arrow.right", role: .destructive, centered: true) {
                 guard !isSigningOut else { return }
                 DIPHaptics.commit()
                 isSigningOut = true
                 Task { await onSignOut(); isSigningOut = false }
             }
+            .disabled(isSigningOut)
             .accessibilityIdentifier("profile.signout")
         }
     }

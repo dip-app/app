@@ -315,7 +315,7 @@ struct DIPHomeScreen: View {
 
     private var recentAttendees: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(String(localized: "home.recents.title", defaultValue: "Attended Your Recent Events:", comment: "Home section heading above the avatars of coworkers who attended recent events"))
+            sectionTitle(String(localized: "home.recents.title", defaultValue: "Attended Your Recent Events", comment: "Home section heading above the avatars of coworkers who attended recent events"))
             if home.recentAttendeeAvatars.isEmpty {
                 DIPEmptyState(
                     screen: "home-recents", title: String(localized: "home.recents.empty.title", defaultValue: "Events you’ve attended will show up here", comment: "Home empty state title for the recent attendees section"),

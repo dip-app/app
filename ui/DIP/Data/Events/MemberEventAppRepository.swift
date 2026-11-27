@@ -180,13 +180,15 @@ import DIPAccounts
         // The open event's album starts as soon as the event is known to have ended (it may load or end after opening).
         if let id = detailID, albumEventID != id, isPastEvent(id) { syncAlbum(id) }
         var details: [String: DIPEventDetail] = [:]
-        let badgeDate = Self.badgeDateFormatter()
+        // Relative to now for upcoming events ("Tomorrow, 7:30 PM"); past ones keep the absolute date.
+        let now = clock()
+        let dateText = DIPEventDateText(now: now)
         for (id, event) in joinedRecords.merging(records, uniquingKeysWith: { _, feed in feed }) {
             guard let metadata = try? MemberEventsRepository.metadata(event) else { continue }
             // V1-08: category-based default image from the approved catalog URL (falls back to tags).
             details[id] = DIPEventDetail(id: id, title: event.title,
                 image: DIPEventCover.media(coverImageURL: event.coverImageURL, tagIds: event.tagIds, photo: coverData(id)),
-                timing: badgeDate.string(from: event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
+                timing: event.endTime <= now ? dateText.absolute(event.startTime) : dateText.string(event.startTime), description: event.description, tags: event.tagIds.compactMap { tagLabels[$0] },
                 isJoined: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.isGoing : joinedIDs.contains(id),
                 attendeeCount: rsvpStates[id]?.pending != nil ? rsvpStates[id]!.attendeeCount : event.attendeeCount, attendeeAvatars: (participants[id] ?? previews[id] ?? []).prefix(5).map(\.avatar),
                 isPast: event.endTime <= clock() || event.status == "completed", metadata: metadata, tagIDs: event.tagIds)
@@ -408,18 +410,6 @@ import DIPAccounts
         return [id: DIPAlbum(id: id, eventID: id, title: event.title, photos: photos,
                              canAddPhotos: canUpload(id),
                              remainingUploads: remaining, isLoaded: albumLoaded, loadError: albumError)]
-    }
-
-    /// Reused across publishes (rebuilt only when the locale or time zone changes): formatters are costly to create.
-    private static var cachedBadgeFormatter: (key: String, formatter: DateFormatter)?
-    private static func badgeDateFormatter() -> DateFormatter {
-        let key = Locale.current.identifier + "|" + TimeZone.current.identifier
-        if let cached = cachedBadgeFormatter, cached.key == key { return cached.formatter }
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("MMMdjm")
-        cachedBadgeFormatter = (key, formatter)
-        return formatter
     }
 
     /// Same rule `publish` uses for `DIPEventDetail.isPast`; false while the event is not loaded.

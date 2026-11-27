@@ -69,39 +69,43 @@ struct DIPNotificationsScreen: View {
 
     // MARK: Controls
 
+    /// Invitations (N) is the sheet's one solid control; "Mark all as read" is a text button on the first day header.
     @ViewBuilder private var controls: some View {
-        let showInvites = invitesWaiting != nil
-        let showMarkAll = model.phase == .ready && model.hasUnread
-        if showInvites || showMarkAll {
+        if invitesWaiting != nil || model.markAllError != nil {
             VStack(alignment: .leading, spacing: 8) {
-                // Side by side (half width each); stacked only at accessibility text sizes.
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(spacing: 10) { buttons(showInvites: showInvites, showMarkAll: showMarkAll) }
-                } else {
-                    HStack(spacing: 10) { buttons(showInvites: showInvites, showMarkAll: showMarkAll) }
-                }
+                if invitesWaiting != nil { invitationsButton }
                 if let error = model.markAllError { InviteNotice(text: error, identifier: "notifications.markall.error") }
             }
         }
     }
 
-    @ViewBuilder private func buttons(showInvites: Bool, showMarkAll: Bool) -> some View {
-        if showInvites {
-            pill(invitesWaiting.map { $0 > 0 ? String(localized: "notifications.invitations.count", defaultValue: "Invitations (\($0))", comment: "Notifications: invitations button with a count; %lld = invitations waiting for an answer") : String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list") } ?? String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list"),
-                 identifier: "notifications.invitations", chevron: true) { DIPHaptics.navigate(); onOpenInvitations() }
-                .accessibilityLabel(invitesWaiting.map { $0 > 0 ? String(localized: "notifications.invitations.a11y", defaultValue: "Invitations, \($0) waiting for an answer", comment: "VoiceOver label of the invitations button; %lld = invitations waiting for an answer") : String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list") } ?? String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list"))
-        }
-        if showMarkAll {
-            pill(model.isMarkingAll ? String(localized: "notifications.markAll.working", defaultValue: "Marking…", comment: "Notifications: mark-all button while working") : String(localized: "notifications.markAll", defaultValue: "Mark all as read", comment: "Notifications: button that marks every notification as read"), identifier: "notifications.markall") {
-                DIPHaptics.commit()
-                Task {
-                    let done = await model.markAllRead()
-                    if done { DIPHaptics.success(); AccessibilityNotification.Announcement(String(localized: "notifications.markAll.announce", defaultValue: "All notifications marked as read", comment: "VoiceOver announcement after marking all notifications read")).post() }
-                    else { DIPHaptics.failure() }
-                }
+    private var invitationsButton: some View {
+        pill(invitesWaiting.map { $0 > 0 ? String(localized: "notifications.invitations.count", defaultValue: "Invitations (\($0))", comment: "Notifications: invitations button with a count; %lld = invitations waiting for an answer") : String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list") } ?? String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list"),
+             identifier: "notifications.invitations", chevron: true) { DIPHaptics.navigate(); onOpenInvitations() }
+            .accessibilityLabel(invitesWaiting.map { $0 > 0 ? String(localized: "notifications.invitations.a11y", defaultValue: "Invitations, \($0) waiting for an answer", comment: "VoiceOver label of the invitations button; %lld = invitations waiting for an answer") : String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list") } ?? String(localized: "notifications.invitations", defaultValue: "Invitations", comment: "Notifications: button that opens the invitations list"))
+    }
+
+    /// Secondary text action, trailing on the first day header (44 pt target).
+    private var markAllButton: some View {
+        Button {
+            DIPHaptics.commit()
+            Task {
+                let done = await model.markAllRead()
+                if done { DIPHaptics.success(); AccessibilityNotification.Announcement(String(localized: "notifications.markAll.announce", defaultValue: "All notifications marked as read", comment: "VoiceOver announcement after marking all notifications read")).post() }
+                else { DIPHaptics.failure() }
             }
-            .disabled(model.isMarkingAll)
+        } label: {
+            Text(model.isMarkingAll ? String(localized: "notifications.markAll.working", defaultValue: "Marking…", comment: "Notifications: mark-all button while working") : String(localized: "notifications.markAll", defaultValue: "Mark all as read", comment: "Notifications: button that marks every notification as read"))
+                .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline).weight(.semibold))
+                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                .underline()
+                .multilineTextAlignment(.trailing)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(DIPRowPressStyle(cornerRadius: 8))
+        .disabled(model.isMarkingAll)
+        .accessibilityIdentifier("notifications.markall")
     }
 
     private func pill(_ title: String, identifier: String, chevron: Bool = false, action: @escaping () -> Void) -> some View {
@@ -215,15 +219,22 @@ struct DIPNotificationsScreen: View {
         return VStack(alignment: .leading, spacing: 18) {
             ForEach(sections, id: \.group) { section in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(section.group.localizedTitle)
-                        .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
-                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
-                        .accessibilityAddTraits(.isHeader)
-                        .accessibilityIdentifier("notifications.section.\(section.group.rawValue.lowercased())")
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(section.group.localizedTitle)
+                            .font(DIPReferenceAssets.font("Figtree-Regular", size: 18, relativeTo: .headline))
+                            .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.7))
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("notifications.section.\(section.group.rawValue.lowercased())")
+                        Spacer(minLength: 0)
+                        if section.group == sections.first?.group, model.hasUnread { markAllButton }
+                    }
+                    .frame(minHeight: 44)
                     ForEach(section.items) { item in
-                        row(item, now: reference)
-                            .staggeredEntrance(index: positions[item.id] ?? 0)
-                            .transition(InviteMotion.entrance(reduceMotion: reduceMotion))
+                        NotificationSwipeToRead(enabled: !item.isRead) { Task { await model.markRead(item.id) } } content: {
+                            row(item, now: reference)
+                        }
+                        .staggeredEntrance(index: positions[item.id] ?? 0)
+                        .transition(InviteMotion.entrance(reduceMotion: reduceMotion))
                     }
                 }
             }
@@ -336,5 +347,67 @@ struct DIPNotificationsScreen: View {
         case .album: String(localized: "notifications.hint.album", defaultValue: "Opens the photo album", comment: "VoiceOver hint on a notification that opens a photo album")
         case .none: ""
         }
+    }
+}
+
+/// Swipe an unread notification left to mark it read (the row springs back; the unread dot and tint fade out).
+/// Horizontal drags only: a mostly vertical drag is left to the scroll view. VoiceOver uses the row's "Mark as read" action.
+private struct NotificationSwipeToRead<Content: View>: View {
+    let enabled: Bool
+    let onRead: () -> Void
+    @ViewBuilder let content: () -> Content
+    @State private var offset: CGFloat = 0
+    @State private var isHorizontal: Bool?
+    @State private var suppressTap = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static var threshold: CGFloat { 88 }
+
+    var body: some View {
+        content()
+            // Once the drag reads as a swipe the row's own tap is cancelled, so lifting the finger does not also open it.
+            .disabled(suppressTap)
+            .offset(x: offset)
+            .background(alignment: .trailing) {
+                if offset < 0 {
+                    // Only the uncovered strip is drawn, so the unread row's translucent tint does not turn purple.
+                    RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous)
+                        .fill(DIPTokens.Color.actionPrimary.swiftUIColor)
+                        .frame(width: -offset)
+                        .overlay {
+                            Label(String(localized: "notifications.swipe.read", defaultValue: "Mark as read", comment: "Icon revealed when swiping a notification left to mark it read (named for accessibility tools)"), systemImage: "envelope.open")
+                                .labelStyle(.iconOnly)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .opacity(-offset > 36 ? 1 : 0)
+                                .scaleEffect(-offset >= Self.threshold ? 1.15 : 1)
+                                .animation(DIPMotion.press(reduceMotion: reduceMotion), value: -offset >= Self.threshold)
+                        }
+                        .accessibilityHidden(true)
+                }
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 16)
+                    .onChanged { value in
+                        guard enabled else { return }
+                        if isHorizontal == nil {
+                            isHorizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                        }
+                        guard isHorizontal == true else { return }
+                        if !suppressTap { suppressTap = true }
+                        let dx = min(0, value.translation.width)
+                        // Past the threshold the row resists, so the commit point is felt.
+                        offset = dx < -Self.threshold ? -Self.threshold + (dx + Self.threshold) * 0.35 : dx
+                    }
+                    .onEnded { value in
+                        defer { isHorizontal = nil }
+                        guard enabled, isHorizontal == true else { return }
+                        if value.translation.width < -Self.threshold {
+                            DIPHaptics.commit()
+                            onRead()
+                        }
+                        withAnimation(DIPMotion.press(reduceMotion: reduceMotion)) { offset = 0 }
+                        Task { try? await Task.sleep(for: .milliseconds(350)); suppressTap = false }
+                    },
+                including: enabled ? .all : .subviews)
     }
 }

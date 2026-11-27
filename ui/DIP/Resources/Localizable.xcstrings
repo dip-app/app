@@ -1693,22 +1693,6 @@
         }
       }
     },
-    "Leave Activity" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salir de la actividad"
-          }
-        },
-        "tlh" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Qu' yImej"
-          }
-        }
-      }
-    },
     "Leave activity" : {
       "localizations" : {
         "es" : {
@@ -9294,7 +9278,7 @@
       }
     },
     "event.changes.button" : {
-      "comment" : "Pill that opens the list of organizer edits when there is one edit",
+      "comment" : "Text button that opens the list of organizer edits when there is one edit",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -9318,7 +9302,7 @@
       }
     },
     "event.changes.button.count" : {
-      "comment" : "Pill that opens the list of organizer edits; %lld = number of edits",
+      "comment" : "Text button that opens the list of organizer edits; %lld = number of edits",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -9450,6 +9434,42 @@
         }
       }
     },
+    "event.description.less" : {
+      "comment" : "Text button under a long activity description that collapses it to three lines",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show less"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver menos"
+          }
+        }
+      }
+    },
+    "event.description.more" : {
+      "comment" : "Text button under a long activity description that shows all of it",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Read more"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leer más"
+          }
+        }
+      }
+    },
     "event.duration.hours" : {
       "comment" : "Duration of whole hours in the When row; %lld = hours",
       "extractionState" : "extracted_with_value",
@@ -9522,6 +9542,24 @@
         }
       }
     },
+    "event.facts.timeRange" : {
+      "comment" : "Start and end time under an activity title (the day is in the header pill); first %@ = start time, second %@ = end time",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ – %2$@"
+          }
+        }
+      }
+    },
     "event.invite.accessibility" : {
       "comment" : "VoiceOver label of the invite pill; %@ = activity title",
       "extractionState" : "extracted_with_value",
@@ -9542,6 +9580,24 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%@ vaD jup yIrIt"
+          }
+        }
+      }
+    },
+    "event.leave.row" : {
+      "comment" : "Destructive text button at the bottom of a joined activity page; asks to confirm before leaving",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Leave Activity"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir de la actividad"
           }
         }
       }
@@ -10950,19 +11006,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Attended Your Recent Events:"
+            "value" : "Attended Your Recent Events"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Asistieron a tus eventos recientes:"
+            "value" : "Asistieron a tus eventos recientes"
           }
         },
         "tlh" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "wanI'meylIj chu'qu' jaHpu'bogh:"
+            "value" : "wanI'meylIj chu'qu' jaHpu'bogh"
           }
         }
       }
@@ -12966,6 +13022,24 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "legh'a'be': %1$@. %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "notifications.swipe.read" : {
+      "comment" : "Icon revealed when swiping a notification left to mark it read (named for accessibility tools)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mark as read"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar como leída"
           }
         }
       }

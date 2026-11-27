@@ -17,16 +17,19 @@ public struct DIPEventLists: Equatable, Sendable {
             let right = rhs.metadata!.startTime
             return left == right ? lhs.id < rhs.id : left < right
         }
+        // Built once per projection: formatters are costly to create.
+        let absolute = DateFormatter()
+        absolute.locale = locale
+        absolute.timeZone = timeZone
+        absolute.dateStyle = .medium
+        absolute.timeStyle = .short
+        let relative = DIPEventDateText(now: now, locale: locale, timeZone: timeZone)
         /// Date on the first line, place on the second: a one-line separator could wrap and leave a dangling dot.
-        func label(_ event: DIPEventDetail) -> String {
+        /// Upcoming cards read relative to now ("Tomorrow, 7:30 PM"); memories keep the absolute date with the year.
+        func label(_ event: DIPEventDetail, past: Bool = false) -> String {
             guard let metadata = event.metadata else { return "" }
-            let formatter = DateFormatter()
-            formatter.locale = locale
-            formatter.timeZone = timeZone
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-            return [formatter.string(from: metadata.startTime), metadata.locality]
-                .filter { !$0.isEmpty }.joined(separator: "\n")
+            let date = past ? absolute.string(from: metadata.startTime) : relative.string(metadata.startTime)
+            return [date, metadata.locality].filter { !$0.isEmpty }.joined(separator: "\n")
         }
         func summary(_ event: DIPEventDetail) -> DIPEventSummary {
             .init(id: event.id, title: event.title, locality: label(event), image: event.image,
@@ -42,7 +45,7 @@ public struct DIPEventLists: Equatable, Sendable {
             let right = $1.metadata!.endTime
             return left == right ? $0.id < $1.id : left > right
         }.map {
-            .init(id: $0.id, eventID: $0.id, title: $0.title, locality: label($0), image: $0.image,
+            .init(id: $0.id, eventID: $0.id, title: $0.title, locality: label($0, past: true), image: $0.image,
                   avatars: $0.attendeeAvatars)
         } + snapshot.memories.filter { snapshot.eventDetails[$0.eventID]?.metadata == nil }
     }

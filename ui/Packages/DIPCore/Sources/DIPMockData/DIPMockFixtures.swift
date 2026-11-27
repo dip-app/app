@@ -19,6 +19,7 @@ public enum DIPMockFixtures {
         var snapshot = reference
         let joinedIDs = Set(snapshot.activeEvents.map(\.id) + snapshot.memories.map(\.eventID))
         let orderedIDs = snapshot.eventDetails.keys.sorted()
+        let dateText = DIPEventDateText(now: now)
         for (index, id) in orderedIDs.enumerated() {
             guard var event = snapshot.eventDetails[id] else { continue }
             let start = now.addingTimeInterval(Double(event.isPast ? -(index + 1) : index + 1) * 86_400)
@@ -47,7 +48,7 @@ public enum DIPMockFixtures {
                         DIPFieldChange(field: "capacity", from: "20", to: "30")])]
             }
             event.isJoined = joinedIDs.contains(id)
-            event.timing = start.formatted(date: .abbreviated, time: .shortened)
+            event.timing = event.isPast ? dateText.absolute(start) : dateText.string(start)
             snapshot.eventDetails[id] = event
         }
         let lists = DIPEventLists(snapshot: snapshot, now: now)

@@ -99,7 +99,8 @@ final class EventListsTests: XCTestCase {
         XCTAssertEqual(lists.discovery.filter { $0.id == replacement.id }.count, 1)
         XCTAssertFalse(lists.upcoming.contains { $0.id == replacement.id })
         XCTAssertTrue(lists.discovery.first { $0.id == replacement.id }!.locality.contains("Pittsburgh"))
-        XCTAssertTrue(lists.discovery.first { $0.id == replacement.id }!.locality.contains("2027"))
+        // Starts 10 s after `now`: the card reads relative to today instead of an absolute date with the year.
+        XCTAssertTrue(lists.discovery.first { $0.id == replacement.id }!.locality.hasPrefix("Today, "))
     }
 
     func testV1FixturesHaveStructuredDatesAndConsistentJoinedLists() {

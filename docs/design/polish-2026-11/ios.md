@@ -67,3 +67,10 @@ Done: TOOL-1, IX-1, VIS-1, LAY-1, LAY-2, ST-1, ST-2, ST-3, ST-4, DUO-1 (fade onl
 - Review fixes (design review rounds): Back stays real over the loading skeleton; the gray unavailable bar ("Activity full", "Activity cancelled") uses ink text (white on #CCCCCC was 1.6:1); the cancelled page keeps the date pill's format and glyph, drops Directions and the tappable Where row; the shell failure reads "Something went wrong" with the specific reason under it and sits where the first section would be; the failure glyph is a neutral exclamation mark, not a Wi-Fi symbol, because not every failure is offline.
 - Review flags (Debug): `--shell-state=loading|failed`; `--empty-state`, `--event-full`, `--event-cancelled` and `--screen=event` now work in the `--mock-member` app.
 - Reviewer findings not taken in wave 1 (P3, carried to wave 2): the bar fade lightens the bottom of strongly colored reward cards; half-covered pills above the bar at rest; the tab skeleton's left pill is shorter than the real title pill; the detail skeleton has no Invite/Share row; Home empty has no next step; "Activity full" offers no alternative.
+
+### Wave 2: screen level
+
+Done: DYN-1 (`DIPEventDateText` relative dates on cards, absolute with the year for memories), EVT-1 (facts line with time range, venue, cost or points under the title; description clamped to three lines with Read more; "See what changed" and "Leave Activity" as quiet `DIPTextActionRow`s), NOT-1 (Invitations is the one solid control, "Mark all as read" a text action on the first day header, swipe left to mark one notification read), TYPE-1 (colon removed; the wider header style question stays open), VIS-3 (Sign out as a destructive text action), wave-1 P3 (bar fade 36 to 24 pt). Design review: three rounds, each P2 fixed (duplicate date in two formats, actions pushed under the bottom button); the third round's only P2 was a stale capture.
+
+Still open after wave 2: A11Y-1, DUO-1 (profile), DUO-2, CON-1 (owner), VIS-4, VIS-6, VIS-7, IX-3, PERF-1 and VIS-2 (Later), reviewer P3s (points sign "Earned 25" vs "Earn +50", no time on past activity pages, three text-action styles).
+
