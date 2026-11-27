@@ -277,7 +277,7 @@ export function ThemeCard({ insights, role, now = new Date() }: { insights: Comp
     <section className="panel theme-panel" aria-labelledby="theme-h">
       <h2 id="theme-h">{t("overview.theme.title")}</h2>
       {off(insights, "challenges") ? <SectionUnavailable /> : !theme || !week ? (
-        <p className="muted fill">{t("overview.theme.none")}{can(role, "themes.manage") && <> <Link href="/themes/" className="inline-link">{t("overview.theme.plan")}</Link>.</>}</p>
+        <p className="muted fill">{t("overview.theme.none")}{can(role, "themes.manage") && <> <Link href="/challenges/" className="inline-link">{t("overview.theme.plan")}</Link>.</>}</p>
       ) : (
         <>
           <div className="theme-hero">

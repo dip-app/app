@@ -29,7 +29,7 @@ export const importer: Record<keyof typeof source, string> = {
   "import.choose.title": "1. Elige un archivo",
   "import.choose.drop": "Suelta aquí un archivo .csv o .xlsx, o",
   "import.choose.button": "Elegir archivo",
-  "import.choose.limits": "Hasta {rows} filas y {mb} MB. El archivo se lee en tu navegador; solo se envían las filas revisadas.",
+  "import.choose.limits": "Hasta {rows} filas y {mb} MB. El archivo se lee en tu navegador; solo se envían las filas marcadas.",
   "import.template.title": "¿Necesitas el formato?",
   "import.template.body": "La plantilla tiene todas las columnas con una fila de ejemplo.",
   "import.template.download": "Descargar plantilla",
@@ -38,7 +38,7 @@ export const importer: Record<keyof typeof source, string> = {
   "import.rules.matchDomain": "y debe terminar en",
   "import.rules.teams": "Los equipos se separan con punto y coma y reemplazan los equipos actuales de la persona. Un nombre de equipo que DIP aún no conoce se crea como equipo nuevo.",
   "import.rules.blank": "Las celdas vacías conservan el valor actual. Los puntos y los datos de inicio de sesión nunca se tocan.",
-  "import.rules.invited": "Las personas que aún no han iniciado sesión aparecen en la lista de personal como Invitadas y reciben estos datos cuando se unen.",
+  "import.rules.invited": "Las personas que aún no han iniciado sesión aparecen en Miembros como Invitadas y reciben estos datos cuando se unen.",
   "import.rules.twice": "Ejecutar el mismo archivo dos veces no cambia nada la segunda vez.",
 
   // Checking
@@ -103,7 +103,7 @@ export const importer: Record<keyof typeof source, string> = {
   "import.done.updated": "Actualizadas",
   "import.done.skipped": "Omitidas",
   "import.done.stoppedEarly": "La importación se detuvo antes de tiempo. Elige el mismo archivo otra vez para ejecutarla de nuevo: las filas terminadas no cambiarán.",
-  "import.done.seeRoster": "Ver la lista de personal",
+  "import.done.seeRoster": "Ir a Miembros",
   "import.done.another": "Importar otro archivo",
   "import.done.failed": "Con error",
 

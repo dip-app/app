@@ -2,7 +2,7 @@
 
 Status: audit of November 19, 2026 (email area owner); reminder defaults and end-to-end status updated November 22, 2026 ([email coverage](email-coverage.md)). Every email DIP sends or could send, with its trigger, recipient, category and default, whether it is built, and why the ones not built were deferred. Owner rule for this pass: build every planned email and every one that is clearly valuable, reuse the shared header, body card and footer, and keep anything that is not transactional off by default. Nothing here is deployed and no email has been sent; everything stays behind `EMAIL_ENABLED` (off) and the per-company `emailSettings/{companyId}.enabled` switch ([email setup](../ops/email-setup.md), [runbook](../ops/email-runbook.md)).
 
-Sources: [email design (S5)](stretch/email.md) template catalog, [calendar emailed invites (CAL-8)](stretch/calendar.md#emailed-invites-cal-8-november-17-2026), [admin weekly ideas email](stretch/admin-suggestions-email.md), [notification categories](stretch/notification-preferences.md), issues #214 (stretch email), #215 (EML-1 domain), #216 (EML-2 provider), #224 (EML-10 policy and pilot), and the candidates listed by the owner (roster invite, welcome, reminders, event changes, weekly theme, challenge result, bug report status, coworker invite, admin digests, points).
+Sources: [email design (S5)](stretch/email.md) template catalog, [calendar emailed invites (CAL-8)](stretch/calendar.md#emailed-invites-cal-8-november-17-2026), [admin weekly ideas email](stretch/admin-suggestions-email.md), [notification categories](stretch/notification-preferences.md), issues #214 (stretch email), #215 (EML-1 domain), #216 (EML-2 provider), #224 (EML-10 policy and pilot), and the candidates listed by the owner (roster invite, welcome, reminders, event changes, weekly challenge, challenge result, bug report status, coworker invite, admin digests, points).
 
 ## How to read the matrix
 
@@ -28,7 +28,7 @@ Sources: [email design (S5)](stretch/email.md) template catalog, [calendar email
 | **Roster invitation (`roster_invite`)** | admin clicks **Send invite email** (`sendRosterInviteEmailV1`), or leaves "Email them an invitation now" on in Add person | the invited person (no account yet), at the roster entry's address | `account` (opt out per address) | sent only on an admin action | **built in this pass** | P1 |
 | **Welcome (`welcome`)** | `users/{uid}` created by the first membership resolve (`welcomeEmailOnMemberCreated`) | the new member | `account` | on (once per member) | **built in this pass** | P2 |
 | **Problem report resolved (`bug_report_resolved`)** | `updateBugReportV1` sets a report to Resolved for the first time | the reporter | `account` | on (once per report) | **built in this pass** | P3 |
-| **Weekly theme announcement (`weekly_theme`)** | `sendWeeklyThemeEmails`, Monday 09:00 America/New_York, themes that started in the last 24 hours (same schedule, lookback and member pager as the `weekly_theme` push) | active members of any role (member, organizer, admin) who turned it on | `weekly_themes` (new, email only) | **off** (opt in) | **built in the follow-up pass** | P3 |
+| **Weekly challenge announcement (`weekly_theme`)** | `sendWeeklyThemeEmails`, Monday 09:00 America/New_York, challenges that started in the last 24 hours (same schedule, lookback and member pager as the `weekly_theme` push) | active members of any role (member, organizer, admin) who turned it on | `weekly_themes` (new, email only) | **off** (opt in) | **built in the follow-up pass** | P3 |
 | Event suggestions (`discovery`) | new event matching interests (`event_interest` push, not built) | members with matching interests | `discovery` | off | deferred (no trigger exists) | P3 |
 | **Admin roster digest (`admin_digest`)**: invited people who joined, imports that finished | `sendAdminDigestEmails`, hourly; per company from 08:00 local, reports the previous local day | admins who turned it on | `admin_digest` (new, email only) | **off** (opt in) | **built in the follow-up pass** (replaces per-join and per-import notices) | P3 |
 | Points and achievements | points awarded, attendance recorded | the member | none fits | would be off | not built (too frequent) | none |
@@ -52,7 +52,7 @@ All three use the shared layout (`layoutShell`, the same header band, white body
 ### Welcome
 
 - **Trigger:** `welcomeEmailOnMemberCreated` (Firestore `onDocumentCreated users/{uid}`; `resolveMembershipV1` creates the profile once, at the first sign-in). Queued only while email is on for the company; a welcome is never caught up later. Id `account_<companyId>_<uid>_welcome`, `notAfter` two days.
-- **Content:** "you joined DIP at <company>", two short steps (join an event or invite a coworker; pick interests), plus a first step for organizers and admins (plan events and weekly themes in the admin portal, whose link is then the button).
+- **Content:** "you joined DIP at <company>", two short steps (join an event or invite a coworker; pick interests), plus a first step for organizers and admins (plan events and weekly challenges in the admin portal, whose link is then the button).
 
 ### Problem report resolved
 
@@ -65,12 +65,12 @@ Owner decision: build every planned email that is valuable. Both new emails use 
 
 **How default off is guaranteed.** Three independent places. `DEFAULT_PREFERENCES.email` has both at `false`, and `resolvePreferences` treats a missing document, a missing key and any non-boolean value as the default (unit-tested). The jobs evaluate the switch before queuing anything, so a member without a stored choice gets no outbox document. The sender re-reads the switch at send time and skips with `preference_off`. Nobody can switch it on for someone else: the rules allow only the owner to write their own preference document (emulator-tested for same company, other company, unverified and signed out), and the server only ever writes `false` (unsubscribe, complaints).
 
-### Weekly theme announcement
+### Weekly challenge announcement
 
 - **Audience and timing:** mirrors `runWeeklyThemePushes`: the same `FirestoreThemes` reader (weekly challenges whose start is in the last 24 hours), the same member pager: every active member whatever the role (`member`, `organizer`, `admin`), invited and deactivated users excluded (`isCompanyAudienceMember`; organizers were wrongly left out of both until November 22) and the same Monday 09:00 America/New_York schedule, as its own scheduled function so a push failure never blocks email and the reverse.
-- **Once per member per theme:** outbox id `weekly_themes_<challengeId>_<uid>_announce` (create-once); a retry or a second run enqueues nothing. `notAfter` is the theme end.
-- **Content:** "This week's theme" with the catalog art tile on the theme accent (`img/email/ideas/<key>.png`, the same tiles as the ideas email; no tile for an unknown key), the title, the description (shortened to 400 characters), the dates in the company zone and the points. One button, **Open DIP** (`https://letsdip.work/`): the app has no theme link yet, so a note says the theme is on the Home screen.
-- **Switch:** admins and organizers in the portal (Your settings > Other emails from DIP); every member in the iOS app under Profile > Notifications > Email (**Weekly theme email**, off until turned on). The iOS Email list also shows **Day-before reminder** (`day_before_reminders`, on by default) next to **Reminders** (the hour-before email, "About an hour before activities you joined"). The admin digest switch (**Daily admin digest**) is shown in iOS to admins only.
+- **Once per member per challenge:** outbox id `weekly_themes_<challengeId>_<uid>_announce` (create-once); a retry or a second run enqueues nothing. `notAfter` is the challenge end.
+- **Content:** "This week's challenge" with the catalog art tile on the theme accent (`img/email/ideas/<key>.png`, the same tiles as the ideas email; no tile for an unknown key), the title, the description (shortened to 400 characters), the dates in the company zone and the points. One button, **Open DIP** (`https://letsdip.work/`): the app has no theme link yet, so a note says the theme is on the Home screen.
+- **Switch:** admins and organizers in the portal (Your settings > Other emails from DIP); every member in the iOS app under Profile > Notifications > Email (**Weekly challenge email**, off until turned on). The iOS Email list also shows **Day-before reminder** (`day_before_reminders`, on by default) next to **Reminders** (the hour-before email, "About an hour before activities you joined"). The admin digest switch (**Daily admin digest**) is shown in iOS to admins only.
 
 ### Admin roster digest
 
@@ -90,4 +90,4 @@ Owner decision: build every planned email that is valuable. Both new emails use 
 
 ## Verification still owed
 
-Real sends have never happened. Before the first pilot, run the manual checks in the [email runbook](../ops/email-runbook.md#12-manual-test-plan-for-the-email-catalog): roster invitation, welcome, problem report, reminders with the venue, the calendar invite checklist, and steps 12 to 15 for the weekly theme email and the admin digest.
+Real sends have never happened. Before the first pilot, run the manual checks in the [email runbook](../ops/email-runbook.md#12-manual-test-plan-for-the-email-catalog): roster invitation, welcome, problem report, reminders with the venue, the calendar invite checklist, and steps 12 to 15 for the weekly challenge email and the admin digest.

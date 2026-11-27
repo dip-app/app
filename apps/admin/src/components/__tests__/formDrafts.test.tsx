@@ -218,7 +218,7 @@ describe("New theme draft", () => {
   it("autosaves after an edit and offers the draft next time; weeks that have passed are replaced and flagged", async () => {
     writeDraft(storage as DraftStore, themeKey, themeSnapshot(theme()), Date.now() - 2 * 3_600_000);
     render(<ThemeForm />);
-    expect(await screen.findByText("You have an unfinished theme draft, saved 2 hours ago.")).toBeTruthy();
+    expect(await screen.findByText("You have an unfinished challenge draft, saved 2 hours ago.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Restore draft" }));
     expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("Yoga week");
     expect((document.getElementById("goal") as HTMLInputElement).value).toBe("5");
@@ -236,7 +236,7 @@ describe("New theme draft", () => {
     act(() => { vi.advanceTimersByTime(900); });
     expect(parseThemeSnapshot(readDraft(storage as DraftStore, themeKey, (r) => r)?.data)?.title).toBe("Custom");
     vi.useRealTimers();
-    fireEvent.click(screen.getByRole("button", { name: "Create theme" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create challenge" }));
     await waitFor(() => expect(createTheme).toHaveBeenCalled());
     expect(storage.getItem(themeKey)).toBeNull();
   });

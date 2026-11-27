@@ -340,7 +340,7 @@ describe("reasons and facts", () => {
 
     const weekly = signals({ weeklyThemes: [{ title: "Move more", tagIds: ["tag-fitness"], startDate: new Date(NOW.getTime() - DAY), endDate: new Date(NOW.getTime() + 6 * DAY) }] });
     const r2 = reasonsFor(idea("lunchtime-run-club"), summarize(weekly), weekly);
-    assert.deepEqual(r2, ['Fits the "Move more" weekly theme', "The week of Nov 23 is quiet on your calendar"]);
+    assert.deepEqual(r2, ['Fits the "Move more" weekly challenge', "The week of Nov 23 is quiet on your calendar"]);
 
     const bare = signals();
     const r3 = reasonsFor(idea("book-club-kickoff"), summarize(bare), bare);
@@ -409,7 +409,7 @@ describe("deep links", () => {
 describe("ideaToDraft", () => {
   test("every idea yields a valid draft", () => {
     for (const i of IDEA_CATALOG) {
-      const draft = ideaToDraft(i, "Fits the \"Move more\" weekly theme", 40);
+      const draft = ideaToDraft(i, "Fits the \"Move more\" weekly challenge", 40);
       const parsed = GeneratedEventDraftSchema.safeParse(draft);
       assert.ok(parsed.success, i.id);
       assert.ok(isApprovedCoverURL(draft.coverImageURL), draft.coverImageURL);

@@ -15,7 +15,7 @@ export const ui = {
   "ui.skeleton.col.going": "Going",
   "ui.skeleton.col.status": "Status",
   "ui.skeleton.col.actions": "Actions",
-  "ui.skeleton.col.theme": "Theme",
+  "ui.skeleton.col.theme": "Challenge",
   "ui.skeleton.col.week": "Week",
   "ui.skeleton.col.goal": "Goal",
   "ui.skeleton.col.reward": "Reward",

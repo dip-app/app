@@ -36,18 +36,18 @@ afterEach(cleanup);
 describe("Your settings > Other emails", () => {
   it("shows both opt-in switches off by default for an admin, and the notes", async () => {
     render(<OtherEmails />);
-    const weekly = await screen.findByRole("switch", { name: /Weekly theme email/ });
+    const weekly = await screen.findByRole("switch", { name: /Weekly challenge email/ });
     const digest = screen.getByRole("switch", { name: /Daily roster digest/ });
     expect(weekly.getAttribute("aria-checked")).toBe("false");
     expect(digest.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByText(/Profile > Notifications/)).toBeTruthy();
   });
 
-  it("organizers get the weekly theme switch but not the admin digest", async () => {
+  it("organizers get the weekly challenge switch but not the admin digest", async () => {
     state.role = "organizer";
     setApp();
     render(<OtherEmails />);
-    await screen.findByRole("switch", { name: /Weekly theme email/ });
+    await screen.findByRole("switch", { name: /Weekly challenge email/ });
     expect(screen.queryByRole("switch", { name: /Daily roster digest/ })).toBeNull();
   });
 
@@ -57,15 +57,15 @@ describe("Your settings > Other emails", () => {
     await act(async () => { fireEvent.click(digest); });
     expect(state.setEmailSwitch).toHaveBeenCalledWith("admin_digest", true);
     await waitFor(() => expect(screen.getByRole("switch", { name: /Daily roster digest/ }).getAttribute("aria-checked")).toBe("true"));
-    expect(screen.getByRole("switch", { name: /Weekly theme email/ }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("switch", { name: /Weekly challenge email/ }).getAttribute("aria-checked")).toBe("false");
   });
 
   it("a failed save puts the switch back", async () => {
     state.setEmailSwitch = vi.fn(async () => { throw new ApiError("permission-denied", "nope"); });
     render(<OtherEmails />);
-    const weekly = await screen.findByRole("switch", { name: /Weekly theme email/ });
+    const weekly = await screen.findByRole("switch", { name: /Weekly challenge email/ });
     await act(async () => { fireEvent.click(weekly); });
-    await waitFor(() => expect(screen.getByRole("switch", { name: /Weekly theme email/ }).getAttribute("aria-checked")).toBe("false"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: /Weekly challenge email/ }).getAttribute("aria-checked")).toBe("false"));
   });
 });
 

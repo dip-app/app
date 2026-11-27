@@ -21,7 +21,7 @@ export const memberDetail = {
   "memberDetail.field.department": "Department",
   "memberDetail.field.jobTitle": "Job title",
   "memberDetail.hint.ownRole": "You can’t change your own role.",
-  "memberDetail.hint.roles": "Organizers manage events, themes, albums and attendees. Admins also manage people and imports.",
+  "memberDetail.hint.roles": "Organizers manage events, challenges, albums and attendees. Admins also manage people and imports.",
   "memberDetail.readOnly": "Read-only. Only admins can change people.",
   "memberDetail.save": "Save changes",
   "memberDetail.saving": "Saving…",

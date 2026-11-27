@@ -29,6 +29,10 @@ const Button = ({ width = 68 }: { width?: number }) => <SkeletonBlock w={width} 
 function TabsGhost({ labels }: { labels: string[] }) {
   return <div className="tabs" aria-hidden>{labels.map((label, i) => <span key={label} className={`tab${i === 0 ? " sk-current" : ""}`}>{label}<span className="sk-tab-count"> (0)</span></span>)}</div>;
 }
+/** Filter chips (the Challenges schedule's week phases), the first one pressed. */
+function ChipsGhost({ labels }: { labels: string[] }) {
+  return <div className="chips phase-chips" aria-hidden>{labels.map((label, i) => <span key={label} className="chip" aria-pressed={i === 0}>{label}</span>)}</div>;
+}
 const InputGhost = () => <span className="sk sk-input" />;
 const SearchGhost = () => <div className="field search" aria-hidden><InputGhost /></div>;
 const CountLine = () => <p className="result-count" aria-hidden><Sk w={150} /></p>;
@@ -189,7 +193,7 @@ function IdeasGhost() {
 function Layout({ name }: { name: SkeletonLayout }): ReactNode {
   switch (name) {
     case "events": return <><TabsGhost labels={[t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past"), t("ui.skeleton.tab.cancelled")]} /><SkeletonTable columns={eventColumns()} rows={SKELETON_ROWS.events} tableClass="table responsive events-table" rowClass="event-row" /></>;
-    case "themes": return <><TabsGhost labels={[t("ui.skeleton.tab.current"), t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past")]} /><SkeletonTable columns={themeColumns()} rows={SKELETON_ROWS.themes} tableClass="table responsive themes-table" /></>;
+    case "themes": return <><ChipsGhost labels={[t("ui.skeleton.tab.current"), t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past")]} /><SkeletonTable columns={themeColumns()} rows={SKELETON_ROWS.themes} tableClass="table responsive themes-table" /></>;
     case "challenges": return <SkeletonTable columns={challengeColumns()} rows={SKELETON_ROWS.challenges} tableClass="table responsive challenges-table" rowClass="challenge-tr" />;
     case "review": return <div className="review-layout" aria-hidden><section className="queue-wrap"><QueueItems rows={SKELETON_ROWS.queue} /></section><ReviewDetailGhost /></div>;
     case "members": return <><CountLine /><SkeletonTable columns={memberColumns(true)} rows={SKELETON_ROWS.members} /></>;

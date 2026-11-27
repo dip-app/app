@@ -24,6 +24,8 @@ interface Props {
   focusCancel?: boolean;
   /** Extra condition (e.g. a valid number inside the dialog body) before confirm is enabled. */
   confirmDisabled?: boolean;
+  /** Text of the dismiss button (default "Cancel"; "Close" for a dialog that mostly shows information). */
+  cancelLabel?: string;
   /** Confirm button text while the request runs (default "Saving…"). */
   busyLabel?: string;
   onConfirm: (reason: string) => Promise<void>;
@@ -35,7 +37,7 @@ interface Props {
  * (CSS); Cancel and Escape play a short exit before `onClose`. While the confirm request runs, the confirm button shows a
  * spinner and both buttons keep focus but ignore presses.
  */
-export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = t("common.dialog.reasonHint"), danger, focusCancel = !!danger, confirmDisabled, busyLabel = t("common.saving"), onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = t("common.dialog.reasonHint"), danger, focusCancel = !!danger, confirmDisabled, cancelLabel, busyLabel = t("common.saving"), onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -100,7 +102,7 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
         <Button variant={danger ? "danger" : "primary"} loading={busy} aria-label={busy ? busyLabel : undefined} disabled={!busy && (!!confirmDisabled || (needsReason && reason.trim().length < 3))} onClick={() => void confirm()}>
           {confirmLabel}
         </Button>
-        <Button ref={cancel} aria-disabled={busy || undefined} onClick={requestClose}>{t("common.cancel")}</Button>
+        <Button ref={cancel} aria-disabled={busy || undefined} onClick={requestClose}>{cancelLabel ?? t("common.cancel")}</Button>
       </div>
     </dialog>
   );

@@ -17,7 +17,7 @@ export const es: Readonly<Record<keyof typeof en, string>> = {
   "push.challenge.changesRequested.title": "Piden cambios en tu participación",
   "push.challenge.fallbackTitle": "Reto semanal",
   "push.weeklyTheme.title": "Nuevo reto semanal",
-  "push.weeklyTheme.fallbackBody": "Acaba de empezar un nuevo tema.",
+  "push.weeklyTheme.fallbackBody": "Acaba de empezar un nuevo reto.",
   "push.photoComment.title": "Nuevo comentario en tu foto",
   "push.photoAdded.body": "{who} agregó una foto al álbum.",
   "push.photoAdded.fallbackWho": "Alguien",

@@ -189,7 +189,7 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
         let (member, _, _) = await loaded()
         let row = member.emailRows.first { $0.category == .weeklyThemes }
         #expect(row?.isOn == false)
-        #expect(row?.title == "Weekly theme email")
+        #expect(row?.title == "Weekly challenge email")
         #expect(!member.pushRows.contains { $0.category == .weeklyThemes || $0.category == .adminDigest })
         let admin = DIPNotificationSettingsModel(repository: DIPMockNotificationPreferencesRepository(), permission: FakePermission(.authorized), isAdmin: true)
         await admin.load()
@@ -334,8 +334,8 @@ private actor GatedPreferencesRepository: DIPNotificationPreferencesRepository {
         let (model, _, _) = await loaded()
         let push = model.pushRows.first { $0.category == .challenges }?.summary
         let email = model.emailRows.first { $0.category == .challenges }?.summary
-        #expect(push == "Submission reviews and new weekly themes")
-        #expect(email == "Reviews of your weekly theme submissions")
+        #expect(push == "Submission reviews and new weekly challenges")
+        #expect(email == "Reviews of your weekly challenge submissions")
         #expect(model.emailRows.first { $0.category == .invites }?.summary == DIPNotificationCategory.invites.summary)
     }
 

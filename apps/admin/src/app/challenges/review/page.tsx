@@ -267,10 +267,10 @@ function Review() {
   }
 
   const backLabel = t("review.backToChallenges");
-  if (!id) return <LoadError error={new ApiError("not-found", t("review.error.noTheme"))} onRetry={themes.reload} backHref="/challenges/" backLabel={backLabel} />;
-  if (themes.error) return <LoadError error={themes.error} onRetry={themes.reload} backHref="/challenges/" backLabel={backLabel} />;
+  if (!id) return <LoadError error={new ApiError("not-found", t("review.error.noTheme"))} onRetry={themes.reload} backHref="/challenges/?tab=review" backLabel={backLabel} />;
+  if (themes.error) return <LoadError error={themes.error} onRetry={themes.reload} backHref="/challenges/?tab=review" backLabel={backLabel} />;
   if (themes.data && !theme) {
-    return <LoadError error={new ApiError("not-found", t("review.error.themeMissing"))} onRetry={themes.reload} backHref="/challenges/" backLabel={backLabel} />;
+    return <LoadError error={new ApiError("not-found", t("review.error.themeMissing"))} onRetry={themes.reload} backHref="/challenges/?tab=review" backLabel={backLabel} />;
   }
 
   return (
@@ -279,7 +279,7 @@ function Review() {
       <Tabs idBase="review" label={t("review.filterLabel")} value={status} onChange={(id) => chooseStatus(id as SubmissionStatus)} items={TABS.map((tab) => ({ id: tab, label: statusLabel(tab) }))} />
       {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><Button size="sm" onClick={() => setBanner(null)}>{t("review.banner.dismiss")}</Button></div>}
 
-      {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/" backLabel={backLabel} />
+      {error ? <LoadError error={error} onRetry={reload} backHref="/challenges/?tab=review" backLabel={backLabel} />
         : !items ? <Loading label={t("review.loading")} layout="review" />
         : items.length === 0 ? (
           cursor ? <Loading label={t("review.loadingMore")} /> : <Empty title={t(EMPTY_KEYS[status].title)} body={t(EMPTY_KEYS[status].body)} />
@@ -378,7 +378,7 @@ function Review() {
 
 export default function ChallengeReviewPage() {
   return (
-    <Shell title={t("review.title")} subtitle={t("review.subtitle")} requires="challenges.review" back={{ href: "/challenges/", label: t("shell.nav.challenges") }}>
+    <Shell title={t("review.title")} subtitle={t("review.subtitle")} requires="challenges.review" back={{ href: "/challenges/?tab=review", label: t("shell.nav.challenges") }}>
       <Suspense fallback={<Loading label={t("review.loading")} layout="review" />}><Review /></Suspense>
     </Shell>
   );

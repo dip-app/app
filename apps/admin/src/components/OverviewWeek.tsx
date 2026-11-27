@@ -69,8 +69,8 @@ export function LastSevenDays({ insights, events, role, now }: { insights: Compa
         {theme && week
           ? <WeekTile label={t("overview.week.challenge", { title: theme.title })} value={`${Math.round(completionRate(theme.participantCount, theme.completedCount) * 100)}%`}
             note={t("overview.week.challengeNote", { completed: formatCount(theme.completedCount), joined: formatCount(theme.participantCount), day: week.day, days: week.days })}
-            href={can(role, "challenges.review") ? `/challenges/review/?id=${encodeURIComponent(theme.challengeId)}` : "/themes/"} unavailable={challengeOff} />
-          : <WeekTile label={t("overview.week.noChallenge")} value="–" note={t("overview.theme.none")} href={can(role, "themes.manage") ? "/themes/new/" : undefined} unavailable={challengeOff} />}
+            href={can(role, "challenges.review") ? `/challenges/review/?id=${encodeURIComponent(theme.challengeId)}` : "/challenges/"} unavailable={challengeOff} />
+          : <WeekTile label={t("overview.week.noChallenge")} value="–" note={t("overview.theme.none")} href={can(role, "themes.manage") ? "/challenges/new/" : undefined} unavailable={challengeOff} />}
       </ul>
     </section>
   );

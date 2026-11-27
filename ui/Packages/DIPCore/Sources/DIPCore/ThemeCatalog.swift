@@ -128,7 +128,7 @@ public enum DIPThemeCatalog {
     }
 
     public static func fallback(key: String) -> DIPTheme {
-        DIPTheme(key: key, displayName: String(localized: "theme.fallback.name", defaultValue: "Weekly theme", bundle: .module, comment: "Name of a weekly theme this app version does not know"), illustration: nil, accent: .neutral,
+        DIPTheme(key: key, displayName: String(localized: "theme.fallback.name", defaultValue: "Weekly challenge", bundle: .module, comment: "Name of a weekly challenge this app version does not know"), illustration: nil, accent: .neutral,
                  goalUnitSuggestions: [], isKnown: false)
     }
 }

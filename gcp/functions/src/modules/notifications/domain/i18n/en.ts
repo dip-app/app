@@ -15,7 +15,7 @@ export const en = {
   "push.challenge.changesRequested.title": "Changes requested on your submission",
   "push.challenge.fallbackTitle": "Weekly challenge",
   "push.weeklyTheme.title": "New weekly challenge",
-  "push.weeklyTheme.fallbackBody": "A new theme just started.",
+  "push.weeklyTheme.fallbackBody": "A new challenge just started.",
   "push.photoComment.title": "New comment on your photo",
   "push.photoAdded.body": "{who} added a photo to the album.",
   "push.photoAdded.fallbackWho": "Someone",

@@ -356,7 +356,7 @@ struct BugReportSheet: View {
         case .event: String(localized: "bugreport.screen.event", defaultValue: "Event page", comment: "Screen name shown in the report sheet")
         case .participants: String(localized: "bugreport.screen.participants", defaultValue: "Attendees", comment: "Screen name shown in the report sheet")
         case .album: String(localized: "bugreport.screen.album", defaultValue: "Album", comment: "Screen name shown in the report sheet")
-        case .challenge: String(localized: "bugreport.screen.challenge", defaultValue: "Weekly theme", comment: "Screen name shown in the report sheet")
+        case .challenge: String(localized: "bugreport.screen.challenge", defaultValue: "Weekly challenge", comment: "Screen name shown in the report sheet")
         case .other: "DIP"
         }
     }

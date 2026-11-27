@@ -1262,19 +1262,19 @@
       }
     },
     "challenge.calendar.title" : {
-      "comment" : "Calendar entry title for a weekly theme; %@ = theme title",
+      "comment" : "Calendar entry title for a weekly challenge; %@ = challenge title",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Weekly theme: %@"
+            "value" : "Weekly challenge: %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tema semanal: %@"
+            "value" : "Reto semanal: %@"
           }
         },
         "tlh" : {
@@ -1554,7 +1554,7 @@
       }
     },
     "challenge.text.noneBody" : {
-      "comment" : "Home empty state body: no weekly theme",
+      "comment" : "Home empty state body: no weekly challenge",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -1578,19 +1578,19 @@
       }
     },
     "challenge.text.noneTitle" : {
-      "comment" : "Home empty state title: no weekly theme",
+      "comment" : "Home empty state title: no weekly challenge",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "No weekly theme right now."
+            "value" : "No weekly challenge right now."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No hay tema semanal por ahora."
+            "value" : "No hay reto semanal por ahora."
           }
         },
         "tlh" : {
@@ -1650,19 +1650,19 @@
       }
     },
     "challenge.window.ended" : {
-      "comment" : "Challenge note: the theme window is over",
+      "comment" : "Challenge note: the challenge window is over",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This weekly theme has ended"
+            "value" : "This weekly challenge has ended"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tema semanal ya terminó"
+            "value" : "Este reto semanal ya terminó"
           }
         },
         "tlh" : {
@@ -1674,7 +1674,7 @@
       }
     },
     "challenge.window.range" : {
-      "comment" : "Date range of a weekly theme; first %@ = first day, second %@ = last day, e.g. Nov 9 - Nov 15",
+      "comment" : "Date range of a weekly challenge; first %@ = first day, second %@ = last day, e.g. Nov 9 - Nov 15",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -1687,7 +1687,7 @@
       "shouldTranslate" : false
     },
     "challenge.window.starts" : {
-      "comment" : "Challenge note: theme starts on a date; %@ = short weekday and date, e.g. Mon, Nov 9",
+      "comment" : "Challenge note: challenge starts on a date; %@ = short weekday and date, e.g. Mon, Nov 9",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -3307,19 +3307,19 @@
       }
     },
     "notif.category.challenges.emailSummary" : {
-      "comment" : "Email preference description of the Challenges category: emails when a reviewer approves or asks for changes on the member's submission (the weekly theme email has its own switch)",
+      "comment" : "Email preference description of the Challenges category: emails when a reviewer approves or asks for changes on the member's submission (the weekly challenge email has its own switch)",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Reviews of your weekly theme submissions"
+            "value" : "Reviews of your weekly challenge submissions"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Revisiones de tus envíos al tema semanal"
+            "value" : "Revisiones de tus envíos al reto semanal"
           }
         }
       }
@@ -3331,13 +3331,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Submission reviews and new weekly themes"
+            "value" : "Submission reviews and new weekly challenges"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Revisiones de envíos y nuevos temas semanales"
+            "value" : "Revisiones de envíos y nuevos retos semanales"
           }
         },
         "tlh" : {
@@ -3715,37 +3715,37 @@
       }
     },
     "notif.category.weeklyThemes.summary" : {
-      "comment" : "Notification preference category description (email only): the weekly theme announcement email, sent Monday morning",
+      "comment" : "Notification preference category description (email only): the weekly challenge announcement email, sent Monday morning",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "An email on Monday when a new weekly theme starts"
+            "value" : "An email on Monday when a new weekly challenge starts"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un correo el lunes cuando empieza un nuevo tema semanal"
+            "value" : "Un correo el lunes cuando empieza un nuevo reto semanal"
           }
         }
       }
     },
     "notif.category.weeklyThemes.title" : {
-      "comment" : "Notification preference category title (email only, off by default): an email when a new weekly theme starts",
+      "comment" : "Notification preference category title (email only, off by default): an email when a new weekly challenge starts",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Weekly theme email"
+            "value" : "Weekly challenge email"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Correo del tema semanal"
+            "value" : "Correo del reto semanal"
           }
         }
       }
@@ -5442,13 +5442,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This theme has ended, so entries are closed."
+            "value" : "This challenge has ended, so entries are closed."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tema ya terminó, así que los envíos están cerrados."
+            "value" : "Este reto ya terminó, así que los envíos están cerrados."
           }
         },
         "tlh" : {
@@ -5532,19 +5532,19 @@
       }
     },
     "submission.detail.rejected.ended" : {
-      "comment" : "Challenge entry detail: changes requested but the theme ended",
+      "comment" : "Challenge entry detail: changes requested but the challenge ended",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This theme has ended."
+            "value" : "This challenge has ended."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tema ya terminó."
+            "value" : "Este reto ya terminó."
           }
         },
         "tlh" : {
@@ -5556,19 +5556,19 @@
       }
     },
     "submission.detail.rejected.noteEnded" : {
-      "comment" : "Challenge entry detail: changes requested but the theme ended; %@ = the organizer's note",
+      "comment" : "Challenge entry detail: changes requested but the challenge ended; %@ = the organizer's note",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Organizer note: %@ This theme has ended."
+            "value" : "Organizer note: %@ This challenge has ended."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nota del organizador: %@ Este tema ya terminó."
+            "value" : "Nota del organizador: %@ Este reto ya terminó."
           }
         },
         "tlh" : {
@@ -5628,19 +5628,19 @@
       }
     },
     "submission.detail.upcoming" : {
-      "comment" : "Challenge entry detail: theme not started",
+      "comment" : "Challenge entry detail: challenge not started",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "You can add your entry once this theme starts."
+            "value" : "You can add your entry once this challenge starts."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Podrás agregar tu participación cuando empiece este tema."
+            "value" : "Podrás agregar tu participación cuando empiece este reto."
           }
         },
         "tlh" : {
@@ -5658,13 +5658,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This theme has ended, so entries are closed."
+            "value" : "This challenge has ended, so entries are closed."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tema ya terminó, así que los envíos están cerrados."
+            "value" : "Este reto ya terminó, así que los envíos están cerrados."
           }
         },
         "tlh" : {
@@ -5756,13 +5756,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "You’ve used all %lld photo uploads for this theme. Remove the photo and send a note only."
+                  "value" : "You’ve used all %lld photo uploads for this challenge. Remove the photo and send a note only."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "You’ve used all %lld photo uploads for this theme. Remove the photo and send a note only."
+                  "value" : "You’ve used all %lld photo uploads for this challenge. Remove the photo and send a note only."
                 }
               }
             }
@@ -5774,13 +5774,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Ya usaste la %lld subida de fotos de este tema. Quita la foto y envía solo una nota."
+                  "value" : "Ya usaste la %lld subida de fotos de este reto. Quita la foto y envía solo una nota."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Ya usaste las %lld subidas de fotos de este tema. Quita la foto y envía solo una nota."
+                  "value" : "Ya usaste las %lld subidas de fotos de este reto. Quita la foto y envía solo una nota."
                 }
               }
             }
@@ -5831,13 +5831,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This theme hasn’t started yet."
+            "value" : "This challenge hasn’t started yet."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tema aún no ha empezado."
+            "value" : "Este reto aún no ha empezado."
           }
         },
         "tlh" : {
@@ -6185,7 +6185,7 @@
       }
     },
     "submission.status.upcoming" : {
-      "comment" : "Challenge entry status pill: theme has not started",
+      "comment" : "Challenge entry status pill: challenge has not started",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -6233,19 +6233,19 @@
       }
     },
     "theme.fallback.name" : {
-      "comment" : "Name of a weekly theme this app version does not know",
+      "comment" : "Name of a weekly challenge this app version does not know",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Weekly theme"
+            "value" : "Weekly challenge"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tema semanal"
+            "value" : "Reto semanal"
           }
         },
         "tlh" : {

@@ -163,7 +163,7 @@ export function pendingActions(insights: CompanyInsights, role: Role, now: Date 
     items.push({
       id: "reviews", label: t("overview.pending.reviews", { count: total }), count: total,
       detail: lines.join(" · "), lines,
-      href: can(role, "challenges.review") ? (only ? `/challenges/review/?id=${encodeURIComponent(only)}&status=submitted` : "/challenges/") : null,
+      href: can(role, "challenges.review") ? (only ? `/challenges/review/?id=${encodeURIComponent(only)}&status=submitted` : "/challenges/?tab=review") : null,
     });
   }
   if (extra.newBugReports && extra.newBugReports > 0 && can(role, "bugreports.manage")) {
@@ -175,7 +175,7 @@ export function pendingActions(insights: CompanyInsights, role: Role, now: Date 
   if (insights.members.invited > 0) {
     items.push({
       id: "invited", label: t("overview.pending.invited"), count: insights.members.invited,
-      detail: t("overview.pending.resend"), lines: [t("overview.pending.resend")], href: can(role, "roster.manage") ? "/roster/" : null,
+      detail: t("overview.pending.resend"), lines: [t("overview.pending.resend")], href: can(role, "roster.manage") ? "/members/?status=invited" : null,
     });
   }
   return items;
@@ -187,7 +187,7 @@ export interface Shortcut { id: string; label: string; href: string }
 export function shortcutsFor(role: Role): Shortcut[] {
   const all: [Parameters<typeof can>[1], Shortcut][] = [
     ["events.manage", { id: "new-event", label: t("overview.shortcuts.newEvent"), href: "/events/new/" }],
-    ["themes.manage", { id: "new-theme", label: t("overview.shortcuts.newTheme"), href: "/themes/new/" }],
+    ["themes.manage", { id: "new-theme", label: t("overview.shortcuts.newTheme"), href: "/challenges/new/" }],
     ["ai.generate", { id: "ideas", label: t("overview.shortcuts.ideas", { ai: AI_NAME }), href: "/ideas/" }],
     ["import.run", { id: "import", label: t("overview.shortcuts.import"), href: "/import/" }],
   ];

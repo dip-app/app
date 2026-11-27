@@ -96,7 +96,7 @@ final class NotificationSettingsUITests: XCTestCase {
         openSettings(member)
         let weekly = member.switches["notificationSettings.email.toggle.weekly_themes"]
         XCTAssertTrue(weekly.waitForExistence(timeout: 10))
-        XCTAssertEqual(weekly.value as? String, "0", "the weekly theme email is opt in")
+        XCTAssertEqual(weekly.value as? String, "0", "the weekly challenge email is opt in")
         let dayBefore = member.switches["notificationSettings.email.toggle.day_before_reminders"]
         XCTAssertTrue(dayBefore.exists)
         XCTAssertEqual(dayBefore.value as? String, "1", "the day-before reminder email is on by default")

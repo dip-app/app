@@ -391,7 +391,7 @@ $ctl-h: 36px;
     .cp-show-more, .where .where-link { min-height: 44px; }
     .ideas .sh-toggle { width: 44px; height: 44px; }
     .privacy-info .link-btn, .draft-main .link-btn { display: inline-flex; align-items: center; min-height: 44px; margin-block: -13px; }
-    a.person { @include touch-grow(36px); }
+    a.person, button.person { @include touch-grow(36px); }
     .row-title, .rank-title { display: block; @include touch-grow(20px); }
     .rank-main.person .rank-title { @include touch-grow(18px); }
     .ideas .ifu-customize { min-height: 44px; }

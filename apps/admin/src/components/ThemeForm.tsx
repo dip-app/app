@@ -137,7 +137,7 @@ export function ThemeForm({ theme, onReload }: Props) {
   function leave() {
     setSaved(true);
     autosave.clear({ keepOffer: true });
-    router.push("/themes/");
+    router.push("/challenges/");
   }
 
   // Suggest theme (New theme page only): fields the admin changed by hand, fields Dipbot filled, the card and Undo.
@@ -305,7 +305,7 @@ export function ThemeForm({ theme, onReload }: Props) {
       setSaved(true);
       autosave.clear();
       toast(t(editing ? "themeForm.toast.saved" : "themeForm.toast.created", { title: candidate.title }));
-      router.push("/themes/");
+      router.push("/challenges/");
     } catch (error) {
       if (error instanceof ApiError && error.reason === THEME_REASONS.overlap) {
         // Someone added a theme for these weeks meanwhile: refresh the taken weeks and name the conflict.

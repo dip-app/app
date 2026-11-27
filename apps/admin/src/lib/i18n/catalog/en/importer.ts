@@ -36,7 +36,7 @@ export const importer = {
   "import.rules.matchDomain": "and must end in",
   "import.rules.teams": "Teams are separated by semicolons and replace a person’s current teams. A team name DIP doesn’t know yet becomes a new team.",
   "import.rules.blank": "Blank cells keep the current value. Points and sign-in data are never touched.",
-  "import.rules.invited": "People who haven’t signed in yet appear on the roster as Invited and get these details when they join.",
+  "import.rules.invited": "People who haven’t signed in yet appear in Members as Invited and get these details when they join.",
   "import.rules.twice": "Running the same file twice changes nothing the second time.",
 
   // Checking
@@ -101,7 +101,7 @@ export const importer = {
   "import.done.updated": "Updated",
   "import.done.skipped": "Skipped",
   "import.done.stoppedEarly": "The import stopped early. Choose the same file again to run it once more: finished rows won’t change.",
-  "import.done.seeRoster": "See the roster",
+  "import.done.seeRoster": "Go to Members",
   "import.done.another": "Import another file",
   "import.done.failed": "Failed",
 

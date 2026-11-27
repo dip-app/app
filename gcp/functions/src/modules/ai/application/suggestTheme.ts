@@ -71,8 +71,8 @@ function millis(value: unknown): number {
   return maybe && typeof maybe.toDate === "function" ? maybe.toDate().getTime() : 0;
 }
 
-export const themeSuggestDisabled = () => new AdminError("failed-precondition", "AI_THEME_SUGGEST_DISABLED", "Theme suggestions are turned off for this company.");
-const limitReached = () => new AdminError("resource-exhausted", "AI_THEME_SUGGEST_LIMIT", "You have used today's theme suggestions. Try again tomorrow.");
+export const themeSuggestDisabled = () => new AdminError("failed-precondition", "AI_THEME_SUGGEST_DISABLED", "Challenge suggestions are turned off for this company.");
+const limitReached = () => new AdminError("resource-exhausted", "AI_THEME_SUGGEST_LIMIT", "You have used today's challenge suggestions. Try again tomorrow.");
 const inProgress = () => new AdminError("aborted", "REQUEST_IN_PROGRESS", "These ideas are still being written. Wait a moment.");
 const reused = () => new AdminError("failed-precondition", "REQUEST_REUSED", "This request ID was already used with different details.", ["requestId"]);
 
@@ -144,7 +144,7 @@ export async function suggestTheme(deps: SuggestThemeDeps, rawCaller: Caller | n
     }
     if (flagged) {
       deps.log?.("ai.themeSuggest", { companyId, requestId, outcome: "hint_declined", creditsCharged: 0 });
-      throw new AdminError("invalid-argument", "AI_PROMPT_REJECTED", "We couldn't use that hint. Describe the kind of theme you want and try again.", ["hint"]);
+      throw new AdminError("invalid-argument", "AI_PROMPT_REJECTED", "We couldn't use that hint. Describe the kind of challenge you want and try again.", ["hint"]);
     }
   }
 
@@ -314,7 +314,7 @@ function auditRun(tx: AdminTransaction, actor: Actor, token: string, answered: b
     action: answered ? "ai.themeSuggested" : "ai.themeSuggestFailed",
     targetType: "company",
     targetId: actor.companyId,
-    summary: answered ? "Dipbot suggested a weekly theme" : "Dipbot couldn't suggest a weekly theme",
+    summary: answered ? "Dipbot suggested a weekly challenge" : "Dipbot couldn't suggest a weekly challenge",
     summaryKey: answered ? "ai.themeSuggested" : "ai.themeSuggestFailed",
     // Tool names, model, tokens and credits only: never the hint, prompts, tool results or theme text, and never money.
     changes: [

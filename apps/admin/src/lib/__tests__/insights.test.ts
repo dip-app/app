@@ -97,7 +97,7 @@ describe("pending actions", () => {
 
   test("admins get links, organizers see the counts without the roster link", () => {
     const admin = pendingActions(data, "admin");
-    expect(admin.map((a) => [a.id, a.count, a.href])).toEqual([["reviews", 3, "/challenges/review/?id=t1&status=submitted"], ["invited", 4, "/roster/"]]);
+    expect(admin.map((a) => [a.id, a.count, a.href])).toEqual([["reviews", 3, "/challenges/review/?id=t1&status=submitted"], ["invited", 4, "/members/?status=invited"]]);
     const organizer = pendingActions(data, "organizer");
     expect(organizer.map((a) => a.href)).toEqual([null, null]);
   });
@@ -110,19 +110,19 @@ describe("pending actions", () => {
     expect(onlyPast.challenges.pendingReviews).toBe(1);
     const [item] = pendingActions(onlyPast, "admin", NOW);
     expect(item).toMatchObject({ label: "Submission to review", count: 1, href: "/challenges/review/?id=t0&status=submitted" });
-    expect(item.lines).toEqual(["Past theme: Walk week, Nov 2 to Nov 8"]);
+    expect(item.lines).toEqual(["Past challenge: Walk week, Nov 2 to Nov 8"]);
     expect(reviewGroups(onlyPast, NOW).reduce((n, g) => n + g.count, 0)).toBe(item.count);
     // Both: two lines with counts, and the link goes to the list of themes.
     const both = buildMockInsights({ ...input, pendingReviews: 2, openReviews: [{ ...past, count: 1 }, { challengeId: "t1", title: "Walk week", startDate: input.theme!.startDate, endDate: input.theme!.endDate, count: 2 }] }, "default", "admin", NOW);
     const [mixed] = pendingActions(both, "admin", NOW);
     expect(mixed.count).toBe(3);
     expect(mixed.label).toBe("Submissions to review");
-    expect(mixed.lines).toEqual(["2 from Current theme: Walk week", "1 from Past theme: Walk week, Nov 2 to Nov 8"]);
-    expect(mixed.href).toBe("/challenges/");
+    expect(mixed.lines).toEqual(["2 from Current challenge: Walk week", "1 from Past challenge: Walk week, Nov 2 to Nov 8"]);
+    expect(mixed.href).toBe("/challenges/?tab=review");
     // A server that sends only totals: this week's count stays, the rest is "past themes".
     const totalsOnly: CompanyInsights = { ...both, challenges: { pendingReviews: 3, current: both.challenges.current } };
     expect(reviewGroups(totalsOnly, NOW).map((g) => [g.phase, g.count])).toEqual([["current", 2], ["past", 1]]);
-    expect(pendingActions(totalsOnly, "admin", NOW)[0].lines).toEqual(["2 from Current theme: Walk week", "1 from Past themes"]);
+    expect(pendingActions(totalsOnly, "admin", NOW)[0].lines).toEqual(["2 from Current challenge: Walk week", "1 from Past challenges"]);
   });
 
   test("themePhase uses the exact instants of the Eastern week, in any time zone", () => {

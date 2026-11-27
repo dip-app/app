@@ -1,17 +1,8 @@
 "use client";
-// @i18n-migrated
 
-import { Shell } from "@/components/Shell";
-import { ThemeForm } from "@/components/ThemeForm";
-import { SuggestThemeAction, ThemeSuggestProvider } from "@/components/ThemeSuggest";
-import { t } from "@/lib/i18n";
+import { Redirect, withQuery } from "@/components/Redirect";
 
-export default function NewThemePage() {
-  return (
-    <ThemeSuggestProvider>
-      <Shell title={t("themeForm.new.title")} subtitle={t("themeForm.new.subtitle")} requires="themes.manage" back={{ href: "/themes/", label: t("shell.nav.themes") }} action={<SuggestThemeAction />}>
-        <ThemeForm />
-      </Shell>
-    </ThemeSuggestProvider>
-  );
+/** Moved: Weekly themes is now the Schedule tab of Challenges. The query string (phase, id) carries over. */
+export default function NewThemeRedirect() {
+  return <Redirect to={(params) => withQuery("/challenges/new/", params)} />;
 }

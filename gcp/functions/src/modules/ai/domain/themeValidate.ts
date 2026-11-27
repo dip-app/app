@@ -109,13 +109,13 @@ function weeksSinceIllustration(theme: ThemeKey, snapshot: ThemeSnapshot): numbe
 const WHY_TEXT: Record<ThemeLocale, { interest: string; fresh: string; fill: string; generic: string }> = {
   en: {
     interest: "{name} is a popular interest here ({bucket} members).",
-    fresh: "No {label} theme in the last {weeks} weeks.",
+    fresh: "No {label} challenge in the last {weeks} weeks.",
     fill: "{label} events filled {pct}% on average.",
     generic: "An easy weekly habit anyone can join.",
   },
   es: {
     interest: "{name} es un interés popular aquí ({bucket} miembros).",
-    fresh: "No hubo un tema de {label} en las últimas {weeks} semanas.",
+    fresh: "No hubo un reto de {label} en las últimas {weeks} semanas.",
     fill: "Los eventos de {label} se llenaron un {pct}% en promedio.",
     generic: "Un hábito semanal fácil al que cualquiera puede unirse.",
   },

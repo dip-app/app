@@ -23,8 +23,8 @@ export const review = {
   "review.empty.approved.body": "Approved entries, with the points they earned, are listed here.",
 
   // Errors
-  "review.error.noTheme": "No weekly theme was selected. Pick one from the challenges list.",
-  "review.error.themeMissing": "That weekly theme doesn’t exist.",
+  "review.error.noTheme": "No weekly challenge was selected. Pick one from the challenges list.",
+  "review.error.themeMissing": "That weekly challenge doesn’t exist.",
   "review.error.loadFailed": "Couldn’t load submissions. Check your connection and try again.",
   "review.backToChallenges": "Back to challenges",
 

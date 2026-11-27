@@ -46,7 +46,7 @@ export function reasonsFor(idea: IdeaTemplate, summary: CompanySummary, signals:
 
   const active = new Set(activeThemeTagIds(signals));
   const weekly = signals.weeklyThemes.find(t => t.endDate.getTime() >= signals.now.getTime() && t.tagIds.some(id => idea.tagIds.includes(id) && active.has(id)));
-  push(weekly ? `Fits the "${cut(weekly.title, 40)}" weekly theme` : null);
+  push(weekly ? `Fits the "${cut(weekly.title, 40)}" weekly challenge` : null);
 
   const quiet = summary.busyWeeks.find(w => w.weekStart.getTime() === summary.quietestWeekStart.getTime());
   push(quiet && quiet.events <= 1 ? `The ${weekLabel(summary.quietestWeekStart).replace("Week", "week")} is quiet on your calendar` : null);

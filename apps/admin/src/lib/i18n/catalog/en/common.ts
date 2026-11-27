@@ -5,6 +5,7 @@ export const common = {
   "common.tryAgain": "Try again",
   "common.goBack": "Go back",
   "common.cancel": "Cancel",
+  "common.close": "Close",
   "common.saving": "Saving…",
   "common.loadMore": "Load more",
   "common.loadingMore": "Loading more…",

@@ -39,7 +39,7 @@ export const en = {
   "email.reason.discovery": "event suggestion",
   "email.reason.calendar_invites": "calendar invite",
   "email.reason.admin_suggestions": "weekly event idea",
-  "email.reason.weekly_themes": "weekly theme",
+  "email.reason.weekly_themes": "weekly challenge",
   "email.reason.admin_digest": "daily roster digest",
   "email.reason.day_before_reminders": "day-before reminder",
 
@@ -131,7 +131,7 @@ export const en = {
   "email.welcome.subject": "Welcome to DIP at {title}",
   "email.welcome.preheader": "You joined DIP at {company}. Here is how to get started.",
   "email.welcome.lead": "you joined DIP at {company}. Here is how to get started:",
-  "email.welcome.step.portal": "Plan events and weekly themes in the admin portal.",
+  "email.welcome.step.portal": "Plan events and weekly challenges in the admin portal.",
   "email.welcome.step.join": "Join an event that looks fun, or invite a coworker to one.",
   "email.welcome.step.interests": "Pick your interests in Profile so events that fit you show up first.",
   "email.welcome.reason": "You are getting this because you joined DIP at {company}.",
@@ -168,10 +168,10 @@ export const en = {
   "email.ideas.text.when": "When: {hint}",
 
   // weekly_theme (opt-in `weekly_themes`): {title} is the theme title as the organizer wrote it.
-  "email.weeklyTheme.heading": "This week's theme",
-  "email.weeklyTheme.subject": "This week's theme: {title}",
+  "email.weeklyTheme.heading": "This week's challenge",
+  "email.weeklyTheme.subject": "This week's challenge: {title}",
   "email.weeklyTheme.preheader": "Runs {dates}. Join in with coworkers, then log what you did in DIP.",
-  "email.weeklyTheme.lead": "a new weekly theme just started. Join in with coworkers, then log what you did in DIP.",
+  "email.weeklyTheme.lead": "a new weekly challenge just started. Join in with coworkers, then log what you did in DIP.",
   "email.weeklyTheme.dates": "{start} to {end}",
   "email.weeklyTheme.points": "{points, plural, one {Worth # point} other {Worth # points}}",
   "email.weeklyTheme.note": "You will find it on the Home screen of the DIP app.",

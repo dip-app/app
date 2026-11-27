@@ -54,7 +54,7 @@ final class HomeThemeTests: XCTestCase {
         let app = launch(["--home-theme=none"])
         let empty = element(app, "home.challenge.empty")
         XCTAssertTrue(empty.waitForExistence(timeout: 10))
-        XCTAssertTrue(empty.label.contains("No weekly theme right now."))
+        XCTAssertTrue(empty.label.contains("No weekly challenge right now."))
         XCTAssertFalse(app.buttons["home.challenge"].exists)
         XCTAssertTrue(app.buttons["home.event.EventCard"].exists)
     }

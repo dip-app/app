@@ -58,8 +58,8 @@ public enum DIPChallengeText {
     /// How entries work, shown above the entry action (the testing finding: explain before submit).
     public static var howItWorks: String { String(localized: "challenge.text.howItWorks", defaultValue: "Do the activity with coworkers during this week, then add how much you did, a short note and optionally a photo as your entry. Entries are reviewed before points are awarded.", bundle: .module, comment: "Challenge details: explains how entries work") }
     public static var submissionsSoon: String { String(localized: "challenge.text.submissionsSoon", defaultValue: "Submissions open soon", bundle: .module, comment: "Challenge note: entries are not open yet") }
-    public static var noneTitle: String { String(localized: "challenge.text.noneTitle", defaultValue: "No weekly theme right now.", bundle: .module, comment: "Home empty state title: no weekly theme") }
-    public static var noneBody: String { String(localized: "challenge.text.noneBody", defaultValue: "A new one starts Monday.", bundle: .module, comment: "Home empty state body: no weekly theme") }
+    public static var noneTitle: String { String(localized: "challenge.text.noneTitle", defaultValue: "No weekly challenge right now.", bundle: .module, comment: "Home empty state title: no weekly challenge") }
+    public static var noneBody: String { String(localized: "challenge.text.noneBody", defaultValue: "A new one starts Monday.", bundle: .module, comment: "Home empty state body: no weekly challenge") }
     public static var failure: String { String(localized: "challenge.text.failure", defaultValue: "Couldn’t load this week’s challenge.", bundle: .module, comment: "Home error: challenge failed to load") }
     public static var stale: String { String(localized: "challenge.text.stale", defaultValue: "Offline · last update", bundle: .module, comment: "Badge shown when the challenge comes from the offline cache") }
 }
@@ -112,7 +112,7 @@ public enum DIPChallengeProjection {
                 formatter.setLocalizedDateFormatFromTemplate("MMMd")
                 formatters[key] = formatter
             }
-            return String(localized: "challenge.window.range", defaultValue: "\(formatter.string(from: start)) - \(formatter.string(from: last))", bundle: .module, comment: "Date range of a weekly theme; first %@ = first day, second %@ = last day, e.g. Nov 9 - Nov 15")
+            return String(localized: "challenge.window.range", defaultValue: "\(formatter.string(from: start)) - \(formatter.string(from: last))", bundle: .module, comment: "Date range of a weekly challenge; first %@ = first day, second %@ = last day, e.g. Nov 9 - Nov 15")
         }
     }
 

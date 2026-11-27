@@ -13,7 +13,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
     case reminders, chat, challenges, social, discovery
     /// Email only: calendar invite emails (`.ics` that add the activity to the member's calendar).
     case calendarInvites = "calendar_invites"
-    /// Email only, opt in: the weekly theme announcement email. (`admin_suggestions` is portal-only and not mirrored.)
+    /// Email only, opt in: the weekly challenge announcement email. (`admin_suggestions` is portal-only and not mirrored.)
     case weeklyThemes = "weekly_themes"
     /// Email only, opt in, admins only: the daily roster digest. The server re-checks the admin role at send time.
     case adminDigest = "admin_digest"
@@ -31,7 +31,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .social: String(localized: "notif.category.social.title", defaultValue: "Comments and photos", bundle: .module, comment: "Notification preference category title")
         case .discovery: String(localized: "notif.category.discovery.title", defaultValue: "Suggestions", bundle: .module, comment: "Notification preference category title")
         case .calendarInvites: String(localized: "notif.category.calendarInvites.title", defaultValue: "Calendar invites", bundle: .module, comment: "Notification preference category title (email only)")
-        case .weeklyThemes: String(localized: "notif.category.weeklyThemes.title", defaultValue: "Weekly theme email", bundle: .module, comment: "Notification preference category title (email only, off by default): an email when a new weekly theme starts")
+        case .weeklyThemes: String(localized: "notif.category.weeklyThemes.title", defaultValue: "Weekly challenge email", bundle: .module, comment: "Notification preference category title (email only, off by default): an email when a new weekly challenge starts")
         case .adminDigest: String(localized: "notif.category.adminDigest.title", defaultValue: "Daily admin digest", bundle: .module, comment: "Notification preference category title (email only, admins only, off by default): a daily email about who joined and finished imports")
         case .dayBeforeReminders: String(localized: "notif.category.dayBeforeReminders.title", defaultValue: "Day-before reminder", bundle: .module, comment: "Notification preference category title (email only, on by default): a reminder email about a day before an activity the member joined")
         }
@@ -43,11 +43,11 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         case .eventUpdates: String(localized: "notif.category.eventUpdates.summary", defaultValue: "Time or place changes, cancellations, and when an organizer adds you", bundle: .module, comment: "Notification preference category description")
         case .reminders: String(localized: "notif.category.reminders.summary", defaultValue: "About a day and an hour before activities you joined", bundle: .module, comment: "Notification preference category description")
         case .chat: String(localized: "notif.category.chat.summary", defaultValue: "New messages in activity chats", bundle: .module, comment: "Notification preference category description")
-        case .challenges: String(localized: "notif.category.challenges.summary", defaultValue: "Submission reviews and new weekly themes", bundle: .module, comment: "Notification preference category description")
+        case .challenges: String(localized: "notif.category.challenges.summary", defaultValue: "Submission reviews and new weekly challenges", bundle: .module, comment: "Notification preference category description")
         case .social: String(localized: "notif.category.social.summary", defaultValue: "Comments on your photos and new photos from activities you went to", bundle: .module, comment: "Notification preference category description: comments on the member's album photos and new photos in albums of activities they attended")
         case .discovery: String(localized: "notif.category.discovery.summary", defaultValue: "New activities that match your interests", bundle: .module, comment: "Notification preference category description")
         case .calendarInvites: String(localized: "notif.category.calendarInvites.summary", defaultValue: "An email that adds activities you join to your calendar, and keeps it up to date", bundle: .module, comment: "Notification preference category description (email only)")
-        case .weeklyThemes: String(localized: "notif.category.weeklyThemes.summary", defaultValue: "An email on Monday when a new weekly theme starts", bundle: .module, comment: "Notification preference category description (email only): the weekly theme announcement email, sent Monday morning")
+        case .weeklyThemes: String(localized: "notif.category.weeklyThemes.summary", defaultValue: "An email on Monday when a new weekly challenge starts", bundle: .module, comment: "Notification preference category description (email only): the weekly challenge announcement email, sent Monday morning")
         case .adminDigest: String(localized: "notif.category.adminDigest.summary", defaultValue: "Who joined your company and which imports finished, once a day", bundle: .module, comment: "Notification preference category description (email only, admins only): daily roster digest")
         case .dayBeforeReminders: String(localized: "notif.category.dayBeforeReminders.summary", defaultValue: "About a day before activities you joined", bundle: .module, comment: "Notification preference category description (email only): the reminder email sent about 24 hours before an activity the member joined")
         }
@@ -60,7 +60,7 @@ public enum DIPNotificationCategory: String, CaseIterable, Equatable, Sendable, 
         guard channel == .email else { return summary }
         switch self {
         case .challenges:
-            return String(localized: "notif.category.challenges.emailSummary", defaultValue: "Reviews of your weekly theme submissions", bundle: .module, comment: "Email preference description of the Challenges category: emails when a reviewer approves or asks for changes on the member's submission (the weekly theme email has its own switch)")
+            return String(localized: "notif.category.challenges.emailSummary", defaultValue: "Reviews of your weekly challenge submissions", bundle: .module, comment: "Email preference description of the Challenges category: emails when a reviewer approves or asks for changes on the member's submission (the weekly challenge email has its own switch)")
         case .reminders:
             return String(localized: "notif.category.reminders.emailSummary", defaultValue: "About an hour before activities you joined", bundle: .module, comment: "Email preference description of the Reminders category: the reminder email about an hour before an activity (the day-before reminder email has its own switch)")
         default:

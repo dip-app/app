@@ -20,7 +20,7 @@ export const memberDetail: Record<keyof typeof source, string> = {
   "memberDetail.field.department": "Departamento",
   "memberDetail.field.jobTitle": "Puesto",
   "memberDetail.hint.ownRole": "No puedes cambiar tu propio rol.",
-  "memberDetail.hint.roles": "Los organizadores administran eventos, temas, álbumes y asistentes. Los administradores también administran personas e importaciones.",
+  "memberDetail.hint.roles": "Los organizadores administran eventos, retos, álbumes y asistentes. Los administradores también administran personas e importaciones.",
   "memberDetail.readOnly": "Solo lectura. Solo los administradores pueden cambiar los datos de las personas.",
   "memberDetail.save": "Guardar cambios",
   "memberDetail.saving": "Guardando…",

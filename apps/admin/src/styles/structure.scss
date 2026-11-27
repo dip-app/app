@@ -61,6 +61,20 @@ $r-box: 8px;
   .table .group-row th { position: sticky; top: 33px; z-index: 1; padding: 6px 12px; background: #fbfbfd; border-bottom: 1px solid $line; font-size: 12px; font-weight: 600; color: $ink; text-align: left; }
   .table tbody tr.group-row:hover th { background: #fbfbfd; }
 
+  // A person who has no page of their own yet (invited, not joined) opens their details in a dialog: same look as the linked name.
+  button.person { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer;
+    &:hover strong { text-decoration: underline; } }
+  // A second list under the first on the same tab (Members > All: invited people who haven't joined yet).
+  .list-section { margin-top: 32px; }
+  .list-section-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .list-section-note { margin: 2px 0 12px; font-size: 13px; }
+  // Filter chips above a table (Challenges > Schedule week phases) and a one-line note under a tab row.
+  // The selected chip is a quiet tint with an outline, so it never reads as a second primary next to "New challenge".
+  .phase-chips { margin-bottom: 16px;
+    .chip[aria-pressed="true"] { background: #eef0fc; color: #3d48b8; box-shadow: inset 0 0 0 1px #5562dc; font-weight: 600;
+      .chip-count { color: inherit; } } }
+  .tab-intro { margin: 0 0 12px; font-size: 13px; }
+
   // ---------- List toolbar: search and the result line on one row
   .list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px;
     .field.search { flex: 1 1 280px; max-width: 420px; margin-bottom: 0; }
@@ -242,3 +256,17 @@ $r-box: 8px;
 .content .triage .actions { padding-bottom: 0; }
 .content .triage .no-changes { margin: 6px 0 0; }
 .content .view-full { display: inline-flex; align-items: center; justify-content: center; }
+
+// Phones: a header with several actions (Members: Export CSV, Import people, Add person) wraps them instead of running
+// off the screen; the schedule cards (Challenges > Schedule) line up like the review cards: art and labels on the card
+// edge, a full-width Edit.
+@media (max-width: 700px) {
+  .content .header-action { flex: 0 1 auto; max-width: 100%; }
+  .content .themes-table {
+    td { padding-top: 4px; padding-bottom: 4px; }
+    td:not([data-label]) { padding-left: 0; padding-right: 0; }
+    td[data-label] { padding-left: 96px; padding-right: 0; }
+    td[data-label]::before { margin-top: 0; }
+    td.right { padding-top: 8px; .row-actions { display: block; } .pill-btn { width: 100%; } }
+  }
+}

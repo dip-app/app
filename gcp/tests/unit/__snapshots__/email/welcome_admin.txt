@@ -2,7 +2,7 @@ WELCOME TO DIP
 
 Hi Sam, you joined DIP at Acme Robotics. Here is how to get started:
 
-- Plan events and weekly themes in the admin portal.
+- Plan events and weekly challenges in the admin portal.
 - Join an event that looks fun, or invite a coworker to one.
 - Pick your interests in Profile so events that fit you show up first.
 
