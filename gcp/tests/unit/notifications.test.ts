@@ -490,6 +490,16 @@ describe("device registry callables", () => {
     assert.equal(registry.devices.size, 0);
   });
 
+  test("organizers register devices like members; unknown roles are refused", async () => {
+    const registry = fixture();
+    registry.members.set("org", { companyId: "alpha", role: "organizer" });
+    await registerDevice(registry, caller("org"), request("o"));
+    assert.equal(registry.devices.size, 1);
+    registry.members.set("odd", { companyId: "alpha", role: "owner" });
+    await rejects(registerDevice(registry, caller("odd"), request("x")), "MEMBERSHIP_REQUIRED");
+    assert.equal(registry.devices.size, 1);
+  });
+
   test("a deactivated member cannot register a device", async () => {
     const registry = fixture();
     registry.members.set("off", { companyId: "alpha", role: "member", status: "deactivated" });

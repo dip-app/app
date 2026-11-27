@@ -1,6 +1,7 @@
 import type { SetMyLocaleResponse } from "../../../generated/models";
 import { isLocale, type Locale } from "../../i18n";
 import { AccountsError } from "../domain/errors";
+import { isRole } from "../../admin/domain/permissions";
 
 /**
  * setMyLocaleV1 (issue #259 backend phase, docs/design/backend-i18n.md): the signed-in member sets the language of
@@ -21,8 +22,6 @@ export interface LocaleTransaction {
 export interface LocaleStore {
   runTransaction<T>(work: (tx: LocaleTransaction) => Promise<T>): Promise<T>;
 }
-
-const ROLES = new Set(["member", "organizer", "admin"]);
 
 /** Exactly `{ contractVersion: 1, locale: "en" | "es" }`; anything else (a uid, companyId, "fr") is VALIDATION_FAILED. */
 export function parseSetMyLocaleRequest(data: unknown): Locale {
@@ -45,7 +44,7 @@ export async function setMyLocale(store: LocaleStore, caller: LocaleCaller | nul
   const locale = parseSetMyLocaleRequest(data);
   return store.runTransaction(async (tx) => {
     const member = await tx.getMember(caller.uid);
-    if (!member || typeof member.companyId !== "string" || member.companyId === "" || !ROLES.has(String(member.role))) {
+    if (!member || typeof member.companyId !== "string" || member.companyId === "" || !isRole(member.role)) {
       throw new AccountsError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
     }
     if (member.status === "deactivated") throw new AccountsError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");

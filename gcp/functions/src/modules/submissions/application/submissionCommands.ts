@@ -11,6 +11,7 @@ import {
   awardId, iso, parseApproveRequest, parseListRequest, parseRejectRequest, parseSubmitRequest, submissionId, toSubmissionDto,
 } from "../domain/submissionPolicy";
 import type { ChallengeReviewPush, SubmissionCaller, SubmissionReviewNotifier, SubmissionStore, SubmissionTransaction, SubmissionWrite } from "./ports";
+import { isRole } from "../../admin/domain/permissions";
 
 type Clock = () => Date;
 
@@ -44,7 +45,7 @@ export async function submitChallenge(store: SubmissionStore, objects: PhotoObje
     return await store.runTransaction(async tx => {
       invalidObject = false;
       const member = await tx.getMember(uid);
-      if (!member || member.companyId !== companyId || !["member", "organizer", "admin"].includes(member.role as string)) {
+      if (!member || member.companyId !== companyId || !isRole(member.role)) {
         throw new SubmissionError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
       }
       if (deactivated(member)) throw new SubmissionError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");

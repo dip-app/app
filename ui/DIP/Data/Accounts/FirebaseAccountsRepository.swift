@@ -64,8 +64,7 @@ import UIKit
             let data = try JSONSerialization.jsonObject(with: JSONEncoder().encode(ResolveMembershipRequest(contractVersion: 1)))
             let result = try await functions.httpsCallable("resolveMembershipV1").call(data)
             let response = try JSONDecoder().decode(ResolveMembershipResponse.self, from: JSONSerialization.data(withJSONObject: result.data))
-            guard response.contractVersion == 1, !response.companyId.isEmpty, ["member", "admin"].contains(response.role) else { throw AccountsFailure.invalidProfile }
-            return response
+            return try response.validated()
         } catch { throw Self.failure(error) }
     }
     func updateProfile(uid: String, _ profile: EditableProfile) async throws {

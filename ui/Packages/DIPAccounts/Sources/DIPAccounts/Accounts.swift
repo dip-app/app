@@ -7,15 +7,29 @@ public struct AccountIdentity: Equatable, Sendable {
     public let isEmailVerified: Bool
     public init(uid: String, isEmailVerified: Bool) { self.uid = uid; self.isEmailVerified = isEmailVerified }
 }
+/// The server-owned company roles (contracts/v1 `role` enum; gcp `isRole`). Every role uses the app as a
+/// full member; organizer and admin tools live in the admin portal. Unknown stored roles fail closed.
+public enum MembershipRole: String, CaseIterable, Equatable, Sendable {
+    case member, organizer, admin
+}
 public struct MembershipContext: Equatable, Sendable {
     public let uid: String
     public let profile: AppUser
+    /// Always a known role: the initializer refuses anything else.
+    public let membershipRole: MembershipRole
     public var companyID: String { profile.companyId }
     public var role: String { profile.role }
     public init(uid: String, profile: AppUser) throws {
         guard !uid.isEmpty, profile.id == uid, !profile.companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              ["member", "admin"].contains(profile.role) else { throw AccountsFailure.invalidProfile }
-        self.uid = uid; self.profile = profile
+              let role = MembershipRole(rawValue: profile.role) else { throw AccountsFailure.invalidProfile }
+        self.uid = uid; self.profile = profile; self.membershipRole = role
+    }
+}
+public extension ResolveMembershipResponse {
+    /// Checks a resolveMembershipV1 response: contract version 1, a company and a known role.
+    func validated() throws -> ResolveMembershipResponse {
+        guard contractVersion == 1, !companyId.isEmpty, MembershipRole(rawValue: role) != nil else { throw AccountsFailure.invalidProfile }
+        return self
     }
 }
 /// Portable account failures. Adapters map SDK and callable errors (including

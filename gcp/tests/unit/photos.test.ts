@@ -259,3 +259,18 @@ test("a deactivated member cannot finalize a photo; active and status-less membe
   const fresh = setup(); // no status field at all
   assert.equal((await finalizeEventPhoto(fresh.store, fresh.objects, caller(), request(), now)).created, true);
 });
+
+test("organizers finalize album photos like members; other-company organizers and unknown roles are refused", async () => {
+  const { store, objects } = setup();
+  store.seed("users/alice", { ...store.get("users/alice"), role: "organizer" });
+  assert.equal((await finalizeEventPhoto(store, objects, caller(), request(), now)).created, true);
+  const foreign = setup();
+  foreign.store.seed("users/olga", { ...foreign.store.get("users/olga"), role: "organizer" });
+  foreign.objects.put(path("olga", 0, "alpha"));
+  await rejects(finalizeEventPhoto(foreign.store, foreign.objects, caller("olga"), request({}, "olga"), now), "permission-denied", "MEMBERSHIP_CONFLICT");
+  assert.equal(foreign.objects.inspected.length, 0);
+  const unknown = setup();
+  unknown.store.seed("users/alice", { ...unknown.store.get("users/alice"), role: "owner" });
+  await rejects(finalizeEventPhoto(unknown.store, unknown.objects, caller(), request(), now), "permission-denied", "MEMBERSHIP_CONFLICT");
+  assert.equal(unknown.store.writes, 0);
+});

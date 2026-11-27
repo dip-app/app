@@ -185,3 +185,19 @@ test("a deactivated member cannot RSVP or rejoin; nothing beyond the member is r
 test("a member without a status field is treated as active", async () => {
   assert.equal((await call(fixture())).status, "going");
 });
+
+test("organizers RSVP like members; other-company organizers and unknown roles are refused", async () => {
+  const store = fixture();
+  store.seed("users/a", { ...store.get("users/a"), role: "organizer" });
+  assert.equal((await call(store)).attendeeCount, 1);
+  const foreign = fixture();
+  foreign.seed("users/a", { ...foreign.get("users/a"), companyId: "beta", role: "organizer" });
+  await rejected(call(foreign), "permission-denied", "MEMBERSHIP_CONFLICT");
+  assert.ok(foreign.reads.every(p => p.startsWith("users/")));
+  for (const role of ["owner", "", undefined]) {
+    const unknown = fixture();
+    unknown.seed("users/a", { ...unknown.get("users/a"), role });
+    await rejected(call(unknown), "permission-denied", "MEMBERSHIP_CONFLICT");
+    assert.equal(unknown.writes, 0);
+  }
+});

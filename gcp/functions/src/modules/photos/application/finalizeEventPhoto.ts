@@ -3,6 +3,7 @@ import { isDeactivated } from "../../admin/domain/member";
 import { PhotoError } from "../domain/errors";
 import { parseFinalizeRequest, validWireId, validateUpload, type PhotoContentType } from "../domain/photoPolicy";
 import type { Document, PhotoCaller, PhotoObjects, PhotoStore } from "./ports";
+import { isRole } from "../../admin/domain/permissions";
 
 const date = (value: unknown): value is Date => value instanceof Date && Number.isFinite(value.getTime());
 function stored(condition: boolean): asserts condition {
@@ -31,7 +32,7 @@ export async function finalizeEventPhoto(store: PhotoStore, objects: PhotoObject
       invalidObject = false;
       // Membership first: never reveal whether another company's event exists.
       const member = await tx.getMember(uid);
-      if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
+      if (!member || member.companyId !== companyId || !isRole(member.role)) {
         throw new PhotoError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
       }
       if (isDeactivated(member)) throw new PhotoError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");

@@ -228,3 +228,32 @@ private let verified = AccountIdentity(uid: "one", isEmailVerified: true)
     #expect(session.state == .member(try! MembershipContext(uid: "two", profile: profile("two"))))
     session.stop()
 }
+@Test func everyServerRoleEntersTheAppAsAMember() throws {
+    #expect(MembershipRole.allCases.map(\.rawValue) == ["member", "organizer", "admin"])
+    for role in MembershipRole.allCases {
+        let context = try MembershipContext(uid: "one", profile: profile(role: role.rawValue))
+        #expect(context.membershipRole == role && context.role == role.rawValue)
+    }
+    for unknown in ["", "owner", "Organizer", "ADMIN", " member"] {
+        #expect(throws: AccountsFailure.invalidProfile) { try MembershipContext(uid: "one", profile: profile(role: unknown)) }
+    }
+}
+@Test @MainActor func organizerProfileReachesMemberState() async {
+    let fake = FakeRepository(); let session = AccountsSession(repository: fake); session.start()
+    await fake.emit(.identity(verified))
+    await fake.emit(.profile(uid: "one", profile(role: "organizer")))
+    #expect(session.state == .member(try! MembershipContext(uid: "one", profile: profile(role: "organizer"))))
+    session.stop()
+}
+@Test func resolveMembershipResponseAcceptsKnownRolesOnly() throws {
+    for role in MembershipRole.allCases {
+        let response = ResolveMembershipResponse(contractVersion: 1, companyId: "company", role: role.rawValue)
+        #expect(try response.validated() == response)
+    }
+    for bad in [ResolveMembershipResponse(contractVersion: 1, companyId: "company", role: "owner"),
+                ResolveMembershipResponse(contractVersion: 1, companyId: "company", role: ""),
+                ResolveMembershipResponse(contractVersion: 2, companyId: "company", role: "organizer"),
+                ResolveMembershipResponse(contractVersion: 1, companyId: "", role: "organizer")] {
+        #expect(throws: AccountsFailure.invalidProfile) { try bad.validated() }
+    }
+}

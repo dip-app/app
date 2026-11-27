@@ -3,6 +3,7 @@ import { isDeactivated } from "../../admin/domain/member";
 import { ParticipationError } from "../domain/errors";
 import { parseRequest, validDocumentId } from "../domain/request";
 import type { Document, ParticipationIdentity, ParticipationStore, ParticipationTransaction } from "./ports";
+import { isRole } from "../../admin/domain/permissions";
 
 function stored(condition: boolean): asserts condition {
   if (!condition) throw new ParticipationError("internal", "INVALID_STORED_DATA", "Invalid stored participation data.");
@@ -22,7 +23,7 @@ export async function setRsvp(store: ParticipationStore, identity: Participation
   return store.runTransaction(async tx => {
     // Check membership before reading tenant resources, avoiding existence disclosure.
     const member = await tx.getMember(uid);
-    if (!member || member.companyId !== companyId || (member.role !== "member" && member.role !== "admin")) {
+    if (!member || member.companyId !== companyId || !isRole(member.role)) {
       throw new ParticipationError("permission-denied", "MEMBERSHIP_CONFLICT", "Company membership required.");
     }
     if (isDeactivated(member)) throw new ParticipationError("permission-denied", "ACCOUNT_DEACTIVATED", "This account is deactivated.");
