@@ -102,6 +102,8 @@ export function cleanText(value: string, max: number): string {
     .replace(/\*\*|__|`/g, "")
     .replace(/\*([^*\n]+)\*/g, "$1")
     .normalize("NFKC")
+    // House style has no em dashes: a dash between words becomes a comma (an unspaced en dash in "5–9" stays).
+    .replace(/\s*\u2014\s*|\s+\u2013\s+/g, ", ")
     .replace(/\t/g, " ")
     .replace(/(?!\n)[\p{Cc}\p{Cf}]/gu, "")
     .replace(/ {2,}/g, " ")

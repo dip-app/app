@@ -191,7 +191,8 @@ function getThemeCatalog(snapshot: ThemeSnapshot, args: Args): IdeaToolOutput {
   const theme = (args.theme as ThemeKey | null) ?? null;
   return {
     themes: catalogFor(snapshot, theme).slice(0, 12).map(i => ({
-      id: i.id, title: i.title, theme: i.theme, themeLabel: THEME_LABELS[i.theme], tagIds: i.tagIds, description: i.description,
+      // No titles, so the model writes its own instead of copying one (eval 2026-11-26).
+      id: i.id, theme: i.theme, themeLabel: THEME_LABELS[i.theme], tagIds: i.tagIds, description: i.description,
     })),
   };
 }
@@ -226,7 +227,7 @@ const TOOLS: readonly Tool[] = [
     run: getAvailableWeeks,
   },
   {
-    definition: def("getThemeCatalog", "Curated weekly theme ideas that fit the season, as inspiration. Never copy one that repeats a past theme.", { theme: themeArg }),
+    definition: def("getThemeCatalog", "Curated weekly theme ideas that fit the season, as inspiration (no titles: write your own). Never repeat a past theme.", { theme: themeArg }),
     run: getThemeCatalog,
   },
 ];
@@ -270,12 +271,12 @@ export function modelThemesSchema(catalogTagIds: readonly string[], freeWeeks: r
   const tagId = catalogTagIds.length > 0 ? z.enum(catalogTagIds as [string, ...string[]]) : z.string();
   const week = freeWeeks.length > 0 ? z.enum(freeWeeks as [string, ...string[]]).nullable() : z.null();
   const theme = z.object({
-    title: z.string().describe("Short, catchy weekly theme title, at most 6 words and 60 characters."),
-    description: z.string().describe("2 short sentences: what members do during the week and what they post as proof. At most 300 characters."),
+    title: z.string().describe("Catchy, specific weekly theme title, 2 to 5 words, at most 40 characters."),
+    description: z.string().describe("2 short sentences: what members do during the week, then what they post. At most 220 characters."),
     themeKey: z.enum(THEME_KEYS).describe("The illustration that fits best."),
     tagIds: z.array(tagId).describe("1 to 4 catalog tag ids, the theme's own tag first."),
     weekStart: week.describe("A free week from getAvailableWeeks, or null to let the server pick the first free week."),
-    why: z.array(z.string()).describe("1 to 3 short lines (each at most 100 characters) on why it fits this company, quoting only numbers that appear in tool results."),
+    why: z.array(z.string()).describe("1 or 2 lines (each at most 90 characters), each naming one company fact from the tool results; no invented numbers."),
     catalogThemeId: z.string().nullable().describe("The catalog theme id it was inspired by, or null."),
   }).strict();
   return z.object({ themes: z.array(theme).describe("4 different weekly themes, best first, with different illustrations.") }).strict();

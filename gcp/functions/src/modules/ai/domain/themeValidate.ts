@@ -5,7 +5,7 @@ import { fitLabel } from "../../suggestions/domain/labels";
 import { APPEAL_LEVELS, FRESH_LEVELS, INTEREST_LEVELS, buildState, composite, interpret, questionId } from "../../suggestions/domain/questions";
 import type { DecisionAnswer, DecisionQuestion } from "../application/ports";
 import { cleanText, hasForbiddenContent, normalizeTagId } from "./drafts";
-import { groundedNumbers, isGrounded } from "./ideaValidate";
+import { fitWhy, groundedNumbers, interestClaimsHold, isGrounded } from "./ideaValidate";
 import { SUPPRESSION_THRESHOLD } from "./interests";
 import { THEME_IDEAS, type ThemeIdea } from "./themeCatalog";
 import {
@@ -188,7 +188,7 @@ export function groundedWhy(lines: readonly string[], traces: readonly ThemeTrac
   const why: string[] = [];
   let companyNumbers = false;
   for (const raw of lines.slice(0, THEME_LIMITS.maxWhy)) {
-    const line = flat(raw, THEME_LIMITS.whyMax);
+    const line = fitWhy(raw, THEME_LIMITS.whyMax);
     if (!line || hasForbiddenContent(line) || !isGrounded(line, all)) continue;
     if (/\d/.test(line) && isGrounded(line, company)) companyNumbers = true;
     why.push(line);
@@ -201,6 +201,8 @@ interface Draft {
   why: string[]; reasonBasis: ThemeSuggestion["reasonBasis"]; source: ThemeSuggestion["source"];
 }
 
+const COLD_START_CLAIM = /\b(your|you've|teammates?|colleagues?|coworkers?|members?|employees?|filled|signed up|picked|recorded|history|past themes?|no themes?|tu|tus|miembros|equipo)\b/i;
+
 function repairModel(m: ModelTheme, ctx: ThemeContext, traces: readonly ThemeTrace[]): Draft | null {
   const { snapshot } = ctx;
   const title = flat(m.title, THEME_LIMITS.titleMax);
@@ -209,7 +211,11 @@ function repairModel(m: ModelTheme, ctx: ThemeContext, traces: readonly ThemeTra
   const tagIds = repairTags(m.tagIds, m.themeKey, snapshot);
   if (tagIds.length === 0) return null;
   const weekStart = m.weekStart && snapshot.freeWeeks.includes(m.weekStart) ? m.weekStart : null;
-  const grounded = groundedWhy(m.why, traces);
+  const raw = groundedWhy(m.why.filter(line => interestClaimsHold(line, snapshot.idea)), traces);
+  // A company with no history gets no claims about it (eval 2026-11-26: "no themes recorded" lines on a cold start).
+  const grounded = snapshot.idea.summary.dataLevel === "none"
+    ? { why: raw.why.filter(line => !COLD_START_CLAIM.test(line) && !/\d/.test(line)), companyNumbers: false }
+    : raw;
   const built = serverWhy(m.themeKey, tagIds, snapshot, ctx.locale);
   const why = grounded.why.length > 0 ? grounded.why : built.why;
   const reasonBasis = snapshot.idea.summary.dataLevel === "none" ? "generic" : grounded.why.length > 0 ? (grounded.companyNumbers ? "company_data" : built.basis) : built.basis;

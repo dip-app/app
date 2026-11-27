@@ -177,8 +177,8 @@ export const ai = {
 
   // Generating, errors, results
   "generating.label": "Generating drafts",
-  "generating.status.one": "{ai} is writing 1 draft. This can take up to a minute.",
-  "generating.status.other": "{ai} is writing {n} drafts. This can take up to a minute.",
+  "generating.status.one": "{ai} is writing 1 draft. This usually takes 10 to 20 seconds.",
+  "generating.status.other": "{ai} is writing {n} drafts. This usually takes 10 to 20 seconds.",
   "error.label": "Drafts could not be written",
   "error.backToChoices": "Back to choices",
   "error.retry": "Try again",

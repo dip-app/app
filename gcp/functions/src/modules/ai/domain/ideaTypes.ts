@@ -29,7 +29,8 @@ export const IDEA_LIMITS = {
   maxIdeas: 6,
   /** Ideas are scheduled in the next 4 weeks, at least this many days ahead. */
   horizonDays: 28,
-  leadDays: 2,
+  /** At least five days of lead time so the admin can publish and members can plan (eval 2026-11-26: two-day starts read as rushed). */
+  leadDays: 5,
   /** At most this many ideas share a theme. */
   maxPerTheme: 2,
   titleMax: 80,
@@ -75,8 +76,8 @@ export function modelIdeasSchema(catalogTagIds: readonly string[], consideration
   const tagId = catalogTagIds.length > 0 ? z.enum(catalogTagIds as [string, ...string[]]) : z.string();
   const consideration = considerationIds.length > 0 ? z.enum(considerationIds as [string, ...string[]]) : z.string();
   const idea = z.object({
-    title: z.string().describe("Short, specific event title, at most 8 words."),
-    description: z.string().describe("1 to 3 sentences an HR admin could paste into the event."),
+    title: z.string().describe("Specific event title naming the activity, 3 to 7 words."),
+    description: z.string().describe("2 or 3 short sentences an HR admin could paste into the event."),
     theme: z.enum(THEME_KEYS),
     tagIds: z.array(tagId).describe("1 to 4 catalog tag ids, the theme tag first."),
     goal: z.enum(GOALS),
@@ -88,11 +89,11 @@ export function modelIdeasSchema(catalogTagIds: readonly string[], consideration
     isOutdoor: z.boolean(),
     venueType: z.enum(VENUE_TYPES),
     venueSearchHint: z.string().describe("Generic search words for a venue, never a business name."),
-    why: z.string().describe("One short line (at most 90 characters) on why this fits the company, quoting only numbers that appear in tool results."),
+    why: z.string().describe("One line (at most 90 characters) naming the company fact this builds on, quoting only facts and numbers from tool results."),
     considerationIds: z.array(consideration).describe("0 to 3 consideration ids that matter for this idea."),
     catalogIdeaId: z.string().nullable().describe("The catalog idea id it was inspired by, or null."),
   }).strict();
-  return z.object({ ideas: z.array(idea).describe("4 to 6 ideas across different themes.") }).strict();
+  return z.object({ ideas: z.array(idea).describe("5 ideas (4 to 6) across at least 3 themes.") }).strict();
 }
 export type ModelIdeas = z.infer<ReturnType<typeof modelIdeasSchema>>;
 export type ModelIdea = ModelIdeas["ideas"][number];

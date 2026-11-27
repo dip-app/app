@@ -22,7 +22,7 @@ import type { AiEventChoices } from "../../../generated/models";
  */
 
 /** Bump when the idea algorithm changes so cached ideas are regenerated (part of the fingerprint). */
-export const IDEA_ALGORITHM_VERSION = 1;
+export const IDEA_ALGORITHM_VERSION = 2;
 
 const DAY_MS = 86_400_000;
 const PAST_EVENT_TITLE_MAX = 60;
@@ -192,8 +192,9 @@ function getIdeaCatalog(snapshot: IdeaSnapshot, args: Args): IdeaToolOutput {
   const theme = (args.theme as ThemeKey | null) ?? null;
   const fitting = IDEA_CATALOG.filter(i => i.months.includes(snapshot.summary.month) && (theme === null || i.theme === theme));
   return {
+    // No titles: a title invites a verbatim copy (eval 2026-11-26: 47 of 50 baseline ideas were catalog titles). The pitch is the inspiration.
     ideas: spread(fitting, i => i.theme, CATALOG_ROWS).map(i => ({
-      id: i.id, title: i.title, pitch: i.pitch, theme: i.theme, tagIds: i.tagIds, costBucket: i.budget,
+      id: i.id, pitch: i.pitch, theme: i.theme, tagIds: i.tagIds, costBucket: i.budget,
       groupMin: i.groupMin, groupMax: i.groupMax, durationMinutes: i.durationMinutes,
     })),
   };
@@ -232,7 +233,7 @@ const TOOLS: readonly Tool[] = [
     run: getAttendanceTrends,
   },
   {
-    definition: def("getIdeaCatalog", "Up to 12 curated event ideas that fit the current month, as inspiration. Never copy blindly.", { theme: themeArg }),
+    definition: def("getIdeaCatalog", "Up to 12 curated event pitches that fit the current month, as inspiration (no titles: write your own).", { theme: themeArg }),
     run: getIdeaCatalog,
   },
   {
@@ -311,12 +312,13 @@ const countBucket = (n: number): string => (n === 0 ? "0" : n <= 2 ? "1-2" : n <
  * interest buckets above the floor, recent-event count bucket and the leading theme, weekday and time of day by fill,
  * the 4-week upcoming counts as buckets, active weekly theme titles, the month, catalog versions and the algorithm version.
  */
-export function ideaFingerprint(snapshot: IdeaSnapshot): string {
+export function ideaFingerprint(snapshot: IdeaSnapshot, locale: "en" | "es" = "en"): string {
   const { summary, signals } = snapshot;
   const cells = trendCells(snapshot);
   const recentSince = signals.now.getTime() - 42 * DAY_MS;
   const canonical = {
     algorithm: IDEA_ALGORITHM_VERSION,
+    ...(locale === "en" ? {} : { locale }),
     catalog: catalogDigest(),
     considerations: CONSIDERATION_CATALOG_VERSION,
     month: summary.month,

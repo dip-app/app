@@ -168,7 +168,7 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
   const timer = setTimeout(() => controller.abort(), deps.deadlineMs ?? RUN_DEADLINE_MS);
   const meter = createMeter(deps, controller.signal);
   try {
-    result = await run(deps, request, catalog, meter, controller.signal);
+    result = await run(deps, request, catalog, meter, controller.signal, reservation.actor.locale === "es" ? "es" : "en");
   } catch (error) {
     unexpected = error;
     // Settle with whatever was really spent before the failure.
@@ -192,12 +192,18 @@ export async function generateEventDrafts(deps: AiDeps, rawCaller: Caller | null
 const categoryNames = (categories: readonly string[]) => categories.filter(name => /^[A-Za-z0-9/_-]{1,40}$/.test(name)).slice(0, 12);
 
 async function run(
-  deps: AiDeps, request: ParsedGenerateRequest, catalog: readonly CatalogTag[], meter: Metering, signal: AbortSignal,
+  deps: AiDeps, request: ParsedGenerateRequest, catalog: readonly CatalogTag[], meter: Metering, signal: AbortSignal, locale: "en" | "es" = "en",
 ): Promise<RunResult> {
   const { record, snapshot } = meter;
   const stop = (status: "flagged" | "failed", reason: AdminErrorReason, detail: string, extra: AuditChange[] = []): RunResult =>
     ({ status, reason, detail, extra, ...snapshot() });
 
+  // Company reads are free and independent of the note screening, so they run while the note is screened.
+  const now = deps.now();
+  const companyReads = Promise.all([
+    bestEffort(deps, "interests", () => deps.interests.countsFor(request.companyId), null),
+    bestEffort(deps, "theme", () => deps.themes.current(request.companyId, now), null),
+  ]);
   try {
     if (request.prompt !== "") {
       // Free provider moderation first, then the typed triage questions. A thrown error fails closed (AI_UNAVAILABLE).
@@ -212,16 +218,12 @@ async function run(
       if (reasons.length > 0) return stop("flagged", "AI_PROMPT_REJECTED", "triage", [change("triageReasons", null, reasons.join(","))]);
     }
 
-    const now = deps.now();
-    const [stats, theme] = await Promise.all([
-      bestEffort(deps, "interests", () => deps.interests.countsFor(request.companyId), null),
-      bestEffort(deps, "theme", () => deps.themes.current(request.companyId, now), null),
-    ]);
+    const [stats, theme] = await companyReads;
     const interests = summarizeInterests(stats, catalog);
     const catalogIds = catalog.map(tag => tag.id);
     const input = buildGenerateUserContent({
       choices: request.choices, count: request.count, note: request.prompt, considerations: request.considerations, catalog, topInterests: interests.top,
-      thinTagIds: interests.thinTagIds.slice(0, THIN_IN_PROMPT), theme, now,
+      thinTagIds: interests.thinTagIds.slice(0, THIN_IN_PROMPT), theme, now, locale,
     });
     const schema = modelDraftsSchema(catalogIds, { count: request.count, choices: request.choices });
     const context = { count: request.count, choices: request.choices, catalogIds: new Set(catalogIds), catalogNames: new Map(catalog.map(tag => [tag.id, tag.name])) };

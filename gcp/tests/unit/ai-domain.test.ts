@@ -298,6 +298,12 @@ describe("prompt for small models", () => {
     assert.match(content, /Write exactly 2 event drafts/);
     assert.equal(content.split("</admin_note>").length, 2, "the note cannot close its own block");
   });
+  test("the user turn names the output language: the admin's account language, English by default", () => {
+    const base = { choices, count: 1, note: "", catalog, topInterests: [], thinTagIds: [], theme: null, now: NOW };
+    assert.match(buildGenerateUserContent(base), /"language": "US English"/);
+    assert.match(buildGenerateUserContent({ ...base, locale: "es" }), /"language": "Latin American Spanish \(informal tú\)"/);
+    assert.match(GENERATE_SYSTEM_PROMPT, /<request>\.language/);
+  });
 });
 
 describe("drafts", () => {

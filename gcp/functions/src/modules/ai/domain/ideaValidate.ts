@@ -67,6 +67,43 @@ export function isGrounded(text: string, numbers: ReadonlySet<string>): boolean 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Interest claims
+
+const BUCKET_TOKEN = /\b(5\s*-\s*9|10\s*-\s*19|20\s*\+)/g;
+const TOP_CLAIM = /\b(top|most popular|biggest|largest|favorite|más popular|principal|mayor)\b/i;
+/** "One of your top interests", "a top interest": the top three visible interests (as in suggestions/domain/reasons.ts). */
+const AMONG_TOP = /\b(one of|a top|among|uno de|una de|entre)\b/i;
+const GROWTH_CLAIM = /\b(growing|grew|gaining|rising|on the rise|creciendo|crece|en aumento)\b/i;
+
+/**
+ * False when a line makes an interest claim the company data contradicts (eval 2026-11-26: small models wrote "Food &
+ * Drink is your top interest (20+ members)" for companies where that is not true, and number grounding alone let the
+ * "20" through because another interest had it). Checked for the interests the line names: a member bucket must be one
+ * of their own visible buckets, "top" must be the largest visible interest ("one of the top" the top three), "growing" needs
+ * a positive monthly change.
+ * Lines naming no interest pass.
+ */
+export function interestClaimsHold(text: string, snapshot: IdeaSnapshot): boolean {
+  const lower = text.toLowerCase();
+  const visible = snapshot.summary.interests.filter(i => i.bucket !== null && i.members >= 5);
+  const largest = visible.reduce<number>((m, i) => Math.max(m, i.members), 0);
+  const named = snapshot.catalogTags.filter(tag => {
+    const full = tag.name.toLowerCase();
+    const head = full.split(/\s|&/)[0]!;
+    return lower.includes(full) || (head.length >= 4 && new RegExp(`\\b${head}\\b`).test(lower));
+  });
+  if (named.length === 0) return true;
+  const buckets = [...lower.matchAll(BUCKET_TOKEN)].map(m => m[1]!.replace(/\s+/g, ""));
+  const facts = named.map(tag => visible.find(i => i.tagId === tag.id) ?? null);
+  if (buckets.length > 0 && !buckets.every(b => facts.some(f => f?.bucket === b))) return false;
+  const topThree = [...visible].sort((a, b) => b.members - a.members).slice(0, 3).map(i => i.tagId);
+  const isTop = (f: (typeof facts)[number]) => f !== null && (AMONG_TOP.test(text) ? topThree.includes(f.tagId) : f.members === largest);
+  if (TOP_CLAIM.test(text) && !facts.some(isTop)) return false;
+  if (GROWTH_CLAIM.test(text) && !facts.some(f => f !== null && (f.growth ?? 0) > 0)) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Time zone helper
 
 const zoneFormatters = new Map<string, Intl.DateTimeFormat>();
@@ -128,22 +165,30 @@ const DEFAULT_TIME: Readonly<Record<AiDaypart, readonly [number, number]>> = {
   weekend_daytime: [10, 0], weekend_evening: [18, 0],
 };
 
-/** First matching weekday 2 to 28 days ahead without a scheduled event (else the least busy), at the daypart's default time. */
-function schedule(weekday: number, daypart: AiDaypart, state: State): Date {
+/** Dates no idea is scheduled on (major year-end holidays, as MM-DD). */
+const HOLIDAYS: ReadonlySet<string> = new Set(["12-24", "12-25", "12-31", "01-01"]);
+
+/**
+ * The idea's start: the earliest matching weekday in the window without a scheduled event or idea; when every one is
+ * taken, a free neighboring day of the same kind (weekday or weekend) beats stacking two events on one day (eval
+ * 2026-11-26). Holidays are skipped. Returns the instant at the daypart's default time and the weekday actually used.
+ */
+function schedule(weekday: number, daypart: AiDaypart, state: State): { at: Date; weekday: number } {
   const { timeZone } = state.snapshot.summary;
   const today = civilDate(state.now, timeZone);
-  let best: { day: Date; count: number } | null = null;
+  const weekend = weekday >= 6;
+  let best: { day: Date; dow: number; score: number } | null = null;
   for (let offset = IDEA_LIMITS.leadDays; offset <= IDEA_LIMITS.horizonDays; offset++) {
     const day = addDays(today, offset);
-    if ((day.getUTCDay() === 0 ? 7 : day.getUTCDay()) !== weekday) continue;
-    const count = state.busy.get(iso(day)) ?? 0;
-    if (best === null || count < best.count) best = { day, count };
-    if (count === 0) break;
+    const dow = day.getUTCDay() === 0 ? 7 : day.getUTCDay();
+    if ((dow >= 6) !== weekend || HOLIDAYS.has(iso(day).slice(5))) continue;
+    const score = (state.busy.get(iso(day)) ?? 0) * 10 + Math.abs(dow - weekday) * 3 + offset / 100;
+    if (best === null || score < best.score) best = { day, dow, score };
   }
   const day = best?.day ?? addDays(today, IDEA_LIMITS.leadDays);
   state.busy.set(iso(day), (state.busy.get(iso(day)) ?? 0) + 1);
   const [hour, minute] = DEFAULT_TIME[daypart];
-  return zonedInstant(timeZone, day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), hour, minute);
+  return { at: zonedInstant(timeZone, day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), hour, minute), weekday: best?.dow ?? weekday };
 }
 
 const BUCKET_COST: Readonly<Record<AiEventChoices["budget"], number>> = { free: 0, under_15: 750, from_15_to_50: 3250, over_50: 7500 };
@@ -197,7 +242,8 @@ function finalize(plan: Plan, index: number, state: State): DipbotIdea | null {
   const checked = GeneratedEventDraftSchema.safeParse(candidate);
   if (!checked.success) return null;
   const draft: GeneratedEventDraft = { ...checked.data, tagIds: [...checked.data.tagIds] };
-  const startsAt = schedule(plan.weekday, plan.daypart, state).toISOString();
+  const slot = schedule(plan.weekday, plan.daypart, state);
+  const startsAt = slot.at.toISOString();
   state.covers.add(coverImageURL);
   const choices: AiEventChoices = {
     focusTagIds: plan.tagIds.slice(0, 3),
@@ -216,7 +262,7 @@ function finalize(plan: Plan, index: number, state: State): DipbotIdea | null {
     why: plan.why,
     reasonBasis: plan.reasonBasis,
     ...(plan.fitLabel ? { fitLabel: plan.fitLabel } : {}),
-    weekday: plan.weekday,
+    weekday: slot.weekday,
     daypart: plan.daypart,
     startsAt,
     durationMinutes: plan.durationMinutes,
@@ -301,10 +347,23 @@ function mentionsCompanyData(text: string, snapshot: IdeaSnapshot, companyNumber
 // ---------------------------------------------------------------------------------------------------------------------
 // Agent ideas
 
+/**
+ * A why line that fits `max` without a dangling cut: the whole line, else its first clause (before ";", ",", " and ",
+ * " y "), else "" (the caller then uses the server-built reason).
+ */
+export function fitWhy(text: string, max: number): string {
+  const line = cleanText(text, 10_000).replace(/\s+/g, " ").trim().replace(/[;,]+$/, "");
+  if (Array.from(line).length <= max) return line;
+  const first = line.split(/;|,| and | y /)[0]!.trim();
+  return first.length >= 12 && Array.from(first).length <= max ? first : "";
+}
+
+const LUNCH_WORDS = /\b(?:lunch|almuerzo|comida del mediodía)\b/i;
+
 function repairAgent(m: ModelIdea, snapshot: IdeaSnapshot): Plan | null {
   const title = flat(m.title, IDEA_LIMITS.titleMax);
   const description = flat(m.description, IDEA_LIMITS.descriptionMax);
-  const why = flat(m.why, IDEA_LIMITS.whyMax);
+  const why = fitWhy(m.why, IDEA_LIMITS.whyMax);
   if (title === "" || description === "") return null;
   if ([title, description, why].some(hasForbiddenContent)) return null;
   const hint = flat(m.venueSearchHint, 120);
@@ -317,13 +376,15 @@ function repairAgent(m: ModelIdea, snapshot: IdeaSnapshot): Plan | null {
   if (tagIds.length === 0) return null;
 
   let weekday = Number.isFinite(m.weekday) ? Math.min(7, Math.max(1, Math.round(m.weekday))) : 4;
-  const weekend = m.daypart.startsWith("weekend");
+  // A weekday idea that calls itself a lunch runs at lunch (eval: "lunch" cards scheduled at 3 pm).
+  const daypart: AiDaypart = !m.daypart.startsWith("weekend") && LUNCH_WORDS.test(title) ? "weekday_lunch" : m.daypart;
+  const weekend = daypart.startsWith("weekend");
   if (weekend && weekday < 6) weekday = 6;
   if (!weekend && weekday > 5) weekday = 4;
-  const durationMinutes = Number.isFinite(m.durationMinutes) ? Math.min(480, Math.max(15, Math.round(m.durationMinutes / 15) * 15)) : 60;
+  const durationMinutes = Math.min(daypart === "weekday_lunch" ? 75 : 480, Number.isFinite(m.durationMinutes) ? Math.max(15, Math.round(m.durationMinutes / 15) * 15) : 60);
   const considerationIds = [...new Set(m.considerationIds.filter(id => CONSIDERATION_IDS.includes(id)))].slice(0, MAX_CONSIDERATIONS);
   return {
-    title, description, theme: m.theme, tagIds, goal: m.goal, weekday, daypart: m.daypart, durationMinutes, costBucket: m.costBucket,
+    title, description, theme: m.theme, tagIds, goal: m.goal, weekday, daypart, durationMinutes, costBucket: m.costBucket,
     groupSize: m.groupSize, isOutdoor: m.isOutdoor, venueType: m.venueType, venueSearchHint: hint, why, reasonBasis: "generic",
     considerationIds, source: "agent",
   };
@@ -437,7 +498,7 @@ export interface BuiltIdeas { ideas: DipbotIdea[]; agentCount: number }
  * Repairs and completes the model's ideas (clean text, catalog tags with the theme tag first, aligned day and time, no
  * repeats, grounded why lines, server schedule and cover, contract-valid draft) and tops up from the catalog to the minimum.
  */
-export function buildIdeas(snapshot: IdeaSnapshot, modelIdeas: ModelIdea[] | null, traces: readonly ToolTrace[], now: Date): BuiltIdeas {
+export function buildIdeas(snapshot: IdeaSnapshot, modelIdeas: ModelIdea[] | null, traces: readonly ToolTrace[], now: Date, locale: "en" | "es" = "en"): BuiltIdeas {
   const numbers = groundedNumbers(traces);
   const companyNumbers = groundedNumbers(traces.filter(t => !NON_COMPANY_TOOLS.has(t.name)));
   const state = newState(snapshot, now);
@@ -455,9 +516,13 @@ export function buildIdeas(snapshot: IdeaSnapshot, modelIdeas: ModelIdea[] | nul
     if (isRepeat(template, recent)) continue;
 
     const mentions = mentionsCompanyData(plan.why, snapshot, companyNumbers);
-    const keep = plan.why !== "" && isGrounded(plan.why, numbers) && !(snapshot.summary.dataLevel === "none" && mentions);
+    const keep = plan.why !== "" && isGrounded(plan.why, numbers) && interestClaimsHold(plan.why, snapshot) && !(snapshot.summary.dataLevel === "none" && mentions);
     if (keep) {
       plan.reasonBasis = snapshot.summary.dataLevel !== "none" && mentions ? "company_data" : "generic";
+    } else if (locale !== "en") {
+      // The server-built reasons are English: in another language keep the idea's own first sentence (generic, no company claim).
+      plan.why = flat(plan.description.split(/(?<=[.!?])\s/)[0] ?? plan.title, IDEA_LIMITS.whyMax) || plan.title;
+      plan.reasonBasis = "generic";
     } else {
       const generic = ideaById(m.catalogIdeaId ?? "")?.pitch ?? plan.description.split(/(?<=[.!?])\s/)[0] ?? plan.title;
       Object.assign(plan, serverWhy(template, snapshot, generic));

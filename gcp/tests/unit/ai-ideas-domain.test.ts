@@ -1,13 +1,13 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 import type { DecisionAnswer } from "../../functions/src/modules/ai/application/ports";
-import { GeneratedEventDraftSchema } from "../../functions/src/modules/ai/domain/drafts";
+import { GeneratedEventDraftSchema, cleanText } from "../../functions/src/modules/ai/domain/drafts";
 import {
   IDEA_ALGORITHM_VERSION, capToolOutput, ideaFingerprint, ideaSnapshot, ideaToolDefinitions, runIdeaTool,
 } from "../../functions/src/modules/ai/domain/ideaTools";
 import { IDEA_LIMITS, type IdeaSnapshot, type ModelIdea, type ToolTrace } from "../../functions/src/modules/ai/domain/ideaTypes";
 import {
-  applyRanking, buildIdeas, fallbackIdeas, groundedNumbers, isGrounded, parseModelIdeas, rankingRequest, zonedInstant,
+  applyRanking, buildIdeas, fallbackIdeas, fitWhy, groundedNumbers, interestClaimsHold, isGrounded, parseModelIdeas, rankingRequest, zonedInstant,
 } from "../../functions/src/modules/ai/domain/ideaValidate";
 import { localParts, type CompanySignals, type PastEvent } from "../../functions/src/modules/suggestions/domain/signals";
 
@@ -229,6 +229,37 @@ describe("buildIdeas", () => {
     modelIdea({ title: "Clay pottery night", theme: "arts", tagIds: ["tag-arts"], weekday: 4, daypart: "after_work", costBucket: "from_15_to_50", why: "Hands-on and relaxed." }),
   ];
 
+  test("interest claims must match the company's visible interests", () => {
+    const snap = rich();
+    assert.equal(interestClaimsHold("Food & Drink is your top interest (20+ members)", snap), true);
+    assert.equal(interestClaimsHold("Music is your top interest (20+ members)", snap), false, "wrong bucket and not the largest");
+    assert.equal(interestClaimsHold("Games has 20+ members", snap), false, "under the privacy floor, so never a claim");
+    assert.equal(interestClaimsHold("Music is growing (10-19 members)", snap), true);
+    assert.equal(interestClaimsHold("Music is one of your top interests (10-19 members)", snap), true, "top three is enough for 'one of'");
+    assert.equal(interestClaimsHold("Wellness is growing fast", snap), false);
+    assert.equal(interestClaimsHold("A cozy way to meet new teammates", snap), true, "no interest named");
+    const built = buildIdeas(snap, [modelIdea({ why: "Cooking is your top interest (20+ members)" }), ...goodSet().slice(1)], [trace(snap, "getTagUsage")], NOW);
+    assert.notEqual(built.ideas.find(i => i.title === "Pasta making workshop")!.why, "Cooking is your top interest (20+ members)");
+  });
+
+  test("a too-long why line keeps its first clause instead of a dangling cut, else falls back", () => {
+    assert.equal(fitWhy("Food events averaged 94% fill.", 96), "Food events averaged 94% fill.");
+    assert.equal(fitWhy("Arts & Crafts interests 5-9 members; Tuesday events averaged 87% fill across four lunches in a row", 60), "Arts & Crafts interests 5-9 members");
+    assert.equal(fitWhy("x".repeat(120), 96), "");
+    assert.equal(cleanText("Fresh pasta \u2014 rolled by hand", 80), "Fresh pasta, rolled by hand", "no em dashes in house style");
+    assert.equal(cleanText("5\u20139 members", 80), "5\u20139 members", "an unspaced en dash in a range stays");
+  });
+
+  test("in Spanish an ungrounded why line falls back to the idea's own first sentence, never English server text", () => {
+    const spanish = modelIdea({ title: "Taller de pasta fresca", description: "Amasen y corten pasta juntos. Luego compartan la comida.", why: "42 personas lo pidieron" });
+    const built = buildIdeas(rich(), [spanish, ...goodSet().slice(1)], [], NOW, "es");
+    const idea = built.ideas.find(i => i.title === "Taller de pasta fresca")!;
+    assert.equal(idea.why, "Amasen y corten pasta juntos.");
+    assert.equal(idea.reasonBasis, "generic");
+    const english = buildIdeas(rich(), [{ ...spanish, title: "Fresh pasta workshop" }, ...goodSet().slice(1)], [], NOW);
+    assert.notEqual(english.ideas.find(i => i.title === "Fresh pasta workshop")!.why, "42 personas lo pidieron");
+  });
+
   test("repairs tags, puts the theme tag first, caps at 4 and uses catalog ids only", () => {
     const built = buildIdeas(rich(), [modelIdea({ tagIds: ["Cooking", "tag-fitness", "tag-social", "tag-games", "nonsense"] }), ...goodSet().slice(1)], [], NOW);
     const first = built.ideas[0]!;
@@ -253,10 +284,31 @@ describe("buildIdeas", () => {
   });
 
   test("duration is clamped to 15 minute steps", () => {
-    const built = buildIdeas(rich(), [modelIdea({ durationMinutes: 52 }), modelIdea({ title: "Marathon watch party", durationMinutes: 2000, theme: "music", tagIds: ["tag-music"] }), modelIdea({ title: "Quick stretch", durationMinutes: 3, theme: "wellness", tagIds: ["tag-wellness"] })], [], NOW);
+    const built = buildIdeas(rich(), [modelIdea({ durationMinutes: 52 }), modelIdea({ title: "Marathon watch party", durationMinutes: 2000, theme: "music", tagIds: ["tag-music"], daypart: "after_work" }), modelIdea({ title: "Quick stretch", durationMinutes: 3, theme: "wellness", tagIds: ["tag-wellness"] })], [], NOW);
     assert.equal(built.ideas[0]!.durationMinutes, 45);
     assert.equal(built.ideas[1]!.durationMinutes, 480);
     assert.equal(built.ideas[2]!.durationMinutes, 15);
+  });
+
+  test("a weekday idea called a lunch runs at lunch and fits a lunch hour", () => {
+    const built = buildIdeas(rich(), [modelIdea({ title: "Dumpling folding lunch", daypart: "weekday_afternoon", durationMinutes: 120 }), ...goodSet().slice(1)], [], NOW);
+    const idea = built.ideas.find(i => i.title === "Dumpling folding lunch")!;
+    assert.equal(idea.daypart, "weekday_lunch");
+    assert.equal(idea.durationMinutes, 75);
+  });
+
+  test("scheduling: no stacking on one day when a neighboring day is free, never on a year-end holiday", () => {
+    const sameDay = ["Pasta lab", "Clay hour", "Book swap", "Chess club", "Tea tasting"].map((title, i) =>
+      modelIdea({ title, weekday: 2, daypart: "after_work", theme: (["food", "arts", "learning", "games", "wellness"] as const)[i], tagIds: [["tag-food"], ["tag-arts"], ["tag-learning"], ["tag-games"], ["tag-wellness"]][i]! }));
+    const december = ideaSnapshot({ ...richSignals(), now: new Date("2026-12-10T15:00:00Z") }, CATALOG_TAGS);
+    const built = buildIdeas(december, sameDay, [], new Date("2026-12-10T15:00:00Z"));
+    const days = built.ideas.map(i => localDate(i.startsAt));
+    assert.equal(new Set(days).size, days.length, `distinct days ${days.join(" ")}`);
+    for (const idea of built.ideas) {
+      const p = localParts(new Date(idea.startsAt), TZ);
+      assert.equal(p.isoWeekday, idea.weekday, "the weekday field matches the scheduled day");
+      assert.ok(!(p.month === 12 && [24, 25, 31].includes(p.day)), `${idea.title} on a holiday`);
+    }
   });
 
   test("drops an idea that repeats a recent event and one with links or emails", () => {
@@ -447,7 +499,9 @@ describe("fingerprint", () => {
     assert.equal(ideaFingerprint(rich()), ideaFingerprint(ideaSnapshot(richSignals(13), CATALOG_TAGS)));
     assert.notEqual(ideaFingerprint(rich()), ideaFingerprint(ideaSnapshot(richSignals(25), CATALOG_TAGS)));
     assert.notEqual(ideaFingerprint(rich()), ideaFingerprint(empty()));
-    assert.equal(IDEA_ALGORITHM_VERSION, 1);
+    assert.equal(IDEA_ALGORITHM_VERSION, 2);
+    assert.equal(ideaFingerprint(rich(), "en"), ideaFingerprint(rich()), "English keeps the existing fingerprint");
+    assert.notEqual(ideaFingerprint(rich(), "es"), ideaFingerprint(rich()), "another language runs again");
   });
 
   test("changes with the month and the upcoming calendar bucket, ignores under-floor counts", () => {
