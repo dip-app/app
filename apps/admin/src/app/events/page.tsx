@@ -1,13 +1,13 @@
 "use client";
 // @i18n-migrated
 
-import { Suspense, useEffect, useState } from "react";
-import { useApp } from "@/components/AppProvider";
+import { Suspense } from "react";
+import { useLoad } from "@/components/useLoad";
 import { EventCard, EventTable } from "@/components/EventCard";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { Empty, LoadError, Loading } from "@/components/Ui";
-import { ApiError, type AdminEvent, classify } from "@/lib/contract";
+import { ApiError, classify } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
 import { Button } from "@/components/kit";
@@ -23,24 +23,14 @@ const IDS = FILTERS.map((item) => item.id);
 const DEFAULTS = { filter: "upcoming" };
 
 function Events() {
-  const { api, session } = useApp();
-  const [events, setEvents] = useState<AdminEvent[] | null>(null);
-  const [error, setError] = useState<ApiError | null>(null);
+  // Cached for the session: coming back to Events shows the list at once and refreshes it behind the scenes.
+  const list = useLoad((a) => a.listEvents().catch((failure: unknown) => {
+    throw failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("events.list.loadFailed"));
+  }), "events.list");
+  const events = list.data;
+  const error = list.error;
   const [query, setQuery] = useQueryState(DEFAULTS);
   const filter = oneOf(query.filter, IDS, "upcoming");
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-    api.listEvents().then(
-      (list) => !cancelled && (setEvents(list), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("events.list.loadFailed"))),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [api, session, attempt]);
 
   const hold = useSkeletonGate(events === null && !error);
   const shown = events?.filter((event) => classify(event) === filter) ?? [];
@@ -48,7 +38,7 @@ function Events() {
 
   return (
     <Shell title={t("events.list.title")} subtitle={t("events.list.subtitle")} requires="events.manage" action={<Button variant="primary" href="/events/new/">{t("events.list.new")}</Button>}>
-      {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
+      {error ? <LoadError error={error} onRetry={list.reload} />
         : events === null || hold ? <Loading label={t("events.list.loading")} layout="events" />
         : (
           <>

@@ -23,4 +23,5 @@ export const INTEREST_CARD_HEIGHT = 76;
 
 /** Skeletons stay hidden for fast loads, and once shown stay up long enough not to flicker. */
 export const SKELETON_DELAY_MS = 150;
-export const SKELETON_MIN_MS = 300;
+// 200 ms: with the 140 ms reveal fade a shorter hold no longer reads as a flicker, and data is not held back as long.
+export const SKELETON_MIN_MS = 200;

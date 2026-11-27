@@ -1,14 +1,15 @@
 "use client";
 // @i18n-migrated
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useApp } from "@/components/AppProvider";
+import { useLoad } from "@/components/useLoad";
 import { can } from "@/lib/adminTypes";
 import { Shell } from "@/components/Shell";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { ThemeCard, ThemeTable } from "@/components/ThemeCard";
 import { Empty, LoadError, Loading } from "@/components/Ui";
-import { type ThemePhase, type WeeklyTheme, sortThemes, themePhase } from "@/lib/challenge";
+import { type ThemePhase, sortThemes, themePhase } from "@/lib/challenge";
 import { ApiError } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
@@ -30,23 +31,16 @@ const EMPTY: Record<ThemePhase, { titleKey: MessageKey; bodyKey: MessageKey }> =
 const DEFAULTS = { phase: "current" };
 
 function Themes() {
-  const { api, session } = useApp();
-  const [themes, setThemes] = useState<WeeklyTheme[] | null>(null);
-  const [error, setError] = useState<ApiError | null>(null);
+  const { session } = useApp();
+  // Cached for the session (the Challenges page reads the same list under its own key).
+  const list = useLoad((a) => a.listThemes().catch((failure: unknown) => {
+    throw failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("challenges.themes.loadFailed"));
+  }), "themes.list");
+  const themes = list.data;
+  const error = list.error;
   const [query, setQuery] = useQueryState(DEFAULTS);
   const phase = oneOf(query.phase, IDS, "current");
-  const [attempt, setAttempt] = useState(0);
   const canManage = can(session?.role, "themes.manage");
-
-  useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-    api.listThemes().then(
-      (list) => !cancelled && (setThemes(list), setError(null)),
-      (failure: unknown) => !cancelled && setError(failure instanceof ApiError ? failure : new ApiError("failed-precondition", t("challenges.themes.loadFailed"))),
-    );
-    return () => { cancelled = true; };
-  }, [api, session, attempt]);
 
   const hold = useSkeletonGate(themes === null && !error);
   const now = new Date();
@@ -55,7 +49,7 @@ function Themes() {
   return (
     <Shell title={t("challenges.themes.title")} subtitle={t("challenges.themes.subtitle")}
       action={canManage ? <Button variant="primary" href="/themes/new/">{t("challenges.themes.new")}</Button> : undefined}>
-      {error ? <LoadError error={error} onRetry={() => setAttempt((n) => n + 1)} />
+      {error ? <LoadError error={error} onRetry={list.reload} />
         : themes === null || hold ? <Loading label={t("challenges.loading")} layout="themes" />
         : (
           <>

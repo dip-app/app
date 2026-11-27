@@ -2,7 +2,7 @@
 // @i18n-migrated
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
 import { Shell } from "@/components/Shell";
@@ -18,6 +18,7 @@ import { classify } from "@/lib/contract";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
+import { focusAfterClose } from "@/lib/focus";
 import { Button, InlineNotice } from "@/components/kit";
 import { t } from "@/lib/i18n";
 
@@ -38,18 +39,35 @@ function Attendees() {
   const [removing, setRemoving] = useState<Attendee | null>(null);
   const [notify, setNotify] = useState(true);
   const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState("");
+  // Optimistic attendance: the value each row should show while its request runs and until the server's list agrees.
+  // Kept beside the data (not written into it), so a refresh that answers with an older list can't flip a row back.
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set());
+  const inFlight = useRef(0);
+  const awaitingFinal = useRef(false);
+  const wasRefreshing = useRef(false);
   // One requestId per add attempt: a retry after a lost response never adds twice.
   const requestId = useRef(crypto.randomUUID());
 
-  const full = !!event.data && !!attendees.data && attendees.data.length >= event.data.capacity;
+  const rows = useMemo(() => attendees.data?.map((row) => (row.memberId in pending ? { ...row, checkedIn: pending[row.memberId] } : row)) ?? null, [attendees.data, pending]);
+  // Pending values are dropped when the server's list agrees, or once the refresh that follows the last request answers.
+  useEffect(() => {
+    // Only a refresh that succeeded replaces the pending values (after a failed one they stay, matching the toast).
+    const finalAnswer = wasRefreshing.current && !attendees.refreshing && !attendees.refreshError && awaitingFinal.current && inFlight.current === 0;
+    wasRefreshing.current = attendees.refreshing;
+    if (finalAnswer) { awaitingFinal.current = false; setPending({}); return; }
+    if (!attendees.data || Object.keys(pending).length === 0) return;
+    const agreed = attendees.data.filter((row) => row.memberId in pending && row.checkedIn === pending[row.memberId] && !busyIds.has(row.memberId));
+    if (agreed.length > 0) setPending((current) => { const next = { ...current }; for (const row of agreed) delete next[row.memberId]; return next; });
+  }, [attendees.data, attendees.refreshing, attendees.refreshError, pending, busyIds]);
+  const full = !!event.data && !!rows && rows.length >= event.data.capacity;
   const kind = event.data ? classify(event.data) : "upcoming";
   const ended = kind === "past";
   const started = !!event.data && Date.parse(event.data.startTime) <= Date.now();
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (attendees.data ?? []).filter((a) => !q || `${a.name} ${a.email} ${a.department}`.toLowerCase().includes(q));
-  }, [attendees.data, search]);
+    return (rows ?? []).filter((a) => !q || `${a.name} ${a.email} ${a.department}`.toLowerCase().includes(q));
+  }, [rows, search]);
   const candidates = useMemo(() => {
     const going = new Set((attendees.data ?? []).map((a) => a.memberId));
     const q = pickerSearch.trim().toLowerCase();
@@ -58,38 +76,65 @@ function Attendees() {
 
   const hold = useSkeletonGate((!attendees.data || !event.data) && !attendees.error && !event.error);
   if (attendees.error || event.error) return <LoadError error={(attendees.error ?? event.error)!} onRetry={() => { attendees.reload(); event.reload(); }} backHref="/events/" backLabel={t("attendees.backToEvents")} />;
-  if (!attendees.data || !event.data || hold) return <Loading label={t("attendees.loading")} layout="attendees" />;
-  const checkedIn = attendees.data.filter((a) => a.checkedIn).length;
+  if (!attendees.data || !rows || !event.data || hold) return <Loading label={t("attendees.loading")} layout="attendees" />;
+  const checkedIn = rows.filter((a) => a.checkedIn).length;
+
+  /** Shows `checkedIn` on one row at once; `null` returns the row to what the server said (rollback). */
+  function showCheckedIn(memberId: string, checkedIn: boolean | null) {
+    setPending((current) => {
+      const next = { ...current };
+      if (checkedIn === null) delete next[memberId]; else next[memberId] = checkedIn;
+      return next;
+    });
+  }
+  function setBusy(memberId: string, on: boolean) {
+    setBusyIds((current) => { const next = new Set(current); if (on) next.add(memberId); else next.delete(memberId); return next; });
+  }
+  /** One refresh after the last request in flight, so overlapping check-ins never refresh over each other. */
+  function settle() {
+    inFlight.current -= 1;
+    if (inFlight.current === 0) { awaitingFinal.current = true; attendees.reload(); }
+  }
 
   async function mark(attendee: Attendee, next: boolean) {
-    setBusyId(attendee.memberId);
+    setBusy(attendee.memberId, true);
     setError("");
+    // The row changes at once; the toast waits for the server, which decides whether points were awarded.
+    showCheckedIn(attendee.memberId, next);
+    inFlight.current += 1;
     try {
       const { pointsAwarded } = await api.recordAttendance(eventId, attendee.memberId, next);
       const text = `${t(next ? "attendees.toast.checkedIn" : "attendees.toast.notCheckedIn", { name: attendee.name })}${pointsAwarded ? ` ${t("attendees.toast.pointsAwarded", { count: pointsAwarded })}` : ""}`;
       // Undo is offered only while it can work: once points were awarded the check-in is final.
       toast(text, next && pointsAwarded === 0 ? { action: { label: t("attendees.action.undo"), onClick: () => undoCheckIn(attendee) } } : {});
-      attendees.reload();
     } catch (failure) {
+      showCheckedIn(attendee.memberId, null);
       setError(describe(failure));
     } finally {
-      setBusyId("");
+      setBusy(attendee.memberId, false);
+      settle();
     }
   }
 
   async function undoCheckIn(attendee: Attendee) {
+    setBusy(attendee.memberId, true);
+    showCheckedIn(attendee.memberId, false);
+    inFlight.current += 1;
     try {
       await api.recordAttendance(eventId, attendee.memberId, false);
       toast(t("attendees.toast.undone", { name: attendee.name }));
-      attendees.reload();
     } catch (failure) {
+      showCheckedIn(attendee.memberId, null);
       toastError(failure, t("common.actionFailed"));
+    } finally {
+      setBusy(attendee.memberId, false);
+      settle();
     }
   }
 
   function exportCsv() {
     try {
-      downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, attendees.data!, ended));
+      downloadText(`attendees-${eventId}.csv`, attendeesCsv(event.data!.title, rows!, ended));
       toast(t("attendees.toast.exported", { count: attendees.data!.length }));
     } catch {
       toast(t("attendees.toast.exportFailed"), { tone: "error" });
@@ -143,14 +188,14 @@ function Attendees() {
             <thead><tr><th scope="col">{t("attendees.table.name")}</th><th scope="col">{t("attendees.table.department")}</th><th scope="col">{t("attendees.table.rsvp")}</th><th scope="col">{t("attendees.table.attendance")}</th><th scope="col"><span className="sr-only">{t("attendees.table.actions")}</span></th></tr></thead>
             <tbody>
               {shown.map((a) => (
-                <tr key={a.memberId}>
+                <tr key={a.memberId} data-member={a.memberId}>
                   <th scope="row"><span className="person"><Avatar name={a.name} userId={a.memberId} photoURL={a.photoURL} avatarId={a.avatarId} /><span><strong>{a.name}</strong><br /><span className="muted">{a.email}</span></span></span></th>
                   <td data-label={t("attendees.table.department")}>{a.department}<br /><span className="muted">{a.jobTitle}</span></td>
                   <td data-label={t("attendees.table.rsvp")}>{formatDate(a.rsvpAt)}{a.addedByAdmin && <><br /><Info>{t("attendees.table.addedByStaff")}</Info></>}</td>
                   <td data-label={t("attendees.table.attendance")}>
                     <span className="attendance">
                       <Info tone={a.checkedIn ? "ok" : ended ? "warn" : undefined}>{t(a.checkedIn ? "attendees.status.checkedIn" : ended ? "attendees.status.noShow" : "attendees.status.notCheckedIn")}</Info>
-                      <Button size="sm" variant={a.checkedIn ? "outline" : "primary"} disabled={busyId === a.memberId || (!started && !a.checkedIn)}
+                      <Button size="sm" variant={a.checkedIn ? "outline" : "primary"} loading={busyIds.has(a.memberId)} disabled={!started && !a.checkedIn}
                         title={!started ? t("attendees.action.opensAtStart") : undefined} onClick={() => void mark(a, !a.checkedIn)}
                         aria-label={t(a.checkedIn ? "attendees.action.undoCheckInFor" : "attendees.action.checkInFor", { name: a.name })}>{a.checkedIn ? t("attendees.action.undo") : t("attendees.action.checkIn")}</Button>
                     </span>
@@ -193,7 +238,12 @@ function Attendees() {
           onClose={() => setRemoving(null)}
           onConfirm={async (reason) => {
             await api.removeAttendee(eventId, removing.memberId, notify, reason);
+            // The row leaves at once and focus moves to the next row's Remove (or the search box), not to the page.
+            const at = shown.findIndex((row) => row.memberId === removing.memberId);
+            const nextRow = shown[at + 1] ?? shown[at - 1];
+            attendees.setData((attendees.data ?? []).filter((row) => row.memberId !== removing.memberId));
             setRemoving(null);
+            focusAfterClose(nextRow ? `tr[data-member="${CSS.escape(nextRow.memberId)}"] .quiet-danger` : "#attendee-search");
             toast(t("attendees.toast.removed", { name: removing.name }));
             attendees.reload();
             event.reload();

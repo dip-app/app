@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { TagCatalogProvider } from "./TagCatalog";
 import { holdReadsFromQuery } from "@/lib/loadingHold";
 import { failFromQuery } from "@/lib/mockFailures";
+import { resetCache, staleOnWrite } from "@/lib/queryCache";
 import { type AdminApi, type PersonaId, type Session, browserStore, createMockApi } from "@/lib/api";
 import { Button, EmptyState } from "@/components/kit";
 import { BRAND, applyMemberLocale, initLocale, t } from "@/lib/i18n";
@@ -47,7 +48,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         created = await failFromQuery(holdReadsFromQuery(createMockApi(browserStore(), () => new Date(), true), window.location.search), window.location.search);
       }
       if (cancelled) return;
-      setApi(created);
+      // Every successful write marks the data cache stale, so the next read of anything refetches (lib/queryCache.ts).
+      setApi(staleOnWrite(created));
       const stored = await created.session();
       if (cancelled) return;
       // A language saved on the member's profile wins over the browser default (localStorage stays the fallback).
@@ -67,6 +69,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     if (!api) return;
     await api.signOut();
+    resetCache();
     setSession(null);
   }, [api]);
 
