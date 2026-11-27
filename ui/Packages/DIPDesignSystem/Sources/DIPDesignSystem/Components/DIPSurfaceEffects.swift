@@ -35,7 +35,7 @@
         /// Top fade under a header or the status bar.
         public static let topLength: CGFloat = 16
         /// Visible fade above the floating bar; the band behind the bar itself is solid.
-        public static let barFadeLength: CGFloat = 36
+        public static let barFadeLength: CGFloat = 24
 
         public var body: some View {
             let total = length + solid

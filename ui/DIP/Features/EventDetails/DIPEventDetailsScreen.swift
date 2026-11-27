@@ -46,6 +46,10 @@ struct DIPEventDetailsScreen: View {
     @State private var conflictsKey: String?
     /// DIP's calendar entry for this event exists and can be removed (checked against the calendar).
     @State private var entryRemovable = false
+    /// Description clamp (EVT-1): expanded by Read more; the two heights tell whether the clamp hides anything.
+    @State private var descriptionExpanded = false
+    @State private var descriptionFullHeight: CGFloat = 0
+    @State private var descriptionClampedHeight: CGFloat = 0
 
     /// A short confirmation below the header; `canUndo` adds the Undo button.
     struct CalendarToast: Equatable { let text: String; let canUndo: Bool }
@@ -437,16 +441,100 @@ struct DIPEventDetailsScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("event.title")
-            Text(event.description)
-                .font(DIPReferenceAssets.font("Inter-Regular", size: event.isPast ? 15 : 14))
-                // The source uses 18-point lines; Inter 3.19 has a 16.943-point natural line height.
-                .lineSpacing(1.0566566)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+            if let metadata = event.metadata { factsLine(metadata) }
+            descriptionText
         }
         .foregroundStyle(.black)
         .padding(.top, 10)
     }
+
+    /// EVT-1: when, where and cost (or points) right under the title, so the page answers "should I go" above the fold.
+    /// One wrapping line of glyph + text items; the info card below keeps the full details and the actions.
+    private func factsLine(_ metadata: DIPEventMetadata) -> some View {
+        // The header pill already shows the day, so the facts line carries the time range only (past pages: none).
+        let date = event.isPast || metadata.endTime <= metadata.startTime ? ""
+            : String(localized: "event.facts.timeRange", defaultValue: "\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))", comment: "Start and end time under an activity title (the day is in the header pill); first %@ = start time, second %@ = end time")
+        let place = metadata.venueName.isEmpty ? metadata.locality : metadata.venueName
+        let cost: String? = event.isPast || metadata.status == .cancelled ? nil
+            : metadata.costCents == 0 ? String(localized: "event.cost.free", defaultValue: "Free", comment: "Event price when the activity costs nothing")
+            : (Double(metadata.costCents) / 100).formatted(.currency(code: "USD"))
+        let points = metadata.status == .cancelled ? nil : DIPPointsFormat.eventRow(metadata.pointsValue, isPast: event.isPast, attended: joined)
+        let ink = DIPTokens.Color.textPrimary.swiftUIColor
+        let purple = DIPTokens.Color.actionPrimary.swiftUIColor
+        // Glyph and text are joined by a no-break space so a wrap never strands a glyph; items are spaced by an em space.
+        // Short items never break inside; a long venue name may wrap between its words.
+        func item(_ symbol: String, _ text: String, tint: Color, breakable: Bool = false) -> Text {
+            let body = breakable ? text : text.replacingOccurrences(of: " ", with: "\u{00A0}")
+            return Text(Image(systemName: symbol)).foregroundStyle(tint) + Text(verbatim: "\u{00A0}" + body).foregroundStyle(ink)
+        }
+        let gap = Text(verbatim: "\u{2003}")
+        var parts: [Text] = []
+        if !date.isEmpty { parts.append(item("clock", date, tint: purple)) }
+        if !place.isEmpty { parts.append(item("mappin.and.ellipse", place, tint: purple, breakable: true)) }
+        var line = parts.first ?? Text(verbatim: "")
+        for part in parts.dropFirst() { line = line + gap + part }
+        if let cost { line = parts.isEmpty ? item("ticket", cost, tint: purple) : line + gap + item("ticket", cost, tint: purple); parts.append(Text(verbatim: "")) }
+        if let points {
+            let star = item("star.fill", points, tint: DIPTokens.Color.notificationAccent.swiftUIColor)
+            line = parts.isEmpty ? star : line + gap + star
+        }
+        let spoken = [date, place, cost, points].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+        return line
+            .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline))
+            .lineSpacing(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
+            .accessibilityIdentifier("event.facts")
+    }
+
+    /// Clamped to three lines (so the people row and its actions stay above the bar on a phone) with Read more / Show less when it is longer; VoiceOver always reads the full text.
+    private var descriptionText: some View {
+        let text = Text(event.description)
+            .font(DIPReferenceAssets.font("Inter-Regular", size: event.isPast ? 15 : 14))
+            // The source uses 18-point lines; Inter 3.19 has a 16.943-point natural line height.
+            .lineSpacing(1.0566566)
+        return VStack(alignment: .leading, spacing: 2) {
+            text
+                .lineLimit(descriptionExpanded ? nil : Self.descriptionLines)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                // Measure the full and the clamped height at the real width to know whether the clamp hides anything.
+                .background(alignment: .topLeading) {
+                    ZStack(alignment: .topLeading) {
+                        text.fixedSize(horizontal: false, vertical: true)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { descriptionFullHeight = $0 }
+                        text.lineLimit(Self.descriptionLines).fixedSize(horizontal: false, vertical: true)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { descriptionClampedHeight = $0 }
+                    }
+                    .hidden()
+                    .accessibilityHidden(true)
+                }
+                .accessibilityLabel(event.description)
+                .accessibilityIdentifier("event.description")
+            if descriptionFullHeight > descriptionClampedHeight + 1 {
+                Button {
+                    withAnimation(DIPMotion.navigation(reduceMotion: reduceMotion)) { descriptionExpanded.toggle() }
+                } label: {
+                    Text(descriptionExpanded
+                         ? String(localized: "event.description.less", defaultValue: "Show less", comment: "Text button under a long activity description that collapses it to three lines")
+                         : String(localized: "event.description.more", defaultValue: "Read more", comment: "Text button under a long activity description that shows all of it"))
+                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline).weight(.semibold))
+                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                        .underline()
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(DIPRowPressStyle(cornerRadius: 8))
+                // VoiceOver already reads the whole description; the toggle only changes what is drawn.
+                .accessibilityHidden(true)
+                .accessibilityIdentifier("event.description.toggle")
+            }
+        }
+    }
+
+    private static let descriptionLines = 3
 
     private var attendeeDetails: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -484,31 +572,20 @@ struct DIPEventDetailsScreen: View {
         return .init(accessibilityLabel: String(localized: "event.invite.accessibility", defaultValue: "Invite a coworker to \(event.title)", comment: "VoiceOver label of the invite pill; %@ = activity title"), action: onInvite)
     }
 
-    /// Solid (pressable) pill, shown only when the organizer has edited the event.
+    /// Secondary text row (not a pill), shown only when the organizer has edited the event; it opens the change list.
     private func changesButton(_ log: [DIPChangeLogEntry]) -> some View {
-        Button { showingChanges = true } label: {
-            // Dark solid like the other quiet actions ("+ N More", "See All"), so it does not compete with Directions/Share.
-            DIPActionPill(title: DIPChangeLogText.visibleCount(log) == 1 ? String(localized: "event.changes.button", defaultValue: "See what changed", comment: "Pill that opens the list of organizer edits when there is one edit") : String(localized: "event.changes.button.count", defaultValue: "See what changed (\(DIPChangeLogText.visibleCount(log)))", comment: "Pill that opens the list of organizer edits; %lld = number of edits"),
-                          color: DIPTokens.Color.navigationBackground.swiftUIColor, style: .solid) {
-                Image(systemName: "clock.arrow.circlepath").resizable().scaledToFit()
-            }
-        }
-        .buttonStyle(DIPPressFeedbackStyle())
+        DIPTextActionRow(
+            title: DIPChangeLogText.visibleCount(log) == 1 ? String(localized: "event.changes.button", defaultValue: "See what changed", comment: "Text button that opens the list of organizer edits when there is one edit") : String(localized: "event.changes.button.count", defaultValue: "See what changed (\(DIPChangeLogText.visibleCount(log)))", comment: "Text button that opens the list of organizer edits; %lld = number of edits"),
+            systemImage: "clock.arrow.circlepath", opensView: true) { showingChanges = true }
         .accessibilityIdentifier("event.changes")
     }
 
-    /// Quiet destructive-secondary text button at the very bottom of the page.
+    /// Destructive text row at the very bottom of the page (44 pt target, error red).
     private var leaveButton: some View {
-        Button { confirmingLeave = true } label: {
-            Text("Leave Activity")
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 15))
-                .foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
-        }
+        DIPTextActionRow(title: String(localized: "event.leave.row", defaultValue: "Leave Activity", comment: "Destructive text button at the bottom of a joined activity page; asks to confirm before leaving"),
+                         systemImage: "rectangle.portrait.and.arrow.right", role: .destructive, centered: true) { confirmingLeave = true }
         // The column spaces sections by 20; 4 more above and below makes ~24pt of air around the button.
         .padding(.vertical, 4)
-        .buttonStyle(DIPPressFeedbackStyle())
         .disabled(!canChangeParticipation || participationPending)
         .opacity(canChangeParticipation ? 1 : 0.5)
         .accessibilityHint("Asks you to confirm before giving up your place")

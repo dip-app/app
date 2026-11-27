@@ -2131,6 +2131,60 @@
         }
       }
     },
+    "event.date.dayTime" : {
+      "comment" : "Event date on a card or the event page; first %@ = short weekday (Wed) or date (Nov 30), second %@ = start time such as 7:30 PM",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "event.date.today" : {
+      "comment" : "Event date on a card or the event page when it starts today; %@ = start time such as 7:30 PM",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Today, %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoy, %@"
+          }
+        }
+      }
+    },
+    "event.date.tomorrow" : {
+      "comment" : "Event date on a card or the event page when it starts tomorrow; %@ = start time such as 7:30 PM",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tomorrow, %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mañana, %@"
+          }
+        }
+      }
+    },
     "event.dateTimeRange" : {
       "comment" : "Event date and time range; first %@ = start, second %@ = end",
       "extractionState" : "extracted_with_value",
