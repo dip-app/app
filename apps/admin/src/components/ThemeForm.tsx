@@ -481,7 +481,7 @@ export function ThemeForm({ theme, onReload }: Props) {
           )}
         </div>
 
-        <div className="actions">
+        <div className="actions form-footer">
           <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("themeForm.saving") : editing ? t("themeForm.saveChanges") : t("themeForm.create")}</button>
             <button className="big-pill gray" type="button" disabled={saving} onClick={() => ((editing ? dirty : dirty && hasContent) ? setDiscarding(true) : leave())}>{t("themeForm.cancel")}</button>
           {!editing && <DraftStatusLine status={autosave.status} />}

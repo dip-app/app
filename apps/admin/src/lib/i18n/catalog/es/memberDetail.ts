@@ -86,4 +86,5 @@ export const memberDetail: Record<keyof typeof source, string> = {
   "memberDetail.pointsDialog.balanceBecomes": "Saldo: {balance}, pasará a {next}. No puede bajar de 0.",
   "memberDetail.pointsDialog.resetDone": "Puntos restablecidos a 0.",
   "memberDetail.pointsDialog.changedDone": "Puntos cambiados en {delta}.",
+  "memberDetail.profileTitle": "Datos",
 };

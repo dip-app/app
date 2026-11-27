@@ -382,10 +382,10 @@ export function EventForm({ event, onReload }: Props) {
         </div>
       )}
 
-      <div className="actions">
+      {!editing && <p className="hint actions-note">{t("events.form.createNote")}</p>}
+      <div className="actions form-footer">
         <button className="big-pill dark" type="submit" disabled={saving}>{saving ? t("common.saving") : editing ? t("events.form.save") : t("events.form.create")}</button>
         <button className="big-pill gray" type="button" disabled={saving} onClick={() => ((editing ? dirty : dirty && hasContent) ? setDiscarding(true) : leave())}>{t("common.cancel")}</button>
-        {!editing && <p className="hint actions-note">{t("events.form.createNote")}</p>}
         {!editing && <DraftStatusLine status={autosave.status} />}
       </div>
     </form>
