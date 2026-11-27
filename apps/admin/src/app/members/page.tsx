@@ -88,7 +88,7 @@ function Members() {
       action={<Button disabled={!list.items.length || exporting} onClick={() => void exportCsv()}>{exporting ? t("common.exporting") : t("common.exportCsv")}</Button>}>
       <Tabs idBase="members" label={t("members.filterByStatus")} value={status} onChange={(id) => setQs({ status: id })} items={STATUSES.map((item) => ({ id: item.id, label: t(item.labelKey) }))} />
       <div className="filters">
-        <SearchBox id="members-search" value={search} onChange={(v) => setQs({ q: v })} label={t("members.search.label")} placeholder={t("members.search.placeholder")} />
+        <SearchBox shortcut id="members-search" value={search} onChange={(v) => setQs({ q: v })} label={t("members.search.label")} placeholder={t("members.search.placeholder")} />
         <div className="field"><label htmlFor="f-role">{t("members.filter.role")}</label>
           <select id="f-role" value={role} onChange={(e) => setQs({ role: e.target.value })}>
             <option value="all">{t("members.filter.allRoles")}</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
@@ -105,7 +105,7 @@ function Members() {
       {clearable && (
         <div className="actions"><Button size="sm" onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t("members.filter.clear")}</Button></div>
       )}
-      <div {...tabPanelProps("members", status)}>
+      <div key={status} {...tabPanelProps("members", status)}>
         {list.error && list.items.length === 0 ? <LoadError error={list.error} onRetry={list.reload} />
           : firstLoad || holdLoad ? <Loading label={t("members.loading")} layout="members" />
           : list.items.length === 0 ? (
@@ -114,25 +114,32 @@ function Members() {
             <>
               <ResultCount>{count}</ResultCount>
               <TableRegion label={t("members.table.label")} busy={list.loading}>
-                <table className="table responsive">
+                <table className="table responsive person-table">
                   <caption className="sr-only">{t("members.table.label")}</caption>
-                  <thead><tr><th scope="col">{t("members.table.name")}</th><th scope="col">{t("members.table.role")}</th><th scope="col">{t("members.table.teams")}</th><th scope="col">{t("members.table.location")}</th><th scope="col">{t("members.table.status")}</th>{showPoints && <th scope="col" className="right">{t("members.table.points")}</th>}</tr></thead>
+                  <thead><tr><th scope="col">{t("members.table.name")}</th><th scope="col" className="mid-hide">{t("members.table.role")}</th><th scope="col" className="mid-hide">{t("members.table.teams")}</th><th scope="col" className="mid-hide">{t("members.table.location")}</th><th scope="col">{t("members.table.status")}</th>{showPoints && <th scope="col" className="right mid-hide">{t("members.table.points")}</th>}</tr></thead>
                   <tbody>
-                    {list.items.map((m) => (
-                      <tr key={m.id}>
-                        <th scope="row"><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span></span></Link></th>
-                        <td data-label={t("members.table.role")}>{ROLE_LABEL[m.role]}</td>
-                        <td data-label={t("members.table.teams")}>{m.teamIds.map(teamName).join(", ") || <span className="muted">{t("common.none")}</span>}</td>
-                        <td data-label={t("members.table.location")}>{m.workLocation || <span className="muted">{t("common.notSet")}</span>}</td>
-                        <td data-label={t("members.table.status")}><Info tone={m.status === "active" ? "ok" : "warn"}>{t(m.status === "active" ? "members.chip.active" : m.status === "invited" ? "members.chip.invited" : "members.chip.deactivated")}</Info></td>
-                        {showPoints && <td className="right" data-label={t("members.table.points")}>{m.pointsBalance}</td>}
-                      </tr>
-                    ))}
+                    {list.items.map((m) => {
+                      const teamsText = m.teamIds.map(teamName).join(", ");
+                      const statusLabel = t(m.status === "active" ? "members.chip.active" : m.status === "invited" ? "members.chip.invited" : "members.chip.deactivated");
+                      // Active is the norm: plain text. Invited and Deactivated are the exceptions and keep the chip.
+                      const status = m.status === "active" ? <span className="status-plain">{statusLabel}</span> : <Info tone="warn">{statusLabel}</Info>;
+                      return (
+                        <tr key={m.id}>
+                          <th scope="row"><Link className="person" href={`/members/detail/?id=${encodeURIComponent(m.id)}`}><Avatar name={m.displayName} userId={m.id} photoURL={m.photoURL} avatarId={m.avatarId} /><span><strong>{m.displayName}</strong><br /><span className="muted">{m.email}</span>
+                            <span className="person-sub mid-show">{[ROLE_LABEL[m.role], teamsText, m.workLocation].filter(Boolean).join(" · ")}{showPoints && m.pointsBalance !== null && <> · {t("members.sub.points", { count: m.pointsBalance })}</>}{m.status !== "active" && <span className="phone-only">{status}</span>}</span></span></Link></th>
+                          <td className="phone-hide mid-hide" data-label={t("members.table.role")}>{ROLE_LABEL[m.role]}</td>
+                          <td className="phone-hide mid-hide" data-label={t("members.table.teams")}>{teamsText || <span className="muted">{t("common.none")}</span>}</td>
+                          <td className="phone-hide mid-hide" data-label={t("members.table.location")}>{m.workLocation || <span className="muted">{t("common.notSet")}</span>}</td>
+                          <td className="phone-hide" data-label={t("members.table.status")}>{status}</td>
+                          {showPoints && <td className="right phone-hide mid-hide" data-label={t("members.table.points")}>{m.pointsBalance}</td>}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </TableRegion>
               {list.error && <ErrorNotice error={list.error} />}
-              {list.hasMore && <LoadMore shown={list.items.length} total={total ?? undefined} loading={list.loadingMore} onClick={list.loadMore} />}
+              {list.hasMore && <LoadMore hideCount shown={list.items.length} total={total ?? undefined} loading={list.loadingMore} onClick={list.loadMore} />}
             </>
           )}
       </div>

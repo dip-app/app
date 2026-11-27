@@ -42,7 +42,7 @@ function Editor() {
 
 export default function EditThemePage() {
   return (
-    <Shell title={t("themeForm.edit.title")} subtitle={t("themeForm.edit.subtitle")} requires="themes.manage">
+    <Shell title={t("themeForm.edit.title")} subtitle={t("themeForm.edit.subtitle")} requires="themes.manage" back={{ href: "/themes/", label: t("shell.nav.themes") }}>
       <Suspense fallback={<Loading label={t("themeForm.edit.loading")} layout="form" />}><Editor /></Suspense>
     </Shell>
   );

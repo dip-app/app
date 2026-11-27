@@ -55,7 +55,7 @@ function Themes() {
           <>
             <Tabs idBase="themes" label={t("challenges.themes.filterLabel")} value={phase} onChange={(id) => setQuery({ phase: id })}
               items={PHASES.map((item) => ({ id: item.id, label: t(item.labelKey), count: themes.filter((theme) => themePhase(theme, now) === item.id).length }))} />
-            <div {...tabPanelProps("themes", phase)}>
+            <div key={phase} {...tabPanelProps("themes", phase)}>
               {shown.length === 0 ? (
                 <Empty title={t(EMPTY[phase].titleKey)} body={t(EMPTY[phase].bodyKey)} />
               ) : (

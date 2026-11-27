@@ -152,7 +152,7 @@ const groupText = (g: ReviewGroup, several: boolean): string => {
 };
 
 /** What needs a person: reviews waiting, people invited who haven't signed in. Zero-count items are left out. */
-export function pendingActions(insights: CompanyInsights, role: Role, now: Date = new Date()): PendingAction[] {
+export function pendingActions(insights: CompanyInsights, role: Role, now: Date = new Date(), extra: { newBugReports?: number | null } = {}): PendingAction[] {
   const items: PendingAction[] = [];
   const total = insights.challenges.pendingReviews;
   if (total > 0) {
@@ -164,6 +164,12 @@ export function pendingActions(insights: CompanyInsights, role: Role, now: Date 
       id: "reviews", label: t("overview.pending.reviews", { count: total }), count: total,
       detail: lines.join(" · "), lines,
       href: can(role, "challenges.review") ? (only ? `/challenges/review/?id=${encodeURIComponent(only)}&status=submitted` : "/challenges/") : null,
+    });
+  }
+  if (extra.newBugReports && extra.newBugReports > 0 && can(role, "bugreports.manage")) {
+    items.push({
+      id: "bugs", label: t("overview.pending.bugs", { count: extra.newBugReports }), count: extra.newBugReports,
+      detail: t("overview.pending.bugsDetail"), lines: [t("overview.pending.bugsDetail")], href: "/bug-reports/?status=new",
     });
   }
   if (insights.members.invited > 0) {
@@ -217,4 +223,48 @@ export function refreshFailureMessage(failed: RefreshSection[]): string {
   const names = failed.map((section) => t(SECTION_KEYS[section]));
   const sections = names.length > 1 ? t("overview.refresh.and", { head: names.slice(0, -1).join(", "), last: names[names.length - 1] }) : names[0];
   return t("overview.refresh.failed", { sections });
+}
+
+// ---------- Last 7 days (Overview band). Computed from data the page already reads; no extra server work.
+
+export interface WeekCompare {
+  /** Sum over the last 7 complete UTC days (today is partial and left out). */
+  current: number;
+  /** Sum over the 7 days before those, or null when the series is too short to compare. */
+  previous: number | null;
+  /** The 14 days behind both sums, oldest first, for a small bar spark (fewer when the series is short). */
+  spark: number[];
+}
+
+/** RSVPs or photos in the last 7 complete days against the 7 before, from the 30-day `activity` series. */
+export function lastSevenDays(days: InsightsDay[], metric: "rsvps" | "photos", now: Date): WeekCompare {
+  const today = now.toISOString().slice(0, 10);
+  const complete = days.filter((day) => day.date < today);
+  const last = complete.slice(-7), before = complete.slice(-14, -7);
+  const sum = (list: InsightsDay[]) => list.reduce((n, day) => n + day[metric], 0);
+  return { current: sum(last), previous: before.length === 7 ? sum(before) : null, spark: complete.slice(-14).map((day) => day[metric]) };
+}
+
+/** "+12 vs the 7 days before", "\u221212 ...", "Same as the 7 days before". Absolute numbers: small bases make percentages loud. */
+export function changeText(current: number, previous: number | null): string | null {
+  if (previous === null) return null;
+  const change = current - previous;
+  if (change === 0) return t("overview.week.same");
+  return t("overview.week.change", { sign: change > 0 ? "+" : "\u2212", change: formatNumber(Math.abs(change)) });
+}
+
+export interface EventLike { id: string; title: string; startTime: string; endTime: string; attendeeCount: number; capacity: number; status: string }
+
+/** Events that ended in the last 7 days (not canceled) and how many people were going to them. */
+export function heldLastWeek(events: readonly EventLike[], now: Date): { count: number; going: number } {
+  const from = now.getTime() - 7 * 86_400_000;
+  const held = events.filter((e) => e.status !== "cancelled" && Date.parse(e.endTime) <= now.getTime() && Date.parse(e.endTime) > from);
+  return { count: held.length, going: held.reduce((n, e) => n + e.attendeeCount, 0) };
+}
+
+/** Scheduled events starting within `days`, soonest first. */
+export function comingUp<T extends EventLike>(events: readonly T[], now: Date, days = 14): T[] {
+  const until = now.getTime() + days * 86_400_000;
+  return events.filter((e) => e.status !== "cancelled" && Date.parse(e.startTime) >= now.getTime() && Date.parse(e.startTime) <= until)
+    .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
 }

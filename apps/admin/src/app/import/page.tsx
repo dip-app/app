@@ -203,8 +203,7 @@ export default function ImportPage() {
   const currentStep = STEPS.findIndex((step) => step.phases.includes(phase));
 
   return (
-    <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run"
-      action={<Button href="/roster/">{t("import.roster")}</Button>}>
+    <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run">
       <ol className="steps" aria-label={t("import.steps.label")}>
         {STEPS.map((step, i) => (
           <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>

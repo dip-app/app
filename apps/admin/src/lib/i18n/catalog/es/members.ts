@@ -18,7 +18,7 @@ export const members: Record<keyof typeof source, string> = {
   "members.chip.deactivated": "Desactivado",
 
   "members.search.label": "Buscar por nombre, correo o cargo",
-  "members.search.placeholder": "Buscar por nombre, correo o cargo (presiona / para enfocar)",
+  "members.search.placeholder": "Buscar por nombre, correo o cargo",
   "members.filter.role": "Rol",
   "members.filter.allRoles": "Todos los roles",
   "members.filter.team": "Equipo",
@@ -43,4 +43,5 @@ export const members: Record<keyof typeof source, string> = {
   "members.count.withTotal": "{matches} (de {total})",
 
   "members.export.done": "Se exportaron {count, plural, one {# persona} other {# personas}} a members.csv.",
+  "members.sub.points": "{count, plural, one {# punto} other {# puntos}}",
 };

@@ -40,7 +40,7 @@ export const bugs = {
   // Filters
   "bugs.filterByStatus": "Filter by status",
   "bugs.search.label": "Search reports",
-  "bugs.search.placeholder": "Text, person or screen (press / to focus)",
+  "bugs.search.placeholder": "Text, person or screen",
   "bugs.filters.show": "Filters",
   "bugs.filters.hide": "Hide filters",
   "bugs.filters.active": "{count} active",

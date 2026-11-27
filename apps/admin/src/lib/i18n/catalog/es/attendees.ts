@@ -9,8 +9,7 @@ export const attendees: Record<keyof typeof source, string> = {
   "attendees.backToEvents": "Volver a eventos",
 
   // Toolbar
-  "attendees.allEvents": "Todos los eventos",
-  "attendees.going": "{count} de {capacity} van",
+  "attendees.going": "{count} de {capacity} asistirán",
   "attendees.checkedInCount": "{count} con llegada registrada",
   "attendees.exportCsv": "Exportar CSV",
   "attendees.addAttendee": "Agregar asistente",
@@ -25,7 +24,7 @@ export const attendees: Record<keyof typeof source, string> = {
 
   // Search and results
   "attendees.search.label": "Buscar asistentes",
-  "attendees.search.placeholder": "Buscar asistentes (presiona / para enfocar)",
+  "attendees.search.placeholder": "Buscar asistentes",
   "attendees.empty.title": "Aún no va nadie",
   "attendees.empty.body": "Agrega miembros tú mismo, o pueden unirse desde la app.",
   "attendees.noMatches.title": "Sin coincidencias",
@@ -89,7 +88,6 @@ export const attendees: Record<keyof typeof source, string> = {
   // Photos
   "album.photoUnavailable": "Foto no disponible",
   "album.photoBy": "Foto de {name}",
-  "album.allEvents": "Todos los eventos",
   "album.count.photos": "{count, plural, one {# foto} other {# fotos}}",
   "album.count.comments": "{count, plural, one {# comentario} other {# comentarios}}",
   "album.empty.title": "Aún no hay fotos",
@@ -115,4 +113,6 @@ export const attendees: Record<keyof typeof source, string> = {
   "album.remove.commentBody": "El comentario de {name} se elimina para todos. No se puede deshacer. La eliminación queda en el registro de auditoría.",
   "album.remove.photoDone": "Foto quitada. Sus comentarios se fueron con ella y el cupo de subida del miembro vuelve a estar libre.",
   "album.remove.commentDone": "Comentario quitado.",
+  "attendees.full": "Cupo lleno",
+  "attendees.sub.rsvp": "Confirmó el {date}",
 };

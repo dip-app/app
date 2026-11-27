@@ -2,7 +2,6 @@
 // Check-in is optimistic: the row changes at once, rolls back on failure, and overlapping check-ins are never flipped
 // back by a refresh that answers with an older list.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/contract";
 import type { Attendee } from "@/lib/adminTypes";
@@ -18,7 +17,8 @@ const api = {
   recordAttendance: (e: string, m: string, c: boolean) => recordAttendance(e, m, c),
 };
 vi.mock("../AppProvider", () => ({ useApp: () => ({ api, session: { uid: "u", companyId: "c", role: "admin" } }) }));
-vi.mock("../Shell", () => ({ Shell: ({ children }: { children: ReactNode }) => <main id="main">{children}</main> }));
+// The page frame names the event through useShellHeader; the shared stand-in renders the frame without a session.
+vi.mock("../Shell", () => import("./shellMock"));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("id=e1"), useRouter: () => ({ replace: () => {} }), usePathname: () => "/events/attendees/" }));
 
 import AttendeesPage from "@/app/events/attendees/page";

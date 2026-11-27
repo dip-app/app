@@ -25,7 +25,7 @@ export const shell: Record<keyof typeof source, string> = {
   "shell.nav.overview": "Resumen",
   "shell.nav.events": "Eventos",
   "shell.nav.themes": "Temas semanales",
-  "shell.nav.challenges": "Revisar participaciones",
+  "shell.nav.challenges": "Retos",
   "shell.nav.members": "Miembros",
   "shell.nav.roster": "Lista de personal",
   "shell.nav.import": "Importar personas",
@@ -67,4 +67,5 @@ export const shell: Record<keyof typeof source, string> = {
   "shell.keys.toggleHint": "Las letras, / y ? funcionan como atajos. Desactívalos si te estorban.",
   "shell.keys.close": "Cerrar",
   "shell.keys.goPending": "Ir a: pulsa una letra",
+  "shell.docTitleDetail": "{title} · {eyebrow}",
 };

@@ -177,6 +177,30 @@ export function seedOps(now: Date): OpsState {
     hist(8, 96, 0, { action: "import.apply", targetType: "import", targetId: "job-1", summary: "Imported 12 people (9 created, 3 updated)" }),
     hist(9, 120, 2, { action: "photo.remove", targetType: "photo", targetId: "game-cafe/uid-casey-novak_4", summary: "Removed an event photo", reason: "Photo showed a customer's screen" }),
   ];
+  // Two more weeks of ordinary work by the admin and the organizer, so the log is long enough to scan, sort and group.
+  const routine: [number, number, Omit<AuditEntry, "id" | "at" | "actorId" | "actorName" | "actorRole" | "changes"> & { changes?: AuditEntry["changes"] }][] = [
+    [0.4, 2, { action: "event.update", targetType: "event", targetId: "puppy-yoga", summary: "Updated Puppy Yoga", changes: [{ field: "capacity", before: "20", after: "24" }] }],
+    [1, 2, { action: "attendee.add", targetType: "attendee", targetId: "trivia-night/uid-avery-kim", summary: "Added Avery Kim to Trivia Night" }],
+    [1.5, 2, { action: "attendance.record", targetType: "attendee", targetId: "wellness-walk/uid-kai-nair", summary: "Marked Kai Nair as attended" }],
+    [3, 0, { action: "roster.resend", targetType: "roster", targetId: "nico.farrow@acme.com", summary: "Got a new invite message for Nico Farrow" }],
+    [8, 0, { action: "suggestions.sendTest", targetType: "company", targetId: "acme", summary: "Sent a test of the weekly ideas email" }],
+    [12, 2, { action: "event.create", targetType: "event", targetId: "trivia-night", summary: "Created Trivia Night" }],
+    [27, 0, { action: "roster.inviteEmail", targetType: "roster", targetId: "priya.shah@acme.com", summary: "Emailed an invite to Priya Shah" }],
+    [32, 2, { action: "event.create", targetType: "event", targetId: "sunrise-hike", summary: "Created Sunrise Hike" }],
+    [44, 0, { action: "team.upsert", targetType: "team", targetId: "team-events-crew", summary: "Renamed the Events crew team" }],
+    [55, 2, { action: "attendee.remove", targetType: "attendee", targetId: "kayaking/uid-sam-okafor", summary: "Removed Sam Okafor from Kayaking", reason: "Asked to be taken off the list" }],
+    [70, 0, { action: "points.adjust", targetType: "points", targetId: "uid-drew-dubois", summary: "Added 50 points for Drew Dubois", reason: "Organized the food drive", changes: [{ field: "points", before: "694", after: "744" }] }],
+    [78, 2, { action: "event.update", targetType: "event", targetId: "kayaking", summary: "Updated Kayaking", changes: [{ field: "description", before: "Paddle the river.", after: "Paddle the Delaware River with coworkers." }] }],
+    [100, 0, { action: "event.cancel", targetType: "event", targetId: "cooking", summary: "Canceled Cooking Class", reason: "The kitchen double-booked the evening" }],
+    [140, 2, { action: "attendance.record", targetType: "attendee", targetId: "game-cafe/uid-riley-chen", summary: "Marked Riley Chen as attended" }],
+    [168, 0, { action: "roster.upsert", targetType: "roster", targetId: "tomas.reyes@acme.com", summary: "Invited Tomas Reyes", changes: [{ field: "role", before: "", after: "member" }] }],
+    [190, 0, { action: "member.status", targetType: "member", targetId: "uid-blake-lopez", summary: "Deactivated Blake Lopez", reason: "Left the company" }],
+    [220, 2, { action: "photo.comment.remove", targetType: "comment", targetId: "game-cafe/c-2-1", summary: "Removed a photo comment", reason: "Off-topic" }],
+    [260, 0, { action: "member.update", targetType: "member", targetId: "uid-casey-novak", summary: "Changed teams for Casey Novak", changes: [{ field: "teams", before: "Wellness", after: "Wellness, Events crew" }] }],
+    [300, 2, { action: "event.create", targetType: "event", targetId: "bake-off", summary: "Created Office Bake-Off" }],
+    [330, 0, { action: "company.office.update", targetType: "company", targetId: "acme", summary: "Set the company office" }],
+  ];
+  routine.forEach(([hours, actor, entry], i) => audit.push(hist(20 + i, hours, actor, entry)));
   return { companies, members, roster, photos, comments, attendees: {}, audit, receipts: {}, jobs: {} };
 }
 
@@ -243,8 +267,12 @@ const NOTES = [
 function seedSubmissions(state: OpsState, companyId: string, theme: { id: string; startDate: string }, now: Date): void {
   const people = state.members.filter((m) => m.companyId === companyId && m.status === "active" && m.role !== "admin");
   const count = Math.min(people.length, theme.startDate > now.toISOString() ? 0 : 22);
+  // Older weeks have been worked through: this week leaves 4 of every 7 entries open, last week 2, the two before 1,
+  // anything older none. So the queues differ per theme, like a real company's.
+  const weeksAgo = Math.max(0, Math.floor((now.getTime() - Date.parse(theme.startDate)) / (7 * 86_400_000)));
+  const open = weeksAgo === 0 ? 4 : weeksAgo === 1 ? 2 : weeksAgo <= 3 ? 1 : 0;
   people.slice(0, count).forEach((m, i) => {
-    const kind = i % 7 === 4 ? "rejected" : i % 7 >= 5 ? "approved" : "submitted";
+    const kind = i % 7 < open ? "submitted" : i % 7 === 4 ? "rejected" : "approved";
     const at = isoAgo(now, 3 - (i % 3) * 0.7 - i * 0.03);
     state.submissions!.push({
       companyId, id: `${theme.id}_${m.id}`, challengeId: theme.id, userId: m.id, userName: m.displayName, ...profileOf(m), caption: NOTES[i % NOTES.length], progress: 1 + (i % 3),

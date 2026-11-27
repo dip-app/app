@@ -14,7 +14,7 @@ const api = {
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("id=m1"), usePathname: () => "/members/detail/", useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock("@/components/AppProvider", () => ({ useApp: () => ({ api, session: { uid: "admin1", role: "admin", name: "Ada", email: "a@example.com", companyId: "c" } }) }));
-vi.mock("@/components/Shell", () => ({ Shell: ({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) => <main><h1>{title}</h1><p>{subtitle}</p>{children}</main> }));
+vi.mock("@/components/Shell", () => import("./shellMock"));
 vi.mock("@/lib/useUnsavedGuard", () => ({ useUnsavedGuard: () => {} }));
 vi.mock("@/components/useDelayedShow", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/components/useDelayedShow")>()), useSkeletonGate: () => false }));
 
@@ -33,9 +33,10 @@ describe("member detail (Spanish)", () => {
   it("renders the page in Spanish", async () => {
     setLocale("es");
     render(<MemberDetailPage />);
-    await waitFor(() => expect(screen.getByText("Todos los miembros")).toBeTruthy());
-    expect(screen.getByRole("heading", { level: 1, name: "Miembro" })).toBeTruthy();
-    expect(screen.getByText("Activo")).toBeTruthy();
+    // The header names the person once loaded; the role, status and join date are its facts line.
+    await waitFor(() => expect(screen.getByText("Activo")).toBeTruthy());
+    expect(screen.getByText("Miembros")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).not.toBe("Miembro");
     expect(screen.getByLabelText("Rol")).toBeTruthy();
     expect(screen.getByText("Equipos")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeTruthy();
@@ -64,8 +65,8 @@ describe("member detail (Spanish)", () => {
 describe("member detail (English)", () => {
   it("keeps the English text", async () => {
     render(<MemberDetailPage />);
-    await waitFor(() => expect(screen.getByText("All members")).toBeTruthy());
-    expect(screen.getByText("Joined Mar 2, 2026")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("Joined Mar 2, 2026")).toBeTruthy());
+    expect(screen.getByText("Members")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "admin" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));

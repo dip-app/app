@@ -42,7 +42,7 @@ export const bugs: Record<keyof typeof source, string> = {
   // Filters
   "bugs.filterByStatus": "Filtrar por estado",
   "bugs.search.label": "Buscar reportes",
-  "bugs.search.placeholder": "Texto, persona o pantalla (presiona / para enfocar)",
+  "bugs.search.placeholder": "Texto, persona o pantalla",
   "bugs.filters.show": "Filtros",
   "bugs.filters.hide": "Ocultar filtros",
   "bugs.filters.active": "{count} activos",

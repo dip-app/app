@@ -39,4 +39,11 @@ export const ui: Record<keyof typeof source, string> = {
   "ui.skeleton.col.row": "Fila",
   "ui.skeleton.col.person": "Persona",
   "ui.skeleton.col.changes": "Cambios",
+  "ui.time.justNow": "justo ahora",
+  "ui.sort.by": "Ordenar por {column}",
+  "ui.sort.reverseAsc": "Orden descendente. Presiona para ordenar de forma ascendente.",
+  "ui.sort.reverseDesc": "Orden ascendente. Presiona para ordenar de forma descendente.",
+  "ui.search.shortcut": "Presiona / para buscar",
+  "ui.sort.label": "Ordenar",
+  "ui.sort.custom": "Orden personalizado",
 };

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
-import { Shell } from "@/components/Shell";
+import { Shell, useShellHeader } from "@/components/Shell";
 import { ThemeArt } from "@/components/ThemeArt";
 import { Tabs, tabPanelProps } from "@/components/Tabs";
 import { toast } from "@/components/Toast";
@@ -104,6 +104,10 @@ function Review() {
   const { api } = useApp();
   const themes = useLoad((a) => a.listThemes(), "themes");
   const theme = themes.data?.find((t) => t.id === id);
+  useShellHeader(theme ? {
+    title: theme.title, metaKey: theme.id,
+    meta: <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile meta-art" /><span>{t("review.themeMeta", { window: formatWindow(theme.startDate, theme.endDate), goal: formatGoal(theme.goal, theme.goalUnit) })}</span></>,
+  } : null);
   const [qs, setQs] = useQueryState(DEFAULTS);
   const status = oneOf(qs.status, TABS, "submitted");
   const [shortcuts, setShortcuts] = useShortcutsEnabled();
@@ -272,10 +276,6 @@ function Review() {
   return (
     <>
       <span className="sr-only" role="status">{advanced?.name ? t("review.nowShowing", { who: advanced.name }) : ""}</span>
-      <div className="toolbar">
-        <Button href="/challenges/">{t("review.allThemes")}</Button>
-        {theme && <><ThemeArt url={theme.coverImageURL} title={theme.title} className="thumb art tile" /><strong className="theme-name">{theme.title}</strong><span className="muted">{t("review.themeMeta", { window: formatWindow(theme.startDate, theme.endDate), goal: formatGoal(theme.goal, theme.goalUnit) })}</span></>}
-      </div>
       <Tabs idBase="review" label={t("review.filterLabel")} value={status} onChange={(id) => chooseStatus(id as SubmissionStatus)} items={TABS.map((tab) => ({ id: tab, label: statusLabel(tab) }))} />
       {banner && <div className={`review-banner ${banner.tone}`} role="status"><span>{banner.text}</span><Button size="sm" onClick={() => setBanner(null)}>{t("review.banner.dismiss")}</Button></div>}
 
@@ -378,7 +378,7 @@ function Review() {
 
 export default function ChallengeReviewPage() {
   return (
-    <Shell title={t("review.title")} subtitle={t("review.subtitle")} requires="challenges.review">
+    <Shell title={t("review.title")} subtitle={t("review.subtitle")} requires="challenges.review" back={{ href: "/challenges/", label: t("shell.nav.challenges") }}>
       <Suspense fallback={<Loading label={t("review.loading")} layout="review" />}><Review /></Suspense>
     </Shell>
   );

@@ -8,7 +8,6 @@ export const attendees = {
   "attendees.backToEvents": "Back to events",
 
   // Toolbar
-  "attendees.allEvents": "All events",
   "attendees.going": "{count} of {capacity} going",
   "attendees.checkedInCount": "{count} checked in",
   "attendees.exportCsv": "Export CSV",
@@ -24,7 +23,7 @@ export const attendees = {
 
   // Search and results
   "attendees.search.label": "Search attendees",
-  "attendees.search.placeholder": "Search attendees (press / to focus)",
+  "attendees.search.placeholder": "Search attendees",
   "attendees.empty.title": "Nobody is going yet",
   "attendees.empty.body": "Add members yourself, or they can join from the app.",
   "attendees.noMatches.title": "No matches",
@@ -88,7 +87,6 @@ export const attendees = {
   // Photos
   "album.photoUnavailable": "Photo unavailable",
   "album.photoBy": "Photo by {name}",
-  "album.allEvents": "All events",
   "album.count.photos": "{count, plural, one {# photo} other {# photos}}",
   "album.count.comments": "{count, plural, one {# comment} other {# comments}}",
   "album.empty.title": "No photos yet",
@@ -114,4 +112,6 @@ export const attendees = {
   "album.remove.commentBody": "The comment by {name} is deleted for everyone. This can’t be undone. The removal is recorded in the audit log.",
   "album.remove.photoDone": "Photo removed. Its comments went with it and the member’s upload slot is free again.",
   "album.remove.commentDone": "Comment removed.",
+  "attendees.full": "Full",
+  "attendees.sub.rsvp": "RSVP {date}",
 };

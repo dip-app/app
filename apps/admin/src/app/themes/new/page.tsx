@@ -9,7 +9,7 @@ import { t } from "@/lib/i18n";
 export default function NewThemePage() {
   return (
     <ThemeSuggestProvider>
-      <Shell title={t("themeForm.new.title")} subtitle={t("themeForm.new.subtitle")} requires="themes.manage" action={<SuggestThemeAction />}>
+      <Shell title={t("themeForm.new.title")} subtitle={t("themeForm.new.subtitle")} requires="themes.manage" back={{ href: "/themes/", label: t("shell.nav.themes") }} action={<SuggestThemeAction />}>
         <ThemeForm />
       </Shell>
     </ThemeSuggestProvider>

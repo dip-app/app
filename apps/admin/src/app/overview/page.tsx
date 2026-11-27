@@ -5,6 +5,8 @@
 import { useEffect, useState } from "react";
 import { ActivityChart, InterestsCard, OverviewLoading, PeopleCard, PendingActions, QuietNotice, StatTiles, ThemeCard, TopEvents, TopMembers, UnavailableNotice } from "@/components/Overview";
 import { Shell } from "@/components/Shell";
+import { ComingUp, LastSevenDays, RecentActivity } from "@/components/OverviewWeek";
+import { useBugBadge } from "@/lib/bugBadge";
 import { LoadError } from "@/components/Ui";
 import { useApp } from "@/components/AppProvider";
 import { Sk, SkeletonBlock } from "@/components/Skeleton";
@@ -22,6 +24,12 @@ export default function OverviewPage() {
   // Interest counts load on their own, so the card still shows when insights fail. A failure or a denied read just hides it.
   const tagStats = useLoad((a) => a.tagStats(), "tagStats");
   const tagCatalog = useTags();
+  // What is next and what changed: the event list (every role that sees the Overview manages events) and, for admins,
+  // the latest audit entries. Both refresh with the page's Refresh.
+  const events = useLoad((a) => a.listEvents(), "overview-events");
+  const canAudit = can(session?.role, "audit.view");
+  const audit = useLoad((a) => (canAudit ? a.listAudit() : Promise.resolve(null)), `overview-audit-${canAudit}`);
+  const bugBadge = useBugBadge();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
   const [now, setNow] = useState(() => new Date());
@@ -40,6 +48,8 @@ export default function OverviewPage() {
     setRefreshError("");
     try {
       const [fresh, stats, tags] = await Promise.allSettled([api.companyInsights(true), api.tagStats(), tagCatalog.reload()]);
+      events.reload();
+      audit.reload();
       const failed: RefreshSection[] = [];
       if (fresh.status === "fulfilled") insights.setData(fresh.value); else failed.push("insights");
       if (stats.status === "fulfilled") tagStats.setData(stats.value); else failed.push("interestCounts");
@@ -80,14 +90,20 @@ export default function OverviewPage() {
             {refreshError && <InlineNotice tone="error">{refreshError}</InlineNotice>}
             <UnavailableNotice insights={data} />
             <QuietNotice insights={data} />
+            <LastSevenDays insights={data} events={events.data ?? (events.error ? [] : null)} role={role} now={now} />
+            <div className="overview-row">
+              <PendingActions insights={data} role={role} now={now} newBugReports={bugBadge?.count ?? null} />
+              <ComingUp events={events.data ?? (events.error ? [] : null)} now={now} />
+            </div>
+            <h2 className="overview-section-title">{t("overview.month.title")}</h2>
             <StatTiles insights={data} role={role} />
             <div className="overview-row wide-left">
               <ActivityChart insights={data} />
-              <PendingActions insights={data} role={role} now={now} />
-            </div>
-            <div className="overview-row">
-              <TopEvents insights={data} />
               <ThemeCard insights={data} role={role} now={now} />
+            </div>
+            <div className={`overview-row${canAudit ? "" : " single"}`}>
+              <TopEvents insights={data} />
+              {canAudit && <RecentActivity entries={audit.data} error={!!audit.error} />}
             </div>
             <div className={`overview-row${can(role, "insights.points") && data.points ? "" : " single"}`}>
               <PeopleCard insights={data} />

@@ -1,0 +1,188 @@
+@use "@/styles/variables.scss" as *;
+
+// Page structure and list density (docs/design/polish-2026-11/admin-structure.md). Loaded last by pro.scss, so it
+// wins at equal specificity. Interaction states (hover, pressed, focus, motion) stay with their owners' files.
+$line: #e2e4ec;
+$line-strong: #c4c8d6;
+$subtle: #f6f7fa;
+$r-ctl: 6px;
+$r-box: 8px;
+
+.content {
+  // ---------- Page header: back link above the title, eyebrow on detail pages, a line of facts under it
+  .page-header.has-back { padding-top: 0; }
+  .back-link { display: inline-flex; align-items: center; gap: 4px; width: fit-content; margin: 0 0 4px -2px; padding: 2px 2px; border-radius: 4px;
+    font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none;
+    &:hover { color: $ink; text-decoration: underline; text-underline-offset: 2px; } }
+  .page-eyebrow { display: block; font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-bottom: 2px; }
+  .page-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; font-size: 13px; color: var(--muted);
+    > * { display: inline-flex; align-items: center; gap: 6px; }
+    > :not(.meta-art):not(:last-child)::after { content: "·"; margin-left: 2px; color: var(--muted); }
+    strong { color: $ink; font-weight: 600; }
+    .meta-art { width: 32px; height: 24px; flex: none; } }
+
+  // ---------- Tables: keep readable columns and scroll inside the region; an edge shadow says more is off-screen
+  .table-frame { position: relative; margin-bottom: 14px; min-width: 0;
+    > .table-wrap { margin-bottom: 0; }
+    &::before, &::after { content: ""; position: absolute; top: 1px; bottom: 1px; width: 18px; pointer-events: none; z-index: 3; opacity: 0; }
+    &::before { left: 1px; border-radius: $r-box 0 0 $r-box; background: linear-gradient(to right, rgba(30, 33, 43, .14), rgba(30, 33, 43, 0)); }
+    &::after { right: 1px; border-radius: 0 $r-box $r-box 0; background: linear-gradient(to left, rgba(30, 33, 43, .14), rgba(30, 33, 43, 0)); }
+    &[data-more="start"]::before, &[data-more="both"]::before, &[data-more="end"]::after, &[data-more="both"]::after { opacity: 1; } }
+  .interests-panel .table-frame, .audit-detail .table-frame { margin-bottom: 0; }
+  .table .nowrap, .table .line.nowrap { white-space: nowrap; }
+
+  // Sortable headers: the whole header is the button; the arrow is faint until the column is the sort.
+  .table thead th.sortable { padding: 0; }
+  .table thead th.sortable .sort-btn { display: inline-flex; align-items: center; gap: 4px; width: 100%; min-height: 33px; padding: 8px 12px; border: 0; background: none;
+    font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--muted); text-align: left; cursor: pointer; white-space: nowrap;
+    &:hover { color: $ink; }
+    &[data-active] { color: $ink; }
+    .sort-icon { flex: none; opacity: .45; }
+    &[data-active] .sort-icon { opacity: 1; color: var(--primary); }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; } }
+  .table thead th.sortable.num .sort-btn { justify-content: flex-end; }
+
+  // Events: the day on one line, times on the next; going count with its Full chip.
+  .events-table td { vertical-align: middle; }
+  .going-count { white-space: nowrap; }
+  .going-bar { display: inline-flex; align-items: center; gap: 6px; .info-pill { min-height: 18px; padding: 0 6px; font-size: 11px; } }
+  .event-row .row-actions { flex-wrap: nowrap; }
+  .where-cell .line { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  // Row actions stay in view while a wide table scrolls sideways (the column sticks to the right edge).
+  .table.sticky-actions {
+    tbody td:last-child, thead th:last-child { position: sticky; right: 0; z-index: 1; background: $white; box-shadow: -1px 0 0 $line; }
+    thead th:last-child { z-index: 2; background: $subtle; }
+    tbody tr:hover td:last-child { background: $subtle; } }
+  .table-frame:not([data-more]) .table.sticky-actions { tbody td:last-child, thead th:last-child { box-shadow: none; } }
+  .table-frame:has(.sticky-actions)::after { display: none; }
+
+  // Day groups in time-ordered tables (Audit log): a quiet heading row that sticks under the column headers.
+  .table .group-row th { position: sticky; top: 33px; z-index: 1; padding: 6px 12px; background: #fbfbfd; border-bottom: 1px solid $line; font-size: 12px; font-weight: 600; color: $ink; text-align: left; }
+  .table tbody tr.group-row:hover th { background: #fbfbfd; }
+
+  // ---------- List toolbar: search and the result line on one row
+  .list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px;
+    .field.search { flex: 1 1 280px; max-width: 420px; margin-bottom: 0; }
+    .result-count { margin: 0; color: var(--muted); } }
+
+  // The "/" key cap inside a list search (pointer devices only; the placeholder no longer carries the hint).
+  .field.search.has-key { position: relative;
+    input { padding-right: 34px; }
+    .search-key { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 4px;
+      border: 1px solid $line-strong; border-radius: 4px; background: $subtle; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1; pointer-events: none; } }
+  @media (pointer: coarse) { .field.search.has-key { .search-key { display: none; } input { padding-right: 10px; } } }
+
+  // ---------- Load more: the button and its count on one row with a gap
+  .load-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 24px; }
+
+  // ---------- Tab rows scroll sideways with an edge fade when they do not fit (long labels, Spanish, phones)
+  .tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; flex-wrap: nowrap;
+    &::-webkit-scrollbar { display: none; }
+    .tab { flex: none; white-space: nowrap; }
+    background:
+      linear-gradient(to right, $white 30%, rgba(255, 255, 255, 0)) left center / 32px 100% no-repeat local,
+      linear-gradient(to left, $white 30%, rgba(255, 255, 255, 0)) right center / 32px 100% no-repeat local,
+      linear-gradient(to right, rgba(30, 33, 43, .12), rgba(30, 33, 43, 0)) left center / 14px 100% no-repeat scroll,
+      linear-gradient(to left, rgba(30, 33, 43, .12), rgba(30, 33, 43, 0)) right center / 14px 100% no-repeat scroll; }
+
+  // ---------- Status that is the norm is plain text; exceptions keep the chip (people lists)
+  .status-plain { color: var(--muted); font-size: 13px; }
+
+  // ---------- Person rows on phones: one card line with the name, a muted line of facts, the exception chip
+  .person-sub { display: none; }
+  .sort-select { display: none; }
+
+  // ---------- Overview: Last 7 days band, section titles, Coming up, Recent activity
+  .overview-section-title { font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--muted); margin: 4px 0 -6px; }
+  .week-band { display: grid; gap: 8px; }
+  .week-band .overview-section-title { margin: 0; }
+  .week-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .week-tile { min-width: 0; }
+  .week-link { display: grid; gap: 2px; height: 100%; padding: 12px 14px; background: $white; border: 1px solid $line; border-radius: $r-box; color: $ink; text-decoration: none; box-sizing: border-box;
+    &:not(.static):hover { border-color: $line-strong; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } }
+  .week-label { font-size: 12px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .week-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .week-value { font-family: var(--font-fjalla), Impact, sans-serif; font-size: 26px; font-weight: 400; line-height: 1.15; letter-spacing: .01em; }
+  .week-note { font-size: 12px; color: var(--muted); }
+  .week-spark { flex: none; margin-bottom: 4px; .before { fill: #d9dcf6; } .now { fill: var(--primary); } }
+  .panel-head .panel-link, .panel-link { font-size: 13px; font-weight: 500; color: var(--primary); text-decoration: none; &:hover { text-decoration: underline; } }
+  .coming-list, .feed-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .coming-list li + li, .feed-list li + li { border-top: 1px solid $line; }
+  .coming-row { display: grid; grid-template-columns: 40px 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 4px; color: $ink; text-decoration: none; border-radius: $r-ctl;
+    &:hover { background: $subtle; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; } }
+  .coming-date { display: grid; justify-items: center; line-height: 1.1; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); strong { font-size: 18px; color: $ink; } }
+  .coming-thumb { width: 56px; height: 40px; }
+  .coming-main { display: grid; min-width: 0; .muted { font-size: 12px; } }
+  .coming-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .coming-going { display: grid; justify-items: end; gap: 4px; font-size: 13px; white-space: nowrap; }
+  .feed-item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 2px;
+    .avatar { width: 28px; height: 28px; } }
+  .feed-text { display: grid; gap: 1px; font-size: 13px; strong { font-weight: 600; } .muted { font-size: 12px; } }
+}
+
+@media (max-width: 900px) { .content .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+// ---------- Mid widths (docked sidebar at 1024, drawer at 768): secondary columns move into the row's sub line, so a
+// table fits its region instead of hiding columns behind a sideways scroll. Wide screens show every column.
+.content .mid-sub, .content .phone-only { display: none; }
+@media (min-width: 701px) and (max-width: 1279px) {
+  .content .table :is(td, th).mid-hide { display: none; }
+  .content .person-sub.mid-show { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 2px; font-size: 12px; color: var(--muted); }
+  .content .mid-sub { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .content .events-table .clamp-1 { display: none; }
+  // With the secondary columns gone the tables fit their region: no minimum width that would push the key columns
+  // under the pinned actions.
+  .content :is(.events-table, .themes-table, .challenges-table, .audit-table, .table.responsive) { min-width: 0; }
+  .content .cell-main { min-width: 0; }
+  .content .table.responsive.audit-table td.phone-lead { white-space: normal; }
+  .content .challenges-table .media-text .line.muted, .content .themes-table .media-text .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  .content .events-table .thumb, .content .themes-table .thumb, .content .challenges-table .thumb { width: 44px; height: 32px; }
+}
+// Needs attention: one badge width, so the row text lines up whatever the count.
+.content .action-count { min-width: 32px; box-sizing: border-box; }
+.content .rank-main .muted { font-size: 12px; }
+@media (max-width: 700px) {
+  .content .phone-only { display: inline-flex; }
+  .content .compact-table .person-sub > .phone-only { display: inline; }
+}
+@media (max-width: 700px) {
+  .content .coming-row { grid-template-columns: 40px minmax(0, 1fr); .coming-thumb { display: none; } .coming-going { grid-column: 2; justify-items: start; } }
+  .content .week-value { font-size: 22px; }
+}
+
+// Phones and coarse pointers: the small header links get a 44 px hit area without moving the layout.
+@media (max-width: 767px), (pointer: coarse) {
+  .content .back-link, .content .page-meta a { padding-block: 12px; margin-block: -12px; }
+}
+
+@media (max-width: 700px) {
+  .content {
+    .table.responsive:is(.person-table, .compact-table) td.phone-hide { display: none; }
+    .sort-select { display: grid; flex: 1 1 100%; }
+    .compact-table .person-sub > span:not(:last-child):not(.phone-only)::after { content: "·"; margin-left: 6px; }
+    :is(.person-table, .compact-table) .person-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin-top: 4px; font-size: 13px; color: var(--muted);
+      .info-pill { min-height: 20px; font-size: 11px; } }
+    .table.responsive:is(.person-table, .compact-table) tr { padding: 10px 12px; }
+    .compact-table .row-actions { justify-content: flex-start; }
+    .table.responsive:is(.compact-table, .person-table) td:not([data-label]) { padding-left: 0; padding-right: 0; }
+    .table.responsive.actions-corner tr { position: relative; padding-right: 96px; }
+    .table.responsive.actions-corner td.right { position: absolute; top: 4px; right: 8px; padding: 0; }
+    // The lead cell of a compact card reads as its title: no label column.
+    .table.responsive.compact-table td.phone-lead[data-label] { padding-left: 0; &::before { display: none; } }
+    .table.responsive.compact-table td.phone-lead .person-sub { margin: 0 0 4px; }
+    .table.responsive.person-table td.right:has(> .row-actions:empty) { display: none; }
+    .person-table td.right .row-actions { justify-content: flex-start; flex-wrap: wrap; }
+    .list-toolbar .field.search { max-width: none; flex-basis: 100%; }
+    .table.sticky-actions { tbody td:last-child, thead th:last-child { position: static; box-shadow: none; background: transparent; } }
+    .where-cell .line { max-width: none; white-space: normal; }
+    .table.responsive tr.group-row { border: 0; background: transparent; padding: 8px 0 0; th { position: static; padding: 0; background: transparent; border: 0; font-size: 13px; color: var(--muted); } }
+  }
+}
+
+@media (max-width: 900px) {
+  // The drawer layout: the page header keeps the title and the actions on one row while they fit.
+  .content .page-meta { font-size: 12px; }
+}

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Dialog } from "@/components/Dialog";
-import { Shell } from "@/components/Shell";
+import { Shell, useShellHeader } from "@/components/Shell";
 import { Tabs } from "@/components/Tabs";
 import { toast } from "@/components/Toast";
 import { Avatar, Info, LoadError, Loading, formatDate } from "@/components/Ui";
@@ -60,6 +60,15 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
   const toggleTeam = (teamId: string) => set("teamIds", draft.teamIds.includes(teamId) ? draft.teamIds.filter((id) => id !== teamId) : [...draft.teamIds, teamId]);
 
   useUnsavedGuard(dirty);
+  const statusText = member.status === "active" ? t("memberDetail.status.active") : member.status === "invited" ? t("memberDetail.status.invited") : t("memberDetail.status.deactivated");
+  useShellHeader({
+    title: member.displayName, metaKey: `${member.role}|${member.status}|${member.createdAt}`,
+    meta: <>
+      <span>{ROLE_LABEL[member.role]}</span>
+      {member.status === "active" ? <span>{statusText}</span> : <Info tone="warn">{statusText}</Info>}
+      <span>{t("memberDetail.joined", { date: formatDate(member.createdAt) })}</span>
+    </>,
+  });
 
   /** A role change is confirmed first (it changes what the person can do); other edits save straight away. */
   function requestSave() {
@@ -84,11 +93,6 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
 
   return (
     <>
-      <div className="toolbar">
-        <Button href="/members/">{t("memberDetail.allMembers")}</Button>
-        <Info tone={member.status === "active" ? "ok" : "warn"}>{member.status === "active" ? t("memberDetail.status.active") : member.status === "invited" ? t("memberDetail.status.invited") : t("memberDetail.status.deactivated")}</Info>
-        <span className="muted">{t("memberDetail.joined", { date: formatDate(member.createdAt) })}</span>
-      </div>
       {error && (
         error.code === "aborted"
           ? <InlineNotice tone="error" title={t("failure.title.save")} action={<Button variant="plain" onClick={onReload}>{t("memberDetail.reloadLatest")}</Button>}>{saveFailureMessage(error, true)}</InlineNotice>
@@ -127,12 +131,12 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
         {editable && <aside className="stack">
           <Panel id="access" title={t("memberDetail.access.title")}>
             {member.status === "deactivated"
-              ? <><p className="muted">{t("memberDetail.access.deactivatedNote")}</p><Button variant="primary" onClick={() => setAction("reactivate")}>{t("memberDetail.access.reactivate")}</Button></>
+              ? <><p className="muted">{t("memberDetail.access.deactivatedNote")}</p><Button onClick={() => setAction("reactivate")}>{t("memberDetail.access.reactivate")}</Button></>
               : <><p className="muted">{t("memberDetail.access.activeNote")}</p><Button variant="danger" disabled={self} onClick={() => setAction("deactivate")}>{t("memberDetail.access.deactivate")}</Button>{self && <p className="hint">{t("memberDetail.access.selfNote")}</p>}</>}
           </Panel>
           <Panel id="pts" title={t("memberDetail.points.title")}>
             <p className="big-number">{member.pointsBalance ?? 0}</p>
-            <Button variant="primary" onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>{t("memberDetail.points.adjustOrReset")}</Button>
+            <Button onClick={() => { setDelta(""); setResetPoints(false); setAction("points"); }}>{t("memberDetail.points.adjustOrReset")}</Button>
           </Panel>
           <Panel id="prof" title={t("memberDetail.profile.title")}>
             <dl className="facts">
@@ -198,7 +202,7 @@ function Editor({ member, teams, self, session, api, onSaved, onReload }: {
 
 export default function MemberDetailPage() {
   return (
-    <Shell title={t("memberDetail.title")} subtitle={t("memberDetail.subtitle")} requires="members.view">
+    <Shell title={t("memberDetail.title")} subtitle={t("memberDetail.subtitle")} requires="members.view" back={{ href: "/members/", label: t("shell.nav.members") }}>
       <Suspense fallback={<Loading label={t("memberDetail.loading")} layout="memberDetail" />}><MemberDetail /></Suspense>
     </Shell>
   );

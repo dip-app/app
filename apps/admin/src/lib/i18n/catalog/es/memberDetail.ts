@@ -7,7 +7,6 @@ export const memberDetail: Record<keyof typeof source, string> = {
   "memberDetail.subtitle": "Edita los datos, el acceso, los puntos y el perfil. Cada cambio queda en el registro de auditoría.",
   "memberDetail.loading": "Cargando miembro",
   "memberDetail.backToMembers": "Volver a miembros",
-  "memberDetail.allMembers": "Todos los miembros",
   "memberDetail.joined": "Se unió el {date}",
 
   "memberDetail.status.active": "Activo",

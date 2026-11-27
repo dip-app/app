@@ -20,7 +20,7 @@ const api = {
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("id=t1"), usePathname: () => "/challenges/review/", useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock("@/components/AppProvider", () => ({ useApp: () => ({ api, session: { uid: "admin1", role: "admin", name: "Ada", email: "a@example.com", companyId: "acme" } }) }));
-vi.mock("@/components/Shell", () => ({ Shell: ({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) => <main><h1>{title}</h1><p>{subtitle}</p>{children}</main> }));
+vi.mock("@/components/Shell", () => import("./shellMock"));
 vi.mock("@/components/ThemeArt", () => ({ ThemeArt: () => null }));
 vi.mock("@/lib/useQueryState", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/useQueryState")>();
@@ -43,8 +43,9 @@ describe("challenge review (Spanish)", () => {
     setLocale("es");
     render(<ChallengeReviewPage />);
     await waitFor(() => expect(screen.getByRole("article", { name: "Participación de Nico Farrow" })).toBeTruthy());
-    expect(screen.getByRole("heading", { level: 1, name: "Revisar participaciones" })).toBeTruthy();
-    expect(screen.getByText("Todos los temas")).toBeTruthy();
+    // The header names the theme once loaded (the page title "Revisar participaciones" is its eyebrow in the real Shell).
+    await waitFor(() => expect(screen.getByTestId("page-meta")).toBeTruthy());
+    expect(screen.getByText("Retos")).toBeTruthy();
     expect(screen.getAllByText("Pendiente").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Intento 2").length).toBe(2);
     expect(screen.getByRole("button", { name: "Aprobar · 50 puntos" })).toBeTruthy();
