@@ -79,7 +79,7 @@ describe("share page domain", () => {
     const preview = buildPreview("evt_123", { ...EVENT, title: long });
     assert.ok(Array.from(preview.title).length <= 90);
     assert.ok(preview.pageTitle.length > preview.title.length);
-    assert.ok(renderSharePage(preview).includes(`<h1 dir="auto">${preview.pageTitle}</h1>`));
+    assert.ok(renderSharePage(preview).includes(`<h1 dir="auto" class="long">${preview.pageTitle}</h1>`));
   });
 
   test("the page body never repeats the date or shows the fallback description", () => {

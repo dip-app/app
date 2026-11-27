@@ -51,7 +51,7 @@
   .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; }
   .logo { display: inline-flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 34px; line-height: 1; letter-spacing: .02em; text-decoration: none; color: var(--text); min-height: 46px; }
   .logo img { width: 46px; height: 46px; display: block; }
-  .header-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; font-size: 15px; font-weight: 600; color: var(--text); text-decoration: none; }
+  .header-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0 0 4px; font-size: 15px; font-weight: 600; color: var(--text); text-decoration: none; }
   .header-link:hover { color: var(--link); text-decoration: underline; }
   main { flex: 1; padding: 40px 0 64px; }
   .prose { max-width: 680px; margin: 0 auto; }
@@ -85,6 +85,16 @@
     th, td { padding: 10px 12px; }
     td:first-child { width: auto; }
     .header-link { font-size: 14px; }
+  }
+  /* Small phones: each row stacks (data, then why) instead of two narrow columns. */
+  @media (max-width: 440px) {
+    table, tbody, tr, th, td { display: block; width: auto; }
+    tr:first-child { display: none; }
+    tr { border-top: 1px solid var(--hairline); padding: 10px 12px; }
+    tr:nth-child(2) { border-top: 0; }
+    td { border: 0; padding: 0; }
+    td:first-child { font-weight: 600; margin-bottom: 4px; }
+    td:last-child { color: var(--muted); }
   }
 </style>
 </head>

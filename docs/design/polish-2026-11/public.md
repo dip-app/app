@@ -1,6 +1,6 @@
 # Public surfaces polish (November 2026)
 
-Owner area: the landing site (`apps/landing`: home, privacy, support), event share pages and their link previews (`eventSharePageV1`, `gcp/functions/src/modules/share`, `apps/admin/public/share/og`, `apps/landing/robots*.txt`), and the visual design of every email (`gcp/functions/src/modules/email/domain/templates/**`, `apps/admin/public/img/email`). Follows the [quality bar](../quality-bar.md) and the [review protocol](../design-review.md).
+Owner area: the landing site (`apps/landing`: home, privacy, support), event share pages and their link previews (`eventSharePageV1`, `gcp/functions/src/modules/share`, `apps/admin/public/share/og`, `apps/landing/robots*.txt`), and the visual design of every email (`gcp/functions/src/modules/email/domain/templates/**`, `apps/admin/public/img/email`). Follows the November 2026 quality bar (`docs/design/quality-bar.md` in the owner checkout) and the [review protocol](../design-review.md).
 
 ## How the audit was done
 
@@ -64,4 +64,13 @@ Tag set complete with sized 1200x630 images and alt text; no overflow on share p
 
 ## Decisions and review log
 
-Filled in as the work lands (critique, review rounds, accepted and rejected findings).
+### Plan critique (independent Opus reviewer, before any code)
+
+Accepted: robots group for link-preview crawlers must allow everything except `/admin/`, `/u/`, `/o/` and repeat its own Disallows (a crawler obeys only its most specific group); no automatic redirect to a store after a tap in any state; hedged "didn't open" wording, cancelled on `pagehide`, `blur` or `visibilitychange`, about 2.5 s; brand accent buttons instead of App Store blue, no store glyph before a listing; metric-matched fallbacks with the self-hosted fonts; show the description text without the date and hide the fallback; un-defer the company time zone for the coarse date (#28) and the square-safe `default.jpg` (#27); demote #3 and #13. Rejected or deferred: a QR code on desktop (needs an encoder; desktop gets an "iPhone app" message instead); "Request access" mailto as the primary action (a sales funnel the owner has not asked for; the steps end with the support address instead); JSON-LD dropped to one small Organization block; pointing the games and cooking categories at the default image (rights for all Figma photography are equally unknown, see asset provenance). Email items from the critique are handled in the email PR.
+
+Not verified and left for the owner: whether the hidden-frame `dip://` launch still opens the app in current iOS Safari (docs/ops/testflight-universal-links.md now asks for that check); how invited members actually get the beta build (the roster invite email's "Get DIP" button lands on this page; the page now says to ask the DIP admin); the privacy policy sentence "we name that provider here before the first email is sent" (legal text, unchanged; it must name the provider before email is switched on).
+
+### Review rounds (fresh Opus reviewer each round, 1440/768/390/320, light and dark)
+
+- Round 1: FAIL, no P1. P2: the home page's only button ("Open the app") was a dead end for first-time visitors; the "didn't open" message differed in wording, place and style between home and share pages; the 404 page had no clear way back. Fixed: "How to join" primary button plus a three-step section (private beta only, dropped by the launch build in the TestFlight and App Store states), "Open the app" secondary; one notice style and wording directly under the button on both pages; a "Go to DIP home" button on 404. P3 fixed: the category covers' baked "DIP" strip is cropped on the page, the headline breaks before "Do something together.", share footer matches the site footer, TestFlight and App Store links became secondary buttons, the page heading keeps up to 160 characters, privacy and support columns are centered.
+- Round 2: PASS. P3 fixed afterwards: smaller heading for long titles, privacy table stacks below 440 px, 14 px footer copyright on share pages, header link aligned to the grid, a sign-in hint under the TestFlight button. P3 left: the notice pushes content down after a tap (it only follows a tap), the 768 px hero centers the phone under left-aligned text, the 404 subtitle weight.

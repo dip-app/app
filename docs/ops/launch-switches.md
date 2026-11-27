@@ -22,7 +22,9 @@ What `on` changes (and `off` reverses exactly):
 | `firebase.json`, site `letsdip` | adds a `/admin/**` header rule with `X-Robots-Tag: noindex, nofollow`, so the admin portal can never be indexed | rule removed (the global header covers it) |
 | `apps/landing/robots.txt` | copy of `robots.index.txt`: allow all, `Disallow: /admin/` and `/e/`, `Sitemap:` line | copy of `robots.noindex.txt`: `Disallow: /` |
 
-Not touched by the switch, deliberately: the `team05-dip` redirect site stays `noindex`; event share pages (`/e/**`) always send `X-Robots-Tag: noindex` and a robots meta (per-event pages are private-ish links, only their preview is public); the admin portal keeps its own `robots: noindex` metadata. `apps/landing/sitemap.xml` lists only `https://letsdip.work/` and is already published; it matters once indexing is on.
+Both robots variants also carry one group for link-preview crawlers (Twitterbot, LinkedInBot, Slackbot-LinkExpanding, Slackbot, Discordbot, facebookexternalhit, Facebot, TelegramBot) that allows everything except `/admin/`, `/u/` and `/o/`, so Slack, X and LinkedIn unfurl share links and the landing page in every state. They do not index; `/e/` keeps `X-Robots-Tag: noindex`. Search engines stay under the `*` group. `scripts/tests/test_launch_config.py` checks both files.
+
+Not touched by the switch, deliberately: the `team05-dip` redirect site stays `noindex`; event share pages (`/e/**`) always send `X-Robots-Tag: noindex` and a robots meta (per-event pages are private-ish links, only their preview is public); the admin portal keeps its own `robots: noindex` metadata. `apps/landing/sitemap.xml` lists `/`, `/privacy/` and `/support/` and is already published; it matters once indexing is on.
 
 Launch steps: run `scripts/set-indexing.sh on`, review `git diff`, open a PR, then after merge rebuild (`scripts/build-site.sh`) and deploy hosting `letsdip` ([runbook](deploy-runbook.md#hosting)). Verify with `curl -sI https://letsdip.work/` (no `x-robots-tag`), `curl -sI https://letsdip.work/admin/login/` (has it), `https://letsdip.work/robots.txt`. Then submit the sitemap in Google Search Console and Bing Webmaster Tools. Expect `off` to take days to weeks to take effect in search results once reversed, so flip deliberately. Before launch also confirm the landing images and the event photos have release rights ([asset provenance](../design/asset-provenance.md)).
 
@@ -35,12 +37,13 @@ One config file, `gcp/functions/src/config/launch.ts`:
 ```ts
 export const APP_STORE_ID = "";                       // digits after "id" in the listing URL; empty today
 export const USE_OFFICIAL_APP_STORE_BADGE = false;    // prepared, not enabled
+export const TESTFLIGHT_URL = "";                     // public TestFlight link (https://testflight.apple.com/join/<code>); empty today
 ```
 
 Read by:
 
-- **Share page function** (`eventSharePageV1`, imports the constants): with an ID, the muted line becomes a link to `https://apps.apple.com/app/id<ID>` (or the badge), the `apple-itunes-app` Safari banner uses the real ID, and a tap on "Get the app" that leaves the page visible after about 1.5 seconds goes to the listing. Empty = current behavior ("It's coming to the App Store.", placeholder banner ID).
-- **Landing page build** (`scripts/build-site.sh` runs `scripts/launch_config.py landing`, which parses the same file as text): with an ID, the "Get the app" pill's `href` becomes the listing URL instead of `dip://`. Empty = the unchanged "open the app" pill.
+- **Share page function** (`eventSharePageV1`, imports the constants): the primary button is always "Open in DIP". With an ID, a secondary "Get it on the App Store" button (or the badge) and the `apple-itunes-app` Safari banner appear; with only `TESTFLIGHT_URL`, a secondary "Join the beta on TestFlight" button. Both empty = one muted private-beta line and no banner. Nothing redirects to a store automatically.
+- **Landing page build** (`scripts/build-site.sh` runs `scripts/launch_config.py landing`, which parses the same file as text): both empty = the committed page ("Private beta on iPhone", "How to join" button and steps, secondary "Open the app"). `TESTFLIGHT_URL` only = "Join the beta on TestFlight" replaces the buttons and the steps. An ID = the eyebrow and steps go and "Get DIP on the App Store" (or the badge) is the button; the ID wins over a TestFlight link. `TESTFLIGHT_URL` must be a `testflight.apple.com/join/` link or the build fails.
 
 Set the ID, then redeploy **both**: Functions (`eventSharePageV1`) and Hosting (landing). Do it in the same release or the two pages disagree.
 

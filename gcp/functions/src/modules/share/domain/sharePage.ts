@@ -277,7 +277,7 @@ export function renderSharePage(
     : storeURL
       ? `<div class="get"><span class="get-label">New to DIP?</span><a class="pill secondary" href="${escapeHtml(storeURL)}">Get it on the App Store</a></div>`
       : testflightURL
-        ? `<div class="get"><span class="get-label">New to DIP?</span><a class="pill secondary" href="${escapeHtml(testflightURL)}">Join the beta on TestFlight</a></div>`
+        ? `<div class="get"><span class="get-label">New to DIP?</span><a class="pill secondary" href="${escapeHtml(testflightURL)}">Join the beta on TestFlight</a><span class="get-hint">You sign in with your work Google account; your company needs to use DIP.</span></div>`
         : `<p class="note">New to DIP? It’s in private beta for invited companies. Ask your DIP admin how to join.</p>`;
   // Our category preview images carry a DIP strip along the bottom; the page crops it (the header already shows the logo).
   const strip = preview.imageIsStandard && /\/share\/og\/(?!default\.jpg)[a-z]+\.jpg$/.test(preview.imageURL);
@@ -326,6 +326,7 @@ ${FONT_FACES}
   .cover.strip img { object-position:top; }
   .date { margin:0 0 8px; font-size:15px; line-height:20px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); }
   h1 { font-family:var(--display); font-weight:400; font-size:clamp(34px,9vw,48px); line-height:1.08; margin:0 0 14px; text-transform:uppercase; overflow-wrap:anywhere; text-wrap:balance; }
+  h1.long { font-size:clamp(28px,7vw,36px); line-height:1.12; }
   .summary { margin:0 0 26px; font-size:18px; line-height:1.5; color:var(--muted); overflow-wrap:anywhere; }
   .lead { font-size:20px; color:var(--muted); margin:0 0 26px; }
   h1:has(+ .pill) { margin-bottom:26px; }
@@ -339,6 +340,7 @@ ${FONT_FACES}
   .status a { color:var(--accent); }
   .get { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin:22px 0 0; padding-top:20px; border-top:1px solid var(--hairline); }
   .get-label { font-size:15px; color:var(--muted); }
+  .get-hint { flex:1 1 100%; font-size:14px; line-height:20px; color:var(--muted); }
   .pill.secondary { min-height:48px; padding:0 22px; font-size:17px; background:transparent; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--brand); }
   .pill.secondary:hover { background:var(--tint); }
   footer { border-top:1px solid var(--hairline); }
@@ -346,6 +348,7 @@ ${FONT_FACES}
   footer nav { display:flex; flex-wrap:wrap; gap:0 20px; }
   footer a { display:inline-flex; align-items:center; min-height:44px; color:var(--muted); }
   footer a:hover { color:var(--text); }
+  footer small { font-size:14px; }
   @media (max-width:480px) { .pill { display:flex; width:100%; } .get .pill { flex:1 1 100%; } }
   @media (prefers-reduced-motion: reduce) { .pill { transition:none; } }
 </style>
@@ -354,7 +357,7 @@ ${FONT_FACES}
 <header><div class="wrap"><a class="logo" href="/" aria-label="DIP home"><img src="/img/landing/logo.svg" alt="" width="46" height="46">DIP</a></div></header>
 <main>
   <div class="wrap">
-${card}    <h1 dir="auto">${escapeHtml(preview.pageTitle)}</h1>
+${card}    <h1 dir="auto"${Array.from(preview.pageTitle).length > 60 ? ' class="long"' : ""}>${escapeHtml(preview.pageTitle)}</h1>
 ${lead}    <a class="pill" id="open-app" href="${escapeHtml(appLink)}">Open in DIP</a>
     <p class="status" id="open-status" role="status"></p>
     ${note}
