@@ -85,4 +85,25 @@ describe("Tabs", () => {
     render(<Harness initial="nope" />);
     expect(screen.getAllByRole("tab")[0].getAttribute("aria-selected")).toBe("true");
   });
+
+  it("marks the sides that have more tabs past the edge, so the row fades there", () => {
+    render(<Harness />);
+    const list = screen.getByRole("tablist");
+    expect(list.hasAttribute("data-more-start")).toBe(false);
+    expect(list.hasAttribute("data-more-end")).toBe(false);
+    // jsdom has no layout: give the row a width narrower than its tabs, then scroll it.
+    Object.defineProperty(list, "clientWidth", { configurable: true, value: 200 });
+    Object.defineProperty(list, "scrollWidth", { configurable: true, value: 500 });
+    fireEvent.scroll(list);
+    expect(list.hasAttribute("data-more-start")).toBe(false);
+    expect(list.getAttribute("data-more-end")).toBe("true");
+    list.scrollLeft = 150;
+    fireEvent.scroll(list);
+    expect(list.getAttribute("data-more-start")).toBe("true");
+    expect(list.getAttribute("data-more-end")).toBe("true");
+    list.scrollLeft = 300;
+    fireEvent.scroll(list);
+    expect(list.getAttribute("data-more-start")).toBe("true");
+    expect(list.hasAttribute("data-more-end")).toBe(false);
+  });
 });

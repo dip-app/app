@@ -103,4 +103,24 @@ describe("Dialog", () => {
       window.matchMedia = original;
     }
   });
+
+  it("puts secondary actions in the action row behind a More actions toggle (shown on phones)", () => {
+    const onExtra = vi.fn();
+    render(<Dialog title="Sam" confirmLabel="Send" cancelLabel="Close" more={<button type="button" onClick={onExtra}>Copy link</button>} onConfirm={async () => {}} onClose={() => {}}><p>Body</p></Dialog>);
+    const toggle = screen.getByRole("button", { name: "More actions" });
+    const group = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(group?.closest(".actions")).toBe(toggle.closest(".actions"));
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(group?.hasAttribute("data-open")).toBe(false);
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(group?.getAttribute("data-open")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    expect(onExtra).toHaveBeenCalled();
+  });
+
+  it("has no More actions toggle without secondary actions", () => {
+    render(<Dialog title="Sam" confirmLabel="Send" onConfirm={async () => {}} onClose={() => {}} />);
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+  });
 });

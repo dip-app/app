@@ -2,7 +2,7 @@
 
 // @i18n-migrated
 
-import { useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { t } from "@/lib/i18n";
 
 export interface TabItem { id: string; label: string; count?: number | string }
@@ -21,6 +21,9 @@ interface Props {
   idBase?: string;
 }
 
+/** Width of the edge fade (px, matches `.tabs[data-more-*]` in structure.scss): a selected tab is scrolled clear of it. */
+const FADE = 40;
+
 /** Tab list with roving tabindex: Left/Right move (and select), Home/End jump. Reuses the `.tabs` / `.tab` look. */
 export function Tabs({ label, items, value, onChange, idBase }: Props) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -30,18 +33,38 @@ export function Tabs({ label, items, value, onChange, idBase }: Props) {
   const list = useRef<HTMLDivElement>(null);
   const shape = items.map((item) => `${item.id}:${item.label}:${item.count ?? ""}`).join("|");
 
-  // A row wider than the screen scrolls sideways: keep the selected tab in view (on load, from a link, after a change).
-  // Only the tab row scrolls, never the page.
+  // Which ends have more tabs past the edge: the row fades out on that side (CSS mask), so a cut-off tab reads as "more
+  // this way" rather than clipped. Measured on scroll, on resize and when the labels change.
+  const [overflow, setOverflow] = useState<{ start: boolean; end: boolean }>({ start: false, end: false });
+  const measure = useCallback(() => {
+    const row = list.current;
+    if (!row) return;
+    const start = row.scrollLeft > 1;
+    const end = row.scrollLeft + row.clientWidth < row.scrollWidth - 1;
+    setOverflow((previous) => (previous.start === start && previous.end === end ? previous : { start, end }));
+  }, []);
+  useEffect(() => {
+    const row = list.current;
+    if (!row || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [measure]);
+
+  // A row wider than the screen scrolls sideways: keep the selected tab in view (on load, from a link, after a change),
+  // clear of the edge fade. Only the tab row scrolls, never the page.
   useEffect(() => {
     const row = list.current;
     const tab = current ? refs.current[current] : null;
-    if (!row || !tab || row.scrollWidth <= row.clientWidth) return;
-    const r = tab.getBoundingClientRect();
-    const c = row.getBoundingClientRect();
-    if (r.left < c.left) row.scrollLeft -= c.left - r.left + 24;
-    else if (r.right > c.right) row.scrollLeft += r.right - c.right + 24;
+    if (row && tab && row.scrollWidth > row.clientWidth) {
+      const r = tab.getBoundingClientRect();
+      const c = row.getBoundingClientRect();
+      if (r.left < c.left + FADE) row.scrollLeft -= c.left + FADE - r.left;
+      else if (r.right > c.right - FADE) row.scrollLeft += r.right - (c.right - FADE);
+    }
+    measure();
     // Counts arrive after the first paint and widen the row: check again when the labels change.
-  }, [current, shape]);
+  }, [current, shape, measure]);
 
   function move(to: string) {
     onChange(to);
@@ -63,7 +86,8 @@ export function Tabs({ label, items, value, onChange, idBase }: Props) {
   }
 
   return (
-    <div ref={list} className="tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+    <div ref={list} className="tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown} onScroll={measure}
+      data-more-start={overflow.start || undefined} data-more-end={overflow.end || undefined}>
       {items.map((item) => {
         const selected = item.id === current;
         return (

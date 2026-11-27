@@ -44,6 +44,7 @@ export const common: Record<keyof typeof source, string> = {
   "common.dialog.reasonNeeded": "Agrega un motivo para continuar. ",
   "common.dialog.reasonHint": "Se guarda en el registro de auditoría.",
   "common.dialog.reasonCount": "{count}/{max}",
+  "common.dialog.moreActions": "Más acciones",
 
   "common.boot.loading": "Cargando DIP Admin",
   "common.boot.failedTitle": "No se puede cargar DIP Admin",

@@ -3,6 +3,7 @@
 // @i18n-migrated
 
 import { useEffect, useId, useRef, useState } from "react";
+import { Chevron } from "@/components/Chevron";
 import { Button, InlineNotice } from "@/components/kit";
 import { t } from "@/lib/i18n";
 import { motionMs } from "@/lib/motion";
@@ -28,6 +29,12 @@ interface Props {
   cancelLabel?: string;
   /** Confirm button text while the request runs (default "Saving…"). */
   busyLabel?: string;
+  /**
+   * Secondary actions (outline Buttons), shown in the action row after Cancel. Wide screens: after Cancel, wrapping under it when long.
+   * Phones: the confirm button is full width, Cancel and a "More actions" toggle share the next row, and the toggle
+   * reveals these underneath, full width.
+   */
+  more?: React.ReactNode;
   onConfirm: (reason: string) => Promise<void>;
   onClose: () => void;
 }
@@ -37,12 +44,13 @@ interface Props {
  * (CSS); Cancel and Escape play a short exit before `onClose`. While the confirm request runs, the confirm button shows a
  * spinner and both buttons keep focus but ignore presses.
  */
-export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = t("common.dialog.reasonHint"), danger, focusCancel = !!danger, confirmDisabled, cancelLabel, busyLabel = t("common.saving"), onConfirm, onClose }: Props) {
+export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax = 200, reasonHint = t("common.dialog.reasonHint"), danger, focusCancel = !!danger, confirmDisabled, cancelLabel, busyLabel = t("common.saving"), more, onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [closing, setClosing] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const id = useId();
   const cancel = useRef<HTMLButtonElement>(null);
 
@@ -97,12 +105,20 @@ export function Dialog({ title, children, confirmLabel, reasonLabel, reasonMax =
         </div>
       )}
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
-      <div className="actions">
+      <div className={`actions${more ? " dialog-actions" : ""}`}>
         {/* Busy: a spinner, not disabled (disabling the focused button would drop focus out of the modal). */}
         <Button variant={danger ? "danger" : "primary"} loading={busy} aria-label={busy ? busyLabel : undefined} disabled={!busy && (!!confirmDisabled || (needsReason && reason.trim().length < 3))} onClick={() => void confirm()}>
           {confirmLabel}
         </Button>
         <Button ref={cancel} aria-disabled={busy || undefined} onClick={requestClose}>{cancelLabel ?? t("common.cancel")}</Button>
+        {more && (
+          <>
+            <Button className="dialog-more-toggle" aria-expanded={moreOpen} aria-controls={`${id}-m`} onClick={() => setMoreOpen((open) => !open)}>
+              {t("common.dialog.moreActions")}<Chevron className="dialog-more-chevron" />
+            </Button>
+            <div className="dialog-more" id={`${id}-m`} data-open={moreOpen || undefined}>{more}</div>
+          </>
+        )}
       </div>
     </dialog>
   );
