@@ -116,14 +116,15 @@ $r-box: 8px;
   .week-band .overview-section-title { margin: 0; }
   .week-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .week-tile { min-width: 0; }
-  .week-link { display: grid; gap: 2px; height: 100%; padding: 12px 14px; background: $white; border: 1px solid $line; border-radius: $r-box; color: $ink; text-decoration: none; box-sizing: border-box;
+  .week-link { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; height: 100%; padding: 12px 14px; background: $white; border: 1px solid $line; border-radius: $r-box; color: $ink; text-decoration: none; box-sizing: border-box;
     &:not(.static):hover { border-color: $line-strong; }
     &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } }
   .week-label { font-size: 12px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .week-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
   .week-value { font-family: var(--font-fjalla), Impact, sans-serif; font-size: 26px; font-weight: 400; line-height: 1.15; letter-spacing: .01em; }
   .week-note { font-size: 12px; color: var(--muted); }
-  .week-spark { flex: none; margin-bottom: 4px; .before { fill: #d9dcf6; } .now { fill: var(--primary); } }
+  // The spark scales down (never past the tile) when the tile is narrow (two tiles per row at 320 px).
+  .week-spark { flex: 0 1 auto; min-width: 0; max-width: 65%; height: auto; margin-bottom: 4px; .before { fill: #d9dcf6; } .now { fill: var(--primary); } }
   .panel-head .panel-link, .panel-link { font-size: 13px; font-weight: 500; color: var(--primary); text-decoration: none; &:hover { text-decoration: underline; } }
   .coming-list, .feed-list { list-style: none; margin: 0; padding: 0; display: grid; }
   .coming-list li + li, .feed-list li + li { border-top: 1px solid $line; }
@@ -271,5 +272,62 @@ $r-box: 8px;
     td[data-label] { padding-left: 96px; padding-right: 0; }
     td[data-label]::before { margin-top: 0; }
     td.right { padding-top: 8px; .row-actions { display: block; } .pill-btn { width: 100%; } }
+  }
+}
+
+// ---------- List pages on phones (kit FilterBar, PageHeader `dense` and `more`): the first row of the list sits near the
+// top at 390 px. Wide screens show every filter and header action inline; phones fold them behind one button each.
+.content {
+  .filter-bar .filter-fields { display: contents; }
+  .filter-bar .filters-toggle { display: none; }
+  .header-more, .header-more-items { display: contents; }
+  .header-more-toggle { display: none; }
+  // Events sorts by its column headers on wide screens, so its bar is the search alone (at the search's usual width).
+  .events-filters { grid-template-columns: minmax(240px, 420px); }
+}
+@media (max-width: 700px) {
+  .content {
+    // The title never breaks inside a word: when it and the actions don't fit (320 px, Spanish), the actions take the
+    // next row, on the right.
+    .page-header.dense { flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 10px; margin-bottom: 12px;
+      .subtitle { display: none; }
+      // As tall as a button, so the row doesn't grow when an action appears with the data (Audit log's Export CSV).
+      .titles { flex: 1 1 auto; min-width: min-content; min-height: 44px; align-content: center; }
+      .header-action { flex: none; flex-wrap: nowrap; max-width: none; margin-left: auto; padding: 0; } }
+    .header-action:has(.header-more) { position: relative; }
+    .header-more { display: flex; }
+    .header-more-toggle { display: inline-flex; justify-content: center; width: 44px; min-width: 44px; padding: 0;
+      &[aria-expanded="true"] { background: $subtle; } }
+    .header-more-items { display: none; }
+    .header-more[data-open] .header-more-items { display: grid; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 220px; max-width: calc(100vw - 32px);
+      padding: 6px; gap: 4px; background: $white; border: 1px solid $line; border-radius: $r-box; box-shadow: 0 8px 24px rgba(30, 33, 43, .16);
+      .pill-btn { width: 100%; justify-content: flex-start; } }
+
+    .filter-bar { grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; margin-bottom: 12px;
+      .field.search { grid-column: 1; }
+      .filters-toggle { display: inline-flex; align-self: end; gap: 6px; min-height: 44px; padding: 0 12px;
+        svg { margin-right: 0; }
+        .filter-count { margin-left: 0; }
+        &[aria-expanded="true"] { background: $subtle; } }
+      .filter-fields { display: none; }
+      &[data-open] .filter-fields { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px;
+        > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+        > .field.wide { grid-column: 1 / -1; } }
+      // A lone sort select under its "Sort" button: the button already names it (the label stays for screen readers).
+      .sort-select:only-child label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      &.search-only { grid-template-columns: minmax(0, 1fr); }
+      &.search-only .filter-fields { display: grid; grid-column: 1; } }
+
+    // Card rhythm: the lead cells of a compact card sit 4 px apart (not two cell paddings), and the row actions follow
+    // the facts line without a gap of their own.
+    .table.responsive.compact-table td.phone-lead { padding-top: 2px; padding-bottom: 2px; }
+    .events-table td.cell-main { padding-bottom: 0; }
+    .events-table td.right { padding-top: 4px; padding-bottom: 0; }
+    // Invite cards: the chip, then each history line ("Emailed 2 times, last Nov 20") on its own line.
+    .person-sub .invite-history { flex-basis: 100%; }
+    // A banner with one action: the headline and the button on one row.
+    .review-banner { flex-wrap: nowrap; padding: 8px 8px 8px 12px; font-size: 14px; line-height: 20px;
+      > span { flex: 1 1 auto; min-width: 0; }
+      > .pill-btn { flex: none; } }
   }
 }

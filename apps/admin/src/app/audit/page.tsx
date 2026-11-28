@@ -15,7 +15,7 @@ import { auditCsv } from "@/lib/exports";
 import { useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, RelativeTime, SortHeader, absoluteTime, sortRows, useMinuteClock, useTableSort } from "@/components/kit";
+import { Button, FilterBar, RelativeTime, SortHeader, absoluteTime, sortRows, useMinuteClock, useTableSort } from "@/components/kit";
 
 const PAGE = 40;
 /** Plain-language target kind under the summary; null hides the line (the summary already says it, e.g. company-wide settings). IDs live in Details. */
@@ -67,6 +67,11 @@ function Audit() {
 
   const hold = useSkeletonGate(!audit.data && !audit.error);
 
+  function clearFilters() {
+    setQs({ q: "", category: "all" });
+    setShown(PAGE);
+  }
+
   function exportCsv() {
     try {
       downloadText("audit-log.csv", auditCsv(filtered));
@@ -77,22 +82,25 @@ function Audit() {
   }
 
   return (
-    <Shell title={t("audit.title")} subtitle={t("audit.subtitle")} requires="audit.view"
+    <Shell dense title={t("audit.title")} subtitle={t("audit.subtitle")} requires="audit.view"
       action={filtered.length > 0 ? <Button onClick={() => exportCsv()}>{t("common.exportCsv")}</Button> : undefined}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
         : !audit.data || hold ? <Loading label={t("audit.loading")} layout="audit" />
         : audit.data.length === 0 ? <Empty title={t("audit.empty.title")} body={t("audit.empty.body")} />
         : (
           <>
-            <div className="filters">
-              <SearchBox shortcut id="audit-search" value={search} onChange={(v) => { setQs({ q: v }); setShown(PAGE); }} label={t("audit.search.label")} placeholder={t("audit.search.placeholder")} />
+            <FilterBar active={category !== "all" ? 1 : 0}
+              search={<SearchBox shortcut id="audit-search" value={search} onChange={(v) => { setQs({ q: v }); setShown(PAGE); }} label={t("audit.search.label")} placeholder={t("audit.search.placeholder")} />}
+              onClear={search !== "" || category !== "all" ? clearFilters : undefined} clearLabel={t(category !== "all" ? "ui.filters.clear" : "ui.filters.clearSearch")}>
               <div className="field"><label htmlFor="f-category">{t("audit.filter.category")}</label>
                 <select id="f-category" value={category} onChange={(e) => { setQs({ category: e.target.value }); setShown(PAGE); }}>
                   <option value="all">{t("audit.filter.allCategories")}</option>
                   {CATEGORIES.map((c) => <option key={c} value={c}>{auditCategoryLabel(c)}</option>)}
                 </select></div>
-            </div>
-            {filtered.length === 0 ? <Empty title={t("audit.noMatches.title")} body={t("audit.noMatches.body")} /> : (
+            </FilterBar>
+            {filtered.length === 0 ? (
+              <Empty title={t("audit.noMatches.title")} body={t("audit.noMatches.body")} action={<Button onClick={clearFilters}>{t(category !== "all" ? "ui.filters.clear" : "ui.filters.clearSearch")}</Button>} />
+            ) : (
               <>
                 <ResultCount>{t("audit.showingOf", { shown: Math.min(shown, filtered.length), total: filtered.length })}</ResultCount>
                 <TableRegion label={t("audit.table.label")}>

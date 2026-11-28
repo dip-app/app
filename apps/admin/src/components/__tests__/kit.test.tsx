@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Button, Chip, ChipToggle, EmptyState, ErrorNotice, ErrorSummary, InlineNotice, PageHeader, Panel, SegmentedControl } from "../kit";
+import { Button, Chip, ChipToggle, EmptyState, ErrorNotice, ErrorSummary, FilterBar, InlineNotice, PageHeader, Panel, SegmentedControl } from "../kit";
 
 afterEach(cleanup);
 
@@ -148,6 +148,38 @@ describe("EmptyState, PageHeader and Panel", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
     expect(screen.getByText("All of them").className).toBe("subtitle");
     expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
+  });
+  it("a dense header folds `more` behind a More actions disclosure that Escape and choosing an action close", () => {
+    const onExport = vi.fn();
+    const { container } = render(<PageHeader dense title="Members" description="Everyone" more={<Button onClick={onExport}>Export CSV</Button>} actions={<Button variant="primary">Add person</Button>} />);
+    expect(container.querySelector(".page-header")?.className).toBe("page-header dense");
+    const toggle = screen.getByRole("button", { name: "More actions" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.getElementById(toggle.getAttribute("aria-controls")!)?.textContent).toBe("Export CSV");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    expect(onExport).toHaveBeenCalledOnce();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    // Wide screens: the primary action comes after the secondary ones, in reading order.
+    expect([...container.querySelectorAll(".header-action button")].map((b) => b.textContent)).toEqual(["", "Export CSV", "Add person"]);
+  });
+  it("filter bar: one Filters toggle with the number set, the fields it controls, and Clear as the last cell", () => {
+    const onClear = vi.fn();
+    render(<FilterBar active={2} onClear={onClear} search={<input aria-label="Search" />}><div className="field"><label htmlFor="r">Role</label><select id="r" /></div></FilterBar>);
+    const toggle = screen.getByRole("button", { name: /^Filters\s*, 2 filters set$/ });
+    const fields = document.getElementById(toggle.getAttribute("aria-controls")!)!;
+    expect(fields.getAttribute("role")).toBe("group");
+    expect(fields.lastElementChild?.className).toBe("filters-clear");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.closest(".filter-bar")?.getAttribute("data-open")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(onClear).toHaveBeenCalledOnce();
   });
   it("panel labels its section and swaps the body for error, empty and loading states", () => {
     const { rerender } = render(<Panel id="p" title="People" actions={<Button>Add</Button>}><p>Body</p></Panel>);

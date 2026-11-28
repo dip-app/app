@@ -46,14 +46,14 @@ export const dipbot = {
 
   // Email deep link page
   "dipbot.suggested.title": "Event idea",
-  "dipbot.suggested.subtitle": "Opening the idea from your email.",
+  "dipbot.suggested.subtitle": "An event idea from your weekly email.",
   "dipbot.link.expired.title": "This link doesn’t work anymore",
-  "dipbot.link.expired.body": "This link has expired. Open Event ideas to get fresh suggestions.",
+  "dipbot.link.expired.body": "This link has expired. Open Dipbot to get fresh suggestions.",
   "dipbot.link.forbidden.title": "This idea isn’t available to you",
   "dipbot.link.forbidden.body": "This idea belongs to another company or needs an admin account.",
   "dipbot.link.unavailable.title": "Couldn’t open this idea",
   "dipbot.link.unavailable.body": "We couldn’t open this idea. Check your connection and try again.",
-  "dipbot.link.openIdeas": "Open Event ideas",
+  "dipbot.link.openIdeas": "Open Dipbot",
   "dipbot.link.opening": "Opening your event idea...",
 
   // Weekly ideas email (Your settings)

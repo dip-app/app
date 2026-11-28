@@ -68,26 +68,35 @@ export function InterestsSkeleton({ count = L.interestCards }: { count?: number 
   );
 }
 
+/** One "Last 7 days" tile: label, value (with the spark space) and the note line, like `WeekTile`. */
+function WeekTileGhost({ spark }: { spark: boolean }) {
+  return (
+    <li className="week-tile"><div className="week-link static">
+      <span className="week-label"><Sk w={70} /></span>
+      <span className="week-row"><span className="week-value"><Sk w={36} /></span>{spark && <SkeletonBlock w={110} h={28} r={2} className="week-spark" />}</span>
+      <span className="week-note"><Sk w={120} /></span>
+    </div></li>
+  );
+}
+
 /**
- * The loading page: every card of the loaded page as a placeholder, plus whatever is already ready (the Interests card),
- * stacked in the same `.overview` grid so each section keeps its gap. `role` decides whether "Top members" exists.
+ * The loading page: every card of the loaded page as a placeholder, in the loaded page's order (Last 7 days, Needs
+ * attention and Coming up, the 30-day tiles, chart and challenge, top events and recent activity, people and top
+ * members), plus whatever is already ready (the Interests card), stacked in the same `.overview` grid so each section
+ * keeps its gap and nothing moves when the data arrives. `role` decides which cards exist.
  */
 export function OverviewLoading({ children, role = "admin", interestCount }: { children?: ReactNode; role?: Role; interestCount?: number }) {
   const showPoints = can(role, "insights.points");
+  const canAudit = can(role, "audit.view");
   const shortcuts = shortcutsFor(role);
   return (
     <SkeletonRegion label={t("overview.loading")} className="overview">
-      <section className="stat-grid" aria-hidden>{range(L.tiles).map((i) => <SkeletonStatTile key={i} />)}</section>
+      <section className="week-band" aria-hidden>
+        <h2 className="overview-section-title">{t("overview.week.title")}</h2>
+        <ul className="week-grid">{range(4).map((i) => <WeekTileGhost key={i} spark={i < 2} />)}</ul>
+      </section>
 
-      <div className="overview-row wide-left" aria-hidden>
-        <section className="panel chart-panel">
-          <div className="panel-head">
-            <h2><Sk w={150} /></h2>
-            <ul className="legend"><li><span className="swatch bar" /><Sk w={64} /></li><li><span className="swatch line" /><Sk w={64} /></li></ul>
-          </div>
-          <SkeletonChart height={CHART_HEIGHT} />
-          <div className="disclosure"><span className="sk-disclosure"><SkeletonCircle size={16} /><Sk w={78} /></span></div>
-        </section>
+      <div className="overview-row" aria-hidden>
         <Panel title={130}>
           <ul className="action-list">
             {range(L.pendingRows).map((i) => (
@@ -99,16 +108,48 @@ export function OverviewLoading({ children, role = "admin", interestCount }: { c
               <ul className="shortcut-list">{shortcuts.map((s) => <li key={s.id}><span className="shortcut"><span className="sk-shortcut"><Sk w={`${40 + (s.label.length % 5) * 8}%`} /></span></span></li>)}</ul></div>
           )}
         </Panel>
+        <Panel title={100}>
+          <ul className="coming-list">
+            {range(L.comingRows).map((i) => (
+              <li key={i}><span className="coming-row"><span className="coming-date"><Sk w={26} /><Sk w={18} /></span><span className="thumb coming-thumb sk" />
+                <span className="coming-main"><span className="coming-title"><Sk w={`${50 + ((i * 13) % 30)}%`} /></span><span className="muted"><Sk w="70%" /></span></span>
+                <span className="coming-going"><Sk w={72} /><span className="meter-mini"><span style={{ width: `${30 + ((i * 19) % 60)}%` }} /></span></span></span></li>
+            ))}
+          </ul>
+        </Panel>
       </div>
 
-      <div className="overview-row" aria-hidden>
-        <Panel title={180}><RankRows rows={L.topEventRows} /></Panel>
+      <h2 className="overview-section-title" aria-hidden>{t("overview.month.title")}</h2>
+      <section className="stat-grid" aria-hidden>{range(L.tiles).map((i) => <SkeletonStatTile key={i} />)}</section>
+
+      <div className="overview-row wide-left" aria-hidden>
+        <section className="panel chart-panel">
+          <div className="panel-head">
+            <h2><Sk w={150} /></h2>
+            <ul className="legend"><li><span className="swatch bar" /><Sk w={64} /></li><li><span className="swatch line" /><Sk w={64} /></li></ul>
+          </div>
+          <SkeletonChart height={CHART_HEIGHT} />
+          <div className="disclosure"><span className="sk-disclosure"><SkeletonCircle size={16} /><Sk w={78} /></span></div>
+        </section>
         <Panel title={150} className="theme-panel">
           <div className="theme-hero"><SkeletonBlock w={72} h={72} r={8} className="theme-hero-art" /><div className="theme-hero-text"><p className="theme-title"><Sk w="60%" /></p><p className="muted"><Sk w="72%" /></p></div></div>
           <dl className="mini-stats">{["a", "b", "c"].map((k) => <div key={k}><dt><Sk w="70%" /></dt><dd><Sk w="40%" /></dd></div>)}</dl>
           <div className="theme-meters">{["a", "b"].map((k) => <div key={k} className="theme-meter"><p className="muted"><Sk w="100%" /></p><div className="meter"><span style={{ width: k === "a" ? "34%" : "58%" }} /></div></div>)}</div>
           {can(role, "challenges.review") && <SkeletonBlock w={138} h={28} r={6} className="self-start theme-cta" />}
         </Panel>
+      </div>
+
+      <div className={`overview-row${canAudit ? "" : " single"}`} aria-hidden>
+        <Panel title={180}><RankRows rows={L.topEventRows} /></Panel>
+        {canAudit && (
+          <Panel title={120}>
+            <ol className="feed-list">
+              {range(L.feedRows).map((i) => (
+                <li key={i} className="feed-item"><SkeletonAvatar size={28} /><span className="feed-text"><span><Sk w={`${60 + ((i * 11) % 30)}%`} /></span><span className="muted"><Sk w={60} /></span></span></li>
+              ))}
+            </ol>
+          </Panel>
+        )}
       </div>
 
       <div className={`overview-row${showPoints ? "" : " single"}`} aria-hidden>

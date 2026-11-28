@@ -72,7 +72,7 @@ describe("challenges (Spanish)", () => {
     const row = screen.getByTestId("challenge-row");
     expect(within(row).queryByText("Esta semana")).toBeNull();
     expect(within(row).getByText("7 pendientes")).toBeTruthy();
-    expect(within(row).getByText("41 completaron")).toBeTruthy();
+    expect(within(row).getByText(/^1.280 se unieron · 41 completaron$/)).toBeTruthy();
     expect(within(row).getByRole("link", { name: /Revisar participaciones de Fitness/ })).toBeTruthy();
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toContain("Reto");
   });

@@ -177,3 +177,45 @@ have no counts; the People card's "Total members" excludes invited people while 
 Second PR, stacked on the first: S2 and S17 (bug reports rows, triage after the text, a chosen report replaces the list
 below 1001 px), S10 (sticky Save bar on the event and theme forms), S23 (settings two-column layout from 1200 px), S11
 in part (member card heading). Two fresh Opus review rounds; the last P2 was fixed and checked by the author.
+
+## Sweep audit, November 27 (after the Members and Challenges merges)
+
+Leftovers from #376 plus a fresh pass over the pages the earlier waves touched least: Overview, Events and the event
+editor, Your settings, the Dipbot surfaces (Event ideas, the email deep link), Import and the Audit log. Mock mode,
+viewport captures (not full page) at 1440, 768, 390 and 320 px in English and Spanish, plus loading (`?loading=1`),
+offline (`?fail=offline`), empty and no-match states at 1440 and 390. A fresh Sonnet auditor read every capture; the
+author measured the phone list positions in the DOM ("first row" = top of the first list row at 390 px, viewport 844).
+
+### Findings, ranked
+
+| # | Rank | Finding | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| A1 | P1 | Phone list pages start the list far down: Members 638 px (title, 2-line subtitle, a row of three buttons, banner, tabs, search, three selects), Events 400, Audit 389, Bug reports 368, Challenges 350. | members-390-en, events-390-en, audit-390-en | Fixed: kit `FilterBar` and `PageHeader` `dense`/`more` (below). Members 364, Events 257, Audit 224, Bug reports 266, Challenges 261 (Review 232). |
+| A2 | P2 | Bug reports put "Clear filters" on a row of its own (a link under the filters), unlike Members. | bugs-filtered-390-en | Fixed: `FilterBar` places it as the last cell everywhere. |
+| A3 | P2 | Invited and Revoked phone cards differ: a revoked card (or an invited card with history) grows a labeled "Status" row. | members-revoked-390-en | Fixed: the chip and its history lines sit on the card's sub line for every invite card. |
+| A4 | P2 | Challenges Schedule and Review name the same fields differently: Week vs Dates, Participation vs Joined (es: Participación vs Participantes), and the values read "128" vs "128 joined · 41 completed". | challenges-review-1440-en | Fixed: Week / Semana and Participation / Participación in both, with the same value text. |
+| A5 | P2 | Skeletons don't match the loaded pages, so content jumps: Overview's skeleton is the old order (eight tiles first); Events has no search row (48 px jump) and labeled cards on phones (about 360 px per card against 190); Audit has the old column names and order and labeled phone rows. | overview-loading-1440-en, events-loading-1440/390-en, audit-loading-1440/390-en | Fixed: skeletons built from the loaded structure (Last 7 days, Needs attention and Coming up, the 30-day tiles, then the rest; the filter bar ghost; compact phone cards; the real column labels). Skeleton test asserts the new order. |
+| A6 | P2 | Overview at 320: the Last 7 days sparks overflow their tiles and clip "−9 vs the 7 days before". | overview-320-en | Fixed: the spark scales down inside the tile. |
+| A7 | P2 | Your settings: the Dipbot credits line arrives after the panels and pushes them down 28 px. | account-1440-en | Fixed: the row is held with a placeholder while credits load. |
+| A8 | P2 | Audit no-match has no next step (Events offers Clear search). | audit-nomatch-390-en | Fixed: Clear filters / Clear search in the empty state and in the filter row. |
+| A9 | P2 | Events at 768: the mid-width sub line "venue · price" truncates the price ("Clay Studio · $3…"). | events-768-es | Fixed: price first ("$35.00 · Clay Studio"). |
+| A10 | P2 | The email deep link's expired state says "Open Event ideas" (the nav says Dipbot) under a subtitle "Opening the idea from your email." | ideas-suggested-1440-en | Fixed: "Open Dipbot", body names Dipbot, subtitle "An event idea from your weekly email." |
+| A11 | P2 | Phone cards waste space: Events has about 20 px of blank above its buttons; Audit has 20 px between the action and its target. | events-390-en, audit-390-en | Fixed: compact card rhythm (lead cells 4 px apart; actions follow the facts). |
+| A12 | P2 | Dipbot on phones: the wizard starts below the fold under the "Ideas for you" carousel and a second Dipbot header; "Refresh ideas" sits alone on its own row. | ideas-390-en | Open: a Dipbot layout decision (collapse Ideas for you on phones, or put the wizard first); not a polish fix. |
+| A13 | P2 | Three step indicators (Import's boxed steps, the Dipbot stepper, plain tabs); the Spanish Dipbot stepper is cramped at 1440 (9 px gap before step 5). | import-1440-en, ideas-1440-es | Open: one kit stepper is a structural change for the next round. |
+| A14 | P2 | Content right edges differ at 1440 (lists 1375, settings 1362, forms 1322). | event-new-1440-en, account-1440-en | Rejected: forms keep a readable max width on purpose (1040 px); settings use the two-column layout. |
+| A15 | P2 | Back links ("‹ Events") look 16 px tall on phones. | event-new-390-en | Rejected: the hit area is already 44 px (padding with a negative margin, `structure.scss`). |
+| A16 | P2 | The offline alert's Try again is indented under the text on phones. | overview-offline-390-en | Rejected: the documented alert layout (the action lines up with the text, at 44 px). |
+| A17 | P2 | Dipbot option names truncate at 768 ("Food & …") and Spanish blurbs at 1440. | ideas-768-en, ideas-1440-es | Open (Dipbot owner). |
+| A18 | P3 | Orphan separator dots at line ends ("7:00 PM ·", "The Pub on Penn ·"); Import's "How it works" taller than the step card; Account's raw time zone ("America/Los_Angeles"); Events table "Price"/"Going" headers align differently from their values; the event editor's save-error summary repeats the field messages. | event-edit-390-en, import-1440-en, account-1440-es, events-1440-en | Open. |
+
+### Phone density pattern (A1)
+
+- `Shell dense` on Members, Events, Bug reports, Audit log and Challenges: one header row on phones (the title and the
+  actions); the subtitle stays on wider screens. Too tight (320 px, Spanish), the actions wrap to the next row on the
+  right; the title never breaks inside a word, and the row is always 44 px tall so an action that arrives with the data
+  doesn't move the page.
+- `Shell more`: Export CSV and Import people fold behind one "More actions" button beside Add person.
+- `FilterBar`: the search and a "Filters" button with the count of filters set; the fields open below it two per row
+  with Clear filters last. Events folds its phone sort select behind "Sort" the same way.
+- Members' banner keeps its headline and "Add them to the list" on one row.

@@ -20,7 +20,7 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | Anything that was thrown | `ErrorNotice` (inline), `toastError` (toast), `describe` / `userErrorMessage` (text) | See "Errors" below. Never render `error.message`. `ErrorNotice` takes `dipbot` on Dipbot surfaces ("Dipbot is busy"). |
 | A titled section card | `Panel` | `title`, `description`, `actions`, `loading`, `empty`, `error`, `headingLevel`. |
 | Nothing here yet | `EmptyState` | `title`, `body`, one `action`, optional `art`. `Empty` in `Ui.tsx` is the same component. |
-| The page title row | `PageHeader` | `title`, `description`, `actions`. `Shell` renders it. |
+| The page title row | `PageHeader` | `title`, `description`, `actions`, `more` (secondary outline actions), `dense` (list pages). `Shell` renders it (`action`, `more`, `dense`). |
 | The header row of a Dipbot section | `SectionHeader` | `title`, `headingLevel`, `updated` (muted "Updated 3 hours ago"), `staleHint` (compact inline "New data available" beside it, only when stale), optional `toggle` (collapse), `hint`, `end` (actions). Used by "Ideas for you" and the wizard's per-step suggestions. |
 | One choice out of a few, always visible | `SegmentedControl` | `tabs` (underlined views), `pill` (compact, AM/PM), `icon` (grid or list). |
 | A detail page's header | `Shell` props `back` (small "‹ Events" link above the title), `eyebrow`, `meta`; or `useShellHeader({ title, meta, metaKey })` from a page that loads its object | The h1 is the object ("Puppy Yoga", "Pat Member"); the page's own title becomes the eyebrow; `meta` is one line of facts (dates, counts, the exception chip). No "All events" buttons. |
@@ -28,6 +28,7 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | A time that should read as recent | `RelativeTime` (`relativeTime`, `absoluteTime`, `useMinuteClock`) | "12 min ago", "yesterday", then the date; the absolute time is the tooltip and is read after the words. One shared minute clock. |
 | A wide table | `TableRegion` | Keeps readable columns and scrolls inside its region; an edge shadow shows while columns are off-screen. Put `nowrap` on date and time values. |
 | A list search | `SearchBox` with `shortcut` on pages that use `useSlashFocus` | The "/" key cap sits inside the field on pointer devices; placeholders never carry the hint. |
+| A list's search and filters | `FilterBar` | `search` (the `SearchBox`), the filter fields as children, `active` (how many filters are set), `onClear` and `clearLabel` (only while something is set), `toggleLabel` ("Sort" on a list that only sorts), `invalid` (keeps the fields open on phones). |
 
 Density rules for lists (from the structure audit, [polish-2026-11/admin-structure.md](polish-2026-11/admin-structure.md)):
 
@@ -40,7 +41,15 @@ Density rules for lists (from the structure audit, [polish-2026-11/admin-structu
 
 `Dialog` takes `more` for secondary actions (outline Buttons). They sit in the action row after Cancel on wide screens; on phones the confirm button is full width, Cancel and a "More actions" toggle share the next row, and the toggle reveals them full width underneath. Mark a destructive secondary action with `className="quiet-danger"` (red label).
 
-A filter row's "Clear filters" is its last cell (`.filters-clear`), never a row of its own.
+A filter row's "Clear filters" is its last cell (`.filters-clear`), never a row of its own. `FilterBar` places it.
+
+List pages on phones (700 px and below) keep the first row of the list near the top (Members, Events, Bug reports, Audit log and Challenges start their list between 220 and 380 px at 390 px wide):
+
+- `Shell dense`: the title and the actions share one row and the subtitle is left out (it stays on wider screens). When the title and the actions don't fit (320 px, Spanish) the actions take the next row on the right; the title never breaks inside a word.
+- `Shell more`: secondary actions (Export CSV, Import people) sit before the primary on wide screens and fold behind one 44 px "More actions" button (a disclosure: `aria-expanded`, Escape returns focus to it, choosing an action or pressing outside closes it) on phones.
+- `FilterBar`: the search and one "Filters" button with the number of filters set; the fields fold out under them two per row, "Clear filters" last. Events puts its phone-only sort select behind a "Sort" button the same way.
+- A banner with one action keeps its headline and the button on one row.
+- Invite cards show the status chip and its history lines ("Revoked Nov 18") on the card's sub line; no card has a separate Status row.
 
 ## DipbotAction
 

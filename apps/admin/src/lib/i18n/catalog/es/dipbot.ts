@@ -47,14 +47,14 @@ export const dipbot: Record<keyof typeof source, string> = {
 
   // Email deep link page
   "dipbot.suggested.title": "Idea de evento",
-  "dipbot.suggested.subtitle": "Abriendo la idea de tu correo.",
+  "dipbot.suggested.subtitle": "Una idea de evento de tu correo semanal.",
   "dipbot.link.expired.title": "Este enlace ya no funciona",
-  "dipbot.link.expired.body": "Este enlace caducó. Abre Ideas de eventos para obtener sugerencias nuevas.",
+  "dipbot.link.expired.body": "Este enlace caducó. Abre Dipbot para obtener sugerencias nuevas.",
   "dipbot.link.forbidden.title": "Esta idea no está disponible para ti",
   "dipbot.link.forbidden.body": "Esta idea pertenece a otra empresa o requiere una cuenta de administrador.",
   "dipbot.link.unavailable.title": "No pudimos abrir esta idea",
   "dipbot.link.unavailable.body": "No pudimos abrir esta idea. Revisa tu conexión e inténtalo de nuevo.",
-  "dipbot.link.openIdeas": "Abrir Ideas de eventos",
+  "dipbot.link.openIdeas": "Abrir Dipbot",
   "dipbot.link.opening": "Abriendo tu idea de evento...",
 
   // Weekly ideas email (Your settings)

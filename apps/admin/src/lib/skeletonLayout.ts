@@ -12,6 +12,10 @@ export const OVERVIEW_LAYOUT = {
   topMemberRows: 5,
   /** Rows in the People card: active, invited, deactivated and the total. */
   peopleRows: 4,
+  /** Rows in "Coming up" (the next two weeks, at most five). */
+  comingRows: 5,
+  /** Rows in "Recent activity" (the latest six audit entries). */
+  feedRows: 6,
   /** Interest cards before the tag catalog says how many there are. */
   interestCards: 14,
 } as const;

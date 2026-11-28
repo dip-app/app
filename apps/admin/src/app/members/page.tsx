@@ -15,7 +15,7 @@ import { Empty, LoadError, LoadMore, Loading, ResultCount, SearchBox, formatDate
 import { describe, useLoad } from "@/components/useLoad";
 import { type Paged, useDebounced, usePaged } from "@/components/usePaged";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, ErrorNotice, InlineNotice } from "@/components/kit";
+import { Button, ErrorNotice, FilterBar, InlineNotice } from "@/components/kit";
 import { LIST_PAGE_SIZE, ROLE_LABEL, can, type Member, type MemberQuery, type ResendResult, type Role, type RosterCounts, type RosterRow } from "@/lib/adminTypes";
 import { downloadText } from "@/lib/csv";
 import { invitesCsv, membersCsv } from "@/lib/exports";
@@ -260,16 +260,14 @@ function Members() {
 
   // Export is on every tab (it exports what the tab lists), so the header and the tab row stay put between tabs.
   const exportable = joinedView ? members.items.length > 0 : invites.items.length > 0;
-  const header = (
-    <>
-      <Button disabled={!exportable || exporting} onClick={() => void exportCsv()}>{exporting ? t("common.exporting") : t("common.exportCsv")}</Button>
-      {canImport && <Button href="/import/">{t("roster.import")}</Button>}
-      {canInvite && <Button variant="primary" onClick={() => setAdding(true)}>{t("roster.add")}</Button>}
-    </>
-  );
+  // On phones the secondary actions fold behind "More actions" next to Add person.
+  const exportButton = <Button disabled={!exportable || exporting} onClick={() => void exportCsv()}>{exporting ? t("common.exporting") : t("common.exportCsv")}</Button>;
+  const secondary = canInvite ? <>{exportButton}{canImport && <Button href="/import/">{t("roster.import")}</Button>}</> : undefined;
+  const primary = canInvite ? <Button variant="primary" onClick={() => setAdding(true)}>{t("roster.add")}</Button> : exportButton;
+  const activeFilters = (role !== "all" ? 1 : 0) + (team !== "all" ? 1 : 0) + (location !== "all" ? 1 : 0);
 
   return (
-    <Shell title={t("members.title")} subtitle={t(canInvite ? "members.subtitle.invites" : "members.subtitle")} requires="members.view" action={header}>
+    <Shell dense title={t("members.title")} subtitle={t(canInvite ? "members.subtitle.invites" : "members.subtitle")} requires="members.view" action={primary} more={secondary}>
       {canInvite && unlisted > 0 && (
         <div className="review-banner ok" role="status">
           {/* Phones show the headline and the action only: the confirm dialog that follows says what adding them changes. */}
@@ -278,8 +276,10 @@ function Members() {
         </div>
       )}
       <Tabs idBase="members" label={t("members.filterByStatus")} value={view} onChange={(id) => setQs({ status: id })} items={tabs} />
-      <div className="filters">
-        <SearchBox shortcut id="members-search" value={search} onChange={(v) => setQs({ q: v })} label={t("members.search.label")} placeholder={t("members.search.placeholder")} />
+      <FilterBar active={activeFilters}
+        search={<SearchBox shortcut id="members-search" value={search} onChange={(v) => setQs({ q: v })} label={t("members.search.label")} placeholder={t("members.search.placeholder")} />}
+        onClear={search !== "" || memberFilters ? () => setQs({ q: "", role: "all", team: "all", location: "all" }) : undefined}
+        clearLabel={t(memberFilters ? "members.filter.clear" : "members.filter.clearSearch")}>
         <div className="field"><label htmlFor="f-role">{t("members.filter.role")}</label>
           <select id="f-role" value={role} onChange={(e) => setQs({ role: e.target.value })}>
             <option value="all">{t("members.filter.allRoles")}</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
@@ -292,11 +292,7 @@ function Members() {
           <select id="f-loc" value={location} onChange={(e) => setQs({ location: e.target.value })}>
             <option value="all">{t("members.filter.allLocations")}</option>{[...new Set([...knownLocations, ...(location !== "all" ? [location] : [])])].sort().map((l) => <option key={l}>{l}</option>)}
           </select></div>
-        {/* In the filter row, after the last select (on phones: beside Work location), so clearing never adds a row. */}
-        {(search !== "" || memberFilters) && (
-          <div className="filters-clear"><Button onClick={() => setQs({ q: "", role: "all", team: "all", location: "all" })}>{t(memberFilters ? "members.filter.clear" : "members.filter.clearSearch")}</Button></div>
-        )}
-      </div>
+      </FilterBar>
       {error && <InlineNotice tone="error">{error}</InlineNotice>}
       <div key={view} {...tabPanelProps("members", view)}>
         {joinedView
