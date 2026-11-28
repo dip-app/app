@@ -128,3 +128,34 @@ Done: ORG-1, MOT-2, TXT-1, PTS-1, EVT-2, A11Y-2, ST-5, SET-1, JOIN-1, MOT-3, EVT
 - Organizer (ORG-1): `--mock-organizer` signs in Alex Morgan, role organizer, in the fixture company. Walked: tour, Home, My Events (active and memories), event (Join: 16 to 17 of 30), chat (sent a message), past event, attendees, album, weekly challenge, Rewards, Profile, notifications, invitations, notification settings (no admin digest switch, as intended for organizers). Nothing reads as broken or role-specific.
 - PERF-2 (simulator, Claude-Base, poll every 0.55 s from `simctl launch` to the first content frame): Debug warm 3.2 to 3.5 s to Home or welcome; Release warm 3.4 to 4.1 s to welcome; Release first launch after install 8.0 s. A Time Profiler trace of the Release launch spends most samples in dyld (simulator load-command parsing) and Swift protocol conformance lookups; `DIPApp.main` and everything under it is about 12 %. No app-side fix is clearly indicated; a device measurement (App Launch template) remains the next step.
 - Design review (fresh Opus reviewer per round, before and after pairs, en, es, XXXL, AX3): round 1 FAIL on one P2 (the cancelled page's info card, headed "Activity cancelled", peeked half-hidden under the bar; moved the notice under the title and dropped the card heading; Read more gained a chevron after a P3); round 2 FAIL on one P2 (a stale Spanish capture without the chevron; recaptured); round 3 PASS. Not taken: dropping the "Cancelled" note beside Who's Attending (it explains why the list no longer counts toward capacity), the lowercase Spanish weekday in the date pill (locale formatting), the AX3 past-event header layout (unchanged by this wave).
+
+## Wave 5
+
+Date: November 28, 2026. Scope: the wave 4 "Later" items ST-8, CHAT-1 and ST-7. A11Y-3 (challenge card at accessibility sizes) and TYPE-2 (Home section headers at XXXL) were dropped by the owner: large Dynamic Type sizes are not a concern for this project and are not tested, so neither has a fix and the sweep below covers default text only. Method: a Debug build with `--mock-member` on Claude-Base (402 x 874 pt) in English and Spanish, and on Claude-Duo folded and open.
+
+### Wave 5 log
+
+- ST-8 (shell failure): the failed first load keeps the fixed header (tab title, bell with the live unread count from the notifications adapter, the member's avatar from the account profile). The Profile tab shows the member's own Profile in that state, because Profile needs only the account profile, so Edit, Notifications settings and Sign out stay reachable. A route opened while the first load had failed (a link at launch while offline) shows the same failure card with Try again under its Back button instead of a skeleton that never resolves. The Duo flag `--shell-state=failed` fails one observation only, and the open Duo restarts observation when it lays out, so the failure was captured on the phone only.
+- CHAT-1 (chat header): the chat sheet uses the shared sheet header (`InviteSheetHeader`): title pill, the activity name under it, the bell in the same muted 44 pt circle beside the round close, and the grabber. The header gained an optional accessory slot for the bell. Identifiers are unchanged (`event.chat.done` is now the close button, `event.chat.notifications` the bell menu).
+- Duo detail placeholder: the open Duo's detail pane opens the list's first activity on its own, so its placeholder only shows when the list has nothing to pick; "Pick an activity" contradicted the list's empty state beside it and now reads "No activity open".
+
+### ST-7: next steps for "Nothing planned yet" and "Activity full"
+
+The owner delegated the product call if the evidence supports it, using only existing features.
+
+Evidence, what exists today:
+
+- No waitlist and no "notify me": the contracts have no waitlist model or command, and `docs/design/email-coverage.md` lists waitlists as not applicable ("DIP has no waitlists").
+- No push for new activities: "Event matches your interests" is deferred in `docs/design/push-catalog.md` (row 15), so the app cannot promise to tell the member when something is posted.
+- Capacity is live: activities are Firestore listeners (`FirebaseEventReadSource`), and the activity page derives Join or "Activity full" from the observed attendee count, so when someone leaves, Join comes back on the open page without any action.
+- The weekly challenge exists for every active member (push-catalog row 11), its card is the first section of Home, and an approved entry earns points. It is the one thing a member can do this week when nothing is planned.
+- Home is the list of upcoming activities and is one tap from any activity page (`selectTab(.home)`); on the open Duo it is already the list pane beside the activity.
+
+Decision:
+
+- "Activity full": a note under the title, "This activity is full. If a spot opens up, you can join here." (true because the count is live), with one text action, "See other activities", that returns to Home. On the open Duo the link is left out because Home is already beside the activity. A waitlist or "notify me" would be a new backend feature and is not proposed here.
+- "Nothing planned yet": when a weekly challenge is current, the message adds "Until then, try this week's challenge above." The first draft added a solid "Try this week's challenge" button; the design review rejected it as a second primary next to See All that duplicated the challenge card's own open button right above it, so the copy points to the card instead. Without a current challenge there is no honest next step and the message stays as it was.
+
+### Wave 5 design review
+
+Fresh Opus reviewer per round, before and after pairs, English and Spanish, Duo folded and open. Round 1 FAIL on four P2s: the Home empty button duplicated the challenge card and competed with See All (replaced by the copy above); the Duo detail pane said "Pick an activity" beside an empty list (new placeholder copy); the "See other activities" link started at the page margin instead of under the note (the note is now an icon column with the text and link stacked beside it); the yellow bell chip's contrast (not taken: the Figma-derived header is unchanged by this wave and stays an owner item). The chat sheet gained the grabber the other sheets show (P3). Round 2 PASS; its P3 on the Home copy ("open" read as "available") was taken ("try this week's challenge above"). Not taken: moving the full note lower or dropping the "Full" capacity label (the label is the attendee row's standard capacity note and the bar is the disabled control, while the note is the only place that explains it), the generic "Couldn't load updates" failure text (`DIPAppViewModel`'s generic load-error text, unchanged here), and the chat subtitle's inset (the shared header's existing subtitle alignment, also used by the Invite sheet).

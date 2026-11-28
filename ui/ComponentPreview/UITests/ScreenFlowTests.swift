@@ -36,7 +36,7 @@ final class ScreenFlowTests: XCTestCase {
         field.typeText("See you there!")
         send.tap()
         XCTAssertTrue(app.staticTexts["See you there!"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["event.chat.done"].tap()
         app.buttons["event.back"].tap()
         // v1 fixtures: Puppy Yoga's card artwork is `event_Image` (the card id follows the artwork, not the event id).
         let card = app.buttons["home.event.event_Image"]

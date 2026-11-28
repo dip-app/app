@@ -41,7 +41,11 @@ struct DIPActivityChatScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // The shared sheet header (title pill, event name under it, bell beside the round close), like every other sheet.
+            InviteSheetHeader(
+                title: String(localized: "Activity Chat"), subtitle: eventTitle, closeIdentifier: "event.chat.done",
+                accessory: notificationLevel.map { AnyView(notificationMenu($0)) }, onClose: { dismiss() })
             ScrollViewReader { scroll in
                 GeometryReader { viewport in
                 ScrollView {
@@ -100,49 +104,34 @@ struct DIPActivityChatScreen: View {
                 }
                 }
             }
-            .navigationTitle("Activity Chat")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 2) {
-                        Text("Activity Chat")
-                            .font(DIPReferenceAssets.font("Figtree-Bold", size: 18, relativeTo: .headline))
-                        Text(eventTitle)
-                            .font(DIPReferenceAssets.font("Inter-Regular", size: 12, relativeTo: .caption))
-                            .foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-                if let notificationLevel {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Menu {
-                            ForEach(DIPNotificationLevel.allCases, id: \.self) { level in
-                                Button {
-                                    Task { await onSetNotificationLevel?(level) }
-                                } label: {
-                                    Label {
-                                        Text(level.title); Text(level.summary)
-                                    } icon: {
-                                        if level == notificationLevel { Image(systemName: "checkmark") }
-                                    }
-                                }
-                                .accessibilityIdentifier("event.chat.notifications.\(level.rawValue)")
-                            }
-                        } label: {
-                            Image(systemName: notificationLevel == .none ? "bell.slash" : "bell")
-                                .accessibilityLabel("Notifications: \(notificationLevel.title)")
-                        }
-                        .accessibilityIdentifier("event.chat.notifications")
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("event.chat.done")
-                }
-            }
         }
+        .background(DIPTokens.Color.surfaceDefault.swiftUIColor)
+        .presentationDragIndicator(.visible)
         .tint(DIPTokens.Color.navigationBackground.swiftUIColor)
         .preferredColorScheme(.light)
+    }
+
+    /// Per-event notification level: the bell opens a menu of levels (checkmark on the current one).
+    private func notificationMenu(_ current: DIPNotificationLevel) -> some View {
+        Menu {
+            ForEach(DIPNotificationLevel.allCases, id: \.self) { level in
+                Button {
+                    Task { await onSetNotificationLevel?(level) }
+                } label: {
+                    Label {
+                        Text(level.title); Text(level.summary)
+                    } icon: {
+                        if level == current { Image(systemName: "checkmark") }
+                    }
+                }
+                .accessibilityIdentifier("event.chat.notifications.\(level.rawValue)")
+            }
+        } label: {
+            InviteSheetHeader.circle(systemName: current == .none ? "bell.slash" : "bell")
+        }
+        .buttonStyle(DIPPressFeedbackStyle())
+        .accessibilityLabel("Notifications: \(current.title)")
+        .accessibilityIdentifier("event.chat.notifications")
     }
 
     private var emptyConversation: some View {

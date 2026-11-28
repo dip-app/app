@@ -190,9 +190,14 @@ struct DIPHomeScreen: View {
                     ? String(localized: "home.filter.empty.message.partial", defaultValue: "Load more events, or switch to All events.", comment: "Home empty state message when the filter matches nothing in the loaded events but more can be loaded") : String(localized: "home.filter.empty.message", defaultValue: "Switch to All events to see everything coming up.", comment: "Home empty state message when the interest filter matches no events"),
                 actionTitle: String(localized: "home.filter.empty.action", defaultValue: "Show all events", comment: "Home empty state button that switches the filter to all events"), action: { DIPHaptics.select(); onFilterScope(.all) })
         case .emptyAll:
+            // ST-7: with nothing planned, this week's challenge is the one thing a member can do now (and it earns points).
+            // Its card sits right above with its own open button, so the copy points to it instead of a second solid
+            // button (design review); without a current theme there is no honest next step and the card only explains.
             DIPEmptyState(
                 screen: "home-events", title: String(localized: "home.events.empty.title", defaultValue: "Nothing planned yet", comment: "Home empty state title when there are no upcoming events"),
-                message: String(localized: "home.events.empty.message", defaultValue: "New company events will show up here.", comment: "Home empty state message when there are no upcoming events"))
+                message: challengeState?.summary != nil
+                    ? String(localized: "home.events.empty.messageChallenge", defaultValue: "New company events will show up here. Until then, try this week’s challenge above.", comment: "Home empty state message when there are no upcoming events and the weekly challenge card above is open")
+                    : String(localized: "home.events.empty.message", defaultValue: "New company events will show up here.", comment: "Home empty state message when there are no upcoming events"))
         }
     }
 

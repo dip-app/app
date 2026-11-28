@@ -23,7 +23,8 @@ final class EmptyStateFlowTests: XCTestCase {
         let app = launch("home-events", screen: "home")
         let message = element(app, "empty.home-events.message")
         XCTAssertTrue(message.waitForExistence(timeout: 10))
-        XCTAssertEqual(message.label, "Nothing planned yet. New company events will show up here.")
+        // The fixture has a current weekly challenge, so the message points to its card (the next step).
+        XCTAssertEqual(message.label, "Nothing planned yet. New company events will show up here. Until then, try this week’s challenge above.")
         XCTAssertFalse(element(app, "home.events").exists)
         XCTAssertTrue(app.buttons["home.attendees"].exists)
         attach(app, "empty-home-events")

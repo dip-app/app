@@ -261,11 +261,13 @@ struct DIPDuoRail: View {
 /// Detail pane with nothing open (no events yet): a designed empty state, not a blank pane.
 struct DIPDuoDetailPlaceholder: View {
     var body: some View {
+        // The pane opens the list's first activity on its own, so it is only empty when the list has nothing to pick:
+        // "Pick an activity" would contradict the list's own empty state beside it.
         DIPEmptyState(screen: "duo-detail",
-                      title: String(localized: "duo.detail.empty.title", defaultValue: "Pick an activity",
-                                    comment: "Duo detail pane empty state title when no event is open"),
-                      message: String(localized: "duo.detail.empty.message", defaultValue: "Its details open here.",
-                                      comment: "Duo detail pane empty state message when no event is open"))
+                      title: String(localized: "duo.detail.none.title", defaultValue: "No activity open",
+                                    comment: "Duo detail pane empty state title; shown only when the list beside it has no activities"),
+                      message: String(localized: "duo.detail.none.message", defaultValue: "When there’s an activity, its details open here.",
+                                      comment: "Duo detail pane empty state message; shown only when the list beside it has no activities"))
             .padding(.horizontal, 40)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.white)
