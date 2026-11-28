@@ -51,6 +51,7 @@ Run in `apps/admin` unless noted:
 - On phones, list pages leave out the page subtitle; wider screens keep it. The list's first row matters more on a phone, and the descriptions are explanatory, not needed to act.
 - Secondary header actions use a disclosure ("More actions"), not a menu. This is the same pattern as `Dialog` `more`, and it needs no roving focus.
 - The Filters toggle label stays "Filters" when open (`aria-expanded` carries the state). The old "Hide filters" label changed the button width.
+- Design review round 1 (fresh Sonnet): PASS with one P2, the Members and Invited phone skeleton (290 px labeled rows against 90 px cards). Fixed and checked by capture. P3s were not acted on and are listed in the PR: Spanish placeholders cut at 320, a reporter name truncated next to a status chip, Audit's Export taking its own row at 320 in Spanish.
 - Rejected audit items are listed in the audit table with reasons: form max width, back-link hit area, alert action indent.
 
 ## Handoff
