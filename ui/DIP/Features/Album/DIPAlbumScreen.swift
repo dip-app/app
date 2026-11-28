@@ -92,6 +92,8 @@ struct DIPAlbumScreen: View {
                             content(width: width)
                         }
                         .padding(.horizontal, 20).padding(.bottom, 100)
+                        // The skeleton cross-fades into the photos (or the empty state) instead of a hard cut.
+                        .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: album.isLoaded)
                     }
                     .scrollIndicators(.hidden).dipTopEdgeFade()
                 }
@@ -179,9 +181,15 @@ struct DIPAlbumScreen: View {
         if !album.isLoaded {
             DIPPageSkeleton(.grid, horizontalInset: 0, label: Text("Loading photos", comment: "VoiceOver label while album photos load"))
                 .accessibilityIdentifier("album.loading")
+                .transition(DIPMotion.revealTransition)
         } else if album.photos.isEmpty {
             // A load error is shown even while drafts are listed above; the plain empty state is not.
-            if drafts.isEmpty || album.loadError != nil { emptyState.padding(.top, 8) }
+            // Centered in the space above the Add Photos bar, not pinned to the top of a blank page.
+            if drafts.isEmpty || album.loadError != nil {
+                emptyState
+                    .containerRelativeFrame(.vertical, alignment: .center) { height, _ in max(0, height - 120) }
+                    .transition(DIPMotion.revealTransition)
+            }
         } else {
             mosaic(width: width)
             if album.photos.count > 12 {
@@ -328,12 +336,12 @@ struct DIPAlbumScreen: View {
 
     private func show(toast message: String) {
         toastTask?.cancel()
-        withAnimation(reduceMotion ? .linear(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.85)) { toast = message }
+        withAnimation(DIPMotion.toastIn(reduceMotion: reduceMotion)) { toast = message }
         UIAccessibility.post(notification: .announcement, argument: message)
         toastTask = Task {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeOut(duration: 0.2)) { toast = nil }
+            withAnimation(DIPMotion.toastOut(reduceMotion: reduceMotion)) { toast = nil }
         }
     }
 

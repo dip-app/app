@@ -39,7 +39,8 @@ public enum DIPPointsFormat {
     }
 
     /// Points row of an event page by the member's relationship to it: "Earned 50 points" once they attended
-    /// (past and joined), "Worth 50 points" for a past event they did not join, "Earn +50 points" before it. nil at 0.
+    /// (past and joined), "Worth 50 points" for a past event they did not join, "Earn 50 points" before it. nil at 0.
+    /// Sign rule: a bare amount carries "+" (the "+50 pts" pills); after a verb (Earn, Earned, Worth) it never does.
     public static func eventRow(_ points: Int, isPast: Bool, attended: Bool, locale: Locale = .current) -> String? {
         guard points > 0 else { return nil }
         let formatted = number(points, locale: locale)
@@ -55,8 +56,8 @@ public enum DIPPointsFormat {
                 : String(localized: "points.worthPast.other", defaultValue: "Worth \(formatted) points", bundle: .module, comment: "Event page points row for a past event the member did not join; %@ = formatted number such as 50")
         }
         return isOne
-            ? String(localized: "points.earn.one", defaultValue: "Earn +\(formatted) point", bundle: .module, comment: "Event page points row before the event, 1 point; %@ = formatted number")
-            : String(localized: "points.earn.other", defaultValue: "Earn +\(formatted) points", bundle: .module, comment: "Event page points row before the event; %@ = formatted number such as 50")
+            ? String(localized: "points.earn.one", defaultValue: "Earn \(formatted) point", bundle: .module, comment: "Event page points row before the event, 1 point; %@ = formatted number")
+            : String(localized: "points.earn.other", defaultValue: "Earn \(formatted) points", bundle: .module, comment: "Event page points row before the event; %@ = formatted number such as 50")
     }
 
     /// Compact card text: "+50 pts"; nil at 0 or below.

@@ -10,6 +10,7 @@ struct DIPNotificationSettingsScreen: View {
     let model: DIPNotificationSettingsModel
     let onClose: () -> Void
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 28
 
     var body: some View {
@@ -18,6 +19,8 @@ struct DIPNotificationSettingsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) { content }
                     .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 40)
+                    // The skeleton rows cross-fade into the switches (or the failure state).
+                    .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: model.phase)
             }
             .scrollIndicators(.hidden)
         }
@@ -118,13 +121,22 @@ struct DIPNotificationSettingsScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("notificationSettings.footnote")
             }
-            ForEach(model.rows(in: section)) { row in
-                toggleRow(row, channel: section.channel, enabled: model.areSwitchesEnabled(in: section))
-                // A failed email save shows right under its switch (the Email list sits far below the top of the sheet).
-                if section == .email, model.saveErrorChannel == .email, model.saveErrorCategory == row.category, let error = model.saveError {
-                    saveError(error)
+            // One grouped card per section with hairline dividers (was a separate card per switch, a tall stack).
+            let rows = model.rows(in: section)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                    if index > 0 {
+                        Divider().overlay(DIPTokens.Color.textPrimary.swiftUIColor.opacity(0.08)).padding(.leading, 16)
+                    }
+                    toggleRow(row, channel: section.channel, enabled: model.areSwitchesEnabled(in: section))
+                    // A failed email save shows right under its switch (the Email list sits far below the top of the sheet).
+                    if section == .email, model.saveErrorChannel == .email, model.saveErrorCategory == row.category, let error = model.saveError {
+                        saveError(error).padding(.horizontal, 16).padding(.bottom, 12)
+                    }
                 }
             }
+            .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
+                        in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
         }
     }
 
@@ -149,9 +161,7 @@ struct DIPNotificationSettingsScreen: View {
         }
         .tint(DIPTokens.Color.actionPrimary.swiftUIColor)
         .disabled(!enabled)
-        .padding(16)
-        .background(DIPTokens.Color.surfaceMuted.swiftUIColor,
-                    in: RoundedRectangle(cornerRadius: DIPTokens.Radius.card, style: .continuous))
+        .padding(.horizontal, 16).padding(.vertical, 12)
         .opacity(enabled ? 1 : 0.5)
         .accessibilityHint(enabled || channel == .email ? "" : String(localized: "notificationSettings.toggle.hint", defaultValue: "Turn on push notifications first", comment: "VoiceOver hint on a disabled notification switch"))
         .accessibilityIdentifier(channel == .email

@@ -185,6 +185,7 @@ struct DIPDetailPeopleRow: View {
     var trailingNote: String? = nil
     let identifierPrefix: String
     let onMore: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var shown: [MediaReference] { Array(avatars.prefix(4)) }
     private var remaining: Int { max(0, total - shown.count) }
@@ -208,6 +209,9 @@ struct DIPDetailPeopleRow: View {
                     Text(total >= capacity ? String(localized: "detail.capacity.full", defaultValue: "Full", comment: "Header note on the attendee row when the activity has no spots left") : String(localized: "detail.capacity.count", defaultValue: "\(total) of \(capacity)", comment: "Header note on the attendee row; first %lld = people going, second %lld = capacity"))
                         .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                         .foregroundStyle(.secondary)
+                        // Joining or leaving rolls the count instead of swapping it.
+                        .contentTransition(.numericText(value: Double(total)))
+                        .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: total)
                         .accessibilityLabel(total >= capacity ? String(localized: "detail.capacity.full.accessibility", defaultValue: "Full, \(capacity) places", comment: "VoiceOver label of the capacity note when full; %lld = capacity") : String(localized: "detail.capacity.count.accessibility", defaultValue: "\(total) of \(capacity) places taken", comment: "VoiceOver label of the capacity note; first %lld = people going, second %lld = capacity"))
                         .accessibilityIdentifier("\(identifierPrefix).capacity")
                 }
@@ -226,6 +230,8 @@ struct DIPDetailPeopleRow: View {
                         Text(remaining > 0 ? String(localized: "detail.people.more", defaultValue: "+ \(remaining) More", comment: "Pill under the attendee avatars; %lld = how many more attendees are not shown") : String(localized: "detail.people.seeAll", defaultValue: "See all", comment: "Pill under the attendee avatars when every attendee is shown"))
                             .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                             .foregroundStyle(.white)
+                            .contentTransition(.numericText(value: Double(remaining)))
+                            .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: remaining)
                             .frame(maxWidth: .infinity, minHeight: 40)
                             .background(DIPTokens.Color.navigationBackground.swiftUIColor, in: Capsule())
                             .contentShape(Capsule())
@@ -266,9 +272,12 @@ struct DIPDetailActionRow: View {
     /// Public link to the page (`DIPShareLink`). When set it is the shared item (rich link preview) and `shareItem` is the message above it.
     var shareLink: URL? = nil
     let shareTitle: String
+    /// False for a cancelled activity: there is nothing left to share, so the row does not offer it.
+    var showsShare = true
     let identifierPrefix: String
     let onJoin: () -> Void
     let onLeave: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let shareColor = Color(red: 240 / 255, green: 84 / 255, blue: 165 / 255)
 
@@ -313,7 +322,9 @@ struct DIPDetailActionRow: View {
             .opacity(canChange ? 1 : 0.5)
             .accessibilityIdentifier(isParticipating ? "\(identifierPrefix).leave" : "\(identifierPrefix).join")
             }
-            if let shareLink {
+            if !showsShare {
+                EmptyView()
+            } else if let shareLink {
                 ShareLink(item: shareLink, message: Text(shareItem)) {
                     label(shareTitle, asset: "event_HeroiconsMiniLink", background: shareColor)
                 }
@@ -330,7 +341,7 @@ struct DIPDetailActionRow: View {
             }
         }
         // Both first-slot pills have the same size, so a swap (e.g. the event fills up) cross-fades without moving anything.
-        .animation(.easeInOut(duration: 0.2), value: invite != nil)
+        .animation(DIPMotion.quick(reduceMotion: reduceMotion), value: invite != nil)
         .onChange(of: invite != nil) { _, available in
             // The first pill swaps in place; tell VoiceOver users, who cannot see the cross-fade.
             AccessibilityNotification.Announcement(available

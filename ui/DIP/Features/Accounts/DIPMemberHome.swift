@@ -45,6 +45,7 @@ struct DIPMemberHome: View {
     @State private var calendar: DIPCalendarModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dipTopInset) private var topInset
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tour: OnboardingTourModel?
     @State private var tourInterests: OnboardingInterestsModel?
     @State private var replay: OnboardingTourModel?
@@ -186,6 +187,8 @@ struct DIPMemberHome: View {
                 }
             } else { prototype(repository: prototypeRepository, live: false) }
         }
+        // The boot skeleton cross-fades into the shell instead of a hard cut.
+        .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: liveEvents != nil)
         .task {
             if liveEvents == nil, let eventReadFactory {
                 if let reads = eventReadFactory(context) {

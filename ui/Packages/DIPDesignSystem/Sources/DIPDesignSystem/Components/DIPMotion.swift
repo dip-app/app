@@ -37,6 +37,50 @@
                 ? .linear(duration: reducedMotionDuration)
                 : .smooth(duration: sectionDuration, extraBounce: 0)
         }
+
+        /// A small in-place change: a banner dismissed, a tab of a sheet switched, a row inserted (0.2 s ease).
+        public static let quickDuration = 0.2
+        public static func quick(reduceMotion: Bool = false) -> Animation {
+            reduceMotion
+                ? .linear(duration: reducedMotionDuration)
+                : .easeInOut(duration: quickDuration)
+        }
+
+        /// Loaded content replacing its skeleton (or an empty or failure state): a short cross-fade instead of a hard
+        /// cut, so the page settles rather than flashes. Opacity only, so it reads the same under Reduce Motion.
+        public static let revealDuration = 0.25
+        public static func reveal(reduceMotion: Bool = false) -> Animation {
+            reduceMotion
+                ? .linear(duration: reducedMotionDuration)
+                : .easeOut(duration: revealDuration)
+        }
+        public static var revealTransition: AnyTransition { .opacity }
+        /// A page skeleton waits this long before fading in, so a load that finishes sooner shows no skeleton at all.
+        public static let skeletonGrace = 0.15
+
+        /// A transient toast arriving: settles from above without a visible bounce. Leaving: `toastOut`.
+        public static func toastIn(reduceMotion: Bool = false) -> Animation {
+            reduceMotion
+                ? .linear(duration: reducedMotionDuration)
+                : .spring(response: 0.35, dampingFraction: 0.85)
+        }
+
+        public static func toastOut(reduceMotion: Bool = false) -> Animation {
+            reduceMotion
+                ? .linear(duration: reducedMotionDuration)
+                : .easeOut(duration: quickDuration)
+        }
+
+        /// Toasts drop in from the top edge with a fade; Reduce Motion fades only.
+        public static func toastTransition(reduceMotion: Bool = false) -> AnyTransition {
+            reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top))
+        }
+
+        /// A state change of the main action (Join becoming the chat entry): a lively spring; none with Reduce Motion
+        /// (the colour and label still change, instantly).
+        public static func stateChange(reduceMotion: Bool = false) -> Animation? {
+            reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.72)
+        }
     }
 
     /// An overlay state of the persistent navigation component, not a second navigation bar.

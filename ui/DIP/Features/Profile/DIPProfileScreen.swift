@@ -314,16 +314,23 @@ struct DIPProfileScreen: View {
 
     @ViewBuilder private var catalogStatus: some View {
         if interestCatalogLoading {
-            ProgressView("Loading interests…").accessibilityIdentifier("profile.interests.loading")
+            // Shaped like the interest chips that are about to appear (no spinner for content).
+            HStack(spacing: 8) {
+                DIPSkeleton(cornerRadius: -1).frame(width: 92, height: 32)
+                DIPSkeleton(cornerRadius: -1).frame(width: 74, height: 32)
+                DIPSkeleton(cornerRadius: -1).frame(width: 108, height: 32)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(String(localized: "Loading interests…"))
+            .accessibilityIdentifier("profile.interests.loading")
         }
         if let interestCatalogError {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(interestCatalogError)
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
-                Button { onRetryInterestCatalog?() } label: {
-                    Text("Retry interests").dipHitSlop(horizontal: 8, vertical: 14)
-                }
-                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14))
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                DIPTextActionRow(title: String(localized: "Retry interests"), systemImage: "arrow.clockwise", inline: true) { onRetryInterestCatalog?() }
                     .accessibilityIdentifier("profile.interests.catalog.retry")
             }
         }

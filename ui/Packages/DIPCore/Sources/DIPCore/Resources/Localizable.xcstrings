@@ -4669,19 +4669,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Earn +%@ point"
+            "value" : "Earn %@ point"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gana +%@ punto"
+            "value" : "Gana %@ punto"
           }
         },
         "tlh" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "+%@ Quv yIqon"
+            "value" : "%@ Quv yIqon"
           }
         }
       }
@@ -4693,19 +4693,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Earn +%@ points"
+            "value" : "Earn %@ points"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gana +%@ puntos"
+            "value" : "Gana %@ puntos"
           }
         },
         "tlh" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "+%@ Quv yIqon"
+            "value" : "%@ Quv yIqon"
           }
         }
       }
@@ -5391,13 +5391,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "You earned +%lld points."
+                  "value" : "You earned %lld point."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "You earned +%lld points."
+                  "value" : "You earned %lld points."
                 }
               }
             }
@@ -5409,13 +5409,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Ganaste +%lld punto."
+                  "value" : "Ganaste %lld punto."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Ganaste +%lld puntos."
+                  "value" : "Ganaste %lld puntos."
                 }
               }
             }
@@ -5427,7 +5427,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "+%lld Quv Daqonta'."
+                  "value" : "%lld Quv Daqonta'."
                 }
               }
             }
