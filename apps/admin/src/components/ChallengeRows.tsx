@@ -42,7 +42,8 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
       </td>
       <td className="nowrap mid-hide" data-label={t("challenges.table.dates")}>{window}</td>
       <td className="mid-hide nowrap" data-label={t("challenges.table.goal")}>{formatGoal(theme.goal, theme.goalUnit)}</td>
-      <td className="num" data-label={t("challenges.table.joined")}>{formatNumber(theme.participantCount)}{theme.completedCount > 0 && <span className="line muted">{t("challenges.row.completed", { count: formatNumber(theme.completedCount) })}</span>}</td>
+      <td className="num" data-label={t("challenges.table.joined")}>{/* Same words as the Schedule's Participation column. */}
+        {theme.completedCount > 0 ? t("challenges.themes.row.joinedCompleted", { joined: formatNumber(theme.participantCount), completed: formatNumber(theme.completedCount) }) : t("challenges.themes.row.joined", { count: theme.participantCount })}</td>
       <td className="num" data-label={t("challenges.table.pending")}>
         {!reviewable ? <span className="muted">{t("challenges.row.noneYet")}</span>
           : pending === undefined ? <span className="muted" aria-label={t("challenges.row.loadingPending")}>…</span>

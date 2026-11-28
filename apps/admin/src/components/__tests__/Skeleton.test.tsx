@@ -134,16 +134,18 @@ describe("Overview skeleton matches the loaded structure (shared constants)", ()
     expect(lists[1].children).toHaveLength(L.topMemberRows);
     expect(container.querySelectorAll(".breakdown > div")).toHaveLength(realPeopleRows);
     expect(container.querySelectorAll(".action-list > li")).toHaveLength(L.pendingRows);
-    // Same grid, in the same order, as the loaded page.
-    expect([...container.querySelector(".sk-region")!.children].filter((c) => !c.classList.contains("sr-only")).map((c) => c.className.split(" ")[0])).toEqual(["stat-grid", "overview-row", "overview-row", "overview-row", "panel"]);
-    expect(container.querySelectorAll(".sk-region .overview-row")[2].className).not.toContain("single");
+    expect(container.querySelectorAll(".week-grid > .week-tile")).toHaveLength(4);
+    // Same grid, in the same order, as the loaded page (app/overview/page.tsx).
+    expect([...container.querySelector(".sk-region")!.children].filter((c) => !c.classList.contains("sr-only")).map((c) => c.className.split(" ")[0]))
+      .toEqual(["week-band", "overview-row", "overview-section-title", "stat-grid", "overview-row", "overview-row", "overview-row", "panel"]);
+    expect(container.querySelectorAll(".sk-region .overview-row")[3].className).not.toContain("single");
   });
 
   it("organizers get no Top members card, like the loaded page", () => {
     const { container } = render(<OverviewLoading role="organizer" />);
     act(() => { vi.advanceTimersByTime(200); });
     expect(container.querySelectorAll(".rank-list")).toHaveLength(1);
-    expect(container.querySelectorAll(".overview-row")[2].className).toContain("single");
+    expect(container.querySelectorAll(".overview-row")[3].className).toContain("single");
   });
 
   it("the ghost chart is as tall as the real chart's cap in the style sheet", () => {

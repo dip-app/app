@@ -79,7 +79,9 @@ export function InviteTable({ rows, teamName, busy: tableBusy, label, actions }:
           {rows.map((r) => {
             const history = inviteHistory(r);
             const state = r.state === "active" ? <span className="status-plain">{t(INVITE_STATE_KEY[r.state])}</span> : <Info tone="warn">{t(INVITE_STATE_KEY[r.state])}</Info>;
-            const sub = <span className="person-sub mid-show">{[ROLE_LABEL[r.role], r.teamIds.map(teamName).join(", "), t("roster.sub.added", { date: formatDate(r.invitedAt) })].filter(Boolean).join(" · ")}{r.state !== "active" && history.length === 0 && <span className="phone-only">{state}</span>}</span>;
+            // Phones: every card has the same shape (facts, then the status chip and its history on the sub line); the
+            // Status cell is hidden there for Invited and Revoked alike.
+            const sub = <span className="person-sub mid-show">{[ROLE_LABEL[r.role], r.teamIds.map(teamName).join(", "), t("roster.sub.added", { date: formatDate(r.invitedAt) })].filter(Boolean).join(" · ")}{r.state !== "active" && <span className="phone-only">{state}</span>}{history.map((line) => <span key={line} className="phone-only invite-history">{line}</span>)}</span>;
             const text = <span><strong>{r.displayName}</strong><br /><span className="muted">{r.email}</span>{sub}</span>;
             return (
               <tr key={r.entryId}>
@@ -90,7 +92,7 @@ export function InviteTable({ rows, teamName, busy: tableBusy, label, actions }:
                 </th>
                 <td className="phone-hide mid-hide" data-label={t("roster.table.role")}>{ROLE_LABEL[r.role]}</td>
                 <td className="phone-hide mid-hide" data-label={t("roster.table.teams")}>{r.teamIds.map(teamName).join(", ") || <span className="muted">{t("roster.table.noTeams")}</span>}</td>
-                <td data-label={t("roster.table.status")} className={history.length ? undefined : "phone-hide"}>
+                <td data-label={t("roster.table.status")} className="phone-hide">
                   {state}
                   {history.map((line) => <span key={line}><br /><span className="muted small-note">{line}</span></span>)}
                 </td>

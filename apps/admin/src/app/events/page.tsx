@@ -10,7 +10,7 @@ import { Empty, LoadError, Loading, ResultCount, SearchBox } from "@/components/
 import { ApiError, type AdminEvent, classify } from "@/lib/contract";
 import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, SortSelect, sortRows, useTableSort } from "@/components/kit";
+import { Button, FilterBar, SortSelect, sortRows, useTableSort } from "@/components/kit";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { t } from "@/lib/i18n";
 
@@ -50,7 +50,7 @@ function Events() {
   const active = FILTERS.find((item) => item.id === filter)!;
 
   return (
-    <Shell title={t("events.list.title")} subtitle={t("events.list.subtitle")} requires="events.manage" action={<Button variant="primary" href="/events/new/">{t("events.list.new")}</Button>}>
+    <Shell dense title={t("events.list.title")} subtitle={t("events.list.subtitle")} requires="events.manage" action={<Button variant="primary" href="/events/new/">{t("events.list.new")}</Button>}>
       {error ? <LoadError error={error} onRetry={list.reload} />
         : events === null || hold ? <Loading label={t("events.list.loading")} layout="events" />
         : (
@@ -59,16 +59,19 @@ function Events() {
               items={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), count: events.filter((event) => classify(event) === item.id).length }))} />
             <div key={filter} {...tabPanelProps("events", filter)}>
               {inTab.length > 0 && (
-                <div className="list-toolbar">
-                  <SearchBox shortcut id="events-search" value={search} onChange={(v) => setQuery({ q: v })} label={t("events.list.search.label")} placeholder={t("events.list.search.placeholder")} />
+                <>
+                <FilterBar className="events-filters" toggleLabel={t("ui.sort.label")}
+                  search={<SearchBox shortcut id="events-search" value={search} onChange={(v) => setQuery({ q: v })} label={t("events.list.search.label")} placeholder={t("events.list.search.placeholder")} />}>
+                  {/* Phones only (wide screens sort by the column headers): folded behind a "Sort" button. */}
                   <SortSelect id="events-sort" sort={sort} options={[
                     { key: "when", dir: filter === "upcoming" ? "asc" : "desc", label: t(filter === "upcoming" ? "events.sort.soonest" : "events.sort.newest") },
                     { key: "going", dir: "desc", label: t("events.sort.mostGoing") },
                     { key: "price", dir: "asc", label: t("events.sort.cheapest") },
                     { key: "title", dir: "asc", label: t("events.sort.title") },
                   ]} />
-                  {needle && <ResultCount>{t("events.list.matches", { shown: shown.length, total: inTab.length })}</ResultCount>}
-                </div>
+                </FilterBar>
+                {needle && <ResultCount>{t("events.list.matches", { shown: shown.length, total: inTab.length })}</ResultCount>}
+                </>
               )}
               {inTab.length === 0 ? (
                 <Empty title={t(active.emptyTitleKey)} body={t(active.emptyBodyKey)} />

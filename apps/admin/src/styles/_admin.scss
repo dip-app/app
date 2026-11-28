@@ -194,14 +194,8 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 // ---------- Bug reports inbox
 .bug-filters { grid-template-columns: minmax(220px, 2fr) repeat(auto-fit, minmax(150px, 1fr)); }
 .bug-filters .field input[type="date"] { padding-right: 16px; min-width: 0; max-width: 100%; }
-.bug-filters .filters-toggle { display: none; }
-.clear-filters { margin: -8px 0 12px; }
 .bug-list .queue { max-height: none; overflow: visible; }
 .bug-item[aria-current="true"] { .muted { color: rgba(255, 255, 255, .82); } .info-pill.warn { border-color: $pink; color: $pink; } }
-@media (max-width: 700px) {
-  .bug-filters { grid-template-columns: minmax(0, 1fr) auto; .field.search { grid-column: 1; } .filters-toggle { display: inline-flex; align-self: end; min-height: 52px; }
-    .extra { display: none; } &[data-open="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); .field.search { grid-column: 1 / -1; } .filters-toggle { grid-column: 1 / -1; } .extra { display: grid; } .field.wide { grid-column: 1 / -1; } } }
-}
 .bug-item { align-items: flex-start; }
 .bug-item .queue-text { gap: 4px; }
 .bug-meta { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -36,6 +36,16 @@ function ChipsGhost({ labels }: { labels: string[] }) {
 const InputGhost = () => <span className="sk sk-input" />;
 const SearchGhost = () => <div className="field search" aria-hidden><InputGhost /></div>;
 const CountLine = () => <p className="result-count" aria-hidden><Sk w={150} /></p>;
+/** The kit FilterBar: the search, the phone-only Filters button and (wide screens) the labeled fields. */
+function FilterBarGhost({ fields = [], className = "" }: { fields?: string[]; className?: string }) {
+  return (
+    <div className={`filters filter-bar ${className}`.trim()} aria-hidden>
+      <SearchGhost />
+      {fields.length > 0 && <SkeletonBlock w={96} h={44} r={6} className="filters-toggle" />}
+      {fields.length > 0 && <div className="filter-fields">{fields.map((label) => <div key={label} className="field"><label>{label}</label><InputGhost /></div>)}</div>}
+    </div>
+  );
+}
 
 const person = (i: number) => (
   <span className="person"><SkeletonAvatar /><span><Sk w={px(i, 110, 60)} /><Sk w={px(i, 150, 70)} /></span></span>
@@ -45,11 +55,12 @@ const lines = (i: number, a = 60, b = 44) => (<><span className="line"><Sk w={w(
 
 const eventColumns = (): SkeletonColumn[] => [
   { head: t("ui.skeleton.col.event"), cellClass: "cell-main", cell: (i) => (
-    <div className="media-cell"><span className="thumb sk" /><div className="media-text"><span className="row-title"><Sk w={px(i, 150, 80)} /></span><span className="muted clamp-1"><Sk w={px(i + 2, 190, 90)} /></span></div></div>) },
-  { head: t("ui.skeleton.col.when"), cell: (i) => <><span className="line"><Sk w={124} /><Sk w={84} /></span><span className="line muted"><Sk w={w(i + 3, 44)} /></span></> },
-  { head: t("ui.skeleton.col.where"), cell: (i) => lines(i + 1) },
-  { head: t("ui.skeleton.col.price"), className: "num", cell: () => <Sk w={36} /> },
-  { head: t("ui.skeleton.col.going"), className: "num", cell: (i) => <div className="going"><Sk w={52} /><span className="meter-mini"><span style={{ width: `${30 + ((i * 19) % 60)}%` }} /></span></div> },
+    <div className="media-cell"><span className="thumb sk" /><div className="media-text"><span className="row-title"><Sk w={px(i, 150, 80)} /></span><span className="muted clamp-1"><Sk w={px(i + 2, 190, 90)} /></span>
+      <span className="mid-sub"><Sk w={px(i, 140, 60)} /></span><span className="person-sub"><Sk w={px(i, 180, 60)} /></span></div></div>) },
+  { head: t("ui.skeleton.col.when"), cellClass: "phone-hide", cell: (i) => <><span className="line"><Sk w={124} /><Sk w={84} /></span><span className="line muted"><Sk w={w(i + 3, 44)} /></span></> },
+  { head: t("ui.skeleton.col.where"), className: "mid-hide", cellClass: "phone-hide mid-hide", cell: (i) => lines(i + 1) },
+  { head: t("ui.skeleton.col.price"), className: "num mid-hide", cellClass: "num phone-hide mid-hide", cell: () => <Sk w={36} /> },
+  { head: t("ui.skeleton.col.going"), className: "num", cellClass: "num phone-hide", cell: (i) => <div className="going"><Sk w={52} /><span className="meter-mini"><span style={{ width: `${30 + ((i * 19) % 60)}%` }} /></span></div> },
   { head: t("ui.skeleton.col.actions"), hidden: true, className: "right", cell: () => <span className="row-actions"><Button /><Button width={44} /></span> },
 ];
 
@@ -92,11 +103,11 @@ const rosterColumns = (): SkeletonColumn[] => [
 ];
 
 const auditColumns = (): SkeletonColumn[] => [
-  { head: t("ui.skeleton.col.when"), cellClass: "nowrap", cell: () => <Sk w={92} /> },
-  { head: t("ui.skeleton.col.action"), cell: () => <Pill width={96} /> },
-  { head: t("ui.skeleton.col.who"), cell: (i) => <span className="person"><SkeletonAvatar /><span><Sk w={px(i, 100, 50)} /></span></span> },
-  { head: t("ui.skeleton.col.what"), cell: (i) => <><p><Sk w={w(i, 70, 26)} /></p><p className="muted"><Sk w={w(i + 4, 40)} /></p></> },
-  { head: t("ui.skeleton.col.details"), hidden: true, className: "right", cell: () => <Button width={36} /> },
+  { head: t("audit.table.when"), cellClass: "nowrap phone-hide", cell: () => <Sk w={92} /> },
+  { head: t("audit.table.what"), cellClass: "phone-lead", cell: (i) => <><span className="person-sub mid-show"><Sk w={px(i, 150, 60)} /></span><span className="audit-what"><Sk w={px(i, 130, 60)} /><Pill width={64} /></span></> },
+  { head: t("audit.table.who"), className: "mid-hide", cellClass: "phone-hide mid-hide", cell: (i) => <span className="person"><SkeletonAvatar /><span><Sk w={px(i, 100, 50)} /></span></span> },
+  { head: t("audit.table.target"), cellClass: "phone-lead", cell: (i) => <><p><Sk w={w(i, 70, 26)} /></p><p className="muted"><Sk w={w(i + 4, 40)} /></p></> },
+  { head: t("common.details"), hidden: true, className: "right", cell: () => <Button width={64} /> },
 ];
 
 const attendeeColumns = (): SkeletonColumn[] => [
@@ -191,7 +202,7 @@ function IdeasGhost() {
 
 function Layout({ name }: { name: SkeletonLayout }): ReactNode {
   switch (name) {
-    case "events": return <><TabsGhost labels={[t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past"), t("ui.skeleton.tab.cancelled")]} /><SkeletonTable columns={eventColumns()} rows={SKELETON_ROWS.events} tableClass="table responsive events-table" rowClass="event-row" /></>;
+    case "events": return <><TabsGhost labels={[t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past"), t("ui.skeleton.tab.cancelled")]} /><FilterBarGhost className="events-filters" fields={[t("ui.sort.label")]} /><SkeletonTable columns={eventColumns()} rows={SKELETON_ROWS.events} tableClass="table responsive events-table compact-table" rowClass="event-row" /></>;
     case "themes": return <><ChipsGhost labels={[t("ui.skeleton.tab.current"), t("ui.skeleton.tab.upcoming"), t("ui.skeleton.tab.past")]} /><SkeletonTable columns={themeColumns()} rows={SKELETON_ROWS.themes} tableClass="table responsive themes-table" /></>;
     case "challenges": return <SkeletonTable columns={challengeColumns()} rows={SKELETON_ROWS.challenges} tableClass="table responsive challenges-table" rowClass="challenge-tr" />;
     case "review": return <div className="review-layout" aria-hidden><section className="queue-wrap"><QueueItems rows={SKELETON_ROWS.queue} /></section><ReviewDetailGhost /></div>;
@@ -208,9 +219,9 @@ function Layout({ name }: { name: SkeletonLayout }): ReactNode {
     case "bugDetail": return <ReviewDetailGhost bug />;
     case "audit": return (
       <>
-        <div className="filters" aria-hidden><SearchGhost /><div className="field"><label>{t("ui.skeleton.col.action")}</label><InputGhost /></div></div>
+        <FilterBarGhost fields={[t("audit.filter.category")]} />
         <CountLine />
-        <SkeletonTable columns={auditColumns()} rows={SKELETON_ROWS.audit} tableClass="table responsive audit-table" />
+        <SkeletonTable columns={auditColumns()} rows={SKELETON_ROWS.audit} tableClass="table responsive audit-table compact-table actions-corner" />
       </>);
     case "ideas": return <IdeasGhost />;
     case "suggestions": return (

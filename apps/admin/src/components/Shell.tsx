@@ -30,6 +30,10 @@ interface Props {
   eyebrow?: string;
   /** A line of facts under the title (dates, counts, status). */
   meta?: React.ReactNode;
+  /** Secondary header actions (outline): inline on wide screens, behind "More actions" on phones. */
+  more?: React.ReactNode;
+  /** A list page: on phones the title and actions share one row and the subtitle is left out. */
+  dense?: boolean;
 }
 
 interface NavItem { href: string; /** Catalog key, or null for the Dipbot item (named by the AI copy). */ labelKey: MessageKey | null; d: string; requires?: Capability; badge?: "bugReports"; /** Pages reached from this item that have no nav entry of their own (Import from Members). */ also?: string[] }
@@ -86,7 +90,7 @@ function isWithin(pathname: string, href: string): "page" | "true" | undefined {
 }
 
 /** Signed-in frame. Visibility is a convenience only; every command is authorized by the backend. */
-export function Shell({ title: pageTitle, subtitle, action, children, requires, back, eyebrow: pageEyebrow, meta: pageMeta }: Props) {
+export function Shell({ title: pageTitle, subtitle, action, more, dense, children, requires, back, eyebrow: pageEyebrow, meta: pageMeta }: Props) {
   const [override, setOverride] = useState<HeaderOverride | null>(null);
   const title = override?.title ?? pageTitle;
   const eyebrow = override ? (override.eyebrow ?? pageTitle) : pageEyebrow;
@@ -226,7 +230,7 @@ export function Shell({ title: pageTitle, subtitle, action, children, requires, 
         ) : requires && !can(session.role, requires) ? (
           <AdminOnly page={title} capability={requires} role={session.role} />
         ) : (<>
-        <PageHeader title={title} description={override ? undefined : subtitle} actions={action} back={back} eyebrow={eyebrow} meta={meta} />
+        <PageHeader title={title} description={override ? undefined : subtitle} actions={action} more={more} dense={dense} back={back} eyebrow={eyebrow} meta={meta} />
         <HeaderContext.Provider value={setOverride}>{children}</HeaderContext.Provider>
         </>)}
         {/* "g" then a letter goes to any page in the sidebar; "?" lists the shortcuts. */}

@@ -50,7 +50,7 @@ function Challenges() {
   const pending = usePending(canReview ? themes : null);
 
   return (
-    <Shell title={t("challenges.title")} subtitle={t("challenges.subtitle")}
+    <Shell dense title={t("challenges.title")} subtitle={t("challenges.subtitle")}
       action={canManage ? <Button variant="primary" href="/challenges/new/">{t("challenges.themes.new")}</Button> : undefined}>
       {canReview && (
         <Tabs idBase="challenges" label={t("challenges.tabsLabel")} value={tab} onChange={(id) => setQs({ tab: id })}

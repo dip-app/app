@@ -32,7 +32,8 @@ describe("ChallengeRow", () => {
     expect(within(row).getByText(/Review as entries arrive/)).toBeTruthy();
     expect(within(row).getByText("7 pending")).toBeTruthy();
     expect(within(row).getByText("3 workouts")).toBeTruthy();
-    expect(within(row).getByText("128")).toBeTruthy();
+    // Same words as the Schedule's Participation column.
+    expect(within(row).getByText("128 joined · 41 completed")).toBeTruthy();
     const link = within(row).getByRole("link", { name: /Review submissions for Fitness/ });
     expect(link.getAttribute("href")).toBe("/challenges/review?id=t1");
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toContain("Challenge");

@@ -31,9 +31,6 @@ export const ui = {
   "ui.skeleton.col.workLocation": "Work location",
   "ui.skeleton.col.points": "Points",
   "ui.skeleton.col.added": "Added",
-  "ui.skeleton.col.who": "Who",
-  "ui.skeleton.col.what": "What",
-  "ui.skeleton.col.details": "Details",
   "ui.skeleton.col.row": "Row",
   "ui.skeleton.col.person": "Person",
   "ui.skeleton.col.changes": "Changes",
@@ -44,4 +41,12 @@ export const ui = {
   "ui.search.shortcut": "Press / to search",
   "ui.sort.label": "Sort",
   "ui.sort.custom": "Custom order",
+  // Filter bar (kit FilterBar): on phones the filters fold behind one button with the number that are set
+  "ui.filters.toggle": "Filters",
+  "ui.filters.active": "{count, plural, one {# filter set} other {# filters set}}",
+  "ui.filters.group": "Filters",
+  "ui.filters.clear": "Clear filters",
+  "ui.filters.clearSearch": "Clear search",
+  // Page header: secondary actions fold into one "More" button on phones
+  "ui.header.moreLabel": "More actions",
 };

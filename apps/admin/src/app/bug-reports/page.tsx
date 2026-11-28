@@ -18,7 +18,7 @@ import { oneOf, useQueryState } from "@/lib/useQueryState";
 import { useSlashFocus } from "@/lib/useSlashFocus";
 import { BUG_CATEGORIES, BUG_STATUSES, issueText } from "@/lib/bugReports";
 import { useSkeletonGate } from "@/components/useDelayedShow";
-import { Button, EmptyState, ErrorNotice, InlineNotice, RelativeTime } from "@/components/kit";
+import { Button, EmptyState, ErrorNotice, FilterBar, InlineNotice, RelativeTime } from "@/components/kit";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 
 type StatusFilter = BugStatus | "all";
@@ -241,7 +241,6 @@ function BugReports() {
   const selectedId = qs.report || null;
   const [autoId, setAutoId] = useState<string | null>(null);
   useSlashFocus("bug-search");
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [counts, setCounts] = useState<BugReportCounts | null>(null);
   const query = useDebounced(search.trim());
   const detailTop = useRef<HTMLDivElement>(null);
@@ -302,24 +301,21 @@ function BugReports() {
   const tabCount = (id: StatusFilter) => `${number(counts?.[id] ?? 0)}${counts?.capped ? "+" : ""}`;
 
   return (
-    <Shell title={t("bugs.title")} subtitle={t("bugs.subtitle")} requires="bugreports.manage">
+    <Shell dense title={t("bugs.title")} subtitle={t("bugs.subtitle")} requires="bugreports.manage">
       <Tabs idBase="bugs" label={t("bugs.filterByStatus")} value={status} onChange={(id) => setQs({ status: id, report: "" })}
         items={(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => ({ id, label: id === "all" ? t("bugs.status.all") : statusLabel(id), ...(counts ? { count: tabCount(id) } : {}) }))} />
-      <div className="filters bug-filters" data-open={filtersOpen ? "true" : undefined}>
-        <SearchBox shortcut id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label={t("bugs.search.label")} placeholder={t("bugs.search.placeholder")} />
-        <Button size="sm" className="filters-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-          {filtersOpen ? t("bugs.filters.hide") : t("bugs.filters.show")}
-          {activeFilters > 0 && <span className="filter-count" aria-label={t("bugs.filters.active", { count: activeFilters })}>{activeFilters}</span>}</Button>
-        <div className="field wide extra"><label htmlFor="bug-category">{t("bugs.filters.category")}</label>
+      <FilterBar className="bug-filters" active={activeFilters} invalid={rangeBad}
+        search={<SearchBox shortcut id="bug-search" value={search} onChange={(v) => setQs({ q: v })} label={t("bugs.search.label")} placeholder={t("bugs.search.placeholder")} />}
+        onClear={filtered ? () => setQs({ q: "", category: "all", from: "", to: "" }) : undefined}
+        clearLabel={t(activeFilters > 0 ? "bugs.filters.clear" : "ui.filters.clearSearch")}>
+        <div className="field wide"><label htmlFor="bug-category">{t("bugs.filters.category")}</label>
           <select id="bug-category" value={category} onChange={(e) => setQs({ category: e.target.value })}>
             <option value="all">{t("bugs.filters.allCategories")}</option>
             {BUG_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
           </select></div>
-        <div className="field extra"><label htmlFor="bug-from">{t("bugs.filters.from")}</label><input id="bug-from" type="date" value={from} max={to || undefined} onChange={(e) => setQs({ from: e.target.value })} /></div>
-        <div className="field extra"><label htmlFor="bug-to">{t("bugs.filters.to")}</label><input id="bug-to" type="date" value={to} min={from || undefined} onChange={(e) => setQs({ to: e.target.value })} aria-invalid={rangeBad || undefined} /></div>
-      </div>
-      {filtered && !empty && <p className="clear-filters"><button type="button" className="link-btn" onClick={() => setQs({ q: "", category: "all", from: "", to: "" })}>{t("bugs.filters.clear")}</button></p>}
+        <div className="field"><label htmlFor="bug-from">{t("bugs.filters.from")}</label><input id="bug-from" type="date" value={from} max={to || undefined} onChange={(e) => setQs({ from: e.target.value })} /></div>
+        <div className="field"><label htmlFor="bug-to">{t("bugs.filters.to")}</label><input id="bug-to" type="date" value={to} min={from || undefined} onChange={(e) => setQs({ to: e.target.value })} aria-invalid={rangeBad || undefined} /></div>
+      </FilterBar>
       {rangeBad && <p className="error" role="alert">{t("bugs.filters.rangeBad")}</p>}
       {counts?.capped && <InlineNotice>{t("bugs.counts.capped")}</InlineNotice>}
 

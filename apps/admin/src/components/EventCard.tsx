@@ -38,7 +38,8 @@ export function EventCard({ event }: { event: AdminEvent }) {
           <div className="media-text">
             <Link className="row-title" href={`/events/edit/?id=${encodeURIComponent(event.id)}`} tabIndex={-1}>{event.title}</Link>
             <span className="muted clamp-1">{event.description}</span>
-            <span className="mid-sub">{event.venue.name} · {formatPrice(event.costCents)}</span>
+            {/* Mid widths: the price first, so a long venue name never cuts it off. */}
+            <span className="mid-sub">{formatPrice(event.costCents)} · {event.venue.name}</span>
             {/* Phones: the row is one card; this line carries the facts the hidden cells show on wider screens. */}
             <span className="person-sub">
               <span>{formatDate(new Date(event.startTime), { weekday: "short", month: "short", day: "numeric" })}, {formatTime(new Date(event.startTime), { hour: "numeric", minute: "2-digit" })}</span>

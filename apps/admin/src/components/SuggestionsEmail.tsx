@@ -15,6 +15,7 @@ import { CreditsMeter } from "./CreditsMeter";
 import { DipbotAction } from "./DipbotAction";
 import { toast } from "./Toast";
 import { Loading } from "./Ui";
+import { SkeletonBlock } from "./Skeleton";
 import { Toggle } from "./Toggle";
 import { useLoad } from "./useLoad";
 import { useSkeletonGate } from "./useDelayedShow";
@@ -105,9 +106,10 @@ export function SuggestionsEmail() {
 
   return (
     <div className="suggestions">
-      {credits && (
+      {/* The meter's row is held while the credits load, so the panels below don't move down when it arrives. */}
+      {(credits || (creditsState.data === null && !creditsState.error)) && (
         <div className="ideas credits-row">
-          <div className="ideas-head"><CreditsMeter credits={credits} /></div>
+          <div className="ideas-head">{credits ? <CreditsMeter credits={credits} /> : <SkeletonBlock w={190} h={25} r={999} />}</div>
         </div>
       )}
       {failure && <InlineNotice tone="error">{failure}</InlineNotice>}
