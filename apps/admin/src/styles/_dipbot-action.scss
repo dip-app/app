@@ -31,7 +31,7 @@ $da-off: #eceef4;
   // ghost: no border, a wash on hover. link: inline text with the label underlined.
   &[data-variant="ghost"] { background: transparent; color: $ink; &:hover:not([disabled]):not([aria-disabled="true"]) { background: $da-wash; } }
   &[data-variant="link"] { background: none; min-height: 24px; padding: 0; font: inherit; color: inherit; gap: 4px; border-radius: 2px;
-    .dip-action-label { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .dip-action-label, .dip-action-short { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
     .credit-cost.has-divider { border-left: 0; padding-left: 0; margin-left: 0; &::before { content: "·"; margin-right: 4px; } }
     &:focus-visible { outline: 3px solid $ink; outline-offset: 2px; } }
 

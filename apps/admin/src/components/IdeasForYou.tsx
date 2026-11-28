@@ -44,8 +44,9 @@ function IdeaCard({ idea, onUse, onCustomize }: { idea: DipbotIdea; onUse: (idea
         <p className="ifu-why" title={idea.why}>{idea.why}</p>
         <ul className="ifu-chips" aria-label={t("ideasForYou.details")}>
           <li><Chip>{dayTimeLabel(idea)}</Chip></li>
-          <li><Chip>{durationLabel(idea.durationMinutes)}</Chip></li>
-          {cost && <li><Chip>{cost}</Chip></li>}
+          {/* Phones keep the day and the fit; duration and cost are in the editor. */}
+          <li className="ifu-chip-extra"><Chip>{durationLabel(idea.durationMinutes)}</Chip></li>
+          {cost && <li className="ifu-chip-extra"><Chip>{cost}</Chip></li>}
           {idea.fitLabel && (
             <li>
               <span className="sg-tag" data-level={idea.fitLabel}>
@@ -58,7 +59,7 @@ function IdeaCard({ idea, onUse, onCustomize }: { idea: DipbotIdea; onUse: (idea
         </ul>
         <div className="ifu-actions">
           <Button variant="primary" size="sm" aria-label={openAria(idea.title)} onClick={() => onUse(idea)}>{t("ideasForYou.use")}</Button>
-          <DipbotAction variant="link" size="sm" icon={null} className="ifu-customize" label={t("ideasForYou.customize")} accessibleLabel={customizeAria(idea.title)} onClick={() => onCustomize(idea)} />
+          <DipbotAction variant="link" size="sm" icon={null} className="ifu-customize" label={t("ideasForYou.customize")} shortLabel={t("ideasForYou.customizeShort")} accessibleLabel={customizeAria(idea.title)} onClick={() => onCustomize(idea)} />
         </div>
       </div>
     </li>
@@ -153,7 +154,7 @@ export function IdeasForYou({ onCredits, onCustomize }: Props) {
 
   return (
     <section className="ifu" aria-labelledby={headId} data-collapsed={collapsed ? "true" : "false"} data-state={failed ? "error" : data ? "ready" : "loading"}>
-      <SectionHeader id={headId} title={t("ideasForYou.title")}
+      <SectionHeader id={headId} className="ifu-head" title={t("ideasForYou.title")}
         updated={data && !failed ? (updating ? <span role="status"><span className="ifu-dots" aria-hidden><i /><i /><i /></span>{t("ideasForYou.updating")}</span> : updatedLine(data, new Date())) : undefined}
         toggle={{ collapsed, controls: bodyId, label: t(collapsed ? "ideasForYou.expand" : "ideasForYou.collapse"), onToggle: toggle }}
         // Out of credits is said once, by the page's credits notice; the button keeps the reason as its tooltip.

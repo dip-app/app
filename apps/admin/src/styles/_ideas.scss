@@ -43,33 +43,16 @@ $r-box: 8px;
   .credits-meter:focus-visible { outline: 2px solid $purple; outline-offset: 2px; border-radius: $r-ctl; }
   .credits-meter:focus .credits-tip { opacity: 1; visibility: visible; }
   .credits-note { margin-bottom: 0; &[data-level="low"] { border-left-color: $line-strong; } &[data-level="out"] { border-left-color: $ink; } }
-  .stepper-label .dipbot-mark { flex: none; }
 
-  // ---------- Stepper: one hairline row
-  // Five equal 100px tabs. Where 500px does not fit (phones) the row scrolls sideways instead of clipping or shrinking unevenly.
-  .stepper { list-style: none; display: flex; margin: 0; padding: 0; border-bottom: 1px solid $line; gap: 0; overflow-x: auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
-  @media (max-width: 719px) { .stepper-compact { display: none !important; } }
-  // At least 100 px, wider when the label needs it ("Presupuesto" was cut to "Presupuest" in Spanish).
-  .stepper li { display: block; flex: 0 0 auto; min-width: 100px; }
-  .stepper-label { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
-  .stepper-item { box-sizing: border-box; width: 100%; justify-content: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
-    &[disabled] { cursor: default; }
-    &:not([disabled]):hover { color: $ink; }
-    &[data-state="current"] { color: $ink; font-weight: 600; border-bottom-color: $purple; }
-    &[data-state="todo"][disabled] { color: #646a80; } }
-  .stepper-n { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 600; border: 1px solid $line-strong; background: $white; color: $ink; flex: none;
-    .opt-check { display: block; position: static; opacity: 1; width: 12px; height: 12px; } }
-  .stepper-item[data-state="current"] .stepper-n { background: $purple; border-color: $purple; color: $white; }
-  .stepper-item[data-state="done"] .stepper-n { border-color: $purple; color: $ink; }
-  .stepper-compact { display: grid; gap: 6px; p { font-size: 14px; font-weight: 600; } }
-  @media (min-width: 700px) { .stepper-compact { display: none; } }
   .bar-track { height: 4px; border-radius: 2px; background: $line; overflow: hidden; span { display: block; height: 100%; background: $purple; border-radius: 2px; } }
 
   // ---------- Panels
   .step-panel, .rail-card { background: $white; border: 1px solid $line; border-radius: $r-box; padding: 12px 14px; }
   .step-panel { display: grid; gap: 10px; }
   .step-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px;
-    h2 { font-size: 16px; font-weight: 600; outline-offset: 4px; } }
+    h2 { font-size: 16px; font-weight: 600; outline-offset: 4px; }
+    // The hint ("Pick up to 3") never breaks; on a narrow screen it takes the next line instead.
+    flex-wrap: wrap; > :not(h2) { white-space: nowrap; } }
   .opt-fieldset { border: 0; padding: 0; margin: 0; min-width: 0;
     legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 6px; } }
   .callout { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border: 1px solid $line; border-radius: $r-ctl; margin-bottom: 10px; strong { font-weight: 600; } svg { flex: none; } }
@@ -123,6 +106,13 @@ $r-box: 8px;
     .opt-sg { grid-column: 1 / -1; grid-row: 3; margin-top: 3px; justify-self: start; } }
     @container opt (min-width: 280px) {
     .opt-text .opt-sg { grid-column: 2; grid-row: 1; margin: 0 18px 0 0; justify-self: end; }
+    .opt-text .level { grid-row: 2; grid-column: 2; margin: 0; }
+    .opt-text .opt-meta { grid-column: 1; }
+  }
+  // Narrow cards (three across at 768 px): beside the meter the name was cut to "Food & …". The name takes the whole
+  // first row and the meter moves to the end of the blurb's row (the blurb, full text in its title, gives way).
+  @container opt (max-width: 239px) {
+    .opt-text .opt-name { grid-column: 1 / -1; }
     .opt-text .level { grid-row: 2; grid-column: 2; margin: 0; }
     .opt-text .opt-meta { grid-column: 1; }
   }
@@ -237,7 +227,8 @@ $r-box: 8px;
   // ---------- Results
   .results { display: grid; gap: 12px; }
   .results-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 0; border: 0; background: transparent; font-size: 13px; strong { font-weight: 600; } }
-  .results-actions { display: flex; gap: 8px; }
+  // Narrow phones: Start over takes the next row instead of breaking "Regenerate" inside the word.
+  .results-actions { display: flex; flex-wrap: wrap; gap: 8px; .dip-action-label { overflow-wrap: normal; } }
   .draft-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   .draft-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px; background: $white; border: 1px solid $line; border-radius: $r-box; }
   @media (min-width: 700px) { .draft-card { grid-template-columns: 120px minmax(0, 1fr); } }
@@ -308,16 +299,28 @@ $r-box: 8px;
       .sh-mark { grid-area: mark; } h2, h3 { grid-area: title; } .sh-toggle { grid-area: toggle; justify-self: end; } .sh-when { grid-area: when; } .sh-hint { grid-area: hint; margin-left: 0; } .sh-end { grid-area: end; margin-left: 0; justify-self: stretch; margin-top: 4px; } }
     .sh-when { white-space: normal; min-width: 0; line-height: 1.3; }
   }
-  // Phones: a side-by-side picture can never be as wide as the card is tall, so the picture goes on top, full width and
-  // shorter than it is wide, and the text gets the whole card width (titles stay on one line, the why line takes two).
+  // Phones: compact cards so the wizard starts in the first screen (admin-structure.md, "Dipbot on phones"). A square
+  // thumbnail beside the text, the title on one line, the why line on two, one chip row (day and fit), then the actions;
+  // about 150 px tall, 84% wide so the next card peeks in.
+  // The text sits beside the thumbnail; the actions run under both at the card's full width, so "Use this idea" and the
+  // short "Customize" share one row even at 320 px in Spanish.
   @container ifu (max-width: 479px) {
-    .ifu-card { flex-basis: 88%; grid-template-columns: minmax(0, 1fr); grid-template-rows: 124px auto; min-height: 0; }
-    .ifu-thumb { height: 124px; min-height: 0; }
-    .ifu-skeleton .ifu-thumb { height: 124px; }
-    .ifu-lines { min-height: 166px; box-sizing: border-box; align-content: start; }
-    .ifu-body { align-content: start; padding: 10px 12px; }
-    // Tighter chips so the fit label stays on the first row with the others where it can, instead of wrapping alone.
-    .ifu-chips { gap: 4px 3px; .info-pill { padding: 0 5px; } .sg-tag { padding-inline: 5px; gap: 3px; } }
+    .ifu-card { flex-basis: 86%; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; column-gap: 10px; row-gap: 2px; align-items: start; min-height: 0; padding: 10px; }
+    .ifu-thumb { grid-row: 1 / span 3; width: 64px; height: 64px; min-height: 0; border-radius: $r-ctl; }
+    .ifu-skeleton .ifu-thumb { height: 64px; }
+    .ifu-lines { min-height: 124px; box-sizing: border-box; align-content: start; padding: 0; }
+    .ifu-card:not(.ifu-skeleton) .ifu-body { display: contents; }
+    .ifu-title, .ifu-why, .ifu-chips { grid-column: 2; min-width: 0; }
+    // The idea's name in full where it fits two lines; the why line keeps two.
+    .ifu-title { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+    .ifu-chips { min-height: 20px; gap: 4px; .ifu-chip-extra { display: none; } .info-pill { padding: 0 6px; } .sg-tag { padding-inline: 6px; gap: 3px; } }
+    .ifu-actions { grid-column: 1 / -1; margin-top: 8px; flex-wrap: nowrap; column-gap: 14px; }
+  }
+  // The header in two rows: the title and the collapse toggle, then "Updated ..." with Refresh on the right.
+  @container sh (max-width: 559px) {
+    .sh.ifu-head .sh-head { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "mark title title toggle" "when when end end" "hint hint hint hint"; row-gap: 0;
+      .sh-end { margin-top: 0; justify-self: end; }
+      .sh-when { align-self: center; } }
   }
   @media (max-width: 479px) { .ideas-head .credits-meter .credits-bar { display: none; } }
 

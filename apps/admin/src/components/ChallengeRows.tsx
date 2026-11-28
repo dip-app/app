@@ -50,10 +50,9 @@ export function ChallengeRow({ theme, phase, pending }: { theme: WeeklyTheme; ph
           : pending === "0" ? <span className="muted">{t("challenges.row.pending", { count: pending })}</span>
           : <Info tone="warn">{t("challenges.row.pending", { count: pending })}</Info>}
       </td>
+      {/* An upcoming week has no action: the note and the pending cell already say reviews open when it starts. */}
       <td className="right">
-        {reviewable
-          ? <Button size="sm" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.row.reviewAria", { title: theme.title, window })}>{t("challenges.row.review")}</Button>
-          : <span className="muted">{t("challenges.row.notOpen")}</span>}
+        {reviewable && <Button size="sm" href={`/challenges/review/?id=${encodeURIComponent(theme.id)}`} aria-label={t("challenges.row.reviewAria", { title: theme.title, window })}>{t("challenges.row.review")}</Button>}
       </td>
     </tr>
   );

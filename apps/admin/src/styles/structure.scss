@@ -167,6 +167,11 @@ $r-box: 8px;
 .content .bug-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 12px;
   > span:not(.info-pill):not(:last-child)::after { content: "·"; margin-left: 6px; }
   .info-pill { min-height: 18px; font-size: 11px; } }
+.content .bug-facts .bug-status-facts { display: none; }
+@media (max-width: 480px) {
+  .content .bug-when .bug-status-top { display: none; }
+  .content .bug-facts .bug-status-facts { display: inline-flex; }
+}
 .content .back-link.to-list { display: none; border: 0; background: none; cursor: pointer; font-family: inherit; }
 .content .settings-section .field select { max-width: 420px; }
 @media (max-width: 1000px) {
@@ -284,11 +289,15 @@ $r-box: 8px;
   .header-more-toggle { display: none; }
   // Events sorts by its column headers on wide screens, so its bar is the search alone (at the search's usual width).
   .events-filters { grid-template-columns: minmax(240px, 420px); }
+  .page-header .subtitle-brief { display: none; }
 }
 @media (max-width: 700px) {
   .content {
     // The title never breaks inside a word: when it and the actions don't fit (320 px, Spanish), the actions take the
     // next row, on the right.
+    // `brief`: one muted line in place of the subtitle, under the title.
+    .page-header .subtitle.has-brief { display: none; }
+    .page-header .subtitle-brief { display: block; margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
     .page-header.dense { flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 10px; margin-bottom: 12px;
       .subtitle { display: none; }
       // As tall as a button, so the row doesn't grow when an action appears with the data (Audit log's Export CSV).
@@ -329,5 +338,39 @@ $r-box: 8px;
     .review-banner { flex-wrap: nowrap; padding: 8px 8px 8px 12px; font-size: 14px; line-height: 20px;
       > span { flex: 1 1 auto; min-width: 0; }
       > .pill-btn { flex: none; } }
+  }
+}
+
+// ---------- Stepper (kit `Stepper`): the Dipbot wizard and Import share one look
+// One hairline row of numbered steps, the current one underlined in purple, done steps checked. At least 100 px per step,
+// wider when the label needs it ("Presupuesto"). Below 700 px the labels leave the row (equal numbered cells; the label
+// stays the accessible text) and one line says the step in words.
+.content {
+  .stepper-wrap { display: grid; gap: 6px; min-width: 0; }
+  .stepper { list-style: none; display: flex; margin: 0; padding: 0; border-bottom: 1px solid $line; }
+  .stepper li { display: block; flex: 0 0 auto; min-width: 100px; }
+  .stepper-item { box-sizing: border-box; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px;
+    padding: 0 8px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--muted); font: inherit;
+    font-size: 14px; font-weight: 500; white-space: nowrap;
+    &[data-state="current"] { color: $ink; font-weight: 600; border-bottom-color: $purple; }
+    &[data-state="done"] { color: $ink; } }
+  button.stepper-item { cursor: pointer;
+    &[disabled] { cursor: default; }
+    &:not([disabled]):hover { color: $ink; }
+    &[data-state="todo"][disabled] { color: #646a80; } }
+  .stepper-label { display: inline-flex; align-items: center; gap: 4px; .dipbot-mark { flex: none; } }
+  .stepper-n { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; font-size: 11px; font-weight: 600;
+    border: 1px solid $line-strong; background: $white; color: $ink; }
+  .stepper-item[data-state="current"] .stepper-n { background: $purple; border-color: $purple; color: $white; }
+  .stepper-item[data-state="done"] .stepper-n { border-color: $purple; }
+  .stepper-progress { display: none; margin: 0; font-size: 14px; font-weight: 600; color: $ink; }
+  .import-stepper { margin-bottom: 14px; }
+}
+@media (max-width: 699px) {
+  .content {
+    .stepper li { flex: 1 1 0; min-width: 0; }
+    .stepper-item { min-height: 44px; padding: 0; }
+    .stepper-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .stepper-progress { display: block; }
   }
 }

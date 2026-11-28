@@ -5,6 +5,7 @@ import type { bugs as source } from "../en/bugs";
 export const bugs: Record<keyof typeof source, string> = {
   // Page
   "bugs.title": "Reportes de errores",
+  "bugs.brief": "Solo los administradores los ven, incluido quién los envió.",
   "bugs.subtitle": "Lo que las personas envían al sacudir el teléfono o desde Perfil. Solo los administradores pueden verlos, incluido quién los envió.",
   "bugs.loading": "Cargando reportes de errores",
   "bugs.list.label": "Reportes",
@@ -42,7 +43,7 @@ export const bugs: Record<keyof typeof source, string> = {
   // Filters
   "bugs.filterByStatus": "Filtrar por estado",
   "bugs.search.label": "Buscar reportes",
-  "bugs.search.placeholder": "Texto, persona o pantalla",
+  "bugs.search.placeholder": "Texto, autor o pantalla",
   "bugs.filters.category": "Categoría",
   "bugs.filters.allCategories": "Todas las categorías",
   "bugs.filters.from": "Desde",

@@ -9,11 +9,15 @@ import type { TagStat } from "./tagStats";
 import type { PlaceSuggestion, ResolveRequest, ResolvedPlace } from "./location/types";
 import type { CompanyOffice, FindVenuesInput, FindVenuesResult } from "./venues";
 
+/** The Audit log reads the latest this many entries (the page says so once the log is that long). */
+export const AUDIT_WINDOW = 100;
+
 /**
  * Admin tools beyond events and themes (docs/contracts/admin.md). Implemented by the mock (adminMock.ts,
  * enforces the same rules as the callables) and by the Firebase adapter (adminLive.ts). Every method is
  * authorized by the backend; the portal's capability gating only hides controls.
  */
+
 export interface AdminOpsApi {
   companyInfo(): Promise<CompanyInfo>;
 
@@ -121,6 +125,7 @@ export interface AdminOpsApi {
   suggestTheme(input: SuggestThemeInput): Promise<SuggestThemeResult>;
 
   // ----- Audit (#121)
+  /** The latest AUDIT_WINDOW entries, newest first. */
   listAudit(): Promise<AuditEntry[]>;
 
   // ----- Language (#259)

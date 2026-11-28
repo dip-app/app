@@ -2,17 +2,18 @@
 
 export const audit = {
   "audit.title": "Audit log",
-  "audit.subtitle": "Every admin change: who did it, to what, and why. Read-only; the latest 100 entries.",
+  "audit.subtitle": "Every admin change: who did it, to what, and why. Read-only.",
   "audit.loading": "Loading audit log",
   "audit.empty.title": "No entries yet",
   "audit.empty.body": "Changes made with the admin tools appear here, newest first.",
   "audit.noMatches.title": "No matches",
   "audit.noMatches.body": "Try a different search or category.",
   "audit.search.label": "Search by person, target or reason",
-  "audit.search.placeholder": "Search by person, target or reason",
+  "audit.search.placeholder": "Who, what or why",
   "audit.filter.category": "Category",
   "audit.filter.allCategories": "All categories",
   "audit.showingOf": "Showing {shown} of {total, plural, one {# entry} other {# entries}}",
+  "audit.showingOfLatest": "Showing {shown} of {total, plural, one {# entry} other {# entries}} from the latest {window}",
   "audit.export.done": "Exported {count, plural, one {# entry} other {# entries}} to audit-log.csv.",
 
   // Table

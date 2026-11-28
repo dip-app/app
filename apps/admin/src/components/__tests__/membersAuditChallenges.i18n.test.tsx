@@ -52,6 +52,13 @@ describe("audit (Spanish)", () => {
     expect(t("audit.showingOf", { shown: 1, total: 1 })).toBe("Mostrando 1 de 1 entrada");
     expect(t("audit.export.done", { count: 2 })).toBe("Se exportaron 2 entradas a audit-log.csv.");
   });
+
+  it("says the log is the latest window once it is that long (Spanish and English)", () => {
+    setLocale("es");
+    expect(t("audit.showingOfLatest", { shown: 25, total: 100, window: 100 })).toBe("Mostrando 25 de 100 entradas de las 100 más recientes");
+    setLocale("en");
+    expect(t("audit.showingOfLatest", { shown: 25, total: 40, window: 100 })).toBe("Showing 25 of 40 entries from the latest 100");
+  });
 });
 
 describe("challenges (Spanish)", () => {

@@ -5,7 +5,7 @@ import {
 } from "firebase/firestore";
 import { type Functions, httpsCallable } from "firebase/functions";
 import { getBlob, getStorage, ref } from "firebase/storage";
-import type { AdminOpsApi } from "./adminApi";
+import { AUDIT_WINDOW, type AdminOpsApi } from "./adminApi";
 import {
   ADMIN_CALLABLES, type AlbumComment, type AlbumPhoto, type ApplyStepResponse, type Attendee, type AuditEntry, type CompanyInfo,
   type AiBucket, type AiConsiderationRank, type AiEventChoices, type DipbotIdea, type DipbotIdeas, type SuggestThemeResult, type ThemeSuggestion, type AiCredits, type AiStepSuggestion, type AiSuggestionProvider, type AiUsage, type EventIdeaContext, type EventIdeaSuggestions, type GeneratedEventDraft, type GenerateDraftsResult, type BackfillStep, type CompanyInsights, INSIGHTS_SECTIONS, type BugCategory, type BugDiagnostics, type BugReport, type BugReportCounts, type BugStatus, type ImportJobInfo, type ImportPlanResponse, type ImportRow, type Member, type MemberQuery, type Role, type RosterCounts, type RosterRow,
@@ -380,7 +380,7 @@ export function createLiveOps({ app, db, functions, organizer, run }: Deps): Adm
 
     listPhotos: (eventId) => run(async () => {
       const session = await organizer();
-      const snap = await getDocs(query(col(session, "events", eventId, "photos"), orderBy("createdAt", "desc"), limit(100)));
+      const snap = await getDocs(query(col(session, "events", eventId, "photos"), orderBy("createdAt", "desc"), limit(AUDIT_WINDOW)));
       return snap.docs.map((d): AlbumPhoto => ({
         id: d.id, eventId, uploaderId: str(d.get("uploaderId")), uploaderName: str(d.get("uploaderName")), caption: str(d.get("caption")),
         commentCount: Number(d.get("commentCount") ?? 0), createdAt: iso(d.get("createdAt")), storagePath: str(d.get("storagePath")),

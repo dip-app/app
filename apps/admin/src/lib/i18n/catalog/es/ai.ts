@@ -7,6 +7,7 @@ export const ai: Record<keyof typeof source, string> = {
   // Page, nav and access
   "nav.label": "{ai}",
   "page.title": "{ai}",
+  "page.brief": "Planea tu próximo evento con {ai}.",
   "page.subtitle": "Planea tu próximo evento con {ai}: responde cuatro preguntas rápidas, agrega una nota y recibe borradores para revisar.",
   "page.loading": "Cargando {ai}",
   "access.capability": "planear eventos con {ai}",
@@ -332,6 +333,7 @@ export const ai: Record<keyof typeof source, string> = {
   "ideasForYou.use": "Usar esta idea",
   "ideasForYou.useAria": "Usar esta idea: {title}",
   "ideasForYou.customize": "Personalizar con {ai}",
+  "ideasForYou.customizeShort": "Personalizar",
   "ideasForYou.customizeAria": "Personalizar con {ai}: {title}",
   "ideasForYou.details": "Detalles",
   "ideasForYou.fitSpoken": "{ai} lo califica como: {label}",

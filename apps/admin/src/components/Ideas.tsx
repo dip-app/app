@@ -13,7 +13,7 @@ import { coverByURL, coverImage, lexicalPick } from "@/lib/covers";
 import { freshnessLine } from "@/lib/suggestCache";
 import { quickAnswers, quickRequested, rememberTimeHint, takeQuick } from "@/lib/dipbotTouches";
 import { Considerations } from "./Considerations";
-import { SectionHeader } from "./kit";
+import { SectionHeader, type StepState, Stepper } from "./kit";
 import { CoverPicker } from "./CoverPicker";
 import { Disclosure } from "./Disclosure";
 import { ApiError } from "@/lib/contract";
@@ -226,20 +226,15 @@ export function Ideas() {
     setPhase("edit");
   }, []);
 
-  // On phones the tab row scrolls: keep the current tab in view.
-  useEffect(() => {
-    const item = document.querySelector<HTMLElement>('.ideas .stepper-item[data-state="current"]');
-    item?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-  }, [step, phase]);
-
   // Focus follows the step: keyboard and screen reader users land on the new heading.
   useEffect(() => {
     if (moved.current && phase === "edit") heading.current?.focus();
   }, [step, phase]);
 
-  // The suggested card is brought into view when it is off screen (never selected for the admin).
+  // The suggested card is brought into view when it is off screen (never selected for the admin), once the admin is working
+  // in the wizard: opening the page never scrolls it past the title and Ideas for you.
   useEffect(() => {
-    if (phase !== "edit" || typeof window === "undefined") return;
+    if (phase !== "edit" || typeof window === "undefined" || (!moved.current && !flashing)) return;
     const card = panelRef.current?.querySelector<HTMLElement>(".opt[data-suggested]");
     if (!card) return;
     // The page scrolls inside <main>, so "on screen" means inside that scroller's box, not the window's.
@@ -366,28 +361,17 @@ export function Ideas() {
   const noCredits = creditsView(ctx.credits).out;
 
   const stepper = (
-    <>
-      <ol className="stepper" aria-label={t("stepper.label")}>
-        {STEPS.map((s, i) => {
-          const isDone = done(i);
-          const isCurrent = phase !== "results" && i === step;
-          const ok = reachable(i);
-          return (
-            <li key={s.id}>
-              <button type="button" className="stepper-item" data-state={isCurrent ? "current" : isDone ? "done" : "todo"} aria-current={isCurrent ? "step" : undefined}
-                disabled={!ok || isCurrent} aria-label={`${t("stepper.item", { n: i + 1, label: s.full })}${isDone && !isCurrent ? t("stepper.done") : ""}`} title={s.full} onClick={() => goStep(i)}>
-                <span className="stepper-n" aria-hidden>{isDone && !isCurrent ? <Check /> : i + 1}</span>
-                <span className="stepper-label">{isNoteStep(s.id) && <DipbotMark size={14} />}{s.label}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      <div className="stepper-compact" aria-hidden={busy ? true : undefined}>
-        <p>{showResults ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.full })}</p>
-        <div className="bar-track"><span style={{ width: `${showResults ? 100 : ((step + 1) / STEPS.length) * 100}%` }} /></div>
-      </div>
-    </>
+    <Stepper label={t("stepper.label")} className="ideas-stepper" onSelect={goStep}
+      progress={showResults ? t("stepper.allDone") : t("stepper.compact", { n: step + 1, total: STEPS.length, label: current.full })}
+      steps={STEPS.map((s, i) => {
+        const isCurrent = phase !== "results" && i === step;
+        const state: StepState = isCurrent ? "current" : done(i) ? "done" : "todo";
+        return {
+          id: s.id, full: s.full, state, disabled: !reachable(i),
+          label: <>{isNoteStep(s.id) && <DipbotMark size={14} />}{s.label}</>,
+          ariaLabel: `${t("stepper.item", { n: i + 1, label: s.full })}${state === "done" ? t("stepper.done") : ""}`,
+        };
+      })} />
   );
 
   // A slim summary of the earlier answers, only from step 2 on (each one edits its step).

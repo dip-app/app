@@ -6,6 +6,7 @@ export const ai = {
   // Page, nav and access
   "nav.label": "{ai}",
   "page.title": "{ai}",
+  "page.brief": "Plan your next event with {ai}.",
   "page.subtitle": "Work with {ai} to plan your next event: answer four quick questions, add a note, and get drafts to review.",
   "page.loading": "Loading {ai}",
   "access.capability": "plan events with {ai}",
@@ -331,6 +332,7 @@ export const ai = {
   "ideasForYou.use": "Use this idea",
   "ideasForYou.useAria": "Use this idea: {title}",
   "ideasForYou.customize": "Customize with {ai}",
+  "ideasForYou.customizeShort": "Customize",
   "ideasForYou.customizeAria": "Customize with {ai}: {title}",
   "ideasForYou.details": "Details",
   "ideasForYou.fitSpoken": "{ai} rates this a {label}",

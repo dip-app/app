@@ -4,6 +4,7 @@ export const bugs = {
   // Page
   "bugs.title": "Bug reports",
   "bugs.subtitle": "What people send with shake-to-report or from Profile. Only admins can see these, including who sent them.",
+  "bugs.brief": "Only admins see these, including who sent them.",
   "bugs.loading": "Loading bug reports",
   "bugs.list.label": "Reports",
 

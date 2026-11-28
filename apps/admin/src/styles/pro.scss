@@ -211,12 +211,6 @@ $ctl-h: 36px;
   .person.big { .avatar { width: 40px; height: 40px; font-size: 14px; } h2 { font-size: 18px; font-weight: 600; } }
   .dropzone { border: 1px dashed $line-strong; border-radius: $r-box; padding: 28px 16px; gap: 10px; &.over { border-color: var(--primary); background: $tint; } }
   .progress { height: 6px; &::-webkit-progress-value { background: var(--primary); } &::-moz-progress-bar { background: var(--primary); } }
-  .steps-progress { display: none; margin: 0 0 14px; font-size: 14px; font-weight: 600; color: $ink; }
-  .steps { margin-bottom: 14px; gap: 4px;
-    li { min-height: 28px; font-size: 13px; padding: 0 12px 0 4px; border-width: 1px; border-radius: $r-ctl; }
-    .step-n { width: 20px; height: 20px; font-size: 11px; border-width: 1px; }
-    li.current { background: $subtle; border-color: $line-strong; font-weight: 600; }
-    .step-label { display: inline-grid; &::after { content: attr(data-text); font-weight: 600; height: 0; visibility: hidden; overflow: hidden; } } }
   // Fixed width: a longer option label ("Skip (DIP doesn't use this column)") never widens the control, it truncates inside.
   .mapping-table select { height: $ctl-h; border-radius: $r-ctl; border: 1px solid $ctl-border; background: $white; width: 240px; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
   .col-letter { width: 22px; height: 22px; font-size: 12px; border-radius: $r-xs; background: $subtle; }
@@ -393,12 +387,9 @@ $ctl-h: 36px;
     .challenges-table td:not([data-label]) { padding-left: 0; padding-right: 0; }
     .challenges-table td[data-label] { padding-left: 96px; padding-right: 0; }
     .challenges-table td[data-label]::before { margin-top: 0; }
-    .challenges-table td.right { padding-top: 8px; .pill-btn { width: 100%; } > .muted { display: grid; place-items: center; min-height: 44px; border: 1px dashed $line-strong; border-radius: $r-ctl; font-size: 14px; } }
+    .challenges-table td.right { padding-top: 8px; .pill-btn { width: 100%; } &:empty { display: none; } }
     .audit-detail-row td { padding: 0; }
     .mapping-table select { width: 100%; }
-    // Import steps: the numbered circles show where you are, one visible line says it in words ("Step 2 of 4: Map columns").
-    .steps { margin-bottom: 6px; li { padding: 0 4px 0 4px; } li.current { padding-right: 4px; } }
-    .steps-progress { display: block; }
   }
 }
 
@@ -413,7 +404,7 @@ $ctl-h: 36px;
   .content {
     .pill-btn.small { min-height: 44px; }
     .mapping-table select { height: 44px; }
-    .pref-chip, .shortcut, .view-full, .ideas .stepper-item { min-height: 44px; }
+    .pref-chip, .shortcut, .view-full, button.stepper-item { min-height: 44px; }
     .cp-theme, .cp-search, .where .venues-radius { min-height: 44px; height: 44px; }
     .cp-show-more, .where .where-link { min-height: 44px; }
     .ideas .sh-toggle { width: 44px; height: 44px; }

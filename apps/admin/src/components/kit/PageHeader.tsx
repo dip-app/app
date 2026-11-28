@@ -14,9 +14,14 @@ export interface BackLink { href: string; /** The list it goes back to ("Events"
  * List pages pass `dense`: on phones the title and the actions share one row and the description is left out, so the
  * list starts near the top. Secondary actions go in `more` (outline buttons): inline before `actions` on wide screens,
  * folded behind one "More actions" button on phones.
+ *
+ * `brief` is the phone version of the description: one short line kept only where it carries something the screen does not
+ * show (who can see the page, a limit on what the list holds). Phones show it instead of the description, dense or not.
  */
-export function PageHeader({ title, description, actions, back, meta, eyebrow, more, dense }: {
+export function PageHeader({ title, description, brief, actions, back, meta, eyebrow, more, dense }: {
   title: string; description?: string; actions?: ReactNode; back?: BackLink; meta?: ReactNode;
+  /** One short line shown on phones in place of the description. */
+  brief?: string;
   /** What this page is about the object ("Attendees"), shown before the title on detail pages. */
   eyebrow?: string;
   /** Secondary actions (Export CSV, Import people). */
@@ -34,7 +39,8 @@ export function PageHeader({ title, description, actions, back, meta, eyebrow, m
           </Link>
         )}
         <h1 className="page-title">{eyebrow && <span className="page-eyebrow">{eyebrow}<span className="sr-only">: </span></span>}{title}</h1>
-        {description && <p className="subtitle">{description}</p>}
+        {description && <p className={`subtitle${brief ? " has-brief" : ""}`}>{description}</p>}
+        {brief && <p className="subtitle-brief">{brief}</p>}
         {meta && <div className="page-meta">{meta}</div>}
       </div>
       {(actions || more) && <div className="header-action">{more && <HeaderMore>{more}</HeaderMore>}{actions}</div>}

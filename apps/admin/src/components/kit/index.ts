@@ -14,3 +14,4 @@ export { SortHeader, SortSelect, type SortDir, type TableSort, sortRows, useTabl
 export { Panel } from "./Panel";
 export { SectionHeader, type SectionToggle } from "./SectionHeader";
 export { SegmentedControl, type SegmentOption, type SegmentedVariant } from "./SegmentedControl";
+export { Stepper, type StepState, type StepperStep } from "./Stepper";

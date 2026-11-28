@@ -201,12 +201,12 @@ author measured the phone list positions in the DOM ("first row" = top of the fi
 | A9 | P2 | Events at 768: the mid-width sub line "venue · price" truncates the price ("Clay Studio · $3…"). | events-768-es | Fixed: price first ("$35.00 · Clay Studio"). |
 | A10 | P2 | The email deep link's expired state says "Open Event ideas" (the nav says Dipbot) under a subtitle "Opening the idea from your email." | ideas-suggested-1440-en | Fixed: "Open Dipbot", body names Dipbot, subtitle "An event idea from your weekly email." |
 | A11 | P2 | Phone cards waste space: Events has about 20 px of blank above its buttons; Audit has 20 px between the action and its target. | events-390-en, audit-390-en | Fixed: compact card rhythm (lead cells 4 px apart; actions follow the facts). |
-| A12 | P2 | Dipbot on phones: the wizard starts below the fold under the "Ideas for you" carousel and a second Dipbot header; "Refresh ideas" sits alone on its own row. | ideas-390-en | Open: a Dipbot layout decision (collapse Ideas for you on phones, or put the wizard first); not a polish fix. |
-| A13 | P2 | Three step indicators (Import's boxed steps, the Dipbot stepper, plain tabs); the Spanish Dipbot stepper is cramped at 1440 (9 px gap before step 5). | import-1440-en, ideas-1440-es | Open: one kit stepper is a structural change for the next round. |
+| A12 | P2 | Dipbot on phones: the wizard starts below the fold under the "Ideas for you" carousel and a second Dipbot header; "Refresh ideas" sits alone on its own row. | ideas-390-en | Fixed November 28: Ideas for you stays first, compact on phones; the page no longer scrolls itself (see Follow-ups). |
+| A13 | P2 | Three step indicators (Import's boxed steps, the Dipbot stepper, plain tabs); the Spanish Dipbot stepper is cramped at 1440 (9 px gap before step 5). | import-1440-en, ideas-1440-es | Fixed November 28: kit `Stepper` for Import and Dipbot. |
 | A14 | P2 | Content right edges differ at 1440 (lists 1375, settings 1362, forms 1322). | event-new-1440-en, account-1440-en | Rejected: forms keep a readable max width on purpose (1040 px); settings use the two-column layout. |
 | A15 | P2 | Back links ("‹ Events") look 16 px tall on phones. | event-new-390-en | Rejected: the hit area is already 44 px (padding with a negative margin, `structure.scss`). |
 | A16 | P2 | The offline alert's Try again is indented under the text on phones. | overview-offline-390-en | Rejected: the documented alert layout (the action lines up with the text, at 44 px). |
-| A17 | P2 | Dipbot option names truncate at 768 ("Food & …") and Spanish blurbs at 1440. | ideas-768-en, ideas-1440-es | Open (Dipbot owner). |
+| A17 | P2 | Dipbot option names truncate at 768 ("Food & …") and Spanish blurbs at 1440. | ideas-768-en, ideas-1440-es | Names fixed November 28 (narrow cards give the name the first row); blurbs truncate by design with the full text in their title. |
 | A18 | P3 | Orphan separator dots at line ends ("7:00 PM ·", "The Pub on Penn ·"); Import's "How it works" taller than the step card; Account's raw time zone ("America/Los_Angeles"); Events table "Price"/"Going" headers align differently from their values; the event editor's save-error summary repeats the field messages. | event-edit-390-en, import-1440-en, account-1440-es, events-1440-en | Open. |
 
 ### Phone density pattern (A1)
@@ -219,3 +219,84 @@ author measured the phone list positions in the DOM ("first row" = top of the fi
 - `FilterBar`: the search and a "Filters" button with the count of filters set; the fields open below it two per row
   with Clear filters last. Events folds its phone sort select behind "Sort" the same way.
 - Members' banner keeps its headline and "Add them to the list" on one row.
+
+## Follow-ups, November 28: two decisions and the #377 review leftovers
+
+The owner asked for two decisions "if the evidence is there": the Dipbot page order on phones (A12) and which list-page
+subtitles phones keep (hidden by #377). Evidence first: mock-mode viewport captures at 1440, 768, 390 and 320 px in
+English and Spanish (Dipbot step 1, step 3 and results; Import; Bug reports; Audit log; Members; Events; Challenges),
+DOM positions measured at scroll 0, and an independent Opus reviewer who read the before captures, the measurements and
+the code and made both calls before anything was built.
+
+### Decision 1: Dipbot on phones keeps Ideas for you first, compact (A12)
+
+What each part is for:
+
+- **Ideas for you** is the fast path: "Use this idea" opens the event editor prefilled in one tap and costs nothing;
+  "Customize with Dipbot" prefills the wizard and jumps to its last step.
+- **The wizard** is the specific path: five steps, then drafts that cost credits.
+
+Evidence (before, 390 px English unless noted; viewport 844 px):
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Ideas for you section height | 427 px (one card 301 px, 124 px of it image) | 252 px (card 152 px; 320 px and Spanish 277, card 177) |
+| Wizard stepper top | 638 (320 px: 729; 390 es: 658) | 443 (320 px: 490; 390 es: 467) |
+| First step heading top | 859, below the fold (320 px: 950) | 690, in the first screen (320 px: 737; 390 es: 714) |
+| Page scrolled by itself on load | 96 px (320 px: 184; 320 es: 207) | 0 |
+| 768 px | Ideas 245 px, stepper 436 | unchanged |
+
+- The captures open mid-page: the page scrolled itself on load (the suggested interest card and the stepper were scrolled
+  into view), hiding the title and the credit balance.
+- One idea card filled most of the screen and "Refresh ideas" sat alone on a third header row.
+- Results: the idea card still took about 300 px above the drafts the admin just paid for.
+
+Options weighed:
+
+- **Wizard first** (rejected): puts the paid path ahead of the free one, buries the one-tap path under a 1,600 px form,
+  and orders the phone page differently from 768 px and desktop.
+- **Ideas collapsed by default on phones** (rejected): hides the cheapest path; admins can already collapse it and the
+  choice is remembered.
+- **Ideas first, compact** (chosen): both paths in the first screen, the same order at every width.
+
+What shipped (below 480 px section width): a 64 px square thumbnail beside the text, the title and the why line on up to
+two lines each, one chip row (day and fit; duration and cost are in the editor), then "Use this idea" and a short
+"Customize" on one row under both; cards 86% wide so the next one peeks in. The header is two rows: the title with the collapse toggle, then "Updated
+yesterday" with Refresh ideas on the right. The page opens at the top; the suggested card scrolls into view only after
+the admin acts in the wizard. 768 px and up are unchanged.
+
+### Decision 2: list-page subtitles on phones
+
+Rule: phones hide the subtitle unless it carries something the screen does not show; then a one-line `brief` (or, for a
+limit on the list, the count line) says it without adding a row of prose.
+
+| Page | Subtitle | Phones | Why |
+| --- | --- | --- | --- |
+| Bug reports | "... Only admins can see these, including who sent them." | Brief: "Only admins see these, including who sent them." | Organizers use the portal too; nothing else on the page says reports and their senders are admin-only. Costs one 18 px line (first report 286 px before, 288 after at 390 px: the line sits in the 44 px title row; two lines at 320 px Spanish). The Opus reviewer would have kept it hidden; kept because the owner named this note and it is the only privacy statement on the page. |
+| Audit log | "... Read-only; the latest 100 entries." | The count line says "Showing 25 of 100 entries from the latest 100" once the log holds 100 entries (all widths); the subtitle drops the window. | "Showing 29 of 29 entries" read as the whole history. Under 100 entries the list is the whole history and the line stays plain. No added height. |
+| Dipbot (not a list) | "Work with Dipbot to plan your next event: answer four quick questions, ..." (41 to 61 px) | Brief: "Plan your next event with Dipbot." | The stepper already says the steps. |
+| Events | "Everything your company can see in the DIP app." | Hidden | Says nothing the list does not. |
+| Members | "Everyone at your company ... Open a person to see their details." | Hidden | Cards look tappable; the first row is already the lowest (364 px). |
+| Challenges | "Plan the weekly challenge members see ..." | Hidden | The tabs and cards make the page clear. |
+
+Info tooltips were rejected: phones have no hover, the icon needs a 44 px target in a full title row, and only people
+who go looking would find the text.
+
+### The #377 review leftovers
+
+| Item | Fix |
+| --- | --- |
+| Spanish search placeholders cut at 320 px (measured: Members needs 218 px of 151, Audit 246 of 151, Events 150 of 138, Bug reports 156 of 151; English Members and Audit were cut too) | Placeholders name what the search matches in a few words: "Name, email or title", "Title or place", "Who, what or why"; es "Nombre, correo o cargo", "Título o lugar", "Quién, qué o por qué", "Texto, autor o pantalla". Labels keep the full wording. After: every placeholder fits at 320 px in both languages (widest: es Members 150 of 151 px). |
+| Bug reports at 320 px: the reporter name cut ("Drew Dub…") beside its status chip | Below 480 px the status chip leads the facts line; the name keeps the top line. |
+| Audit log at 320 px Spanish: Export CSV on its own row (header 107 px) | Export CSV is a `more` action: inline on wide screens, behind "More actions" on phones; the header is one row (55 px). |
+| Challenges: an upcoming week said "Reviews open when the week starts", "None yet" and a dashed "Not open yet" box | The action cell is empty for an upcoming week (the phone card hides it); the note and "None yet" stay. |
+| Dipbot interest names cut at 768 px ("Food & …", "Outdoo…") | Cards under 240 px give the name the whole first row; the meter moves to the end of the blurb row (the blurb gives way; full text in its title). 1440 px is unchanged. |
+| Import's boxed steps and the Dipbot stepper looked unrelated (A13) | Kit `Stepper`: one hairline row of numbered steps, the current one underlined, done steps checked; pressable in Dipbot, informational in Import. Phones show equal numbered cells and one "Step 2 of 4: Match columns" line (Dipbot's tab row used to scroll sideways). |
+
+Design review: three rounds (fresh Opus on the decisions and fresh Sonnet on the rest, then Opus, then Sonnet: PASS).
+They caught the card's actions and Spanish text clipped at 320 px, the idea title cut at 320 px, "Regenerate" breaking
+inside the word and "Elige hasta 3" splitting at 320 px Spanish; all fixed. Accepted trade-off: at 768 px the interest
+blurbs truncate sooner so the names show in full.
+
+A12, A13 and A17 are closed by this section. Still open: the "Dipbot suggests" bar is about 140 px on phones (Refresh and
+Use suggestions wrap to two rows) and the A18 P3s.
