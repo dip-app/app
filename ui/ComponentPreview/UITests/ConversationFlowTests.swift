@@ -21,7 +21,7 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["See you at puppy yoga!"].exists)
         app.buttons["event.chat.retry"].tap()
         XCTAssertTrue(app.staticTexts["See you at puppy yoga!"].waitForExistence(timeout: 5))
-        app.buttons["Done"].tap()
+        app.buttons["event.chat.done"].tap()
         primary.tap()
         XCTAssertTrue(app.staticTexts["See you at puppy yoga!"].waitForExistence(timeout: 5))
         let deliveredRows = app.descendants(matching: .any).matching(NSPredicate(

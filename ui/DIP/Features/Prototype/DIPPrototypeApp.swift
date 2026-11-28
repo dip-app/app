@@ -469,7 +469,7 @@ struct DIPPrototypeApp: View {
             VStack(spacing: 0) {
                 tabPages(snapshot)
             }
-            .overlay(alignment: .top) { fixedHeader(snapshot) }
+            .overlay(alignment: .top) { fixedHeader(unreadCount: bellCount(snapshot), avatar: snapshot.home.profileAvatar) }
             // Stale data: a small pill under the header instead of a line that pushed the whole page down.
             .overlay(alignment: .top) {
                 if model.loadError != nil {
@@ -483,17 +483,33 @@ struct DIPPrototypeApp: View {
             // Shaped like the tab page that is about to appear (no spinner for page content).
             DIPPageSkeleton(.tab, topInset: topInset)
         } else {
-            DIPEmptyState(
-                screen: "shell-load",
-                title: String(localized: "shell.loadFailed.title", defaultValue: "Something went wrong", comment: "Full-page error title when the member's activities could not be loaded; the message under it says what failed"),
-                message: model.loadError ?? String(localized: "shell.loadFailed.fallback", defaultValue: "Please try again.", comment: "Fallback message under the Couldn’t load your activities error when no reason is known"),
-                tone: .failure,
-                actionTitle: String(localized: "shell.loadFailed.retry", defaultValue: "Try again", comment: "Button on the full-page error that reloads the member's activities"),
-                action: { observationID = UUID() })
-            .padding(.horizontal, 20)
-            // Where the page's first section would be (under the header area), not floating mid-screen.
-            .padding(.top, topInset + 70)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            failurePage
+        }
+    }
+
+    /// The first load failed (ST-8): the page keeps its normal header (tab title, bell, avatar) so the member can still
+    /// reach notifications and Profile, and Profile shows the member's own page (Sign out stays reachable) because it
+    /// does not need the activities that failed to load.
+    @ViewBuilder private var failurePage: some View {
+        ZStack(alignment: .top) {
+            if selectedTab == .profile, let accountProfile {
+                profilePage(accountProfile)
+            } else {
+                DIPEmptyState(
+                    screen: "shell-load",
+                    title: String(localized: "shell.loadFailed.title", defaultValue: "Something went wrong", comment: "Full-page error title when the member's activities could not be loaded; the message under it says what failed"),
+                    message: model.loadError ?? String(localized: "shell.loadFailed.fallback", defaultValue: "Please try again.", comment: "Fallback message under the Couldn’t load your activities error when no reason is known"),
+                    tone: .failure,
+                    actionTitle: String(localized: "shell.loadFailed.retry", defaultValue: "Try again", comment: "Button on the full-page error that reloads the member's activities"),
+                    action: { observationID = UUID() })
+                .padding(.horizontal, 20)
+                // Where the page's first section would be (under the header), not floating mid-screen.
+                .padding(.top, topInset + 70)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .overlay(alignment: .top) {
+            fixedHeader(unreadCount: notifications?.unreadCount ?? invites.map(\.badgeCount) ?? 0, avatar: accountProfile?.avatar)
         }
     }
 
@@ -559,16 +575,7 @@ struct DIPPrototypeApp: View {
                     onNotifications: openNotifications, onProfile: { selectTab(.profile) },
                     onRefresh: homeRefresh)) }
             case .profile:
-                AnyView(DIPProfileScreen(
-                    profile: accountProfile ?? snapshot.profile, showsBottomBar: false, onSelectTab: selectTab,
-                    onMemory: { event, photo in memoryPhotoIDs[event] = photo; pushRoute(.album(event)) },
-                    onSave: { edit in
-                        if let onProfileSave { try await onProfileSave(edit) }
-                        else { try await model.updateProfile(edit) }
-                    }, onSignOut: onSignOut, interestCatalogLoading: interestCatalogLoading,
-                    interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog,
-                    onReplayTour: onReplayTour,
-                    onOpenNotificationSettings: notificationSettings == nil ? nil : { showNotificationSettings = true }))
+                profilePage(accountProfile ?? snapshot.profile)
             case .rewards:
                 AnyView(DIPRewardsScreen(
                     unreadCount: bellCount(snapshot), profileAvatar: snapshot.home.profileAvatar,
@@ -578,6 +585,20 @@ struct DIPPrototypeApp: View {
             }
         }
         return pages
+    }
+
+    /// Profile needs only the member's profile, so it also stands in for the Profile tab when the activities failed to load.
+    private func profilePage(_ profile: DIPProfile) -> AnyView {
+        AnyView(DIPProfileScreen(
+            profile: profile, showsBottomBar: false, onSelectTab: selectTab,
+            onMemory: { event, photo in memoryPhotoIDs[event] = photo; pushRoute(.album(event)) },
+            onSave: { edit in
+                if let onProfileSave { try await onProfileSave(edit) }
+                else { try await model.updateProfile(edit) }
+            }, onSignOut: onSignOut, interestCatalogLoading: interestCatalogLoading,
+            interestCatalogError: interestCatalogError, onRetryInterestCatalog: onRetryInterestCatalog,
+            onReplayTour: onReplayTour,
+            onOpenNotificationSettings: notificationSettings == nil ? nil : { showNotificationSettings = true }))
     }
 
     /// Re-run key for the conflict pass: calendar changes plus a cheap signature of the loaded events.
@@ -736,8 +757,8 @@ struct DIPPrototypeApp: View {
     }
 
     @ViewBuilder private var avatarFlyer: some View {
-        if isAvatarFlying, let snapshot = model.snapshot {
-            DIPMedia(snapshot.home.profileAvatar)
+        if isAvatarFlying, let avatar = model.snapshot?.home.profileAvatar ?? accountProfile?.avatar {
+            DIPMedia(avatar)
                 .frame(width: flightFrame.width, height: flightFrame.height)
                 .clipShape(Circle())
                 .overlay(Circle().strokeBorder(.white, lineWidth: flightRing))
@@ -748,14 +769,18 @@ struct DIPPrototypeApp: View {
     }
 
     /// The fixed tab header. On Profile it fades and lifts out of the way, keeping the last label.
-    private func fixedHeader(_ snapshot: DIPAppSnapshot) -> some View {
+    private func fixedHeader(unreadCount: Int, avatar: MediaReference?) -> some View {
         let away = selectedTab == .profile
         return DIPHomeHeader(
-            title: headerTab.title, unreadCount: bellCount(snapshot),
+            title: headerTab.title, unreadCount: unreadCount,
             profileAvatar: {
                 // Hidden instantly while the flyer carries the avatar (no cross-fade ghost).
-                DIPMedia(snapshot.home.profileAvatar).opacity(isAvatarFlying ? 0 : 1)
-                    .transaction(value: isAvatarFlying) { $0.animation = nil }
+                Group {
+                    if let avatar { DIPMedia(avatar) }
+                    else { Image(systemName: "person.crop.circle.fill").resizable().foregroundStyle(DIPTokens.Color.surfaceMuted.swiftUIColor) }
+                }
+                .opacity(isAvatarFlying ? 0 : 1)
+                .transaction(value: isAvatarFlying) { $0.animation = nil }
             },
             onNotifications: openNotifications, onProfile: { selectTab(.profile) }
         )
@@ -1067,7 +1092,8 @@ struct DIPPrototypeApp: View {
                         onConfirmedLeave: { await confirmLeave(id) },
                         participationPending: isRSVPPending,
                         onInvite: invites == nil || participationUnavailable ? nil : { openInvite(id) },
-                        calendarEvents: Array(snapshot.eventDetails.values))
+                        calendarEvents: Array(snapshot.eventDetails.values),
+                        onBrowseActivities: duoOpen ? nil : { selectTab(.home) })
                 } else { missingResource }
             case .challenge(let id):
                 if let challenge = challengeFeed?.detail(id) ?? snapshot.challengeDetails[id] {
@@ -1097,9 +1123,25 @@ struct DIPPrototypeApp: View {
             // Shaped like the page being opened; the root tab page shows the same placeholder style.
             // Pages draw edge to edge and inset themselves by topInset, so the placeholder does the same.
             Group {
-                switch route {
-                case .album: DIPPageSkeleton(.grid, topInset: topInset + 62)
-                default: DIPPageSkeleton(.detail, topInset: topInset)
+                if !model.isLoading {
+                    // The load failed (a link opened at launch while offline): say so under Back instead of a skeleton
+                    // that would never resolve.
+                    DIPEmptyState(
+                        screen: "route-load",
+                        title: String(localized: "shell.loadFailed.title", defaultValue: "Something went wrong", comment: "Full-page error title when the member's activities could not be loaded; the message under it says what failed"),
+                        message: model.loadError ?? String(localized: "shell.loadFailed.fallback", defaultValue: "Please try again.", comment: "Fallback message under the Couldn’t load your activities error when no reason is known"),
+                        tone: .failure,
+                        actionTitle: String(localized: "shell.loadFailed.retry", defaultValue: "Try again", comment: "Button on the full-page error that reloads the member's activities"),
+                        action: { observationID = UUID() })
+                    .padding(.horizontal, 20)
+                    .padding(.top, topInset + 70)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .background(Color.white)
+                } else {
+                    switch route {
+                    case .album: DIPPageSkeleton(.grid, topInset: topInset + 62)
+                    default: DIPPageSkeleton(.detail, topInset: topInset)
+                    }
                 }
             }
             // Back stays real while the page loads, so a stalled load never traps the member.

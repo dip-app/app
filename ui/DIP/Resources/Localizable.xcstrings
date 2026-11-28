@@ -8672,50 +8672,50 @@
         }
       }
     },
-    "duo.detail.empty.message" : {
-      "comment" : "Duo detail pane empty state message when no event is open",
+    "duo.detail.none.message" : {
+      "comment" : "Duo detail pane empty state message; shown only when the list beside it has no activities",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Its details open here."
+            "value" : "When there’s an activity, its details open here."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sus detalles se abren aquí."
+            "value" : "Cuando haya una actividad, sus detalles se abrirán aquí."
           }
         },
         "tlh" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "De'mey naDev poSlu'."
+            "value" : "Qu' tu'lu'chugh, naDev De'Daj poSmoHlu'."
           }
         }
       }
     },
-    "duo.detail.empty.title" : {
-      "comment" : "Duo detail pane empty state title when no event is open",
+    "duo.detail.none.title" : {
+      "comment" : "Duo detail pane empty state title; shown only when the list beside it has no activities",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Pick an activity"
+            "value" : "No activity open"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elige una actividad"
+            "value" : "Ninguna actividad abierta"
           }
         },
         "tlh" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Qu' yIwIv"
+            "value" : "Qu' poSmoHbe'"
           }
         }
       }
@@ -9556,6 +9556,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ – %2$@"
+          }
+        }
+      }
+    },
+    "event.full.browse" : {
+      "comment" : "Text button under the full-activity note; opens Home with the other upcoming activities",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "See other activities"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver otras actividades"
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "latlh Qu'mey tIlegh"
+          }
+        }
+      }
+    },
+    "event.full.notice" : {
+      "comment" : "Note under the title of an activity that has no spots left; the page updates when someone leaves",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity is full. If a spot opens up, you can join here."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad está completa. Si se libera un lugar, podrás unirte aquí."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Qu' vam teb. Daq chu' DaSamchugh, naDev DamuvlaH."
           }
         }
       }
@@ -10421,6 +10469,30 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "yaSpu' wanI'mey chu' naDev leghlu'."
+          }
+        }
+      }
+    },
+    "home.events.empty.messageChallenge" : {
+      "comment" : "Home empty state message when there are no upcoming events and the weekly challenge card above is open",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "New company events will show up here. Until then, try this week’s challenge above."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los nuevos eventos de la empresa aparecerán aquí. Mientras tanto, prueba el reto de esta semana, aquí arriba."
+          }
+        },
+        "tlh" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "naDev Qu' chu'mey DaleghlaH. DaH, Hogh vam qaD yIQIj."
           }
         }
       }

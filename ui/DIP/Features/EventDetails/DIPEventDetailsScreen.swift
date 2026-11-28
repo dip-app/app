@@ -25,6 +25,8 @@ struct DIPEventDetailsScreen: View {
     let onInvite: (() -> Void)?
     /// The member's other events, used for DIP-vs-DIP conflicts on the date pill.
     let calendarEvents: [DIPEventDetail]
+    /// Shows the member's other activities (Home); offered when this one is full. nil hides it (open Duo: Home is beside it).
+    let onBrowseActivities: (() -> Void)?
     @State private var confirmingLeave = false
     @State private var showingChanges = false
     @State private var calendarResult: DIPCalendarAddResult?
@@ -69,8 +71,10 @@ struct DIPEventDetailsScreen: View {
         onConfirmedLeave: (() async -> Bool)? = nil,
         participationPending: Bool = false,
         onInvite: (() -> Void)? = nil,
-        calendarEvents: [DIPEventDetail] = []
+        calendarEvents: [DIPEventDetail] = [],
+        onBrowseActivities: (() -> Void)? = nil
     ) {
+        self.onBrowseActivities = onBrowseActivities
         self.onConfirmedLeave = onConfirmedLeave
         self.participationPending = participationPending
         self.calendarEvents = calendarEvents
@@ -453,6 +457,8 @@ struct DIPEventDetailsScreen: View {
                             .foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
                     }
                     .accessibilityIdentifier("event.cancelled")
+                } else if isFullForMember(metadata) {
+                    fullNotice
                 }
                 factsLine(metadata)
             }
@@ -460,6 +466,37 @@ struct DIPEventDetailsScreen: View {
         }
         .foregroundStyle(.black)
         .padding(.top, 10)
+    }
+
+    /// Full for this member: upcoming, still scheduled, not joined and at capacity (the bar reads "Activity full").
+    private func isFullForMember(_ metadata: DIPEventMetadata) -> Bool {
+        !joined && !event.isPast && metadata.status == .scheduled && metadata.startTime > Date()
+            && event.attendeeCount >= metadata.capacity
+    }
+
+    /// ST-7: DIP has no waitlist, so the honest next steps are that a spot can open (the page follows the live count and
+    /// the bar turns back into Join) and the member's other activities.
+    private var fullNotice: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: "person.3.fill")
+                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
+                .accessibilityHidden(true)
+            // The link hangs under the sentence (not the page margin), so it reads as part of the note.
+            VStack(alignment: .leading, spacing: 0) {
+                Text(String(localized: "event.full.notice", defaultValue: "This activity is full. If a spot opens up, you can join here.", comment: "Note under the title of an activity that has no spots left; the page updates when someone leaves"))
+                    .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline))
+                    .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("event.full")
+                if let onBrowseActivities {
+                    DIPTextActionRow(
+                        title: String(localized: "event.full.browse", defaultValue: "See other activities", comment: "Text button under the full-activity note; opens Home with the other upcoming activities"),
+                        opensView: true, inline: true, action: onBrowseActivities)
+                        .accessibilityIdentifier("event.full.browse")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// EVT-1: when, where and cost (or points) right under the title, so the page answers "should I go" above the fold.
