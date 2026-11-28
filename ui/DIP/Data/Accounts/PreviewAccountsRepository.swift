@@ -26,6 +26,9 @@ final class PreviewAccountsRepository: AccountsRepository, InterestCatalogReposi
         self.delay = delay
         profiles[Self.uid(for: "member@example.invalid")] = Self.profile(
             email: "member@example.invalid", name: "Sam Rivera", companyId: "company-demo")
+        // `--mock-organizer`: an organizer of the same company, who uses the app as a full member (#374).
+        profiles[Self.uid(for: Self.organizerEmail)] = Self.profile(
+            email: Self.organizerEmail, name: "Alex Morgan", companyId: "company-demo", role: "organizer")
     }
 
     func observations() -> AsyncStream<AccountObservation> {
@@ -124,15 +127,16 @@ final class PreviewAccountsRepository: AccountsRepository, InterestCatalogReposi
         if delay > .zero { try await Task.sleep(for: delay) }
     }
 
+    static let organizerEmail = "organizer@example.invalid"
     private static func uid(for email: String) -> String { "preview-" + email.lowercased() }
     /// Realistic synthetic names, as Google would supply (no real people).
     private static func name(for email: String) -> String {
         let names = ["new@example.invalid": "Jordan Lee", "pat@gmail.com": "Pat Kim", "pat@unknown.test": "Pat Kim"]
         return names[email.lowercased()] ?? "Sam Rivera"
     }
-    private static func profile(email: String, name: String, companyId: String) -> AppUser {
+    private static func profile(email: String, name: String, companyId: String, role: String = "member") -> AppUser {
         AppUser(id: uid(for: email), companyId: companyId, displayName: name, email: email, photoURL: "", avatarId: "",
-                department: "", jobTitle: "", city: "", role: "member", interestTagIds: [], travelRadiusMiles: 20,
+                department: "", jobTitle: "", city: "", role: role, interestTagIds: [], travelRadiusMiles: 20,
                 availability: [], friendIds: [], favoritePhotoIds: [], pointsBalance: 0,
                 createdAt: Date(timeIntervalSince1970: 0))
     }

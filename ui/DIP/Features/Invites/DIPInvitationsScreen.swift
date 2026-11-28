@@ -43,7 +43,7 @@ struct DIPInvitationsScreen: View {
                 selection: tab, accent: DIPTokens.Color.actionPrimary.swiftUIColor, height: 50, fontSize: 18
             ) { newTab in
                 // Switching tabs is navigation: silent.
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { tab = newTab }
+                withAnimation(DIPMotion.quick(reduceMotion: reduceMotion)) { tab = newTab }
             }
             .padding(.horizontal, 20)
             if model.isStale { offlineBanner.padding(.horizontal, 20).padding(.top, 10) }
@@ -212,15 +212,8 @@ struct DIPInvitationsScreen: View {
                 Text("“\(invite.message)”").font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
                     .foregroundStyle(.black.opacity(0.75)).frame(maxWidth: .infinity, alignment: .leading)
             }
-            Button { onOpenEvent(invite.eventID) } label: {
-                HStack(spacing: 4) {
-                    Text("View activity").font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .body))
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).accessibilityHidden(true)
-                }
-                .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-                .frame(minHeight: 44).contentShape(Rectangle())
-            }
-            .buttonStyle(DIPPressFeedbackStyle(cornerRadius: 12))
+            // The shared text action (ink, 4.5:1 or better on the card; the purple link text was below AA).
+            DIPTextActionRow(title: String(localized: "View activity"), opensView: true, inline: true) { onOpenEvent(invite.eventID) }
             .accessibilityLabel("View \(invite.eventTitle)")
             .accessibilityIdentifier("invitations.open.\(invite.id)")
             if answered {

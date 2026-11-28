@@ -42,6 +42,8 @@ struct DIPNotificationsScreen: View {
                     stateContent
                 }
                 .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 40)
+                // The skeleton cross-fades into the list (or the empty or failure state).
+                .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: model.phase)
             }
             .scrollIndicators(.hidden)
             .refreshable {
@@ -87,23 +89,17 @@ struct DIPNotificationsScreen: View {
 
     /// Secondary text action, trailing on the first day header (44 pt target).
     private var markAllButton: some View {
-        Button {
+        DIPTextActionRow(
+            title: model.isMarkingAll ? String(localized: "notifications.markAll.working", defaultValue: "Marking…", comment: "Notifications: mark-all button while working") : String(localized: "notifications.markAll", defaultValue: "Mark all as read", comment: "Notifications: button that marks every notification as read"),
+            systemImage: "checkmark", inline: true
+        ) {
             DIPHaptics.commit()
             Task {
                 let done = await model.markAllRead()
                 if done { DIPHaptics.success(); AccessibilityNotification.Announcement(String(localized: "notifications.markAll.announce", defaultValue: "All notifications marked as read", comment: "VoiceOver announcement after marking all notifications read")).post() }
                 else { DIPHaptics.failure() }
             }
-        } label: {
-            Text(model.isMarkingAll ? String(localized: "notifications.markAll.working", defaultValue: "Marking…", comment: "Notifications: mark-all button while working") : String(localized: "notifications.markAll", defaultValue: "Mark all as read", comment: "Notifications: button that marks every notification as read"))
-                .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline).weight(.semibold))
-                .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
-                .underline()
-                .multilineTextAlignment(.trailing)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(DIPRowPressStyle(cornerRadius: 8))
         .disabled(model.isMarkingAll)
         .accessibilityIdentifier("notifications.markall")
     }
@@ -135,7 +131,7 @@ struct DIPNotificationsScreen: View {
                 } icon: { Image(systemName: "bell.slash").accessibilityHidden(true) }
                     .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
                 Spacer(minLength: 0)
-                Button { DIPHaptics.select(); withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { bannerDismissed = true } } label: {
+                Button { withAnimation(DIPMotion.quick(reduceMotion: reduceMotion)) { bannerDismissed = true } } label: {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
@@ -151,15 +147,9 @@ struct DIPNotificationsScreen: View {
                 DIPHaptics.select(); onPermission()
             }
             if let onOpenSettings {
-                Button { DIPHaptics.select(); onOpenSettings() } label: {
-                    Text("Notification settings")
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .footnote))
-                        .underline()
-                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityIdentifier("notifications.permission.settings")
+                // Opens a view, so no haptic (DIPHaptics: navigation is silent).
+                DIPTextActionRow(title: String(localized: "Notification settings"), centered: true, opensView: true) { onOpenSettings() }
+                    .accessibilityIdentifier("notifications.permission.settings")
             }
         }
         .padding(16)

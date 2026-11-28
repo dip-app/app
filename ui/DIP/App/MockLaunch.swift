@@ -9,12 +9,13 @@ import Foundation
 /// `--mock-member` (or `DIP_MOCK_MEMBER=1`): skip Firebase/App Check configuration and boot
 /// into the signed-in member experience for a fixed fixture member backed by in-memory
 /// repositories. `--mock-onboarding`: same isolation, but start signed out so the
-/// first-run welcome and onboarding flow can be exercised for a fresh uid.
+/// first-run welcome and onboarding flow can be exercised for a fresh uid. `--mock-organizer`: the member experience
+/// signed in as an organizer of the same fixture company (organizers use the app as full members).
 ///
 /// Release builds compile this to a stub that never activates. Nothing here touches the
 /// keychain, Firebase, the network or secrets.
 enum MockLaunch {
-    enum Mode: Equatable { case member, onboarding }
+    enum Mode: Equatable { case member, organizer, onboarding }
 
     /// The ONE reader of `--flag` launch arguments. Release builds never honor them (they would otherwise let anyone
     /// who can pass launch arguments switch on test fixtures, delays or failure injection in a shipped app).
@@ -43,6 +44,7 @@ enum MockLaunch {
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> Mode? {
         if arguments.contains("--mock-onboarding") { return .onboarding }
+        if arguments.contains("--mock-organizer") { return .organizer }
         if arguments.contains("--mock-member") || environment["DIP_MOCK_MEMBER"] == "1" { return .member }
         return nil
     }
@@ -50,6 +52,7 @@ enum MockLaunch {
     @MainActor static func makeRepository(_ mode: Mode) -> any AccountsRepository & InterestCatalogRepository {
         switch mode {
         case .member: PreviewAccountsRepository(signedInEmail: "member@example.invalid", delay: .zero)
+        case .organizer: PreviewAccountsRepository(signedInEmail: PreviewAccountsRepository.organizerEmail, delay: .zero)
         case .onboarding: PreviewAccountsRepository(googleAccount: "new@example.invalid", delay: .milliseconds(300))
         }
     }

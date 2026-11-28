@@ -76,7 +76,7 @@ struct DIPPhotoCommentsScreen: View {
                 if position != nil || saver != nil { controlBar.padding(.trailing, 20).padding(.top, topInset) }
             }
             .overlay(alignment: .top) {
-                if let toast { toastView(toast).padding(.top, 118).transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top))) }
+                if let toast { toastView(toast).padding(.top, 118).transition(DIPMotion.toastTransition(reduceMotion: reduceMotion)) }
             }
         }
         .ignoresSafeArea(.container)
@@ -196,12 +196,12 @@ struct DIPPhotoCommentsScreen: View {
 
     private func show(toast message: String) {
         toastTask?.cancel()
-        withAnimation(reduceMotion ? .linear(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.85)) { toast = message }
+        withAnimation(DIPMotion.toastIn(reduceMotion: reduceMotion)) { toast = message }
         UIAccessibility.post(notification: .announcement, argument: message)
         toastTask = Task {
             try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeOut(duration: 0.2)) { toast = nil }
+            withAnimation(DIPMotion.toastOut(reduceMotion: reduceMotion)) { toast = nil }
         }
     }
 

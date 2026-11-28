@@ -194,7 +194,7 @@ struct DIPActivityChatScreen: View {
     }
 
     private func scrollToBottom(_ scroll: ScrollViewProxy) {
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+        withAnimation(DIPMotion.quick(reduceMotion: reduceMotion)) {
             scroll.scrollTo(Self.bottomAnchor, anchor: .bottom)
         }
     }

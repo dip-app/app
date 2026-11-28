@@ -117,7 +117,7 @@ struct DIPEventDetailsScreen: View {
                     if let toast {
                         calendarToastView(toast)
                             .padding(.top, topInset + 66)
-                            .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                            .transition(DIPMotion.toastTransition(reduceMotion: reduceMotion))
                     }
                 }
                 if showsBottomBar {
@@ -150,7 +150,7 @@ struct DIPEventDetailsScreen: View {
                             in: Capsule()
                         )
                         .contentShape(Capsule())
-                        .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.72), value: joined)
+                        .animation(DIPMotion.stateChange(reduceMotion: reduceMotion), value: joined)
                     }
                     .buttonStyle(.plain)
                     .disabled(!primaryEnabled || (participationPending && !joined))
@@ -335,13 +335,13 @@ struct DIPEventDetailsScreen: View {
 
     private func show(toast message: CalendarToast, seconds: Double, announcement: String? = nil) {
         toastTask?.cancel()
-        withAnimation(reduceMotion ? .linear(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.85)) { toast = message }
+        withAnimation(DIPMotion.toastIn(reduceMotion: reduceMotion)) { toast = message }
         AccessibilityNotification.Announcement(announcement ?? message.text).post()
         let lifetime = toastDuration(seconds)
         toastTask = Task {
             try? await Task.sleep(for: .seconds(lifetime))
             guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeOut(duration: 0.2)) { toast = nil }
+            withAnimation(DIPMotion.toastOut(reduceMotion: reduceMotion)) { toast = nil }
         }
     }
 
@@ -441,7 +441,21 @@ struct DIPEventDetailsScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("event.title")
-            if let metadata = event.metadata { factsLine(metadata) }
+            if let metadata = event.metadata {
+                if metadata.status == .cancelled {
+                    // Above the fold, under the title (it used to sit at the top of the info card, under the bar).
+                    Label {
+                        Text("Activity cancelled")
+                            .font(DIPReferenceAssets.font("Inter-Regular", size: 15, relativeTo: .subheadline).weight(.semibold))
+                            .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
+                    } icon: {
+                        Image(systemName: "calendar.badge.exclamationmark")
+                            .foregroundStyle(DIPTokens.Color.textError.swiftUIColor)
+                    }
+                    .accessibilityIdentifier("event.cancelled")
+                }
+                factsLine(metadata)
+            }
             descriptionText
         }
         .foregroundStyle(.black)
@@ -451,8 +465,8 @@ struct DIPEventDetailsScreen: View {
     /// EVT-1: when, where and cost (or points) right under the title, so the page answers "should I go" above the fold.
     /// One wrapping line of glyph + text items; the info card below keeps the full details and the actions.
     private func factsLine(_ metadata: DIPEventMetadata) -> some View {
-        // The header pill already shows the day, so the facts line carries the time range only (past pages: none).
-        let date = event.isPast || metadata.endTime <= metadata.startTime ? ""
+        // The header pill already shows the day (past pages: the date with the year), so the facts line carries the time range.
+        let date = metadata.endTime <= metadata.startTime ? ""
             : String(localized: "event.facts.timeRange", defaultValue: "\(metadata.startTime.formatted(date: .omitted, time: .shortened)) – \(metadata.endTime.formatted(date: .omitted, time: .shortened))", comment: "Start and end time under an activity title (the day is in the header pill); first %@ = start time, second %@ = end time")
         let place = metadata.venueName.isEmpty ? metadata.locality : metadata.venueName
         let cost: String? = event.isPast || metadata.status == .cancelled ? nil
@@ -514,19 +528,15 @@ struct DIPEventDetailsScreen: View {
                 .accessibilityLabel(event.description)
                 .accessibilityIdentifier("event.description")
             if descriptionFullHeight > descriptionClampedHeight + 1 {
-                Button {
+                DIPTextActionRow(
+                    title: descriptionExpanded
+                        ? String(localized: "event.description.less", defaultValue: "Show less", comment: "Text button under a long activity description that collapses it to three lines")
+                        : String(localized: "event.description.more", defaultValue: "Read more", comment: "Text button under a long activity description that shows all of it"),
+                    systemImage: descriptionExpanded ? "chevron.up" : "chevron.down",
+                    inline: true
+                ) {
                     withAnimation(DIPMotion.navigation(reduceMotion: reduceMotion)) { descriptionExpanded.toggle() }
-                } label: {
-                    Text(descriptionExpanded
-                         ? String(localized: "event.description.less", defaultValue: "Show less", comment: "Text button under a long activity description that collapses it to three lines")
-                         : String(localized: "event.description.more", defaultValue: "Read more", comment: "Text button under a long activity description that shows all of it"))
-                        .font(DIPReferenceAssets.font("Inter-Regular", size: 14, relativeTo: .subheadline).weight(.semibold))
-                        .foregroundStyle(DIPTokens.Color.textPrimary.swiftUIColor)
-                        .underline()
-                        .frame(minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(DIPRowPressStyle(cornerRadius: 8))
                 // VoiceOver already reads the whole description; the toggle only changes what is drawn.
                 .accessibilityHidden(true)
                 .accessibilityIdentifier("event.description.toggle")
@@ -555,7 +565,8 @@ struct DIPEventDetailsScreen: View {
                 joinTitle: String(localized: "event.action.join", defaultValue: "Join Activity", comment: "Pill that joins the activity"), leaveTitle: String(localized: "event.action.leave", defaultValue: "Leave Activity", comment: "Pill that leaves the activity"),
                 shareItem: event.metadata?.shareText(title: event.title, description: event.description) ?? "\(event.title), \(event.timing)",
                 shareLink: event.metadata?.status == .cancelled ? nil : DIPShareLink.url(forEventID: event.id),
-                shareTitle: String(localized: "event.action.share", defaultValue: "Share Event", comment: "Pill that opens the share sheet for the activity"), identifierPrefix: "event",
+                shareTitle: String(localized: "event.action.share", defaultValue: "Share Event", comment: "Pill that opens the share sheet for the activity"),
+                showsShare: event.metadata?.status != .cancelled, identifierPrefix: "event",
                 onJoin: onJoin, onLeave: { confirmingLeave = true })
         }
     }
@@ -650,12 +661,6 @@ struct DIPEventDetailsScreen: View {
 
     private func eventMetadata(_ metadata: DIPEventMetadata) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            if metadata.status == .cancelled {
-                Label("Activity cancelled", systemImage: "calendar.badge.exclamationmark")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("event.cancelled")
-            }
             whenRow(metadata)
             if let fields = calendarFields, calendar.needsUpdate(eventID: event.id, fields: fields) { calendarUpdateRow }
             whereRow(metadata)

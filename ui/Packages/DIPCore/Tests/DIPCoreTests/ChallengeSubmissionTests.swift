@@ -82,7 +82,7 @@ final class ChallengeSubmissionTests: XCTestCase {
             let state = DIPSubmissionState.state(phase: phase, submission: entry(.approved, points: 50))
             XCTAssertEqual(state, .approved(entry(.approved, points: 50)))
             XCTAssertNil(state.actionTitle)
-            XCTAssertEqual(state.detail, "You earned +50 points.")
+            XCTAssertEqual(state.detail, "You earned 50 points.")
         }
         XCTAssertEqual(DIPSubmissionState.approved(entry(.approved)).detail, "Approved. Thanks for taking part.")
     }

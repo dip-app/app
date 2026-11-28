@@ -344,11 +344,13 @@ struct DIPPrototypeApp: View {
                 } else {
                     NavigationStack(path: $routes) {
                         loadedPages
+                            .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: loadPhase)
                             .ignoresSafeArea()
                             .toolbar(.hidden, for: .tabBar)
                             .toolbar(.hidden, for: .navigationBar)
                             .navigationDestination(for: Route.self) { route in
                                 destination(route)
+                                    .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: loadPhase)
                                     .navigationBarBackButtonHidden()
                                     .toolbar(.hidden, for: .navigationBar)
                             }
@@ -459,6 +461,9 @@ struct DIPPrototypeApp: View {
         message: { Text(rsvpError ?? "") }
     }
 
+    /// Skeleton (1), failure (0) or content (2): the page cross-fades when this changes (`DIPMotion.reveal`).
+    private var loadPhase: Int { model.snapshot != nil ? 2 : model.isLoading ? 1 : 0 }
+
     @ViewBuilder private var loadedPages: some View {
         if let snapshot = model.snapshot {
             VStack(spacing: 0) {
@@ -470,7 +475,7 @@ struct DIPPrototypeApp: View {
                 if model.loadError != nil {
                     DIPPausedPill { observationID = UUID() }
                         .padding(.top, topInset + 56)
-                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                        .transition(DIPMotion.toastTransition(reduceMotion: reduceMotion))
                 }
             }
             .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: model.loadError != nil)
@@ -1232,6 +1237,7 @@ struct DIPPrototypeApp: View {
                 loadedPages
             }
         }
+        .animation(DIPMotion.reveal(reduceMotion: reduceMotion), value: loadPhase)
         .background(Color.white)
     }
 

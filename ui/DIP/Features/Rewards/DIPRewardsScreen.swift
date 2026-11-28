@@ -40,21 +40,38 @@ struct DIPRewardsScreen: View {
     /// pill is a skeleton of the same size; unavailable shows a dash; a cached value offline carries a wifi.slash.
     private var balancePill: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Text("Your points")
-                    .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.subtitle))
-                    .foregroundStyle(ink)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer(minLength: 8)
-                pillContent
-                    .animation(reduceMotion ? nil : .smooth, value: pointsDisplay)
+            // Side by side while both fit; at large text sizes the pill moves under the title instead of truncating.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    balanceTitle
+                    Spacer(minLength: 8)
+                    balanceValue
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    balanceTitle
+                    balanceValue
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(pointsDisplay.accessibilityLabel())
             .accessibilityIdentifier("rewards.balance")
             if pointsDisplay.showsZeroNudge { zeroNudge }
         }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: pointsDisplay.showsZeroNudge)
+        .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: pointsDisplay.showsZeroNudge)
+    }
+
+    private var balanceTitle: some View {
+        Text("Your points")
+            .font(DIPReferenceAssets.font("Figtree-Regular", size: Metrics.subtitle))
+            .foregroundStyle(ink)
+            .fixedSize()
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var balanceValue: some View {
+        pillContent
+            .fixedSize()
+            .animation(DIPMotion.navigation(reduceMotion: reduceMotion), value: pointsDisplay)
     }
 
     @ViewBuilder private var pillContent: some View {
@@ -85,7 +102,7 @@ struct DIPRewardsScreen: View {
     private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         HStack(spacing: 6) { content() }
             .foregroundStyle(DIPTokens.Color.actionPrimary.swiftUIColor)
-            .padding(.horizontal, 14).frame(height: 36)
+            .padding(.horizontal, 14).padding(.vertical, 6).frame(minHeight: 36)
             .overlay(Capsule().strokeBorder(DIPTokens.Color.actionPrimary.swiftUIColor, lineWidth: 2))
     }
 
@@ -243,11 +260,19 @@ struct DIPRewardsScreen: View {
     }
 }
 
-/// Subtle press feedback for the gift cards.
+/// Press feedback for the gift cards: the card press (`DIPCardPressStyle`) scale and timing; the lid shape has no
+/// rounded rectangle to tint, so Reduce Motion dims the card instead of scaling it.
 private struct DIPGiftPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: configuration.isPressed)
+    func makeBody(configuration: Configuration) -> some View { Pressed(configuration: configuration) }
+
+    private struct Pressed: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        var body: some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+                .opacity(configuration.isPressed && reduceMotion ? 0.85 : 1)
+                .animation(DIPMotion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
+        }
     }
 }

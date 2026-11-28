@@ -45,6 +45,9 @@
         private let topInset: CGFloat
         private let horizontalInset: CGFloat
         private let label: Text
+        /// Fast loads never flash a skeleton: the shapes fade in only after `DIPMotion.skeletonGrace`.
+        @State private var shapesVisible = false
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
         /// - Parameters:
         ///   - topInset: space above the first shape (the page's status-bar allowance).
@@ -67,9 +70,14 @@
                 }
                 Spacer(minLength: 0)
             }
+            .opacity(shapesVisible ? 1 : 0)
             .padding(.top, topInset)
             .padding(.horizontal, horizontalInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            // A delayed animation (not a sleeping task), so a busy main thread at launch cannot hold the shapes back.
+            .onAppear {
+                withAnimation(DIPMotion.reveal(reduceMotion: reduceMotion).delay(DIPMotion.skeletonGrace)) { shapesVisible = true }
+            }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(label)
             .accessibilityIdentifier("page.loading")

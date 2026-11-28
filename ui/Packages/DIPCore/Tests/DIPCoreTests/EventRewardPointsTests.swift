@@ -19,7 +19,7 @@ final class EventRewardPointsTests: XCTestCase {
     func testEventPageRowReadsEarnedForAttendedPastEvents() {
         XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: true, attended: true, locale: locale), "Earned 50 points")
         XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: true, attended: false, locale: locale), "Worth 50 points")
-        XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: false, attended: true, locale: locale), "Earn +50 points")
+        XCTAssertEqual(DIPPointsFormat.eventRow(50, isPast: false, attended: true, locale: locale), "Earn 50 points")
         XCTAssertEqual(DIPPointsFormat.eventRow(1, isPast: true, attended: true, locale: locale), "Earned 1 point")
         XCTAssertNil(DIPPointsFormat.eventRow(0, isPast: true, attended: true, locale: locale))
     }
