@@ -27,7 +27,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
     GENERATE_INFOPLIST_FILE: YES
     CURRENT_PROJECT_VERSION: 1
-    MARKETING_VERSION: 0.1.7
+    MARKETING_VERSION: 0.1.8
     # Localization (docs/design/ios-i18n.md): String Catalogs, compiler-based extraction of Swift strings.
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     SWIFT_EMIT_LOC_STRINGS: YES
