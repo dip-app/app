@@ -51,7 +51,10 @@ describe("ChallengeRow", () => {
   it("has no review action for an upcoming week", () => {
     renderRow(theme({ participantCount: 0, completedCount: 0 }), "upcoming");
     expect(screen.queryByRole("link", { name: /Review submissions/ })).toBeNull();
-    expect(screen.getByText("Not open yet")).toBeTruthy();
+    // The row says it once: the note and the pending cell; no third "Not open yet" in the action cell.
+    expect(screen.getByText(/Reviews open when the week starts/)).toBeTruthy();
+    expect(screen.getByText("None yet")).toBeTruthy();
+    expect(screen.queryByText("Not open yet")).toBeNull();
     expect(screen.queryByText("Upcoming")).toBeNull();
   });
 });

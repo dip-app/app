@@ -127,11 +127,6 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 
 @media (max-width: 700px) { .table.responsive .pill-btn.gray { background: $gray; } }
 
-// Import steps (informational: outline, current step filled with a ring)
-.steps { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px;
-  li { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px 0 6px; border: 2px solid transparent; border-radius: 999px; font-family: var(--font-figtree), sans-serif; font-size: 16px; color: var(--muted); }
-  .step-n { width: 26px; height: 26px; border-radius: 50%; border: 2px solid currentColor; display: inline-grid; place-items: center; font-size: 14px; }
-  li.current { border-color: $ink; color: $ink; } }
 .link-btn { background: none; border: 0; padding: 0; text-decoration: underline; color: inherit; font: inherit; cursor: pointer; &:focus-visible { outline: 3px solid $ink; outline-offset: 2px; border-radius: $radius-xs; } }
 .mapping { gap: 20px; }
 .mapping .field select { background: $white; }
@@ -147,7 +142,6 @@ fieldset.bare { border: 0; min-width: 0; display: grid; gap: 0; }
 
 // Round 2 audit: compact steps and samples on narrow screens
 @media (max-width: 700px) {
-  .steps { flex-wrap: nowrap; li .step-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } li { flex: none; } }
   .sample.extra { display: none; }
   .sample { max-width: 100%; }
 }

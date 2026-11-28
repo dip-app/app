@@ -301,7 +301,7 @@ function BugReports() {
   const tabCount = (id: StatusFilter) => `${number(counts?.[id] ?? 0)}${counts?.capped ? "+" : ""}`;
 
   return (
-    <Shell dense title={t("bugs.title")} subtitle={t("bugs.subtitle")} requires="bugreports.manage">
+    <Shell dense title={t("bugs.title")} subtitle={t("bugs.subtitle")} brief={t("bugs.brief")} requires="bugreports.manage">
       <Tabs idBase="bugs" label={t("bugs.filterByStatus")} value={status} onChange={(id) => setQs({ status: id, report: "" })}
         items={(["all", ...BUG_STATUSES] as StatusFilter[]).map((id) => ({ id, label: id === "all" ? t("bugs.status.all") : statusLabel(id), ...(counts ? { count: tabCount(id) } : {}) }))} />
       <FilterBar className="bug-filters" active={activeFilters} invalid={rangeBad}
@@ -341,9 +341,11 @@ function BugReports() {
                         onClick={() => { setQs({ report: item.id }); detailTop.current?.scrollIntoView?.({ block: "nearest" }); }}>
                         <Avatar name={item.reporterName} userId={item.reporterId} photoURL={item.reporterPhotoURL} avatarId={item.reporterAvatarId} />
                         <span className="queue-text">
-                          <span className="bug-line"><strong className="bug-who">{item.reporterName}</strong><span className="bug-when">{item.status !== "new" && <Info tone={STATUS_TONE[item.status]}>{statusLabel(item.status)}</Info>}<span className="muted"><RelativeTime iso={item.createdAt} /></span></span></span>
+                          <span className="bug-line"><strong className="bug-who">{item.reporterName}</strong><span className="bug-when">{item.status !== "new" && <Info tone={STATUS_TONE[item.status]} className="bug-status-top">{statusLabel(item.status)}</Info>}<span className="muted"><RelativeTime iso={item.createdAt} /></span></span></span>
                           <span className="bug-snippet">{item.description.trim() || t("bugs.item.noDescription")}</span>
                           <span className="bug-facts muted">
+                            {/* Phones: the status leads the facts line, so the name keeps the top line to itself. */}
+                            {item.status !== "new" && <Info tone={STATUS_TONE[item.status]} className="bug-status-facts">{statusLabel(item.status)}</Info>}
                             <span>{categoryLabel(item.category)}</span>
                             {item.hasScreenshot && <span>{t("bugs.item.screenshot")}</span>}
                             {item.hasNote && <span>{t("bugs.item.note")}</span>}

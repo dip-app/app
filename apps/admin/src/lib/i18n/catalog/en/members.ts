@@ -20,7 +20,7 @@ export const members = {
 
   // Filters
   "members.search.label": "Search by name, email or title",
-  "members.search.placeholder": "Search by name, email or title",
+  "members.search.placeholder": "Name, email or title",
   "members.filter.role": "Role",
   "members.filter.allRoles": "All roles",
   "members.filter.team": "Team",

@@ -18,7 +18,7 @@ import { applyAll, planAll } from "@/lib/importRun";
 import { formatNumber, t, type MessageKey } from "@/lib/i18n";
 import { useUnsavedGuard } from "@/lib/useUnsavedGuard";
 import { presentable } from "@/lib/userError";
-import { Button, InlineNotice, Panel } from "@/components/kit";
+import { Button, InlineNotice, Panel, Stepper } from "@/components/kit";
 
 type Phase = "choose" | "map" | "checking" | "preview" | "applying" | "done";
 const STEPS: { id: string; labelKey: MessageKey; phases: Phase[] }[] = [
@@ -204,14 +204,9 @@ export default function ImportPage() {
 
   return (
     <Shell title={t("import.title")} subtitle={t("import.subtitle")} requires="import.run" back={{ href: "/members/", label: t("shell.nav.members") }}>
-      <ol className="steps" aria-label={t("import.steps.label")}>
-        {STEPS.map((step, i) => (
-          <li key={step.id} aria-current={step.phases.includes(phase) ? "step" : undefined} className={step.phases.includes(phase) ? "current" : undefined}>
-            <span className="step-n">{i + 1}</span><span className="step-label" data-text={t(step.labelKey)}>{t(step.labelKey)}</span>
-          </li>
-        ))}
-      </ol>
-      {currentStep >= 0 && <p className="steps-progress" aria-hidden="true">{t("import.steps.progress", { current: currentStep + 1, total: STEPS.length, label: t(STEPS[currentStep].labelKey) })}</p>}
+      <Stepper label={t("import.steps.label")} className="import-stepper"
+        progress={currentStep >= 0 ? t("import.steps.progress", { current: currentStep + 1, total: STEPS.length, label: t(STEPS[currentStep].labelKey) }) : undefined}
+        steps={STEPS.map((step, i) => ({ id: step.id, label: t(step.labelKey), state: i === currentStep ? "current" : currentStep >= 0 && i < currentStep ? "done" : "todo" }))} />
       {phase === "choose" && (
         <>
           {resumeNote && <InlineNotice>{resumeNote}</InlineNotice>}

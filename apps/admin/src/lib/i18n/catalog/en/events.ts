@@ -121,7 +121,7 @@ export const events = {
   "events.when.sameDay": "{day} · {from} to {to}",
   "events.when.multiDay": "{day} {from} to {endDay} {to}",
   "events.list.search.label": "Search events",
-  "events.list.search.placeholder": "Search by title or place",
+  "events.list.search.placeholder": "Title or place",
   "events.list.matches": "{shown, plural, one {# match} other {# matches}} of {total}",
   "events.list.noMatches.title": "No events match",
   "events.list.noMatches.body": "Try another word, or clear the search.",

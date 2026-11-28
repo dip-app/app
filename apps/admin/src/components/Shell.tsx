@@ -19,6 +19,8 @@ import { type BackLink, EmptyState, PageHeader } from "@/components/kit";
 interface Props {
   title: string;
   subtitle?: string;
+  /** One short line shown on phones in place of the subtitle (only where it carries something the screen does not show). */
+  brief?: string;
   /** Primary page action, shown at the right of the header. */
   action?: React.ReactNode;
   children: React.ReactNode;
@@ -90,7 +92,7 @@ function isWithin(pathname: string, href: string): "page" | "true" | undefined {
 }
 
 /** Signed-in frame. Visibility is a convenience only; every command is authorized by the backend. */
-export function Shell({ title: pageTitle, subtitle, action, more, dense, children, requires, back, eyebrow: pageEyebrow, meta: pageMeta }: Props) {
+export function Shell({ title: pageTitle, subtitle, brief, action, more, dense, children, requires, back, eyebrow: pageEyebrow, meta: pageMeta }: Props) {
   const [override, setOverride] = useState<HeaderOverride | null>(null);
   const title = override?.title ?? pageTitle;
   const eyebrow = override ? (override.eyebrow ?? pageTitle) : pageEyebrow;
@@ -230,7 +232,7 @@ export function Shell({ title: pageTitle, subtitle, action, more, dense, childre
         ) : requires && !can(session.role, requires) ? (
           <AdminOnly page={title} capability={requires} role={session.role} />
         ) : (<>
-        <PageHeader title={title} description={override ? undefined : subtitle} actions={action} more={more} dense={dense} back={back} eyebrow={eyebrow} meta={meta} />
+        <PageHeader title={title} description={override ? undefined : subtitle} brief={override ? undefined : brief} actions={action} more={more} dense={dense} back={back} eyebrow={eyebrow} meta={meta} />
         <HeaderContext.Provider value={setOverride}>{children}</HeaderContext.Provider>
         </>)}
         {/* "g" then a letter goes to any page in the sidebar; "?" lists the shortcuts. */}

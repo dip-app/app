@@ -7,6 +7,7 @@ import { TableRegion } from "@/components/TableRegion";
 import { toast } from "@/components/Toast";
 import { Avatar, Empty, LoadError, LoadMore, Loading, ResultCount, SearchBox } from "@/components/Ui";
 import { useLoad } from "@/components/useLoad";
+import { AUDIT_WINDOW } from "@/lib/adminApi";
 import { ROLE_LABEL } from "@/lib/adminTypes";
 import { aiFacts, auditAction, auditCategoriesInUse, auditCategoryLabel, auditSummary, isAiAction, isAuditCategory } from "@/lib/auditLabels";
 import { formatDate, formatTime, intlLocale, t, type MessageKey } from "@/lib/i18n";
@@ -83,7 +84,7 @@ function Audit() {
 
   return (
     <Shell dense title={t("audit.title")} subtitle={t("audit.subtitle")} requires="audit.view"
-      action={filtered.length > 0 ? <Button onClick={() => exportCsv()}>{t("common.exportCsv")}</Button> : undefined}>
+      more={filtered.length > 0 ? <Button onClick={() => exportCsv()}>{t("common.exportCsv")}</Button> : undefined}>
       {audit.error ? <LoadError error={audit.error} onRetry={audit.reload} />
         : !audit.data || hold ? <Loading label={t("audit.loading")} layout="audit" />
         : audit.data.length === 0 ? <Empty title={t("audit.empty.title")} body={t("audit.empty.body")} />
@@ -102,7 +103,9 @@ function Audit() {
               <Empty title={t("audit.noMatches.title")} body={t("audit.noMatches.body")} action={<Button onClick={clearFilters}>{t(category !== "all" ? "ui.filters.clear" : "ui.filters.clearSearch")}</Button>} />
             ) : (
               <>
-                <ResultCount>{t("audit.showingOf", { shown: Math.min(shown, filtered.length), total: filtered.length })}</ResultCount>
+                <ResultCount>{audit.data.length >= AUDIT_WINDOW
+                  ? t("audit.showingOfLatest", { shown: Math.min(shown, filtered.length), total: filtered.length, window: AUDIT_WINDOW })
+                  : t("audit.showingOf", { shown: Math.min(shown, filtered.length), total: filtered.length })}</ResultCount>
                 <TableRegion label={t("audit.table.label")}>
                   <table className="table responsive audit-table sticky-actions compact-table actions-corner">
                     <caption className="sr-only">{t("audit.table.label")}</caption>

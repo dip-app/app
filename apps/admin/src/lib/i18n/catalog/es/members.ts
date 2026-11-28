@@ -19,7 +19,7 @@ export const members: Record<keyof typeof source, string> = {
   "members.chip.deactivated": "Desactivado",
 
   "members.search.label": "Buscar por nombre, correo o cargo",
-  "members.search.placeholder": "Buscar por nombre, correo o cargo",
+  "members.search.placeholder": "Nombre, correo o cargo",
   "members.filter.role": "Rol",
   "members.filter.allRoles": "Todos",
   "members.filter.team": "Equipo",

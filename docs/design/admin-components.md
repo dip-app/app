@@ -20,7 +20,8 @@ Shared building blocks for `apps/admin`. Reach for these before writing markup w
 | Anything that was thrown | `ErrorNotice` (inline), `toastError` (toast), `describe` / `userErrorMessage` (text) | See "Errors" below. Never render `error.message`. `ErrorNotice` takes `dipbot` on Dipbot surfaces ("Dipbot is busy"). |
 | A titled section card | `Panel` | `title`, `description`, `actions`, `loading`, `empty`, `error`, `headingLevel`. |
 | Nothing here yet | `EmptyState` | `title`, `body`, one `action`, optional `art`. `Empty` in `Ui.tsx` is the same component. |
-| The page title row | `PageHeader` | `title`, `description`, `actions`, `more` (secondary outline actions), `dense` (list pages). `Shell` renders it (`action`, `more`, `dense`). |
+| The page title row | `PageHeader` | `title`, `description`, `brief` (the phone line, see below), `actions`, `more` (secondary outline actions), `dense` (list pages). `Shell` renders it (`brief`, `action`, `more`, `dense`). |
+| Numbered steps of a flow | `Stepper` | `label`, `steps` (`label`, `full` tooltip, `state` done/current/todo, `ariaLabel`, `disabled`), `onSelect` (pressable steps, Dipbot) or none (informational, Import), `progress` (the phone line "Step 2 of 4: Match columns"). One hairline row, the current step underlined; below 700 px the labels leave the row and the progress line says the step. |
 | The header row of a Dipbot section | `SectionHeader` | `title`, `headingLevel`, `updated` (muted "Updated 3 hours ago"), `staleHint` (compact inline "New data available" beside it, only when stale), optional `toggle` (collapse), `hint`, `end` (actions). Used by "Ideas for you" and the wizard's per-step suggestions. |
 | One choice out of a few, always visible | `SegmentedControl` | `tabs` (underlined views), `pill` (compact, AM/PM), `icon` (grid or list). |
 | A detail page's header | `Shell` props `back` (small "‹ Events" link above the title), `eyebrow`, `meta`; or `useShellHeader({ title, meta, metaKey })` from a page that loads its object | The h1 is the object ("Puppy Yoga", "Pat Member"); the page's own title becomes the eyebrow; `meta` is one line of facts (dates, counts, the exception chip). No "All events" buttons. |
@@ -50,6 +51,9 @@ List pages on phones (700 px and below) keep the first row of the list near the 
 - `FilterBar`: the search and one "Filters" button with the number of filters set; the fields fold out under them two per row, "Clear filters" last. Events puts its phone-only sort select behind a "Sort" button the same way.
 - A banner with one action keeps its headline and the button on one row.
 - Invite cards show the status chip and its history lines ("Revoked Nov 18") on the card's sub line; no card has a separate Status row.
+- `Shell brief`: one short muted line shown on phones in place of the subtitle, only when the subtitle carries something the screen does not show (who can see the page: Bug reports). A limit on what a list holds goes in its count line instead ("Showing 25 of 100 entries from the latest 100", Audit log, only once the log is that long). Everything else stays hidden on phones.
+- One action on a dense header that doesn't fit beside the title at 320 px in Spanish goes in `more` (Audit log's Export CSV), so the header stays one row.
+- Search placeholders name what the search matches in a few words ("Name, email or title"), short enough for 320 px in Spanish; the label keeps the full wording.
 
 ## DipbotAction
 

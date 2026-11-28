@@ -4,17 +4,18 @@ import type { audit as source } from "../en/audit";
 
 export const audit: Record<keyof typeof source, string> = {
   "audit.title": "Registro de auditoría",
-  "audit.subtitle": "Cada cambio de administración: quién lo hizo, a qué y por qué. Solo lectura; las últimas 100 entradas.",
+  "audit.subtitle": "Cada cambio de administración: quién lo hizo, a qué y por qué. Solo lectura.",
   "audit.loading": "Cargando el registro de auditoría",
   "audit.empty.title": "Aún no hay entradas",
   "audit.empty.body": "Los cambios hechos con las herramientas de administración aparecen aquí, los más recientes primero.",
   "audit.noMatches.title": "Sin coincidencias",
   "audit.noMatches.body": "Prueba con otra búsqueda o categoría.",
   "audit.search.label": "Buscar por persona, elemento o motivo",
-  "audit.search.placeholder": "Buscar por persona, elemento o motivo",
+  "audit.search.placeholder": "Quién, qué o por qué",
   "audit.filter.category": "Categoría",
   "audit.filter.allCategories": "Todas las categorías",
   "audit.showingOf": "Mostrando {shown} de {total, plural, one {# entrada} other {# entradas}}",
+  "audit.showingOfLatest": "Mostrando {shown} de {total, plural, one {# entrada} other {# entradas}} de las {window} más recientes",
   "audit.export.done": "Se exportaron {count, plural, one {# entrada} other {# entradas}} a audit-log.csv.",
 
   "audit.table.label": "Registro de auditoría",

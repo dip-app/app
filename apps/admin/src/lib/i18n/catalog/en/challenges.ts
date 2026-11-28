@@ -36,7 +36,6 @@ export const challenges = {
   "challenges.row.pending": "{count} pending",
   "challenges.row.review": "Review submissions",
   "challenges.row.reviewAria": "Review submissions for {title}, {window}",
-  "challenges.row.notOpen": "Not open yet",
 
   // Schedule tab
   "challenges.themes.new": "New challenge",

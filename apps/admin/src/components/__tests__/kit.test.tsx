@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Button, Chip, ChipToggle, EmptyState, ErrorNotice, ErrorSummary, FilterBar, InlineNotice, PageHeader, Panel, SegmentedControl } from "../kit";
+import { Button, Chip, ChipToggle, EmptyState, ErrorNotice, ErrorSummary, FilterBar, InlineNotice, PageHeader, Panel, SegmentedControl, Stepper } from "../kit";
 
 afterEach(cleanup);
 
@@ -212,5 +212,56 @@ describe("SegmentedControl", () => {
       expect(screen.getByRole("button", { name: "Grid" }).getAttribute("aria-pressed")).toBe("false");
       unmount();
     }
+  });
+});
+
+describe("PageHeader brief", () => {
+  it("renders the phone line after the description and marks the description as replaced on phones", () => {
+    const { container } = render(<PageHeader dense title="Bug reports" description="What people send." brief="Only admins see these." />);
+    const full = container.querySelector(".subtitle")!;
+    const brief = container.querySelector(".subtitle-brief")!;
+    expect(full.classList.contains("has-brief")).toBe(true);
+    expect(brief.textContent).toBe("Only admins see these.");
+    expect(full.compareDocumentPosition(brief) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("leaves the description alone without a brief", () => {
+    const { container } = render(<PageHeader title="Events" description="All of them" />);
+    expect(container.querySelector(".subtitle")!.className).toBe("subtitle");
+    expect(container.querySelector(".subtitle-brief")).toBeNull();
+  });
+});
+
+describe("Stepper", () => {
+  const steps = [
+    { id: "a", label: "Upload", state: "done" as const },
+    { id: "b", label: "Match columns", state: "current" as const },
+    { id: "c", label: "Review", state: "todo" as const },
+  ];
+
+  it("informational: a labeled list, the current step marked, no buttons, the progress line hidden from assistive tech", () => {
+    const { container } = render(<Stepper label="Import steps" steps={steps} progress="Step 2 of 3: Match columns" />);
+    const list = screen.getByRole("list", { name: "Import steps" });
+    expect(list.querySelectorAll("li")).toHaveLength(3);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(container.querySelector('[aria-current="step"]')!.textContent).toContain("Match columns");
+    // A done step shows a check instead of its number.
+    expect(container.querySelector('[data-state="done"] .stepper-n svg')).not.toBeNull();
+    expect(container.querySelector(".stepper-progress")!.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("pressable: steps are buttons, the current and disabled ones can't be pressed, choosing one reports its index", () => {
+    const onSelect = vi.fn();
+    render(<Stepper label="Steps" onSelect={onSelect} steps={[
+      { ...steps[0], ariaLabel: "Step 1: Upload, done" },
+      { ...steps[1], ariaLabel: "Step 2: Match columns" },
+      { ...steps[2], ariaLabel: "Step 3: Review", disabled: true },
+    ]} />);
+    const current = screen.getByRole("button", { name: "Step 2: Match columns" });
+    expect(current.getAttribute("aria-current")).toBe("step");
+    expect((current as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Step 3: Review" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Step 1: Upload, done" }));
+    expect(onSelect).toHaveBeenCalledWith(0);
   });
 });

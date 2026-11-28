@@ -34,7 +34,6 @@ export const challenges: Record<keyof typeof source, string> = {
   "challenges.row.pending": "{count} pendientes",
   "challenges.row.review": "Revisar participaciones",
   "challenges.row.reviewAria": "Revisar participaciones de {title}, {window}",
-  "challenges.row.notOpen": "Aún no abre",
 
   "challenges.themes.new": "Nuevo reto",
   "challenges.themes.loadFailed": "No se pudieron cargar los retos. Revisa tu conexión e inténtalo de nuevo.",

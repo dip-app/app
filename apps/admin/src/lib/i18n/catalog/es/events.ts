@@ -123,7 +123,7 @@ export const events: Record<keyof typeof source, string> = {
   "events.when.sameDay": "{day} · {from} a {to}",
   "events.when.multiDay": "{day} {from} a {endDay} {to}",
   "events.list.search.label": "Buscar eventos",
-  "events.list.search.placeholder": "Buscar por título o lugar",
+  "events.list.search.placeholder": "Título o lugar",
   "events.list.matches": "{shown, plural, one {# resultado} other {# resultados}} de {total}",
   "events.list.noMatches.title": "Ningún evento coincide",
   "events.list.noMatches.body": "Prueba con otra palabra o borra la búsqueda.",
